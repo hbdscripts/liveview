@@ -1,0 +1,11 @@
+{
+  "name": "live-visitors-pixel",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Build via Shopify CLI or use a bundler'"
+  },
+  "dependencies": {
+    "@shopify/web-pixels-extension": "^1.0.0"
+  }
+}

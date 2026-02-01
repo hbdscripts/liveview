@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+*.sqlite
+*.sqlite3
+.DS_Store
+.shopify/
+dist/
+build/
+*.log
+.env.development
+live_visitors.sqlite

@@ -1,0 +1,29 @@
+# Live Visitors pixel – declare essential so it runs without requiring consent
+# https://shopify.dev/docs/api/web-pixels-api/pixel-privacy
+
+api_version = "2024-01"
+
+[[extensions]]
+type = "web_pixel_extension"
+name = "Live Visitors"
+runtime_context = "strict"
+
+# Run without requiring visitor consent (strictly necessary / essential)
+[customer_privacy]
+analytics = false
+marketing = false
+preferences = false
+sale_of_data = "disabled"
+
+[settings]
+type = "object"
+
+[settings.fields.ingestUrl]
+name = "Ingest URL"
+description = "Full URL to POST events (e.g. https://your-app.com/api/ingest)"
+type = "single_line_text_field"
+
+[settings.fields.ingestSecret]
+name = "Ingest Secret"
+description = "Secret for X-Ingest-Secret header (same as INGEST_SECRET in .env)"
+type = "single_line_text_field"
