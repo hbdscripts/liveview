@@ -9,13 +9,10 @@
     :root { --bg: #f1f5f9; --card: #fff; --text: #1e293b; --muted: #64748b; --accent: #0d9488; --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,.06); --radius: 10px; }
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
-    .header { display: flex; align-items: center; justify-content: flex-end; padding: 0.875rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
-    .header a { color: var(--muted); font-size: 0.875rem; text-decoration: none; font-weight: 500; }
-    .header a:hover { color: var(--accent); }
     .main { padding: 1.5rem; max-width: 1440px; margin: 0 auto; }
     .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
-    #stats-country { display: flex; flex-direction: column; max-height: 9999px; }
+    #stats-country { display: flex; flex-direction: column; max-height: 320px; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
     .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -41,17 +38,6 @@
     .tabs button { padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
     .tabs button:hover { border-color: var(--muted); background: #f8fafc; }
     .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .config-toggle { margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--muted); }
-    .config-toggle input { margin-right: 0.35rem; }
-    .config-panel { background: var(--card); padding: 1rem; border-radius: var(--radius); margin-bottom: 1rem; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    .config-panel.hidden { display: none; }
-    .config-panel h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
-    .config-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.9rem; }
-    .config-row.ok { color: var(--accent); }
-    .config-row.missing { color: #dc2626; }
-    .tracking-toggle button { padding: 0.4rem 0.8rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
-    .tracking-toggle button.off { background: var(--muted); }
-    .coverage-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
     th { background: #f8fafc; font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -83,6 +69,8 @@
     .side-panel h3 { margin: 0 0 0.5rem; }
     .side-panel .close { float: right; cursor: pointer; font-size: 1.2rem; color: var(--muted); }
     .side-panel .meta { font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0; }
+    .side-panel-sale { margin: 0.75rem 0; padding: 0.75rem; background: rgba(13, 148, 136, 0.08); border-radius: 8px; border-left: 3px solid var(--accent); color: var(--text); }
+    .side-panel-sale strong { color: var(--accent); }
     .side-panel ul.events { list-style: none; padding: 0; margin: 0.5rem 0; font-size: 0.85rem; }
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
@@ -90,24 +78,7 @@
   </style>
 </head>
 <body>
-  <header class="header">
-    <a href="/app/logout">Sign out</a>
-  </header>
-
   <main class="main">
-  <div class="config-toggle">
-    <label><input type="checkbox" id="hide-config" checked> Hide config status</label>
-  </div>
-  <section class="config-panel hidden" id="config-panel">
-    <h3>Config status</h3>
-    <div id="config-status">Loading…</div>
-    <div class="tracking-toggle">
-      <button type="button" id="tracking-btn">Loading…</button>
-      <span id="tracking-label"></span>
-    </div>
-    <div class="coverage-note">Coverage depends on customer privacy settings. Use “Consent (debug)” to verify if tracking is gated.</div>
-  </section>
-
   <div class="stats-row">
     <div class="stats-card" id="stats-primary">
       <div class="stats-section">
@@ -171,7 +142,7 @@
             </tr>
           </thead>
           <tbody id="by-country-body">
-            <tr><td colspan="3" class="empty">Loading…</td></tr>
+            <tr><td colspan="3" class="empty">Loadingâ€¦</td></tr>
           </tbody>
         </table>
       </div>
@@ -226,7 +197,6 @@
 
   <script>
     const API = '';
-    const HIDE_CONFIG_KEY = 'livevisitors-hide-config';
     const RANGE_OPTIONS = [
       { value: 'today', label: 'Today' },
       { value: 'yesterday', label: 'Yesterday' },
@@ -335,7 +305,7 @@
     function formatMoney(amount, currencyCode) {
       if (amount == null || typeof amount !== 'number') return '';
       const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? '£' : code === 'USD' ? '$' : code === 'EUR' ? '€' : code + ' ';
+      const sym = code === 'GBP' ? 'Â£' : code === 'USD' ? '$' : code === 'EUR' ? 'â‚¬' : code + ' ';
       return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
     }
 
@@ -419,7 +389,7 @@
 
     function formatRevenue(num) {
       if (num == null || typeof num !== 'number') return '';
-      return '£' + (num % 1 === 0 ? num : num.toFixed(2));
+      return 'Â£' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
     function renderSales(data) {
@@ -447,7 +417,7 @@
     function renderAov(data) {
       const aov = data.aov || {};
       const el = document.getElementById('aov-today');
-      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : '£0.00';
+      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : 'Â£0.00';
       const rolling = aov.rolling || {};
       const aov3 = document.getElementById('aov-3h');
       const aov6 = document.getElementById('aov-6h');
@@ -553,21 +523,25 @@
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
       panel.style.display = 'block';
-      document.getElementById('side-meta').textContent = 'Loading…';
+      document.getElementById('side-meta').textContent = 'Loadingâ€¦';
       document.getElementById('side-events').innerHTML = '';
       fetch(API + '/api/sessions/' + encodeURIComponent(sessionId) + '/events?limit=20')
         .then(r => r.json())
         .then(data => {
           const session = sessions.find(s => s.session_id === sessionId) || {};
+          const saleBlock = session.has_purchased
+            ? '<div class="side-panel-sale"><strong>Sale</strong><br>Order: ' + escapeHtml(formatMoney(session.order_total, session.order_currency) || 'â€”') + '<br>' + (session.purchased_at ? 'Purchased: ' + formatTs(session.purchased_at) + '<br>' : '') + '</div>'
+            : '';
           document.getElementById('side-meta').innerHTML = `
             Session: ${escapeHtml(sessionId)}<br>
             Visitor: ${escapeHtml(session.visitor_id || '')}<br>
             Started: ${formatTs(session.started_at)}<br>
             Last seen: ${formatTs(session.last_seen)}<br>
             Cart qty: ${session.cart_qty ?? 0}<br>
+            ${saleBlock}
             Events: ${(data.events || []).length}
           `;
-          const events = (data.events || []).map(e => `<li>${formatTs(e.ts)} ${escapeHtml(e.type)} ${escapeHtml(e.path || '')} ${e.product_handle || ''} ${e.qty_delta != null ? 'Δ' + e.qty_delta : ''}</li>`).join('');
+          const events = (data.events || []).map(e => `<li>${formatTs(e.ts)} ${escapeHtml(e.type)} ${escapeHtml(e.path || '')} ${e.product_handle || ''} ${e.qty_delta != null ? 'Î”' + e.qty_delta : ''}</li>`).join('');
           document.getElementById('side-events').innerHTML = events || '<li>No events</li>';
         })
         .catch(() => {
@@ -578,20 +552,6 @@
     document.getElementById('side-close').addEventListener('click', () => {
       document.getElementById('side-panel').style.display = 'none';
     });
-
-    (function initConfigToggle() {
-      const cb = document.getElementById('hide-config');
-      const panel = document.getElementById('config-panel');
-      const stored = localStorage.getItem(HIDE_CONFIG_KEY);
-      const hideByDefault = stored === null || stored === 'true';
-      cb.checked = hideByDefault;
-      panel.classList.toggle('hidden', hideByDefault);
-      cb.addEventListener('change', () => {
-        const hide = cb.checked;
-        localStorage.setItem(HIDE_CONFIG_KEY, String(hide));
-        panel.classList.toggle('hidden', hide);
-      });
-    })();
 
     document.querySelectorAll('.tabs button[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -619,39 +579,46 @@
       fetchSessions();
     });
 
-    document.getElementById('tracking-btn').addEventListener('click', () => {
-      const enabled = document.getElementById('tracking-btn').classList.contains('off');
-      fetch(API + '/api/settings/tracking', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          document.getElementById('tracking-btn').textContent = data.enabled ? 'Tracking ON' : 'Tracking OFF';
-          document.getElementById('tracking-btn').classList.toggle('off', !data.enabled);
-          document.getElementById('tracking-label').textContent = data.enabled ? 'Tracking is on.' : 'Tracking is off (ingest returns 204).';
+    const trackingBtn = document.getElementById('tracking-btn');
+    if (trackingBtn) {
+      trackingBtn.addEventListener('click', () => {
+        const enabled = trackingBtn.classList.contains('off');
+        fetch(API + '/api/settings/tracking', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
         })
-        .catch(() => {});
-    });
+          .then(r => r.json())
+          .then(data => {
+            trackingBtn.textContent = data.enabled ? 'Tracking ON' : 'Tracking OFF';
+            trackingBtn.classList.toggle('off', !data.enabled);
+            const label = document.getElementById('tracking-label');
+            if (label) label.textContent = data.enabled ? 'Tracking is on.' : 'Tracking is off (ingest returns 204).';
+          })
+          .catch(() => {});
+      });
+    }
 
     fetch(API + '/api/config-status')
       .then(r => r.json())
       .then(c => {
         let html = '';
-        html += '<div class="config-row ' + (c.shopify?.configured ? 'ok' : 'missing') + '">' + (c.shopify?.configured ? '✅' : '❌') + ' Shopify API</div>';
-        html += '<div class="config-row ' + (c.appUrl?.configured ? 'ok' : 'missing') + '">' + (c.appUrl?.configured ? '✅' : '❌') + ' App URL</div>';
-        html += '<div class="config-row ' + (c.ingestSecret?.configured ? 'ok' : 'missing') + '">' + (c.ingestSecret?.configured ? '✅' : '❌') + ' Ingest secret</div>';
+        html += '<div class="config-row ' + (c.shopify?.configured ? 'ok' : 'missing') + '">' + (c.shopify?.configured ? 'âœ…' : 'âŒ') + ' Shopify API</div>';
+        html += '<div class="config-row ' + (c.appUrl?.configured ? 'ok' : 'missing') + '">' + (c.appUrl?.configured ? 'âœ…' : 'âŒ') + ' App URL</div>';
+        html += '<div class="config-row ' + (c.ingestSecret?.configured ? 'ok' : 'missing') + '">' + (c.ingestSecret?.configured ? 'âœ…' : 'âŒ') + ' Ingest secret</div>';
         html += '<div class="config-row">Ingest URL: ' + escapeHtml(c.ingestUrl || '') + '</div>';
         html += '<div class="config-row">Tracking: ' + (c.trackingEnabled ? 'ON' : 'OFF') + '</div>';
-        html += '<div class="config-row ' + (c.sentry?.configured ? 'ok' : 'missing') + '">' + (c.sentry?.configured ? '✅' : '❌') + ' Sentry</div>';
-        document.getElementById('config-status').innerHTML = html;
-        document.getElementById('tracking-btn').textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF';
-        document.getElementById('tracking-btn').classList.toggle('off', !c.trackingEnabled);
-        document.getElementById('tracking-label').textContent = c.trackingEnabled ? 'Tracking is on.' : 'Tracking is off.';
+        html += '<div class="config-row ' + (c.sentry?.configured ? 'ok' : 'missing') + '">' + (c.sentry?.configured ? 'âœ…' : 'âŒ') + ' Sentry</div>';
+        const configStatusEl = document.getElementById('config-status');
+        if (configStatusEl) configStatusEl.innerHTML = html;
+        const tb = document.getElementById('tracking-btn');
+        const tl = document.getElementById('tracking-label');
+        if (tb) { tb.textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF'; tb.classList.toggle('off', !c.trackingEnabled); }
+        if (tl) tl.textContent = c.trackingEnabled ? 'Tracking is on.' : 'Tracking is off.';
       })
       .catch(() => {
-        document.getElementById('config-status').innerHTML = '<div class="config-row missing">Could not load config status.</div>';
+        const configStatusEl = document.getElementById('config-status');
+        if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row missing">Could not load config status.</div>';
       });
 
     (function initRangeSelects() {
