@@ -27,16 +27,13 @@ function pathFromContext(ctx) {
   return '/';
 }
 
+// Prefer visitor's browser locale (navigator.language); do NOT use shop.countryCode – that's the store's country and would label every visitor the same.
 function countryFromInit(init) {
-  const shop = init?.data?.shop;
-  if (shop?.countryCode && typeof shop.countryCode === 'string') {
-    const cc = shop.countryCode.trim().toUpperCase().slice(0, 2);
-    if (cc.length === 2) return cc;
-  }
   const nav = init?.context?.navigator;
   const lang = nav?.languages?.[0] || nav?.language;
-  if (typeof lang === 'string' && /^[a-z]{2}-[A-Z]{2}$/.test(lang)) {
-    return lang.split('-')[1];
+  if (typeof lang === 'string' && /^[a-z]{2}-[A-Z]{2}$/i.test(lang)) {
+    const cc = lang.split('-')[1];
+    if (cc && cc.length === 2) return cc.toUpperCase();
   }
   return 'XX';
 }
