@@ -43,8 +43,6 @@
     .flag-cell { white-space: nowrap; }
     .arrived-cell { font-size: 0.875rem; line-height: 1.4; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
-    .purchase-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
-    .purchase-icon svg { width: 100%; height: 100%; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
     .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
     .last-action-cell a:hover { text-decoration: underline; }
@@ -320,10 +318,6 @@
       return '<img class="flag-img" src="https://flagcdn.com/w40/' + escapeHtml(c) + '.png" alt="' + escapeHtml(code) + '" loading="lazy">';
     }
 
-    function purchaseIconSvg() {
-      return '<span class="purchase-icon" title="Purchased"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" fill="#0d9488" r="16"/><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"/></g></svg></span>';
-    }
-
     function arrivedAgo(startedAt) {
       var n = toMs(startedAt);
       if (n == null) return '\u2014';
@@ -355,8 +349,8 @@
 
     function landingPageCell(s) {
       var base = getStoreBaseUrl();
-      var path = (s.first_path != null ? s.first_path : s.last_path || '').trim();
-      var productHandle = s.first_product_handle != null ? s.first_product_handle : s.last_product_handle;
+      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : '').trim();
+      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : null;
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var isCheckout = path && path.indexOf('/checkouts') === 0;
@@ -365,18 +359,17 @@
       var thumbSrc = '';
       if (isCheckout) {
         label = 'Cart';
-        thumbSrc = (API || '') + '/assets/checkout.png';
+        thumbSrc = (API || '') + '/assets/checkout.webp';
       } else if (path) {
         label = escapeHtml(path);
         if (fullUrl) thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
-      var purchaseIcon = s.has_purchased ? ' ' + purchaseIconSvg() : '';
       if (thumbSrc || fullUrl) {
         var img = thumbSrc ? '<img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'">' : '';
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
-        return '<div class="last-action-cell">' + img + purchaseIcon + ' ' + link + '</div>';
+        return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
       }
-      return (purchaseIcon ? '<div class="last-action-cell">' + purchaseIcon + ' </div>' : '') + (label === '\u2014' ? label : escapeHtml(path || ''));
+      return label === '\u2014' ? label : escapeHtml(path || '');
     }
 
     function formatMoney(amount, currencyCode) {
