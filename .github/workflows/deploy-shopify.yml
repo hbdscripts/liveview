@@ -1,7 +1,7 @@
 # Deploy Web Pixel (and app config) to Shopify on push to main.
-# Only runs if your app is in a PARTNER organization (partners.shopify.com).
-# If your app was created in Developers / Dev Dashboard (dev.shopify.com), this job is skipped
-# and you deploy the pixel manually with: npm run deploy
+# This project is a DEVELOPER app (Dev Dashboard, dev.shopify.com). For developer apps,
+# this job is skipped unless DEPLOY_PIXEL_VIA_CI=true (Partner token required). Deploy
+# the pixel manually with: npm run deploy
 # https://shopify.dev/docs/apps/launch/deployment/deploy-in-ci-cd-pipeline
 #
 # Repo secrets used: DEPLOY_PIXEL_VIA_CI, SHOPIFY_CLI_PARTNERS_TOKEN, SHOPIFY_API_KEY.

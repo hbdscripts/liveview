@@ -1,5 +1,7 @@
 # Deploy: backend vs pixel
 
+**This project is a developer app** (Dev Dashboard, dev.shopify.com), not a Partner organization app. The pixel is deployed manually with `npm run deploy`; the GitHub “Deploy to Shopify” workflow is for Partner apps only and is skipped unless you set `DEPLOY_PIXEL_VIA_CI=true` and use a Partner token.
+
 ## Backend (Railway) – automatic on push
 
 When you push to `main`, **Railway** deploys the backend (if the repo is connected to Railway). No extra setup.
@@ -38,13 +40,15 @@ After a successful deploy, visiting `https://liveview-production.up.railway.app/
 
 ---
 
-## Pixel (Shopify) – depends where the app was created
+## Pixel (Shopify) – developer app
 
-### App created in **Developers / Dev Dashboard** (dev.shopify.com)
+### Do I need to manually add the pixel? Is it in my site’s source code?
 
-Shopify’s CI deploy (CLI token from Partners) **only works for Partner organization apps**. If your app was created in **Developers** (Dev Dashboard), the GitHub Action **Deploy to Shopify** will not work with a Partner token and will fail with “You are not a member of the requested organization”.
+**No.** The Live Visitors pixel is a **Web Pixel app extension**. You do **not** add it to your theme or site source code, and you do **not** use “Add custom pixel” in Customer events. When you deploy the extension (`npm run deploy`) and the app is installed on the store, Shopify runs the pixel on the storefront automatically. You only need to set **Ingest URL** and **Ingest Secret** in the app’s extension settings (Dev Dashboard → your app → Extensions → Live Visitors pixel → Configuration).
 
-**What to do:** Deploy the pixel **manually** when you change it:
+### Deploying the pixel (developer app)
+
+Deploy the pixel **manually** when you change it:
 
 1. Open your project in a terminal (repo root).
 2. Log in to the account that owns the app (if needed):  
@@ -54,11 +58,13 @@ Shopify’s CI deploy (CLI token from Partners) **only works for Partner organiz
    (or `shopify app deploy --allow-updates`)
 4. Follow the prompts.
 
-After that, the Web Pixel is updated on Shopify. Run it again whenever you change the pixel or app config and want to push to Shopify.
+After that, the Web Pixel is updated on Shopify. Run it again whenever you change the pixel or app config.
+
+Then in **Dev Dashboard** → your app → **Extensions** → **Live Visitors** (web pixel) → **Configuration**, set **Ingest URL** (`https://your-app.example.com/api/ingest`) and **Ingest Secret** (same as `INGEST_SECRET` in Railway). The pixel will not send events until these are set.
 
 ---
 
-### App created in **Partners** (partners.shopify.com)
+### If you were using a Partner app (partners.shopify.com)
 
 If your app lives in a **Partner organization**, you can use automatic deploy on push:
 
@@ -71,4 +77,4 @@ If your app lives in a **Partner organization**, you can use automatic deploy on
    - Value: `true`
 4. If `shopify.app.toml` has empty `client_id`, add secret `SHOPIFY_API_KEY` with your app’s Client ID.
 
-Then every push to `main` will run the “Deploy to Shopify” workflow and deploy the pixel. If you do **not** set `DEPLOY_PIXEL_VIA_CI`, the workflow job is skipped (so no failed runs for Dev Dashboard apps).
+Then every push to `main` would run the “Deploy to Shopify” workflow. For this project (developer app), leave `DEPLOY_PIXEL_VIA_CI` unset and deploy the pixel manually.

@@ -1,10 +1,12 @@
 # Live Visitors App – Configuration
 
+**This project is a developer app** (Dev Dashboard, dev.shopify.com). The pixel is an app extension; you deploy it with `npm run deploy` and configure Ingest URL/Secret in the app’s extension settings. You do not add the pixel to your theme or site source code.
+
 ## Where to get Shopify credentials
 
-1. **Partner / Custom app**
-   - Go to [Shopify Partners](https://partners.shopify.com) (or your store Admin → Apps → Develop apps).
-   - Create an app (or use a custom app for a single store).
+1. **Developer app (Dev Dashboard)**
+   - Go to your store **Admin → Apps → Develop apps** (or [Dev Dashboard](https://dev.shopify.com) if you use it).
+   - Create or open your app.
    - Copy **Client ID** → `SHOPIFY_API_KEY` (or `SHOPIFY_CLIENT_ID`).
    - Copy **Client secret** → `SHOPIFY_API_SECRET` (or `SHOPIFY_CLIENT_SECRET`).
 
@@ -16,10 +18,10 @@
      - `https://your-app.example.com/auth/shopify-login/callback` (for "Login with Shopify" on the dashboard splash)
    - In `.env`: `SHOPIFY_APP_URL=https://your-app.example.com`.
 
-3. **Ingestion secret**
+3. **Ingestion secret and pixel extension**
    - Run: `node scripts/generate-ingest-secret.js`
-   - Copy the output and set in `.env`: `INGEST_SECRET=<paste>`
-   - In the Web Pixel extension settings (Shopify Admin → Apps → Live Visitors → Pixel settings), set:
+   - Copy the output and set in `.env` (and Railway): `INGEST_SECRET=<paste>`
+   - The pixel is an **app extension** (not in your theme/source). After deploying with `npm run deploy`, set in **Dev Dashboard → your app → Extensions → Live Visitors (web pixel) → Configuration**:
      - **Ingest URL**: `https://your-app.example.com/api/ingest`
      - **Ingest Secret**: the same value as `INGEST_SECRET`.
 
