@@ -1,8 +1,8 @@
 /**
  * POST /api/ingest – pixel events.
  * CORS permissive (Origin: null), INGEST_SECRET auth, validate, rate limit, store, broadcast.
- * Visitor country: Shopify does not expose visitor country to the Web Pixels API (only shop country).
- * We derive country from the request IP (geoip-lite) so it reflects real location instead of browser language.
+ * Visitor country: prefer Cloudflare CF-IPCountry when the request goes through CF; otherwise
+ * derive from client IP (geoip-lite). Shopify Web Pixels API does not expose visitor country.
  */
 
 const config = require('../config');
@@ -18,15 +18,32 @@ try {
 }
 
 function getClientIp(req) {
+  const cfIp = req.get('cf-connecting-ip');
+  if (cfIp) return cfIp.trim();
   const forwarded = req.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
   return req.ip || req.connection?.remoteAddress || '';
+}
+
+/** Country from Cloudflare header (when app/ingest is behind CF). CF-IPCountry is two-letter ISO, or "T1" for Tor. */
+function countryFromCloudflare(req) {
+  const cc = req.get('cf-ipcountry');
+  if (!cc || typeof cc !== 'string') return null;
+  const c = cc.trim().toUpperCase();
+  if (c.length !== 2 || c === 'T1' || c === 'XX') return null;
+  return c;
 }
 
 function countryFromIp(ip) {
   if (!geoip || !ip || ip === '::1' || ip === '127.0.0.1') return null;
   const geo = geoip.lookup(ip);
   return geo && typeof geo.country === 'string' && geo.country.length === 2 ? geo.country : null;
+}
+
+function getVisitorCountry(req) {
+  const cf = countryFromCloudflare(req);
+  if (cf) return cf;
+  return countryFromIp(getClientIp(req));
 }
 
 const ALLOWED_TYPES = store.ALLOWED_EVENT_TYPES;
@@ -86,8 +103,8 @@ function ingestRouter(req, res, next) {
     }
 
     const payload = store.sanitize(body);
-    const ipCountry = countryFromIp(getClientIp(req));
-    if (ipCountry) payload.country_code = ipCountry;
+    const country = getVisitorCountry(req);
+    if (country) payload.country_code = country;
     const ts = payload.ts || Date.now();
 
     return Promise.all([
