@@ -280,8 +280,16 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('checkout_completed', (event) => {
     try {
       const checkout = event?.data?.checkout;
+      let orderTotal = null;
       const totalPrice = checkout?.totalPrice ?? checkout?.subtotalPrice;
-      const orderTotal = typeof totalPrice?.amount === 'number' ? totalPrice.amount : null;
+      orderTotal = parseAmount(totalPrice?.amount);
+      if (orderTotal == null && Array.isArray(checkout?.transactions) && checkout.transactions.length > 0) {
+        const sum = checkout.transactions.reduce((acc, t) => {
+          const amt = parseAmount(t?.amount?.amount);
+          return acc + (typeof amt === 'number' ? amt : 0);
+        }, 0);
+        if (sum > 0) orderTotal = sum;
+      }
       const orderCurrency = checkout?.currencyCode ?? totalPrice?.currencyCode ?? null;
       send(payload('checkout_completed', {
         checkout_completed: true,

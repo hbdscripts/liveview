@@ -1,6 +1,8 @@
 /**
- * Dashboard access: allow only from Shopify admin (Referer) or with valid DASHBOARD_SECRET (cookie/header).
- * If DASHBOARD_SECRET is not set, all dashboard routes remain public.
+ * Dashboard access:
+ * - From Shopify admin (Referer/Origin): always allowed (no login).
+ * - Direct visit (e.g. Railway URL): require Google OAuth session cookie.
+ * No DASHBOARD_SECRET or password; Google-only for direct access.
  */
 
 const crypto = require('crypto');
@@ -128,21 +130,16 @@ function verifyOauthSession(cookieValue) {
 }
 
 function allow(req) {
-  const secret = (config.dashboardSecret || '').trim();
-  const prefix = (config.allowedAdminRefererPrefix || '').trim();
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
-  const hasShopifyLogin = !!(config.allowedShopDomain && config.shopify && config.shopify.apiKey);
-  const protected = secret !== '' || prefix !== '' || hasGoogle || hasShopifyLogin;
-  if (!protected) return true;
-
+  // From Shopify admin: always allow (embed / open from Admin)
   if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
-  if (secret && req.get('X-Dashboard-Secret') === secret) return true;
-  const cookie = getCookie(req, COOKIE_NAME);
-  if (cookie && verifySession(cookie)) return true;
-  const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
-  if (oauthCookie && verifyOauthSession(oauthCookie)) return true;
-
-  return false;
+  // Direct visit: require Google OAuth session when Google is configured
+  if (hasGoogle) {
+    const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
+    return !!(oauthCookie && verifyOauthSession(oauthCookie));
+  }
+  // No Google configured: allow (e.g. local dev)
+  return true;
 }
 
 function middleware(req, res, next) {

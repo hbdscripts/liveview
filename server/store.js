@@ -148,11 +148,15 @@ async function upsertSession(payload, visitorIsReturning) {
   let orderCurrency = payload.order_currency;
   if (payload.checkout_completed && (payload.order_total != null || payload.order_currency != null)) {
     if (typeof payload.order_total === 'number') orderTotal = payload.order_total;
+    else if (typeof payload.order_total === 'string') {
+      const parsed = parseFloat(payload.order_total);
+      if (!Number.isNaN(parsed)) orderTotal = parsed;
+    }
     if (typeof payload.order_currency === 'string') orderCurrency = payload.order_currency;
   }
   if (orderTotal === undefined && existing?.order_total != null) orderTotal = existing.order_total;
   if (orderCurrency === undefined && existing?.order_currency) orderCurrency = existing.order_currency;
-  if (typeof orderTotal !== 'number') orderTotal = null;
+  if (typeof orderTotal !== 'number' || Number.isNaN(orderTotal)) orderTotal = null;
   if (typeof orderCurrency !== 'string') orderCurrency = null;
 
   const utmCampaign = typeof payload.utm_campaign === 'string' && payload.utm_campaign.trim() ? payload.utm_campaign.trim() : null;
