@@ -9,6 +9,20 @@ const config = require('../config');
 const COOKIE_NAME = 'dashboard_session';
 const SESSION_HOURS = 24;
 
+function isShopifyAdminOrigin(req) {
+  const origin = (req.get('Origin') || '').trim();
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    return (
+      u.hostname === 'admin.shopify.com' ||
+      u.hostname.endsWith('.myshopify.com')
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
 function isShopifyAdminReferer(req) {
   const referer = (req.get('Referer') || req.get('referer') || '').trim();
   if (!referer) return false;
@@ -121,7 +135,7 @@ function allow(req) {
   const protected = secret !== '' || prefix !== '' || hasGoogle || hasShopifyLogin;
   if (!protected) return true;
 
-  if (isShopifyAdminReferer(req)) return true;
+  if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
   if (secret && req.get('X-Dashboard-Secret') === secret) return true;
   const cookie = getCookie(req, COOKIE_NAME);
   if (cookie && verifySession(cookie)) return true;
