@@ -16,4 +16,7 @@ if (config.sentryDsn && config.sentryDsn.trim() !== '') {
     maxBreadcrumbs: 50,
     sendDefaultPii: false,
   });
+  console.log('[Sentry] Enabled – errors will be sent to Sentry');
+} else {
+  console.log('[Sentry] Disabled – set SENTRY_DSN on this service to send errors to Sentry');
 }
