@@ -22,14 +22,12 @@ sale_of_data = "disabled"
 [extensions.settings]
 type = "object"
 
-[[extensions.settings.fields]]
-key = "ingestUrl"
+[extensions.settings.fields.ingestUrl]
 name = "Ingest URL"
 description = "Full URL to POST events (e.g. https://your-app.com/api/ingest)"
 type = "single_line_text_field"
 
-[[extensions.settings.fields]]
-key = "ingestSecret"
+[extensions.settings.fields.ingestSecret]
 name = "Ingest Secret"
 description = "Secret for X-Ingest-Secret header (same as INGEST_SECRET in .env)"
 type = "single_line_text_field"
