@@ -26,6 +26,13 @@ function sanitize(payload) {
   return out;
 }
 
+function normalizeCountry(value) {
+  if (typeof value !== 'string') return null;
+  const c = value.trim().toUpperCase();
+  if (c.length !== 2 || c === 'XX' || c === 'T1') return null;
+  return c;
+}
+
 async function getSetting(key) {
   const db = getDb();
   const row = await db.get('SELECT value FROM settings WHERE key = ?', [key]);
@@ -55,6 +62,7 @@ async function getVisitor(visitorId) {
 async function upsertVisitor(payload) {
   const db = getDb();
   const now = payload.ts || Date.now();
+  const normalizedCountry = normalizeCountry(payload.country_code);
   const existing = await db.get('SELECT visitor_id, last_seen FROM visitors WHERE visitor_id = ?', [payload.visitor_id]);
   const isReturning = existing ? (now - existing.last_seen > config.returningGapMinutes * 60 * 1000) : false;
   const returningCount = existing ? (existing.returning_count || 0) + (isReturning ? 1 : 0) : 0;
@@ -70,7 +78,7 @@ async function upsertVisitor(payload) {
       payload.visitor_id,
       existing ? existing.first_seen : now,
       now,
-      payload.country_code ?? null,
+      normalizedCountry,
       payload.device ?? null,
       payload.network_speed ?? null,
       isReturning ? 1 : 0,
@@ -81,12 +89,12 @@ async function upsertVisitor(payload) {
       await db.run(`
         UPDATE visitors SET last_seen = ?, last_country = COALESCE(?, last_country), device = COALESCE(?, device),
         network_speed = COALESCE(?, network_speed), is_returning = ?, returning_count = ? WHERE visitor_id = ?
-      `, [now, payload.country_code, payload.device, payload.network_speed, isReturning ? 1 : 0, returningCount, payload.visitor_id]);
+      `, [now, normalizedCountry, payload.device, payload.network_speed, isReturning ? 1 : 0, returningCount, payload.visitor_id]);
     } else {
       await db.run(`
         INSERT INTO visitors (visitor_id, first_seen, last_seen, last_country, device, network_speed, is_returning, returning_count)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [payload.visitor_id, now, now, payload.country_code ?? null, payload.device ?? null, payload.network_speed ?? null, 0, 0]);
+      `, [payload.visitor_id, now, now, normalizedCountry, payload.device ?? null, payload.network_speed ?? null, 0, 0]);
     }
   }
   return { isReturning };
@@ -101,6 +109,11 @@ async function upsertSession(payload, visitorIsReturning) {
   const db = getDb();
   const now = payload.ts || Date.now();
   const existing = await db.get('SELECT * FROM sessions WHERE session_id = ?', [payload.session_id]);
+  const normalizedCountry = normalizeCountry(payload.country_code);
+  let purchasedAt = typeof existing?.purchased_at === 'number' ? existing.purchased_at : null;
+  if (payload.checkout_completed && !purchasedAt) {
+    purchasedAt = now;
+  }
 
   let cartQty = payload.cart_qty;
   if (cartQty === undefined && existing) cartQty = existing.cart_qty;
@@ -144,14 +157,14 @@ async function upsertSession(payload, visitorIsReturning) {
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
     }
   } else {
     if (config.dbUrl) {
@@ -159,17 +172,19 @@ async function upsertSession(payload, visitorIsReturning) {
         UPDATE sessions SET last_seen = ?, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
         cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
         order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
-        is_checking_out = $9, checkout_started_at = $10, has_purchased = $11
-        WHERE session_id = $12
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
+        country_code = COALESCE($9, country_code),
+        is_checking_out = $10, checkout_started_at = $11, has_purchased = $12, purchased_at = COALESCE($13, purchased_at)
+        WHERE session_id = $14
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
     } else {
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
         order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
-        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?
+        country_code = COALESCE(?, country_code),
+        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at)
         WHERE session_id = ?
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
     }
   }
 
@@ -231,7 +246,9 @@ async function listSessions(filter) {
   const abandonedCutoff = now - abandonedRetentionMs;
 
   let sql = `
-    SELECT s.*, v.is_returning, v.returning_count, v.last_country AS country_code, v.device, v.network_speed
+    SELECT s.*, v.is_returning, v.returning_count,
+      COALESCE(s.country_code, v.last_country) AS session_country,
+      v.device, v.network_speed
     FROM sessions s
     JOIN visitors v ON s.visitor_id = v.visitor_id
     WHERE 1=1
@@ -244,7 +261,7 @@ async function listSessions(filter) {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(todayCutoff);
   } else if (filter === 'converted') {
-    sql += ` AND s.has_purchased = 1 AND s.last_seen >= ${ph()}`;
+    sql += ` AND s.has_purchased = 1 AND s.purchased_at >= ${ph()}`;
     params.push(todayCutoff);
   } else if (filter === 'active') {
     sql += ` AND s.last_seen >= ${ph()}`;
@@ -266,10 +283,12 @@ async function listSessions(filter) {
   sql += ' ORDER BY s.last_seen DESC';
   const rows = await db.all(sql, params);
 
-  return rows.map(r => ({
-    ...r,
-    country_code: r.country_code || 'XX',
-  }));
+  return rows.map(r => {
+    const countryCode = (r.session_country || r.country_code || 'XX').toUpperCase().slice(0, 2);
+    const out = { ...r, country_code: countryCode };
+    delete out.session_country;
+    return out;
+  });
 }
 
 async function getSessionEvents(sessionId, limit = 20) {
@@ -281,81 +300,215 @@ async function getSessionEvents(sessionId, limit = 20) {
   return rows.reverse();
 }
 
-/** Conversion rate = (sessions with has_purchased) / total sessions in window. Returns { overall, 6h, 12h, 48h, 72h } in percent. */
-async function getConversionRates() {
-  const db = getDb();
-  const now = Date.now();
-  const windows = [
-    { key: 'overall', ms: 30 * 24 * 60 * 60 * 1000 },
-    { key: '72h', ms: 72 * 60 * 60 * 1000 },
-    { key: '48h', ms: 48 * 60 * 60 * 1000 },
-    { key: '12h', ms: 12 * 60 * 60 * 1000 },
-    { key: '6h', ms: 6 * 60 * 60 * 1000 },
-  ];
-  const out = { overall: null, '6h': null, '12h': null, '48h': null, '72h': null };
-  for (const { key, ms } of windows) {
-    const cutoff = now - ms;
-    const total = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= ?',
-      [cutoff]
-    );
-    const purchased = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= ? AND has_purchased = 1',
-      [cutoff]
-    );
-    const t = total?.n ?? 0;
-    const p = purchased?.n ?? 0;
-    out[key] = t > 0 ? Math.round((p / t) * 1000) / 10 : null;
+const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
+const SALES_ROLLING_WINDOWS = [
+  { key: '6h', ms: 6 * 60 * 60 * 1000 },
+  { key: '12h', ms: 12 * 60 * 60 * 1000 },
+  { key: '24h', ms: 24 * 60 * 60 * 1000 },
+  { key: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
+];
+const CONVERSION_ROLLING_WINDOWS = [
+  { key: '3h', ms: 3 * 60 * 60 * 1000 },
+  { key: '6h', ms: 6 * 60 * 60 * 1000 },
+  { key: '12h', ms: 12 * 60 * 60 * 1000 },
+  { key: '24h', ms: 24 * 60 * 60 * 1000 },
+];
+
+function resolveAdminTimeZone() {
+  const tz = config.adminTimezone || 'Europe/London';
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: tz }).format(new Date());
+    return tz;
+  } catch (_) {
+    return 'Europe/London';
   }
-  return out;
 }
 
-/** Sessions per country (last 72h) with count and revenue (sum order_total), sorted by revenue desc then count, limit 20. */
-async function getSessionsByCountry() {
-  const db = getDb();
-  const cutoff = Date.now() - 72 * 60 * 60 * 1000;
-  const sql = config.dbUrl
-    ? `SELECT v.last_country AS country_code, COUNT(*) AS count,
-       COALESCE(SUM(s.order_total), 0)::float AS revenue
-       FROM sessions s
-       JOIN visitors v ON s.visitor_id = v.visitor_id
-       WHERE s.last_seen >= $1 AND v.last_country IS NOT NULL AND v.last_country != ''
-       GROUP BY v.last_country
-       ORDER BY revenue DESC, count DESC
-       LIMIT 20`
-    : `SELECT v.last_country AS country_code, COUNT(*) AS count,
-       COALESCE(SUM(s.order_total), 0) AS revenue
-       FROM sessions s
-       JOIN visitors v ON s.visitor_id = v.visitor_id
-       WHERE s.last_seen >= ? AND v.last_country IS NOT NULL AND v.last_country != ''
-       GROUP BY v.last_country
-       ORDER BY revenue DESC, count DESC
-       LIMIT 20`;
-  const rows = await db.all(sql, [cutoff]);
-  return rows.map(r => ({
-    country_code: (r.country_code || 'XX').toUpperCase().slice(0, 2),
-    count: r.count,
-    revenue: Number(r.revenue) || 0,
-  }));
+function getTimeZoneParts(date, timeZone) {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const parts = fmt.formatToParts(date);
+  const map = {};
+  for (const p of parts) {
+    if (p.type !== 'literal') map[p.type] = p.value;
+  }
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    second: Number(map.second),
+  };
 }
 
-/** Total revenue (sum order_total) for sessions with last_seen in last 24h. */
-async function getRevenueToday() {
+function getTimeZoneOffsetMs(timeZone, date) {
+  const parts = getTimeZoneParts(date, timeZone);
+  const utc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return utc - date.getTime();
+}
+
+function zonedTimeToUtcMs(year, month, day, hour, minute, second, timeZone) {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const offset = getTimeZoneOffsetMs(timeZone, utcGuess);
+  return utcGuess.getTime() - offset;
+}
+
+function addDaysToParts(parts, deltaDays) {
+  const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+function startOfDayUtcMs(parts, timeZone) {
+  return zonedTimeToUtcMs(parts.year, parts.month, parts.day, 0, 0, 0, timeZone);
+}
+
+function getRangeBounds(rangeKey, nowMs, timeZone) {
+  const todayParts = getTimeZoneParts(new Date(nowMs), timeZone);
+  const startToday = startOfDayUtcMs(todayParts, timeZone);
+  if (rangeKey === 'today') return { start: startToday, end: nowMs };
+  if (rangeKey === 'yesterday') {
+    const yParts = addDaysToParts(todayParts, -1);
+    return { start: startOfDayUtcMs(yParts, timeZone), end: startToday };
+  }
+  if (rangeKey === '3d') {
+    const startParts = addDaysToParts(todayParts, -2);
+    return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
+  }
+  if (rangeKey === '7d') {
+    const startParts = addDaysToParts(todayParts, -6);
+    return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
+  }
+  return { start: nowMs, end: nowMs };
+}
+
+async function getSalesTotal(start, end) {
   const db = getDb();
-  const cutoff = Date.now() - TODAY_WINDOW_MINUTES * 60 * 1000;
   const row = config.dbUrl
-    ? await db.get('SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions WHERE last_seen >= $1 AND has_purchased = 1', [cutoff])
-    : await db.get('SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions WHERE last_seen >= ? AND has_purchased = 1', [cutoff]);
+    ? await db.get(
+      'SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions WHERE has_purchased = 1 AND purchased_at >= $1 AND purchased_at < $2',
+      [start, end]
+    )
+    : await db.get(
+      'SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions WHERE has_purchased = 1 AND purchased_at >= ? AND purchased_at < ?',
+      [start, end]
+    );
   return row ? Number(row.total) || 0 : 0;
 }
 
+async function getConversionRate(start, end) {
+  const db = getDb();
+  const total = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?', [start, end]);
+  const purchased = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2 AND has_purchased = 1', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ? AND has_purchased = 1', [start, end]);
+  const t = total?.n ?? 0;
+  const p = purchased?.n ?? 0;
+  return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
+}
+
+async function getCountryStats(start, end) {
+  const db = getDb();
+  const conversionRows = config.dbUrl
+    ? await db.all(`
+      SELECT country_code, COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN has_purchased = 1 THEN 1 ELSE 0 END), 0) AS converted
+      FROM sessions
+      WHERE started_at >= $1 AND started_at < $2
+        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      GROUP BY country_code
+    `, [start, end])
+    : await db.all(`
+      SELECT country_code, COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN has_purchased = 1 THEN 1 ELSE 0 END), 0) AS converted
+      FROM sessions
+      WHERE started_at >= ? AND started_at < ?
+        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      GROUP BY country_code
+    `, [start, end]);
+  const revenueRows = config.dbUrl
+    ? await db.all(`
+      SELECT country_code, COALESCE(SUM(order_total), 0)::float AS revenue
+      FROM sessions
+      WHERE has_purchased = 1 AND purchased_at >= $1 AND purchased_at < $2
+        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      GROUP BY country_code
+    `, [start, end])
+    : await db.all(`
+      SELECT country_code, COALESCE(SUM(order_total), 0) AS revenue
+      FROM sessions
+      WHERE has_purchased = 1 AND purchased_at >= ? AND purchased_at < ?
+        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      GROUP BY country_code
+    `, [start, end]);
+  const map = new Map();
+  for (const row of conversionRows) {
+    const code = normalizeCountry(row.country_code);
+    if (!code) continue;
+    map.set(code, {
+      country_code: code,
+      total: Number(row.total) || 0,
+      converted: Number(row.converted) || 0,
+      revenue: 0,
+    });
+  }
+  for (const row of revenueRows) {
+    const code = normalizeCountry(row.country_code);
+    if (!code) continue;
+    const current = map.get(code) || { country_code: code, total: 0, converted: 0, revenue: 0 };
+    current.revenue = Number(row.revenue) || 0;
+    map.set(code, current);
+  }
+  const out = Array.from(map.values()).map(r => ({
+    country_code: r.country_code,
+    conversion: r.total > 0 ? Math.round((r.converted / r.total) * 1000) / 10 : null,
+    revenue: Number(r.revenue) || 0,
+    total: r.total,
+    converted: r.converted,
+  }));
+  out.sort((a, b) => (b.revenue - a.revenue) || (b.converted - a.converted) || (b.total - a.total));
+  return out.slice(0, 20);
+}
+
 async function getStats() {
-  const [conversion, byCountry, revenueToday] = await Promise.all([
-    getConversionRates(),
-    getSessionsByCountry(),
-    getRevenueToday(),
-  ]);
-  return { conversion, byCountry, revenueToday };
+  const now = Date.now();
+  const timeZone = resolveAdminTimeZone();
+  const ranges = {};
+  for (const key of RANGE_KEYS) {
+    ranges[key] = getRangeBounds(key, now, timeZone);
+  }
+  const salesByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])
+  ));
+  const conversionByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end)])
+  ));
+  const countryByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end)])
+  ));
+  const salesRolling = Object.fromEntries(await Promise.all(
+    SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])
+  ));
+  const conversionRolling = Object.fromEntries(await Promise.all(
+    CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now)])
+  ));
+  return {
+    sales: { ...salesByRange, rolling: salesRolling },
+    conversion: { ...conversionByRange, rolling: conversionRolling },
+    country: countryByRange,
+    revenueToday: salesByRange.today ?? 0,
+  };
 }
 
 function validateEventType(type) {

@@ -115,7 +115,7 @@ function ingestRouter(req, res, next) {
       .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
       .then(([sessionRow, visitor]) => {
         if (sessionRow) {
-          const countryCode = visitor?.last_country || 'XX';
+          const countryCode = sessionRow.country_code || visitor?.last_country || 'XX';
           sse.broadcast({
             type: 'session_update',
             session: {

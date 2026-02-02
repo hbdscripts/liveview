@@ -1,5 +1,5 @@
 /**
- * GET /api/stats – conversion rates (overall, 6h, 12h, 48h, 72h) and sessions by country.
+ * GET /api/stats – sales + conversion ranges (UK midnight) and country stats.
  */
 
 const store = require('../store');

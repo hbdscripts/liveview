@@ -17,15 +17,22 @@
     .header a:only-child { margin-left: auto; }
     .main { padding: 1rem 1.25rem; max-width: 1400px; margin: 0 auto; }
     h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; color: var(--muted); }
-    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .stats-card { background: var(--card); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); flex: 1; min-width: 200px; }
-    .stats-card h3 { margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
-    .conversion-overall { font-size: 1.5rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
-    .conversion-breakdown { font-size: 0.875rem; color: var(--text); }
-    .conversion-breakdown span { display: inline-block; margin-right: 1rem; }
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: flex-start; }
+    .stats-card { background: var(--card); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); flex: 1; min-width: 220px; }
+    .stats-card h3 { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .stats-section { display: flex; flex-direction: column; gap: 0.35rem; }
+    .stats-main { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
+    .stats-breakdown { font-size: 0.875rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .stats-breakdown span { display: inline-block; }
+    .stats-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
+    .stats-select { padding: 0.2rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 0.85rem; }
+    .muted { color: var(--muted); font-size: 0.8rem; }
+    .country-table-wrap { overflow-y: auto; }
     .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .by-country-table td { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
-    .by-country-table td:first-child { display: flex; align-items: center; gap: 0.5rem; }
+    .by-country-table th, .by-country-table td { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .by-country-table th { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; }
     .kpis { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .kpi { background: var(--card); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); }
@@ -100,28 +107,59 @@
   </section>
 
   <div class="stats-row">
-    <div class="stats-card">
-      <h3>Conversion rate</h3>
-      <div class="conversion-overall" id="conversion-overall">—%</div>
-      <div class="conversion-breakdown">
-        <span>6hr: <strong id="conversion-6h">—%</strong></span>
-        <span>12hr: <strong id="conversion-12h">—%</strong></span>
-        <span>48hr: <strong id="conversion-48h">—%</strong></span>
-        <span>72hr: <strong id="conversion-72h">—%</strong></span>
+    <div class="stats-card" id="stats-primary">
+      <div class="stats-section">
+        <div class="stats-card-header">
+          <h3>Sales</h3>
+          <span class="muted">Today (midnight UK)</span>
+        </div>
+        <div class="stats-main" id="sales-today">—</div>
+        <div class="stats-breakdown">
+          <span>6hr: <strong id="sales-6h">—</strong></span>
+          <span>12hr: <strong id="sales-12h">—</strong></span>
+          <span>24hr: <strong id="sales-24h">—</strong></span>
+          <span>week: <strong id="sales-week">—</strong></span>
+        </div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stats-section">
+        <div class="stats-card-header">
+          <h3>Conversion rate</h3>
+          <select id="conversion-range-select" class="stats-select" aria-label="Conversion range"></select>
+        </div>
+        <div class="stats-main" id="conversion-range">—%</div>
+        <div class="stats-breakdown">
+          <span>3hr: <strong id="conversion-3h">—%</strong></span>
+          <span>6hr: <strong id="conversion-6h">—%</strong></span>
+          <span>12hr: <strong id="conversion-12h">—%</strong></span>
+          <span>24hr: <strong id="conversion-24h">—%</strong></span>
+        </div>
       </div>
     </div>
-    <div class="stats-card" style="min-width: 220px;">
-      <h3>Sales by Country (72h)</h3>
-      <table class="by-country-table">
-        <tbody id="by-country-body">
-          <tr><td colspan="2" class="empty">Loading…</td></tr>
-        </tbody>
-      </table>
+    <div class="stats-card" id="stats-country">
+      <div class="stats-card-header">
+        <h3>Country</h3>
+        <select id="country-range-select" class="stats-select" aria-label="Country range"></select>
+      </div>
+      <div class="country-table-wrap" id="country-table-wrap">
+        <table class="by-country-table">
+          <thead>
+            <tr>
+              <th>GEO</th>
+              <th>CR</th>
+              <th>Sales</th>
+            </tr>
+          </thead>
+          <tbody id="by-country-body">
+            <tr><td colspan="3" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <div class="kpis">
-    <div class="kpi"><strong id="kpi-revenue-today">—</strong><span>Revenue today (24h)</span></div>
+    <div class="kpi"><strong id="kpi-revenue-today">—</strong><span>Sales today (UK)</span></div>
     <div class="kpi"><strong id="kpi-active">0</strong><span>Active now (5 min)</span></div>
     <div class="kpi"><strong id="kpi-abandoned">0</strong><span>Abandoned (24h)</span></div>
   </div>
@@ -170,7 +208,16 @@
   <script>
     const API = '';
     const HIDE_CONFIG_KEY = 'livevisitors-hide-config';
+    const RANGE_OPTIONS = [
+      { value: 'today', label: 'Today' },
+      { value: 'yesterday', label: 'Yesterday' },
+      { value: '3d', label: '3 days' },
+      { value: '7d', label: '7 days' },
+    ];
     let sessions = [];
+    let statsCache = {};
+    let conversionRange = 'today';
+    let countryRange = 'today';
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -314,11 +361,12 @@
 
     function pct(v) { return v != null ? v.toFixed(1) + '%' : '—%'; }
 
-    function fetchStats() {
-      fetch(API + '/api/stats', { credentials: 'same-origin' })
-        .then(r => r.json())
-        .then(renderStats)
-        .catch(() => renderStats({ conversion: {}, byCountry: [] }));
+    function initRangeSelect(selectId, value, onChange) {
+      const el = document.getElementById(selectId);
+      if (!el) return;
+      el.innerHTML = RANGE_OPTIONS.map(opt => '<option value="' + opt.value + '">' + opt.label + '</option>').join('');
+      el.value = value;
+      el.addEventListener('change', () => onChange(el.value));
     }
 
     function formatRevenue(num) {
@@ -326,27 +374,77 @@
       return '£' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
-    function renderStats(data) {
-      const c = data.conversion || {};
-      document.getElementById('conversion-overall').textContent = pct(c.overall);
-      document.getElementById('conversion-6h').textContent = pct(c['6h']);
-      document.getElementById('conversion-12h').textContent = pct(c['12h']);
-      document.getElementById('conversion-48h').textContent = pct(c['48h']);
-      document.getElementById('conversion-72h').textContent = pct(c['72h']);
+    function renderSales(data) {
+      const sales = data.sales || {};
+      document.getElementById('sales-today').textContent = formatRevenue(sales.today);
+      const rolling = sales.rolling || {};
+      document.getElementById('sales-6h').textContent = formatRevenue(rolling['6h']);
+      document.getElementById('sales-12h').textContent = formatRevenue(rolling['12h']);
+      document.getElementById('sales-24h').textContent = formatRevenue(rolling['24h']);
+      document.getElementById('sales-week').textContent = formatRevenue(rolling['7d']);
       const revEl = document.getElementById('kpi-revenue-today');
-      if (revEl) revEl.textContent = formatRevenue(data.revenueToday);
-      const rows = data.byCountry || [];
+      if (revEl) revEl.textContent = formatRevenue(sales.today);
+    }
+
+    function renderConversion(data) {
+      const c = data.conversion || {};
+      document.getElementById('conversion-range').textContent = pct(c[conversionRange]);
+      const rolling = c.rolling || {};
+      document.getElementById('conversion-3h').textContent = pct(rolling['3h']);
+      document.getElementById('conversion-6h').textContent = pct(rolling['6h']);
+      document.getElementById('conversion-12h').textContent = pct(rolling['12h']);
+      document.getElementById('conversion-24h').textContent = pct(rolling['24h']);
+    }
+
+    function renderCountry(data) {
+      const c = data.country || {};
+      const rows = c[countryRange] || [];
       const tbody = document.getElementById('by-country-body');
+      if (!tbody) return;
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="2" class="empty">No data (72h)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No data</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase();
-        const c = (r.country_code || 'xx').toLowerCase().slice(0, 2);
-        const revenue = (r.revenue != null && typeof r.revenue === 'number') ? formatRevenue(r.revenue) : '—';
-        return '<tr><td><img class="flag-img" src="https://flagcdn.com/w40/' + c + '.png" alt="' + escapeHtml(code) + '" loading="lazy"> ' + escapeHtml(code) + '</td><td>' + revenue + ' <span class="muted">(' + r.count + ')</span></td></tr>';
+        const ccode = (r.country_code || 'xx').toLowerCase().slice(0, 2);
+        const label = countryLabel(code);
+        const conversion = pct(r.conversion);
+        const revenue = formatRevenue(r.revenue);
+        return '<tr><td><img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(code) + '" loading="lazy"> ' + escapeHtml(label) + '</td><td>' + conversion + '</td><td>' + revenue + '</td></tr>';
       }).join('');
+    }
+
+    function syncCountryTableHeight() {
+      const primary = document.getElementById('stats-primary');
+      const country = document.getElementById('stats-country');
+      const wrap = document.getElementById('country-table-wrap');
+      if (!primary || !country || !wrap) return;
+      const primaryHeight = primary.getBoundingClientRect().height;
+      const header = country.querySelector('.stats-card-header');
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const styles = window.getComputedStyle(country);
+      const paddingTop = parseFloat(styles.paddingTop) || 0;
+      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+      const available = primaryHeight - headerHeight - paddingTop - paddingBottom;
+      if (available > 120) {
+        wrap.style.maxHeight = Math.floor(available) + 'px';
+      }
+    }
+
+    function renderStats(data) {
+      statsCache = data || {};
+      renderSales(statsCache);
+      renderConversion(statsCache);
+      renderCountry(statsCache);
+      requestAnimationFrame(syncCountryTableHeight);
+    }
+
+    function fetchStats() {
+      fetch(API + '/api/stats', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(renderStats)
+        .catch(() => renderStats({}));
     }
 
     function fetchSessions() {
@@ -489,6 +587,19 @@
       .catch(() => {
         document.getElementById('config-status').innerHTML = '<div class="config-row missing">Could not load config status.</div>';
       });
+
+    (function initRangeSelects() {
+      initRangeSelect('conversion-range-select', conversionRange, (value) => {
+        conversionRange = value;
+        renderConversion(statsCache);
+      });
+      initRangeSelect('country-range-select', countryRange, (value) => {
+        countryRange = value;
+        renderCountry(statsCache);
+        requestAnimationFrame(syncCountryTableHeight);
+      });
+    })();
+    window.addEventListener('resize', syncCountryTableHeight);
 
     fetchStats();
     fetchSessions();
