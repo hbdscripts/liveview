@@ -112,6 +112,7 @@
       .kpi { min-width: 100%; }
       .table-scroll-wrap { margin-left: -0.5rem; margin-right: -0.5rem; }
     }
+    .dashboard-footer { text-align: center; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; max-width: 1440px; }
   </style>
 </head>
 <body>
@@ -231,10 +232,12 @@
     <ul class="events" id="side-events"></ul>
   </div>
   </main>
+  <footer class="dashboard-footer" id="dashboard-footer">Liveview v<span id="app-version">—</span></footer>
 
   <script>
     const API = '';
     const STATS_INTERVAL_MS = 15000;
+    fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     let sessions = [];
     let statsCache = {};

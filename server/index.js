@@ -65,6 +65,8 @@ app.get('/api/config-status', configStatusRouter);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
+const pkg = require(path.join(__dirname, '..', 'package.json'));
+app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 
 // Shopify OAuth (install flow)
 app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));
