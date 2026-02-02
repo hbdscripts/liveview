@@ -40,6 +40,7 @@
     th:first-child, td:first-child { min-width: 80px; padding-left: 0.75rem; }
     tr:hover { background: #f8fafc; }
     tr.returning { background: rgba(13, 148, 136, 0.06); }
+    tr.converted { background: #ebf5f4; }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
@@ -355,7 +356,7 @@
         : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '');
       const fromCell = flagImg(countryCode) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
-      return `<tr class="clickable ${s.is_returning ? 'returning' : ''}" data-session-id="${s.session_id}">
+      return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
