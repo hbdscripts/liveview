@@ -205,7 +205,7 @@ async function listSessions(filter) {
   const abandonedCutoff = now - abandonedRetentionMs;
 
   let sql = `
-    SELECT s.*, v.is_returning, v.returning_count
+    SELECT s.*, v.is_returning, v.returning_count, v.last_country AS country_code, v.device, v.network_speed
     FROM sessions s
     JOIN visitors v ON s.visitor_id = v.visitor_id
     WHERE 1=1
@@ -231,15 +231,9 @@ async function listSessions(filter) {
   sql += ' ORDER BY s.last_seen DESC';
   const rows = await db.all(sql, params);
 
-  const visitorCountry = {};
-  for (const r of rows) {
-    const v = await db.get('SELECT last_country FROM visitors WHERE visitor_id = ?', [r.visitor_id]);
-    visitorCountry[r.visitor_id] = v?.last_country || 'XX';
-  }
-
   return rows.map(r => ({
     ...r,
-    country_code: visitorCountry[r.visitor_id] || 'XX',
+    country_code: r.country_code || 'XX',
   }));
 }
 
