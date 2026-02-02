@@ -18,6 +18,7 @@ const streamRouter = require('./routes/stream');
 const sessionsRouter = require('./routes/sessions');
 const settingsRouter = require('./routes/settings');
 const configStatusRouter = require('./routes/configStatus');
+const statsRouter = require('./routes/stats');
 const pixelRouter = require('./routes/pixel');
 const auth = require('./routes/auth');
 const login = require('./routes/login');
@@ -60,6 +61,7 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/settings/tracking', settingsRouter.getTracking);
 app.put('/api/settings/tracking', express.json(), settingsRouter.putTracking);
 app.get('/api/config-status', configStatusRouter);
+app.get('/api/stats', statsRouter.getStats);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 
 // Shopify OAuth (install flow)

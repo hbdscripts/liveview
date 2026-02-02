@@ -246,6 +246,61 @@ async function getSessionEvents(sessionId, limit = 20) {
   return rows.reverse();
 }
 
+/** Conversion rate = (sessions with has_purchased) / total sessions in window. Returns { overall, 6h, 12h, 48h, 72h } in percent. */
+async function getConversionRates() {
+  const db = getDb();
+  const now = Date.now();
+  const windows = [
+    { key: 'overall', ms: 30 * 24 * 60 * 60 * 1000 },
+    { key: '72h', ms: 72 * 60 * 60 * 1000 },
+    { key: '48h', ms: 48 * 60 * 60 * 1000 },
+    { key: '12h', ms: 12 * 60 * 60 * 1000 },
+    { key: '6h', ms: 6 * 60 * 60 * 1000 },
+  ];
+  const out = { overall: null, '6h': null, '12h': null, '48h': null, '72h': null };
+  for (const { key, ms } of windows) {
+    const cutoff = now - ms;
+    const total = await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= ?',
+      [cutoff]
+    );
+    const purchased = await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= ? AND has_purchased = 1',
+      [cutoff]
+    );
+    const t = total?.n ?? 0;
+    const p = purchased?.n ?? 0;
+    out[key] = t > 0 ? Math.round((p / t) * 1000) / 10 : null;
+  }
+  return out;
+}
+
+/** Sessions per country (last 72h), sorted by count desc, limit 20. */
+async function getSessionsByCountry() {
+  const db = getDb();
+  const cutoff = Date.now() - 72 * 60 * 60 * 1000;
+  const sql = `SELECT v.last_country AS country_code, COUNT(*) AS count
+    FROM sessions s
+    JOIN visitors v ON s.visitor_id = v.visitor_id
+    WHERE s.last_seen >= ? AND v.last_country IS NOT NULL AND v.last_country != ''
+    GROUP BY v.last_country
+    ORDER BY count DESC
+    LIMIT 20`;
+  const rows = await db.all(sql, [cutoff]);
+  return rows.map(r => ({
+    country_code: (r.country_code || 'XX').toUpperCase().slice(0, 2),
+    count: r.count,
+  }));
+}
+
+async function getStats() {
+  const [conversion, byCountry] = await Promise.all([
+    getConversionRates(),
+    getSessionsByCountry(),
+  ]);
+  return { conversion, byCountry };
+}
+
 function validateEventType(type) {
   return ALLOWED_EVENT_TYPES.has(type);
 }
@@ -262,6 +317,7 @@ module.exports = {
   insertEvent,
   listSessions,
   getSessionEvents,
+  getStats,
   validateEventType,
   ALLOWED_EVENT_TYPES,
 };
