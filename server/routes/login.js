@@ -33,12 +33,11 @@ function getLoginHtml(queryError) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Live Visitors – Sign in</title>
+  <title>Sign in</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f6f6f7; }
     .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); width: 100%; max-width: 400px; }
-    h1 { margin: 0 0 0.5rem; font-size: 1.35rem; font-weight: 600; color: #202223; }
     .subtitle { color: #6d7175; font-size: 0.875rem; margin: 0 0 1.25rem; }
     .btn { display: block; width: 100%; padding: 0.6rem 1rem; font-size: 0.95rem; font-weight: 500; border-radius: 6px; border: none; cursor: pointer; text-align: center; text-decoration: none; margin-bottom: 0.75rem; }
     .btn-google { background: #fff; color: #202223; border: 1px solid #c9cccf; }
@@ -49,7 +48,6 @@ function getLoginHtml(queryError) {
 </head>
 <body>
   <div class="card">
-    <h1>Live Visitors</h1>
     <p class="subtitle">Sign in to view your dashboard.</p>
     ${errMsg}
     ${buttons}

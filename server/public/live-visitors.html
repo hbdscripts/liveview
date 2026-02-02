@@ -6,79 +6,80 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Live Visitors</title>
   <style>
-    /* Shopify-like: light grey bg, white cards, green accent */
-    :root { --bg: #f6f6f7; --card: #fff; --text: #202223; --muted: #6d7175; --accent: #008060; --border: #e1e3e5; --border-focus: #008060; }
+    :root { --bg: #f1f5f9; --card: #fff; --text: #1e293b; --muted: #64748b; --accent: #0d9488; --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,.06); --radius: 10px; }
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; }
-    .header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: var(--card); border-bottom: 1px solid var(--border); }
-    .header h1 { margin: 0; font-size: 1.35rem; font-weight: 600; color: var(--text); }
-    .header a { color: var(--muted); font-size: 0.9rem; text-decoration: none; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
+    .header { display: flex; align-items: center; justify-content: flex-end; padding: 0.875rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
+    .header a { color: var(--muted); font-size: 0.875rem; text-decoration: none; font-weight: 500; }
     .header a:hover { color: var(--accent); }
-    .header a:only-child { margin-left: auto; }
-    .main { padding: 1rem 1.25rem; max-width: 1400px; margin: 0 auto; }
-    h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; color: var(--muted); }
-    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: stretch; }
-    .stats-card { background: var(--card); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); flex: 1; min-width: 220px; box-sizing: border-box; }
+    .main { padding: 1.5rem; max-width: 1440px; margin: 0 auto; }
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
+    .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
     #stats-country { display: flex; flex-direction: column; max-height: 9999px; }
-    .stats-card h3 { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
-    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
-    .stats-section { display: flex; flex-direction: column; gap: 0.35rem; }
-    .stats-main { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
-    .stats-breakdown { font-size: 0.875rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
+    .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+    .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .stats-breakdown span { display: inline-block; }
-    .stats-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
-    .stats-select { padding: 0.2rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 0.85rem; }
+    .stats-divider { height: 1px; background: var(--border); margin: 0.6rem 0; }
+    .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
-    .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .by-country-table th, .by-country-table td { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
-    .by-country-table th { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .by-country-table th, .by-country-table td { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .by-country-table th { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; }
-    .kpis { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .kpi { background: var(--card); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); }
-    .kpi strong { display: block; font-size: 1.25rem; color: var(--accent); }
-    .kpi span { font-size: 0.85rem; color: var(--muted); }
-    .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
-    .tabs button { padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; }
-    .tabs button:hover { border-color: var(--muted); }
+    .aov-list { list-style: none; padding: 0; margin: 0; font-size: 0.875rem; }
+    .aov-list li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 0.5rem; }
+    .kpis { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .kpi { background: var(--card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .kpi strong { display: block; font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .kpi span { font-size: 0.8125rem; color: var(--muted); }
+    .tabs { display: flex; gap: 0.35rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tabs button { padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+    .tabs button:hover { border-color: var(--muted); background: #f8fafc; }
     .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .config-toggle { margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--muted); }
+    .config-toggle { margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--muted); }
     .config-toggle input { margin-right: 0.35rem; }
-    .config-panel { background: var(--card); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border); }
+    .config-panel { background: var(--card); padding: 1rem; border-radius: var(--radius); margin-bottom: 1rem; border: 1px solid var(--border); box-shadow: var(--shadow); }
     .config-panel.hidden { display: none; }
     .config-panel h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
     .config-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.9rem; }
-    .config-row.ok { color: #008060; }
-    .config-row.missing { color: #d72c0d; }
-    .tracking-toggle { margin-top: 0.5rem; }
-    .tracking-toggle button { padding: 0.4rem 0.8rem; background: var(--accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    .config-row.ok { color: var(--accent); }
+    .config-row.missing { color: #dc2626; }
+    .tracking-toggle button { padding: 0.4rem 0.8rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
     .tracking-toggle button.off { background: var(--muted); }
     .coverage-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
-    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
-    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    th { background: #f9fafb; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
-    th:first-child, td:first-child { min-width: 120px; padding-left: 0.75rem; }
-    tr:hover { background: #f9fafb; }
-    tr.returning { background: rgba(0, 128, 96, 0.06); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
+    th { background: #f8fafc; font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    th:first-child, td:first-child { min-width: 80px; padding-left: 0.75rem; }
+    tr:hover { background: #f8fafc; }
+    tr.returning { background: rgba(13, 148, 136, 0.06); }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
-    .purchase-icon { display: inline-flex; align-items: center; justify-content: center; color: #008060; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
+    .purchase-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
     .purchase-icon svg { width: 100%; height: 100%; }
+    .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
+    .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+    .last-action-cell a:hover { text-decoration: underline; }
+    .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--border); }
     .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .time-filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; cursor: pointer; }
+    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; cursor: pointer; }
     .time-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     tr:nth-child(even) { background: #fafbfc; }
-    tr:nth-child(even):hover { background: #f1f3f4; }
+    tr:nth-child(even):hover { background: #f1f5f9; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; }
-    .badge.new { background: #008060; color: #fff; }
-    .badge.returning { background: #5c6ac4; color: #fff; }
+    .badge.new { background: var(--accent); color: #fff; }
+    .badge.returning { background: #6366f1; color: #fff; }
     .chip { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.7rem; margin-right: 0.25rem; }
-    .chip.checking-out { background: #008060; color: #fff; }
-    .chip.abandoned { background: #d72c0d; color: #fff; }
-    .side-panel { position: fixed; top: 0; right: 0; width: 400px; max-width: 100%; height: 100%; background: var(--card); border-left: 1px solid var(--border); box-shadow: -4px 0 20px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; padding: 1rem; }
+    .chip.checking-out { background: var(--accent); color: #fff; }
+    .chip.abandoned { background: #dc2626; color: #fff; }
+    .side-panel { position: fixed; top: 0; right: 0; width: 400px; max-width: 100%; height: 100%; background: var(--card); border-left: 1px solid var(--border); box-shadow: -4px 0 24px rgba(0,0,0,.08); overflow-y: auto; z-index: 10; padding: 1.25rem; }
     .side-panel h3 { margin: 0 0 0.5rem; }
     .side-panel .close { float: right; cursor: pointer; font-size: 1.2rem; color: var(--muted); }
     .side-panel .meta { font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0; }
@@ -135,6 +136,24 @@
           <span>12hr: <strong id="conversion-12h"></strong></span>
           <span>24hr: <strong id="conversion-24h"></strong></span>
         </div>
+      </div>
+    </div>
+    <div class="stats-card" id="stats-aov">
+      <div class="stats-card-header">
+        <h3>Average Order Value</h3>
+        <select id="aov-range-select" class="stats-select" aria-label="AOV range"></select>
+      </div>
+      <div class="stats-section">
+        <div class="stats-main" id="aov-today"></div>
+        <div class="stats-breakdown">
+          <span>3hr: <strong id="aov-3h"></strong></span>
+          <span>6hr: <strong id="aov-6h"></strong></span>
+          <span>12hr: <strong id="aov-12h"></strong></span>
+          <span>24hr: <strong id="aov-24h"></strong></span>
+        </div>
+      </div>
+      <div class="country-table-wrap" id="aov-list-wrap">
+        <ul class="aov-list" id="aov-by-country"></ul>
       </div>
     </div>
     <div class="stats-card" id="stats-country">
@@ -218,6 +237,7 @@
     let statsCache = {};
     let conversionRange = 'today';
     let countryRange = 'today';
+    let aovRange = 'today';
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -261,7 +281,7 @@
       return s + 's';
     }
 
-    var countryNames = { GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia', DE: 'Germany', FR: 'France', IE: 'Ireland', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', IN: 'India', JP: 'Japan', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', TH: 'Thailand', NZ: 'New Zealand', XX: 'Unknown' };
+    var countryNames = { GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia', DE: 'Germany', FR: 'France', IE: 'Ireland', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', IN: 'India', JP: 'Japan', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', TH: 'Thailand', NZ: 'New Zealand', RO: 'Romania', BE: 'Belgium', FI: 'Finland', AE: 'United Arab Emirates', XX: 'Unknown' };
 
     function countryLabel(code) {
       if (!code || code === 'XX') return 'Unknown';
@@ -276,7 +296,7 @@
     }
 
     function purchaseIconSvg() {
-      return '<span class="purchase-icon" title="Purchased"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>';
+      return '<span class="purchase-icon" title="Purchased"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><circle cx="16" cy="16" fill="#0d9488" r="16"/><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"/></g></svg></span>';
     }
 
     function arrivedAgo(startedAt) {
@@ -288,11 +308,28 @@
       return Math.floor(s / 86400) + ' days ago';
     }
 
-    function lastAction(s) {
-      if (s.is_checking_out) return 'In checkout process';
-      if (s.last_product_handle) return 'Viewed ' + escapeHtml(s.last_product_handle);
-      if (s.last_path) return 'Viewed page ' + escapeHtml(s.last_path);
+    function getStoreBaseUrl() {
+      var params = new URLSearchParams(window.location.search);
+      var shop = params.get('shop');
+      if (shop && /\.myshopify\.com$/i.test(shop)) return 'https://' + shop;
       return '';
+    }
+
+    function lastAction(s) {
+      var base = getStoreBaseUrl();
+      var path = (s.last_path || '').trim();
+      if (path && !path.startsWith('/')) path = '/' + path;
+      var fullUrl = base && path ? base + path : '';
+      var label = '';
+      if (s.is_checking_out) label = 'In checkout process';
+      else if (s.last_product_handle) label = 'Viewed ' + escapeHtml(s.last_product_handle);
+      else if (s.last_path) label = 'Viewed page ' + escapeHtml(s.last_path);
+      else return '';
+      if (fullUrl) {
+        var thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
+        return '<div class="last-action-cell"><img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"><a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a></div>';
+      }
+      return escapeHtml(label);
     }
 
     function formatMoney(amount, currencyCode) {
@@ -303,8 +340,12 @@
     }
 
     function sourceLabel(s) {
-      const v = s.utm_campaign && String(s.utm_campaign).trim();
-      return v ? escapeHtml(v) : 'Direct';
+      const parts = [];
+      if (s.utm_source && String(s.utm_source).trim()) parts.push('utm_source: ' + escapeHtml(String(s.utm_source).trim()));
+      if (s.utm_campaign && String(s.utm_campaign).trim()) parts.push('utm_campaign: ' + escapeHtml(String(s.utm_campaign).trim()));
+      if (s.utm_medium && String(s.utm_medium).trim()) parts.push('utm_medium: ' + escapeHtml(String(s.utm_medium).trim()));
+      if (s.utm_content && String(s.utm_content).trim()) parts.push('utm_content: ' + escapeHtml(String(s.utm_content).trim()));
+      return parts.join(' ');
     }
 
     function renderRow(s) {
@@ -315,7 +356,7 @@
       const cartVal = (s.cart_value != null && !Number.isNaN(cartValueNum))
         ? formatMoney(cartValueNum, s.cart_currency)
         : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '');
-      const fromCell = flagImg(countryCode) + ' ' + escapeHtml(countryLabel(countryCode)) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
+      const fromCell = flagImg(countryCode) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''}" data-session-id="${s.session_id}">
         <td class="flag-cell">${fromCell}</td>
@@ -403,6 +444,32 @@
       document.getElementById('conversion-24h').textContent = pct(rolling['24h']);
     }
 
+    function renderAov(data) {
+      const aov = data.aov || {};
+      const el = document.getElementById('aov-today');
+      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : '£0.00';
+      const rolling = aov.rolling || {};
+      const aov3 = document.getElementById('aov-3h');
+      const aov6 = document.getElementById('aov-6h');
+      const aov12 = document.getElementById('aov-12h');
+      const aov24 = document.getElementById('aov-24h');
+      if (aov3) aov3.textContent = rolling['3h'] != null ? formatRevenue(rolling['3h']) : '';
+      if (aov6) aov6.textContent = rolling['6h'] != null ? formatRevenue(rolling['6h']) : '';
+      if (aov12) aov12.textContent = rolling['12h'] != null ? formatRevenue(rolling['12h']) : '';
+      if (aov24) aov24.textContent = rolling['24h'] != null ? formatRevenue(rolling['24h']) : '';
+      const rows = (data.country || {})[aovRange] || [];
+      const ul = document.getElementById('aov-by-country');
+      if (!ul) return;
+      if (rows.length === 0) {
+        ul.innerHTML = '<li class="empty">No data</li>';
+        return;
+      }
+      ul.innerHTML = rows.filter(r => r.aov != null && r.aov > 0).map(r => {
+        const name = countryLabel((r.country_code || 'XX').toUpperCase());
+        return '<li><span>' + escapeHtml(name) + '</span><strong>' + formatRevenue(r.aov) + '</strong></li>';
+      }).join('');
+    }
+
     function renderCountry(data) {
       const c = data.country || {};
       const rows = c[countryRange] || [];
@@ -434,6 +501,7 @@
       statsCache = data || {};
       renderSales(statsCache);
       renderConversion(statsCache);
+      renderAov(statsCache);
       renderCountry(statsCache);
       requestAnimationFrame(syncCountryTableHeight);
     }
@@ -595,6 +663,10 @@
         countryRange = value;
         renderCountry(statsCache);
         requestAnimationFrame(syncCountryTableHeight);
+      });
+      initRangeSelect('aov-range-select', aovRange, (value) => {
+        aovRange = value;
+        renderAov(statsCache);
       });
     })();
     window.addEventListener('resize', syncCountryTableHeight);

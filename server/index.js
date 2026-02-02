@@ -20,6 +20,7 @@ const settingsRouter = require('./routes/settings');
 const configStatusRouter = require('./routes/configStatus');
 const statsRouter = require('./routes/stats');
 const pixelRouter = require('./routes/pixel');
+const ogThumb = require('./routes/ogThumb');
 const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
@@ -63,6 +64,7 @@ app.put('/api/settings/tracking', express.json(), settingsRouter.putTracking);
 app.get('/api/config-status', configStatusRouter);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
+app.get('/api/og-thumb', ogThumb.handleOgThumb);
 
 // Shopify OAuth (install flow)
 app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));
@@ -131,6 +133,7 @@ const { up: up002 } = require('./migrations/002_shop_sessions');
 const { up: up003 } = require('./migrations/003_cart_order_money');
 const { up: up004 } = require('./migrations/004_session_stats_fields');
 const { up: up005 } = require('./migrations/005_utm_campaign');
+const { up: up006 } = require('./migrations/006_utm_source_medium_content');
 getDb();
 
 up001()
@@ -138,6 +141,7 @@ up001()
   .then(() => up003())
   .then(() => up004())
   .then(() => up005())
+  .then(() => up006())
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);

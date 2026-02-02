@@ -150,11 +150,14 @@ async function handleAppUrl(req, res, next) {
     }
     const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
     if (host && typeof host === 'string' && host.length > 0) {
-      // Embed URL as base64 so no & appears in HTML (avoids proxies/sanitizers turning & into &amp; and breaking redirect_uri).
       const authUrlB64 = Buffer.from(authUrl, 'utf8').toString('base64');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.send(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href=atob("${authUrlB64}");</script></body></html>`
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Loading…</title><style>
+          *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f6f7;font-family:system-ui,sans-serif}
+          .spinner{width:40px;height:40px;border:3px solid #e1e3e5;border-top-color:#008060;border-radius:50%;animation:spin .8s linear infinite}
+          @keyframes spin{to{transform:rotate(360deg)}}
+        </style></head><body><div class="spinner" aria-hidden="true"></div><script>window.top.location.href=atob("${authUrlB64}");</script></body></html>`
       );
     }
     return res.redirect(302, authUrl);

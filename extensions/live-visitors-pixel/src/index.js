@@ -44,15 +44,23 @@ function deviceFromContext(ctx) {
   return 'unknown';
 }
 
-function utmCampaignFromContext(ctx) {
+function utmParamsFromContext(ctx) {
   const href = ctx?.document?.location?.href ?? ctx?.location?.href;
-  if (typeof href !== 'string') return null;
+  if (typeof href !== 'string') return {};
   try {
     const u = new URL(href);
-    const v = u.searchParams.get('utm_campaign');
-    return v && v.trim() ? v.trim() : null;
+    const get = (key) => {
+      const v = u.searchParams.get(key);
+      return v && v.trim() ? v.trim() : null;
+    };
+    return {
+      utm_source: get('utm_source'),
+      utm_campaign: get('utm_campaign'),
+      utm_medium: get('utm_medium'),
+      utm_content: get('utm_content'),
+    };
   } catch (_) {
-    return null;
+    return {};
   }
 }
 
@@ -68,7 +76,7 @@ register(({ analytics, init, browser, settings }) => {
   let cartValue = null;
   let cartCurrency = null;
   let lastPath = pathFromContext(init?.context) || '/';
-  let lastUtmCampaign = null;
+  let lastUtm = { utm_source: null, utm_campaign: null, utm_medium: null, utm_content: null };
   let heartbeatTimer = null;
 
   function parseAmount(v) {
@@ -149,8 +157,15 @@ register(({ analytics, init, browser, settings }) => {
   function payload(eventType, extra = {}) {
     const ts = Date.now();
     lastPath = extra.path ?? pathFromContext(init?.context) ?? lastPath;
-    const utm = extra.utm_campaign !== undefined ? extra.utm_campaign : utmCampaignFromContext(init?.context);
-    if (utm !== undefined && utm !== null) lastUtmCampaign = utm;
+    const fromCtx = utmParamsFromContext(init?.context);
+    if (extra.utm_source !== undefined && extra.utm_source != null) lastUtm.utm_source = extra.utm_source;
+    else if (fromCtx.utm_source != null) lastUtm.utm_source = fromCtx.utm_source;
+    if (extra.utm_campaign !== undefined && extra.utm_campaign != null) lastUtm.utm_campaign = extra.utm_campaign;
+    else if (fromCtx.utm_campaign != null) lastUtm.utm_campaign = fromCtx.utm_campaign;
+    if (extra.utm_medium !== undefined && extra.utm_medium != null) lastUtm.utm_medium = extra.utm_medium;
+    else if (fromCtx.utm_medium != null) lastUtm.utm_medium = fromCtx.utm_medium;
+    if (extra.utm_content !== undefined && extra.utm_content != null) lastUtm.utm_content = extra.utm_content;
+    else if (fromCtx.utm_content != null) lastUtm.utm_content = fromCtx.utm_content;
     const country = extra.country_code ?? countryFromInit(init);
     const device = extra.device ?? deviceFromContext(init?.context);
     const out = {
@@ -167,7 +182,10 @@ register(({ analytics, init, browser, settings }) => {
       cart_currency: extra.cart_currency !== undefined ? extra.cart_currency : cartCurrency,
       ...extra,
     };
-    if (lastUtmCampaign != null) out.utm_campaign = lastUtmCampaign;
+    if (lastUtm.utm_source != null) out.utm_source = lastUtm.utm_source;
+    if (lastUtm.utm_campaign != null) out.utm_campaign = lastUtm.utm_campaign;
+    if (lastUtm.utm_medium != null) out.utm_medium = lastUtm.utm_medium;
+    if (lastUtm.utm_content != null) out.utm_content = lastUtm.utm_content;
     return out;
   }
 
