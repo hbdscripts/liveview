@@ -324,6 +324,7 @@ async function getSessionEvents(sessionId, limit = 20) {
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const SALES_ROLLING_WINDOWS = [
+  { key: '3h', ms: 3 * 60 * 60 * 1000 },
   { key: '6h', ms: 6 * 60 * 60 * 1000 },
   { key: '12h', ms: 12 * 60 * 60 * 1000 },
   { key: '24h', ms: 24 * 60 * 60 * 1000 },

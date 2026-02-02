@@ -167,8 +167,8 @@
       <div class="stats-section">
         <div class="stats-main" id="aov-today"></div>
         <div class="stats-breakdown">
-          <span>3 hours: <strong id="aov-3h"></strong></span>
-          <span>6 hours: <strong id="aov-6h"></strong></span>
+          <span>Yesterday: <strong id="aov-yesterday"></strong></span>
+          <span>7 Days: <strong id="aov-7d"></strong></span>
         </div>
       </div>
       <div class="country-table-wrap" id="aov-list-wrap">
@@ -229,7 +229,7 @@
     <span class="close" id="side-close">&times;</span>
     <h3>Session</h3>
     <div class="meta" id="side-meta"></div>
-    <h4>Last 20 events</h4>
+    <h4>Activity:</h4>
     <ul class="events" id="side-events"></ul>
   </div>
   </main>
@@ -357,13 +357,24 @@
       var productHandle = s.first_product_handle != null ? s.first_product_handle : s.last_product_handle;
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
+      var isCheckout = path && path.indexOf('/checkouts') === 0;
       var fullUrl = base && path ? base + path : '';
-      var label = path ? escapeHtml(path) : '\u2014';
-      if (fullUrl) {
-        var thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
-        return '<div class="last-action-cell"><img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"><a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a></div>';
+      var label = '\u2014';
+      var thumbSrc = '';
+      if (isCheckout) {
+        label = 'Cart';
+        thumbSrc = (API || '') + '/assets/checkout.png';
+      } else if (path) {
+        label = escapeHtml(path);
+        if (fullUrl) thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
-      return label === '\u2014' ? label : escapeHtml(path || '');
+      var purchaseIcon = s.has_purchased ? ' ' + purchaseIconSvg() : '';
+      if (thumbSrc || fullUrl) {
+        var img = thumbSrc ? '<img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'">' : '';
+        var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
+        return '<div class="last-action-cell">' + img + purchaseIcon + ' ' + link + '</div>';
+      }
+      return (purchaseIcon ? '<div class="last-action-cell">' + purchaseIcon + ' </div>' : '') + (label === '\u2014' ? label : escapeHtml(path || ''));
     }
 
     function formatMoney(amount, currencyCode) {
@@ -422,8 +433,8 @@
       const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
       const cartVal = (s.cart_value != null && !Number.isNaN(cartValueNum))
         ? formatMoney(cartValueNum, s.cart_currency)
-        : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '');
-      const fromCell = flagImg(countryCode) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
+        : '';
+      const fromCell = flagImg(countryCode);
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
         <td>${landingPageCell(s)}</td>
@@ -506,11 +517,10 @@
       const aov = data.aov || {};
       const el = document.getElementById('aov-today');
       if (el) el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
-      const rolling = aov.rolling || {};
-      const aov3 = document.getElementById('aov-3h');
-      const aov6 = document.getElementById('aov-6h');
-      if (aov3) aov3.textContent = rolling['3h'] != null ? formatRevenue(rolling['3h']) : '';
-      if (aov6) aov6.textContent = rolling['6h'] != null ? formatRevenue(rolling['6h']) : '';
+      const aovYesterday = document.getElementById('aov-yesterday');
+      const aov7d = document.getElementById('aov-7d');
+      if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '';
+      if (aov7d) aov7d.textContent = aov['7d'] != null ? formatRevenue(aov['7d']) : '';
       const rows = (data.country || {})[dateRange] || [];
       const ul = document.getElementById('aov-by-country');
       if (!ul) return;
@@ -646,7 +656,8 @@
             Events: ${(data.events || []).length}
           `;
           const base = getStoreBaseUrl();
-          const events = (data.events || []).map(e => {
+          const eventList = (data.events || []).filter(e => e.type !== 'heartbeat').reverse();
+          const events = eventList.map(e => {
             var path = (e.path || '').trim();
             if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
             if (path && !path.startsWith('/')) path = '/' + path;
