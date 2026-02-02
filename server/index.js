@@ -28,6 +28,12 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Log every request (so we can see in Railway logs if the request reached the app)
+app.use((req, res, next) => {
+  console.log('[Request]', req.method, req.path);
+  next();
+});
+
 // Body parser (for ingest JSON)
 app.use(express.json({ limit: config.maxEventPayloadBytes }));
 app.use(express.urlencoded({ extended: true }));
