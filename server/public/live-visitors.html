@@ -352,8 +352,10 @@
 
     function landingPageCell(s) {
       var base = getStoreBaseUrl();
-      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (s.last_path != null ? s.last_path : '')).trim();
-      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : (s.last_product_handle != null ? s.last_product_handle : null);
+      // Use only first_path / first_product_handle for landing page. Do not fall back to last_path:
+      // Cart/checkouts are last-seen URLs, not landing pages.
+      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : '').trim();
+      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : null;
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var isCheckout = path && path.indexOf('/checkouts') === 0;
