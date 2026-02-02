@@ -41,6 +41,7 @@
     tr.converted { background: #ebf5f4; }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
+    .arrived-cell { font-size: 0.875rem; line-height: 1.4; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
     .purchase-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
     .purchase-icon svg { width: 100%; height: 100%; }
@@ -441,7 +442,7 @@
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
-        <td data-started="${s.started_at}">${arrivedAgo(s.started_at)}</td>
+        <td class="arrived-cell"><span data-started="${s.started_at}">Arrived ${arrivedAgo(s.started_at)}</span><br><span data-last-seen="${s.last_seen}">Last Seen ${arrivedAgo(s.last_seen)}</span></td>
         <td>${sourceCell(s)}</td>
         <td>${cartVal}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
@@ -482,9 +483,13 @@
     }
 
     function tickTimeOnSite() {
-      document.querySelectorAll('#table-body td[data-started]').forEach(td => {
-        const started = parseInt(td.dataset.started, 10);
-        td.textContent = arrivedAgo(started);
+      document.querySelectorAll('#table-body span[data-started]').forEach(span => {
+        const started = parseInt(span.getAttribute('data-started'), 10);
+        span.textContent = 'Arrived ' + arrivedAgo(started);
+      });
+      document.querySelectorAll('#table-body span[data-last-seen]').forEach(span => {
+        const lastSeen = parseInt(span.getAttribute('data-last-seen'), 10);
+        span.textContent = 'Last Seen ' + arrivedAgo(lastSeen);
       });
     }
 
