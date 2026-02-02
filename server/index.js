@@ -97,6 +97,7 @@ app.use(dashboardAuth.middleware);
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 app.get('/app/live-visitors', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
 });
 

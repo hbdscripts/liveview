@@ -36,7 +36,7 @@ Railway runs the code that was **in Git at the time of the last deploy**. If you
 4. **Check the latest deployment**  
    Railway → **Deployments** → open the latest run and confirm the **commit SHA** matches GitHub’s latest commit on `main`.
 5. **Bypass cache**  
-   Hard refresh (Ctrl+Shift+R / Cmd+Shift+R) or open the URL in a private/incognito window.
+   Hard refresh (Ctrl+Shift+R / Cmd+Shift+R) or open the URL in a private/incognito window. The dashboard HTML is sent with `Cache-Control: no-store` so after a redeploy a hard refresh will always load the new version.
 
 After a successful deploy, visiting `https://liveview-production.up.railway.app/app/live-visitors` directly should **redirect to `/app/login`** and show the sign-in options (Google / Shopify / secret). Opening the app from Shopify admin (correct referer) can load the dashboard without the splash.
 
