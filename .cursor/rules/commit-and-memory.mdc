@@ -7,5 +7,5 @@ alwaysApply: true
 # Commit and project memory
 
 - **Commit changes yourself**: When you make code or config changes in this project, commit them (stage, commit with a clear message). Do not tell the user to run git commands unless they asked you not to commit (e.g. "don't commit").
-- **Always push after commit**: After every commit, push to the remote (same branch). Do not skip pushing unless the user explicitly asked you not to push. This project uses Railway and GitHub Actions deploy on push to main, so pushing is required for deployments.
+- **Always push after commit**: After every commit, **run `git push origin main` yourself** (or the current branch). Do not tell the user to push — do it in the same turn. Skip only if the user explicitly asked you not to push. This project uses Railway and GitHub Actions deploy on push to main, so pushing is required for deployments.
 - **Update project memory/config**: When you establish a new convention, fix a recurring issue, or add something future agents should know (e.g. "Git is on PATH", "always run migrations on startup", "Railway vars must be on the service not only Shared Variables"), add or update it in project docs or this rules directory so future Cursor agents in this project remember it.
