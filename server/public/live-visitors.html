@@ -21,7 +21,10 @@
     .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
     .tabs button { padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; }
     .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .config-toggle { margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--muted); }
+    .config-toggle input { margin-right: 0.35rem; }
     .config-panel { background: var(--card); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border); }
+    .config-panel.hidden { display: none; }
     .config-panel h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
     .config-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.9rem; }
     .config-row.ok { color: #6b8; }
@@ -60,7 +63,10 @@
   </header>
 
   <main class="main">
-  <section class="config-panel">
+  <div class="config-toggle">
+    <label><input type="checkbox" id="hide-config" checked> Hide config status</label>
+  </div>
+  <section class="config-panel hidden" id="config-panel">
     <h3>Config status</h3>
     <div id="config-status">Loading…</div>
     <div class="tracking-toggle">
@@ -68,7 +74,7 @@
       <span id="tracking-label"></span>
     </div>
     <div class="coverage-note">Coverage depends on customer privacy settings. Use “Consent (debug)” to verify if tracking is gated.</div>
-  </div>
+  </section>
 
   <div class="kpis">
     <div class="kpi"><strong id="kpi-active">0</strong><span>Active now (5 min)</span></div>
@@ -111,6 +117,7 @@
 
   <script>
     const API = '';
+    const HIDE_CONFIG_KEY = 'livevisitors-hide-config';
     let sessions = [];
     let filter = 'active';
     let selectedSessionId = null;
@@ -255,6 +262,20 @@
     document.getElementById('side-close').addEventListener('click', () => {
       document.getElementById('side-panel').style.display = 'none';
     });
+
+    (function initConfigToggle() {
+      const cb = document.getElementById('hide-config');
+      const panel = document.getElementById('config-panel');
+      const stored = localStorage.getItem(HIDE_CONFIG_KEY);
+      const hideByDefault = stored === null || stored === 'true';
+      cb.checked = hideByDefault;
+      panel.classList.toggle('hidden', hideByDefault);
+      cb.addEventListener('change', () => {
+        const hide = cb.checked;
+        localStorage.setItem(HIDE_CONFIG_KEY, String(hide));
+        panel.classList.toggle('hidden', hide);
+      });
+    })();
 
     document.querySelectorAll('.tabs button').forEach(btn => {
       btn.addEventListener('click', () => {
