@@ -522,8 +522,8 @@
       if (el) el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
       const aovYesterday = document.getElementById('aov-yesterday');
       const aov7d = document.getElementById('aov-7d');
-      if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '';
-      if (aov7d) aov7d.textContent = aov['7d'] != null ? formatRevenue(aov['7d']) : '';
+      if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '\u2014';
+      if (aov7d) aov7d.textContent = aov['7d'] != null ? formatRevenue(aov['7d']) : '\u2014';
       const rows = (data.country || {})[dateRange] || [];
       const ul = document.getElementById('aov-by-country');
       if (!ul) return;
