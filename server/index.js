@@ -67,6 +67,12 @@ app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
+app.get('/api/store-base-url', (req, res) => {
+  const domain = (config.shopDomain || '').trim().toLowerCase();
+  if (!domain) return res.json({ baseUrl: '' });
+  const baseUrl = domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, '');
+  res.json({ baseUrl });
+});
 
 // Shopify OAuth (install flow)
 app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));

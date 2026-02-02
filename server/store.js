@@ -585,11 +585,14 @@ async function getStats() {
   for (const key of Object.keys(salesRolling)) {
     aovRolling[key] = aovFromSalesAndCount(salesRolling[key], convertedCountRolling[key]);
   }
+  const yesterdayOk = await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end);
+  const threeDOk = await rangeHasSessions(ranges['3d'].start, ranges['3d'].end);
+  const sevenDOk = await rangeHasSessions(ranges['7d'].start, ranges['7d'].end);
   const rangeAvailable = {
     today: true,
-    yesterday: await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end),
-    '3d': await rangeHasSessions(ranges['3d'].start, ranges['3d'].end),
-    '7d': await rangeHasSessions(ranges['7d'].start, ranges['7d'].end),
+    yesterday: yesterdayOk,
+    '3d': threeDOk && yesterdayOk,
+    '7d': sevenDOk && yesterdayOk,
   };
   return {
     sales: { ...salesByRange, rolling: salesRolling },

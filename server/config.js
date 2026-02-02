@@ -78,6 +78,8 @@ const config = {
     .filter(Boolean),
   /** Single allowed shop domain for "Login with Shopify" (e.g. mystore.myshopify.com) */
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
+  /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */
+  shopDomain: getEnv('SHOP_DOMAIN', '').trim().toLowerCase() || (getEnv('ALLOWED_SHOP_DOMAIN', '') || '').trim().toLowerCase(),
   /** Secret to sign OAuth session cookie (defaults to DASHBOARD_SECRET) */
   oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
 };

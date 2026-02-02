@@ -32,10 +32,6 @@
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: 0.875rem; }
     .aov-list li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
-    .kpis { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    .kpi { background: var(--card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
-    .kpi strong { display: block; font-size: 1.25rem; font-weight: 700; color: var(--accent); }
-    .kpi span { font-size: 0.8125rem; color: var(--muted); }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
     th { background: #f8fafc; font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -52,10 +48,7 @@
     .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
     .last-action-cell a:hover { text-decoration: underline; }
     .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: var(--border); }
-    .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
-    .time-filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 3px; cursor: pointer; }
-    .time-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     tr:nth-child(even) { background: #fafbfc; }
     tr:nth-child(even):hover { background: #f1f5f9; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
@@ -74,10 +67,15 @@
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; }
-    .dashboard-top-bar-left { display: flex; align-items: center; }
-    .dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; }
-    .dashboard-top-bar-right { display: flex; align-items: center; }
+.dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; max-width: 1440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.dashboard-top-bar-left { display: flex; align-items: center; }
+.dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; }
+.dashboard-top-bar-right { display: flex; align-items: center; }
+.live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; max-width: 1440px; margin-left: auto; margin-right: auto; }
+.live-view-header .table-title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
+.live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
+.live-view-online .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.live-view-online strong { color: var(--accent); }
 .dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
@@ -99,11 +97,7 @@
       .stats-card:first-child { min-width: 100%; }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
-      .kpis { gap: 0.75rem; margin-bottom: 1rem; }
-      .kpi { padding: 0.75rem 1rem; min-width: calc(50% - 0.5rem); flex: 1 1 calc(50% - 0.5rem); }
-      .kpi strong { font-size: 1.1rem; }
-      .time-filters { margin-bottom: 0.5rem; }
-      .time-filters button { padding: 0.5rem 0.75rem; min-height: 44px; font-size: 0.8125rem; border-radius: 3px; }
+      .live-view-header .table-title { font-size: 0.9375rem; }
       .table-title { font-size: 0.9375rem; margin-bottom: 0.35rem; }
       .table-scroll-wrap { margin-left: -0.75rem; margin-right: -0.75rem; border-radius: 0; border-left: none; border-right: none; }
       .side-panel { width: 100%; padding: 1rem; }
@@ -116,7 +110,6 @@
       .dashboard-top-bar { padding-left: 0.5rem; padding-right: 0.5rem; }
       .main { padding: 0.5rem; }
       .stats-card { padding: 1rem; }
-      .kpi { min-width: 100%; }
       .table-scroll-wrap { margin-left: -0.5rem; margin-right: -0.5rem; }
     }
     .dashboard-footer { text-align: center; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; max-width: 1440px; }
@@ -202,16 +195,9 @@
     </div>
   </div>
 
-  <div class="kpis">
-    <div class="kpi"><strong id="kpi-revenue-today"></strong><span>Sales today (UK)</span></div>
-    <div class="kpi"><strong id="kpi-active">0</strong><span>Active now (5 min)</span></div>
-    <div class="kpi"><strong id="kpi-abandoned">0</strong><span>Abandoned (24h)</span></div>
-  </div>
-
-  <div class="table-title" id="table-title">Live View</div>
-  <div class="time-filters">
-    <button type="button" id="time-24h" data-time="today" class="active">Last 24 Hours</button>
-    <button type="button" id="time-hour" data-time="all">last hour</button>
+  <div class="live-view-header">
+    <h2 class="table-title" id="table-title">Live View</h2>
+    <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
   </div>
 
   <div class="table-scroll-wrap">
@@ -344,11 +330,23 @@
       return Math.floor(s / 86400) + ' days ago';
     }
 
+    var storeBaseUrlFallback = '';
+    (function fetchStoreBaseUrl() {
+      fetch(API + '/api/store-base-url', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d && d.baseUrl) {
+            storeBaseUrlFallback = d.baseUrl;
+            if (sessions.length) renderTable();
+          }
+        })
+        .catch(function() {});
+    })();
     function getStoreBaseUrl() {
       var params = new URLSearchParams(window.location.search);
       var shop = params.get('shop');
       if (shop && /\.myshopify\.com$/i.test(shop)) return 'https://' + shop;
-      return '';
+      return storeBaseUrlFallback || '';
     }
 
     function lastAction(s) {
@@ -473,8 +471,6 @@
       const sales6 = document.getElementById('sales-6h');
       if (sales3) sales3.textContent = formatRevenue(rolling['3h']);
       if (sales6) sales6.textContent = formatRevenue(rolling['6h']);
-      const revEl = document.getElementById('kpi-revenue-today');
-      if (revEl) revEl.textContent = formatRevenue(sales.today);
     }
 
     function renderConversion(data) {
@@ -592,16 +588,8 @@
 
     function updateKpis() {
       const active = sessions.filter(s => s.last_seen >= Date.now() - 5 * 60 * 1000).length;
-      fetch(API + '/api/sessions?filter=abandoned')
-        .then(r => r.json())
-        .then(data => {
-          const abandoned = (data.sessions || []).length;
-          document.getElementById('kpi-active').textContent = active;
-          document.getElementById('kpi-abandoned').textContent = abandoned;
-        })
-        .catch(() => {
-          document.getElementById('kpi-active').textContent = sessions.length;
-        });
+      const el = document.getElementById('online-count');
+      if (el) el.textContent = active;
     }
 
     function openSidePanel(sessionId) {
@@ -635,19 +623,6 @@
 
     document.getElementById('side-close').addEventListener('click', () => {
       document.getElementById('side-panel').style.display = 'none';
-    });
-
-    document.getElementById('time-hour').addEventListener('click', function() {
-      filter = 'all';
-      this.classList.add('active');
-      document.getElementById('time-24h').classList.remove('active');
-      fetchSessions();
-    });
-    document.getElementById('time-24h').addEventListener('click', function() {
-      filter = 'today';
-      this.classList.add('active');
-      document.getElementById('time-hour').classList.remove('active');
-      fetchSessions();
     });
 
     document.getElementById('pagination-prev').addEventListener('click', function() {
