@@ -47,6 +47,21 @@ Set `DASHBOARD_SECRET` in `.env` (or Railway Variables) to protect the dashboard
 **Restrict to your store’s admin only:** Set `ALLOWED_ADMIN_REFERER_PREFIX` to your store’s admin URL, e.g. `https://admin.shopify.com/store/943925-c1`. Then the dashboard is allowed without password only when the request Referer is that URL (or a path under it). Any other admin or direct visit must use the dashboard secret. Leave empty to allow any `admin.shopify.com` or `*.myshopify.com/admin`.
 
 **Login with Google / Login with Shopify:** When the referer is not your store admin URL, the splash shows Sign in with Google (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, optionally ALLOWED_GOOGLE_EMAILS; add redirect .../auth/google/callback in Google Cloud Console), Sign in with Shopify (set ALLOWED_SHOP_DOMAIN, add .../auth/shopify-login/callback in Shopify app), and Sign in with secret if DASHBOARD_SECRET is set. Why the app was not loading inside Shopify: it opens in an iframe; the server used to 302 to OAuth so the iframe tried to load OAuth inside the frame; Shopify blocks embedding so the browser showed "refused to connect." The fix is to return HTML that sets window.top.location.href to the auth URL so the whole tab goes to OAuth; after auth the app loads in the iframe. “Login with Shopify,”
+## Database on Railway
+
+Data does not persist if you leave the page or redeploy unless you use a **persistent database**. With `DB_URL` empty, the app uses SQLite and writes to a file in the app directory; on Railway that directory is ephemeral, so the file is wiped on each deploy or restart.
+
+**To keep data (sessions, stats, settings):**
+
+1. In your Railway project, click **+ New** and add **PostgreSQL** (or use an existing Postgres service).
+2. Open the Postgres service → **Variables** or **Connect** and copy the **`DATABASE_URL`** (or construct it from `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`).
+3. In the **service that runs your app** (the one deployed from GitHub), go to **Variables** and add:
+   - **Name:** `DB_URL`
+   - **Value:** the Postgres connection string (e.g. `postgresql://user:password@host:port/railway`)
+4. Redeploy the app. On startup the app will run migrations and use Postgres; data will persist across restarts and deploys.
+
+If you use another host (e.g. Fly.io, Heroku), add a Postgres add-on and set `DB_URL` the same way.
+
 ## Session / cleanup
 
 The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default **1440** = 24 hours). So by default, sessions are kept for 24 hours and the **"Today (24h)"** tab at the top shows all of them. Other tabs: **Active (5 min)**, **Recent (15 min)**, **Abandoned (24h)**, **All (60 min)**. If you set `SESSION_TTL_MINUTES` lower (e.g. 60), cleanup purges sooner and "Today (24h)" will only show whatever remains in the DB.

@@ -53,6 +53,7 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
 
 - Run the Node server behind a reverse proxy (e.g. Nginx) or on a platform (Heroku, Railway, Fly.io).
 - Set all required env vars (see `.env.example`).
+- **Persistent data (Railway / Fly / Heroku):** If you leave `DB_URL` empty, the app uses SQLite and writes to a file. On Railway (and similar platforms) the filesystem is **ephemeral**—data is lost on every deploy or restart. To keep sessions and stats when you leave the page or redeploy, add a **PostgreSQL** database and set `DB_URL` to its connection string. See [config/APP_CONFIG.md](config/APP_CONFIG.md#database-on-railway) for Railway steps.
 - Ensure the ingest endpoint is reachable from the storefront (CORS allows `Origin: null`).
 - Run migrations on first deploy: `npm run migrate` (or run them at app startup; the app runs them automatically).
 
