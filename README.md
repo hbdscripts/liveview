@@ -64,6 +64,17 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
 4. **Leave with items** → After the abandoned window with no events, the session is marked “Abandoned.”
 5. **Return later** → “Returning” badge and row highlight when the same visitor starts a new session.
 
+## Stats calculations (important)
+
+These rules prevent the stats from drifting or looking wrong over time:
+
+- **Sales totals** use `sessions.purchased_at` (set on `checkout_completed`) rather than `last_seen`.
+- **Conversion rate** is `(sessions started in range that purchased) / (sessions started in range)`, not based on `last_seen`.
+- **"Today"** means since midnight in `ADMIN_TIMEZONE` (defaults to `Europe/London`).
+- **Dropdown ranges**: Today, Yesterday, 3 days, 7 days. The 3d/7d ranges start at midnight N-2 / N-6 and include today.
+- **Country stats** use `sessions.country_code` captured at event time, not `visitors.last_country` (which changes later and can skew historical reports).
+- **Migration `004_session_stats_fields`** backfills `sessions.country_code` and `purchased_at` for old rows and adds indexes. Older data is approximate until new purchase events arrive.
+
 ## Privacy and disabling tracking
 
 - The app does not collect PII (no email, phone, name, address, IP, full user agent, or full referrer).
