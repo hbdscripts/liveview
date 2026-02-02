@@ -4,6 +4,8 @@
 
 ## Backend (Railway) – automatic on push
 
+**The live dashboard UI is served by Railway, not by GitHub.** GitHub CI (the “build” check) only verifies that the code installs and migrations run; it does **not** deploy your app. To see updated UI: (1) ensure Railway has deployed the latest commit (Railway → Deployments → check the commit SHA), and (2) hard-refresh the dashboard (Ctrl+Shift+R or incognito).
+
 When you push to `main`, **Railway** deploys the backend (if the repo is connected to Railway). No extra setup.
 
 ### Railway settings checklist (auto-deploy)
