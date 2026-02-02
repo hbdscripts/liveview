@@ -64,9 +64,10 @@ async function upsertVisitor(payload) {
   const db = getDb();
   const now = payload.ts || Date.now();
   const normalizedCountry = normalizeCountry(payload.country_code);
-  const existing = await db.get('SELECT visitor_id, last_seen FROM visitors WHERE visitor_id = ?', [payload.visitor_id]);
+  const existing = await db.get('SELECT visitor_id, last_seen, first_seen FROM visitors WHERE visitor_id = ?', [payload.visitor_id]);
   const isReturning = existing ? (now - existing.last_seen > config.returningGapMinutes * 60 * 1000) : false;
   const returningCount = existing ? (existing.returning_count || 0) + (isReturning ? 1 : 0) : 0;
+  const firstSeen = existing && existing.first_seen != null ? existing.first_seen : now;
 
   if (config.dbUrl) {
     await db.run(`
@@ -77,7 +78,7 @@ async function upsertVisitor(payload) {
         network_speed = COALESCE($6, visitors.network_speed), is_returning = $7, returning_count = $8
     `, [
       payload.visitor_id,
-      existing ? existing.first_seen : now,
+      firstSeen,
       now,
       normalizedCountry,
       payload.device ?? null,
