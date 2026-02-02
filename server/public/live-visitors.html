@@ -63,8 +63,8 @@
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
-    .sale-icon { display: inline-flex; align-items: center; justify-content: center; color: #008060; font-weight: 700; font-size: 1.1rem; }
-    .sale-icon svg { width: 1em; height: 1em; }
+    .purchase-icon { display: inline-flex; align-items: center; justify-content: center; color: #008060; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
+    .purchase-icon svg { width: 100%; height: 100%; }
     .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .time-filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; cursor: pointer; }
@@ -113,12 +113,12 @@
           <h3>Sales</h3>
           <span class="muted">Today (midnight UK)</span>
         </div>
-        <div class="stats-main" id="sales-today">—</div>
+        <div class="stats-main" id="sales-today"></div>
         <div class="stats-breakdown">
-          <span>6hr: <strong id="sales-6h">—</strong></span>
-          <span>12hr: <strong id="sales-12h">—</strong></span>
-          <span>24hr: <strong id="sales-24h">—</strong></span>
-          <span>week: <strong id="sales-week">—</strong></span>
+          <span>6hr: <strong id="sales-6h"></strong></span>
+          <span>12hr: <strong id="sales-12h"></strong></span>
+          <span>24hr: <strong id="sales-24h"></strong></span>
+          <span>week: <strong id="sales-week"></strong></span>
         </div>
       </div>
       <div class="stats-divider"></div>
@@ -127,12 +127,12 @@
           <h3>Conversion rate</h3>
           <select id="conversion-range-select" class="stats-select" aria-label="Conversion range"></select>
         </div>
-        <div class="stats-main" id="conversion-range">—%</div>
+        <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
-          <span>3hr: <strong id="conversion-3h">—%</strong></span>
-          <span>6hr: <strong id="conversion-6h">—%</strong></span>
-          <span>12hr: <strong id="conversion-12h">—%</strong></span>
-          <span>24hr: <strong id="conversion-24h">—%</strong></span>
+          <span>3hr: <strong id="conversion-3h"></strong></span>
+          <span>6hr: <strong id="conversion-6h"></strong></span>
+          <span>12hr: <strong id="conversion-12h"></strong></span>
+          <span>24hr: <strong id="conversion-24h"></strong></span>
         </div>
       </div>
     </div>
@@ -159,7 +159,7 @@
   </div>
 
   <div class="kpis">
-    <div class="kpi"><strong id="kpi-revenue-today">—</strong><span>Sales today (UK)</span></div>
+    <div class="kpi"><strong id="kpi-revenue-today"></strong><span>Sales today (UK)</span></div>
     <div class="kpi"><strong id="kpi-active">0</strong><span>Active now (5 min)</span></div>
     <div class="kpi"><strong id="kpi-abandoned">0</strong><span>Abandoned (24h)</span></div>
   </div>
@@ -189,7 +189,6 @@
         <th>Source</th>
         <th>Last action</th>
         <th>Cart value</th>
-        <th>£</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -238,13 +237,13 @@
     const tz = 'Europe/London';
 
     function formatTs(ms) {
-      if (!ms) return '—';
+      if (!ms) return '';
       const d = new Date(ms);
       return d.toLocaleString('en-GB', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
     }
 
     function formatRelative(ms) {
-      if (!ms) return '—';
+      if (!ms) return '';
       const s = Math.floor((Date.now() - ms) / 1000);
       if (s < 60) return s + 's ago';
       if (s < 3600) return Math.floor(s / 60) + 'm ago';
@@ -252,7 +251,7 @@
     }
 
     function formatDuration(startMs) {
-      if (!startMs) return '—';
+      if (!startMs) return '';
       const s = Math.floor((Date.now() - startMs) / 1000);
       const m = Math.floor(s / 60);
       const h = Math.floor(m / 60);
@@ -275,8 +274,12 @@
       return '<img class="flag-img" src="https://flagcdn.com/w40/' + escapeHtml(c) + '.png" alt="' + escapeHtml(code) + '" loading="lazy">';
     }
 
+    function purchaseIconSvg() {
+      return '<span class="purchase-icon" title="Purchased"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>';
+    }
+
     function arrivedAgo(startedAt) {
-      if (!startedAt) return '—';
+      if (!startedAt) return '';
       var s = Math.floor((Date.now() - startedAt) / 1000);
       if (s < 60) return s + ' secs ago';
       if (s < 3600) return Math.floor(s / 60) + ' mins ago';
@@ -288,14 +291,19 @@
       if (s.is_checking_out) return 'In checkout process';
       if (s.last_product_handle) return 'Viewed ' + escapeHtml(s.last_product_handle);
       if (s.last_path) return 'Viewed page ' + escapeHtml(s.last_path);
-      return '—';
+      return '';
     }
 
     function formatMoney(amount, currencyCode) {
-      if (amount == null || typeof amount !== 'number') return '—';
+      if (amount == null || typeof amount !== 'number') return '';
       const code = (currencyCode || 'GBP').toUpperCase();
       const sym = code === 'GBP' ? '£' : code === 'USD' ? '$' : code === 'EUR' ? '€' : code + ' ';
       return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
+    }
+
+    function sourceLabel(s) {
+      const v = s.utm_campaign && String(s.utm_campaign).trim();
+      return v ? escapeHtml(v) : 'Direct';
     }
 
     function renderRow(s) {
@@ -304,20 +312,17 @@
       const visitsLabel = visits === 1 ? '1 visit' : visits + ' visits';
       const cartVal = (s.cart_value != null && typeof s.cart_value === 'number')
         ? formatMoney(s.cart_value, s.cart_currency)
-        : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '—');
-      const orderVal = s.has_purchased && s.order_total != null && typeof s.order_total === 'number'
-        ? formatMoney(s.order_total, s.order_currency)
-        : (s.has_purchased ? '<span class="sale-icon" title="Converted">£</span>' : '—');
+        : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '');
+      const fromCell = flagImg(countryCode) + ' ' + escapeHtml(countryLabel(countryCode)) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''}" data-session-id="${s.session_id}">
-        <td class="flag-cell">${flagImg(countryCode)} ${escapeHtml(countryLabel(countryCode))}</td>
-        <td>${escapeHtml(s.device || '—')}</td>
+        <td class="flag-cell">${fromCell}</td>
+        <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
         <td data-started="${s.started_at}">${arrivedAgo(s.started_at)}</td>
-        <td>—</td>
+        <td>${sourceLabel(s)}</td>
         <td>${lastAction(s)}</td>
         <td>${cartVal}</td>
-        <td>${orderVal}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
     }
@@ -333,7 +338,7 @@
       const tbody = document.getElementById('table-body');
       const showConsent = document.querySelector('.consent-col');
       if (sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty">No sessions in this view.</td></tr>';
         return;
       }
       tbody.innerHTML = sessions.map(renderRow).join('');
@@ -359,7 +364,7 @@
       });
     }
 
-    function pct(v) { return v != null ? v.toFixed(1) + '%' : '—%'; }
+    function pct(v) { return v != null ? v.toFixed(1) + '%' : ''; }
 
     function initRangeSelect(selectId, value, onChange) {
       const el = document.getElementById(selectId);
@@ -370,7 +375,7 @@
     }
 
     function formatRevenue(num) {
-      if (num == null || typeof num !== 'number') return '—';
+      if (num == null || typeof num !== 'number') return '';
       return '£' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 

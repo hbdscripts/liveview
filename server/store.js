@@ -15,7 +15,7 @@ const WHITELIST = new Set([
   'visitor_id', 'session_id', 'event_type', 'path', 'product_handle', 'product_title',
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
   'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
-  'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
+  'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug', 'utm_campaign',
 ]);
 
 function sanitize(payload) {
@@ -154,17 +154,19 @@ async function upsertSession(payload, visitorIsReturning) {
   if (typeof orderTotal !== 'number') orderTotal = null;
   if (typeof orderCurrency !== 'string') orderCurrency = null;
 
+  const utmCampaign = typeof payload.utm_campaign === 'string' && payload.utm_campaign.trim() ? payload.utm_campaign.trim() : null;
+
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
     }
   } else {
     if (config.dbUrl) {
@@ -172,19 +174,19 @@ async function upsertSession(payload, visitorIsReturning) {
         UPDATE sessions SET last_seen = ?, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
         cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
         order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
-        country_code = COALESCE($9, country_code),
-        is_checking_out = $10, checkout_started_at = $11, has_purchased = $12, purchased_at = COALESCE($13, purchased_at)
-        WHERE session_id = $14
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
+        country_code = COALESCE($9, country_code), utm_campaign = COALESCE($10, utm_campaign),
+        is_checking_out = $11, checkout_started_at = $12, has_purchased = $13, purchased_at = COALESCE($14, purchased_at)
+        WHERE session_id = $15
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
     } else {
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
         order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
-        country_code = COALESCE(?, country_code),
+        country_code = COALESCE(?, country_code), utm_campaign = COALESCE(?, utm_campaign),
         is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at)
         WHERE session_id = ?
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
     }
   }
 

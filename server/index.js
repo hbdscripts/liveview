@@ -131,12 +131,14 @@ const { up: up001 } = require('./migrations/001_initial');
 const { up: up002 } = require('./migrations/002_shop_sessions');
 const { up: up003 } = require('./migrations/003_cart_order_money');
 const { up: up004 } = require('./migrations/004_session_stats_fields');
+const { up: up005 } = require('./migrations/005_utm_campaign');
 getDb();
 
 up001()
   .then(() => up002())
   .then(() => up003())
   .then(() => up004())
+  .then(() => up005())
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);

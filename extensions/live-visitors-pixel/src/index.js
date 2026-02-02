@@ -44,6 +44,18 @@ function deviceFromContext(ctx) {
   return 'unknown';
 }
 
+function utmCampaignFromContext(ctx) {
+  const href = ctx?.document?.location?.href ?? ctx?.location?.href;
+  if (typeof href !== 'string') return null;
+  try {
+    const u = new URL(href);
+    const v = u.searchParams.get('utm_campaign');
+    return v && v.trim() ? v.trim() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 register(({ analytics, init, browser, settings }) => {
   if (!browser?.localStorage || !browser?.sessionStorage) return;
   if (!settings?.ingestUrl || !settings?.ingestSecret) return;
@@ -56,6 +68,7 @@ register(({ analytics, init, browser, settings }) => {
   let cartValue = null;
   let cartCurrency = null;
   let lastPath = pathFromContext(init?.context) || '/';
+  let lastUtmCampaign = null;
   let heartbeatTimer = null;
 
   function cartMoneyFromCart(cart) {
@@ -121,9 +134,11 @@ register(({ analytics, init, browser, settings }) => {
   function payload(eventType, extra = {}) {
     const ts = Date.now();
     lastPath = extra.path ?? pathFromContext(init?.context) ?? lastPath;
+    const utm = extra.utm_campaign !== undefined ? extra.utm_campaign : utmCampaignFromContext(init?.context);
+    if (utm !== undefined && utm !== null) lastUtmCampaign = utm;
     const country = extra.country_code ?? countryFromInit(init);
     const device = extra.device ?? deviceFromContext(init?.context);
-    return {
+    const out = {
       event_type: eventType,
       visitor_id: visitorId,
       session_id: sessionId,
@@ -137,6 +152,8 @@ register(({ analytics, init, browser, settings }) => {
       cart_currency: extra.cart_currency !== undefined ? extra.cart_currency : cartCurrency,
       ...extra,
     };
+    if (lastUtmCampaign != null) out.utm_campaign = lastUtmCampaign;
+    return out;
   }
 
   function send(payload) {
@@ -170,6 +187,8 @@ register(({ analytics, init, browser, settings }) => {
     cartValue = money.cart_value;
     cartCurrency = money.cart_currency;
     lastPath = pathFromContext(init?.context) || '/';
+    const utm = utmCampaignFromContext(init?.context);
+    if (utm != null) lastUtmCampaign = utm;
     send(payload('page_viewed', { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     startHeartbeat();
   }).catch(() => {});
@@ -177,6 +196,8 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('page_viewed', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || pathFromContext(init?.context) || lastPath;
+      const utm = utmCampaignFromContext(event?.context) ?? utmCampaignFromContext(init?.context);
+      if (utm != null) lastUtmCampaign = utm;
       send(payload('page_viewed'));
     } catch (_) {}
   });
@@ -184,6 +205,8 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('product_viewed', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || lastPath;
+      const utm = utmCampaignFromContext(event?.context) ?? utmCampaignFromContext(init?.context);
+      if (utm != null) lastUtmCampaign = utm;
       const handle = event?.data?.productVariant?.product?.handle ?? event?.data?.product?.handle;
       const path = pathFromContext(event?.context) || lastPath;
       const match = path.match(/\/products\/([^/?#]+)/);
