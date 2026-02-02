@@ -71,7 +71,8 @@
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; max-width: 1440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 .dashboard-top-bar-left { display: flex; align-items: center; }
-.dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; }
+.dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; }
+    .next-update-favicon { width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle; }
 .dashboard-top-bar-right { display: flex; align-items: center; }
 .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; max-width: 1440px; margin-left: auto; margin-right: auto; }
 .live-view-header .table-title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
@@ -128,7 +129,7 @@
         <option value="7d">Last 7 Days</option>
       </select>
     </div>
-    <div class="dashboard-top-bar-center" id="next-update-msg">Next update in -- s</div>
+    <div class="dashboard-top-bar-center"><img class="next-update-favicon" src="/assets/favicon.png" alt=""><span id="next-update-msg">Next update in -- s</span></div>
     <div class="dashboard-top-bar-right">
       <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
         <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
