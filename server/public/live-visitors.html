@@ -34,10 +34,6 @@
     .kpi { background: var(--card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
     .kpi strong { display: block; font-size: 1.25rem; font-weight: 700; color: var(--accent); }
     .kpi span { font-size: 0.8125rem; color: var(--muted); }
-    .tabs { display: flex; gap: 0.35rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .tabs button { padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
-    .tabs button:hover { border-color: var(--muted); background: #f8fafc; }
-    .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
     th { background: #f8fafc; font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -87,8 +83,6 @@
       .kpis { gap: 0.75rem; margin-bottom: 1rem; }
       .kpi { padding: 0.75rem 1rem; min-width: calc(50% - 0.5rem); flex: 1 1 calc(50% - 0.5rem); }
       .kpi strong { font-size: 1.1rem; }
-      .tabs { gap: 0.35rem; margin-bottom: 0.75rem; }
-      .tabs button { padding: 0.5rem 0.75rem; font-size: 0.8125rem; min-height: 44px; }
       .time-filters { margin-bottom: 0.5rem; }
       .time-filters button { padding: 0.5rem 0.75rem; min-height: 44px; font-size: 0.8125rem; }
       .table-title { font-size: 0.9375rem; margin-bottom: 0.35rem; }
@@ -103,7 +97,6 @@
       .main { padding: 0.5rem; }
       .stats-card { padding: 1rem; }
       .kpi { min-width: 100%; }
-      .tabs button { min-width: 0; flex: 1 1 auto; }
       .table-scroll-wrap { margin-left: -0.5rem; margin-right: -0.5rem; }
     }
   </style>
@@ -183,16 +176,7 @@
     <div class="kpi"><strong id="kpi-abandoned">0</strong><span>Abandoned (24h)</span></div>
   </div>
 
-  <div class="tabs">
-    <button type="button" data-filter="active">Online</button>
-    <button type="button" data-filter="recent" class="active">Recently Online</button>
-    <button type="button" data-filter="converted">Recent Orders</button>
-    <button type="button" data-filter="abandoned">Abandoned Carts</button>
-    <button type="button" data-filter="today">Today (24h)</button>
-    <button type="button" data-filter="all">Last hour</button>
-  </div>
-
-  <div class="table-title" id="table-title">Recently Online</div>
+  <div class="table-title" id="table-title">Live View</div>
   <div class="time-filters">
     <button type="button" id="time-hour" data-time="all">last hour</button>
     <button type="button" id="time-24h" data-time="today" class="active">last 24 hours</button>
@@ -252,7 +236,7 @@
           .catch(function () {});
       }
     })();
-    let filter = 'recent';
+    let filter = 'today';
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
@@ -394,12 +378,6 @@
       tickTimeOnSite();
     }
 
-    var tableTitles = { active: 'Online', recent: 'Recently Online', converted: 'Recent Orders', abandoned: 'Abandoned Carts', today: 'Today (24h)', all: 'Last hour' };
-    function setTableTitle() {
-      var el = document.getElementById('table-title');
-      if (el) el.textContent = tableTitles[filter] || 'Sessions';
-    }
-
     function tickTimeOnSite() {
       document.querySelectorAll('#table-body td[data-started]').forEach(td => {
         const started = parseInt(td.dataset.started, 10);
@@ -511,26 +489,14 @@
     }
 
     function fetchSessions() {
-      setTableTitle();
       fetch(API + '/api/sessions?filter=' + filter)
         .then(r => r.json())
         .then(data => {
           sessions = data.sessions || [];
           renderTable();
           updateKpis();
-          updateTabCounts();
         })
         .catch(() => { sessions = []; renderTable(); });
-    }
-
-    function updateTabCounts() {
-      var n = sessions.length;
-      var suffix = n > 99 ? ' 99+' : (n > 0 ? ' ' + n : '');
-      document.querySelectorAll('.tabs button[data-filter]').forEach(function(btn) {
-        var f = btn.dataset.filter;
-        var label = { active: 'Online', recent: 'Recently Online', converted: 'Recent Orders', abandoned: 'Abandoned Carts', today: 'Today (24h)', all: 'Last hour' }[f] || f;
-        btn.textContent = label + (btn.classList.contains('active') ? suffix : '');
-      });
     }
 
     function updateKpis() {
@@ -580,27 +546,14 @@
       document.getElementById('side-panel').style.display = 'none';
     });
 
-    document.querySelectorAll('.tabs button[data-filter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filter = btn.dataset.filter;
-        document.querySelectorAll('.tabs button[data-filter]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('time-hour').classList.toggle('active', filter === 'all');
-        document.getElementById('time-24h').classList.toggle('active', filter === 'today');
-        fetchSessions();
-      });
-    });
-
     document.getElementById('time-hour').addEventListener('click', function() {
       filter = 'all';
-      document.querySelectorAll('.tabs button[data-filter]').forEach(b => { b.classList.remove('active'); if (b.dataset.filter === 'all') b.classList.add('active'); });
       this.classList.add('active');
       document.getElementById('time-24h').classList.remove('active');
       fetchSessions();
     });
     document.getElementById('time-24h').addEventListener('click', function() {
       filter = 'today';
-      document.querySelectorAll('.tabs button[data-filter]').forEach(b => { b.classList.remove('active'); if (b.dataset.filter === 'today') b.classList.add('active'); });
       this.classList.add('active');
       document.getElementById('time-hour').classList.remove('active');
       fetchSessions();
