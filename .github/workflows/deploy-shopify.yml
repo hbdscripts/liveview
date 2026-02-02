@@ -4,8 +4,8 @@
 # the pixel manually with: npm run deploy
 # https://shopify.dev/docs/apps/launch/deployment/deploy-in-ci-cd-pipeline
 #
-# If you see "job was not acquired by Runner" or "Internal server error": re-run the
-# workflow from the Actions tab, or deploy the pixel locally with: npm run deploy
+# To avoid "job was not acquired" / "Internal server error": do NOT set DEPLOY_PIXEL_VIA_CI
+# (delete that secret). The job will skip on push. Deploy the pixel locally: npm run deploy
 #
 # Repo secrets used: DEPLOY_PIXEL_VIA_CI, SHOPIFY_CLI_PARTNERS_TOKEN, SHOPIFY_API_KEY.
 
