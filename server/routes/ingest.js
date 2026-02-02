@@ -1,12 +1,33 @@
 /**
  * POST /api/ingest – pixel events.
  * CORS permissive (Origin: null), INGEST_SECRET auth, validate, rate limit, store, broadcast.
+ * Visitor country: Shopify does not expose visitor country to the Web Pixels API (only shop country).
+ * We derive country from the request IP (geoip-lite) so it reflects real location instead of browser language.
  */
 
 const config = require('../config');
 const store = require('../store');
 const rateLimit = require('../rateLimit');
 const sse = require('../sse');
+
+let geoip;
+try {
+  geoip = require('geoip-lite');
+} catch (_) {
+  geoip = null;
+}
+
+function getClientIp(req) {
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.ip || req.connection?.remoteAddress || '';
+}
+
+function countryFromIp(ip) {
+  if (!geoip || !ip || ip === '::1' || ip === '127.0.0.1') return null;
+  const geo = geoip.lookup(ip);
+  return geo && typeof geo.country === 'string' && geo.country.length === 2 ? geo.country : null;
+}
 
 const ALLOWED_TYPES = store.ALLOWED_EVENT_TYPES;
 
@@ -65,6 +86,8 @@ function ingestRouter(req, res, next) {
     }
 
     const payload = store.sanitize(body);
+    const ipCountry = countryFromIp(getClientIp(req));
+    if (ipCountry) payload.country_code = ipCountry;
     const ts = payload.ts || Date.now();
 
     return Promise.all([

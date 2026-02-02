@@ -28,6 +28,7 @@
 - **CORS**: The ingest endpoint allows `Origin: null` and returns permissive CORS. Do not require credentials.
 - **Pixel not loading**: Ensure the pixel extension has `customer_privacy` set so it can run without consent (analytics=false, marketing=false, preferences=false, sale_of_data=disabled).
 - **No rows in dashboard**: Check that `INGEST_SECRET` matches in `.env` and in the pixel extension settings. Browse the storefront; the first event is usually `page_viewed`.
+- **Visitor country (From column)**: Shopify’s Web Pixels API does **not** expose visitor/customer country to the pixel. It only exposes the **store’s** country (`shop.countryCode`), which would label every visitor the same. We derive country on the **server** from the request IP (using `geoip-lite` / MaxMind GeoLite) when events hit `/api/ingest`, so the “From” column reflects real location. The pixel still sends browser locale as a fallback; the server overwrites with IP country when available.
 - **Tracking off**: Use the admin “Tracking toggle” or set the DB setting `tracking_enabled` to `true`. Ingestion returns 204 when tracking is disabled.
 
 ## Scopes
