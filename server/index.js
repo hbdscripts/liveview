@@ -96,14 +96,17 @@ app.get('/app/live-visitors', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
 });
 
-// App URL: if shop + hmac (no code), redirect to Shopify authorize; else redirect to dashboard
-app.get('/', (req, res, next) => {
+// App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
+app.get('/', async (req, res, next) => {
   try {
-    auth.handleAppUrl(req, res, next);
+    await auth.handleAppUrl(req, res, next);
+    if (!res.headersSent) {
+      res.redirect(302, '/app/live-visitors');
+    }
   } catch (err) {
     next(err);
   }
-}, (req, res) => res.redirect(302, '/app/live-visitors'));
+});
 
 // Test route: trigger a Sentry event (only when SENTRY_DSN is set)
 if (config.sentryDsn && config.sentryDsn.trim() !== '') {

@@ -121,8 +121,8 @@ async function handleCallback(req, res) {
   }
 }
 
-/** GET / - App URL: if shop + hmac + timestamp (no code), redirect to Shopify authorize; else go to dashboard */
-function handleAppUrl(req, res, next) {
+/** GET / - App URL: if shop + hmac + timestamp (no code), redirect to OAuth only when no session; else show dashboard in iframe */
+async function handleAppUrl(req, res, next) {
   const { shop, hmac, timestamp, code, host } = req.query;
   if (!apiKey || !apiSecret) {
     return res.redirect(302, '/app/live-visitors');
@@ -130,6 +130,17 @@ function handleAppUrl(req, res, next) {
   if (shop && hmac && timestamp && !code) {
     if (!verifyHmac(req.query)) {
       return res.status(400).send('Invalid HMAC.');
+    }
+    try {
+      // Already installed: we have a token for this shop → show app in iframe (no OAuth redirect).
+      const db = getDb();
+      const session = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+      if (session && session.access_token) {
+        return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+      }
+    } catch (err) {
+      console.error('[auth] App URL session check:', err);
+      return next(err);
     }
     const state = crypto.randomBytes(16).toString('hex');
     const redirectUri = getRedirectUri(req);
