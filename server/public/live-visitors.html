@@ -48,13 +48,16 @@
     .tracking-toggle button.off { background: var(--muted); }
     .coverage-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
-    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
     th { background: #f9fafb; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    th:first-child, td:first-child { width: 48px; min-width: 48px; padding-left: 0.75rem; }
     tr:hover { background: #f9fafb; }
     tr.returning { background: rgba(0, 128, 96, 0.06); }
     tr.clickable { cursor: pointer; }
-    .flag-cell { display: flex; align-items: center; }
-    .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; }
+    .flag-cell { white-space: nowrap; }
+    .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
+    .sale-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 700; font-size: 1rem; }
+    .sale-icon svg { width: 1em; height: 1em; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; }
     .badge.new { background: #008060; color: #fff; }
     .badge.returning { background: #5c6ac4; color: #fff; }
@@ -131,6 +134,7 @@
         <th>Page / Product</th>
         <th>Time on site</th>
         <th>Cart</th>
+        <th>Sale</th>
         <th>Status</th>
         <th>Device</th>
         <th>Network</th>
@@ -213,12 +217,16 @@
       if (s.is_abandoned) statusChips.push('<span class="chip abandoned">Abandoned</span>');
       const lastSeen = formatRelative(s.last_seen) + ' · ' + formatTs(s.last_seen);
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
+      const saleIcon = s.has_purchased
+        ? '<span class="sale-icon" title="Purchased"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><text x="12" y="18" font-size="16" text-anchor="middle" fill="currentColor" font-weight="700">£</text></svg></span>'
+        : '—';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''}" data-session-id="${s.session_id}">
         <td class="flag-cell">${flagImg(countryCode)}</td>
         <td><span class="badge ${s.is_returning ? 'returning' : 'new'}">${visitorBadge}</span></td>
         <td>${escapeHtml(pageProduct)}</td>
         <td data-started="${s.started_at}">${duration}</td>
         <td>${s.cart_qty ?? 0}</td>
+        <td>${saleIcon}</td>
         <td>${statusChips.join(' ') || '—'}</td>
         <td>${s.device || '—'}</td>
         <td>${s.network_speed || '—'}</td>
@@ -238,7 +246,7 @@
       const tbody = document.getElementById('table-body');
       const showConsent = document.querySelector('.consent-col');
       if (sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="empty">No sessions in this view.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="empty">No sessions in this view.</td></tr>';
         return;
       }
       tbody.innerHTML = sessions.map(renderRow).join('');
