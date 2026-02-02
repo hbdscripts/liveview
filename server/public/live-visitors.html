@@ -89,6 +89,7 @@
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: #f8fafc; }
 .table-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     .source-googleads-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
+    .source-info-icon { font-size: 0.875rem; color: var(--muted); cursor: help; vertical-align: middle; }
     @media (max-width: 768px) {
       .dashboard-top-bar { padding-left: 0.75rem; padding-right: 0.75rem; }
       .main { padding: 0.75rem; }
@@ -400,13 +401,18 @@
     }
 
     function sourceCell(s) {
+      const fullUtm = sourceLabel(s);
+      const fullTitle = (fullUtm || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      function infoIcon() {
+        if (!fullUtm) return '';
+        return ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="UTM params">\u2139</span>';
+      }
       if (isGoogleAdsSource(s)) {
-        return '<img src="' + (API || '') + '/assets/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">';
+        return '<img src="' + (API || '') + '/assets/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
       }
       const friendly = sourceFriendlyLabel(s);
-      if (friendly) return escapeHtml(friendly);
-      const full = sourceLabel(s);
-      if (full) return escapeHtml(full);
+      if (friendly) return escapeHtml(friendly) + infoIcon();
+      if (fullUtm) return escapeHtml('Other') + infoIcon();
       return escapeHtml('Direct');
     }
 
