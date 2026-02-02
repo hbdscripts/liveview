@@ -21,9 +21,7 @@
 3. **Ingestion secret and pixel extension**
    - Run: `node scripts/generate-ingest-secret.js`
    - Copy the output and set in `.env` (and Railway): `INGEST_SECRET=<paste>`
-   - The pixel is an **app extension** (not in your theme/source). After deploying with `npm run deploy`, set in **Dev Dashboard → your app → Extensions → Live Visitors (web pixel) → Configuration**:
-     - **Ingest URL**: `https://your-app.example.com/api/ingest`
-     - **Ingest Secret**: the same value as `INGEST_SECRET`.
+   - The pixel is an **app extension** (not in your theme/source). There is **no** “Extensions → Configuration” screen in Dev Dashboard for the pixel. Pixel settings (Ingest URL, Ingest Secret) are set via the **GraphQL Admin API** (`webPixelCreate` / `webPixelUpdate`). After deploying with `npm run deploy`, run `node scripts/configure-pixel.js` to print the mutation, then run it in GraphiQL (e.g. when using `shopify app dev`) or use the app’s “Configure pixel” in the dashboard if available. See [docs/PIXEL_CONFIG.md](../docs/PIXEL_CONFIG.md).
 
 ## Common mistakes
 

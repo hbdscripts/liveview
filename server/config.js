@@ -48,7 +48,7 @@ const config = {
     apiKey: getEnv('SHOPIFY_API_KEY', ''),
     apiSecret: getEnv('SHOPIFY_API_SECRET', ''),
     appUrl: getEnv('SHOPIFY_APP_URL', 'http://localhost:3000'),
-    scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders'),
+    scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders,write_pixels,read_customer_events'),
   },
   ingestSecret: getEnv('INGEST_SECRET', ''),
   adminTimezone: getEnv('ADMIN_TIMEZONE', 'Europe/London'),

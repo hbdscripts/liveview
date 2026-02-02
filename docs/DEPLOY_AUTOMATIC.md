@@ -60,7 +60,7 @@ Deploy the pixel **manually** when you change it:
 
 After that, the Web Pixel is updated on Shopify. Run it again whenever you change the pixel or app config.
 
-Then in **Dev Dashboard** → your app → **Extensions** → **Live Visitors** (web pixel) → **Configuration**, set **Ingest URL** (`https://your-app.example.com/api/ingest`) and **Ingest Secret** (same as `INGEST_SECRET` in Railway). The pixel will not send events until these are set.
+Then set the pixel’s **Ingest URL** and **Ingest Secret** via the GraphQL Admin API (there is no “Extensions → Configuration” screen in Dev Dashboard). Run `node scripts/configure-pixel.js` and run the printed mutation in GraphiQL when using `shopify app dev`. See [docs/PIXEL_CONFIG.md](PIXEL_CONFIG.md).
 
 ---
 

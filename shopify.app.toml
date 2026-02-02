@@ -7,7 +7,8 @@ application_url = "https://liveview-production.up.railway.app"
 embedded = true
 
 [access_scopes]
-scopes = "read_products,read_orders"
+# write_pixels + read_customer_events required to set pixel settings via API (webPixelCreate/webPixelUpdate)
+scopes = "read_products,read_orders,write_pixels,read_customer_events"
 
 [auth]
 redirect_urls = [
