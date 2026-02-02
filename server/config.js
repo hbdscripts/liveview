@@ -1,10 +1,10 @@
 /**
  * Single config module – the only place that reads process.env.
  * Validates required vars and exports a typed config object.
- * For limited local mode (no Shopify install), only INGEST_SECRET is optional.
+ * Fail-open: app boots even if Shopify vars are missing; dashboard and ingest still work.
  */
 
-const requiredForFullRun = [
+const requiredForShopify = [
   'SHOPIFY_API_KEY',
   'SHOPIFY_API_SECRET',
   'SHOPIFY_APP_URL',
@@ -30,17 +30,14 @@ function getBool(name, defaultValue) {
 }
 
 function validate() {
-  const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-  if (mode === 'production') {
-    for (const key of requiredForFullRun) {
-      if (!process.env[key] || process.env[key].trim() === '') {
-        throw new Error(`Missing required env: ${key}`);
-      }
-    }
-  }
-  // INGEST_SECRET: required for ingest to accept events; optional for local UI-only
-  if (!process.env.INGEST_SECRET && process.env.INGEST_SECRET !== '') {
-    // Allow empty for local dev without pixel
+  const missing = requiredForShopify.filter(
+    (key) => !process.env[key] || String(process.env[key]).trim() === ''
+  );
+  if (missing.length > 0) {
+    console.warn(
+      '[config] Missing Shopify env (dashboard/ingest still work):',
+      missing.join(', ')
+    );
   }
 }
 

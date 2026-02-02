@@ -291,6 +291,7 @@ Your store and the pixel need to reach your app at a **public HTTPS URL**. Choos
 3. Set **environment variables** from your `.env`:
    - At minimum: `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `INGEST_SECRET`
    - Optionally: `DB_URL` (for Postgres), `PORT` (if required by the host).
+   - **Railway:** Add these on the **service** (your app’s Variables tab), not only in Shared Variables. Shared Variables are not always injected into the running service; adding them on the service itself ensures the process sees them.
 4. Set the start command to: `npm run migrate && npm start` (or `node server/index.js`) if the host doesn’t run migrations automatically.
 5. Deploy. The host will give you a URL, e.g. `https://your-app.up.railway.app`.
 6. Use that URL as **SHOPIFY_APP_URL** everywhere (and in Step 2.4 if you hadn’t set it yet). Update `.env` and `shopify.app.toml` if needed.
