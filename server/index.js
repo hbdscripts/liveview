@@ -23,6 +23,11 @@ const auth = require('./routes/auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Health check (for Railway/proxy – no auth, no redirects)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Body parser (for ingest JSON)
 app.use(express.json({ limit: config.maxEventPayloadBytes }));
 app.use(express.urlencoded({ extended: true }));
@@ -51,7 +56,13 @@ app.get('/app/live-visitors', (req, res) => {
 });
 
 // App URL: if shop + hmac (no code), redirect to Shopify authorize; else redirect to dashboard
-app.get('/', auth.handleAppUrl, (req, res) => res.redirect(302, '/app/live-visitors'));
+app.get('/', (req, res, next) => {
+  try {
+    auth.handleAppUrl(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+}, (req, res) => res.redirect(302, '/app/live-visitors'));
 
 // Test route: trigger a Sentry event (only when SENTRY_DSN is set)
 if (config.sentryDsn && config.sentryDsn.trim() !== '') {
@@ -77,8 +88,8 @@ getDb();
 up001()
   .then(() => up002())
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Live Visitors app listening on http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
       console.log('Dashboard: /app/live-visitors');
       console.log('Ingest: POST /api/ingest (header: X-Ingest-Secret or Authorization: Bearer <secret>)');
     });
