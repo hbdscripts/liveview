@@ -2,8 +2,8 @@
 # https://shopify.dev/docs/apps/tools/cli/configuration
 
 name = "Live Visitors"
-client_id = ""
-application_url = "https://your-app-url.com"
+client_id = "c1cd8f0e90ee42bf2bf9d8a8babd9561"
+application_url = "https://liveview-production.up.railway.app"
 embedded = true
 
 [access_scopes]
@@ -11,8 +11,8 @@ scopes = "read_products,read_orders"
 
 [auth]
 redirect_urls = [
-  "https://your-app-url.com/auth/callback",
-  "https://your-app-url.com/auth/shopify/callback"
+  "https://liveview-production.up.railway.app/auth/callback",
+  "https://liveview-production.up.railway.app/auth/shopify/callback"
 ]
 
 [webhooks]
