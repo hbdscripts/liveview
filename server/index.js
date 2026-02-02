@@ -55,6 +55,15 @@ app.get('/api/config-status', configStatusRouter);
 app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));
 app.get('/auth/shopify/callback', (req, res) => auth.handleCallback(req, res));
 
+// Allow embedding in Shopify admin (fixes "admin.shopify.com refused to connect")
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors https://admin.shopify.com https://*.myshopify.com 'self'"
+  );
+  next();
+});
+
 // Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/app/live-visitors', (req, res) => {
