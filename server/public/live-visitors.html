@@ -119,10 +119,8 @@
         </div>
         <div class="stats-main" id="sales-today"></div>
         <div class="stats-breakdown">
-          <span>6hr: <strong id="sales-6h"></strong></span>
+          <span>Last 6 hours: <strong id="sales-6h"></strong></span>
           <span>12hr: <strong id="sales-12h"></strong></span>
-          <span>24hr: <strong id="sales-24h"></strong></span>
-          <span>week: <strong id="sales-week"></strong></span>
         </div>
       </div>
       <div class="stats-divider"></div>
@@ -133,10 +131,8 @@
         </div>
         <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
-          <span>3hr: <strong id="conversion-3h"></strong></span>
-          <span>6hr: <strong id="conversion-6h"></strong></span>
-          <span>12hr: <strong id="conversion-12h"></strong></span>
-          <span>24hr: <strong id="conversion-24h"></strong></span>
+          <span>Last 3 hours: <strong id="conversion-3h"></strong></span>
+          <span>Last 6 hours: <strong id="conversion-6h"></strong></span>
         </div>
       </div>
     </div>
@@ -148,8 +144,8 @@
       <div class="stats-section">
         <div class="stats-main" id="aov-today"></div>
         <div class="stats-breakdown">
-          <span>3hr: <strong id="aov-3h"></strong></span>
-          <span>6hr: <strong id="aov-6h"></strong></span>
+          <span>Last 3 hours: <strong id="aov-3h"></strong></span>
+          <span>Last 6 hours: <strong id="aov-6h"></strong></span>
           <span>12hr: <strong id="aov-12h"></strong></span>
           <span>24hr: <strong id="aov-24h"></strong></span>
         </div>
@@ -431,8 +427,6 @@
       const rolling = sales.rolling || {};
       document.getElementById('sales-6h').textContent = formatRevenue(rolling['6h']);
       document.getElementById('sales-12h').textContent = formatRevenue(rolling['12h']);
-      document.getElementById('sales-24h').textContent = formatRevenue(rolling['24h']);
-      document.getElementById('sales-week').textContent = formatRevenue(rolling['7d']);
       const revEl = document.getElementById('kpi-revenue-today');
       if (revEl) revEl.textContent = formatRevenue(sales.today);
     }
@@ -443,8 +437,6 @@
       const rolling = c.rolling || {};
       document.getElementById('conversion-3h').textContent = pct(rolling['3h']);
       document.getElementById('conversion-6h').textContent = pct(rolling['6h']);
-      document.getElementById('conversion-12h').textContent = pct(rolling['12h']);
-      document.getElementById('conversion-24h').textContent = pct(rolling['24h']);
     }
 
     function renderAov(data) {
