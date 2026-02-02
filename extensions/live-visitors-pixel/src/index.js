@@ -265,7 +265,7 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('checkout_completed', (event) => {
     try {
       const checkout = event?.data?.checkout;
-      const totalPrice = checkout?.totalPrice;
+      const totalPrice = checkout?.totalPrice ?? checkout?.subtotalPrice;
       const orderTotal = typeof totalPrice?.amount === 'number' ? totalPrice.amount : null;
       const orderCurrency = checkout?.currencyCode ?? totalPrice?.currencyCode ?? null;
       send(payload('checkout_completed', {

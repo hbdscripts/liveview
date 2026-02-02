@@ -395,14 +395,23 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
 
 async function getSalesTotal(start, end) {
   const db = getDb();
+  // Include sessions that converted in-window; use last_seen when purchased_at is null (legacy/pre-migration)
   const row = config.dbUrl
     ? await db.get(
-      'SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions WHERE has_purchased = 1 AND purchased_at >= $1 AND purchased_at < $2',
+      `SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions
+       WHERE has_purchased = 1 AND (
+         (purchased_at IS NOT NULL AND purchased_at >= $1 AND purchased_at < $2)
+         OR (purchased_at IS NULL AND last_seen >= $1 AND last_seen < $2)
+       )`,
       [start, end]
     )
     : await db.get(
-      'SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions WHERE has_purchased = 1 AND purchased_at >= ? AND purchased_at < ?',
-      [start, end]
+      `SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions
+       WHERE has_purchased = 1 AND (
+         (purchased_at IS NOT NULL AND purchased_at >= ? AND purchased_at < ?)
+         OR (purchased_at IS NULL AND last_seen >= ? AND last_seen < ?)
+       )`,
+      [start, end, start, end]
     );
   return row ? Number(row.total) || 0 : 0;
 }
@@ -443,17 +452,23 @@ async function getCountryStats(start, end) {
     ? await db.all(`
       SELECT country_code, COALESCE(SUM(order_total), 0)::float AS revenue
       FROM sessions
-      WHERE has_purchased = 1 AND purchased_at >= $1 AND purchased_at < $2
+      WHERE has_purchased = 1 AND (
+        (purchased_at IS NOT NULL AND purchased_at >= $1 AND purchased_at < $2)
+        OR (purchased_at IS NULL AND last_seen >= $1 AND last_seen < $2)
+      )
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
       GROUP BY country_code
     `, [start, end])
     : await db.all(`
       SELECT country_code, COALESCE(SUM(order_total), 0) AS revenue
       FROM sessions
-      WHERE has_purchased = 1 AND purchased_at >= ? AND purchased_at < ?
+      WHERE has_purchased = 1 AND (
+        (purchased_at IS NOT NULL AND purchased_at >= ? AND purchased_at < ?)
+        OR (purchased_at IS NULL AND last_seen >= ? AND last_seen < ?)
+      )
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
       GROUP BY country_code
-    `, [start, end]);
+    `, [start, end, start, end]);
   const map = new Map();
   for (const row of conversionRows) {
     const code = normalizeCountry(row.country_code);

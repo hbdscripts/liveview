@@ -68,7 +68,8 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
 
 These rules prevent the stats from drifting or looking wrong over time:
 
-- **Sales totals** use `sessions.purchased_at` (set on `checkout_completed`) rather than `last_seen`.
+- **Sales totals** use `sessions.purchased_at` (set on `checkout_completed`) rather than `last_seen`; if `purchased_at` is null (e.g. pre-migration), `last_seen` is used for the time window so revenue still counts.
+- **Revenue source**: Dashboard revenue comes only from the pixel’s `checkout_completed` event (fired on the thank-you page). If revenue stays at £0, confirm the pixel runs there and that the event includes a price (we use `totalPrice` or `subtotalPrice`).
 - **Conversion rate** is `(sessions started in range that purchased) / (sessions started in range)`, not based on `last_seen`.
 - **"Today"** means since midnight in `ADMIN_TIMEZONE` (defaults to `Europe/London`).
 - **Dropdown ranges**: Today, Yesterday, 3 days, 7 days. The 3d/7d ranges start at midnight N-2 / N-6 and include today.
