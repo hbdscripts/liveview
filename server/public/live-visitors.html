@@ -17,8 +17,9 @@
     .header a:only-child { margin-left: auto; }
     .main { padding: 1rem 1.25rem; max-width: 1400px; margin: 0 auto; }
     h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; color: var(--muted); }
-    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: flex-start; }
-    .stats-card { background: var(--card); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); flex: 1; min-width: 220px; }
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: stretch; }
+    .stats-card { background: var(--card); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); flex: 1; min-width: 220px; box-sizing: border-box; }
+    #stats-country { display: flex; flex-direction: column; max-height: 9999px; }
     .stats-card h3 { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
     .stats-section { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -28,7 +29,7 @@
     .stats-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
     .stats-select { padding: 0.2rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 0.85rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
-    .country-table-wrap { overflow-y: auto; }
+    .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
     .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     .by-country-table th, .by-country-table td { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .by-country-table th { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -424,18 +425,9 @@
     function syncCountryTableHeight() {
       const primary = document.getElementById('stats-primary');
       const country = document.getElementById('stats-country');
-      const wrap = document.getElementById('country-table-wrap');
-      if (!primary || !country || !wrap) return;
+      if (!primary || !country) return;
       const primaryHeight = primary.getBoundingClientRect().height;
-      const header = country.querySelector('.stats-card-header');
-      const headerHeight = header ? header.getBoundingClientRect().height : 0;
-      const styles = window.getComputedStyle(country);
-      const paddingTop = parseFloat(styles.paddingTop) || 0;
-      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
-      const available = primaryHeight - headerHeight - paddingTop - paddingBottom;
-      if (available > 120) {
-        wrap.style.maxHeight = Math.floor(available) + 'px';
-      }
+      country.style.maxHeight = Math.floor(primaryHeight) + 'px';
     }
 
     function renderStats(data) {
