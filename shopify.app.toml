@@ -1,7 +1,7 @@
 # Shopify app config – fill client_id after creating app in Partner/custom app
 # https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "Live Visitors"
+name = "Liveview"
 client_id = "c1cd8f0e90ee42bf2bf9d8a8babd9561"
 application_url = "https://liveview-production.up.railway.app"
 embedded = true

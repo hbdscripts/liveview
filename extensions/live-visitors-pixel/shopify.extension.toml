@@ -8,7 +8,7 @@ api_version = "2024-01"
 uid = "d2d15754-01f5-8185-f093-6314927881869349fe24"
 
 type = "web_pixel_extension"
-name = "Live Visitors"
+name = "Liveview"
 handle = "live-visitors-pixel"
 runtime_context = "strict"
 
