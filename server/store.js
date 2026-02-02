@@ -195,12 +195,15 @@ async function insertEvent(sessionId, payload) {
   }
 }
 
+/** "All (60 min)" tab always uses 60 min so it shows more than Recent (15 min). Cleanup uses SESSION_TTL_MINUTES; set >= 60 to keep 60 min of data. */
+const ALL_SESSIONS_WINDOW_MINUTES = 60;
+
 async function listSessions(filter) {
   const db = getDb();
   const now = Date.now();
   const activeCutoff = now - config.activeWindowMinutes * 60 * 1000;
   const recentCutoff = now - config.recentWindowMinutes * 60 * 1000;
-  const sessionCutoff = now - config.sessionTtlMinutes * 60 * 1000;
+  const allCutoff = now - ALL_SESSIONS_WINDOW_MINUTES * 60 * 1000;
   const abandonedRetentionMs = config.abandonedRetentionHours * 60 * 60 * 1000;
   const abandonedCutoff = now - abandonedRetentionMs;
 
@@ -223,9 +226,12 @@ async function listSessions(filter) {
   } else if (filter === 'abandoned') {
     sql += ` AND s.is_abandoned = 1 AND s.abandoned_at >= ${ph()}`;
     params.push(abandonedCutoff);
+  } else if (filter === 'all') {
+    sql += ` AND s.last_seen >= ${ph()}`;
+    params.push(allCutoff);
   } else {
     sql += ` AND s.last_seen >= ${ph()}`;
-    params.push(sessionCutoff);
+    params.push(now - config.sessionTtlMinutes * 60 * 1000);
   }
 
   sql += ' ORDER BY s.last_seen DESC';

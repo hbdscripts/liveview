@@ -46,6 +46,10 @@ Set `DASHBOARD_SECRET` in `.env` (or Railway Variables) to protect the dashboard
 **Restrict to your store’s admin only:** Set `ALLOWED_ADMIN_REFERER_PREFIX` to your store’s admin URL, e.g. `https://admin.shopify.com/store/943925-c1`. Then the dashboard is allowed without password only when the request Referer is that URL (or a path under it). Any other admin or direct visit must use the dashboard secret. Leave empty to allow any `admin.shopify.com` or `*.myshopify.com/admin`.
 
 **Login with Google / Login with Shopify:** When the referer is not your store admin URL, the splash shows Sign in with Google (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, optionally ALLOWED_GOOGLE_EMAILS; add redirect .../auth/google/callback in Google Cloud Console), Sign in with Shopify (set ALLOWED_SHOP_DOMAIN, add .../auth/shopify-login/callback in Shopify app), and Sign in with secret if DASHBOARD_SECRET is set. Why the app was not loading inside Shopify: it opens in an iframe; the server used to 302 to OAuth so the iframe tried to load OAuth inside the frame; Shopify blocks embedding so the browser showed "refused to connect." The fix is to return HTML that sets window.top.location.href to the auth URL so the whole tab goes to OAuth; after auth the app loads in the iframe. “Login with Shopify,”
+## Session / cleanup
+
+The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default 60). The dashboard tab **"All (60 min)"** always queries the last 60 minutes. For that tab to show full data, set `SESSION_TTL_MINUTES=60` or higher in Railway (or leave unset to use the default). If you set it lower (e.g. 15), older sessions are purged and "All (60 min)" will only show whatever remains in the DB.
+
 ## Sentry (optional)
 
 Set `SENTRY_DSN` in `.env` (or Railway Variables) to send server errors to Sentry. Leave empty to disable. See [docs/SENTRY_SETUP.md](../docs/SENTRY_SETUP.md) for full walkthrough. In this project, Cursor agents have access to Sentry; when asked to "check Sentry" or "look at errors", use that access to query issues and fix causes.
