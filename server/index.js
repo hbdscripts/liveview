@@ -31,6 +31,12 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// robots.txt – public so crawlers see noindex/Disallow without hitting dashboard auth
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
 // Log every request (so we can see in Railway logs if the request reached the app)
 app.use((req, res, next) => {
   console.log('[Request]', req.method, req.path);
@@ -69,12 +75,13 @@ app.get('/auth/google/callback', oauthLogin.handleGoogleCallback);
 app.get('/auth/shopify-login', oauthLogin.handleShopifyLoginRedirect);
 app.get('/auth/shopify-login/callback', oauthLogin.handleShopifyLoginCallback);
 
-// Allow embedding in Shopify admin (fixes "admin.shopify.com refused to connect")
+// Allow embedding in Shopify admin (fixes "admin.shopify.com refused to connect"); keep private from search/AI
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "frame-ancestors https://admin.shopify.com https://*.myshopify.com 'self'"
   );
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   next();
 });
 
