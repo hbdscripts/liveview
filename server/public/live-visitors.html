@@ -76,7 +76,7 @@
 .live-view-header .table-title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
 .live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
 .live-view-online .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.live-view-online strong { color: var(--accent); }
+.live-view-online strong { color: var(--accent); font-size: 20px; }
 .dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
@@ -356,16 +356,14 @@
       var path = (s.first_path != null ? s.first_path : s.last_path || '').trim();
       var productHandle = s.first_product_handle != null ? s.first_product_handle : s.last_product_handle;
       if (path && !path.startsWith('/')) path = '/' + path;
+      if (!path && productHandle) path = '/products/' + (productHandle || '');
       var fullUrl = base && path ? base + path : '';
-      var label = '';
-      if (productHandle) label = 'Viewed ' + escapeHtml(productHandle);
-      else if (path) label = 'Viewed page ' + escapeHtml(path);
-      else return '\u2014';
+      var label = path ? escapeHtml(path) : '\u2014';
       if (fullUrl) {
         var thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
         return '<div class="last-action-cell"><img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"><a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a></div>';
       }
-      return escapeHtml(label);
+      return label === '\u2014' ? label : escapeHtml(path || '');
     }
 
     function formatMoney(amount, currencyCode) {
@@ -597,13 +595,24 @@
         .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; renderStats({}); });
     }
 
+    function sessionIdsEqual(a, b) {
+      if (!a && !b) return true;
+      if (!a || !b || a.length !== b.length) return false;
+      for (var i = 0; i < a.length; i++) if (a[i].session_id !== b[i].session_id) return false;
+      return true;
+    }
+
     function fetchSessions() {
       fetch(API + '/api/sessions?filter=' + filter)
         .then(r => r.json())
         .then(data => {
-          sessions = data.sessions || [];
-          currentPage = 1;
-          renderTable();
+          var next = data.sessions || [];
+          var listChanged = !sessionIdsEqual(sessions, next);
+          sessions = next;
+          if (listChanged) {
+            currentPage = 1;
+            renderTable();
+          }
           updateKpis();
         })
         .catch(() => { sessions = []; currentPage = 1; renderTable(); });
@@ -768,10 +777,14 @@
         const msg = JSON.parse(e.data);
         if (msg.type === 'session_update' && msg.session) {
           const idx = sessions.findIndex(s => s.session_id === msg.session.session_id);
-          if (idx >= 0) sessions[idx] = { ...sessions[idx], ...msg.session };
-          else sessions.unshift(msg.session);
-          renderTable();
-          updateKpis();
+          if (idx >= 0) {
+            sessions[idx] = { ...sessions[idx], ...msg.session };
+            updateKpis();
+          } else {
+            sessions.unshift(msg.session);
+            renderTable();
+            updateKpis();
+          }
         }
       } catch (_) {}
     };
