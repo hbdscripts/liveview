@@ -7,7 +7,7 @@ const store = require('../store');
 
 function list(req, res, next) {
   const filter = req.query.filter || 'active';
-  const allowed = ['today', 'active', 'recent', 'abandoned', 'all'];
+  const allowed = ['today', 'active', 'recent', 'abandoned', 'converted', 'all'];
   if (!allowed.includes(filter)) {
     return res.status(400).json({ error: 'Invalid filter' });
   }

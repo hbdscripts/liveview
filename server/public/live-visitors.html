@@ -50,14 +50,20 @@
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
     th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
     th { background: #f9fafb; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
-    th:first-child, td:first-child { width: 48px; min-width: 48px; padding-left: 0.75rem; }
+    th:first-child, td:first-child { min-width: 120px; padding-left: 0.75rem; }
     tr:hover { background: #f9fafb; }
     tr.returning { background: rgba(0, 128, 96, 0.06); }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
-    .sale-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 700; font-size: 1rem; }
+    .sale-icon { display: inline-flex; align-items: center; justify-content: center; color: #008060; font-weight: 700; font-size: 1.1rem; }
     .sale-icon svg { width: 1em; height: 1em; }
+    .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .time-filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; cursor: pointer; }
+    .time-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    tr:nth-child(even) { background: #fafbfc; }
+    tr:nth-child(even):hover { background: #f1f3f4; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; }
     .badge.new { background: #008060; color: #fff; }
     .badge.returning { background: #5c6ac4; color: #fff; }
@@ -120,26 +126,31 @@
   </div>
 
   <div class="tabs">
+    <button type="button" data-filter="active">Online</button>
+    <button type="button" data-filter="recent" class="active">Recently Online</button>
+    <button type="button" data-filter="converted">Recent Orders</button>
+    <button type="button" data-filter="abandoned">Abandoned Carts</button>
     <button type="button" data-filter="today">Today (24h)</button>
-    <button type="button" data-filter="active" class="active">Active (5 min)</button>
-    <button type="button" data-filter="recent">Recent (15 min)</button>
-    <button type="button" data-filter="abandoned">Abandoned (24h)</button>
-    <button type="button" data-filter="all">All (60 min)</button>
+    <button type="button" data-filter="all">Last hour</button>
+  </div>
+
+  <div class="table-title" id="table-title">Recently Online</div>
+  <div class="time-filters">
+    <button type="button" id="time-hour" data-time="all">last hour</button>
+    <button type="button" id="time-24h" data-time="today" class="active">last 24 hours</button>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>Flag</th>
-        <th>Visitor</th>
-        <th>Page / Product</th>
-        <th>Time on site</th>
-        <th>Cart</th>
-        <th>Sale</th>
-        <th>Status</th>
+        <th>From</th>
         <th>Device</th>
-        <th>Network</th>
-        <th>Last seen</th>
+        <th>History</th>
+        <th>Arrived</th>
+        <th>Source</th>
+        <th>Last action</th>
+        <th>Cart value</th>
+        <th>£</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -173,7 +184,7 @@
           .catch(function () {});
       }
     })();
-    let filter = 'active';
+    let filter = 'recent';
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
@@ -202,36 +213,54 @@
       return s + 's';
     }
 
+    var countryNames = { GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia', DE: 'Germany', FR: 'France', IE: 'Ireland', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', IN: 'India', JP: 'Japan', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', TH: 'Thailand', NZ: 'New Zealand', XX: 'Unknown' };
+
+    function countryLabel(code) {
+      if (!code || code === 'XX') return 'Unknown';
+      var c = (code || 'XX').toUpperCase().slice(0, 2);
+      return countryNames[c] || c;
+    }
+
     function flagImg(code) {
       if (!code || code === 'XX') return '<img class="flag-img" src="https://flagcdn.com/w40/xx.png" alt="?" loading="lazy">';
       const c = (code || 'xx').toLowerCase().slice(0, 2);
       return '<img class="flag-img" src="https://flagcdn.com/w40/' + escapeHtml(c) + '.png" alt="' + escapeHtml(code) + '" loading="lazy">';
     }
 
+    function arrivedAgo(startedAt) {
+      if (!startedAt) return '—';
+      var s = Math.floor((Date.now() - startedAt) / 1000);
+      if (s < 60) return s + ' secs ago';
+      if (s < 3600) return Math.floor(s / 60) + ' mins ago';
+      if (s < 86400) return Math.floor(s / 3600) + ' hrs ago';
+      return Math.floor(s / 86400) + ' days ago';
+    }
+
+    function lastAction(s) {
+      if (s.is_checking_out) return 'In checkout process';
+      if (s.last_product_handle) return 'Viewed ' + escapeHtml(s.last_product_handle);
+      if (s.last_path) return 'Viewed page ' + escapeHtml(s.last_path);
+      return '—';
+    }
+
     function renderRow(s) {
       const countryCode = s.country_code || 'XX';
-      const visitorBadge = s.is_returning ? 'Returning' : 'New';
-      const pageProduct = s.last_product_handle ? '/products/' + s.last_product_handle : (s.last_path || '—');
-      const duration = formatDuration(s.started_at);
-      const statusChips = [];
-      if (s.is_checking_out) statusChips.push('<span class="chip checking-out">Checking out</span>');
-      if (s.is_abandoned) statusChips.push('<span class="chip abandoned">Abandoned</span>');
-      const lastSeen = formatRelative(s.last_seen) + ' · ' + formatTs(s.last_seen);
+      const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
+      const visitsLabel = visits === 1 ? '1 visit' : visits + ' visits';
+      const cartVal = s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '—';
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       const saleIcon = s.has_purchased
-        ? '<span class="sale-icon" title="Purchased"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><text x="12" y="18" font-size="16" text-anchor="middle" fill="currentColor" font-weight="700">£</text></svg></span>'
+        ? '<span class="sale-icon" title="Converted"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><text x="12" y="18" font-size="16" text-anchor="middle" fill="#008060" font-weight="700">£</text></svg></span>'
         : '—';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''}" data-session-id="${s.session_id}">
-        <td class="flag-cell">${flagImg(countryCode)}</td>
-        <td><span class="badge ${s.is_returning ? 'returning' : 'new'}">${visitorBadge}</span></td>
-        <td>${escapeHtml(pageProduct)}</td>
-        <td data-started="${s.started_at}">${duration}</td>
-        <td>${s.cart_qty ?? 0}</td>
+        <td class="flag-cell">${flagImg(countryCode)} ${escapeHtml(countryLabel(countryCode))}</td>
+        <td>${escapeHtml(s.device || '—')}</td>
+        <td>${visitsLabel}</td>
+        <td data-started="${s.started_at}">${arrivedAgo(s.started_at)}</td>
+        <td>—</td>
+        <td>${lastAction(s)}</td>
+        <td>${cartVal}</td>
         <td>${saleIcon}</td>
-        <td>${statusChips.join(' ') || '—'}</td>
-        <td>${s.device || '—'}</td>
-        <td>${s.network_speed || '—'}</td>
-        <td>${lastSeen}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
     }
@@ -247,7 +276,7 @@
       const tbody = document.getElementById('table-body');
       const showConsent = document.querySelector('.consent-col');
       if (sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="empty">No sessions in this view.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
         return;
       }
       tbody.innerHTML = sessions.map(renderRow).join('');
@@ -260,10 +289,16 @@
       tickTimeOnSite();
     }
 
+    var tableTitles = { active: 'Online', recent: 'Recently Online', converted: 'Recent Orders', abandoned: 'Abandoned Carts', today: 'Today (24h)', all: 'Last hour' };
+    function setTableTitle() {
+      var el = document.getElementById('table-title');
+      if (el) el.textContent = tableTitles[filter] || 'Sessions';
+    }
+
     function tickTimeOnSite() {
       document.querySelectorAll('#table-body td[data-started]').forEach(td => {
         const started = parseInt(td.dataset.started, 10);
-        td.textContent = formatDuration(started);
+        td.textContent = arrivedAgo(started);
       });
     }
 
@@ -297,14 +332,26 @@
     }
 
     function fetchSessions() {
+      setTableTitle();
       fetch(API + '/api/sessions?filter=' + filter)
         .then(r => r.json())
         .then(data => {
           sessions = data.sessions || [];
           renderTable();
           updateKpis();
+          updateTabCounts();
         })
         .catch(() => { sessions = []; renderTable(); });
+    }
+
+    function updateTabCounts() {
+      var n = sessions.length;
+      var suffix = n > 99 ? ' 99+' : (n > 0 ? ' ' + n : '');
+      document.querySelectorAll('.tabs button[data-filter]').forEach(function(btn) {
+        var f = btn.dataset.filter;
+        var label = { active: 'Online', recent: 'Recently Online', converted: 'Recent Orders', abandoned: 'Abandoned Carts', today: 'Today (24h)', all: 'Last hour' }[f] || f;
+        btn.textContent = label + (btn.classList.contains('active') ? suffix : '');
+      });
     }
 
     function updateKpis() {
@@ -364,13 +411,30 @@
       });
     })();
 
-    document.querySelectorAll('.tabs button').forEach(btn => {
+    document.querySelectorAll('.tabs button[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
         filter = btn.dataset.filter;
-        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabs button[data-filter]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        document.getElementById('time-hour').classList.toggle('active', filter === 'all');
+        document.getElementById('time-24h').classList.toggle('active', filter === 'today');
         fetchSessions();
       });
+    });
+
+    document.getElementById('time-hour').addEventListener('click', function() {
+      filter = 'all';
+      document.querySelectorAll('.tabs button[data-filter]').forEach(b => { b.classList.remove('active'); if (b.dataset.filter === 'all') b.classList.add('active'); });
+      this.classList.add('active');
+      document.getElementById('time-24h').classList.remove('active');
+      fetchSessions();
+    });
+    document.getElementById('time-24h').addEventListener('click', function() {
+      filter = 'today';
+      document.querySelectorAll('.tabs button[data-filter]').forEach(b => { b.classList.remove('active'); if (b.dataset.filter === 'today') b.classList.add('active'); });
+      this.classList.add('active');
+      document.getElementById('time-hour').classList.remove('active');
+      fetchSessions();
     });
 
     document.getElementById('tracking-btn').addEventListener('click', () => {

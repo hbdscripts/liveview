@@ -222,6 +222,9 @@ async function listSessions(filter) {
   if (filter === 'today') {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(todayCutoff);
+  } else if (filter === 'converted') {
+    sql += ` AND s.has_purchased = 1 AND s.last_seen >= ${ph()}`;
+    params.push(todayCutoff);
   } else if (filter === 'active') {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(activeCutoff);
