@@ -107,7 +107,7 @@ async function handleCallback(req, res) {
 
 /** GET / - App URL: if shop + hmac + timestamp (no code), redirect to Shopify authorize; else go to dashboard */
 function handleAppUrl(req, res, next) {
-  const { shop, hmac, timestamp, code } = req.query;
+  const { shop, hmac, timestamp, code, host } = req.query;
   if (!apiKey || !apiSecret || !appUrl) {
     return res.redirect(302, '/app/live-visitors');
   }
@@ -118,6 +118,16 @@ function handleAppUrl(req, res, next) {
     const state = crypto.randomBytes(16).toString('hex');
     const redirectUri = getRedirectUri();
     const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
+
+    // When loaded inside Shopify admin iframe, do NOT 302 to OAuth (OAuth page blocks framing → "refused to connect").
+    // Return HTML that redirects the top window so the whole tab goes to OAuth, then comes back into the iframe.
+    if (host && typeof host === 'string' && host.length > 0) {
+      const escapedAuthUrl = authUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href = "${escapedAuthUrl}";</script></body></html>`
+      );
+    }
     return res.redirect(302, authUrl);
   }
   next();

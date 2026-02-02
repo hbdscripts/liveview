@@ -4,8 +4,12 @@
 api_version = "2024-01"
 
 [[extensions]]
+
+uid = "d2d15754-01f5-8185-f093-6314927881869349fe24"
+
 type = "web_pixel_extension"
 name = "Live Visitors"
+handle = "live-visitors-pixel"
 runtime_context = "strict"
 
 # Run without requiring visitor consent (strictly necessary / essential)
@@ -15,15 +19,15 @@ marketing = false
 preferences = false
 sale_of_data = "disabled"
 
-[settings]
+[extensions.settings]
 type = "object"
 
-[settings.fields.ingestUrl]
+[extensions.settings.fields.ingestUrl]
 name = "Ingest URL"
 description = "Full URL to POST events (e.g. https://your-app.com/api/ingest)"
 type = "single_line_text_field"
 
-[settings.fields.ingestSecret]
+[extensions.settings.fields.ingestSecret]
 name = "Ingest Secret"
 description = "Secret for X-Ingest-Secret header (same as INGEST_SECRET in .env)"
 type = "single_line_text_field"

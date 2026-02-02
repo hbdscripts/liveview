@@ -6,5 +6,6 @@ alwaysApply: true
 
 # Sentry and access in this project
 
-- **Sentry**: In this project you have access to Sentry. When the user asks to "check Sentry", "look at errors", "see what's failing", or similar, use that access to query Sentry (e.g. issues, recent errors, stack traces) and report back or fix the cause.
-- **Config**: Assume Sentry is already configured for this app (SENTRY_DSN in env). Do not ask the user to "paste the error from Sentry" when they asked you to check Sentry; use your access instead.
+- **When the user says "Sentry"** (e.g. "anything in Sentry?", "check Sentry", "look at errors"): always use the **user-sentry** MCP to query Sentry. Do **not** respond that Sentry is "not available" or that you cannot access it — you have access via MCP.
+- **How to query**: Use MCP server **user-sentry**. Useful tools: `find_organizations`, `find_projects`, `search_issues`, `get_issue_details`. For this app the Sentry project is **Node** in organization **lee-cooper**; use **regionUrl** `https://de.sentry.io` when the tool accepts it.
+- **Config**: Sentry is configured in this app: `server/config.js` (sentryDsn), `.env.example` (SENTRY_DSN), `config/APP_CONFIG.md`. Assume SENTRY_DSN is set in the deployment environment. Do not ask the user to paste errors from Sentry; use MCP to fetch issues and details.
