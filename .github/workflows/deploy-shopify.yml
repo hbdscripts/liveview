@@ -1,6 +1,7 @@
 # Deploy Web Pixel (and app config) to Shopify on push to main.
-# Backend deploys via Railway; this workflow deploys the pixel so both are always in sync.
-# Requires: GitHub secret SHOPIFY_CLI_PARTNERS_TOKEN (from Partner Dashboard → Settings → CLI token → Manage tokens → Generate token)
+# Only runs if your app is in a PARTNER organization (partners.shopify.com).
+# If your app was created in Developers / Dev Dashboard (dev.shopify.com), this job is skipped
+# and you deploy the pixel manually with: npm run deploy
 # https://shopify.dev/docs/apps/launch/deployment/deploy-in-ci-cd-pipeline
 
 name: Deploy to Shopify
@@ -13,6 +14,8 @@ jobs:
   deploy-shopify:
     name: Deploy pixel to Shopify
     runs-on: ubuntu-latest
+    # Skip if app is in Dev Dashboard (Developers). Set this secret to 'true' only for Partner-org apps.
+    if: secrets.DEPLOY_PIXEL_VIA_CI == 'true'
     steps:
       - uses: actions/checkout@v4
 
