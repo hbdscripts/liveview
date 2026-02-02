@@ -4,6 +4,9 @@
 # the pixel manually with: npm run deploy
 # https://shopify.dev/docs/apps/launch/deployment/deploy-in-ci-cd-pipeline
 #
+# If you see "job was not acquired by Runner" or "Internal server error": re-run the
+# workflow from the Actions tab, or deploy the pixel locally with: npm run deploy
+#
 # Repo secrets used: DEPLOY_PIXEL_VIA_CI, SHOPIFY_CLI_PARTNERS_TOKEN, SHOPIFY_API_KEY.
 
 name: Deploy to Shopify
@@ -15,7 +18,7 @@ on:
 jobs:
   deploy-shopify:
     name: Deploy pixel to Shopify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Check if deploy is enabled
         id: check
@@ -52,4 +55,13 @@ jobs:
         env:
           SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets['SHOPIFY_CLI_PARTNERS_TOKEN'] }}
           SHOPIFY_API_KEY: ${{ secrets['SHOPIFY_API_KEY'] }}
-        run: shopify app deploy --allow-updates --source-control-url "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+        run: |
+          for i in 1 2 3; do
+            if shopify app deploy --allow-updates --source-control-url "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"; then
+              exit 0
+            fi
+            echo "Deploy attempt $i failed, retrying in 30s..."
+            sleep 30
+          done
+          echo "Deploy failed after 3 attempts. Deploy manually with: npm run deploy"
+          exit 1

@@ -78,3 +78,11 @@ If your app lives in a **Partner organization**, you can use automatic deploy on
 4. If `shopify.app.toml` has empty `client_id`, add secret `SHOPIFY_API_KEY` with your app’s Client ID.
 
 Then every push to `main` would run the “Deploy to Shopify” workflow. For this project (developer app), leave `DEPLOY_PIXEL_VIA_CI` unset and deploy the pixel manually.
+
+### "Deploy to Shopify" workflow errors
+
+- **"The job was not acquired by Runner of type hosted even after multiple attempts"**  
+  GitHub could not assign a hosted runner (capacity/queue). **Fix:** Re-run the workflow from the repo **Actions** tab (Re-run all jobs), or wait and push again. If it keeps failing, deploy the pixel locally: `npm run deploy`.
+
+- **"Internal server error" (Correlation ID: ...)**  
+  Can be from GitHub (runner allocation) or from Shopify's API during `shopify app deploy`. **Fix:** Re-run the workflow once or twice. The workflow now retries the deploy step up to 3 times with a 30s delay. If it still fails, deploy locally: `npm run deploy`.
