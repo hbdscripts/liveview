@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/assets/favicon.png" />
   <title>Liveview</title>
   <style>
-    :root { --bg: #f1f5f9; --card: #fff; --text: #1e293b; --muted: #64748b; --accent: #0d9488; --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,.06); --radius: 10px; }
+    :root { --bg: #f1f5f9; --card: #fff; --text: #1e293b; --muted: #64748b; --accent: #0d9488; --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,.06); --radius: 3px; }
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
     .main { padding: 1.5rem; max-width: 1440px; margin: 0 auto; }
@@ -21,16 +21,17 @@
     .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .stats-breakdown span { display: inline-block; }
     .stats-divider { height: 1px; background: var(--border); margin: 0.6rem 0; }
-    .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 0.8125rem; }
+    .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 3px; background: #fff; color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
     .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     .by-country-table th, .by-country-table td { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
     .by-country-table th { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
-    .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; }
+    .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; }
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: 0.875rem; }
-    .aov-list li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 0.5rem; }
+    .aov-list li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
     .kpis { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
     .kpi { background: var(--card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
     .kpi strong { display: block; font-size: 1.25rem; font-weight: 700; color: var(--accent); }
@@ -44,46 +45,51 @@
     tr.converted { background: #ebf5f4; }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
-    .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
+    .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
     .purchase-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.25rem; vertical-align: middle; }
     .purchase-icon svg { width: 100%; height: 100%; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
     .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
     .last-action-cell a:hover { text-decoration: underline; }
-    .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--border); }
+    .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: var(--border); }
     .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .time-filters { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; cursor: pointer; }
+    .time-filters button { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 3px; cursor: pointer; }
     .time-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     tr:nth-child(even) { background: #fafbfc; }
     tr:nth-child(even):hover { background: #f1f5f9; }
-    .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; }
+    .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: #fff; }
     .badge.returning { background: #6366f1; color: #fff; }
-    .chip { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.7rem; margin-right: 0.25rem; }
+    .chip { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.7rem; margin-right: 0.25rem; }
     .chip.checking-out { background: var(--accent); color: #fff; }
     .chip.abandoned { background: #dc2626; color: #fff; }
     .side-panel { position: fixed; top: 0; right: 0; width: 400px; max-width: 100%; height: 100%; background: var(--card); border-left: 1px solid var(--border); box-shadow: -4px 0 24px rgba(0,0,0,.08); overflow-y: auto; z-index: 10; padding: 1.25rem; }
     .side-panel h3 { margin: 0 0 0.5rem; }
     .side-panel .close { float: right; cursor: pointer; font-size: 1.2rem; color: var(--muted); }
     .side-panel .meta { font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0; }
-    .side-panel-sale { margin: 0.75rem 0; padding: 0.75rem; background: rgba(13, 148, 136, 0.08); border-radius: 8px; border-left: 3px solid var(--accent); color: var(--text); }
+    .side-panel-sale { margin: 0.75rem 0; padding: 0.75rem; background: rgba(13, 148, 136, 0.08); border-radius: 3px; border-left: 3px solid var(--accent); color: var(--text); }
     .side-panel-sale strong { color: var(--accent); }
     .side-panel ul.events { list-style: none; padding: 0; margin: 0.5rem 0; font-size: 0.85rem; }
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border); margin: 0 auto 1.5rem auto; max-width: 1440px; flex-wrap: wrap; }
+    .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; }
     .dashboard-top-bar-left { display: flex; align-items: center; }
     .dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; }
     .dashboard-top-bar-right { display: flex; align-items: center; }
-    .dashboard-top-bar select { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: #fff; font-size: 0.875rem; color: var(--text); }
-    .dashboard-top-bar select option:disabled { color: var(--muted); }
-    #audio-mute-btn { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 0.875rem; color: var(--text); }
-    #audio-mute-btn:hover { border-color: var(--accent); background: #f8fafc; }
-    #audio-mute-btn.muted { opacity: 0.7; color: var(--muted); }
-    .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; border-radius: var(--radius); border: 1px solid var(--border); }
-    .table-scroll-wrap table { margin: 0; min-width: 720px; }
+.dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
+.dashboard-top-bar select option:disabled { color: var(--muted); }
+#audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
+#audio-mute-btn:hover { color: var(--accent); }
+#audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
+#audio-mute-btn svg { width: 25px; height: 25px; }
+.table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.table-scroll-wrap table { margin: 0; min-width: 720px; }
+.table-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0 1rem; font-size: 0.875rem; color: var(--muted); }
+.table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
+.table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: #f8fafc; }
+.table-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     @media (max-width: 768px) {
       .dashboard-top-bar { padding-left: 0.75rem; padding-right: 0.75rem; }
       .main { padding: 0.75rem; }
@@ -96,7 +102,7 @@
       .kpi { padding: 0.75rem 1rem; min-width: calc(50% - 0.5rem); flex: 1 1 calc(50% - 0.5rem); }
       .kpi strong { font-size: 1.1rem; }
       .time-filters { margin-bottom: 0.5rem; }
-      .time-filters button { padding: 0.5rem 0.75rem; min-height: 44px; font-size: 0.8125rem; }
+      .time-filters button { padding: 0.5rem 0.75rem; min-height: 44px; font-size: 0.8125rem; border-radius: 3px; }
       .table-title { font-size: 0.9375rem; margin-bottom: 0.35rem; }
       .table-scroll-wrap { margin-left: -0.75rem; margin-right: -0.75rem; border-radius: 0; border-left: none; border-right: none; }
       .side-panel { width: 100%; padding: 1rem; }
@@ -127,7 +133,10 @@
     </div>
     <div class="dashboard-top-bar-center" id="next-update-msg">Next update in -- s</div>
     <div class="dashboard-top-bar-right">
-      <button type="button" id="audio-mute-btn" title="Toggle sale sound">Sound on</button>
+      <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
+        <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
+        <svg class="sound-icon-off" style="display:none" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
+      </button>
     </div>
   </div>
   <main class="main">
@@ -139,8 +148,8 @@
         </div>
         <div class="stats-main" id="sales-today"></div>
         <div class="stats-breakdown">
-          <span>Last 6 hours: <strong id="sales-6h"></strong></span>
-          <span>12hr: <strong id="sales-12h"></strong></span>
+          <span>3 hours: <strong id="sales-3h"></strong></span>
+          <span>6 hours: <strong id="sales-6h"></strong></span>
         </div>
       </div>
       <div class="stats-divider"></div>
@@ -150,8 +159,8 @@
         </div>
         <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
-          <span>Last 3 hours: <strong id="conversion-3h"></strong></span>
-          <span>Last 6 hours: <strong id="conversion-6h"></strong></span>
+          <span>3 hours: <strong id="conversion-3h"></strong></span>
+          <span>6 hours: <strong id="conversion-6h"></strong></span>
         </div>
       </div>
     </div>
@@ -162,10 +171,8 @@
       <div class="stats-section">
         <div class="stats-main" id="aov-today"></div>
         <div class="stats-breakdown">
-          <span>Last 3 hours: <strong id="aov-3h"></strong></span>
-          <span>Last 6 hours: <strong id="aov-6h"></strong></span>
-          <span>12hr: <strong id="aov-12h"></strong></span>
-          <span>24hr: <strong id="aov-24h"></strong></span>
+          <span>3 hours: <strong id="aov-3h"></strong></span>
+          <span>6 hours: <strong id="aov-6h"></strong></span>
         </div>
       </div>
       <div class="country-table-wrap" id="aov-list-wrap">
@@ -223,6 +230,11 @@
     <tbody id="table-body"></tbody>
   </table>
   </div>
+  <div class="table-pagination" id="table-pagination">
+    <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
+    <span id="pagination-label">Page 1 of 1</span>
+    <button type="button" id="pagination-next" aria-label="Next page">Next</button>
+  </div>
 
   <div id="side-panel" class="side-panel" style="display:none">
     <span class="close" id="side-close">&times;</span>
@@ -239,6 +251,7 @@
     const STATS_INTERVAL_MS = 15000;
     fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
+    const ROWS_PER_PAGE = 40;
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
@@ -246,6 +259,7 @@
     let lastConvertedCountToday = 0;
     let saleAudio = null;
     let saleMuted = false;
+    let currentPage = 1;
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -400,18 +414,27 @@
 
     function renderTable() {
       const tbody = document.getElementById('table-body');
-      const showConsent = document.querySelector('.consent-col');
+      const totalPages = Math.max(1, Math.ceil(sessions.length / ROWS_PER_PAGE));
+      currentPage = Math.min(Math.max(1, currentPage), totalPages);
+      const start = (currentPage - 1) * ROWS_PER_PAGE;
+      const pageSessions = sessions.slice(start, start + ROWS_PER_PAGE);
       if (sessions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty">No sessions in this view.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = sessions.map(renderRow).join('');
-      document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
-        tr.addEventListener('click', () => {
-          selectedSessionId = tr.dataset.sessionId;
-          openSidePanel(selectedSessionId);
+      } else {
+        tbody.innerHTML = pageSessions.map(renderRow).join('');
+        document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
+          tr.addEventListener('click', () => {
+            selectedSessionId = tr.dataset.sessionId;
+            openSidePanel(selectedSessionId);
+          });
         });
-      });
+      }
+      const prevBtn = document.getElementById('pagination-prev');
+      const nextBtn = document.getElementById('pagination-next');
+      const labelEl = document.getElementById('pagination-label');
+      if (prevBtn) { prevBtn.disabled = currentPage <= 1; }
+      if (nextBtn) { nextBtn.disabled = currentPage >= totalPages; }
+      if (labelEl) labelEl.textContent = 'Page ' + currentPage + ' of ' + totalPages;
       tickTimeOnSite();
     }
 
@@ -433,8 +456,10 @@
       const sales = data.sales || {};
       document.getElementById('sales-today').textContent = formatRevenue(sales[dateRange] != null ? sales[dateRange] : 0);
       const rolling = sales.rolling || {};
-      document.getElementById('sales-6h').textContent = formatRevenue(rolling['6h']);
-      document.getElementById('sales-12h').textContent = formatRevenue(rolling['12h']);
+      const sales3 = document.getElementById('sales-3h');
+      const sales6 = document.getElementById('sales-6h');
+      if (sales3) sales3.textContent = formatRevenue(rolling['3h']);
+      if (sales6) sales6.textContent = formatRevenue(rolling['6h']);
       const revEl = document.getElementById('kpi-revenue-today');
       if (revEl) revEl.textContent = formatRevenue(sales.today);
     }
@@ -454,12 +479,8 @@
       const rolling = aov.rolling || {};
       const aov3 = document.getElementById('aov-3h');
       const aov6 = document.getElementById('aov-6h');
-      const aov12 = document.getElementById('aov-12h');
-      const aov24 = document.getElementById('aov-24h');
       if (aov3) aov3.textContent = rolling['3h'] != null ? formatRevenue(rolling['3h']) : '';
       if (aov6) aov6.textContent = rolling['6h'] != null ? formatRevenue(rolling['6h']) : '';
-      if (aov12) aov12.textContent = rolling['12h'] != null ? formatRevenue(rolling['12h']) : '';
-      if (aov24) aov24.textContent = rolling['24h'] != null ? formatRevenue(rolling['24h']) : '';
       const rows = (data.country || {})[dateRange] || [];
       const ul = document.getElementById('aov-by-country');
       if (!ul) return;
@@ -468,8 +489,10 @@
         return;
       }
       ul.innerHTML = rows.filter(r => r.aov != null && r.aov > 0).map(r => {
+        const code = (r.country_code || 'xx').toLowerCase().slice(0, 2);
         const name = countryLabel((r.country_code || 'XX').toUpperCase());
-        return '<li><span>' + escapeHtml(name) + '</span><strong>' + formatRevenue(r.aov) + '</strong></li>';
+        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + code + '.png" alt="" loading="lazy">';
+        return '<li><span>' + flag + ' ' + escapeHtml(name) + '</span><strong>' + formatRevenue(r.aov) + '</strong></li>';
       }).join('');
     }
 
@@ -547,10 +570,11 @@
         .then(r => r.json())
         .then(data => {
           sessions = data.sessions || [];
+          currentPage = 1;
           renderTable();
           updateKpis();
         })
-        .catch(() => { sessions = []; renderTable(); });
+        .catch(() => { sessions = []; currentPage = 1; renderTable(); });
     }
 
     function updateKpis() {
@@ -613,6 +637,14 @@
       fetchSessions();
     });
 
+    document.getElementById('pagination-prev').addEventListener('click', function() {
+      if (currentPage > 1) { currentPage--; renderTable(); }
+    });
+    document.getElementById('pagination-next').addEventListener('click', function() {
+      const totalPages = Math.max(1, Math.ceil(sessions.length / ROWS_PER_PAGE));
+      if (currentPage < totalPages) { currentPage++; renderTable(); }
+    });
+
     const trackingBtn = document.getElementById('tracking-btn');
     if (trackingBtn) {
       trackingBtn.addEventListener('click', () => {
@@ -659,13 +691,17 @@
       saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';
       saleAudio = new Audio((API || '') + '/assets/cash-register.mp3');
       const muteBtn = document.getElementById('audio-mute-btn');
+      const iconOn = muteBtn && muteBtn.querySelector('.sound-icon-on');
+      const iconOff = muteBtn && muteBtn.querySelector('.sound-icon-off');
       if (muteBtn) {
-        muteBtn.textContent = saleMuted ? 'Muted' : 'Sound on';
+        if (iconOn) iconOn.style.display = saleMuted ? 'none' : 'block';
+        if (iconOff) iconOff.style.display = saleMuted ? 'block' : 'none';
         muteBtn.classList.toggle('muted', saleMuted);
         muteBtn.addEventListener('click', function() {
           saleMuted = !saleMuted;
           sessionStorage.setItem(SALE_MUTED_KEY, String(saleMuted));
-          muteBtn.textContent = saleMuted ? 'Muted' : 'Sound on';
+          if (iconOn) iconOn.style.display = saleMuted ? 'none' : 'block';
+          if (iconOff) iconOff.style.display = saleMuted ? 'block' : 'none';
           muteBtn.classList.toggle('muted', saleMuted);
         });
       }
