@@ -48,7 +48,7 @@ Set `DASHBOARD_SECRET` in `.env` (or Railway Variables) to protect the dashboard
 **Login with Google / Login with Shopify:** When the referer is not your store admin URL, the splash shows Sign in with Google (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, optionally ALLOWED_GOOGLE_EMAILS; add redirect .../auth/google/callback in Google Cloud Console), Sign in with Shopify (set ALLOWED_SHOP_DOMAIN, add .../auth/shopify-login/callback in Shopify app), and Sign in with secret if DASHBOARD_SECRET is set. Why the app was not loading inside Shopify: it opens in an iframe; the server used to 302 to OAuth so the iframe tried to load OAuth inside the frame; Shopify blocks embedding so the browser showed "refused to connect." The fix is to return HTML that sets window.top.location.href to the auth URL so the whole tab goes to OAuth; after auth the app loads in the iframe. “Login with Shopify,”
 ## Session / cleanup
 
-The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default 60). The dashboard tab **"All (60 min)"** always queries the last 60 minutes. For that tab to show full data, set `SESSION_TTL_MINUTES=60` or higher in Railway (or leave unset to use the default). If you set it lower (e.g. 15), older sessions are purged and "All (60 min)" will only show whatever remains in the DB.
+The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default **1440** = 24 hours). So by default, sessions are kept for 24 hours and the **"Today (24h)"** tab at the top shows all of them. Other tabs: **Active (5 min)**, **Recent (15 min)**, **Abandoned (24h)**, **All (60 min)**. If you set `SESSION_TTL_MINUTES` lower (e.g. 60), cleanup purges sooner and "Today (24h)" will only show whatever remains in the DB.
 
 ### Where to set or unset SESSION_TTL_MINUTES in Railway
 
@@ -57,9 +57,9 @@ The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default 60). 
 3. Click the **service** that runs the backend (the one with the deploy from GitHub, not a database-only service).
 4. Go to the **Variables** tab (or **Settings → Variables**).
 5. Find **SESSION_TTL_MINUTES** in the list:
-   - **To use the default (60):** If it’s there, **remove it** (trash/delete the variable). Leave it unset so the app uses 60.
-   - **To force 60:** Add or edit: name `SESSION_TTL_MINUTES`, value `60`.
-   - **To keep 60 min of data:** Don’t set it to less than 60; unset or set to `60` so "All (60 min)" shows full data.
+   - **To use the default (24h = 1440 min):** If it’s there, **remove it** (trash/delete the variable). Leave it unset so the app keeps sessions for 24 hours.
+   - **To keep 24h:** Unset it, or set name `SESSION_TTL_MINUTES`, value `1440`.
+   - **To keep sessions shorter:** Set e.g. `60` for 1 hour; "Today (24h)" will then only show sessions that haven’t been purged yet.
 6. Save. Railway will redeploy when you change variables (or trigger a redeploy from the Deployments tab).
 
 ## Sentry (optional)

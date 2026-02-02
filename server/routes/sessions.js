@@ -1,5 +1,5 @@
 /**
- * GET /api/sessions?filter=active|recent|abandoned|all
+ * GET /api/sessions?filter=today|active|recent|abandoned|all
  * GET /api/sessions/:id/events?limit=20
  */
 
@@ -7,7 +7,7 @@ const store = require('../store');
 
 function list(req, res, next) {
   const filter = req.query.filter || 'active';
-  const allowed = ['active', 'recent', 'abandoned', 'all'];
+  const allowed = ['today', 'active', 'recent', 'abandoned', 'all'];
   if (!allowed.includes(filter)) {
     return res.status(400).json({ error: 'Invalid filter' });
   }

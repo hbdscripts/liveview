@@ -54,7 +54,7 @@ const config = {
   adminTimezone: getEnv('ADMIN_TIMEZONE', 'Europe/London'),
   activeWindowMinutes: getInt('ACTIVE_WINDOW_MINUTES', 5),
   recentWindowMinutes: getInt('RECENT_WINDOW_MINUTES', 15),
-  sessionTtlMinutes: getInt('SESSION_TTL_MINUTES', 60),
+  sessionTtlMinutes: getInt('SESSION_TTL_MINUTES', 24 * 60),
   abandonedWindowMinutes: getInt('ABANDONED_WINDOW_MINUTES', 15),
   abandonedRetentionHours: getInt('ABANDONED_RETENTION_HOURS', 24),
   returningGapMinutes: getInt('RETURNING_GAP_MINUTES', 30),

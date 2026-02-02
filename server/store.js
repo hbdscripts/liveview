@@ -195,12 +195,14 @@ async function insertEvent(sessionId, payload) {
   }
 }
 
-/** "All (60 min)" tab always uses 60 min so it shows more than Recent (15 min). Cleanup uses SESSION_TTL_MINUTES; set >= 60 to keep 60 min of data. */
+/** "Today (24h)" tab: last 24 hours. "All (60 min)" tab: last 60 min. Cleanup uses SESSION_TTL_MINUTES (default 24*60). */
+const TODAY_WINDOW_MINUTES = 24 * 60;
 const ALL_SESSIONS_WINDOW_MINUTES = 60;
 
 async function listSessions(filter) {
   const db = getDb();
   const now = Date.now();
+  const todayCutoff = now - TODAY_WINDOW_MINUTES * 60 * 1000;
   const activeCutoff = now - config.activeWindowMinutes * 60 * 1000;
   const recentCutoff = now - config.recentWindowMinutes * 60 * 1000;
   const allCutoff = now - ALL_SESSIONS_WINDOW_MINUTES * 60 * 1000;
@@ -217,7 +219,10 @@ async function listSessions(filter) {
   let idx = 0;
   const ph = () => (config.dbUrl ? `$${++idx}` : '?');
 
-  if (filter === 'active') {
+  if (filter === 'today') {
+    sql += ` AND s.last_seen >= ${ph()}`;
+    params.push(todayCutoff);
+  } else if (filter === 'active') {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(activeCutoff);
   } else if (filter === 'recent') {
