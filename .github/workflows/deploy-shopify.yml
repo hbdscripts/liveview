@@ -23,7 +23,7 @@ jobs:
       - name: Check if deploy is enabled
         id: check
         env:
-          DEPLOY_FLAG: ${{ secrets.DEPLOY_PIXEL_VIA_CI }}
+          DEPLOY_FLAG: ${{ secrets.DEPLOY_PIXEL_VIA_CI || '' }}
         run: |
           if [ "$DEPLOY_FLAG" = "true" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -53,8 +53,8 @@ jobs:
       - name: Deploy app and extensions to Shopify
         if: steps.check.outputs.skip != 'true'
         env:
-          SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN }}
-          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN || '' }}
+          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY || '' }}
         run: |
           for i in 1 2 3; do
             if shopify app deploy --allow-updates --source-control-url "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"; then
