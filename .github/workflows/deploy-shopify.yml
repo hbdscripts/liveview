@@ -14,24 +14,39 @@ jobs:
   deploy-shopify:
     name: Deploy pixel to Shopify
     runs-on: ubuntu-latest
-    # Skip if app is in Dev Dashboard (Developers). Set this secret to 'true' only for Partner-org apps.
-    if: secrets.DEPLOY_PIXEL_VIA_CI == 'true'
     steps:
+      - name: Check if deploy is enabled
+        id: check
+        env:
+          DEPLOY_FLAG: ${{ secrets.DEPLOY_PIXEL_VIA_CI }}
+        run: |
+          if [ "$DEPLOY_FLAG" = "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping deploy (set DEPLOY_PIXEL_VIA_CI to 'true' for Partner-org apps)"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
 
       - name: Setup Node
+        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
         run: npm ci
 
       - name: Install Shopify CLI
+        if: steps.check.outputs.skip != 'true'
         run: npm install -g @shopify/cli@latest
 
       - name: Deploy app and extensions to Shopify
+        if: steps.check.outputs.skip != 'true'
         env:
           SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN }}
           SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
