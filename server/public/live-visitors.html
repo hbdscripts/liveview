@@ -705,6 +705,20 @@
           muteBtn.classList.toggle('muted', saleMuted);
         });
       }
+      // Test sale sound: add ?cha=ching to the URL. Plays once when sound is on; if autoplay blocked, plays on first click.
+      (function testChaChing() {
+        if (new URLSearchParams(window.location.search).get('cha') !== 'ching' || !saleAudio) return;
+        function playTest() {
+          if (saleMuted) return;
+          saleAudio.currentTime = 0;
+          saleAudio.play().catch(function() {});
+        }
+        playTest();
+        document.body.addEventListener('click', function once() {
+          document.body.removeEventListener('click', once);
+          playTest();
+        }, { once: true });
+      })();
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         dateSelect.value = dateRange;
