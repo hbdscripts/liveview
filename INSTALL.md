@@ -292,6 +292,7 @@ Your store and the pixel need to reach your app at a **public HTTPS URL**. Choos
    - At minimum: `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `INGEST_SECRET`
    - Optionally: `DB_URL` (for Postgres), `PORT` (if required by the host).
    - **Railway:** Add these on the **service** (your app’s Variables tab), not only in Shared Variables. Shared Variables are not always injected into the running service; adding them on the service itself ensures the process sees them.
+   - **Railway “Application failed to respond” (502):** Ensure the **target port** for your public domain matches the port the app listens on. In Railway → your service → **Settings** → **Networking** (or **Public Networking**) → find the domain → set **Target port** to the same as `PORT` (e.g. **8080**), or leave it blank so Railway uses the app’s port. The app listens on `process.env.PORT` (Railway sets this; often 8080). If the domain’s target port is wrong (e.g. 3000), the proxy cannot reach the app.
 4. Set the start command to: `npm run migrate && npm start` (or `node server/index.js`) if the host doesn’t run migrations automatically.
 5. Deploy. The host will give you a URL, e.g. `https://your-app.up.railway.app`.
 6. Use that URL as **SHOPIFY_APP_URL** everywhere (and in Step 2.4 if you hadn’t set it yet). Update `.env` and `shopify.app.toml` if needed.
@@ -352,7 +353,9 @@ If the extension isn’t there yet, you may need to deploy it first (see Step 4.
 
 ### Step 4.3 – Deploy the extension (if you use Shopify CLI)
 
-If you use `shopify app deploy`:
+**Automatic deploy on push:** This repo has a GitHub Action (`.github/workflows/deploy-shopify.yml`) that runs `shopify app deploy` on push to `main`. One-time setup: add GitHub secret `SHOPIFY_CLI_PARTNERS_TOKEN` (from Partner Dashboard → Settings → CLI token → Manage tokens → Generate token). If `shopify.app.toml` has empty `client_id`, add secret `SHOPIFY_API_KEY` with your app's Client ID. Then every push deploys both backend (Railway) and pixel (Shopify).
+
+**Manual deploy.** If you use `shopify app deploy` locally:
 
 1. In the project folder, ensure `shopify.app.toml` has the correct `client_id` and URLs.
 2. Run:
