@@ -1,0 +1,10 @@
+---
+description: Sentry and external access in this project
+globs: 
+alwaysApply: true
+---
+
+# Sentry and access in this project
+
+- **Sentry**: In this project you have access to Sentry. When the user asks to "check Sentry", "look at errors", "see what's failing", or similar, use that access to query Sentry (e.g. issues, recent errors, stack traces) and report back or fix the cause.
+- **Config**: Assume Sentry is already configured for this app (SENTRY_DSN in env). Do not ask the user to "paste the error from Sentry" when they asked you to check Sentry; use your access instead.
