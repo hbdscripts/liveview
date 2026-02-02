@@ -26,15 +26,22 @@ function buildAuthorizeUrl(shop, state, redirectUri) {
   return `https://${shop}/admin/oauth/authorize?client_id=${encodeURIComponent(apiKey)}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
 }
 
-function getRedirectUri() {
+function getRedirectUri(req) {
+  const base = (appUrl && appUrl.startsWith('http')) ? appUrl : null;
+  if (base) return `${base.replace(/\/$/, '')}/auth/callback`;
+  if (req && (req.get('host') || req.get('x-forwarded-host'))) {
+    const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('x-forwarded-host') || req.get('host') || '';
+    return `${proto}://${host}/auth/callback`;
+  }
   return `${appUrl}/auth/callback`;
 }
 
 /** GET /auth/callback or /auth/shopify/callback - Shopify redirects here with code, shop, hmac, state, timestamp [, host] */
 async function handleCallback(req, res) {
   const { code, shop, hmac, state, timestamp, host } = req.query;
-  if (!apiKey || !apiSecret || !appUrl) {
-    res.status(500).send('App not configured (missing Shopify API key/secret or app URL).');
+  if (!apiKey || !apiSecret) {
+    res.status(500).send('App not configured (missing Shopify API key/secret).');
     return;
   }
   if (!code || !shop || !hmac || !timestamp) {
@@ -96,7 +103,16 @@ async function handleCallback(req, res) {
       }
       redirectUrl = `https://${hostDecoded}/apps/${apiKey}/`;
     } else {
-      redirectUrl = `${appUrl}/app/live-visitors`;
+      const base = (appUrl && appUrl.startsWith('http')) ? appUrl.replace(/\/$/, '') : null;
+      if (base) {
+        redirectUrl = `${base}/app/live-visitors`;
+      } else if (req.get('host') || req.get('x-forwarded-host')) {
+        const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+        const h = req.get('x-forwarded-host') || req.get('host') || '';
+        redirectUrl = `${proto}://${h}/app/live-visitors`;
+      } else {
+        redirectUrl = '/app/live-visitors';
+      }
     }
     res.redirect(302, redirectUrl);
   } catch (err) {
@@ -108,7 +124,7 @@ async function handleCallback(req, res) {
 /** GET / - App URL: if shop + hmac + timestamp (no code), redirect to Shopify authorize; else go to dashboard */
 function handleAppUrl(req, res, next) {
   const { shop, hmac, timestamp, code, host } = req.query;
-  if (!apiKey || !apiSecret || !appUrl) {
+  if (!apiKey || !apiSecret) {
     return res.redirect(302, '/app/live-visitors');
   }
   if (shop && hmac && timestamp && !code) {
@@ -116,7 +132,11 @@ function handleAppUrl(req, res, next) {
       return res.status(400).send('Invalid HMAC.');
     }
     const state = crypto.randomBytes(16).toString('hex');
-    const redirectUri = getRedirectUri();
+    const redirectUri = getRedirectUri(req);
+    if (!redirectUri || !redirectUri.startsWith('http')) {
+      console.error('[auth] No valid redirect_uri (set SHOPIFY_APP_URL or ensure request has Host)');
+      return res.status(500).send('App URL not configured. Set SHOPIFY_APP_URL in your deployment.');
+    }
     const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
 
     // When loaded inside Shopify admin iframe, do NOT 302 to OAuth (OAuth page blocks framing → "refused to connect").
