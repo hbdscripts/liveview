@@ -1,14 +1,12 @@
 /**
  * Live Visitors app – Express server, ingest, SSE, admin API, cleanup job.
- * Load .env if present (e.g. dotenv).
+ * IMPORTANT: instrument.js must be required first so Sentry initializes before anything else.
  */
 
-try { require('dotenv').config(); } catch (_) {}
+require('./instrument.js');
 
+const Sentry = require('@sentry/node');
 const config = require('./config');
-const sentry = require('./sentry');
-sentry.init();
-
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -24,9 +22,6 @@ const auth = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Sentry request context (first middleware)
-app.use(sentry.requestHandler());
 
 // Body parser (for ingest JSON)
 app.use(express.json({ limit: config.maxEventPayloadBytes }));
@@ -58,10 +53,17 @@ app.get('/app/live-visitors', (req, res) => {
 // App URL: if shop + hmac (no code), redirect to Shopify authorize; else redirect to dashboard
 app.get('/', auth.handleAppUrl, (req, res) => res.redirect(302, '/app/live-visitors'));
 
-// Sentry error handler (before final catch-all)
-app.use(sentry.errorHandler());
+// Test route: trigger a Sentry event (only when SENTRY_DSN is set)
+if (config.sentryDsn && config.sentryDsn.trim() !== '') {
+  app.get('/debug-sentry', () => {
+    throw new Error('My first Sentry error!');
+  });
+}
 
-// Final error handler
+// Sentry Express error handler (after all controllers, before other error middleware)
+Sentry.setupExpressErrorHandler(app);
+
+// Fallthrough error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).send('Internal server error');

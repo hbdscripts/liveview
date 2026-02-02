@@ -1,6 +1,6 @@
 # Sentry setup for Live Visitors app
 
-This app uses a **separate Sentry project** from your theme so backend errors are easy to find. Follow these steps to create the project and wire it in.
+This app uses a **separate Sentry project** from your theme so backend errors are easy to find. The setup follows Sentry’s recommended Express flow: **instrument.js** loads first and initializes Sentry; **Sentry.setupExpressErrorHandler(app)** is used after all routes.
 
 ---
 
@@ -56,13 +56,21 @@ This app uses a **separate Sentry project** from your theme so backend errors ar
 
 ---
 
+## Verify with the test route
+
+With `SENTRY_DSN` set, the app exposes a test route that throws an error so you can confirm Sentry receives it:
+
+- **URL:** `GET /debug-sentry` (e.g. `https://your-app-url.com/debug-sentry`)
+- The route throws **"My first Sentry error!"** and returns 500. The error should appear in Sentry → **Issues** within a few seconds.
+- The route is only registered when `SENTRY_DSN` is set.
+
 ## What gets sent to Sentry
 
 - **Unhandled errors** in the Node server (Express routes, migrations, cleanup job).
 - **Request context** (URL, method, headers) for each error.
 - **Environment** (`development` or `production` from `NODE_ENV`).
 
-No PII is sent; the app does not attach customer or visitor data to Sentry events.
+We use **sendDefaultPii: false** so IP and similar PII are not sent. No customer or visitor data is attached to Sentry events.
 
 ---
 
