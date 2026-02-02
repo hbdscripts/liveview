@@ -41,7 +41,7 @@
     tr.converted { background: #ebf5f4; }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
-    .arrived-cell { font-size: 0.875rem; line-height: 1.4; }
+    .arrived-cell, .last-seen-cell { font-size: 0.875rem; white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
     .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
@@ -212,6 +212,7 @@
         <th>Device</th>
         <th>History</th>
         <th>Arrived</th>
+        <th>Last Seen</th>
         <th>Source</th>
         <th>Cart value</th>
         <th>Sale</th>
@@ -439,7 +440,8 @@
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
-        <td class="arrived-cell"><span data-started="${s.started_at}">Arrived ${arrivedAgo(s.started_at)}</span><br><span data-last-seen="${s.last_seen}">Last Seen ${arrivedAgo(s.last_seen)}</span></td>
+        <td class="arrived-cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></td>
+        <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
         <td>${sourceCell(s)}</td>
         <td>${cartVal}</td>
         <td>${saleVal}</td>
@@ -461,7 +463,7 @@
       const start = (currentPage - 1) * ROWS_PER_PAGE;
       const pageSessions = sessions.slice(start, start + ROWS_PER_PAGE);
       if (sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">No sessions in this view.</td></tr>';
       } else {
         tbody.innerHTML = pageSessions.map(renderRow).join('');
         document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
@@ -483,11 +485,11 @@
     function tickTimeOnSite() {
       document.querySelectorAll('#table-body span[data-started]').forEach(span => {
         const started = parseInt(span.getAttribute('data-started'), 10);
-        span.textContent = 'Arrived ' + arrivedAgo(started);
+        span.textContent = arrivedAgo(started);
       });
       document.querySelectorAll('#table-body span[data-last-seen]').forEach(span => {
         const lastSeen = parseInt(span.getAttribute('data-last-seen'), 10);
-        span.textContent = 'Last Seen ' + arrivedAgo(lastSeen);
+        span.textContent = arrivedAgo(lastSeen);
       });
     }
 
@@ -620,12 +622,11 @@
         .then(r => r.json())
         .then(data => {
           var next = data.sessions || [];
+          next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
           var listChanged = !sessionIdsEqual(sessions, next);
           sessions = next;
-          if (listChanged) {
-            currentPage = 1;
-            renderTable();
-          }
+          if (listChanged) currentPage = 1;
+          renderTable();
           updateKpis();
         })
         .catch(() => { sessions = []; currentPage = 1; renderTable(); });
@@ -793,6 +794,8 @@
           const idx = sessions.findIndex(s => s.session_id === msg.session.session_id);
           if (idx >= 0) {
             sessions[idx] = { ...sessions[idx], ...msg.session };
+            sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
+            renderTable();
             updateKpis();
           } else {
             sessions.unshift(msg.session);
