@@ -17,6 +17,7 @@ const streamRouter = require('./routes/stream');
 const sessionsRouter = require('./routes/sessions');
 const settingsRouter = require('./routes/settings');
 const configStatusRouter = require('./routes/configStatus');
+const auth = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,20 +39,26 @@ app.get('/api/settings/tracking', settingsRouter.getTracking);
 app.put('/api/settings/tracking', express.json(), settingsRouter.putTracking);
 app.get('/api/config-status', configStatusRouter);
 
-// Admin UI (embedded dashboard)
+// Shopify OAuth (install flow)
+app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));
+app.get('/auth/shopify/callback', (req, res) => auth.handleCallback(req, res));
+
+// Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/app/live-visitors', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
 });
-app.get('/', (req, res) => {
-  res.redirect('/app/live-visitors');
-});
+
+// App URL: if shop + hmac (no code), redirect to Shopify authorize; else redirect to dashboard
+app.get('/', auth.handleAppUrl, (req, res) => res.redirect(302, '/app/live-visitors'));
 
 // Migrate on startup
-const { up } = require('./migrations/001_initial');
+const { up: up001 } = require('./migrations/001_initial');
+const { up: up002 } = require('./migrations/002_shop_sessions');
 getDb();
 
-up()
+up001()
+  .then(() => up002())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Live Visitors app listening on http://localhost:${PORT}`);
