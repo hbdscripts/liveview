@@ -50,6 +50,18 @@ Set `DASHBOARD_SECRET` in `.env` (or Railway Variables) to protect the dashboard
 
 The cleanup job deletes sessions older than `SESSION_TTL_MINUTES` (default 60). The dashboard tab **"All (60 min)"** always queries the last 60 minutes. For that tab to show full data, set `SESSION_TTL_MINUTES=60` or higher in Railway (or leave unset to use the default). If you set it lower (e.g. 15), older sessions are purged and "All (60 min)" will only show whatever remains in the DB.
 
+### Where to set or unset SESSION_TTL_MINUTES in Railway
+
+1. Open **[Railway](https://railway.app)** and sign in.
+2. Open your **project** (the one that runs the Live Visitors app).
+3. Click the **service** that runs the backend (the one with the deploy from GitHub, not a database-only service).
+4. Go to the **Variables** tab (or **Settings → Variables**).
+5. Find **SESSION_TTL_MINUTES** in the list:
+   - **To use the default (60):** If it’s there, **remove it** (trash/delete the variable). Leave it unset so the app uses 60.
+   - **To force 60:** Add or edit: name `SESSION_TTL_MINUTES`, value `60`.
+   - **To keep 60 min of data:** Don’t set it to less than 60; unset or set to `60` so "All (60 min)" shows full data.
+6. Save. Railway will redeploy when you change variables (or trigger a redeploy from the Deployments tab).
+
 ## Sentry (optional)
 
 Set `SENTRY_DSN` in `.env` (or Railway Variables) to send server errors to Sentry. Leave empty to disable. See [docs/SENTRY_SETUP.md](../docs/SENTRY_SETUP.md) for full walkthrough. In this project, Cursor agents have access to Sentry; when asked to "check Sentry" or "look at errors", use that access to query issues and fix causes.
