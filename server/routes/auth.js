@@ -127,29 +127,27 @@ function handleAppUrl(req, res, next) {
   if (!apiKey || !apiSecret) {
     return res.redirect(302, '/app/live-visitors');
   }
-  if (shop && hmac && timestamp && !code) {
-    if (!verifyHmac(req.query)) {
-      return res.status(400).send('Invalid HMAC.');
-    }
-    const state = crypto.randomBytes(16).toString('hex');
-    const redirectUri = getRedirectUri(req);
-    if (!redirectUri || !redirectUri.startsWith('http')) {
-      console.error('[auth] No valid redirect_uri (set SHOPIFY_APP_URL or ensure request has Host)');
-      return res.status(500).send('App URL not configured. Set SHOPIFY_APP_URL in your deployment.');
-    }
-    const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
-
-    // When loaded inside Shopify admin iframe, do NOT 302 to OAuth (OAuth page blocks framing → "refused to connect").
-    // Return HTML that redirects the top window so the whole tab goes to OAuth, then comes back into the iframe.
-    if (host && typeof host === 'string' && host.length > 0) {
-      const escapedAuthUrl = authUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.send(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href = "${escapedAuthUrl}";</script></body></html>`
-      );
-    }
-    return res.redirect(302, authUrl);
-  }
+  // OAuth redirect disabled for now – go straight to dashboard so we can confirm data/tracking. Re-enable later to fine-tune.
+  // if (shop && hmac && timestamp && !code) {
+  //   if (!verifyHmac(req.query)) {
+  //     return res.status(400).send('Invalid HMAC.');
+  //   }
+  //   const state = crypto.randomBytes(16).toString('hex');
+  //   const redirectUri = getRedirectUri(req);
+  //   if (!redirectUri || !redirectUri.startsWith('http')) {
+  //     console.error('[auth] No valid redirect_uri (set SHOPIFY_APP_URL or ensure request has Host)');
+  //     return res.status(500).send('App URL not configured. Set SHOPIFY_APP_URL in your deployment.');
+  //   }
+  //   const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
+  //   if (host && typeof host === 'string' && host.length > 0) {
+  //     const escapedAuthUrl = authUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  //     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  //     return res.send(
+  //       `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href = "${escapedAuthUrl}";</script></body></html>`
+  //     );
+  //   }
+  //   return res.redirect(302, authUrl);
+  // }
   next();
 }
 
