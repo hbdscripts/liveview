@@ -75,6 +75,37 @@
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; border-radius: var(--radius); border: 1px solid var(--border); }
+    .table-scroll-wrap table { margin: 0; min-width: 720px; }
+    @media (max-width: 768px) {
+      .main { padding: 0.75rem; }
+      .stats-row { gap: 0.75rem; margin-bottom: 1rem; }
+      .stats-card { min-width: 100%; }
+      .stats-card:first-child { min-width: 100%; }
+      .stats-main { font-size: 1.35rem; }
+      .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
+      .kpis { gap: 0.75rem; margin-bottom: 1rem; }
+      .kpi { padding: 0.75rem 1rem; min-width: calc(50% - 0.5rem); flex: 1 1 calc(50% - 0.5rem); }
+      .kpi strong { font-size: 1.1rem; }
+      .tabs { gap: 0.35rem; margin-bottom: 0.75rem; }
+      .tabs button { padding: 0.5rem 0.75rem; font-size: 0.8125rem; min-height: 44px; }
+      .time-filters { margin-bottom: 0.5rem; }
+      .time-filters button { padding: 0.5rem 0.75rem; min-height: 44px; font-size: 0.8125rem; }
+      .table-title { font-size: 0.9375rem; margin-bottom: 0.35rem; }
+      .table-scroll-wrap { margin-left: -0.75rem; margin-right: -0.75rem; border-radius: 0; border-left: none; border-right: none; }
+      .side-panel { width: 100%; padding: 1rem; }
+      .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
+      th, td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; }
+      .last-action-cell { flex-wrap: wrap; }
+      .thumb-40 { width: 32px; height: 32px; }
+    }
+    @media (max-width: 480px) {
+      .main { padding: 0.5rem; }
+      .stats-card { padding: 1rem; }
+      .kpi { min-width: 100%; }
+      .tabs button { min-width: 0; flex: 1 1 auto; }
+      .table-scroll-wrap { margin-left: -0.5rem; margin-right: -0.5rem; }
+    }
   </style>
 </head>
 <body>
@@ -142,7 +173,7 @@
             </tr>
           </thead>
           <tbody id="by-country-body">
-            <tr><td colspan="3" class="empty">Loadingâ€¦</td></tr>
+            <tr><td colspan="3" class="empty">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -170,6 +201,7 @@
     <button type="button" id="time-24h" data-time="today" class="active">last 24 hours</button>
   </div>
 
+  <div class="table-scroll-wrap">
   <table>
     <thead>
       <tr>
@@ -185,6 +217,7 @@
     </thead>
     <tbody id="table-body"></tbody>
   </table>
+  </div>
 
   <div id="side-panel" class="side-panel" style="display:none">
     <span class="close" id="side-close">&times;</span>
@@ -305,7 +338,7 @@
     function formatMoney(amount, currencyCode) {
       if (amount == null || typeof amount !== 'number') return '';
       const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? 'Â£' : code === 'USD' ? '$' : code === 'EUR' ? 'â‚¬' : code + ' ';
+      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
       return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
     }
 
@@ -389,7 +422,7 @@
 
     function formatRevenue(num) {
       if (num == null || typeof num !== 'number') return '';
-      return 'Â£' + (num % 1 === 0 ? num : num.toFixed(2));
+      return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
     function renderSales(data) {
@@ -417,7 +450,7 @@
     function renderAov(data) {
       const aov = data.aov || {};
       const el = document.getElementById('aov-today');
-      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : 'Â£0.00';
+      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : '\u00A30.00';
       const rolling = aov.rolling || {};
       const aov3 = document.getElementById('aov-3h');
       const aov6 = document.getElementById('aov-6h');
@@ -523,14 +556,14 @@
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
       panel.style.display = 'block';
-      document.getElementById('side-meta').textContent = 'Loadingâ€¦';
+      document.getElementById('side-meta').textContent = 'Loading\u2026';
       document.getElementById('side-events').innerHTML = '';
       fetch(API + '/api/sessions/' + encodeURIComponent(sessionId) + '/events?limit=20')
         .then(r => r.json())
         .then(data => {
           const session = sessions.find(s => s.session_id === sessionId) || {};
           const saleBlock = session.has_purchased
-            ? '<div class="side-panel-sale"><strong>Sale</strong><br>Order: ' + escapeHtml(formatMoney(session.order_total, session.order_currency) || 'â€”') + '<br>' + (session.purchased_at ? 'Purchased: ' + formatTs(session.purchased_at) + '<br>' : '') + '</div>'
+            ? '<div class="side-panel-sale"><strong>Sale</strong><br>Order: ' + escapeHtml(formatMoney(session.order_total, session.order_currency) || '\u2014') + '<br>' + (session.purchased_at ? 'Purchased: ' + formatTs(session.purchased_at) + '<br>' : '') + '</div>'
             : '';
           document.getElementById('side-meta').innerHTML = `
             Session: ${escapeHtml(sessionId)}<br>
@@ -541,7 +574,7 @@
             ${saleBlock}
             Events: ${(data.events || []).length}
           `;
-          const events = (data.events || []).map(e => `<li>${formatTs(e.ts)} ${escapeHtml(e.type)} ${escapeHtml(e.path || '')} ${e.product_handle || ''} ${e.qty_delta != null ? 'Î”' + e.qty_delta : ''}</li>`).join('');
+          const events = (data.events || []).map(e => `<li>${formatTs(e.ts)} ${escapeHtml(e.type)} ${escapeHtml(e.path || '')} ${e.product_handle || ''} ${e.qty_delta != null ? '\u0394' + e.qty_delta : ''}</li>`).join('');
           document.getElementById('side-events').innerHTML = events || '<li>No events</li>';
         })
         .catch(() => {
