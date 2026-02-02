@@ -3,11 +3,15 @@
  */
 require('dotenv').config();
 const { getDb } = require('./db');
-const { up } = require('./migrations/001_initial');
+const { up: up001 } = require('./migrations/001_initial');
+const { up: up002 } = require('./migrations/002_shop_sessions');
+const { up: up003 } = require('./migrations/003_cart_order_money');
 
 async function main() {
   const db = getDb();
-  await up();
+  await up001();
+  await up002();
+  await up003();
   console.log('Migrations complete.');
   db.close?.();
   process.exit(0);

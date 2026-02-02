@@ -13,7 +13,8 @@ const ALLOWED_EVENT_TYPES = new Set([
 
 const WHITELIST = new Set([
   'visitor_id', 'session_id', 'event_type', 'path', 'product_handle', 'product_title',
-  'variant_title', 'quantity_delta', 'price', 'cart_qty', 'checkout_started', 'checkout_completed',
+  'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
+  'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
 ]);
 
@@ -124,31 +125,51 @@ async function upsertSession(payload, visitorIsReturning) {
   const lastPath = payload.path ?? existing?.last_path ?? null;
   const lastProductHandle = payload.product_handle ?? existing?.last_product_handle ?? null;
 
+  let cartValue = payload.cart_value;
+  if (cartValue === undefined && existing?.cart_value != null) cartValue = existing.cart_value;
+  if (typeof cartValue !== 'number') cartValue = null;
+  const cartCurrency = typeof payload.cart_currency === 'string' ? payload.cart_currency : (existing?.cart_currency ?? null);
+
+  let orderTotal = payload.order_total;
+  let orderCurrency = payload.order_currency;
+  if (payload.checkout_completed && (payload.order_total != null || payload.order_currency != null)) {
+    if (typeof payload.order_total === 'number') orderTotal = payload.order_total;
+    if (typeof payload.order_currency === 'string') orderCurrency = payload.order_currency;
+  }
+  if (orderTotal === undefined && existing?.order_total != null) orderTotal = existing.order_total;
+  if (orderCurrency === undefined && existing?.order_currency) orderCurrency = existing.order_currency;
+  if (typeof orderTotal !== 'number') orderTotal = null;
+  if (typeof orderCurrency !== 'string') orderCurrency = null;
+
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, isCheckingOut, checkoutStartedAt, hasPurchased]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, isCheckingOut, checkoutStartedAt, hasPurchased]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, is_checking_out, checkout_started_at, has_purchased, is_abandoned, abandoned_at, recovered_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased]);
     }
   } else {
     if (config.dbUrl) {
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
-        cart_qty = $4, is_checking_out = $5, checkout_started_at = $6, has_purchased = $7
-        WHERE session_id = $8
-      `, [now, lastPath, lastProductHandle, cartQty, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
+        cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
+        order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
+        is_checking_out = $9, checkout_started_at = $10, has_purchased = $11
+        WHERE session_id = $12
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
     } else {
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
-        cart_qty = ?, is_checking_out = ?, checkout_started_at = ?, has_purchased = ?
+        cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
+        order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
+        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?
         WHERE session_id = ?
-      `, [now, lastPath, lastProductHandle, cartQty, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, isCheckingOut, checkoutStartedAt, hasPurchased, payload.session_id]);
     }
   }
 
@@ -289,30 +310,52 @@ async function getConversionRates() {
   return out;
 }
 
-/** Sessions per country (last 72h), sorted by count desc, limit 20. */
+/** Sessions per country (last 72h) with count and revenue (sum order_total), sorted by revenue desc then count, limit 20. */
 async function getSessionsByCountry() {
   const db = getDb();
   const cutoff = Date.now() - 72 * 60 * 60 * 1000;
-  const sql = `SELECT v.last_country AS country_code, COUNT(*) AS count
-    FROM sessions s
-    JOIN visitors v ON s.visitor_id = v.visitor_id
-    WHERE s.last_seen >= ? AND v.last_country IS NOT NULL AND v.last_country != ''
-    GROUP BY v.last_country
-    ORDER BY count DESC
-    LIMIT 20`;
+  const sql = config.dbUrl
+    ? `SELECT v.last_country AS country_code, COUNT(*) AS count,
+       COALESCE(SUM(s.order_total), 0)::float AS revenue
+       FROM sessions s
+       JOIN visitors v ON s.visitor_id = v.visitor_id
+       WHERE s.last_seen >= $1 AND v.last_country IS NOT NULL AND v.last_country != ''
+       GROUP BY v.last_country
+       ORDER BY revenue DESC, count DESC
+       LIMIT 20`
+    : `SELECT v.last_country AS country_code, COUNT(*) AS count,
+       COALESCE(SUM(s.order_total), 0) AS revenue
+       FROM sessions s
+       JOIN visitors v ON s.visitor_id = v.visitor_id
+       WHERE s.last_seen >= ? AND v.last_country IS NOT NULL AND v.last_country != ''
+       GROUP BY v.last_country
+       ORDER BY revenue DESC, count DESC
+       LIMIT 20`;
   const rows = await db.all(sql, [cutoff]);
   return rows.map(r => ({
     country_code: (r.country_code || 'XX').toUpperCase().slice(0, 2),
     count: r.count,
+    revenue: Number(r.revenue) || 0,
   }));
 }
 
+/** Total revenue (sum order_total) for sessions with last_seen in last 24h. */
+async function getRevenueToday() {
+  const db = getDb();
+  const cutoff = Date.now() - TODAY_WINDOW_MINUTES * 60 * 1000;
+  const row = config.dbUrl
+    ? await db.get('SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions WHERE last_seen >= $1 AND has_purchased = 1', [cutoff])
+    : await db.get('SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions WHERE last_seen >= ? AND has_purchased = 1', [cutoff]);
+  return row ? Number(row.total) || 0 : 0;
+}
+
 async function getStats() {
-  const [conversion, byCountry] = await Promise.all([
+  const [conversion, byCountry, revenueToday] = await Promise.all([
     getConversionRates(),
     getSessionsByCountry(),
+    getRevenueToday(),
   ]);
-  return { conversion, byCountry };
+  return { conversion, byCountry, revenueToday };
 }
 
 function validateEventType(type) {

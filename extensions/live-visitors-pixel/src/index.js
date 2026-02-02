@@ -53,8 +53,17 @@ register(({ analytics, init, browser, settings }) => {
   let visitorId = null;
   let sessionId = null;
   let cartQty = 0;
+  let cartValue = null;
+  let cartCurrency = null;
   let lastPath = pathFromContext(init?.context) || '/';
   let heartbeatTimer = null;
+
+  function cartMoneyFromCart(cart) {
+    const cost = cart?.cost?.totalAmount;
+    const amount = typeof cost?.amount === 'number' ? cost.amount : null;
+    const code = typeof cost?.currencyCode === 'string' ? cost.currencyCode : (init?.data?.shop?.paymentSettings?.currencyCode ?? null);
+    return { cart_value: amount, cart_currency: code };
+  }
 
   function getVisitorId() {
     return browser.localStorage.getItem(VISITOR_KEY).then(raw => {
@@ -124,6 +133,8 @@ register(({ analytics, init, browser, settings }) => {
       device,
       network_speed: 'unknown',
       cart_qty: cartQty,
+      cart_value: extra.cart_value !== undefined ? extra.cart_value : cartValue,
+      cart_currency: extra.cart_currency !== undefined ? extra.cart_currency : cartCurrency,
       ...extra,
     };
   }
@@ -152,10 +163,14 @@ register(({ analytics, init, browser, settings }) => {
   }
 
   ensureIds().then(() => {
-    cartQty = init?.data?.cart?.totalQuantity ?? 0;
+    const cart = init?.data?.cart;
+    cartQty = cart?.totalQuantity ?? 0;
     if (typeof cartQty !== 'number') cartQty = 0;
+    const money = cartMoneyFromCart(cart);
+    cartValue = money.cart_value;
+    cartCurrency = money.cart_currency;
     lastPath = pathFromContext(init?.context) || '/';
-    send(payload('page_viewed', { cart_qty: cartQty }));
+    send(payload('page_viewed', { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     startHeartbeat();
   }).catch(() => {});
 
@@ -182,8 +197,12 @@ register(({ analytics, init, browser, settings }) => {
       const qty = event?.data?.cartLine?.quantity ?? 1;
       cartQty = Math.max(0, (cartQty || 0) + qty);
       lastPath = pathFromContext(event?.context) || lastPath;
-      if (event?.data?.cart?.totalQuantity != null) cartQty = event.data.cart.totalQuantity;
-      send(payload('product_added_to_cart', { quantity_delta: qty, cart_qty: cartQty }));
+      const cart = event?.data?.cart;
+      if (cart?.totalQuantity != null) cartQty = cart.totalQuantity;
+      const money = cartMoneyFromCart(cart);
+      if (money.cart_value != null) cartValue = money.cart_value;
+      if (money.cart_currency != null) cartCurrency = money.cart_currency;
+      send(payload('product_added_to_cart', { quantity_delta: qty, cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     } catch (_) {}
   });
 
@@ -192,16 +211,24 @@ register(({ analytics, init, browser, settings }) => {
       const qty = event?.data?.cartLine?.quantity ?? 1;
       cartQty = Math.max(0, (cartQty || 0) - qty);
       lastPath = pathFromContext(event?.context) || lastPath;
-      if (event?.data?.cart?.totalQuantity != null) cartQty = event.data.cart.totalQuantity;
-      send(payload('product_removed_from_cart', { quantity_delta: -qty, cart_qty: cartQty }));
+      const cart = event?.data?.cart;
+      if (cart?.totalQuantity != null) cartQty = cart.totalQuantity;
+      const money = cartMoneyFromCart(cart);
+      if (money.cart_value != null) cartValue = money.cart_value;
+      if (money.cart_currency != null) cartCurrency = money.cart_currency;
+      send(payload('product_removed_from_cart', { quantity_delta: -qty, cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     } catch (_) {}
   });
 
   analytics.subscribe('cart_viewed', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || lastPath;
-      if (event?.data?.cart?.totalQuantity != null) cartQty = event.data.cart.totalQuantity;
-      send(payload('cart_viewed'));
+      const cart = event?.data?.cart;
+      if (cart?.totalQuantity != null) cartQty = cart.totalQuantity;
+      const money = cartMoneyFromCart(cart);
+      if (money.cart_value != null) cartValue = money.cart_value;
+      if (money.cart_currency != null) cartCurrency = money.cart_currency;
+      send(payload('cart_viewed', { cart_value: cartValue, cart_currency: cartCurrency }));
     } catch (_) {}
   });
 
@@ -214,7 +241,15 @@ register(({ analytics, init, browser, settings }) => {
 
   analytics.subscribe('checkout_completed', (event) => {
     try {
-      send(payload('checkout_completed', { checkout_completed: true }));
+      const checkout = event?.data?.checkout;
+      const totalPrice = checkout?.totalPrice;
+      const orderTotal = typeof totalPrice?.amount === 'number' ? totalPrice.amount : null;
+      const orderCurrency = checkout?.currencyCode ?? totalPrice?.currencyCode ?? null;
+      send(payload('checkout_completed', {
+        checkout_completed: true,
+        order_total: orderTotal,
+        order_currency: orderCurrency,
+      }));
     } catch (_) {}
   });
 });

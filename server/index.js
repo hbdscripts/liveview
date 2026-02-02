@@ -129,10 +129,12 @@ app.use((err, req, res, next) => {
 // Migrate on startup
 const { up: up001 } = require('./migrations/001_initial');
 const { up: up002 } = require('./migrations/002_shop_sessions');
+const { up: up003 } = require('./migrations/003_cart_order_money');
 getDb();
 
 up001()
   .then(() => up002())
+  .then(() => up003())
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
