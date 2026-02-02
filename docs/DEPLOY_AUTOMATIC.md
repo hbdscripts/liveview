@@ -4,6 +4,20 @@
 
 When you push to `main`, **Railway** deploys the backend (if the repo is connected to Railway). No extra setup.
 
+### Railway settings checklist (auto-deploy)
+
+In [Railway](https://railway.app) → your project → **your service** (the one that serves the app):
+
+| Where | What to check |
+|-------|----------------|
+| **Settings → Source** | **Connect repo**: GitHub repo is connected (e.g. `hbdscripts/liveview`). **Branch**: set to `main` (or the branch you push to). **Auto-deploy**: usually “Deploy on push” or “Watch Paths” — ensure new commits trigger a deploy. |
+| **Settings → Build** | **Build command**: leave default (Railway/Nixpacks will run `npm install` and use `npm start`) or set `npm ci` / `npm run migrate && npm start` if you run migrations on deploy. **Root directory**: leave blank unless the app lives in a subfolder. **Start command**: `npm start` (uses `package.json` scripts.start). |
+| **Settings → Deploy** | **Restart policy**: “On failure” or “Always” as you prefer. No need to change unless you want different behavior. |
+| **Variables** | Required env vars (e.g. `DATABASE_URL`, `INGEST_SECRET`, `SHOPIFY_*`, `DASHBOARD_SECRET`, etc.) are set on **this service** (not only in Shared Variables if your project uses them — service-level vars override). |
+| **Deployments** | After a push, a new deployment should appear within a minute or two. Open the latest deployment and confirm the **commit** (or commit SHA) matches the latest commit on `main` on GitHub. |
+
+If **Source** shows the correct repo and branch and “Deploy on push” (or equivalent) is on, pushes to `main` should trigger a new build and deploy automatically. If deploys don’t start, use **Deployments → Redeploy** once, then push again and watch **Deployments** for a new run.
+
 ### Live URL not showing latest changes (no login, iframe still broken)
 
 Railway runs the code that was **in Git at the time of the last deploy**. If you see no login page and no iframe fix:
