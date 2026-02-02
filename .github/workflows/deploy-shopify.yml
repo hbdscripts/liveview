@@ -1,57 +1,35 @@
-# Deploy Web Pixel (and app config) to Shopify on push to main.
-# This project is a DEVELOPER app (Dev Dashboard, dev.shopify.com). For developer apps,
-# this job is skipped unless DEPLOY_PIXEL_VIA_CI=true (Partner token required). Deploy
-# the pixel manually with: npm run deploy
+# Deploy Web Pixel (and app config) to Shopify. Manual trigger only (no push).
+# This project is a DEVELOPER app. Deploy the pixel locally: npm run deploy
+# To run from CI: Actions → Deploy to Shopify → Run workflow (set repo secrets first).
 # https://shopify.dev/docs/apps/launch/deployment/deploy-in-ci-cd-pipeline
 #
-# To avoid "job was not acquired" / "Internal server error": do NOT set DEPLOY_PIXEL_VIA_CI
-# (delete that secret). The job will skip on push. Deploy the pixel locally: npm run deploy
-#
-# Repo secrets used: DEPLOY_PIXEL_VIA_CI, SHOPIFY_CLI_PARTNERS_TOKEN, SHOPIFY_API_KEY.
+# Repo secrets (if using this workflow): SHOPIFY_CLI_PARTNERS_TOKEN, SHOPIFY_API_KEY.
 
 name: Deploy to Shopify
 
 on:
-  push:
-    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   deploy-shopify:
     name: Deploy pixel to Shopify
     runs-on: ubuntu-22.04
     steps:
-      - name: Check if deploy is enabled
-        id: check
-        env:
-          DEPLOY_FLAG: ${{ secrets.DEPLOY_PIXEL_VIA_CI || '' }}
-        run: |
-          if [ "$DEPLOY_FLAG" = "true" ]; then
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping deploy (set DEPLOY_PIXEL_VIA_CI to 'true' for Partner-org apps)"
-          fi
-
       - uses: actions/checkout@v4
-        if: steps.check.outputs.skip != 'true'
 
       - name: Setup Node
-        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        if: steps.check.outputs.skip != 'true'
         run: npm ci
 
       - name: Install Shopify CLI
-        if: steps.check.outputs.skip != 'true'
         run: npm install -g @shopify/cli@latest
 
       - name: Deploy app and extensions to Shopify
-        if: steps.check.outputs.skip != 'true'
         env:
           SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNERS_TOKEN || '' }}
           SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY || '' }}
