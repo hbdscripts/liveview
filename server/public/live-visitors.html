@@ -382,16 +382,32 @@
       return parts.join(' ');
     }
 
+    function sourceUtmString(s) {
+      return [s.utm_source, s.utm_campaign, s.utm_medium, s.utm_content].filter(Boolean).join(' ').toLowerCase();
+    }
+
     function isGoogleAdsSource(s) {
-      const str = [s.utm_source, s.utm_campaign, s.utm_medium, s.utm_content].filter(Boolean).join(' ').toLowerCase();
-      return str.indexOf('googleads') !== -1;
+      return sourceUtmString(s).indexOf('googleads') !== -1;
+    }
+
+    function sourceFriendlyLabel(s) {
+      const str = sourceUtmString(s);
+      if (!str) return null;
+      if (str.indexOf('googleads') !== -1) return null;
+      if (str.indexOf('google') !== -1) return 'Google';
+      if (str.indexOf('chatgpt') !== -1 || str.indexOf('chat gpt') !== -1) return 'Chatgpt';
+      return null;
     }
 
     function sourceCell(s) {
       if (isGoogleAdsSource(s)) {
         return '<img src="' + (API || '') + '/assets/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">';
       }
-      return escapeHtml(sourceLabel(s)) || '\u2014';
+      const friendly = sourceFriendlyLabel(s);
+      if (friendly) return escapeHtml(friendly);
+      const full = sourceLabel(s);
+      if (full) return escapeHtml(full);
+      return escapeHtml('Direct');
     }
 
     function renderRow(s) {
