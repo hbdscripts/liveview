@@ -90,6 +90,7 @@
 .table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: #f8fafc; }
 .table-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .source-googleads-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
     @media (max-width: 768px) {
       .dashboard-top-bar { padding-left: 0.75rem; padding-right: 0.75rem; }
       .main { padding: 0.75rem; }
@@ -209,8 +210,8 @@
 
   <div class="table-title" id="table-title">Live View</div>
   <div class="time-filters">
+    <button type="button" id="time-24h" data-time="today" class="active">Last 24 Hours</button>
     <button type="button" id="time-hour" data-time="all">last hour</button>
-    <button type="button" id="time-24h" data-time="today" class="active">last 24 hours</button>
   </div>
 
   <div class="table-scroll-wrap">
@@ -383,6 +384,18 @@
       return parts.join(' ');
     }
 
+    function isGoogleAdsSource(s) {
+      const str = [s.utm_source, s.utm_campaign, s.utm_medium, s.utm_content].filter(Boolean).join(' ').toLowerCase();
+      return str.indexOf('googleads') !== -1;
+    }
+
+    function sourceCell(s) {
+      if (isGoogleAdsSource(s)) {
+        return '<img src="' + (API || '') + '/assets/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">';
+      }
+      return escapeHtml(sourceLabel(s)) || '\u2014';
+    }
+
     function renderRow(s) {
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
@@ -398,7 +411,7 @@
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
         <td data-started="${s.started_at}">${arrivedAgo(s.started_at)}</td>
-        <td>${sourceLabel(s)}</td>
+        <td>${sourceCell(s)}</td>
         <td>${lastAction(s)}</td>
         <td>${cartVal}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
