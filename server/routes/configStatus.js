@@ -20,6 +20,7 @@ function configStatus(req, res, next) {
         ingestUrl,
         trackingEnabled: enabled,
         adminTimezone: config.adminTimezone,
+        sentry: { configured: !!(config.sentryDsn && config.sentryDsn.trim()) },
       });
     })
     .catch(() => {
@@ -30,6 +31,7 @@ function configStatus(req, res, next) {
         ingestUrl,
         trackingEnabled: config.trackingDefaultEnabled,
         adminTimezone: config.adminTimezone,
+        sentry: { configured: !!(config.sentryDsn && config.sentryDsn.trim()) },
       });
     });
 }

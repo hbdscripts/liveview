@@ -280,6 +280,7 @@
         html += '<div class="config-row ' + (c.ingestSecret?.configured ? 'ok' : 'missing') + '">' + (c.ingestSecret?.configured ? '✅' : '❌') + ' Ingest secret</div>';
         html += '<div class="config-row">Ingest URL: ' + escapeHtml(c.ingestUrl || '') + '</div>';
         html += '<div class="config-row">Tracking: ' + (c.trackingEnabled ? 'ON' : 'OFF') + '</div>';
+        html += '<div class="config-row ' + (c.sentry?.configured ? 'ok' : 'missing') + '">' + (c.sentry?.configured ? '✅' : '❌') + ' Sentry</div>';
         document.getElementById('config-status').innerHTML = html;
         document.getElementById('tracking-btn').textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF';
         document.getElementById('tracking-btn').classList.toggle('off', !c.trackingEnabled);

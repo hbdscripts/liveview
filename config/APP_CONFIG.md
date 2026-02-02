@@ -32,3 +32,7 @@
 ## Scopes
 
 Keep scopes minimal: `read_products`, `read_orders` (or whatever your app needs). Set in `.env` as `SHOPIFY_SCOPES=read_products,read_orders`.
+
+## Sentry (optional)
+
+Set `SENTRY_DSN` in `.env` (or Railway Variables) to send server errors to Sentry. Leave empty to disable. See [docs/SENTRY_SETUP.md](../docs/SENTRY_SETUP.md) for full walkthrough.

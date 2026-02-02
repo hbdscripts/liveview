@@ -5,10 +5,13 @@
 
 try { require('dotenv').config(); } catch (_) {}
 
+const config = require('./config');
+const sentry = require('./sentry');
+sentry.init();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const config = require('./config');
 const { getDb } = require('./db');
 const cleanup = require('./cleanup');
 
@@ -21,6 +24,9 @@ const auth = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Sentry request context (first middleware)
+app.use(sentry.requestHandler());
 
 // Body parser (for ingest JSON)
 app.use(express.json({ limit: config.maxEventPayloadBytes }));
@@ -51,6 +57,15 @@ app.get('/app/live-visitors', (req, res) => {
 
 // App URL: if shop + hmac (no code), redirect to Shopify authorize; else redirect to dashboard
 app.get('/', auth.handleAppUrl, (req, res) => res.redirect(302, '/app/live-visitors'));
+
+// Sentry error handler (before final catch-all)
+app.use(sentry.errorHandler());
+
+// Final error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).send('Internal server error');
+});
 
 // Migrate on startup
 const { up: up001 } = require('./migrations/001_initial');

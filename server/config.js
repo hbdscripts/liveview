@@ -64,6 +64,7 @@ const config = {
   maxEventsPerSession: getInt('MAX_EVENTS_PER_SESSION', 50),
   maxEventPayloadBytes: getInt('MAX_EVENT_PAYLOAD_BYTES', 8192),
   rateLimitEventsPerMinute: getInt('RATE_LIMIT_EVENTS_PER_MINUTE', 120),
+  sentryDsn: getEnv('SENTRY_DSN', ''),
 };
 
 module.exports = config;
