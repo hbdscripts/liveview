@@ -72,9 +72,19 @@
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border); margin: 0 auto 1.5rem auto; max-width: 1440px; flex-wrap: wrap; }
+    .dashboard-top-bar-left { display: flex; align-items: center; }
+    .dashboard-top-bar-center { flex: 1; text-align: center; font-size: 0.875rem; color: var(--muted); min-width: 180px; }
+    .dashboard-top-bar-right { display: flex; align-items: center; }
+    .dashboard-top-bar select { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: #fff; font-size: 0.875rem; color: var(--text); }
+    .dashboard-top-bar select option:disabled { color: var(--muted); }
+    #audio-mute-btn { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 0.875rem; color: var(--text); }
+    #audio-mute-btn:hover { border-color: var(--accent); background: #f8fafc; }
+    #audio-mute-btn.muted { opacity: 0.7; color: var(--muted); }
     .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; border-radius: var(--radius); border: 1px solid var(--border); }
     .table-scroll-wrap table { margin: 0; min-width: 720px; }
     @media (max-width: 768px) {
+      .dashboard-top-bar { padding-left: 0.75rem; padding-right: 0.75rem; }
       .main { padding: 0.75rem; }
       .stats-row { gap: 0.75rem; margin-bottom: 1rem; }
       .stats-card { min-width: 100%; }
@@ -95,6 +105,7 @@
       .thumb-40 { width: 32px; height: 32px; }
     }
     @media (max-width: 480px) {
+      .dashboard-top-bar { padding-left: 0.5rem; padding-right: 0.5rem; }
       .main { padding: 0.5rem; }
       .stats-card { padding: 1rem; }
       .kpi { min-width: 100%; }
@@ -103,13 +114,26 @@
   </style>
 </head>
 <body>
+  <div class="dashboard-top-bar">
+    <div class="dashboard-top-bar-left">
+      <select id="global-date-select" aria-label="Date range">
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="3d">Last 3 Days</option>
+        <option value="7d">Last 7 Days</option>
+      </select>
+    </div>
+    <div class="dashboard-top-bar-center" id="next-update-msg">Next update in -- s</div>
+    <div class="dashboard-top-bar-right">
+      <button type="button" id="audio-mute-btn" title="Toggle sale sound">Sound on</button>
+    </div>
+  </div>
   <main class="main">
   <div class="stats-row">
     <div class="stats-card" id="stats-primary">
       <div class="stats-section">
         <div class="stats-card-header">
           <h3>Sales</h3>
-          <span class="muted">Today (midnight UK)</span>
         </div>
         <div class="stats-main" id="sales-today"></div>
         <div class="stats-breakdown">
@@ -121,7 +145,6 @@
       <div class="stats-section">
         <div class="stats-card-header">
           <h3>Conversion rate</h3>
-          <select id="conversion-range-select" class="stats-select" aria-label="Conversion range"></select>
         </div>
         <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
@@ -133,7 +156,6 @@
     <div class="stats-card" id="stats-aov">
       <div class="stats-card-header">
         <h3>Average Order Value</h3>
-        <select id="aov-range-select" class="stats-select" aria-label="AOV range"></select>
       </div>
       <div class="stats-section">
         <div class="stats-main" id="aov-today"></div>
@@ -151,7 +173,6 @@
     <div class="stats-card" id="stats-country">
       <div class="stats-card-header">
         <h3>Country</h3>
-        <select id="country-range-select" class="stats-select" aria-label="Country range"></select>
       </div>
       <div class="country-table-wrap" id="country-table-wrap">
         <table class="by-country-table">
@@ -212,17 +233,15 @@
 
   <script>
     const API = '';
-    const RANGE_OPTIONS = [
-      { value: 'today', label: 'Today' },
-      { value: 'yesterday', label: 'Yesterday' },
-      { value: '3d', label: '3 days' },
-      { value: '7d', label: '7 days' },
-    ];
+    const STATS_INTERVAL_MS = 15000;
+    const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     let sessions = [];
     let statsCache = {};
-    let conversionRange = 'today';
-    let countryRange = 'today';
-    let aovRange = 'today';
+    let dateRange = 'today';
+    let nextStatsAt = 0;
+    let lastConvertedCountToday = 0;
+    let saleAudio = null;
+    let saleMuted = false;
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -401,14 +420,6 @@
 
     function pct(v) { return v != null ? v.toFixed(1) + '%' : ''; }
 
-    function initRangeSelect(selectId, value, onChange) {
-      const el = document.getElementById(selectId);
-      if (!el) return;
-      el.innerHTML = RANGE_OPTIONS.map(opt => '<option value="' + opt.value + '">' + opt.label + '</option>').join('');
-      el.value = value;
-      el.addEventListener('change', () => onChange(el.value));
-    }
-
     function formatRevenue(num) {
       if (num == null || typeof num !== 'number') return '';
       return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
@@ -416,7 +427,7 @@
 
     function renderSales(data) {
       const sales = data.sales || {};
-      document.getElementById('sales-today').textContent = formatRevenue(sales.today);
+      document.getElementById('sales-today').textContent = formatRevenue(sales[dateRange] != null ? sales[dateRange] : 0);
       const rolling = sales.rolling || {};
       document.getElementById('sales-6h').textContent = formatRevenue(rolling['6h']);
       document.getElementById('sales-12h').textContent = formatRevenue(rolling['12h']);
@@ -426,7 +437,7 @@
 
     function renderConversion(data) {
       const c = data.conversion || {};
-      document.getElementById('conversion-range').textContent = pct(c[conversionRange]);
+      document.getElementById('conversion-range').textContent = pct(c[dateRange]);
       const rolling = c.rolling || {};
       document.getElementById('conversion-3h').textContent = pct(rolling['3h']);
       document.getElementById('conversion-6h').textContent = pct(rolling['6h']);
@@ -435,7 +446,7 @@
     function renderAov(data) {
       const aov = data.aov || {};
       const el = document.getElementById('aov-today');
-      if (el) el.textContent = aov[aovRange] != null ? formatRevenue(aov[aovRange]) : '\u00A30.00';
+      if (el) el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
       const rolling = aov.rolling || {};
       const aov3 = document.getElementById('aov-3h');
       const aov6 = document.getElementById('aov-6h');
@@ -445,7 +456,7 @@
       if (aov6) aov6.textContent = rolling['6h'] != null ? formatRevenue(rolling['6h']) : '';
       if (aov12) aov12.textContent = rolling['12h'] != null ? formatRevenue(rolling['12h']) : '';
       if (aov24) aov24.textContent = rolling['24h'] != null ? formatRevenue(rolling['24h']) : '';
-      const rows = (data.country || {})[aovRange] || [];
+      const rows = (data.country || {})[dateRange] || [];
       const ul = document.getElementById('aov-by-country');
       if (!ul) return;
       if (rows.length === 0) {
@@ -460,7 +471,7 @@
 
     function renderCountry(data) {
       const c = data.country || {};
-      const rows = c[countryRange] || [];
+      const rows = c[dateRange] || [];
       const tbody = document.getElementById('by-country-body');
       if (!tbody) return;
       if (rows.length === 0) {
@@ -486,8 +497,30 @@
       country.style.maxHeight = Math.floor(primaryHeight) + 'px';
     }
 
+    function applyRangeAvailable(available) {
+      const sel = document.getElementById('global-date-select');
+      if (!sel) return;
+      const opts = sel.querySelectorAll('option');
+      const keys = ['today', 'yesterday', '3d', '7d'];
+      keys.forEach((key, i) => {
+        if (opts[i]) opts[i].disabled = !available[key];
+      });
+      if (!available[dateRange]) {
+        dateRange = 'today';
+        sel.value = 'today';
+      }
+    }
+
     function renderStats(data) {
+      const prevConverted = (statsCache.convertedCount || {}).today;
       statsCache = data || {};
+      const conv = statsCache.convertedCount || {};
+      if (typeof conv.today === 'number' && typeof lastConvertedCountToday === 'number' && conv.today > lastConvertedCountToday && !saleMuted && saleAudio) {
+        saleAudio.currentTime = 0;
+        saleAudio.play().catch(function() {});
+      }
+      lastConvertedCountToday = typeof conv.today === 'number' ? conv.today : 0;
+      if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderSales(statsCache);
       renderConversion(statsCache);
       renderAov(statsCache);
@@ -498,8 +531,11 @@
     function fetchStats() {
       fetch(API + '/api/stats', { credentials: 'same-origin' })
         .then(r => r.json())
-        .then(renderStats)
-        .catch(() => renderStats({}));
+        .then(data => {
+          nextStatsAt = Date.now() + STATS_INTERVAL_MS;
+          renderStats(data);
+        })
+        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; renderStats({}); });
     }
 
     function fetchSessions() {
@@ -615,27 +651,41 @@
         if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row missing">Could not load config status.</div>';
       });
 
-    (function initRangeSelects() {
-      initRangeSelect('conversion-range-select', conversionRange, (value) => {
-        conversionRange = value;
-        renderConversion(statsCache);
-      });
-      initRangeSelect('country-range-select', countryRange, (value) => {
-        countryRange = value;
-        renderCountry(statsCache);
-        requestAnimationFrame(syncCountryTableHeight);
-      });
-      initRangeSelect('aov-range-select', aovRange, (value) => {
-        aovRange = value;
-        renderAov(statsCache);
-      });
+    (function initTopBar() {
+      saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';
+      saleAudio = new Audio((API || '') + '/assets/cash-register.mp3');
+      const muteBtn = document.getElementById('audio-mute-btn');
+      if (muteBtn) {
+        muteBtn.textContent = saleMuted ? 'Muted' : 'Sound on';
+        muteBtn.classList.toggle('muted', saleMuted);
+        muteBtn.addEventListener('click', function() {
+          saleMuted = !saleMuted;
+          sessionStorage.setItem(SALE_MUTED_KEY, String(saleMuted));
+          muteBtn.textContent = saleMuted ? 'Muted' : 'Sound on';
+          muteBtn.classList.toggle('muted', saleMuted);
+        });
+      }
+      const dateSelect = document.getElementById('global-date-select');
+      if (dateSelect) {
+        dateSelect.value = dateRange;
+        dateSelect.addEventListener('change', function() {
+          dateRange = this.value;
+          renderStats(statsCache);
+        });
+      }
+      setInterval(function() {
+        const el = document.getElementById('next-update-msg');
+        if (!el) return;
+        const sec = Math.max(0, Math.ceil((nextStatsAt - Date.now()) / 1000));
+        el.textContent = 'Next update in ' + sec + ' s';
+      }, 1000);
     })();
     window.addEventListener('resize', syncCountryTableHeight);
 
     fetchStats();
     fetchSessions();
-    setInterval(fetchStats, 15000);
-    setInterval(fetchSessions, 15000);
+    setInterval(fetchStats, STATS_INTERVAL_MS);
+    setInterval(fetchSessions, STATS_INTERVAL_MS);
     setInterval(tickTimeOnSite, 30000);
 
     const es = new EventSource(API + '/api/stream');

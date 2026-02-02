@@ -95,6 +95,7 @@ app.use(dashboardAuth.middleware);
 
 // Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 app.get('/app/live-visitors', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
 });

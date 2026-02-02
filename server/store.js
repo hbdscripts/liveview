@@ -584,13 +584,29 @@ async function getStats() {
   for (const key of Object.keys(salesRolling)) {
     aovRolling[key] = aovFromSalesAndCount(salesRolling[key], convertedCountRolling[key]);
   }
+  const rangeAvailable = {
+    today: true,
+    yesterday: await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end),
+    '3d': await rangeHasSessions(ranges['3d'].start, ranges['3d'].end),
+    '7d': await rangeHasSessions(ranges['7d'].start, ranges['7d'].end),
+  };
   return {
     sales: { ...salesByRange, rolling: salesRolling },
     conversion: { ...conversionByRange, rolling: conversionRolling },
     country: countryByRange,
     aov: { ...aovByRange, rolling: aovRolling },
     revenueToday: salesByRange.today ?? 0,
+    rangeAvailable,
+    convertedCount: convertedCountByRange,
   };
+}
+
+async function rangeHasSessions(start, end) {
+  const db = getDb();
+  const row = config.dbUrl
+    ? await db.get('SELECT 1 FROM sessions WHERE started_at >= $1 AND started_at < $2 LIMIT 1', [start, end])
+    : await db.get('SELECT 1 FROM sessions WHERE started_at >= ? AND started_at < ? LIMIT 1', [start, end]);
+  return !!row;
 }
 
 function validateEventType(type) {
