@@ -64,7 +64,8 @@
     .side-panel-sale { margin: 0.75rem 0; padding: 0.75rem; background: rgba(13, 148, 136, 0.08); border-radius: 3px; border-left: 3px solid var(--accent); color: var(--text); }
     .side-panel-sale strong { color: var(--accent); }
     .side-panel ul.events { list-style: none; padding: 0; margin: 0.5rem 0; font-size: 0.85rem; }
-    .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
+    .side-panel ul.events li .thumb-40 { flex-shrink: 0; }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; max-width: 1440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
@@ -205,12 +206,12 @@
   <table>
     <thead>
       <tr>
+        <th>Landing Page</th>
         <th>From</th>
         <th>Device</th>
         <th>History</th>
         <th>Arrived</th>
         <th>Source</th>
-        <th>Last action</th>
         <th>Cart value</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
@@ -350,16 +351,16 @@
       return storeBaseUrlFallback || '';
     }
 
-    function lastAction(s) {
+    function landingPageCell(s) {
       var base = getStoreBaseUrl();
-      var path = (s.last_path || '').trim();
+      var path = (s.first_path != null ? s.first_path : s.last_path || '').trim();
+      var productHandle = s.first_product_handle != null ? s.first_product_handle : s.last_product_handle;
       if (path && !path.startsWith('/')) path = '/' + path;
       var fullUrl = base && path ? base + path : '';
       var label = '';
-      if (s.is_checking_out) label = 'In checkout process';
-      else if (s.last_product_handle) label = 'Viewed ' + escapeHtml(s.last_product_handle);
-      else if (s.last_path) label = 'Viewed page ' + escapeHtml(s.last_path);
-      else return '';
+      if (productHandle) label = 'Viewed ' + escapeHtml(productHandle);
+      else if (path) label = 'Viewed page ' + escapeHtml(path);
+      else return '\u2014';
       if (fullUrl) {
         var thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
         return '<div class="last-action-cell"><img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"><a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a></div>';
@@ -427,12 +428,12 @@
       const fromCell = flagImg(countryCode) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
+        <td>${landingPageCell(s)}</td>
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
         <td data-started="${s.started_at}">${arrivedAgo(s.started_at)}</td>
         <td>${sourceCell(s)}</td>
-        <td>${lastAction(s)}</td>
         <td>${cartVal}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
@@ -635,7 +636,16 @@
             ${saleBlock}
             Events: ${(data.events || []).length}
           `;
-          const events = (data.events || []).map(e => `<li>${formatTs(e.ts)} ${escapeHtml(e.type)} ${escapeHtml(e.path || '')} ${e.product_handle || ''} ${e.qty_delta != null ? '\u0394' + e.qty_delta : ''}</li>`).join('');
+          const base = getStoreBaseUrl();
+          const events = (data.events || []).map(e => {
+            var path = (e.path || '').trim();
+            if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
+            if (path && !path.startsWith('/')) path = '/' + path;
+            var fullUrl = base && path ? base + path : '';
+            var thumb = fullUrl ? '<img class="thumb-40" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+            var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(e.path || '') + ' ' + (e.product_handle || '') + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
+            return '<li>' + thumb + '<span>' + text + '</span></li>';
+          }).join('');
           document.getElementById('side-events').innerHTML = events || '<li>No events</li>';
         })
         .catch(() => {

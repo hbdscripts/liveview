@@ -9,6 +9,7 @@ const { up: up003 } = require('./migrations/003_cart_order_money');
 const { up: up004 } = require('./migrations/004_session_stats_fields');
 const { up: up005 } = require('./migrations/005_utm_campaign');
 const { up: up006 } = require('./migrations/006_utm_source_medium_content');
+const { up: up007 } = require('./migrations/007_first_path');
 
 async function main() {
   const db = getDb();
@@ -18,6 +19,7 @@ async function main() {
   await up004();
   await up005();
   await up006();
+  await up007();
   console.log('Migrations complete.');
   db.close?.();
   process.exit(0);
