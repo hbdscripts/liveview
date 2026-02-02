@@ -241,23 +241,35 @@
     let timeTick = null;
     const tz = 'Europe/London';
 
+    function toMs(v) {
+      if (v == null || v === '') return null;
+      let n = typeof v === 'number' ? v : Number(v);
+      if (Number.isNaN(n)) return null;
+      if (n < 1e12) n *= 1000;
+      return n;
+    }
+
     function formatTs(ms) {
-      if (!ms) return '';
-      const d = new Date(ms);
+      const n = toMs(ms);
+      if (n == null) return '\u2014';
+      const d = new Date(n);
+      if (Number.isNaN(d.getTime())) return '\u2014';
       return d.toLocaleString('en-GB', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
     }
 
     function formatRelative(ms) {
-      if (!ms) return '';
-      const s = Math.floor((Date.now() - ms) / 1000);
+      const n = toMs(ms);
+      if (n == null) return '';
+      const s = Math.floor((Date.now() - n) / 1000);
       if (s < 60) return s + 's ago';
       if (s < 3600) return Math.floor(s / 60) + 'm ago';
       return Math.floor(s / 3600) + 'h ago';
     }
 
     function formatDuration(startMs) {
-      if (!startMs) return '';
-      const s = Math.floor((Date.now() - startMs) / 1000);
+      const n = toMs(startMs);
+      if (n == null) return '';
+      const s = Math.floor((Date.now() - n) / 1000);
       const m = Math.floor(s / 60);
       const h = Math.floor(m / 60);
       if (h > 0) return h + 'h ' + (m % 60) + 'm';
@@ -284,8 +296,9 @@
     }
 
     function arrivedAgo(startedAt) {
-      if (!startedAt) return '';
-      var s = Math.floor((Date.now() - startedAt) / 1000);
+      var n = toMs(startedAt);
+      if (n == null) return '\u2014';
+      var s = Math.floor((Date.now() - n) / 1000);
       if (s < 60) return s + ' secs ago';
       if (s < 3600) return Math.floor(s / 60) + ' mins ago';
       if (s < 86400) return Math.floor(s / 3600) + ' hrs ago';

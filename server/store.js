@@ -299,6 +299,12 @@ async function listSessions(filter) {
     const countryCode = (r.session_country || r.country_code || 'XX').toUpperCase().slice(0, 2);
     const out = { ...r, country_code: countryCode };
     delete out.session_country;
+    out.started_at = r.started_at != null ? Number(r.started_at) : null;
+    out.last_seen = r.last_seen != null ? Number(r.last_seen) : null;
+    out.purchased_at = r.purchased_at != null ? Number(r.purchased_at) : null;
+    out.checkout_started_at = r.checkout_started_at != null ? Number(r.checkout_started_at) : null;
+    out.abandoned_at = r.abandoned_at != null ? Number(r.abandoned_at) : null;
+    out.recovered_at = r.recovered_at != null ? Number(r.recovered_at) : null;
     return out;
   });
 }
@@ -309,7 +315,10 @@ async function getSessionEvents(sessionId, limit = 20) {
     'SELECT * FROM events WHERE session_id = ? ORDER BY ts DESC LIMIT ?',
     [sessionId, limit]
   );
-  return rows.reverse();
+  return rows.reverse().map(r => ({
+    ...r,
+    ts: r.ts != null ? Number(r.ts) : null,
+  }));
 }
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
