@@ -13,6 +13,7 @@
    - Add **Allowed redirection URL(s)**:
      - `https://your-app.example.com/auth/callback`
      - `https://your-app.example.com/auth/shopify/callback`
+     - `https://your-app.example.com/auth/shopify-login/callback` (for "Login with Shopify" on the dashboard splash)
    - In `.env`: `SHOPIFY_APP_URL=https://your-app.example.com`.
 
 3. **Ingestion secret**
@@ -33,6 +34,18 @@
 
 Keep scopes minimal: `read_products`, `read_orders` (or whatever your app needs). Set in `.env` as `SHOPIFY_SCOPES=read_products,read_orders`.
 
+## Dashboard access (optional)
+
+Set `DASHBOARD_SECRET` in `.env` (or Railway Variables) to protect the dashboard and stats APIs on the public URL. When set:
+
+- **Shopify admin:** Stats remain visible when opening the app from Admin (embedded app), subject to `ALLOWED_ADMIN_REFERER_PREFIX` below.
+- **Direct Railway URL:** You must sign in with the same secret at `/app/login` to view the dashboard; session lasts 24 hours. Use "Sign out" in the dashboard header to clear the session.
+
+**Password is never in source code:** The secret lives only in server env. The login form sends what you type; the server compares it. Bots cannot reverse‑engineer it from the frontend; they would have to guess (rate limiting on login is recommended if you expose it).
+
+**Restrict to your store’s admin only:** Set `ALLOWED_ADMIN_REFERER_PREFIX` to your store’s admin URL, e.g. `https://admin.shopify.com/store/943925-c1`. Then the dashboard is allowed without password only when the request Referer is that URL (or a path under it). Any other admin or direct visit must use the dashboard secret. Leave empty to allow any `admin.shopify.com` or `*.myshopify.com/admin`.
+
+**Login with Google / Login with Shopify:** When the referer is not your store admin URL, the splash shows Sign in with Google (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, optionally ALLOWED_GOOGLE_EMAILS; add redirect .../auth/google/callback in Google Cloud Console), Sign in with Shopify (set ALLOWED_SHOP_DOMAIN, add .../auth/shopify-login/callback in Shopify app), and Sign in with secret if DASHBOARD_SECRET is set. Why the app was not loading inside Shopify: it opens in an iframe; the server used to 302 to OAuth so the iframe tried to load OAuth inside the frame; Shopify blocks embedding so the browser showed "refused to connect." The fix is to return HTML that sets window.top.location.href to the auth URL so the whole tab goes to OAuth; after auth the app loads in the iframe. “Login with Shopify,”
 ## Sentry (optional)
 
 Set `SENTRY_DSN` in `.env` (or Railway Variables) to send server errors to Sentry. Leave empty to disable. See [docs/SENTRY_SETUP.md](../docs/SENTRY_SETUP.md) for full walkthrough. In this project, Cursor agents have access to Sentry; when asked to "check Sentry" or "look at errors", use that access to query issues and fix causes.

@@ -65,6 +65,21 @@ const config = {
   maxEventPayloadBytes: getInt('MAX_EVENT_PAYLOAD_BYTES', 8192),
   rateLimitEventsPerMinute: getInt('RATE_LIMIT_EVENTS_PER_MINUTE', 120),
   sentryDsn: getEnv('SENTRY_DSN', ''),
+  dashboardSecret: getEnv('DASHBOARD_SECRET', ''),
+  /** If set, dashboard is allowed without password only when Referer starts with this (e.g. https://admin.shopify.com/store/943925-c1) */
+  allowedAdminRefererPrefix: getEnv('ALLOWED_ADMIN_REFERER_PREFIX', ''),
+  /** For OAuth login splash: Google */
+  googleClientId: getEnv('GOOGLE_CLIENT_ID', ''),
+  googleClientSecret: getEnv('GOOGLE_CLIENT_SECRET', ''),
+  /** Comma-separated emails allowed to sign in with Google (e.g. you@example.com) */
+  allowedGoogleEmails: (getEnv('ALLOWED_GOOGLE_EMAILS', '') || '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean),
+  /** Single allowed shop domain for "Login with Shopify" (e.g. mystore.myshopify.com) */
+  allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
+  /** Secret to sign OAuth session cookie (defaults to DASHBOARD_SECRET) */
+  oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
 };
 
 module.exports = config;

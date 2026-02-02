@@ -1,0 +1,154 @@
+/**
+ * Dashboard access: allow only from Shopify admin (Referer) or with valid DASHBOARD_SECRET (cookie/header).
+ * If DASHBOARD_SECRET is not set, all dashboard routes remain public.
+ */
+
+const crypto = require('crypto');
+const config = require('../config');
+
+const COOKIE_NAME = 'dashboard_session';
+const SESSION_HOURS = 24;
+
+function isShopifyAdminReferer(req) {
+  const referer = (req.get('Referer') || req.get('referer') || '').trim();
+  if (!referer) return false;
+  const prefix = (config.allowedAdminRefererPrefix || '').trim();
+  if (prefix) {
+    // Restrict to your store's admin URL only (e.g. https://admin.shopify.com/store/943925-c1)
+    return referer === prefix || referer.startsWith(prefix + '/');
+  }
+  try {
+    const u = new URL(referer);
+    return (
+      u.hostname === 'admin.shopify.com' ||
+      (u.hostname.endsWith('.myshopify.com') && u.pathname.startsWith('/admin'))
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+function signSession(expiryMs) {
+  const secret = config.dashboardSecret;
+  const msg = String(expiryMs);
+  const h = crypto.createHmac('sha256', secret).update(msg).digest('hex');
+  return Buffer.from(JSON.stringify({ t: expiryMs, h })).toString('base64url');
+}
+
+function verifySession(cookieValue) {
+  if (!cookieValue || typeof cookieValue !== 'string') return false;
+  const secret = config.dashboardSecret;
+  if (!secret) return false;
+  try {
+    const raw = JSON.parse(Buffer.from(cookieValue, 'base64url').toString('utf8'));
+    const { t, h } = raw;
+    if (typeof t !== 'number' || typeof h !== 'string') return false;
+    if (t < Date.now()) return false; // expired
+    const expected = crypto.createHmac('sha256', secret).update(String(t)).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(h, 'hex'), Buffer.from(expected, 'hex'));
+  } catch (_) {
+    return false;
+  }
+}
+
+function isProtectedPath(pathname) {
+  if (pathname === '/app/live-visitors' || pathname === '/app/login' || pathname === '/app/logout') return true;
+  if (pathname === '/' && pathname.length === 1) return true;
+  if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
+      pathname.startsWith('/api/settings') || pathname === '/api/config-status') return true;
+  return false;
+}
+
+const OAUTH_COOKIE_NAME = 'oauth_session';
+
+function requiresAuth(pathname, method) {
+  if (pathname === '/app/login' || pathname === '/app/logout') return false;
+  if (pathname === '/auth/google' || pathname === '/auth/google/callback') return false;
+  if (pathname === '/auth/shopify-login' || pathname === '/auth/shopify-login/callback') return false;
+  return isProtectedPath(pathname);
+}
+
+function getCookie(req, name) {
+  const raw = req.get('Cookie') || req.get('cookie') || '';
+  const parts = raw.split(';').map(s => s.trim());
+  for (const p of parts) {
+    const eq = p.indexOf('=');
+    if (eq > 0 && p.slice(0, eq).trim() === name) {
+      return decodeURIComponent(p.slice(eq + 1).trim().replace(/^"(.*)"$/, '$1'));
+    }
+  }
+  return undefined;
+}
+
+function signOauthSession(payload) {
+  const secret = config.oauthCookieSecret;
+  if (!secret) return null;
+  const t = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
+  const parts = ['t=' + t];
+  if (payload.email) parts.push('email=' + payload.email);
+  if (payload.shop) parts.push('shop=' + payload.shop);
+  const msg = parts.join('&');
+  const h = crypto.createHmac('sha256', secret).update(msg).digest('hex');
+  return Buffer.from(JSON.stringify({ t, h, ...payload })).toString('base64url');
+}
+
+function verifyOauthSession(cookieValue) {
+  if (!cookieValue || typeof cookieValue !== 'string') return false;
+  const secret = config.oauthCookieSecret;
+  if (!secret) return false;
+  try {
+    const raw = JSON.parse(Buffer.from(cookieValue, 'base64url').toString('utf8'));
+    const { t, h, email, shop } = raw;
+    if (typeof t !== 'number' || typeof h !== 'string') return false;
+    if (t < Date.now()) return false;
+    const parts = ['t=' + t];
+    if (email) parts.push('email=' + email);
+    if (shop) parts.push('shop=' + shop);
+    const msg = parts.join('&');
+    const expected = crypto.createHmac('sha256', secret).update(msg).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(h, 'hex'), Buffer.from(expected, 'hex'));
+  } catch (_) {
+    return false;
+  }
+}
+
+function allow(req) {
+  const secret = (config.dashboardSecret || '').trim();
+  const prefix = (config.allowedAdminRefererPrefix || '').trim();
+  const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
+  const hasShopifyLogin = !!(config.allowedShopDomain && config.shopify && config.shopify.apiKey);
+  const protected = secret !== '' || prefix !== '' || hasGoogle || hasShopifyLogin;
+  if (!protected) return true;
+
+  if (isShopifyAdminReferer(req)) return true;
+  if (secret && req.get('X-Dashboard-Secret') === secret) return true;
+  const cookie = getCookie(req, COOKIE_NAME);
+  if (cookie && verifySession(cookie)) return true;
+  const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
+  if (oauthCookie && verifyOauthSession(oauthCookie)) return true;
+
+  return false;
+}
+
+function middleware(req, res, next) {
+  if (!requiresAuth(req.path, req.method)) return next();
+  if (allow(req)) return next();
+
+  const isApi = req.path.startsWith('/api/');
+  if (isApi) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  res.redirect(302, '/app/login');
+}
+
+module.exports = {
+  middleware,
+  COOKIE_NAME,
+  OAUTH_COOKIE_NAME,
+  SESSION_HOURS,
+  signSession,
+  verifySession,
+  signOauthSession,
+  verifyOauthSession,
+};

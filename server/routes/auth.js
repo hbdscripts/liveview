@@ -136,4 +136,5 @@ function handleAppUrl(req, res, next) {
 module.exports = {
   handleCallback,
   handleAppUrl,
+  verifyHmac,
 };

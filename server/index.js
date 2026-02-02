@@ -19,6 +19,9 @@ const sessionsRouter = require('./routes/sessions');
 const settingsRouter = require('./routes/settings');
 const configStatusRouter = require('./routes/configStatus');
 const auth = require('./routes/auth');
+const login = require('./routes/login');
+const oauthLogin = require('./routes/oauthLogin');
+const dashboardAuth = require('./middleware/dashboardAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +58,17 @@ app.get('/api/config-status', configStatusRouter);
 app.get('/auth/callback', (req, res) => auth.handleCallback(req, res));
 app.get('/auth/shopify/callback', (req, res) => auth.handleCallback(req, res));
 
+// Dashboard login (no auth required for these paths)
+app.get('/app/login', login.handleGetLogin);
+app.post('/app/login', login.handlePostLogin);
+app.get('/app/logout', login.handleLogout);
+
+// OAuth login: Google and "Login with Shopify"
+app.get('/auth/google', oauthLogin.handleGoogleRedirect);
+app.get('/auth/google/callback', oauthLogin.handleGoogleCallback);
+app.get('/auth/shopify-login', oauthLogin.handleShopifyLoginRedirect);
+app.get('/auth/shopify-login/callback', oauthLogin.handleShopifyLoginCallback);
+
 // Allow embedding in Shopify admin (fixes "admin.shopify.com refused to connect")
 app.use((req, res, next) => {
   res.setHeader(
@@ -63,6 +77,9 @@ app.use((req, res, next) => {
   );
   next();
 });
+
+// Protect dashboard and API: only from Shopify admin (Referer) or with DASHBOARD_SECRET (cookie/header)
+app.use(dashboardAuth.middleware);
 
 // Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
 app.use(express.static(path.join(__dirname, 'public')));

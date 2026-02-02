@@ -4,6 +4,24 @@
 
 When you push to `main`, **Railway** deploys the backend (if the repo is connected to Railway). No extra setup.
 
+### Live URL not showing latest changes (no login, iframe still broken)
+
+Railway runs the code that was **in Git at the time of the last deploy**. If you see no login page and no iframe fix:
+
+1. **Push your latest code to the branch Railway uses** (usually `main`):
+   - Commit: `git add -A && git status` then `git commit -m "Add login and iframe fix"`
+   - Push: `git push origin main`
+2. **Confirm Railway is connected to this repo and branch**  
+   In Railway: Project → your service → **Settings** → **Source** (e.g. GitHub `hbdscripts/liveview`, branch `main`).
+3. **Trigger a deploy**  
+   After a push, Railway usually auto-deploys. If not: Railway → **Deployments** → **Redeploy** (or push an empty commit: `git commit --allow-empty -m "Trigger deploy" && git push origin main`).
+4. **Check the latest deployment**  
+   Railway → **Deployments** → open the latest run and confirm the **commit SHA** matches GitHub’s latest commit on `main`.
+5. **Bypass cache**  
+   Hard refresh (Ctrl+Shift+R / Cmd+Shift+R) or open the URL in a private/incognito window.
+
+After a successful deploy, visiting `https://liveview-production.up.railway.app/app/live-visitors` directly should **redirect to `/app/login`** and show the sign-in options (Google / Shopify / secret). Opening the app from Shopify admin (correct referer) can load the dashboard without the splash.
+
 ---
 
 ## Pixel (Shopify) – depends where the app was created

@@ -7,8 +7,13 @@
   <style>
     :root { --bg: #1a1a1a; --card: #252525; --text: #e0e0e0; --muted: #888; --accent: #4a9eff; --border: #333; }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; }
-    h1 { margin: 0 0 1rem; font-size: 1.5rem; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: var(--card); border-bottom: 1px solid var(--border); }
+    .header h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+    .header a { color: var(--muted); font-size: 0.9rem; text-decoration: none; }
+    .header a:hover { color: var(--accent); }
+    .main { padding: 1rem 1.25rem; max-width: 1400px; margin: 0 auto; }
+    h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; color: var(--muted); }
     .kpis { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .kpi { background: var(--card); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); }
     .kpi strong { display: block; font-size: 1.25rem; color: var(--accent); }
@@ -49,9 +54,13 @@
   </style>
 </head>
 <body>
-  <h1>Live Visitors</h1>
+  <header class="header">
+    <h1>Live Visitors</h1>
+    <a href="/app/logout">Sign out</a>
+  </header>
 
-  <div class="config-panel">
+  <main class="main">
+  <section class="config-panel">
     <h3>Config status</h3>
     <div id="config-status">Loading…</div>
     <div class="tracking-toggle">
@@ -98,6 +107,7 @@
     <h4>Last 20 events</h4>
     <ul class="events" id="side-events"></ul>
   </div>
+  </main>
 
   <script>
     const API = '';
