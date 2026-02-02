@@ -139,10 +139,11 @@ function handleAppUrl(req, res, next) {
     }
     const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
     if (host && typeof host === 'string' && host.length > 0) {
-      const escapedAuthUrl = authUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      // Embed URL as base64 so no & appears in HTML (avoids proxies/sanitizers turning & into &amp; and breaking redirect_uri).
+      const authUrlB64 = Buffer.from(authUrl, 'utf8').toString('base64');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.send(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href = "${escapedAuthUrl}";</script></body></html>`
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting…</title></head><body><p>Redirecting to Shopify…</p><script>window.top.location.href=atob("${authUrlB64}");</script></body></html>`
       );
     }
     return res.redirect(302, authUrl);
