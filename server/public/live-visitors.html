@@ -120,6 +120,20 @@
     const API = '';
     const HIDE_CONFIG_KEY = 'livevisitors-hide-config';
     let sessions = [];
+
+    // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
+    (function ensurePixelOnce() {
+      const params = new URLSearchParams(window.location.search);
+      const shop = params.get('shop');
+      if (shop && /\.myshopify\.com$/i.test(shop)) {
+        fetch(API + '/api/pixel/ensure?shop=' + encodeURIComponent(shop), { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.action) console.log('[Live Visitors] Pixel', data.action);
+          })
+          .catch(function () {});
+      }
+    })();
     let filter = 'active';
     let selectedSessionId = null;
     let timeTick = null;

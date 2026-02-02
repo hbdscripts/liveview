@@ -1,10 +1,13 @@
 # Pixel configuration (developer app)
 
-The Live Visitors Web Pixel extension has two settings: **Ingest URL** and **Ingest Secret**. These are **not** set in a Dev Dashboard “Extensions → Configuration” screen. Shopify expects pixel settings to be set via the **GraphQL Admin API** (`webPixelCreate` / `webPixelUpdate`).
+The Live Visitors Web Pixel extension has two settings: **Ingest URL** and **Ingest Secret**. When a merchant **installs the app and opens it**, the app automatically creates or updates the pixel on that store (no manual mutation). If you need to set the pixel manually (e.g. before OAuth was fixed), use the GraphQL approach below.
 
-## Why you don’t see “Extensions → Configuration”
+## Install normally = pixel auto-configured
 
-For app pixels, settings are defined in the extension’s `shopify.extension.toml` (which we have). The **values** for those settings (Ingest URL, Ingest Secret) are stored when your app (or you) calls the Admin API to create or update the web pixel on the store. There is no separate “configuration” UI in Dev Dashboard for these fields.
+1. Merchant installs the app on a store (OAuth runs, we store the access token).
+2. Merchant opens the app (dashboard loads with `?shop=xxx` in the URL).
+3. The dashboard calls **GET /api/pixel/ensure?shop=xxx**; the server uses that store’s token to create or update the web pixel with Ingest URL and Ingest Secret from your server config.
+4. The pixel shows as **Connected** in Settings → Customer events → App pixels. No manual mutation needed.
 
 ## How to set Ingest URL and Ingest Secret
 
