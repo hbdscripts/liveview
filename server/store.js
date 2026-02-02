@@ -140,7 +140,8 @@ async function upsertSession(payload, visitorIsReturning) {
 
   let cartValue = payload.cart_value;
   if (cartValue === undefined && existing?.cart_value != null) cartValue = existing.cart_value;
-  if (typeof cartValue !== 'number') cartValue = null;
+  if (typeof cartValue === 'string') cartValue = parseFloat(cartValue);
+  if (typeof cartValue !== 'number' || Number.isNaN(cartValue)) cartValue = null;
   const cartCurrency = typeof payload.cart_currency === 'string' ? payload.cart_currency : (existing?.cart_currency ?? null);
 
   let orderTotal = payload.order_total;

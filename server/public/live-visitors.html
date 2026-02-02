@@ -310,8 +310,9 @@
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
       const visitsLabel = visits === 1 ? '1 visit' : visits + ' visits';
-      const cartVal = (s.cart_value != null && typeof s.cart_value === 'number')
-        ? formatMoney(s.cart_value, s.cart_currency)
+      const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
+      const cartVal = (s.cart_value != null && !Number.isNaN(cartValueNum))
+        ? formatMoney(cartValueNum, s.cart_currency)
         : (s.cart_qty > 0 ? (s.cart_qty + ' item' + (s.cart_qty !== 1 ? 's' : '')) : '');
       const fromCell = flagImg(countryCode) + ' ' + escapeHtml(countryLabel(countryCode)) + (s.has_purchased ? ' ' + purchaseIconSvg() : '');
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';

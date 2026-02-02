@@ -71,11 +71,26 @@ register(({ analytics, init, browser, settings }) => {
   let lastUtmCampaign = null;
   let heartbeatTimer = null;
 
+  function parseAmount(v) {
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    if (typeof v === 'string') {
+      const n = parseFloat(v);
+      return Number.isNaN(n) ? null : n;
+    }
+    return null;
+  }
+
   function cartMoneyFromCart(cart) {
     const cost = cart?.cost?.totalAmount;
-    const amount = typeof cost?.amount === 'number' ? cost.amount : null;
+    let amount = parseAmount(cost?.amount);
     const code = typeof cost?.currencyCode === 'string' ? cost.currencyCode : (init?.data?.shop?.paymentSettings?.currencyCode ?? null);
-    return { cart_value: amount, cart_currency: code };
+    if (amount == null && Array.isArray(cart?.lines) && cart.lines.length > 0) {
+      amount = cart.lines.reduce((sum, line) => {
+        const lineAmount = parseAmount(line?.cost?.totalAmount?.amount);
+        return sum + (typeof lineAmount === 'number' ? lineAmount : 0);
+      }, 0);
+    }
+    return { cart_value: amount ?? null, cart_currency: code };
   }
 
   function getVisitorId() {
