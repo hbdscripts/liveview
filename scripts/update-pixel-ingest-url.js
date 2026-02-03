@@ -106,7 +106,8 @@ function main() {
         process.exit(1);
       }
       console.log('OK:', body.action || 'updated', body);
-      return fetchStatus();
+      console.log('Waiting 4s for Shopify to persist, then verifying…');
+      return new Promise((resolve) => setTimeout(resolve, 4000)).then(() => fetchStatus());
     })
     .then((result) => {
       if (!result) return;
@@ -116,7 +117,7 @@ function main() {
         console.log('\nVerified – current pixel ingest URL in Shopify:', current);
         if (expectedIngestUrl && current !== expectedIngestUrl && current !== '(none)') {
           console.warn('\nMismatch: server said it would push', expectedIngestUrl, 'but Shopify has', current);
-          console.warn('If using multiple replicas, ensure INGEST_PUBLIC_URL is set and redeploy so every instance has it. Check Railway logs for [pixel] ensure sending ingestUrl.');
+          console.warn('Set ALLOWED_INGEST_ORIGINS=https://lv-ingest.hbdjewellery.com in Railway Variables so every replica accepts the override, then run this again.');
         }
       }
     })

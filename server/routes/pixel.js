@@ -67,6 +67,7 @@ async function ensurePixel(req, res) {
     console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
   }
   const settings = JSON.stringify({ ingestUrl, ingestSecret });
+  console.log('[pixel] ensure pushing settings.ingestUrl:', ingestUrl);
   const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
 
