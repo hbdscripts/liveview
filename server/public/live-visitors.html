@@ -533,7 +533,7 @@
       }
       const friendly = sourceFriendlyLabel(s);
       if (friendly === 'Google') {
-        return '<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>' + infoIcon();
+        return '<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
       }
       if (friendly) return escapeHtml(friendly) + infoIcon();
       if (fullUtm) return escapeHtml('Other') + infoIcon();
