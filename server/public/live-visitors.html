@@ -390,10 +390,10 @@
       return s + 's';
     }
 
-    var countryNames = { GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia', DE: 'Germany', FR: 'France', IE: 'Ireland', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', IN: 'India', JP: 'Japan', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', TH: 'Thailand', NZ: 'New Zealand', RO: 'Romania', BE: 'Belgium', FI: 'Finland', AE: 'United Arab Emirates', XX: 'Unknown' };
+    var countryNames = { GB: 'UK', US: 'USA', CA: 'CA', AU: 'AU', DE: 'DE', FR: 'FR', IE: 'IE', ES: 'ES', IT: 'IT', NL: 'NL', IN: 'IN', JP: 'JP', DK: 'DK', SE: 'SE', NO: 'NO', TH: 'TH', NZ: 'NZ', RO: 'RO', BE: 'BE', FI: 'FI', AE: 'UAE', XX: '\u2014' };
 
     function countryLabel(code) {
-      if (!code || code === 'XX') return 'Unknown';
+      if (!code) return 'Unknown';
       var c = (code || 'XX').toUpperCase().slice(0, 2);
       return countryNames[c] || c;
     }
