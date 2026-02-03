@@ -864,7 +864,8 @@
       // 1) UTM-derived source icon (campaign/source)
       const utmStr = sourceUtmString(s);
       let utmLabel = '';
-      if (isGoogleAdsSource(s)) {
+      const hasGoogleAds = isGoogleAdsSource(s);
+      if (hasGoogleAds) {
         utmLabel = 'Google Ads';
         out.push(icon(getAssetsBase() + '/adwords.png', utmLabel, utmLabel, 'source-googleads-img'));
       } else if (utmStr) {
@@ -879,7 +880,10 @@
       // 2) Referrer-derived source icon (organic/social)
       const refLabel = sourceReferrerFriendlyLabel(s);
       if (refLabel && refLabel !== 'Store' && refLabel !== utmLabel) {
-        if (refLabel === 'Google') out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (Referrer)'));
+        if (refLabel === 'Google') {
+          // Don't show a generic Google icon when Google Ads is present.
+          if (!hasGoogleAds) out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (Referrer)'));
+        }
         else if (refLabel === 'Bing') out.push(icon(SOURCE_BING_IMG, 'Bing', 'Bing (Referrer)'));
         else if (refLabel === 'Omnisend') out.push(icon(SOURCE_OMNISEND_IMG, 'Omnisend', 'Omnisend (Referrer)'));
         else if (refLabel === 'HeyBigDay Account' || refLabel === 'HBD Account') out.push(icon(SOURCE_LIVEVIEW_SOURCE_IMG, refLabel, String(refLabel)));
