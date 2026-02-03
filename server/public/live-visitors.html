@@ -267,6 +267,17 @@
         </div>
       </div>
     </div>
+    <div class="stats-card" id="stats-sessions">
+      <div class="stats-section">
+        <div class="stats-card-header">
+          <h3>Sessions</h3>
+        </div>
+        <div class="stats-main" id="sessions-range"></div>
+        <div class="stats-breakdown">
+          <span>Yesterday: <strong id="sessions-yesterday"></strong></span>
+        </div>
+      </div>
+    </div>
     <div class="stats-card" id="stats-country">
       <div class="stats-card-header">
         <h3>Country</h3>
@@ -894,6 +905,11 @@
       });
     }
 
+    function formatSessions(n) {
+      if (n == null || typeof n !== 'number') return '—';
+      return n.toLocaleString();
+    }
+
     function renderSales(data) {
       const sales = data.sales || {};
       const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : (sales[dateRange] != null ? sales[dateRange] : 0);
@@ -915,6 +931,19 @@
       const productCr = (data.productConversion || {})[dateRange];
       const productCrEl = document.getElementById('conversion-product-cr');
       if (productCrEl) productCrEl.textContent = productCr != null ? pct(productCr) : '\u2014';
+    }
+
+    function renderSessions(data) {
+      const breakdown = data.trafficBreakdown || {};
+      const useHuman = data.trafficMode === 'human_only';
+      const forRange = breakdown[dateRange];
+      const forYesterday = breakdown.yesterday;
+      const main = forRange ? (useHuman ? forRange.human_sessions : forRange.total_sessions) : null;
+      const yesterday = forYesterday ? (useHuman ? forYesterday.human_sessions : forYesterday.total_sessions) : null;
+      const sessionsRangeEl = document.getElementById('sessions-range');
+      const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
+      if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
+      if (sessionsYesterdayEl) sessionsYesterdayEl.textContent = formatSessions(yesterday);
     }
 
     function renderAov(data) {
@@ -1006,6 +1035,7 @@
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderSales(statsCache);
       renderConversion(statsCache);
+      renderSessions(statsCache);
       renderAov(statsCache);
       renderCountry(statsCache);
       requestAnimationFrame(syncCountryTableHeight);
