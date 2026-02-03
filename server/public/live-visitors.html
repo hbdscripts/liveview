@@ -154,7 +154,12 @@
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: 0.9375rem; }
       .table-title { font-size: 0.9375rem; margin-bottom: 0.35rem; }
-      .table-scroll-wrap { margin-left: -0.75rem; margin-right: -0.75rem; border-radius: 0; border-left: none; border-right: none; }
+      .live-view-header .next-update-block { display: none; }
+      .live-view-header .live-view-online-center { margin-left: auto; flex: 0; }
+      .sessions-table-wrap { margin-left: 0.75rem; margin-right: 0.75rem; }
+      .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
+      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: 4px 0 6px -2px rgba(0,0,0,0.08); }
+      .table-scroll-wrap thead th:first-child { z-index: 2; background: var(--th-bg); }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
       th, td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; }
@@ -165,7 +170,7 @@
       .dashboard-top-bar { padding-left: 0.5rem; padding-right: 0.5rem; }
       .main { padding: 0.5rem; }
       .stats-card { padding: 1rem; }
-      .table-scroll-wrap { margin-left: -0.5rem; margin-right: -0.5rem; }
+      .sessions-table-wrap { margin-left: 0.5rem; margin-right: 0.5rem; }
     }
     .dashboard-footer { text-align: center; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; }
   </style>
