@@ -111,6 +111,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Block docs/markdown paths from being served in production.
+app.use((req, res, next) => {
+  const p = req.path || '';
+  if (p.startsWith('/docs') || /\.md$/i.test(p)) {
+    res.status(404).end();
+    return;
+  }
+  next();
+});
+
 // Protect dashboard and API: only from Shopify admin (Referer) or with DASHBOARD_SECRET (cookie/header)
 app.use(dashboardAuth.middleware);
 
