@@ -428,7 +428,7 @@ function sessionFilterForTraffic(trafficMode) {
   return { sql: '', params: [] };
 }
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
+const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', 'month'];
 const SALES_ROLLING_WINDOWS = [
   { key: '3h', ms: 3 * 60 * 60 * 1000 },
   { key: '6h', ms: 6 * 60 * 60 * 1000 },
@@ -519,6 +519,10 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   if (rangeKey === '7d') {
     const startParts = addDaysToParts(todayParts, -6);
     return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
+  }
+  if (rangeKey === 'month') {
+    const startOfMonth = zonedTimeToUtcMs(todayParts.year, todayParts.month, 1, 0, 0, 0, timeZone);
+    return { start: startOfMonth, end: nowMs };
   }
   return { start: nowMs, end: nowMs };
 }
@@ -741,6 +745,7 @@ async function getStats(options = {}) {
     yesterday: yesterdayOk,
     '3d': threeDOk && yesterdayOk,
     '7d': sevenDOk && yesterdayOk,
+    month: true,
   };
   return {
     sales: { ...salesByRange, rolling: salesRolling },

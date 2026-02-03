@@ -252,8 +252,8 @@
         </div>
         <div class="stats-main" id="sales-today"></div>
         <div class="stats-breakdown">
-          <span>3 hours: <strong id="sales-3h"></strong></span>
-          <span>6 hours: <strong id="sales-6h"></strong></span>
+          <span>Yesterday: <strong id="sales-yesterday"></strong></span>
+          <span id="sales-month-label">February: <strong id="sales-month"></strong></span>
         </div>
       </div>
       <div class="stats-divider"></div>
@@ -263,7 +263,7 @@
         </div>
         <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
-          <span>Product CR: <strong id="conversion-product-cr"></strong></span>
+          <span>Product Conversion Rate: <strong id="conversion-product-cr"></strong></span>
         </div>
       </div>
     </div>
@@ -898,11 +898,15 @@
       const sales = data.sales || {};
       const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : (sales[dateRange] != null ? sales[dateRange] : 0);
       document.getElementById('sales-today').textContent = formatRevenue(mainSales);
-      const rolling = sales.rolling || {};
-      const sales3 = document.getElementById('sales-3h');
-      const sales6 = document.getElementById('sales-6h');
-      if (sales3) sales3.textContent = formatRevenue(rolling['3h']);
-      if (sales6) sales6.textContent = formatRevenue(rolling['6h']);
+      const salesYesterdayEl = document.getElementById('sales-yesterday');
+      const salesMonthEl = document.getElementById('sales-month');
+      const salesMonthLabelEl = document.getElementById('sales-month-label');
+      if (salesYesterdayEl) salesYesterdayEl.textContent = formatRevenue(sales.yesterday);
+      if (salesMonthEl) salesMonthEl.textContent = formatRevenue(sales.month);
+      if (salesMonthLabelEl && salesMonthLabelEl.firstChild) {
+        const monthName = new Date().toLocaleString('en-GB', { month: 'long', timeZone: 'Europe/London' });
+        salesMonthLabelEl.firstChild.textContent = monthName + ': ';
+      }
     }
 
     function renderConversion(data) {
