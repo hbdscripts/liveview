@@ -9,6 +9,50 @@ const { getDb, isPostgres } = require('../db');
 
 const API_VERSION = '2024-01';
 
+async function shopifyGraphql(shop, accessToken, query, variables) {
+  const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
+  const res = await fetch(graphqlUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': accessToken,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const text = await res.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch (_) {
+    json = null;
+  }
+
+  if (!res.ok) {
+    const err = new Error(`Shopify GraphQL request failed (HTTP ${res.status})`);
+    err.httpStatus = res.status;
+    err.bodyText = text;
+    err.bodyJson = json;
+    throw err;
+  }
+
+  if (json && Array.isArray(json.errors) && json.errors.length > 0) {
+    const err = new Error('Shopify GraphQL returned errors');
+    err.graphqlErrors = json.errors;
+    err.bodyJson = json;
+    throw err;
+  }
+
+  if (!json || typeof json !== 'object' || !('data' in json)) {
+    const err = new Error('Shopify GraphQL returned an unexpected response');
+    err.bodyText = text;
+    err.bodyJson = json;
+    throw err;
+  }
+
+  return json;
+}
+
 async function ensurePixel(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
   if (!shop || !shop.endsWith('.myshopify.com')) {
@@ -68,144 +112,141 @@ async function ensurePixel(req, res) {
   }
   const settings = JSON.stringify({ ingestUrl, ingestSecret });
   console.log('[pixel] ensure pushing settings.ingestUrl:', ingestUrl);
-  const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
 
-  const listQuery = `query { webPixels(first: 50) { edges { node { id } } } }`;
-  const singlePixelQuery = `query { webPixel { id settings } }`;
+  const listQuery = `query { webPixels(first: 50) { edges { node { id settings } } } }`;
+  const singlePixelQuery = `query { webPixel { id } }`;
 
   try {
     // Prefer singular webPixel (returns current app's pixel when using app access token)
-    const singleRes = await fetch(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': row.access_token,
-      },
-      body: JSON.stringify({ query: singlePixelQuery }),
-    });
-    const singleData = await singleRes.json();
+    const singleData = await shopifyGraphql(shop, row.access_token, singlePixelQuery);
     let existingId = singleData?.data?.webPixel?.id || null;
 
     if (!existingId) {
-      const listRes = await fetch(graphqlUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': row.access_token,
-        },
-        body: JSON.stringify({ query: listQuery }),
-      });
-      const listData = await listRes.json();
+      const listData = await shopifyGraphql(shop, row.access_token, listQuery);
       const edges = listData?.data?.webPixels?.edges || [];
-      existingId = edges[0]?.node?.id || null;
+      // If we have to fall back to listing, try to pick the pixel that looks like ours
+      // (settings is a JSON string; we never return it to callers).
+      for (const edge of edges) {
+        const node = edge?.node;
+        const raw = node?.settings;
+        if (!node?.id || typeof raw !== 'string') continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') continue;
+          const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
+          const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
+          if (hasSecret || hasUrl) {
+            existingId = node.id;
+            break;
+          }
+        } catch (_) {
+          // ignore invalid JSON settings for other pixels
+        }
+      }
+
+      if (!existingId) {
+        existingId = edges[0]?.node?.id || null;
+      }
     }
 
     if (existingId) {
-      const updateRes = await fetch(graphqlUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': row.access_token,
-        },
-        body: JSON.stringify({
-          query: `mutation($id: ID!, $settings: String!) {
-            webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
-              userErrors { code field message }
-              webPixel { id settings }
-            }
-          }`,
-          variables: { id: existingId, settings },
-        }),
-      });
-      const updateData = await updateRes.json();
+      const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: String!) {
+        webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
+          userErrors { code field message }
+          webPixel { id }
+        }
+      }`, { id: existingId, settings });
+
+      const updatePayload = updateData?.data?.webPixelUpdate;
+      if (!updatePayload) {
+        return res.status(502).json({
+          error: 'Shopify returned an unexpected response for webPixelUpdate',
+        });
+      }
       const errs = updateData?.data?.webPixelUpdate?.userErrors || [];
       if (errs.length > 0) {
         const msg = (errs[0]?.message || '').toLowerCase();
         const alreadySet = msg.includes('already') || msg.includes('unchanged') || msg.includes('no change');
         if (alreadySet) {
-          return res.json({ ok: true, action: 'unchanged', message: 'Pixel settings already set', userErrors: errs });
+          return res.json({ ok: true, action: 'unchanged', ingestUrl, message: 'Pixel settings already set', userErrors: errs });
         }
         console.error('[pixel] webPixelUpdate errors:', errs);
         return res.status(400).json({ error: 'Failed to update pixel', userErrors: errs });
       }
-      return res.json({ ok: true, action: 'updated', webPixel: updateData?.data?.webPixelUpdate?.webPixel });
+      return res.json({ ok: true, action: 'updated', ingestUrl, webPixel: updatePayload?.webPixel || null });
     }
 
-    const createRes = await fetch(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': row.access_token,
-      },
-      body: JSON.stringify({
-        query: `mutation { webPixelCreate(webPixel: { settings: "${escaped}" }) {
-          userErrors { code field message }
-          webPixel { id settings }
-        } }`,
-      }),
-    });
-    const createData = await createRes.json();
+    const createData = await shopifyGraphql(shop, row.access_token, `mutation($settings: String!) {
+      webPixelCreate(webPixel: { settings: $settings }) {
+        userErrors { code field message }
+        webPixel { id }
+      }
+    }`, { settings });
+
+    const createPayload = createData?.data?.webPixelCreate;
+    if (!createPayload) {
+      return res.status(502).json({
+        error: 'Shopify returned an unexpected response for webPixelCreate',
+      });
+    }
     const createErrs = createData?.data?.webPixelCreate?.userErrors || [];
     if (createErrs.length > 0) {
       const taken = createErrs.some((e) => (e.code || '').toUpperCase() === 'TAKEN');
       if (taken) {
         // Pixel already exists; try singular webPixel (current app's pixel) then list
-        const singleRetryRes = await fetch(graphqlUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': row.access_token,
-          },
-          body: JSON.stringify({ query: singlePixelQuery }),
-        });
-        const singleRetryData = await singleRetryRes.json();
+        const singleRetryData = await shopifyGraphql(shop, row.access_token, singlePixelQuery);
         let retryId = singleRetryData?.data?.webPixel?.id || null;
         if (!retryId) {
-          const retryListRes = await fetch(graphqlUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': row.access_token,
-            },
-            body: JSON.stringify({ query: listQuery }),
-          });
-          const retryListData = await retryListRes.json();
+          const retryListData = await shopifyGraphql(shop, row.access_token, listQuery);
           const retryEdges = retryListData?.data?.webPixels?.edges || [];
-          retryId = retryEdges[0]?.node?.id || null;
+          for (const edge of retryEdges) {
+            const node = edge?.node;
+            const raw = node?.settings;
+            if (!node?.id || typeof raw !== 'string') continue;
+            try {
+              const parsed = JSON.parse(raw);
+              if (!parsed || typeof parsed !== 'object') continue;
+              const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
+              const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
+              if (hasSecret || hasUrl) {
+                retryId = node.id;
+                break;
+              }
+            } catch (_) {}
+          }
+          if (!retryId) retryId = retryEdges[0]?.node?.id || null;
         }
         if (retryId) {
-          const updateRes = await fetch(graphqlUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': row.access_token,
-            },
-            body: JSON.stringify({
-              query: `mutation($id: ID!, $settings: String!) {
-                webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
-                  userErrors { code field message }
-                  webPixel { id settings }
-                }
-              }`,
-              variables: { id: retryId, settings },
-            }),
-          });
-          const updateData = await updateRes.json();
+          const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: String!) {
+            webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
+              userErrors { code field message }
+              webPixel { id }
+            }
+          }`, { id: retryId, settings });
           const updateErrs = updateData?.data?.webPixelUpdate?.userErrors || [];
           if (updateErrs.length === 0) {
-            return res.json({ ok: true, action: 'updated', webPixel: updateData?.data?.webPixelUpdate?.webPixel });
+            return res.json({ ok: true, action: 'updated', ingestUrl, webPixel: updateData?.data?.webPixelUpdate?.webPixel || null });
           }
         }
-        return res.json({ ok: true, action: 'already_exists', message: 'Pixel already exists (TAKEN); open app from Shopify Admin to sync URL', userErrors: createErrs });
+        return res.status(409).json({
+          error: 'Pixel already exists (TAKEN) but could not be updated',
+          message: 'Open the app from Shopify Admin to re-sync, or reinstall the app to refresh permissions.',
+          userErrors: createErrs,
+        });
       }
       console.error('[pixel] webPixelCreate errors:', createErrs);
       return res.status(400).json({ error: 'Failed to create pixel', userErrors: createErrs });
     }
-    return res.json({ ok: true, action: 'created', webPixel: createData?.data?.webPixelCreate?.webPixel });
+    return res.json({ ok: true, action: 'created', ingestUrl, webPixel: createPayload?.webPixel || null });
   } catch (err) {
-    console.error('[pixel] Error:', err);
-    return res.status(502).json({ error: 'Request to Shopify failed' });
+    const maybeErrors = err && err.graphqlErrors ? err.graphqlErrors : null;
+    console.error('[pixel] Error:', err && err.message ? err.message : err, maybeErrors || '');
+    return res.status(502).json({
+      error: 'Request to Shopify failed',
+      message: err && err.message ? err.message : undefined,
+      graphqlErrors: maybeErrors || undefined,
+      httpStatus: err && err.httpStatus ? err.httpStatus : undefined,
+    });
   }
 }
 
@@ -247,15 +288,7 @@ async function getPixelStatus(req, res) {
 
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
   try {
-    const res2 = await fetch(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': row.access_token,
-      },
-      body: JSON.stringify({ query: 'query { webPixel { settings } }' }),
-    });
-    const data = await res2.json();
+    const data = await shopifyGraphql(shop, row.access_token, 'query { webPixel { settings } }');
     const raw = data?.data?.webPixel?.settings;
     if (raw == null || typeof raw !== 'string') {
       return res.json({ ok: true, ingestUrl: null, message: 'No pixel or empty settings' });
@@ -269,8 +302,14 @@ async function getPixelStatus(req, res) {
     const ingestUrl = settings && typeof settings.ingestUrl === 'string' ? settings.ingestUrl : null;
     return res.json({ ok: true, ingestUrl });
   } catch (err) {
-    console.error('[pixel] status error:', err);
-    return res.status(502).json({ error: 'Request to Shopify failed' });
+    const maybeErrors = err && err.graphqlErrors ? err.graphqlErrors : null;
+    console.error('[pixel] status error:', err && err.message ? err.message : err, maybeErrors || '');
+    return res.status(502).json({
+      error: 'Request to Shopify failed',
+      message: err && err.message ? err.message : undefined,
+      graphqlErrors: maybeErrors || undefined,
+      httpStatus: err && err.httpStatus ? err.httpStatus : undefined,
+    });
   }
 }
 
