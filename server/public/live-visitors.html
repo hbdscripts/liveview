@@ -69,6 +69,9 @@
     .by-country-table th { font-size: 0.7rem; color: #777; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; background: none; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .by-country-table tbody td:first-child > * { min-width: 0; }
+    .by-country-table .country-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .by-country-table .country-name { display: inline; }
+    .by-country-table .country-code { display: none; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
     .best-sellers-table .bs-product-col { max-width: 150px; width: auto; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; flex: 1; }
@@ -204,6 +207,9 @@
       .stats-card { min-width: 100%; }
       .stats-card:first-child { min-width: 100%; }
       .best-sellers-table .bs-product-col { max-width: 120px; }
+      /* On mobile, show ISO codes instead of country labels (top tables). */
+      .by-country-table .country-name { display: none; }
+      .by-country-table .country-code { display: inline; }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: 0.9375rem; }
@@ -1469,10 +1475,12 @@
       const start = (aovPage - 1) * TOP_TABLE_PAGE_SIZE;
       const pageRows = filtered.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
-        const code = (r.country_code || 'xx').toLowerCase().slice(0, 2);
-        const name = countryLabel((r.country_code || 'XX').toUpperCase());
-        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + code + '.png" alt="' + escapeHtml(name) + '" title="' + escapeHtml(name) + '" loading="lazy">';
-        return '<tr><td>' + flag + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
+        const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
+        const code = iso.toLowerCase();
+        const label = countryLabel(iso);
+        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + code + '.png" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(iso) + '</span></span>';
+        return '<tr><td>' + flag + labelHtml + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
       }).join('');
     }
 
@@ -1492,14 +1500,16 @@
       const start = (countryPage - 1) * TOP_TABLE_PAGE_SIZE;
       const pageRows = rows.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
-        const code = (r.country_code || 'XX').toUpperCase();
+        const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const ccode = (r.country_code || 'xx').toLowerCase().slice(0, 2);
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenue(r.revenue);
-        return '<tr><td><img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy"></td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
+        return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
     }
 
