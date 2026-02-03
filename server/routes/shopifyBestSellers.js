@@ -99,9 +99,11 @@ async function getShopifyBestSellers(req, res) {
           const prod = prodData.product || {};
           const img = prod.image || (Array.isArray(prod.images) && prod.images[0]) || null;
           p.thumb_url = img && (img.src || img.url) ? (img.src || img.url) : null;
+          p.handle = (prod.handle && String(prod.handle).trim()) || null;
         }
       } catch (_) {
         p.thumb_url = null;
+        p.handle = null;
       }
     }
 
@@ -109,6 +111,7 @@ async function getShopifyBestSellers(req, res) {
     const bestSellers = list.map((p) => ({
       product_id: p.product_id,
       title: p.title,
+      handle: p.handle || null,
       thumb_url: p.thumb_url || null,
       orders: p.orders,
       revenue: p.revenue,

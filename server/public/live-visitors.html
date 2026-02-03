@@ -70,6 +70,7 @@
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
     .best-sellers-table .bs-product-col { max-width: 0; width: auto; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+    .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; }
     .best-sellers-table .product-cell .bs-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
     .best-sellers-table .product-cell .bs-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 32px; height: 32px; background: var(--border); border-radius: var(--radius); }
@@ -819,12 +820,14 @@
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
-        const thumb = p.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(p.thumb_url) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
-        const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
+        const thumbImg = p.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(p.thumb_url) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const mainBase = getMainBaseUrl();
+        const productUrl = (mainBase && p.handle) ? mainBase + '/products/' + escapeHtml(p.handle) : '';
+        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const orders = String(p.orders != null ? p.orders : 0);
         const revenue = formatRevenue(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
       updateBestSellersSortHeaders();
     }
