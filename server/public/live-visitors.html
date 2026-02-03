@@ -37,8 +37,9 @@
     th { background: #f8fafc; font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: 0.75rem; }
     tr:hover { background: #f8fafc; }
-    tr.returning { background: rgba(13, 148, 136, 0.06); }
+    tr.returning { background: #fff; }
     tr.converted { background: #ebf5f4; }
+    tr.converted:hover { background: #e0f2f1; }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .arrived-cell, .last-seen-cell { font-size: 0.875rem; white-space: nowrap; }
@@ -48,8 +49,6 @@
     .last-action-cell a:hover { text-decoration: underline; }
     .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: var(--border); }
 .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
-    tr:nth-child(even) { background: #fafbfc; }
-    tr:nth-child(even):hover { background: #f1f5f9; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: #fff; }
     .badge.returning { background: #6366f1; color: #fff; }
@@ -86,6 +85,8 @@
 #audio-mute-btn svg { width: 25px; height: 25px; }
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
+.table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
+.table-scroll-wrap .sale-cell { text-align: right; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
 .table-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0 1rem; font-size: 0.875rem; color: var(--muted); }
 .table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: #f8fafc; }
@@ -215,7 +216,7 @@
         <th>Last Seen</th>
         <th>Source</th>
         <th>Cart value</th>
-        <th>Sale</th>
+        <th class="sale-cell">Sale</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -446,7 +447,7 @@
         <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
         <td>${sourceCell(s)}</td>
         <td>${cartVal}</td>
-        <td>${saleVal}</td>
+        <td class="sale-cell">${saleVal}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
     }
