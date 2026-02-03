@@ -9,6 +9,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const appUrl = (process.env.SHOPIFY_APP_URL || '').replace(/\/$/, '');
+const ingestPublicUrl = (process.env.INGEST_PUBLIC_URL || '').replace(/\/$/, '');
 const ingestSecret = process.env.INGEST_SECRET || '';
 
 if (!appUrl || !appUrl.startsWith('http')) {
@@ -20,7 +21,8 @@ if (!ingestSecret) {
   process.exit(1);
 }
 
-const ingestUrl = `${appUrl}/api/ingest`;
+const ingestBase = ingestPublicUrl && ingestPublicUrl.startsWith('http') ? ingestPublicUrl : appUrl;
+const ingestUrl = `${ingestBase}/api/ingest`;
 const settingsJson = JSON.stringify({ ingestUrl, ingestSecret });
 const escaped = settingsJson.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 

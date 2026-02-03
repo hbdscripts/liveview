@@ -46,6 +46,21 @@ function getVisitorCountry(req) {
   return countryFromIp(getClientIp(req));
 }
 
+/** Parse User-Agent to a short device/OS label (iOS, Android, Windows, Mac, etc.) for the table. */
+function parseDeviceFromUserAgent(req) {
+  const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
+  if (!ua) return null;
+  const s = ua.toLowerCase();
+  if (/iphone|ipad|ipod/.test(s)) return 'iOS';
+  if (/android/.test(s)) return 'Android';
+  if (/windows phone|windows mobile/.test(s)) return 'Windows Phone';
+  if (/windows/.test(s)) return 'Windows';
+  if (/macintosh|mac os/.test(s)) return 'Mac';
+  if (/cros/.test(s)) return 'Chrome OS';
+  if (/linux|ubuntu|fedora/.test(s)) return 'Linux';
+  return null;
+}
+
 /** Build CF context from Worker-added headers (Phase 2). Keys match parseCfContext in store. */
 function getCfContextFromRequest(req) {
   const knownBot = req.get('x-cf-known-bot');
@@ -124,6 +139,13 @@ function ingestRouter(req, res, next) {
     const payload = store.sanitize(body);
     const country = getVisitorCountry(req);
     if (country) payload.country_code = country;
+    const deviceFromUA = parseDeviceFromUserAgent(req);
+    if (deviceFromUA) payload.device = deviceFromUA;
+    // Fallback referrer from CF/Worker (request Referer) when pixel referrer is stripped (e.g. by Shopify).
+    if (!payload.referrer || !String(payload.referrer).trim()) {
+      const cfReferer = (req.get('x-request-referer') || '').trim().slice(0, 2048);
+      if (cfReferer) payload.referrer = cfReferer;
+    }
     const ts = payload.ts || Date.now();
 
     const cfContext = getCfContextFromRequest(req);

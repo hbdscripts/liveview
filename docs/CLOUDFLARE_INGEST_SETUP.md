@@ -72,8 +72,21 @@ The worker prefers the bot signal from a header set by a Cloudflare **Request He
    - If you don’t see **Request Header Transform Rule**, check **Rules** → **Settings** for **Managed Transforms** or “Configuration Rules”; the exact name/location can vary by plan. Or skip Step 4 and rely on the Worker’s fallback (`request.cf.verifiedBotCategory`).
    - Docs: [Create a request header transform rule](https://developers.cloudflare.com/rules/transform/request-header-modification/create-dashboard/).
 4. **Rule name:** e.g. `Ingest – set x-lv-client-bot`.
-5. **When incoming requests match:** choose **Custom filter**, then set **Field** = URI Path, **Operator** = equals, **Value** = `/api/ingest`. (Or in Expression Editor: `http.request.uri.path eq "/api/ingest"`.)
-6. **Modify request header:** **Set dynamic**, **Header name** = `x-lv-client-bot`, **Value** = `if(cf.client.bot, "1", "0")`.
+
+5. **When incoming requests match…**  
+   Choose **Custom filter expression** (only apply to matching requests).  
+   - **Option A – by path:** Set **Field** = **URI Path**, **Operator** = **equals**, **Value** = `/api/ingest`.  
+   - **Option B – by full URI (if your UI shows URI Full + wildcard):** Set **Field** = **URI Full**, **Operator** = **wildcard**, **Value** = `*lv-ingest.hbdjewellery.com/api/ingest*`.  
+   - Or click **Edit expression** and enter: `http.request.uri.path eq "/api/ingest"` (or for wildcard: `http.request.full_uri wildcard "*lv-ingest.hbdjewellery.com/api/ingest*"`).
+
+6. **Then…** under **Modify request header**, click **Select item…** (or “Set new header”) to add one modification:  
+   - **Set dynamic**  
+   - **Header name:** `x-lv-client-bot`  
+   - **Value:** paste this exactly:
+   ```
+   to_string(cf.client.bot)
+   ```
+
 7. Click **Deploy** (or **Save as Draft** if you want to deploy later).
 
 **Legacy / alternate UI (if your dashboard looks different):**
@@ -85,9 +98,7 @@ The worker prefers the bot signal from a header set by a Cloudflare **Request He
 6. **Then:**
    - **Operation:** Set dynamic (or Set static if your UI only has static).
    - **Header name:** `x-lv-client-bot`
-   - **Value:** use an expression so the header is `1` or `0` from `cf.client.bot`:
-     - New Ruleset Engine: **Expression** and use:  
-       `if(cf.client.bot, "1", "0")`  
+   - **Value:** use an expression: `to_string(cf.client.bot)` (returns `"true"` or `"false"`; Worker accepts both).  
      - If your UI has “Dynamic” and a simple expression builder, choose “Bot detection” / `cf.client.bot` and map `true` → `1`, `false` → `0` if possible.
 7. Click **Deploy** (or **Save as Draft** if you want to deploy later).
 
@@ -112,6 +123,6 @@ Order of execution: the Request Header Transform Rule runs first and sets `x-lv-
 | 1 | Workers & Pages → Create Worker | Paste `workers/ingest-enrich.js`, Save and Deploy |
 | 2 | Worker → Settings → Variables | `ORIGIN_URL` = `https://liveview-production.up.railway.app`; optional `BLOCK_KNOWN_BOTS` = `1` |
 | 3 | Worker → Triggers → Routes | Add route `*lv-ingest.hbdjewellery.com/api/ingest*` |
-| 4 | Zone → Rules → Overview → Request Header Transform Rule | When path = `/api/ingest` → Set **x-lv-client-bot** = `if(cf.client.bot, "1", "0")` |
+| 4 | Zone → Rules → Overview → Request Header Transform Rule | When path = `/api/ingest` → Set **x-lv-client-bot** = `to_string(cf.client.bot)` |
 
 After this, ingest traffic is enriched with CF metadata and the dashboard **All** vs **Human** filter works (default is Human). The app stores `cf_known_bot` and stats can exclude bots when Human is selected.

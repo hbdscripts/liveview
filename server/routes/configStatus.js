@@ -9,7 +9,10 @@ function configStatus(req, res, next) {
   const hasShopify = !!(config.shopify.apiKey && config.shopify.apiSecret);
   const hasAppUrl = !!config.shopify.appUrl;
   const hasIngestSecret = !!config.ingestSecret;
-  const ingestUrl = `${config.shopify.appUrl.replace(/\/$/, '')}/api/ingest`;
+  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+    ? config.ingestPublicUrl
+    : config.shopify.appUrl.replace(/\/$/, '');
+  const ingestUrl = `${ingestBase}/api/ingest`;
 
   store.isTrackingEnabled()
     .then(enabled => {

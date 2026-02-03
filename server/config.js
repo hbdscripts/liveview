@@ -51,6 +51,8 @@ const config = {
     scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders,write_pixels,read_customer_events'),
   },
   ingestSecret: getEnv('INGEST_SECRET', ''),
+  /** If set, pixel Ingest URL uses this (e.g. https://lv-ingest.hbdjewellery.com) so traffic goes through Cloudflare. Otherwise SHOPIFY_APP_URL + /api/ingest. */
+  ingestPublicUrl: getEnv('INGEST_PUBLIC_URL', '').replace(/\/$/, ''),
   adminTimezone: getEnv('ADMIN_TIMEZONE', 'Europe/London'),
   activeWindowMinutes: getInt('ACTIVE_WINDOW_MINUTES', 5),
   recentWindowMinutes: getInt('RECENT_WINDOW_MINUTES', 15),

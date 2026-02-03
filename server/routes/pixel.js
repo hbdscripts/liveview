@@ -29,7 +29,10 @@ async function ensurePixel(req, res) {
     });
   }
 
-  const ingestUrl = `${appUrl}/api/ingest`;
+  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+    ? config.ingestPublicUrl
+    : appUrl;
+  const ingestUrl = `${ingestBase}/api/ingest`;
   const settings = JSON.stringify({ ingestUrl, ingestSecret });
   const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;

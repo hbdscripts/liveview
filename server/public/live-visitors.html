@@ -67,7 +67,7 @@
     .by-country-table th { font-size: 0.7rem; color: #777; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; background: none; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
-    .best-sellers-table .bs-product-col { max-width: 200px; width: auto; }
+    .best-sellers-table .bs-product-col { max-width: 150px; width: auto; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; }
     .best-sellers-table .product-cell .bs-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
@@ -179,6 +179,7 @@
     @media (max-width: 1000px) {
       .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
       .stats-card { min-width: 0; }
+      .best-sellers-table .bs-product-col { max-width: 220px; }
     }
     @media (max-width: 768px) {
       .dashboard-top-bar-center { display: none; }
@@ -187,6 +188,7 @@
       .stats-row { grid-template-columns: 1fr; gap: 0.75rem; margin-bottom: 1rem; }
       .stats-card { min-width: 100%; }
       .stats-card:first-child { min-width: 100%; }
+      .best-sellers-table .bs-product-col { max-width: 320px; }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: 0.9375rem; }
@@ -604,6 +606,7 @@
         const u = new URL(ref);
         const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
         if (!host) return null;
+        if (host === 'hbdjewellery.com' || host.endsWith('.myshopify.com')) return 'Store';
         if (host.indexOf('google') !== -1) return 'Google';
         if (host.indexOf('facebook') !== -1 || host.indexOf('fb.') === 0 || host === 'fb.com') return 'Facebook';
         if (host.indexOf('instagram') !== -1) return 'Instagram';

@@ -117,6 +117,12 @@ export default {
       if (v !== undefined && v !== null && String(v).length) newHeaders.set(k, String(v));
     }
 
+    // Enrich Source: pass request Referer so backend can use it when pixel referrer is stripped (e.g. by Shopify).
+    const referer = request.headers.get('Referer') || request.headers.get('referer');
+    if (referer && referer.trim()) {
+      newHeaders.set('x-request-referer', referer.trim().slice(0, 2048));
+    }
+
     try {
       const upstream = await fetch(
         new Request(origin, {
