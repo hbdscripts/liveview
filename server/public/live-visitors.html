@@ -179,7 +179,7 @@
   <div class="dashboard-top-bar">
     <div class="dashboard-top-bar-left">
       <select id="global-date-select" aria-label="Date range">
-        <option value="today">Today</option>
+        <option value="today">Today (since midnight)</option>
         <option value="yesterday">Yesterday</option>
         <option value="3d">Last 3 Days</option>
         <option value="7d">Last 7 Days</option>
@@ -772,7 +772,7 @@
       const textEl = document.getElementById('table-title-text');
       const iconEl = document.getElementById('live-view-spy-icon');
       if (!textEl) return;
-      const labels = { today: 'Spy View', yesterday: 'Yesterday', '3d': '3 Days', '7d': '7 Days' };
+      const labels = { today: 'Spy View · since midnight', yesterday: 'Yesterday', '3d': '3 Days', '7d': '7 Days' };
       textEl.textContent = labels[dateRange] || 'Spy View';
       if (iconEl) iconEl.style.display = dateRange === 'today' ? 'inline-flex' : 'none';
     }
