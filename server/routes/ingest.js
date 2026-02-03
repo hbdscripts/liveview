@@ -151,11 +151,7 @@ function ingestRouter(req, res, next) {
     const cfContext = getCfContextFromRequest(req);
     return store.upsertVisitor(payload)
       .then(() => store.upsertSession(payload, undefined, cfContext))
-      .then(() => {
-        if (payload.checkout_completed) {
-          return store.insertPurchase(payload, sessionId, payload.country_code);
-        }
-      })
+      .then(() => store.insertPurchase(payload, sessionId, payload.country_code))
       .then(() => store.insertEvent(sessionId, payload))
       .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
       .then(([sessionRow, visitor]) => {

@@ -209,6 +209,23 @@
       .stats-card { padding: 1rem; }
     }
     .dashboard-footer { text-align: center; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; }
+
+    .config-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: var(--card); cursor: pointer; color: var(--text); font-size: 12px; line-height: 1; }
+    .config-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .config-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 9999; }
+    .config-modal.open { display: flex; }
+    .config-modal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); width: 560px; max-width: 100%; max-height: 80vh; overflow: auto; padding: 1rem; }
+    .config-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .config-modal-title { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .config-close { border: none; background: none; cursor: pointer; font-size: 1.25rem; line-height: 1; color: var(--muted); }
+    .config-close:hover { color: var(--accent); }
+    .config-actions { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
+    #tracking-btn { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); cursor: pointer; color: var(--text); font-size: 0.75rem; }
+    #tracking-btn:hover { border-color: var(--accent); background: var(--button-hover-bg); }
+    #tracking-btn.off { opacity: 0.8; }
+    .config-row { font-size: 0.8125rem; color: var(--text); margin: 0.25rem 0; word-break: break-word; }
+    .config-row.ok { color: #0f766e; }
+    .config-row.missing { color: #b91c1c; }
   </style>
 </head>
 <body>
@@ -240,6 +257,8 @@
         <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
         <svg class="sound-icon-off" style="display:none" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
       </button>
+      <span class="top-bar-divider" aria-hidden="true"></span>
+      <button type="button" id="config-open-btn" class="config-btn" title="Config / Health" aria-label="Config / Health">i</button>
     </div>
   </div>
   <main class="main">
@@ -391,6 +410,20 @@
   </div>
   </main>
   <footer class="dashboard-footer" id="dashboard-footer">Liveview v<span id="app-version">—</span></footer>
+
+  <div class="config-modal" id="config-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Config and health">
+      <div class="config-modal-header">
+        <h3 class="config-modal-title">Config &amp; health</h3>
+        <button type="button" class="config-close" id="config-close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="config-actions">
+        <button type="button" id="tracking-btn">Tracking —</button>
+        <span id="tracking-label" class="muted"></span>
+      </div>
+      <div id="config-status"></div>
+    </div>
+  </div>
 
   <script>
     const API = '';
@@ -1188,13 +1221,58 @@
     fetch(API + '/api/config-status')
       .then(r => r.json())
       .then(c => {
+        function statusRow(ok, label) {
+          return '<div class="config-row ' + (ok ? 'ok' : 'missing') + '">' + (ok ? 'OK' : 'MISSING') + ' ' + label + '</div>';
+        }
+        function valueRow(label, value) {
+          return '<div class="config-row">' + escapeHtml(label) + ': ' + escapeHtml(value == null ? '' : String(value)) + '</div>';
+        }
+
         let html = '';
-        html += '<div class="config-row ' + (c.shopify?.configured ? 'ok' : 'missing') + '">' + (c.shopify?.configured ? 'âœ…' : 'âŒ') + ' Shopify API</div>';
-        html += '<div class="config-row ' + (c.appUrl?.configured ? 'ok' : 'missing') + '">' + (c.appUrl?.configured ? 'âœ…' : 'âŒ') + ' App URL</div>';
-        html += '<div class="config-row ' + (c.ingestSecret?.configured ? 'ok' : 'missing') + '">' + (c.ingestSecret?.configured ? 'âœ…' : 'âŒ') + ' Ingest secret</div>';
-        html += '<div class="config-row">Ingest URL: ' + escapeHtml(c.ingestUrl || '') + '</div>';
-        html += '<div class="config-row">Tracking: ' + (c.trackingEnabled ? 'ON' : 'OFF') + '</div>';
-        html += '<div class="config-row ' + (c.sentry?.configured ? 'ok' : 'missing') + '">' + (c.sentry?.configured ? 'âœ…' : 'âŒ') + ' Sentry</div>';
+        html += statusRow(!!c.shopify?.configured, 'Shopify API');
+        html += statusRow(!!c.appUrl?.configured, 'App URL');
+        html += statusRow(!!c.ingestSecret?.configured, 'Ingest secret');
+        html += statusRow(!!c.db?.configured, 'DB (' + (c.db?.engine || 'unknown') + ')');
+        html += valueRow('Ingest URL', c.ingestUrl || '');
+        if (c.ingestPublicUrl) html += valueRow('Ingest Public URL', c.ingestPublicUrl);
+        html += valueRow('Tracking', c.trackingEnabled ? 'ON' : 'OFF');
+        if (c.trafficMode) html += valueRow('Traffic mode (default)', c.trafficMode);
+        if (c.sessionRetentionDays != null) html += valueRow('Session retention (days)', c.sessionRetentionDays);
+        html += statusRow(!!c.sentry?.configured, 'Sentry');
+
+        const h = c.health || null;
+        if (h) {
+          html += '<div class="config-row"><strong>Data health (last 24h)</strong></div>';
+          if (h.sessions) {
+            if (typeof h.sessions.last24h === 'number') html += valueRow('Sessions', formatSessions(h.sessions.last24h));
+            if (typeof h.sessions.purchasedLast24h === 'number') html += valueRow('Sessions marked purchased', formatSessions(h.sessions.purchasedLast24h));
+            if (typeof h.sessions.max_last_seen === 'number') html += valueRow('Last session seen', formatTs(h.sessions.max_last_seen));
+          }
+          if (h.events && typeof h.events.checkoutCompletedLast24h === 'number') html += valueRow('checkout_completed events', formatSessions(h.events.checkoutCompletedLast24h));
+          if (h.purchases) {
+            if (typeof h.purchases.last24h === 'number') html += valueRow('Purchases rows', formatSessions(h.purchases.last24h));
+            if (typeof h.purchases.max_purchased_at === 'number') html += valueRow('Last purchase', formatTs(h.purchases.max_purchased_at));
+          }
+          if (h.cfKnownBot && (typeof h.cfKnownBot.known_bot === 'number' || typeof h.cfKnownBot.unknown === 'number')) {
+            const kb = Number(h.cfKnownBot.known_bot || 0);
+            const kh = Number(h.cfKnownBot.known_human || 0);
+            const ku = Number(h.cfKnownBot.unknown || 0);
+            html += valueRow('CF bot tagging', 'bots=' + kb + ', human=' + kh + ', unknown=' + ku);
+            if (kb === 0 && (kh + ku) > 0) {
+              html += '<div class="config-row missing">No bots detected. If Human/All looks identical, ensure the Cloudflare rule sets <code>x-lv-client-bot</code> (see docs/CLOUDFLARE_INGEST_SETUP.md Step 4).</div>';
+            }
+          }
+          if (h.sessions && h.events && h.purchases && typeof h.events.checkoutCompletedLast24h === 'number' && typeof h.purchases.last24h === 'number') {
+            if (h.events.checkoutCompletedLast24h > 0 && h.purchases.last24h === 0) {
+              html += '<div class="config-row missing">We are seeing <code>checkout_completed</code> events but not inserting purchases rows. This will make conversion look too low.</div>';
+            }
+          }
+        }
+
+        if (c.db && c.db.engine === 'sqlite' && !c.db.configured) {
+          html += '<div class="config-row missing">SQLite is in use (DB_URL not set). On Railway this can reset on deploy/restart → yesterday stats will be low.</div>';
+        }
+
         const configStatusEl = document.getElementById('config-status');
         if (configStatusEl) configStatusEl.innerHTML = html;
         const tb = document.getElementById('tracking-btn');
@@ -1206,6 +1284,19 @@
         const configStatusEl = document.getElementById('config-status');
         if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row missing">Could not load config status.</div>';
       });
+
+    (function initConfigModal() {
+      const modal = document.getElementById('config-modal');
+      const openBtn = document.getElementById('config-open-btn');
+      const closeBtn = document.getElementById('config-close-btn');
+      if (!modal) return;
+      function open() { modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); }
+      function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+      if (openBtn) openBtn.addEventListener('click', open);
+      if (closeBtn) closeBtn.addEventListener('click', close);
+      modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
+    })();
 
     (function initTopBar() {
       saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';

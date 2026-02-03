@@ -30,6 +30,22 @@ function sanitize(payload) {
   return out;
 }
 
+function truthy(v) {
+  if (v === true || v === 1 || v === '1') return true;
+  if (typeof v === 'string' && v.trim().toLowerCase() === 'true') return true;
+  return false;
+}
+
+function isCheckoutStartedPayload(payload) {
+  const type = typeof payload?.event_type === 'string' ? payload.event_type : '';
+  return truthy(payload?.checkout_started) || type === 'checkout_started';
+}
+
+function isCheckoutCompletedPayload(payload) {
+  const type = typeof payload?.event_type === 'string' ? payload.event_type : '';
+  return truthy(payload?.checkout_completed) || type === 'checkout_completed';
+}
+
 function normalizeCountry(value) {
   if (typeof value !== 'string') return null;
   const c = value.trim().toUpperCase();
@@ -129,8 +145,10 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const existing = await db.get('SELECT * FROM sessions WHERE session_id = ?', [payload.session_id]);
   const normalizedCountry = normalizeCountry(payload.country_code);
   const cf = parseCfContext(cfContext);
+  const checkoutCompleted = isCheckoutCompletedPayload(payload);
+  const checkoutStarted = isCheckoutStartedPayload(payload);
   let purchasedAt = typeof existing?.purchased_at === 'number' ? existing.purchased_at : null;
-  if (payload.checkout_completed && !purchasedAt) {
+  if (checkoutCompleted && !purchasedAt) {
     purchasedAt = now;
   }
 
@@ -138,13 +156,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   if (cartQty === undefined && existing) cartQty = existing.cart_qty;
   if (cartQty === undefined) cartQty = 0;
 
-  let isCheckingOut = existing?.is_checking_out || (payload.checkout_started ? 1 : 0) || 0;
-  let checkoutStartedAt = existing?.checkout_started_at || (payload.checkout_started ? now : null);
-  if (payload.checkout_completed) {
+  let isCheckingOut = existing?.is_checking_out || (checkoutStarted ? 1 : 0) || 0;
+  let checkoutStartedAt = existing?.checkout_started_at || (checkoutStarted ? now : null);
+  if (checkoutCompleted) {
     isCheckingOut = 0;
     checkoutStartedAt = null;
   }
-  if (payload.checkout_started) {
+  if (checkoutStarted) {
     isCheckingOut = 1;
     checkoutStartedAt = now;
   }
@@ -153,7 +171,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     isCheckingOut = 0;
   }
 
-  const hasPurchased = existing?.has_purchased || (payload.checkout_completed ? 1 : 0) || 0;
+  const hasPurchased = existing?.has_purchased || (checkoutCompleted ? 1 : 0) || 0;
   const lastPath = payload.path ?? existing?.last_path ?? null;
   const lastProductHandle = payload.product_handle ?? existing?.last_product_handle ?? null;
 
@@ -165,7 +183,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
 
   let orderTotal = payload.order_total;
   let orderCurrency = payload.order_currency;
-  if (payload.checkout_completed && (payload.order_total != null || payload.order_currency != null)) {
+  if (checkoutCompleted && (payload.order_total != null || payload.order_currency != null)) {
     if (typeof payload.order_total === 'number') orderTotal = payload.order_total;
     else if (typeof payload.order_total === 'string') {
       const parsed = parseFloat(payload.order_total);
@@ -284,8 +302,10 @@ async function insertEvent(sessionId, payload) {
   const type = payload.event_type || 'heartbeat';
   if (!ALLOWED_EVENT_TYPES.has(type)) return;
 
-  const checkoutState = (payload.checkout_started != null || payload.checkout_completed != null)
-    ? JSON.stringify({ checkout_started: !!payload.checkout_started, checkout_completed: !!payload.checkout_completed })
+  const checkoutStarted = isCheckoutStartedPayload(payload);
+  const checkoutCompleted = isCheckoutCompletedPayload(payload);
+  const checkoutState = (payload.checkout_started != null || payload.checkout_completed != null || checkoutStarted || checkoutCompleted)
+    ? JSON.stringify({ checkout_started: checkoutStarted, checkout_completed: checkoutCompleted })
     : null;
   const meta = payload.customer_privacy_debug ? JSON.stringify(payload.customer_privacy_debug) : null;
 
@@ -316,7 +336,7 @@ function computePurchaseKey(payload, sessionId) {
 }
 
 async function insertPurchase(payload, sessionId, countryCode) {
-  if (!payload.checkout_completed) return;
+  if (!isCheckoutCompletedPayload(payload)) return;
   const db = getDb();
   const now = payload.ts || Date.now();
   const purchaseKey = computePurchaseKey(payload, sessionId);
