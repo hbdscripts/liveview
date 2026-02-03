@@ -175,4 +175,69 @@ async function ensurePixel(req, res) {
   }
 }
 
-module.exports = { ensurePixel };
+/**
+ * GET /api/pixel/config
+ * Returns the ingest URL this server would push when ensure runs (from INGEST_PUBLIC_URL or SHOPIFY_APP_URL).
+ * Use this to confirm Railway has INGEST_PUBLIC_URL set before running the update script.
+ */
+function getPixelConfig(req, res) {
+  const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
+  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+    ? config.ingestPublicUrl
+    : appUrl;
+  const ingestUrl = ingestBase ? `${ingestBase}/api/ingest` : null;
+  res.json({
+    ok: true,
+    ingestUrl,
+    source: config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http') ? 'INGEST_PUBLIC_URL' : 'SHOPIFY_APP_URL',
+  });
+}
+
+/**
+ * GET /api/pixel/status?shop=xxx.myshopify.com
+ * Returns the current ingest URL stored in Shopify for the pixel (so you can verify after ensure).
+ */
+async function getPixelStatus(req, res) {
+  const shop = (req.query.shop || '').trim().toLowerCase();
+  if (!shop || !shop.endsWith('.myshopify.com')) {
+    return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
+  }
+
+  const db = getDb();
+  const row = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+  if (!row || !row.access_token) {
+    return res.status(401).json({
+      error: 'No access token for this store. Install the app (OAuth) first.',
+    });
+  }
+
+  const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
+  try {
+    const res2 = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': row.access_token,
+      },
+      body: JSON.stringify({ query: 'query { webPixel { settings } }' }),
+    });
+    const data = await res2.json();
+    const raw = data?.data?.webPixel?.settings;
+    if (raw == null || typeof raw !== 'string') {
+      return res.json({ ok: true, ingestUrl: null, message: 'No pixel or empty settings' });
+    }
+    let settings;
+    try {
+      settings = JSON.parse(raw);
+    } catch (_) {
+      return res.json({ ok: true, ingestUrl: null, message: 'Settings not valid JSON' });
+    }
+    const ingestUrl = settings && typeof settings.ingestUrl === 'string' ? settings.ingestUrl : null;
+    return res.json({ ok: true, ingestUrl });
+  } catch (err) {
+    console.error('[pixel] status error:', err);
+    return res.status(502).json({ error: 'Request to Shopify failed' });
+  }
+}
+
+module.exports = { ensurePixel, getPixelStatus, getPixelConfig };

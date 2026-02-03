@@ -68,6 +68,8 @@ app.put('/api/settings/tracking', express.json(), settingsRouter.putTracking);
 app.get('/api/config-status', configStatusRouter);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
+app.get('/api/pixel/status', pixelRouter.getPixelStatus);
+app.get('/api/pixel/config', pixelRouter.getPixelConfig);
 app.get('/api/shopify-sales', shopifySales.getShopifySalesToday);
 app.get('/api/shopify-best-sellers', shopifyBestSellers.getShopifyBestSellers);
 app.get('/api/shopify-best-variants', shopifyBestVariants.getShopifyBestVariants);
