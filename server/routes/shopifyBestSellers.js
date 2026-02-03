@@ -139,6 +139,9 @@ async function getShopifyBestSellers(req, res) {
       cr: conversionRate(p),
     }));
 
+    // Cache: Shopify-derived report; allow 15 min caching to reduce API load.
+    res.setHeader('Cache-Control', 'private, max-age=900');
+    res.setHeader('Vary', 'Cookie');
     return res.json({ bestSellers, totalOrders, page, pageSize, totalCount, sort, dir });
   } catch (err) {
     console.error('[shopify-best-sellers]', err);

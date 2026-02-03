@@ -1085,9 +1085,8 @@
         API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
           '&traffic=' + encodeURIComponent(trafficMode || 'all') +
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)) +
-          '&_=' + Date.now(),
-        { credentials: 'same-origin', cache: 'no-store' }
+          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)),
+        { credentials: 'same-origin' }
       )
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {

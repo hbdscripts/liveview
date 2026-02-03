@@ -113,6 +113,9 @@ async function getWorstProducts(req, res) {
   const startIdx = (page - 1) * pageSize;
   const pageItems = list.slice(startIdx, startIdx + pageSize);
 
+  // Cache: worst-products is relatively expensive; allow 15 min caching.
+  res.setHeader('Cache-Control', 'private, max-age=900');
+  res.setHeader('Vary', 'Cookie');
   res.json({
     range,
     trafficMode,

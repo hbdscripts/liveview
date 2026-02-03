@@ -145,6 +145,9 @@ async function getShopifyBestVariants(req, res) {
       }
     }
 
+    // Cache: Shopify-derived report; allow 15 min caching to reduce API load.
+    res.setHeader('Cache-Control', 'private, max-age=900');
+    res.setHeader('Vary', 'Cookie');
     return res.json({ bestVariants: pageItems, totalOrders, page, pageSize, totalCount });
   } catch (err) {
     console.error('[shopify-best-variants]', err);
