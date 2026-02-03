@@ -179,7 +179,7 @@
       </span>
     </div>
     <div class="dashboard-top-bar-center">
-      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=240" alt="HBD" width="80" height="auto" loading="lazy">
+      <img class="top-bar-logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894" alt="HBD" width="80" height="auto" loading="lazy">
     </div>
     <div class="dashboard-top-bar-right">
       <span class="server-time-block">Server Time: <span id="server-time-msg">--:--</span></span>
@@ -443,6 +443,9 @@
       return (API || '') + '/assets';
     }
 
+    var HICON_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894';
+    var DOLLAR_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223';
+
     function landingPageCell(s) {
       var hasFirst = (s.first_path != null && s.first_path !== '') || (s.first_product_handle != null && s.first_product_handle !== '');
       var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s.last_path != null ? s.last_path : ''))).trim();
@@ -451,11 +454,18 @@
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var isCheckout = path && path.indexOf('/checkouts') === 0;
+      var isHomeOrOrders = path === '/' || path === '/orders' || (path && path.replace(/\/+$/, '') === '/orders');
       var mainBase = getMainBaseUrl();
       var fullUrl = mainBase && path ? mainBase + path : '';
       var label = '\u2014';
       var thumbSrc = '';
-      if (isCheckout) {
+      if (s.has_purchased) {
+        label = path === '/' ? 'Home' : (path ? escapeHtml(path) : '\u2014');
+        thumbSrc = DOLLAR_URL;
+      } else if (isHomeOrOrders) {
+        label = path === '/' ? 'Home' : escapeHtml(path);
+        thumbSrc = HICON_URL;
+      } else if (isCheckout) {
         label = 'Cart';
         thumbSrc = getAssetsBase() + '/checkout.webp';
       } else if (path) {
