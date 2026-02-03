@@ -110,11 +110,22 @@ async function ensurePixel(req, res) {
     ingestUrl = `${ingestBase}/api/ingest`;
     console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
   }
-  const settings = JSON.stringify({ ingestUrl, ingestSecret });
+  const settingsObj = { ingestUrl, ingestSecret };
   console.log('[pixel] ensure pushing settings.ingestUrl:', ingestUrl);
 
   const listQuery = `query { webPixels(first: 50) { edges { node { id settings } } } }`;
   const singlePixelQuery = `query { webPixel { id } }`;
+
+  function parseSettingsFromNode(raw) {
+    if (raw == null) return null;
+    if (typeof raw === 'object' && raw !== null) return raw;
+    if (typeof raw !== 'string') return null;
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
 
   try {
     // Prefer singular webPixel (returns current app's pixel when using app access token)
@@ -125,22 +136,15 @@ async function ensurePixel(req, res) {
       const listData = await shopifyGraphql(shop, row.access_token, listQuery);
       const edges = listData?.data?.webPixels?.edges || [];
       // If we have to fall back to listing, try to pick the pixel that looks like ours
-      // (settings is a JSON string; we never return it to callers).
       for (const edge of edges) {
         const node = edge?.node;
-        const raw = node?.settings;
-        if (!node?.id || typeof raw !== 'string') continue;
-        try {
-          const parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== 'object') continue;
-          const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
-          const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
-          if (hasSecret || hasUrl) {
-            existingId = node.id;
-            break;
-          }
-        } catch (_) {
-          // ignore invalid JSON settings for other pixels
+        const parsed = parseSettingsFromNode(node?.settings);
+        if (!node?.id || !parsed || typeof parsed !== 'object') continue;
+        const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
+        const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
+        if (hasSecret || hasUrl) {
+          existingId = node.id;
+          break;
         }
       }
 
@@ -150,12 +154,12 @@ async function ensurePixel(req, res) {
     }
 
     if (existingId) {
-      const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: String!) {
+      const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: JSON!) {
         webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
           userErrors { code field message }
           webPixel { id }
         }
-      }`, { id: existingId, settings });
+      }`, { id: existingId, settings: settingsObj });
 
       const updatePayload = updateData?.data?.webPixelUpdate;
       if (!updatePayload) {
@@ -176,12 +180,12 @@ async function ensurePixel(req, res) {
       return res.json({ ok: true, action: 'updated', ingestUrl, webPixel: updatePayload?.webPixel || null });
     }
 
-    const createData = await shopifyGraphql(shop, row.access_token, `mutation($settings: String!) {
+    const createData = await shopifyGraphql(shop, row.access_token, `mutation($settings: JSON!) {
       webPixelCreate(webPixel: { settings: $settings }) {
         userErrors { code field message }
         webPixel { id }
       }
-    }`, { settings });
+    }`, { settings: settingsObj });
 
     const createPayload = createData?.data?.webPixelCreate;
     if (!createPayload) {
@@ -201,28 +205,24 @@ async function ensurePixel(req, res) {
           const retryEdges = retryListData?.data?.webPixels?.edges || [];
           for (const edge of retryEdges) {
             const node = edge?.node;
-            const raw = node?.settings;
-            if (!node?.id || typeof raw !== 'string') continue;
-            try {
-              const parsed = JSON.parse(raw);
-              if (!parsed || typeof parsed !== 'object') continue;
-              const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
-              const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
-              if (hasSecret || hasUrl) {
-                retryId = node.id;
-                break;
-              }
-            } catch (_) {}
+            const parsed = parseSettingsFromNode(node?.settings);
+            if (!node?.id || !parsed || typeof parsed !== 'object') continue;
+            const hasSecret = typeof parsed.ingestSecret === 'string' && parsed.ingestSecret === ingestSecret;
+            const hasUrl = typeof parsed.ingestUrl === 'string' && parsed.ingestUrl.includes('/api/ingest');
+            if (hasSecret || hasUrl) {
+              retryId = node.id;
+              break;
+            }
           }
           if (!retryId) retryId = retryEdges[0]?.node?.id || null;
         }
         if (retryId) {
-          const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: String!) {
+          const updateData = await shopifyGraphql(shop, row.access_token, `mutation($id: ID!, $settings: JSON!) {
             webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
               userErrors { code field message }
               webPixel { id }
             }
-          }`, { id: retryId, settings });
+          }`, { id: retryId, settings: settingsObj });
           const updateErrs = updateData?.data?.webPixelUpdate?.userErrors || [];
           if (updateErrs.length === 0) {
             return res.json({ ok: true, action: 'updated', ingestUrl, webPixel: updateData?.data?.webPixelUpdate?.webPixel || null });
@@ -290,16 +290,14 @@ async function getPixelStatus(req, res) {
   try {
     const data = await shopifyGraphql(shop, row.access_token, 'query { webPixel { settings } }');
     const raw = data?.data?.webPixel?.settings;
-    if (raw == null || typeof raw !== 'string') {
+    if (raw == null) {
       return res.json({ ok: true, ingestUrl: null, message: 'No pixel or empty settings' });
     }
-    let settings;
-    try {
-      settings = JSON.parse(raw);
-    } catch (_) {
+    const settings = typeof raw === 'object' && raw !== null ? raw : (() => { try { return JSON.parse(raw); } catch (_) { return null; } })();
+    if (!settings || typeof settings !== 'object') {
       return res.json({ ok: true, ingestUrl: null, message: 'Settings not valid JSON' });
     }
-    const ingestUrl = settings && typeof settings.ingestUrl === 'string' ? settings.ingestUrl : null;
+    const ingestUrl = typeof settings.ingestUrl === 'string' ? settings.ingestUrl : null;
     return res.json({ ok: true, ingestUrl });
   } catch (err) {
     const maybeErrors = err && err.graphqlErrors ? err.graphqlErrors : null;
