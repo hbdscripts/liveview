@@ -31,6 +31,19 @@
       --side-panel-sale-bg: rgba(13, 148, 136, 0.08);
       --button-hover-bg: #f5f5f5;
       --select-arrow: #333;
+      /* Table consistency */
+      --table-cell-padding-y: 0.6rem;
+      --table-cell-padding-x: 0.75rem;
+      --table-font-size: 0.875rem;
+      --table-th-font-size: 0.75rem;
+      --table-compact-padding-y: 0.4rem;
+      --table-compact-padding-x: 0.5rem;
+      --online-dot-color: #4caf50;
+      --link-fg: #06133b;
+      --top-bar-divider: #eee;
+      --sticky-col-shadow: 6px 0 8px -2px rgba(0, 0, 0, 0.12);
+      --sticky-col-min-width: 52px;
+      --table-font-size-mobile: 0.8125rem;
     }
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
@@ -48,18 +61,18 @@
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
-    .by-country-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .by-country-table th, .by-country-table td { padding: 0.4rem 0; border-bottom: none; }
+    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); }
+    .by-country-table th, .by-country-table td { padding: var(--table-compact-padding-y) 0; border-bottom: none; }
     .by-country-table th { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
-    .aov-list { list-style: none; padding: 0; margin: 0; font-size: 0.875rem; }
+    .aov-list { list-style: none; padding: 0; margin: 0; font-size: var(--table-font-size); }
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
-    th { background: var(--th-bg); font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-    th:first-child, td:first-child { min-width: 80px; padding-left: 0.75rem; }
+    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: var(--table-font-size); }
+    th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
     tr:hover { background: inherit; }
     tr.returning { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
@@ -69,10 +82,10 @@
     .arrived-cell, .last-seen-cell { font-size: 0.875rem; white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
-.last-action-cell a { color: #06133b; text-decoration: none; font-size: 12px; font-weight: 500; }
+.last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: 12px; font-weight: 500; }
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-    .thumb-card { display: inline-flex; align-items: center; justify-content: center; width: 35px; height: 35px; padding: 2px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); flex-shrink: 0; box-sizing: border-box; }
+    .thumb-card { display: inline-flex; align-items: center; justify-content: center; width: 35px; height: 35px; padding: 2px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); flex-shrink: 0; box-sizing: border-box; }
     .thumb-card--sale { border: none; padding: 0; box-shadow: none; background: none; }
     .thumb-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 1px; display: block; }
 .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
@@ -101,7 +114,7 @@
 .dashboard-top-bar-right { display: flex; align-items: center; gap: 5px; }
 .server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; margin: 0 5px 0 0; }
 .server-time-tz { font-size: 0.7rem; opacity: 0.9; margin-left: 0.2rem; }
-.top-bar-divider { width: 1px; height: 1.2em; background: #eee; flex-shrink: 0; }
+.top-bar-divider { width: 1px; height: 1.2em; background: var(--top-bar-divider); flex-shrink: 0; }
 .refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 .refresh-btn:hover { color: var(--accent); }
 .refresh-btn svg { width: 15px; height: 15px; }
@@ -118,7 +131,7 @@
 .live-view-header .live-view-online-center { flex: 1; justify-content: center; display: flex; }
 .live-view-header .next-update-block { flex-shrink: 0; }
 .live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; margin-right: 10px; }
-.live-view-online .online-dot { width: 10px; height: 10px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
+.live-view-online .online-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--online-dot-color); flex-shrink: 0; }
 .live-view-online strong { color: var(--accent); font-size: 17px; }
 .live-view-spy-icon { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; flex-shrink: 0; }
 .live-view-spy-icon svg { width: 15px; height: 15px; }
@@ -136,7 +149,8 @@
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
-.table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
+.table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: var(--table-cell-padding-x); }
+    .table-scroll-wrap .sticky-lp-cell { display: block; }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
 .table-scroll-wrap th.sortable { cursor: pointer; user-select: none; }
 .table-scroll-wrap th.sortable:hover { color: var(--accent); }
@@ -163,12 +177,14 @@
       .live-view-header .live-view-online-center { margin-left: auto; flex: 0; }
       .sessions-table-wrap { margin-left: 0.75rem; margin-right: 0.75rem; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
-      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: 6px 0 8px -2px rgba(0,0,0,0.12); min-width: 52px; }
-      .table-scroll-wrap tr.converted td:first-child { background: var(--converted-bg); }
-      .table-scroll-wrap thead th:first-child { z-index: 2; background: var(--th-bg); min-width: 52px; }
+      /* iOS: sticky on inner block (table-cell sticky is buggy in Safari) */
+      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); vertical-align: middle; }
+      .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); display: block; height: 100%; box-sizing: border-box; min-height: 2.5em; }
+      .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
+      .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
-      th, td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; }
+      th, td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); font-size: var(--table-font-size-mobile); }
       .last-action-cell a { display: none; }
       .thumb-card { width: 32px; height: 32px; padding: 1.5px; }
     }
@@ -289,7 +305,7 @@
   <table>
     <thead>
       <tr>
-        <th>LP</th>
+        <th><div class="sticky-lp-cell">LP</div></th>
         <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">GEO</th>
         <th>Device</th>
         <th>History</th>
@@ -588,7 +604,7 @@
       const fromCell = flagImg(countryCode);
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
-        <td>${landingPageCell(s)}</td>
+        <td><div class="sticky-lp-cell">${landingPageCell(s)}</div></td>
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
