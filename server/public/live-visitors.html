@@ -131,7 +131,7 @@
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
-.table-scroll-wrap .cart-value-cell { text-align: right; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
+.table-scroll-wrap .source-cell, .table-scroll-wrap .cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
 .table-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0 1rem; font-size: 0.875rem; color: var(--muted); }
 .table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
@@ -279,8 +279,8 @@
         <th>History</th>
         <th>Arrived</th>
         <th>Last Seen</th>
-        <th>Source</th>
-        <th>Cart</th>
+        <th class="source-cell">Source</th>
+        <th class="cart-value-cell">Cart</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -561,7 +561,7 @@
         <td>${visitsLabel}</td>
         <td class="arrived-cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></td>
         <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
-        <td>${sourceCell(s)}</td>
+        <td class="source-cell">${sourceCell(s)}</td>
         <td class="cart-value-cell">${cartOrSaleCell}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
