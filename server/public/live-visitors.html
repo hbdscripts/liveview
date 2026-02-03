@@ -1089,7 +1089,7 @@
       url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {
-          if (!r.ok) return {};
+          if (!r.ok) throw new Error('Stats HTTP ' + r.status);
           return r.json();
         })
         .then(function(data) {
@@ -1101,7 +1101,7 @@
           fetchShopifySales();
           fetchBestSellers();
         })
-        .catch(function() { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats({}); })
+        .catch(function() { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats(statsCache || {}); })
         .finally(function() {
           if (overlay) overlay.style.display = 'none';
           requestAnimationFrame(function() { renderCountry(statsCache); });
@@ -1426,14 +1426,26 @@
         const msg = JSON.parse(e.data);
         if (msg.type === 'session_update' && msg.session) {
           const idx = sessions.findIndex(s => s.session_id === msg.session.session_id);
+          let becamePurchased = false;
           if (idx >= 0) {
+            const wasPurchased = !!sessions[idx].has_purchased;
+            const wasOrderTotal = sessions[idx].order_total != null;
             sessions[idx] = { ...sessions[idx], ...msg.session };
+            const nowPurchased = !!sessions[idx].has_purchased;
+            const nowOrderTotal = sessions[idx].order_total != null;
+            becamePurchased = (!wasPurchased && nowPurchased) || (nowPurchased && !wasOrderTotal && nowOrderTotal);
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
           } else {
             sessions.unshift(msg.session);
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
+            becamePurchased = !!msg.session.has_purchased;
           }
-          // Table and KPIs only update on manual refresh or on the minute (see fetchSessions interval)
+          // Real-time updates are noisy; only force a redraw when a session becomes a purchase.
+          if (becamePurchased) {
+            currentPage = 1;
+            renderTable();
+            updateKpis();
+          }
         }
       } catch (_) {}
     };
