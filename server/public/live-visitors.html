@@ -69,7 +69,8 @@
 .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-    .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; background: var(--border); }
+    .thumb-card { display: inline-flex; align-items: center; justify-content: center; width: 35px; height: 35px; padding: 2px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); flex-shrink: 0; box-sizing: border-box; }
+    .thumb-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 1px; display: block; }
 .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: var(--badge-new-fg); }
@@ -85,19 +86,21 @@
     .side-panel-sale strong { color: var(--accent); }
     .side-panel ul.events { list-style: none; padding: 0; margin: 0.5rem 0; font-size: 0.85rem; }
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
-    .side-panel ul.events li .thumb-40 { flex-shrink: 0; }
+    .side-panel ul.events li .thumb-card { flex-shrink: 0; }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
 .dashboard-top-bar-left { display: flex; align-items: center; }
+.dashboard-top-bar-center { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
+.dashboard-top-bar-center .top-bar-logo { width: 80px; height: auto; display: block; object-fit: contain; }
 .next-update-favicon { width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle; }
     .next-update-timer { width: 30px; text-align: center; font-weight: 500; display: inline-block; }
 .dashboard-top-bar-right { display: flex; align-items: center; gap: 10px; }
 .server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
 .top-bar-divider { width: 1px; height: 1.2em; background: #eee; flex-shrink: 0; }
-.refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
+.refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 .refresh-btn:hover { color: var(--accent); }
-.refresh-btn svg { width: 18px; height: 18px; }
+.refresh-btn svg { width: 25px; height: 25px; }
 .refresh-btn.spinning svg { animation: refresh-spin 0.8s linear; }
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
 .next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
@@ -149,7 +152,7 @@
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
       th, td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; }
       .last-action-cell { flex-wrap: wrap; }
-      .thumb-40 { width: 32px; height: 32px; }
+      .thumb-card { width: 32px; height: 32px; padding: 1.5px; }
     }
     @media (max-width: 480px) {
       .dashboard-top-bar { padding-left: 0.5rem; padding-right: 0.5rem; }
@@ -175,11 +178,14 @@
         <a href="#" id="traffic-human" class="traffic-link">Human only</a>
       </span>
     </div>
+    <div class="dashboard-top-bar-center">
+      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=240" alt="HBD" width="80" height="auto" loading="lazy">
+    </div>
     <div class="dashboard-top-bar-right">
       <span class="server-time-block">Server Time: <span id="server-time-msg">--:--</span></span>
       <span class="top-bar-divider" aria-hidden="true"></span>
       <button type="button" id="refresh-btn" class="refresh-btn" title="Refresh" aria-label="Refresh">
-        <svg viewBox="-2.5 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M20.48 18.613l-1.12 7.84 7.627-1.173-2.987-3.040c1.013-1.867 1.6-3.947 1.6-6.24 0-7.093-5.707-12.8-12.8-12.8v1.067c6.453 0 11.733 5.28 11.733 11.733 0 1.973-0.48 3.787-1.333 5.44l-2.72-2.827zM20.587 25.173l0.64-4.267 3.52 3.627-4.16 0.64z"/><path d="M1.067 16c0-2.827 1.013-5.387 2.667-7.413l3.253 3.307 1.12-7.84-7.627 1.227 2.453 2.56c-1.813 2.187-2.933 5.067-2.933 8.16 0 7.093 5.707 12.8 12.8 12.8v-1.067c-6.453 0-11.733-5.28-11.733-11.733zM6.827 5.387l-0.64 4.267-3.52-3.627 4.16-0.64z"/></svg>
+        <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
       </button>
       <span class="top-bar-divider" aria-hidden="true"></span>
       <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
@@ -439,7 +445,7 @@
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
-        var img = thumbSrc ? '<img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'">' : '';
+        var img = thumbSrc ? '<span class="thumb-card"><img src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"></span>' : '';
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
         return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
       }
@@ -757,7 +763,7 @@
             if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
             if (path && !path.startsWith('/')) path = '/' + path;
             var fullUrl = base && path ? base + path : '';
-            var thumb = fullUrl ? '<img class="thumb-40" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+            var thumb = fullUrl ? '<span class="thumb-card"><img src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.style.display=\'none\'"></span>' : '';
             var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(e.path || '') + ' ' + (e.product_handle || '') + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
             return '<li>' + thumb + '<span>' + text + '</span></li>';
           }).join('');
@@ -895,10 +901,12 @@
     })();
     window.addEventListener('resize', syncCountryTableHeight);
 
-    fetchStats();
-    fetchSessions();
-    setInterval(fetchStats, STATS_INTERVAL_MS);
-    setInterval(fetchSessions, STATS_INTERVAL_MS);
+    function onMinuteTick() {
+      fetchStats();
+      fetchSessions();
+    }
+    onMinuteTick();
+    setInterval(onMinuteTick, STATS_INTERVAL_MS);
     setInterval(tickTimeOnSite, 30000);
 
     document.addEventListener('visibilitychange', function() {
@@ -914,14 +922,11 @@
           if (idx >= 0) {
             sessions[idx] = { ...sessions[idx], ...msg.session };
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-            renderTable();
-            updateKpis();
           } else {
             sessions.unshift(msg.session);
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-            renderTable();
-            updateKpis();
           }
+          // Table and KPIs only update on manual refresh or on the minute (see fetchSessions interval)
         }
       } catch (_) {}
     };
