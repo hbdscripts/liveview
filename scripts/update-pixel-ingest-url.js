@@ -70,6 +70,7 @@ function main() {
     return;
   }
 
+  let expectedIngestUrl = '';
   fetchConfig()
     .then(({ status, body }) => {
       if (status !== 200 || !body.ok) {
@@ -77,12 +78,13 @@ function main() {
         process.exit(1);
       }
       const url = body.ingestUrl || '';
+      expectedIngestUrl = url;
       const isCf = url.includes('lv-ingest') || (url && !url.includes('railway'));
       console.log('Server would push:', url || '(none)');
       console.log('Source:', body.source || 'unknown');
       if (!isCf && url) {
         console.warn('\nWARNING: Server does not have INGEST_PUBLIC_URL set – pixel will get Railway URL.');
-        console.warn('Set INGEST_PUBLIC_URL=https://lv-ingest.hbdjewellery.com in Railway, redeploy, then run this again.\n');
+        console.warn('Set INGEST_PUBLIC_URL in Railway (e.g. https://lv-ingest.yourdomain.com), redeploy, then run this again.\n');
       }
       return runEnsure();
     })
@@ -103,7 +105,12 @@ function main() {
       if (!result) return;
       const { status, body } = result;
       if (status === 200 && body.ok) {
-        console.log('\nVerified – current pixel ingest URL in Shopify:', body.ingestUrl ?? '(none)');
+        const current = body.ingestUrl ?? '(none)';
+        console.log('\nVerified – current pixel ingest URL in Shopify:', current);
+        if (expectedIngestUrl && current !== expectedIngestUrl && current !== '(none)') {
+          console.warn('\nMismatch: server said it would push', expectedIngestUrl, 'but Shopify has', current);
+          console.warn('If using multiple replicas, ensure INGEST_PUBLIC_URL is set and redeploy so every instance has it. Check Railway logs for [pixel] ensure sending ingestUrl.');
+        }
       }
     })
     .catch((err) => {

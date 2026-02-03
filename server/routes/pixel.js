@@ -33,6 +33,7 @@ async function ensurePixel(req, res) {
     ? config.ingestPublicUrl
     : appUrl;
   const ingestUrl = `${ingestBase}/api/ingest`;
+  console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
   const settings = JSON.stringify({ ingestUrl, ingestSecret });
   const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
