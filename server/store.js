@@ -550,6 +550,37 @@ async function getConversionRate(start, end, options = {}) {
   return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
 }
 
+/** Product-only sessions: landed on a product page (not homepage, collection, etc). */
+const PRODUCT_LANDING_SQL = " AND (first_path LIKE '/products/%' OR (first_product_handle IS NOT NULL AND TRIM(COALESCE(first_product_handle, '')) != ''))";
+
+async function getProductConversionRate(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
+  const db = getDb();
+  const productFilter = filter.sql.replace('sessions.', '') + PRODUCT_LANDING_SQL;
+  const total = config.dbUrl
+    ? await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + productFilter,
+      [start, end, ...filter.params]
+    )
+    : await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + productFilter,
+      [start, end, ...filter.params]
+    );
+  const converted = config.dbUrl
+    ? await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2 AND has_purchased = 1' + productFilter,
+      [start, end, ...filter.params]
+    )
+    : await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ? AND has_purchased = 1' + productFilter,
+      [start, end, ...filter.params]
+    );
+  const t = total?.n ?? 0;
+  const c = converted?.n ?? 0;
+  return t > 0 ? Math.round((c / t) * 1000) / 10 : null;
+}
+
 async function getCountryStats(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
@@ -665,6 +696,9 @@ async function getStats(options = {}) {
   const conversionByRange = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])
   ));
+  const productConversionByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])
+  ));
   const countryByRange = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])
   ));
@@ -703,6 +737,7 @@ async function getStats(options = {}) {
   return {
     sales: { ...salesByRange, rolling: salesRolling },
     conversion: { ...conversionByRange, rolling: conversionRolling },
+    productConversion: productConversionByRange,
     country: countryByRange,
     aov: { ...aovByRange, rolling: aovRolling },
     revenueToday: salesByRange.today ?? 0,

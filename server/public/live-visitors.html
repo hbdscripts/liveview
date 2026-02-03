@@ -52,12 +52,12 @@
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
     #stats-country, #stats-best-sellers { display: flex; flex-direction: column; max-height: 320px; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
     .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
     .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
     .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .stats-breakdown span { display: inline-block; }
-    .stats-divider { height: 1px; background: var(--border); margin: 0.6rem 0; }
+    .stats-divider { height: 1px; /* background: var(--border); */ margin: 0.6rem 0; }
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
@@ -266,8 +266,7 @@
         </div>
         <div class="stats-main" id="conversion-range"></div>
         <div class="stats-breakdown">
-          <span>3 hours: <strong id="conversion-3h"></strong></span>
-          <span>6 hours: <strong id="conversion-6h"></strong></span>
+          <span>Product CR: <strong id="conversion-product-cr"></strong></span>
         </div>
       </div>
     </div>
@@ -880,9 +879,9 @@
     function renderConversion(data) {
       const c = data.conversion || {};
       document.getElementById('conversion-range').textContent = pct(c[dateRange]);
-      const rolling = c.rolling || {};
-      document.getElementById('conversion-3h').textContent = pct(rolling['3h']);
-      document.getElementById('conversion-6h').textContent = pct(rolling['6h']);
+      const productCr = (data.productConversion || {})[dateRange];
+      const productCrEl = document.getElementById('conversion-product-cr');
+      if (productCrEl) productCrEl.textContent = productCr != null ? pct(productCr) : '\u2014';
     }
 
     function renderAov(data) {
