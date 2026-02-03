@@ -212,6 +212,14 @@ register(({ analytics, init, browser, settings }) => {
     }, HEARTBEAT_MS);
   }
 
+  function updateUtmFromContext(ctx) {
+    const u = utmParamsFromContext(ctx);
+    if (u.utm_source != null) lastUtm.utm_source = u.utm_source;
+    if (u.utm_campaign != null) lastUtm.utm_campaign = u.utm_campaign;
+    if (u.utm_medium != null) lastUtm.utm_medium = u.utm_medium;
+    if (u.utm_content != null) lastUtm.utm_content = u.utm_content;
+  }
+
   ensureIds().then(() => {
     const cart = init?.data?.cart;
     cartQty = cart?.totalQuantity ?? 0;
@@ -220,8 +228,7 @@ register(({ analytics, init, browser, settings }) => {
     cartValue = money.cart_value;
     cartCurrency = money.cart_currency;
     lastPath = pathFromContext(init?.context) || '/';
-    const utm = utmCampaignFromContext(init?.context);
-    if (utm != null) lastUtmCampaign = utm;
+    updateUtmFromContext(init?.context);
     send(payload('page_viewed', { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     startHeartbeat();
   }).catch(() => {});
@@ -229,8 +236,8 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('page_viewed', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || pathFromContext(init?.context) || lastPath;
-      const utm = utmCampaignFromContext(event?.context) ?? utmCampaignFromContext(init?.context);
-      if (utm != null) lastUtmCampaign = utm;
+      updateUtmFromContext(event?.context);
+      updateUtmFromContext(init?.context);
       send(payload('page_viewed'));
     } catch (_) {}
   });
@@ -238,8 +245,8 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('product_viewed', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || lastPath;
-      const utm = utmCampaignFromContext(event?.context) ?? utmCampaignFromContext(init?.context);
-      if (utm != null) lastUtmCampaign = utm;
+      updateUtmFromContext(event?.context);
+      updateUtmFromContext(init?.context);
       const handle = event?.data?.productVariant?.product?.handle ?? event?.data?.product?.handle;
       const path = pathFromContext(event?.context) || lastPath;
       const match = path.match(/\/products\/([^/?#]+)/);
