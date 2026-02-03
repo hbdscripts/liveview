@@ -163,6 +163,11 @@
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
 .table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: var(--table-cell-padding-x); }
     .table-scroll-wrap .sticky-lp-cell { display: block; }
+    /* Sticky first column (LP) at all viewports when table scrolls; inner div for iOS Safari */
+    .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); vertical-align: middle; }
+    .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); box-sizing: border-box; min-height: 2.5em; }
+    .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
+    .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
 .table-scroll-wrap th.sortable { cursor: pointer; user-select: none; }
 .table-scroll-wrap th.sortable:hover { color: var(--accent); }
@@ -193,11 +198,6 @@
       .live-view-header .live-view-online-center { margin-left: auto; flex: 0; }
       .sessions-table-wrap { margin-left: 0.75rem; margin-right: 0.75rem; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
-      /* iOS: sticky on inner block (table-cell sticky is buggy in Safari) */
-      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); vertical-align: middle; }
-      .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); display: block; height: 100%; box-sizing: border-box; min-height: 2.5em; }
-      .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
-      .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
       th, td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); font-size: var(--table-font-size-mobile); }
