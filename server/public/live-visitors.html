@@ -454,7 +454,7 @@
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var pathNorm = path ? path.replace(/\/+$/, '') : '';
       var isCheckout = path && path.indexOf('/checkouts') === 0;
-      var isHomeOrOrders = path === '/' || path === '/orders' || pathNorm === '/orders';
+      var isHomeOrOrders = path === '/' || path === '/orders' || pathNorm === '/orders' || (path && path.startsWith('/orders/'));
       var isCart = path === '/cart' || pathNorm === '/cart';
       var mainBase = getMainBaseUrl();
       var fullUrl = mainBase && path ? mainBase + path : '';
