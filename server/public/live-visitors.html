@@ -133,6 +133,10 @@
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
 .table-scroll-wrap .source-cell, .table-scroll-wrap .cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
+.table-scroll-wrap th.sortable { cursor: pointer; user-select: none; }
+.table-scroll-wrap th.sortable:hover { color: var(--accent); }
+.table-scroll-wrap th.th-sort-asc::after { content: ' \u25b4'; font-size: 0.65em; opacity: 0.8; }
+.table-scroll-wrap th.th-sort-desc::after { content: ' \u25be'; font-size: 0.65em; opacity: 0.8; }
 .table-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0 1rem; font-size: 0.875rem; color: var(--muted); }
 .table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: var(--button-hover-bg); }
@@ -274,13 +278,13 @@
     <thead>
       <tr>
         <th>Landing Page</th>
-        <th>From</th>
+        <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">From</th>
         <th>Device</th>
         <th>History</th>
-        <th>Arrived</th>
+        <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0">Arrived</th>
         <th>Last Seen</th>
-        <th class="source-cell">Source</th>
-        <th class="cart-value-cell">Cart</th>
+        <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0">Source</th>
+        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0">Cart</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -320,6 +324,9 @@
     let saleAudio = null;
     let saleMuted = false;
     let currentPage = 1;
+    let sortBy = '';
+    let sortDir = 'asc';
+    const SORT_DEFAULTS = { from: 'asc', arrived: 'desc', source: 'asc', cart: 'desc' };
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -518,6 +525,15 @@
       return null;
     }
 
+    function sourceSortKey(s) {
+      if (isGoogleAdsSource(s)) return 'Google Ads';
+      const friendly = sourceFriendlyLabel(s);
+      if (friendly === 'Google') return 'Google';
+      if (friendly) return friendly;
+      if (sourceUtmString(s)) return 'Other';
+      return 'Direct';
+    }
+
     const SOURCE_GOOGLE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632';
     const SOURCE_DIRECT_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632';
 
@@ -574,13 +590,51 @@
       return div.innerHTML;
     }
 
+    function cartSortValue(s) {
+      if (s.has_purchased && s.order_total != null) return Number(s.order_total);
+      if (s.cart_value != null) { const n = Number(s.cart_value); if (!Number.isNaN(n)) return n; }
+      return -Infinity;
+    }
+
+    function getSortedSessions() {
+      if (!sortBy) return sessions.slice();
+      const list = sessions.slice();
+      const mult = sortDir === 'asc' ? 1 : -1;
+      list.sort(function (a, b) {
+        var va, vb;
+        if (sortBy === 'from') {
+          va = (a.country_code || 'ZZ').toUpperCase();
+          vb = (b.country_code || 'ZZ').toUpperCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        }
+        if (sortBy === 'arrived') {
+          va = toMs(a.started_at) ?? 0;
+          vb = toMs(b.started_at) ?? 0;
+          return mult * (va - vb);
+        }
+        if (sortBy === 'source') {
+          va = sourceSortKey(a);
+          vb = sourceSortKey(b);
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        }
+        if (sortBy === 'cart') {
+          va = cartSortValue(a);
+          vb = cartSortValue(b);
+          return mult * (va - vb);
+        }
+        return 0;
+      });
+      return list;
+    }
+
     function renderTable() {
       const tbody = document.getElementById('table-body');
-      const totalPages = Math.max(1, Math.ceil(sessions.length / ROWS_PER_PAGE));
+      const sorted = getSortedSessions();
+      const totalPages = Math.max(1, Math.ceil(sorted.length / ROWS_PER_PAGE));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
       const start = (currentPage - 1) * ROWS_PER_PAGE;
-      const pageSessions = sessions.slice(start, start + ROWS_PER_PAGE);
-      if (sessions.length === 0) {
+      const pageSessions = sorted.slice(start, start + ROWS_PER_PAGE);
+      if (sorted.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
       } else {
         tbody.innerHTML = pageSessions.map(renderRow).join('');
@@ -597,7 +651,28 @@
       if (prevBtn) { prevBtn.disabled = currentPage <= 1; }
       if (nextBtn) { nextBtn.disabled = currentPage >= totalPages; }
       if (labelEl) labelEl.textContent = 'Page ' + currentPage + ' of ' + totalPages;
+      updateSortHeaders();
       tickTimeOnSite();
+    }
+
+    function updateSortHeaders() {
+      document.querySelectorAll('.table-scroll-wrap th.sortable').forEach(function (th) {
+        var col = th.getAttribute('data-sort');
+        th.classList.remove('th-sort-asc', 'th-sort-desc');
+        th.setAttribute('aria-sort', sortBy === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+        if (sortBy === col) th.classList.add(sortDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+      });
+    }
+
+    function setupSortableHeaders() {
+      document.querySelectorAll('.table-scroll-wrap th.sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+          var col = th.getAttribute('data-sort');
+          if (sortBy === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          else { sortBy = col; sortDir = SORT_DEFAULTS[col] || 'asc'; }
+          renderTable();
+        });
+      });
     }
 
     function tickTimeOnSite() {
@@ -828,6 +903,8 @@
       const totalPages = Math.max(1, Math.ceil(sessions.length / ROWS_PER_PAGE));
       if (currentPage < totalPages) { currentPage++; renderTable(); }
     });
+
+    setupSortableHeaders();
 
     const trackingBtn = document.getElementById('tracking-btn');
     if (trackingBtn) {
