@@ -52,7 +52,7 @@
     #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3 { margin-bottom: -30px; position: absolute; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
-    .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
+    .stats-section { display: flex; flex-direction: column; gap: 1px; }
     .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
     .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .stats-breakdown span { display: inline-block; }
@@ -939,11 +939,11 @@
 
     function renderSessions(data) {
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
-      const useHuman = data && data.trafficMode === 'human_only';
       const forRange = breakdown[dateRange];
       const forYesterday = breakdown.yesterday;
-      const main = forRange != null ? (useHuman ? (forRange.human_sessions ?? forRange.total_sessions) : (forRange.total_sessions ?? forRange.human_sessions)) : null;
-      const yesterday = forYesterday != null ? (useHuman ? (forYesterday.human_sessions ?? forYesterday.total_sessions) : (forYesterday.total_sessions ?? forYesterday.human_sessions)) : null;
+      // Sessions card always shows total sessions (not filtered by Human) so main and Yesterday match total counts.
+      const main = forRange != null ? (forRange.total_sessions ?? forRange.human_sessions) : null;
+      const yesterday = forYesterday != null ? (forYesterday.total_sessions ?? forYesterday.human_sessions) : null;
       const sessionsRangeEl = document.getElementById('sessions-range');
       const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
       if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
