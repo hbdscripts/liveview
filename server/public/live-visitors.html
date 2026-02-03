@@ -167,6 +167,7 @@
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
 #audio-mute-btn svg { width: 20px; height: 20px; }
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.table-scroll-wrap.tight-cols { --table-cell-padding-x: 0.35rem; }
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
 .table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: var(--table-cell-padding-x); }
@@ -985,7 +986,17 @@
       if (nextBtn) { nextBtn.disabled = currentPage >= totalPages; }
       if (labelEl) labelEl.textContent = 'Page ' + currentPage + ' of ' + totalPages;
       updateSortHeaders();
+      syncSessionsTableTightMode();
       tickTimeOnSite();
+    }
+
+    function syncSessionsTableTightMode() {
+      const wrap = document.querySelector('.table-scroll-wrap');
+      const table = document.getElementById('sessions-table');
+      if (!wrap || !table) return;
+      // "Max mode": when all columns fit, remove extra inter-column padding.
+      const fits = table.scrollWidth <= wrap.clientWidth + 1;
+      wrap.classList.toggle('tight-cols', !!fits);
     }
 
     function updateSortHeaders() {
@@ -1340,6 +1351,7 @@
               const delta = ev.clientX - startX;
               const next = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
               cols[i].style.width = Math.round(next) + 'px';
+              if (id === 'sessions-table') syncSessionsTableTightMode();
             }
 
             function onUp(ev) {
@@ -1350,6 +1362,7 @@
               document.removeEventListener('pointercancel', onUp);
               try { handle.releasePointerCapture(pointerId); } catch (_) {}
               saveWidths();
+              if (id === 'sessions-table') syncSessionsTableTightMode();
             }
 
             document.addEventListener('pointermove', onMove);
