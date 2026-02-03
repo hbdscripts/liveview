@@ -15,12 +15,12 @@
 **Check:** If the pixel posts directly to your app (e.g. Railway/Render origin URL), traffic **bypasses** Cloudflare and we get no CF headers (cf.client.bot, etc.).
 
 **If bypassing:**
-1. Create a **Cloudflare-proxied** hostname for ingest, e.g. `lv-ingest.<your-domain.com>` or a route under your existing CF-proxied domain that forwards to your origin.
+1. Create a **Cloudflare-proxied** hostname for ingest, e.g. `lv-ingest.hbdjewellery.com` or a route under your existing CF-proxied domain that forwards to your origin.
 2. In Cloudflare DNS: add a CNAME (or A) for that hostname and **proxy** (orange cloud) so requests go through CF.
-3. Update pixel settings (Ingest URL) to use that hostname, e.g. `https://lv-ingest.<your-domain.com>/api/ingest`. Do **not** change theme; only pixel extension settings (GraphQL or app UI).
+3. Update pixel settings (Ingest URL) to use that hostname: `https://lv-ingest.hbdjewellery.com/api/ingest`. Do **not** change theme; only pixel extension settings (GraphQL or app UI).
 4. Origin (Railway) must accept requests from that hostname (e.g. same origin or allow the Host header).
 
-**If already proxied:** Ingest URL is already behind CF (e.g. `https://your-app.example.com/api/ingest` and that domain is proxied by CF). No change needed; Worker (2B) can run on that route.
+**If already proxied:** Ingest URL is already behind CF (e.g. `https://lv-ingest.hbdjewellery.com/api/ingest` and that domain is proxied by CF). No change needed; Worker (2B) can run on that route.
 
 ---
 

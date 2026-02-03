@@ -5,8 +5,8 @@ name = "liveview-ingest-enrich"
 main = "ingest-enrich.js"
 compatibility_date = "2024-01-01"
 
-# Route this Worker to your CF-proxied ingest hostname, e.g. lv-ingest.example.com/*
-# routes = [{ pattern = "lv-ingest.example.com/api/ingest", zone_name = "example.com" }]
+# Route this Worker to your CF-proxied ingest hostname (this project: lv-ingest.hbdjewellery.com)
+# routes = [{ pattern = "lv-ingest.hbdjewellery.com/api/ingest*", zone_name = "hbdjewellery.com" }]
 
 [vars]
 # ORIGIN_URL must be set in Worker Settings -> Variables (secret or plain)

@@ -2,6 +2,9 @@
 
 The Live Visitors Web Pixel extension has two settings: **Ingest URL** and **Ingest Secret**. When a merchant **installs the app and opens it**, the app automatically creates or updates the pixel on that store (no manual mutation). If you need to set the pixel manually (e.g. before OAuth was fixed), use the GraphQL approach below.
 
+**This project – use this Ingest URL** (so traffic goes through Cloudflare for bot/human filtering):  
+`https://lv-ingest.hbdjewellery.com/api/ingest`
+
 ## Install normally = pixel auto-configured
 
 1. Merchant installs the app on a store (OAuth runs, we store the access token).

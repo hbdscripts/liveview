@@ -19,6 +19,7 @@ const WHITELIST = new Set([
   'order_id', 'checkout_token',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
   'utm_campaign', 'utm_source', 'utm_medium', 'utm_content',
+  'referrer',
 ]);
 
 function sanitize(payload) {
@@ -183,6 +184,11 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const utmMedium = trimUtm(payload.utm_medium) ?? existing?.utm_medium ?? null;
   const utmContent = trimUtm(payload.utm_content) ?? existing?.utm_content ?? null;
 
+  const trimReferrer = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 2048) : null);
+  const referrer = trimReferrer(payload.referrer) ?? existing?.referrer ?? null;
+  const hasExistingReferrer = existing?.referrer != null && String(existing.referrer).trim() !== '';
+  const updateReferrer = hasExistingReferrer ? null : (trimReferrer(payload.referrer) ?? null);
+
   const cfKnownBot = cf.cfKnownBot != null ? cf.cfKnownBot : null;
   const cfVerifiedBotCategory = cf.cfVerifiedBotCategory;
   const cfCountry = cf.cfCountry;
@@ -192,14 +198,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 0, NULL, NULL, $21, $22, $23, $24, $25)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
+        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 0, NULL, NULL, $22, $23, $24, $25, $26)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
     }
   } else {
     const cfUpdates = [];
@@ -226,24 +232,26 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       cfParams.push(cfAsn);
     }
     const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
-    const sessionIdPlaceholder = config.dbUrl ? '$' + (18 + cfParams.length) : '?';
+    const sessionIdPlaceholder = config.dbUrl ? '$' + (19 + cfParams.length) : '?';
     if (config.dbUrl) {
       await db.run(`
         UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
         cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
         order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
         country_code = COALESCE($9, country_code), utm_campaign = COALESCE($10, utm_campaign), utm_source = COALESCE($11, utm_source), utm_medium = COALESCE($12, utm_medium), utm_content = COALESCE($13, utm_content),
-        is_checking_out = $14, checkout_started_at = $15, has_purchased = $16, purchased_at = COALESCE($17, purchased_at)
+        referrer = COALESCE($14, referrer),
+        is_checking_out = $15, checkout_started_at = $16, has_purchased = $17, purchased_at = COALESCE($18, purchased_at)
         ${cfSet}
         WHERE session_id = ${sessionIdPlaceholder}
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id]);
     } else {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id];
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id];
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
         order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
         country_code = COALESCE(?, country_code), utm_campaign = COALESCE(?, utm_campaign), utm_source = COALESCE(?, utm_source), utm_medium = COALESCE(?, utm_medium), utm_content = COALESCE(?, utm_content),
+        referrer = COALESCE(?, referrer),
         is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at)
         ${cfSet}
         WHERE session_id = ?

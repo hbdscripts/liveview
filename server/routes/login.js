@@ -33,7 +33,7 @@ function getLoginHtml(queryError) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" type="image/png" href="${config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png' : '/assets/favicon.png'}">
+  <link rel="icon" type="image/png" href="${config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png' : 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770086377'}">
   <title>Sign in</title>
   <style>
     * { box-sizing: border-box; }

@@ -51,6 +51,7 @@
     .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
     #stats-country, #stats-best-sellers { display: flex; flex-direction: column; max-height: 320px; }
+    #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3 { margin-bottom: -30px; position: absolute; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
     .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -68,7 +69,7 @@
     .by-country-table th { font-size: 0.7rem; color: #777; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; background: none; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
-    .best-sellers-table .bs-product-col { max-width: 0; width: auto; }
+    .best-sellers-table .bs-product-col { max-width: 200px; width: auto; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; }
     .best-sellers-table .product-cell .bs-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
@@ -163,11 +164,10 @@
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
 .table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: var(--table-cell-padding-x); }
     .table-scroll-wrap .sticky-lp-cell { display: block; }
-    /* Sticky first column (LP) at all viewports when table scrolls; inner div for iOS Safari */
-    .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); vertical-align: middle; }
-    .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); box-sizing: border-box; min-height: 2.5em; }
-    .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
-    .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
+    /* Desktop: cap LP column width so it doesn't take ~50% of table */
+    .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { max-width: 240px; }
+    .table-scroll-wrap .last-action-cell { min-width: 0; }
+    .table-scroll-wrap .last-action-cell a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
 .table-scroll-wrap th.sortable { cursor: pointer; user-select: none; }
 .table-scroll-wrap th.sortable:hover { color: var(--accent); }
@@ -198,6 +198,11 @@
       .live-view-header .live-view-online-center { margin-left: auto; flex: 0; }
       .sessions-table-wrap { margin-left: 0.75rem; margin-right: 0.75rem; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
+      /* Mobile only: sticky first column (LP); inner div for iOS Safari */
+      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); max-width: none; vertical-align: middle; }
+      .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); box-sizing: border-box; min-height: 2.5em; }
+      .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
+      .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
       th, td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); font-size: var(--table-font-size-mobile); }
@@ -278,7 +283,7 @@
         <table class="by-country-table">
           <thead>
             <tr>
-              <th>GEO</th>
+              <th></th>
               <th>CR</th>
               <th>Sales</th>
               <th>Revenue</th>
@@ -298,7 +303,7 @@
         <table class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col">Product</th>
+              <th class="bs-product-col"></th>
               <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0">Orders</th>
               <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0">Rev</th>
               <th>CR%</th>
@@ -587,6 +592,7 @@
       if (s.utm_campaign && String(s.utm_campaign).trim()) parts.push('utm_campaign: ' + escapeHtml(String(s.utm_campaign).trim()));
       if (s.utm_medium && String(s.utm_medium).trim()) parts.push('utm_medium: ' + escapeHtml(String(s.utm_medium).trim()));
       if (s.utm_content && String(s.utm_content).trim()) parts.push('utm_content: ' + escapeHtml(String(s.utm_content).trim()));
+      if (s.referrer && String(s.referrer).trim()) parts.push('referrer: ' + escapeHtml(String(s.referrer).trim()));
       return parts.join(' ');
     }
 
@@ -598,13 +604,38 @@
       return sourceUtmString(s).indexOf('googleads') !== -1;
     }
 
+    /** Derive friendly source name from referrer URL host (when no UTM). Use for tooltip and to collect images. */
+    function sourceReferrerFriendlyLabel(s) {
+      const ref = s.referrer && String(s.referrer).trim();
+      if (!ref) return null;
+      try {
+        const u = new URL(ref);
+        const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
+        if (!host) return null;
+        if (host.indexOf('google') !== -1) return 'Google';
+        if (host.indexOf('facebook') !== -1 || host.indexOf('fb.') === 0 || host === 'fb.com') return 'Facebook';
+        if (host.indexOf('instagram') !== -1) return 'Instagram';
+        if (host.indexOf('pinterest') !== -1) return 'Pinterest';
+        if (host.indexOf('tiktok') !== -1) return 'TikTok';
+        if (host.indexOf('twitter') !== -1 || host.indexOf('x.com') !== -1) return 'X (Twitter)';
+        if (host.indexOf('youtube') !== -1) return 'YouTube';
+        if (host.indexOf('linkedin') !== -1) return 'LinkedIn';
+        if (host.indexOf('bing') !== -1) return 'Bing';
+        if (host.indexOf('yahoo') !== -1) return 'Yahoo';
+        if (host.indexOf('duckduckgo') !== -1) return 'DuckDuckGo';
+        return host;
+      } catch (_) { return null; }
+    }
+
     function sourceFriendlyLabel(s) {
       const str = sourceUtmString(s);
-      if (!str) return null;
-      if (str.indexOf('googleads') !== -1) return null;
-      if (str.indexOf('google') !== -1) return 'Google';
-      if (str.indexOf('chatgpt') !== -1 || str.indexOf('chat gpt') !== -1) return 'Chatgpt';
-      return null;
+      if (str) {
+        if (str.indexOf('googleads') !== -1) return null;
+        if (str.indexOf('google') !== -1) return 'Google';
+        if (str.indexOf('chatgpt') !== -1 || str.indexOf('chat gpt') !== -1) return 'Chatgpt';
+        return null;
+      }
+      return sourceReferrerFriendlyLabel(s);
     }
 
     function sourceSortKey(s) {
@@ -613,6 +644,7 @@
       if (friendly === 'Google') return 'Google';
       if (friendly) return friendly;
       if (sourceUtmString(s)) return 'Other';
+      if (s.referrer && String(s.referrer).trim()) return 'Other';
       return 'Direct';
     }
 
@@ -624,7 +656,7 @@
       const fullTitle = (fullUtm || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
       function infoIcon() {
         if (!fullUtm) return '';
-        return ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="UTM params">\u2139</span>';
+        return ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="Source / referrer">\u2139</span>';
       }
       if (isGoogleAdsSource(s)) {
         return '<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
@@ -635,6 +667,9 @@
       }
       if (friendly) return escapeHtml(friendly) + infoIcon();
       if (fullUtm) return escapeHtml('Other') + infoIcon();
+      if (s.referrer && String(s.referrer).trim()) {
+        return escapeHtml('Other') + ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="Referrer">\u2139</span>';
+      }
       return '<img src="' + SOURCE_DIRECT_IMG + '" alt="Direct" class="source-icon-img" width="20" height="20" title="Direct">';
     }
 
@@ -837,10 +872,11 @@
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && p.handle) ? mainBase + '/products/' + escapeHtml(p.handle) : '';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const revenue = formatRevenue(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
       updateBestSellersSortHeaders();
     }

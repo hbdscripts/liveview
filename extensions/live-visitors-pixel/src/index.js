@@ -64,6 +64,12 @@ function utmParamsFromContext(ctx) {
   }
 }
 
+function referrerFromContext(ctx) {
+  const ref = ctx?.document?.referrer;
+  if (typeof ref !== 'string' || !ref.trim()) return null;
+  return ref.trim();
+}
+
 register(({ analytics, init, browser, settings }) => {
   if (!browser?.localStorage || !browser?.sessionStorage) return;
   if (!settings?.ingestUrl || !settings?.ingestSecret) return;
@@ -77,6 +83,7 @@ register(({ analytics, init, browser, settings }) => {
   let cartCurrency = null;
   let lastPath = pathFromContext(init?.context) || '/';
   let lastUtm = { utm_source: null, utm_campaign: null, utm_medium: null, utm_content: null };
+  let lastReferrer = null;
   let heartbeatTimer = null;
 
   function parseAmount(v) {
@@ -186,6 +193,7 @@ register(({ analytics, init, browser, settings }) => {
     if (lastUtm.utm_campaign != null) out.utm_campaign = lastUtm.utm_campaign;
     if (lastUtm.utm_medium != null) out.utm_medium = lastUtm.utm_medium;
     if (lastUtm.utm_content != null) out.utm_content = lastUtm.utm_content;
+    if (lastReferrer != null) out.referrer = lastReferrer;
     return out;
   }
 
@@ -219,6 +227,10 @@ register(({ analytics, init, browser, settings }) => {
     if (u.utm_medium != null) lastUtm.utm_medium = u.utm_medium;
     if (u.utm_content != null) lastUtm.utm_content = u.utm_content;
   }
+  function updateReferrerFromContext(ctx) {
+    const ref = referrerFromContext(ctx);
+    if (ref != null) lastReferrer = ref;
+  }
 
   ensureIds().then(() => {
     const cart = init?.data?.cart;
@@ -229,6 +241,7 @@ register(({ analytics, init, browser, settings }) => {
     cartCurrency = money.cart_currency;
     lastPath = pathFromContext(init?.context) || '/';
     updateUtmFromContext(init?.context);
+    updateReferrerFromContext(init?.context);
     send(payload('page_viewed', { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
     startHeartbeat();
   }).catch(() => {});
@@ -238,6 +251,8 @@ register(({ analytics, init, browser, settings }) => {
       lastPath = pathFromContext(event?.context) || pathFromContext(init?.context) || lastPath;
       updateUtmFromContext(event?.context);
       updateUtmFromContext(init?.context);
+      updateReferrerFromContext(event?.context);
+      updateReferrerFromContext(init?.context);
       send(payload('page_viewed'));
     } catch (_) {}
   });
