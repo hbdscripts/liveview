@@ -417,16 +417,6 @@
       </div>
     </div>
     <div class="stats-card" id="stats-aov">
-      <div class="stats-card-header">
-        <h3>AOV</h3>
-      </div>
-      <div class="stats-section">
-        <div class="stats-main" id="aov-today"></div>
-        <div class="stats-breakdown">
-          <span>Yesterday: <strong id="aov-yesterday"></strong></span>
-          <span>7&nbsp;Days: <strong id="aov-7d"></strong></span>
-        </div>
-      </div>
       <div class="country-table-wrap" id="aov-list-wrap">
         <table id="aov-table" class="by-country-table aov-table" data-resizable="true">
           <thead>
@@ -1445,25 +1435,6 @@
     }
 
     function renderAov(data) {
-      const aov = data.aov || {};
-      const el = document.getElementById('aov-today');
-      const waitingForShopify = shouldWaitForShopifySalesToday();
-      const shopifyAov = (dateRange === 'today' && shopifySalesToday != null && typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0)
-        ? Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100
-        : null;
-      if (el) {
-        if (dateRange === 'today' && waitingForShopify) {
-          if (shopifyAov != null) el.textContent = formatRevenue(shopifyAov);
-          else if (!shopifySalesTodayLoaded) el.textContent = '\u2014';
-          else el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
-        } else {
-          el.textContent = (dateRange === 'today' && shopifyAov != null) ? formatRevenue(shopifyAov) : (aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00');
-        }
-      }
-      const aovYesterday = document.getElementById('aov-yesterday');
-      const aov7d = document.getElementById('aov-7d');
-      if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '\u2014';
-      if (aov7d) aov7d.textContent = aov['7d'] != null ? formatRevenue(aov['7d']) : '\u2014';
       const rows = (data.country || {})[dateRange] || [];
       const tbody = document.getElementById('aov-by-country-body');
       if (!tbody) return;

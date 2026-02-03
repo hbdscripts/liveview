@@ -1,11 +1,13 @@
 /**
  * GET /api/worst-products?range=today|yesterday|3d|7d&traffic=all|human&page=1&pageSize=10
- * "Worst products": high product landing clicks with low conversion.
+ * "Worst products": products with meaningful traffic that have the lowest conversion
+ * (underperformers: lots of landings, few or no sales).
  *
  * Implementation notes:
- * - Clicks are sessions that *started* on a product page (first_path /products/...) OR have first_product_handle set.
+ * - Clicks are sessions that *started* on a product page (first_path /products/... or first_product_handle).
  * - Conversion is session-level (has_purchased=1) for those sessions.
- *   This is an approximation but aligns with how the dashboard tracks sessions.
+ * - Only products with at least MIN_CLICKS landings are included (avoids noise).
+ * - Sort: worst conversion first, then most clicks (so high-traffic poor converters appear first).
  */
 
 const config = require('../config');
@@ -16,6 +18,8 @@ const fx = require('../fx');
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 10;
+/** Minimum landing sessions to include; avoids one-off visits dominating "worst" list. */
+const MIN_CLICKS = 3;
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -93,26 +97,28 @@ async function getWorstProducts(req, res) {
     }
   }
 
-  const list = Array.from(map.values()).map((e) => {
-    const cr = e.clicks > 0 ? Math.round((e.converted / e.clicks) * 1000) / 10 : null;
-    return {
-      handle: e.handle,
-      clicks: e.clicks,
-      converted: e.converted,
-      conversion: cr,
-      revenue: Math.round(e.revenue * 100) / 100,
-    };
-  });
+  const list = Array.from(map.values())
+    .filter((e) => e.clicks >= MIN_CLICKS)
+    .map((e) => {
+      const cr = e.clicks > 0 ? Math.round((e.converted / e.clicks) * 1000) / 10 : null;
+      return {
+        handle: e.handle,
+        clicks: e.clicks,
+        converted: e.converted,
+        conversion: cr,
+        revenue: Math.round(e.revenue * 100) / 100,
+      };
+    });
 
-  // Sort: highest clicks first, then lowest revenue made.
+  // Sort: worst conversion first, then most clicks (high-traffic underperformers at top).
   list.sort((a, b) => {
+    const acr = a.conversion == null ? 0 : a.conversion;
+    const bcr = b.conversion == null ? 0 : b.conversion;
+    if (acr !== bcr) return acr - bcr;
     if (b.clicks !== a.clicks) return b.clicks - a.clicks;
     const ar = a.revenue == null ? 0 : a.revenue;
     const br = b.revenue == null ? 0 : b.revenue;
     if (ar !== br) return ar - br;
-    const acr = a.conversion == null ? 999 : a.conversion;
-    const bcr = b.conversion == null ? 999 : b.conversion;
-    if (acr !== bcr) return acr - bcr;
     return (a.converted - b.converted) || (a.handle < b.handle ? -1 : a.handle > b.handle ? 1 : 0);
   });
 
