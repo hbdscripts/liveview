@@ -70,6 +70,7 @@
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
     .thumb-card { display: inline-flex; align-items: center; justify-content: center; width: 35px; height: 35px; padding: 2px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); flex-shrink: 0; box-sizing: border-box; }
+    .thumb-card--sale { border: none; padding: 0; box-shadow: none; background: none; }
     .thumb-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 1px; display: block; }
 .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
@@ -491,7 +492,8 @@
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
-        var img = thumbSrc ? '<span class="thumb-card"><img src="' + thumbSrc + '" alt="" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')"></span>' : '';
+        var cardClass = thumbSrc === DOLLAR_URL ? 'thumb-card thumb-card--sale' : 'thumb-card';
+        var img = thumbSrc ? '<span class="' + cardClass + '"><img src="' + thumbSrc + '" alt="" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')"></span>' : '';
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
         return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
       }
