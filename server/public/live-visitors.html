@@ -933,12 +933,12 @@
     }
 
     function renderSessions(data) {
-      const breakdown = data.trafficBreakdown || {};
-      const useHuman = data.trafficMode === 'human_only';
+      const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
+      const useHuman = data && data.trafficMode === 'human_only';
       const forRange = breakdown[dateRange];
       const forYesterday = breakdown.yesterday;
-      const main = forRange ? (useHuman ? forRange.human_sessions : forRange.total_sessions) : null;
-      const yesterday = forYesterday ? (useHuman ? forYesterday.human_sessions : forYesterday.total_sessions) : null;
+      const main = forRange != null ? (useHuman ? (forRange.human_sessions ?? forRange.total_sessions) : (forRange.total_sessions ?? forRange.human_sessions)) : null;
+      const yesterday = forYesterday != null ? (useHuman ? (forYesterday.human_sessions ?? forYesterday.total_sessions) : (forYesterday.total_sessions ?? forYesterday.human_sessions)) : null;
       const sessionsRangeEl = document.getElementById('sessions-range');
       const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
       if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
