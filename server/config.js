@@ -55,6 +55,8 @@ const config = {
   activeWindowMinutes: getInt('ACTIVE_WINDOW_MINUTES', 5),
   recentWindowMinutes: getInt('RECENT_WINDOW_MINUTES', 15),
   sessionTtlMinutes: getInt('SESSION_TTL_MINUTES', 24 * 60),
+  /** Retention in days for stats stability; cleanup deletes only when BOTH last_seen and started_at are older than this */
+  sessionRetentionDays: getInt('SESSION_RETENTION_DAYS', 30),
   abandonedWindowMinutes: getInt('ABANDONED_WINDOW_MINUTES', 15),
   abandonedRetentionHours: getInt('ABANDONED_RETENTION_HOURS', 24),
   returningGapMinutes: getInt('RETURNING_GAP_MINUTES', 30),
@@ -82,6 +84,8 @@ const config = {
   shopDomain: getEnv('SHOP_DOMAIN', '').trim().toLowerCase() || (getEnv('ALLOWED_SHOP_DOMAIN', '') || '').trim().toLowerCase(),
   /** Secret to sign OAuth session cookie (defaults to DASHBOARD_SECRET) */
   oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
+  /** Traffic mode for stats: all | human_only (default all). When human_only, exclude cf_known_bot=1. */
+  trafficMode: (getEnv('TRAFFIC_MODE', 'all') === 'human_only' ? 'human_only' : 'all'),
 };
 
 module.exports = config;

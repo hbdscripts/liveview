@@ -1,5 +1,6 @@
 /**
- * TTL cleanup: purge old sessions (except abandoned within retention), trim events per session.
+ * TTL cleanup: purge old sessions only when BOTH last_seen and started_at are older than retention
+ * (so stats windows for yesterday/3d/7d stay stable). Except abandoned within retention.
  */
 
 const { getDb } = require('./db');
@@ -8,23 +9,38 @@ const config = require('./config');
 async function run() {
   const db = getDb();
   const now = Date.now();
-  const sessionCutoff = now - config.sessionTtlMinutes * 60 * 1000;
+  const retentionMs = config.sessionRetentionDays * 24 * 60 * 60 * 1000;
+  const retentionCutoff = now - retentionMs;
   const abandonedRetentionMs = config.abandonedRetentionHours * 60 * 60 * 1000;
   const abandonedCutoff = now - abandonedRetentionMs;
 
-  // Delete sessions: last_seen older than SESSION_TTL_MINUTES, unless is_abandoned and abandoned_at within retention
+  // Delete only when BOTH last_seen and started_at are older than retention; except abandoned within retention
   if (config.dbUrl) {
     await db.run(`
-      DELETE FROM sessions
-      WHERE last_seen < $1
-      AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
-    `, [sessionCutoff, abandonedCutoff]);
-  } else {
+      DELETE FROM events WHERE session_id IN (
+        SELECT session_id FROM sessions
+        WHERE last_seen < $1 AND started_at < $1
+        AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
+      )
+    `, [retentionCutoff, abandonedCutoff]);
     await db.run(`
       DELETE FROM sessions
-      WHERE last_seen < ?
+      WHERE last_seen < $1 AND started_at < $1
+      AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
+    `, [retentionCutoff, abandonedCutoff]);
+  } else {
+    await db.run(`
+      DELETE FROM events WHERE session_id IN (
+        SELECT session_id FROM sessions
+        WHERE last_seen < ? AND started_at < ?
+        AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
+      )
+    `, [retentionCutoff, abandonedCutoff]);
+    await db.run(`
+      DELETE FROM sessions
+      WHERE last_seen < ? AND started_at < ?
       AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
-    `, [sessionCutoff, abandonedCutoff]);
+    `, [retentionCutoff, abandonedCutoff]);
   }
 
   // Per session: keep only last MAX_EVENTS_PER_SESSION events (delete older ones)

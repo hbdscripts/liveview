@@ -316,10 +316,14 @@ register(({ analytics, init, browser, settings }) => {
         if (sum > 0) orderTotal = sum;
       }
       const orderCurrency = checkout?.currencyCode ?? totalPrice?.currencyCode ?? null;
+      const orderId = checkout?.order?.id != null ? String(checkout.order.id) : null;
+      const checkoutToken = checkout?.token != null ? String(checkout.token) : null;
       send(payload('checkout_completed', {
         checkout_completed: true,
         order_total: orderTotal,
         order_currency: orderCurrency,
+        order_id: orderId,
+        checkout_token: checkoutToken,
       }));
     } catch (_) {}
   });

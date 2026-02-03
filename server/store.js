@@ -351,7 +351,7 @@ async function listSessions(filter) {
       COALESCE(s.country_code, v.last_country) AS session_country,
       v.device, v.network_speed
     FROM sessions s
-    JOIN visitors v ON s.visitor_id = v.visitor_id
+    LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
     WHERE 1=1
   `;
   const params = [];
