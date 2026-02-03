@@ -63,6 +63,8 @@
     .country-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
     .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); }
     .by-country-table th, .by-country-table td { padding: var(--table-compact-padding-y) 0; border-bottom: none; }
+    .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: 0; margin-left: 0; }
+    .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; }
     .by-country-table th { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
@@ -71,6 +73,10 @@
     .best-sellers-table .product-cell .bs-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
     .best-sellers-table .product-cell .bs-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 32px; height: 32px; background: var(--border); border-radius: var(--radius); }
+    .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
+    .best-sellers-table th.sortable:hover { color: var(--accent); }
+    .best-sellers-table th.th-sort-asc::after { content: ' \u25b4'; font-size: 0.65em; opacity: 0.8; }
+    .best-sellers-table th.th-sort-desc::after { content: ' \u25be'; font-size: 0.65em; opacity: 0.8; }
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: var(--table-font-size); }
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
@@ -289,8 +295,8 @@
           <thead>
             <tr>
               <th class="bs-product-col">Product</th>
-              <th>Orders</th>
-              <th>&pound;Sales</th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0">Orders</th>
+              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0">Rev</th>
               <th>CR%</th>
             </tr>
           </thead>
@@ -376,6 +382,8 @@
     let lastConvertedCountToday = 0;
     let shopifySalesToday = null;
     let bestSellersCache = null;
+    let bestSellersSortBy = 'rev';
+    let bestSellersSortDir = 'desc';
     let saleAudio = null;
     let saleMuted = false;
     let currentPage = 1;
@@ -795,11 +803,19 @@
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestSellers)) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty">No shop or no data</td></tr>';
+        updateBestSellersSortHeaders();
         return;
       }
-      const rows = data.bestSellers;
+      let rows = data.bestSellers.slice();
+      const mult = bestSellersSortDir === 'asc' ? 1 : -1;
+      if (bestSellersSortBy === 'orders') {
+        rows.sort(function(a, b) { return mult * ((a.orders || 0) - (b.orders || 0)); });
+      } else {
+        rows.sort(function(a, b) { return mult * ((a.revenue || 0) - (b.revenue || 0)); });
+      }
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty">No orders in this range</td></tr>';
+        updateBestSellersSortHeaders();
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
@@ -810,6 +826,27 @@
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
+      updateBestSellersSortHeaders();
+    }
+
+    function updateBestSellersSortHeaders() {
+      document.querySelectorAll('#best-sellers-wrap th.sortable').forEach(function(th) {
+        var col = th.getAttribute('data-sort');
+        th.classList.remove('th-sort-asc', 'th-sort-desc');
+        th.setAttribute('aria-sort', bestSellersSortBy === col ? (bestSellersSortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+        if (bestSellersSortBy === col) th.classList.add(bestSellersSortDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+      });
+    }
+
+    function setupBestSellersSort() {
+      document.querySelectorAll('#best-sellers-wrap th.sortable').forEach(function(th) {
+        th.addEventListener('click', function() {
+          var col = th.getAttribute('data-sort');
+          if (bestSellersSortBy === col) bestSellersSortDir = bestSellersSortDir === 'asc' ? 'desc' : 'asc';
+          else { bestSellersSortBy = col; bestSellersSortDir = col === 'rev' ? 'desc' : 'asc'; }
+          renderBestSellers(bestSellersCache);
+        });
+      });
     }
 
     function renderSales(data) {
@@ -1029,6 +1066,7 @@
     });
 
     setupSortableHeaders();
+    setupBestSellersSort();
 
     const trackingBtn = document.getElementById('tracking-btn');
     if (trackingBtn) {
