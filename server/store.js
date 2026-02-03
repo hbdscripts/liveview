@@ -811,6 +811,7 @@ module.exports = {
   upsertVisitor,
   getSession,
   upsertSession,
+  insertPurchase,
   insertEvent,
   listSessions,
   getSessionEvents,
