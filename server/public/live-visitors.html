@@ -425,7 +425,7 @@
           <thead>
             <tr>
               <th>GEO</th>
-              <th>Revenue</th>
+              <th>AOV</th>
             </tr>
           </thead>
           <tbody id="aov-by-country-body">
@@ -537,6 +537,7 @@
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let shopifySalesToday = null;
+    let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
     let shopifySalesTodayLoading = false;
     let bestSellersCache = null;
@@ -1045,12 +1046,14 @@
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           shopifySalesToday = data && typeof data.salesToday === 'number' ? data.salesToday : null;
+          shopifyOrderCountToday = data && typeof data.orderCountToday === 'number' ? data.orderCountToday : null;
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
         })
         .catch(function() {
           shopifySalesToday = null;
+          shopifyOrderCountToday = null;
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
@@ -1406,7 +1409,19 @@
     function renderAov(data) {
       const aov = data.aov || {};
       const el = document.getElementById('aov-today');
-      if (el) el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
+      const waitingForShopify = shouldWaitForShopifySalesToday();
+      const shopifyAov = (dateRange === 'today' && shopifySalesToday != null && typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0)
+        ? Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100
+        : null;
+      if (el) {
+        if (dateRange === 'today' && waitingForShopify) {
+          if (shopifyAov != null) el.textContent = formatRevenue(shopifyAov);
+          else if (!shopifySalesTodayLoaded) el.textContent = '\u2014';
+          else el.textContent = aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00';
+        } else {
+          el.textContent = (dateRange === 'today' && shopifyAov != null) ? formatRevenue(shopifyAov) : (aov[dateRange] != null ? formatRevenue(aov[dateRange]) : '\u00A30.00');
+        }
+      }
       const aovYesterday = document.getElementById('aov-yesterday');
       const aov7d = document.getElementById('aov-7d');
       if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '\u2014';
