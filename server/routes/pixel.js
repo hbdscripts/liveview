@@ -38,20 +38,34 @@ async function ensurePixel(req, res) {
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
 
   const listQuery = `query { webPixels(first: 50) { edges { node { id } } } }`;
+  const singlePixelQuery = `query { webPixel { id settings } }`;
 
   try {
-    // Check if pixel already exists (our app has one web pixel extension)
-    const listRes = await fetch(graphqlUrl, {
+    // Prefer singular webPixel (returns current app's pixel when using app access token)
+    const singleRes = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': row.access_token,
       },
-      body: JSON.stringify({ query: listQuery }),
+      body: JSON.stringify({ query: singlePixelQuery }),
     });
-    const listData = await listRes.json();
-    const edges = listData?.data?.webPixels?.edges || [];
-    let existingId = edges[0]?.node?.id || null;
+    const singleData = await singleRes.json();
+    let existingId = singleData?.data?.webPixel?.id || null;
+
+    if (!existingId) {
+      const listRes = await fetch(graphqlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': row.access_token,
+        },
+        body: JSON.stringify({ query: listQuery }),
+      });
+      const listData = await listRes.json();
+      const edges = listData?.data?.webPixels?.edges || [];
+      existingId = edges[0]?.node?.id || null;
+    }
 
     if (existingId) {
       const updateRes = await fetch(graphqlUrl, {
@@ -102,18 +116,30 @@ async function ensurePixel(req, res) {
     if (createErrs.length > 0) {
       const taken = createErrs.some((e) => (e.code || '').toUpperCase() === 'TAKEN');
       if (taken) {
-        // Pixel already exists but list didn't return it; retry list then update
-        const retryListRes = await fetch(graphqlUrl, {
+        // Pixel already exists; try singular webPixel (current app's pixel) then list
+        const singleRetryRes = await fetch(graphqlUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-Shopify-Access-Token': row.access_token,
           },
-          body: JSON.stringify({ query: listQuery }),
+          body: JSON.stringify({ query: singlePixelQuery }),
         });
-        const retryListData = await retryListRes.json();
-        const retryEdges = retryListData?.data?.webPixels?.edges || [];
-        const retryId = retryEdges[0]?.node?.id || null;
+        const singleRetryData = await singleRetryRes.json();
+        let retryId = singleRetryData?.data?.webPixel?.id || null;
+        if (!retryId) {
+          const retryListRes = await fetch(graphqlUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': row.access_token,
+            },
+            body: JSON.stringify({ query: listQuery }),
+          });
+          const retryListData = await retryListRes.json();
+          const retryEdges = retryListData?.data?.webPixels?.edges || [];
+          retryId = retryEdges[0]?.node?.id || null;
+        }
         if (retryId) {
           const updateRes = await fetch(graphqlUrl, {
             method: 'POST',
