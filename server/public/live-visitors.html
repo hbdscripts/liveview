@@ -132,7 +132,8 @@
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
-.table-scroll-wrap .sale-cell { text-align: right; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
+.table-scroll-wrap .cart-value-cell { text-align: right; width: 1%; white-space: nowrap; padding-right: 0.75rem; }
+.table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: bold; }
 .table-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0 1rem; font-size: 0.875rem; color: var(--muted); }
 .table-pagination button { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); cursor: pointer; font-size: 0.875rem; }
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: var(--button-hover-bg); }
@@ -281,7 +282,6 @@
         <th>Last Seen</th>
         <th>Source</th>
         <th>Cart value</th>
-        <th class="sale-cell">Sale</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -554,6 +554,9 @@
         ? formatMoney(cartValueNum, s.cart_currency)
         : '');
       const saleVal = s.has_purchased ? formatMoney(s.order_total != null ? Number(s.order_total) : null, s.order_currency) : '';
+      const cartOrSaleCell = s.has_purchased
+        ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
+        : cartVal;
       const fromCell = flagImg(countryCode);
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
@@ -564,8 +567,7 @@
         <td class="arrived-cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></td>
         <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
         <td>${sourceCell(s)}</td>
-        <td>${cartVal}</td>
-        <td class="sale-cell">${saleVal}</td>
+        <td class="cart-value-cell">${cartOrSaleCell}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
     }
@@ -584,7 +586,7 @@
       const start = (currentPage - 1) * ROWS_PER_PAGE;
       const pageSessions = sessions.slice(start, start + ROWS_PER_PAGE);
       if (sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="empty">No sessions in this view.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
       } else {
         tbody.innerHTML = pageSessions.map(renderRow).join('');
         document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
