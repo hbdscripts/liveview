@@ -37,6 +37,8 @@ async function ensurePixel(req, res) {
   const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
 
+  const listQuery = `query { webPixels(first: 50) { edges { node { id } } } }`;
+
   try {
     // Check if pixel already exists (our app has one web pixel extension)
     const listRes = await fetch(graphqlUrl, {
@@ -45,13 +47,11 @@ async function ensurePixel(req, res) {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': row.access_token,
       },
-      body: JSON.stringify({
-        query: `query { webPixels(first: 10) { edges { node { id } } } }`,
-      }),
+      body: JSON.stringify({ query: listQuery }),
     });
     const listData = await listRes.json();
     const edges = listData?.data?.webPixels?.edges || [];
-    const existingId = edges[0]?.node?.id || null;
+    let existingId = edges[0]?.node?.id || null;
 
     if (existingId) {
       const updateRes = await fetch(graphqlUrl, {
@@ -73,6 +73,11 @@ async function ensurePixel(req, res) {
       const updateData = await updateRes.json();
       const errs = updateData?.data?.webPixelUpdate?.userErrors || [];
       if (errs.length > 0) {
+        const msg = (errs[0]?.message || '').toLowerCase();
+        const alreadySet = msg.includes('already') || msg.includes('unchanged') || msg.includes('no change');
+        if (alreadySet) {
+          return res.json({ ok: true, action: 'unchanged', message: 'Pixel settings already set', userErrors: errs });
+        }
         console.error('[pixel] webPixelUpdate errors:', errs);
         return res.status(400).json({ error: 'Failed to update pixel', userErrors: errs });
       }
@@ -95,6 +100,45 @@ async function ensurePixel(req, res) {
     const createData = await createRes.json();
     const createErrs = createData?.data?.webPixelCreate?.userErrors || [];
     if (createErrs.length > 0) {
+      const taken = createErrs.some((e) => (e.code || '').toUpperCase() === 'TAKEN');
+      if (taken) {
+        // Pixel already exists but list didn't return it; retry list then update
+        const retryListRes = await fetch(graphqlUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': row.access_token,
+          },
+          body: JSON.stringify({ query: listQuery }),
+        });
+        const retryListData = await retryListRes.json();
+        const retryEdges = retryListData?.data?.webPixels?.edges || [];
+        const retryId = retryEdges[0]?.node?.id || null;
+        if (retryId) {
+          const updateRes = await fetch(graphqlUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': row.access_token,
+            },
+            body: JSON.stringify({
+              query: `mutation($id: ID!, $settings: String!) {
+                webPixelUpdate(id: $id, webPixel: { settings: $settings }) {
+                  userErrors { code field message }
+                  webPixel { id settings }
+                }
+              }`,
+              variables: { id: retryId, settings },
+            }),
+          });
+          const updateData = await updateRes.json();
+          const updateErrs = updateData?.data?.webPixelUpdate?.userErrors || [];
+          if (updateErrs.length === 0) {
+            return res.json({ ok: true, action: 'updated', webPixel: updateData?.data?.webPixelUpdate?.webPixel });
+          }
+        }
+        return res.json({ ok: true, action: 'already_exists', message: 'Pixel already exists (TAKEN); open app from Shopify Admin to sync URL', userErrors: createErrs });
+      }
       console.error('[pixel] webPixelCreate errors:', createErrs);
       return res.status(400).json({ error: 'Failed to create pixel', userErrors: createErrs });
     }
