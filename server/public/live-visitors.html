@@ -428,6 +428,7 @@
     var storeBaseUrlFallback = '';
     var mainBaseUrlFallback = '';
     var assetsBaseUrlFallback = '';
+    var shopForSalesFallback = '';
     (function fetchStoreBaseUrl() {
       fetch(API + '/api/store-base-url', { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
@@ -436,12 +437,14 @@
             if (d.baseUrl) storeBaseUrlFallback = d.baseUrl;
             if (d.mainBaseUrl) mainBaseUrlFallback = d.mainBaseUrl;
             if (d.assetsBaseUrl) assetsBaseUrlFallback = d.assetsBaseUrl;
+            if (d.shopForSales) shopForSalesFallback = d.shopForSales;
             if (sessions.length) renderTable();
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
+            if (shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
           }
         })
         .catch(function() {});
@@ -713,7 +716,7 @@
     }
 
     function fetchShopifySales() {
-      var shop = getShopParam();
+      var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop || dateRange !== 'today') {
         shopifySalesToday = null;
         return;

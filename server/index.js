@@ -74,7 +74,8 @@ app.get('/api/store-base-url', (req, res) => {
   const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));
   const mainBaseUrl = config.storeMainDomain || baseUrl;
   const assetsBaseUrl = config.assetsBaseUrl || '';
-  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl });
+  const shopForSales = (config.shopDomain || config.allowedShopDomain || '').trim().toLowerCase();
+  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl, shopForSales: shopForSales && shopForSales.endsWith('.myshopify.com') ? shopForSales : '' });
 });
 
 // Shopify OAuth (install flow)
