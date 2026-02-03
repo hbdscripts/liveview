@@ -10,3 +10,4 @@ compatibility_date = "2024-01-01"
 
 [vars]
 # ORIGIN_URL must be set in Worker Settings -> Variables (secret or plain)
+# BLOCK_KNOWN_BOTS = "1" to block known/verified bots (Google, Bing, etc.) at the edge so they never hit your app or DB

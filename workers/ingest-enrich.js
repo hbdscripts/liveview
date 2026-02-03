@@ -4,11 +4,11 @@
  *
  * Env vars:
  * - ORIGIN_URL (required): e.g. https://your-app.up.railway.app
- * - BLOCK_KNOWN_BOTS (optional): "1" to short-circuit known bots on ingest
+ * - BLOCK_KNOWN_BOTS (optional): "1" to block known/verified bots at the edge (Google, Bing, etc. never reach your app or DB)
  *
  * Business-safe approach:
- * - Prefer bot signal via a Cloudflare rule injecting header x-cf-client-bot from cf.client.bot.
- * - Use request.cf.verifiedBotCategory only as a best-effort secondary signal (may be empty).
+ * - Prefer bot signal via a Cloudflare rule injecting header x-lv-client-bot from cf.client.bot.
+ * - Use request.cf.botManagement?.verifiedBot and verifiedBotCategory only as best-effort secondary signals (may be empty).
  */
 
 function str(v) {
@@ -65,7 +65,7 @@ export default {
 
     try {
       // Preferred bot signal - injected by a Cloudflare Request Header Transform Rule from cf.client.bot.
-      // Use x-lv-client-bot (CF does not allow setting x-cf-* headers in Transform Rules).
+      // CF does not allow setting x-cf-* or cf-* headers, so the rule uses x-lv-client-bot (see CLOUDFLARE_INGEST_SETUP.md).
       const clientBotHeader =
         request.headers.get('x-lv-client-bot') ||
         request.headers.get('x-cf-client-bot') ||
@@ -76,9 +76,11 @@ export default {
 
       // Secondary best-effort signal (may be empty on your plan):
       const cf = request.cf || {};
-      const verifiedBotCategory = str(cf.verifiedBotCategory).trim();
+      const botManagement = cf.botManagement || {};
+      const verifiedBot = botManagement && botManagement.verifiedBot === true;
+      const verifiedBotCategory = str(cf.verifiedBotCategory || botManagement.verifiedBotCategory).trim();
 
-      knownBot = clientBot || !!verifiedBotCategory;
+      knownBot = clientBot || verifiedBot || !!verifiedBotCategory;
 
       const country = str(cf.country).trim();
       const colo = str(cf.colo).trim();
@@ -115,12 +117,6 @@ export default {
 
     for (const [k, v] of Object.entries(enrich)) {
       if (v !== undefined && v !== null && String(v).length) newHeaders.set(k, String(v));
-    }
-
-    // Enrich Source: pass request Referer so backend can use it when pixel referrer is stripped (e.g. by Shopify).
-    const referer = request.headers.get('Referer') || request.headers.get('referer');
-    if (referer && referer.trim()) {
-      newHeaders.set('x-request-referer', referer.trim().slice(0, 2048));
     }
 
     try {
