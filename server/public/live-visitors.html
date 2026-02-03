@@ -1186,12 +1186,14 @@
         return;
       }
       tbody.innerHTML = rows.map(function(v) {
-        const fullName = (v.title || 'Unknown') + (v.variant_title ? (' \u00b7 ' + v.variant_title) : '');
+        const variantName = (v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
+        const productName = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
+        const displayName = variantName + (productName ? (' \u2014 ' + productName) : '');
         const thumbImg = v.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(v.thumb_url) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
-        const name = '<span class="bs-name" title="' + escapeHtml(fullName) + '">' + escapeHtml(fullName) + '</span>';
+        const name = '<span class="bs-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</span>';
         const orders = String(v.orders != null ? v.orders : 0);
         const revenue = formatRevenue(v.revenue);
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td></tr>';
