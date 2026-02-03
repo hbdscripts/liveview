@@ -708,10 +708,8 @@
       var fullUrl = mainBase && path ? mainBase + path : '';
       var label = '\u2014';
       var thumbSrc = '';
-      if (s.has_purchased) {
-        label = path === '/' ? 'Home' : (path ? escapeHtml(path) : '\u2014');
-        thumbSrc = DOLLAR_URL;
-      } else if (isHomeOrOrders) {
+      // Keep the LP thumbnail stable even after purchase; do not swap to a "sale" icon.
+      if (isHomeOrOrders) {
         label = path === '/' ? 'Home' : escapeHtml(path);
         thumbSrc = HICON_URL;
       } else if (isCart) {
