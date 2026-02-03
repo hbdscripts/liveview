@@ -1120,7 +1120,7 @@
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) : '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.parentElement&&(this.parentElement.style.display=\\'none\\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
         const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
