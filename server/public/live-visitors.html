@@ -93,10 +93,23 @@
 .next-update-favicon { width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle; }
     .next-update-timer { width: 30px; text-align: center; font-weight: 500; display: inline-block; }
 .dashboard-top-bar-right { display: flex; align-items: center; gap: 10px; }
-.next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
+.server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
 .top-bar-divider { width: 1px; height: 1.2em; background: #eee; flex-shrink: 0; }
-.live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; margin-left: auto; margin-right: auto; }
-.live-view-header .table-title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
+.refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
+.refresh-btn:hover { color: var(--accent); }
+.refresh-btn svg { width: 18px; height: 18px; }
+.refresh-btn.spinning svg { animation: refresh-spin 0.8s linear; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
+.table-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); z-index: 2; }
+.table-loading-overlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; }
+.stats-row-wrap { position: relative; }
+.sessions-table-wrap { position: relative; }
+.live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; margin-left: auto; margin-right: auto; gap: 1rem; }
+.live-view-header .table-title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); flex-shrink: 0; }
+.live-view-header .live-view-online { flex-shrink: 0; }
+.live-view-header .live-view-online-center { flex: 1; justify-content: center; display: flex; }
+.live-view-header .next-update-block { flex-shrink: 0; }
 .live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; margin-right: 10px; }
 .live-view-online .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 .live-view-online strong { color: var(--accent); font-size: 20px; }
@@ -163,7 +176,11 @@
       </span>
     </div>
     <div class="dashboard-top-bar-right">
-      <span class="next-update-block"><img class="next-update-favicon" src="/assets/favicon.png" alt="">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
+      <span class="server-time-block">Server Time: <span id="server-time-msg">--:--</span></span>
+      <span class="top-bar-divider" aria-hidden="true"></span>
+      <button type="button" id="refresh-btn" class="refresh-btn" title="Refresh" aria-label="Refresh">
+        <svg viewBox="-2.5 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M20.48 18.613l-1.12 7.84 7.627-1.173-2.987-3.040c1.013-1.867 1.6-3.947 1.6-6.24 0-7.093-5.707-12.8-12.8-12.8v1.067c6.453 0 11.733 5.28 11.733 11.733 0 1.973-0.48 3.787-1.333 5.44l-2.72-2.827zM20.587 25.173l0.64-4.267 3.52 3.627-4.16 0.64z"/><path d="M1.067 16c0-2.827 1.013-5.387 2.667-7.413l3.253 3.307 1.12-7.84-7.627 1.227 2.453 2.56c-1.813 2.187-2.933 5.067-2.933 8.16 0 7.093 5.707 12.8 12.8 12.8v-1.067c-6.453 0-11.733-5.28-11.733-11.733zM6.827 5.387l-0.64 4.267-3.52-3.627 4.16-0.64z"/></svg>
+      </button>
       <span class="top-bar-divider" aria-hidden="true"></span>
       <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
         <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
@@ -172,6 +189,8 @@
     </div>
   </div>
   <main class="main">
+  <div class="stats-row-wrap">
+    <div class="table-loading-overlay stats-loading-overlay" id="stats-loading-overlay" style="display: none;"><div class="spinner"></div></div>
   <div class="stats-row">
     <div class="stats-card" id="stats-primary">
       <div class="stats-section">
@@ -232,12 +251,16 @@
       </div>
     </div>
   </div>
-
-  <div class="live-view-header">
-    <h2 class="table-title" id="table-title">Live View</h2>
-    <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
   </div>
 
+  <div class="live-view-header">
+    <h2 class="table-title" id="table-title">Live</h2>
+    <div class="live-view-online live-view-online-center"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
+    <span class="next-update-block"><img class="next-update-favicon" src="/assets/favicon.png" alt="">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
+  </div>
+
+  <div class="sessions-table-wrap">
+    <div class="table-loading-overlay sessions-loading-overlay" id="sessions-loading-overlay" style="display: none;"><div class="spinner"></div></div>
   <div class="table-scroll-wrap">
   <table>
     <thead>
@@ -262,6 +285,7 @@
     <span id="pagination-label">Page 1 of 1</span>
     <button type="button" id="pagination-next" aria-label="Next page">Next</button>
   </div>
+  </div>
 
   <div id="side-panel" class="side-panel" style="display:none">
     <span class="close" id="side-close">&times;</span>
@@ -275,7 +299,7 @@
 
   <script>
     const API = '';
-    const STATS_INTERVAL_MS = 15000;
+    const STATS_INTERVAL_MS = 60000;
     fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const ROWS_PER_PAGE = 40;
@@ -284,6 +308,7 @@
     let dateRange = 'today';
     let trafficMode = (function() { var p = new URLSearchParams(window.location.search); return p.get('traffic') === 'human' ? 'human' : 'all'; })();
     let nextStatsAt = 0;
+    let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let saleAudio = null;
     let saleMuted = false;
@@ -306,6 +331,13 @@
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
+
+    function updateServerTimeDisplay() {
+      const el = document.getElementById('server-time-msg');
+      if (!el) return;
+      if (!lastUpdateTime) { el.textContent = '--:--'; return; }
+      el.textContent = lastUpdateTime.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+    }
 
     function toMs(v) {
       if (v == null || v === '') return null;
@@ -400,10 +432,10 @@
       var thumbSrc = '';
       if (isCheckout) {
         label = 'Cart';
-        thumbSrc = (API || '') + '/assets/hicon.webp';
+        thumbSrc = (API || '') + '/assets/checkout.webp';
       } else if (path) {
         label = escapeHtml(path);
-        thumbSrc = (API || '') + '/assets/hicon.webp';
+        if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
@@ -608,6 +640,13 @@
       country.style.maxHeight = Math.floor(primaryHeight) + 'px';
     }
 
+    function updateLiveViewTitle() {
+      const el = document.getElementById('table-title');
+      if (!el) return;
+      const labels = { today: 'Live', yesterday: 'Yesterday', '3d': '3 Days', '7d': '7 Days' };
+      el.textContent = labels[dateRange] || 'Live';
+    }
+
     function applyRangeAvailable(available) {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
@@ -620,6 +659,7 @@
         dateRange = 'today';
         sel.value = 'today';
       }
+      updateLiveViewTitle();
     }
 
     function renderStats(data) {
@@ -640,15 +680,20 @@
     }
 
     function fetchStats() {
+      var overlay = document.getElementById('stats-loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
       var url = API + '/api/stats';
       if (trafficMode === 'human') url += '?traffic=human';
       fetch(url, { credentials: 'same-origin' })
         .then(r => r.json())
         .then(data => {
           nextStatsAt = Date.now() + STATS_INTERVAL_MS;
+          lastUpdateTime = new Date();
+          updateServerTimeDisplay();
           renderStats(data);
         })
-        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; renderStats({}); });
+        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; renderStats({}); })
+        .finally(function() { if (overlay) overlay.style.display = 'none'; });
     }
 
     function sessionIdsEqual(a, b) {
@@ -659,6 +704,8 @@
     }
 
     function fetchSessions() {
+      var overlay = document.getElementById('sessions-loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
       fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now())
         .then(r => r.json())
         .then(data => {
@@ -667,10 +714,13 @@
           var listChanged = !sessionIdsEqual(sessions, next);
           sessions = next;
           if (listChanged) currentPage = 1;
+          lastUpdateTime = new Date();
+          updateServerTimeDisplay();
           renderTable();
           updateKpis();
         })
-        .catch(() => { sessions = []; currentPage = 1; renderTable(); });
+        .catch(() => { sessions = []; currentPage = 1; renderTable(); })
+        .finally(function() { if (overlay) overlay.style.display = 'none'; });
     }
 
     function updateKpis() {
@@ -807,8 +857,10 @@
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         dateSelect.value = dateRange;
+        updateLiveViewTitle();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
+          updateLiveViewTitle();
           renderStats(statsCache);
         });
       }
@@ -822,6 +874,17 @@
         setActive();
         if (allLink) allLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'all'; setActive(); fetchStats(); });
         if (humanLink) humanLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'human'; setActive(); fetchStats(); });
+      })();
+      (function initRefreshBtn() {
+        const btn = document.getElementById('refresh-btn');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            btn.classList.add('spinning');
+            setTimeout(function() { btn.classList.remove('spinning'); }, 800);
+            fetchStats();
+            fetchSessions();
+          });
+        }
       })();
       setInterval(function() {
         const el = document.getElementById('next-update-msg');

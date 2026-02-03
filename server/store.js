@@ -496,7 +496,10 @@ function startOfDayUtcMs(parts, timeZone) {
 function getRangeBounds(rangeKey, nowMs, timeZone) {
   const todayParts = getTimeZoneParts(new Date(nowMs), timeZone);
   const startToday = startOfDayUtcMs(todayParts, timeZone);
-  if (rangeKey === 'today') return { start: startToday, end: nowMs };
+  if (rangeKey === 'today') {
+    const start = startToday >= nowMs ? nowMs - 24 * 60 * 60 * 1000 : startToday;
+    return { start, end: nowMs };
+  }
   if (rangeKey === 'yesterday') {
     const yParts = addDaysToParts(todayParts, -1);
     return { start: startOfDayUtcMs(yParts, timeZone), end: startToday };

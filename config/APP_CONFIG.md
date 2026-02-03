@@ -17,6 +17,8 @@
 
 **Railway Variables** (service that runs the app): set `SHOPIFY_APP_URL`, `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `INGEST_SECRET`, `DB_URL` (Postgres), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH_COOKIE_SECRET`. See `.env.example` for the full list.
 
+**"Today" in the dashboard** uses `ADMIN_TIMEZONE` (default `Europe/London`). Set it to match your Shopify store timezone so "Sales today" and "since midnight" align with Shopify (e.g. `ADMIN_TIMEZONE=Europe/London`).
+
 ---
 
 ## Where to get Shopify credentials
