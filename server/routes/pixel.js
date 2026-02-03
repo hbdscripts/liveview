@@ -29,11 +29,43 @@ async function ensurePixel(req, res) {
     });
   }
 
-  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
-    ? config.ingestPublicUrl
-    : appUrl;
-  const ingestUrl = `${ingestBase}/api/ingest`;
-  console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
+  let ingestUrl;
+  const override = (req.query.ingestUrl || '').trim();
+  if (override) {
+    try {
+      const u = new URL(override);
+      if (u.protocol !== 'https:') {
+        return res.status(400).json({ error: 'ingestUrl must be https' });
+      }
+      const origin = u.origin;
+      const base = u.pathname === '/api/ingest' ? origin : override.replace(/\/+$/, '');
+      const normalized = base.endsWith('/api/ingest') ? base : `${base}/api/ingest`;
+      const allowed = config.allowedIngestOrigins || [];
+      const originAllowed = allowed.length > 0 && allowed.some((o) => {
+        const oUrl = (o.startsWith('http') ? o : 'https://' + o).replace(/\/+$/, '');
+        try {
+          return new URL(oUrl).origin === origin;
+        } catch (_) {
+          return false;
+        }
+      });
+      if (!originAllowed) {
+        return res.status(400).json({
+          error: 'ingestUrl origin not allowed. Set ALLOWED_INGEST_ORIGINS (or INGEST_PUBLIC_URL) in Railway.',
+        });
+      }
+      ingestUrl = normalized;
+      console.log('[pixel] ensure using override ingestUrl:', ingestUrl);
+    } catch (_) {
+      return res.status(400).json({ error: 'Invalid ingestUrl' });
+    }
+  } else {
+    const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+      ? config.ingestPublicUrl
+      : appUrl;
+    ingestUrl = `${ingestBase}/api/ingest`;
+    console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
+  }
   const settings = JSON.stringify({ ingestUrl, ingestSecret });
   const escaped = settings.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;

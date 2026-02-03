@@ -53,6 +53,13 @@ const config = {
   ingestSecret: getEnv('INGEST_SECRET', ''),
   /** If set, pixel Ingest URL uses this (e.g. https://lv-ingest.hbdjewellery.com) so traffic goes through Cloudflare. Otherwise SHOPIFY_APP_URL + /api/ingest. */
   ingestPublicUrl: getEnv('INGEST_PUBLIC_URL', '').replace(/\/$/, ''),
+  /** Allowed origins for ?ingestUrl= on ensure (INGEST_PUBLIC_URL + ALLOWED_INGEST_ORIGINS). Used so script can pass URL and replicas without env still accept it. */
+  allowedIngestOrigins: (function () {
+    const fromPublic = (getEnv('INGEST_PUBLIC_URL', '') || '').trim();
+    const fromEnv = (getEnv('ALLOWED_INGEST_ORIGINS', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const list = [...(fromPublic.startsWith('http') ? [fromPublic.replace(/\/$/, '')] : []), ...fromEnv];
+    return [...new Set(list)];
+  })(),
   adminTimezone: getEnv('ADMIN_TIMEZONE', 'Europe/London'),
   activeWindowMinutes: getInt('ACTIVE_WINDOW_MINUTES', 5),
   recentWindowMinutes: getInt('RECENT_WINDOW_MINUTES', 15),

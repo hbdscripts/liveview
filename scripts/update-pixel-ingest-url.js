@@ -44,10 +44,17 @@ function fetchStatus() {
     .then((r) => r.json().then((body) => ({ status: r.status, body })));
 }
 
-function runEnsure() {
-  const ensureUrl = `${appUrlRaw}/api/pixel/ensure?shop=${encodeURIComponent(shop)}`;
-  console.log('Calling:', ensureUrl);
-  console.log('(Ensure uses INGEST_PUBLIC_URL from the server; set it in Railway and redeploy first.)\n');
+function runEnsure(expectedIngestUrl) {
+  let ensureUrl = `${appUrlRaw}/api/pixel/ensure?shop=${encodeURIComponent(shop)}`;
+  if (expectedIngestUrl) {
+    ensureUrl += '&ingestUrl=' + encodeURIComponent(expectedIngestUrl);
+  }
+  console.log('Calling:', ensureUrl.replace(/ingestUrl=[^&]+/, 'ingestUrl=...'));
+  if (expectedIngestUrl) {
+    console.log('(Passing ingestUrl so the instance that runs ensure uses this URL even without INGEST_PUBLIC_URL.)\n');
+  } else {
+    console.log('(Ensure uses INGEST_PUBLIC_URL from the server; set it in Railway and redeploy first.)\n');
+  }
   return fetch(ensureUrl, { method: 'GET' })
     .then((r) => r.json().then((body) => ({ status: r.status, body })));
 }
@@ -84,9 +91,9 @@ function main() {
       console.log('Source:', body.source || 'unknown');
       if (!isCf && url) {
         console.warn('\nWARNING: Server does not have INGEST_PUBLIC_URL set – pixel will get Railway URL.');
-        console.warn('Set INGEST_PUBLIC_URL in Railway (e.g. https://lv-ingest.yourdomain.com), redeploy, then run this again.\n');
+        console.warn('Set INGEST_PUBLIC_URL (or ALLOWED_INGEST_ORIGINS) in Railway, redeploy, then run this again.\n');
       }
-      return runEnsure();
+      return runEnsure(url || '');
     })
     .then(({ status, body }) => {
       if (status !== 200) {
