@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { getDb } = require('./db');
 const config = require('./config');
+const fx = require('./fx');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -588,16 +589,40 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
 
 async function getSalesTotal(start, end) {
   const db = getDb();
-  const row = config.dbUrl
-    ? await db.get(
-      'SELECT COALESCE(SUM(order_total), 0)::float AS total FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2',
+  const rows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT
+          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          COALESCE(SUM(order_total), 0)::float AS total
+        FROM purchases
+        WHERE purchased_at >= $1 AND purchased_at < $2
+        GROUP BY currency
+      `,
       [start, end]
     )
-    : await db.get(
-      'SELECT COALESCE(SUM(order_total), 0) AS total FROM purchases WHERE purchased_at >= ? AND purchased_at < ?',
+    : await db.all(
+      `
+        SELECT
+          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          COALESCE(SUM(order_total), 0) AS total
+        FROM purchases
+        WHERE purchased_at >= ? AND purchased_at < ?
+        GROUP BY currency
+      `,
       [start, end]
     );
-  return row ? Number(row.total) || 0 : 0;
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  let sum = 0;
+  for (const r of rows || []) {
+    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+    const total = r.total != null ? Number(r.total) : 0;
+    if (!Number.isFinite(total) || total === 0) continue;
+    const gbp = fx.convertToGbp(total, cur, ratesToGbp);
+    if (typeof gbp === 'number' && Number.isFinite(gbp)) sum += gbp;
+  }
+  return Math.round(sum * 100) / 100;
 }
 
 async function getConversionRate(start, end, options = {}) {
@@ -673,22 +698,32 @@ async function getCountryStats(start, end, options = {}) {
         ${filter.sql.replace('sessions.', '')}
       GROUP BY country_code
     `, [start, end, ...filter.params]);
-  const purchaseCountByCountry = config.dbUrl
+  // Aggregate purchases by country + currency so we can convert to GBP.
+  const purchaseAgg = config.dbUrl
     ? await db.all(`
-      SELECT country_code, COUNT(*) AS converted, COALESCE(SUM(order_total), 0)::float AS revenue
+      SELECT
+        country_code,
+        COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+        COUNT(*) AS converted,
+        COALESCE(SUM(order_total), 0)::float AS revenue
       FROM purchases
       WHERE purchased_at >= $1 AND purchased_at < $2
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
-      GROUP BY country_code
+      GROUP BY country_code, currency
     `, [start, end])
     : await db.all(`
-      SELECT country_code, COUNT(*) AS converted, COALESCE(SUM(order_total), 0) AS revenue
+      SELECT
+        country_code,
+        COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+        COUNT(*) AS converted,
+        COALESCE(SUM(order_total), 0) AS revenue
       FROM purchases
       WHERE purchased_at >= ? AND purchased_at < ?
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
-      GROUP BY country_code
+      GROUP BY country_code, currency
     `, [start, end]);
-  const revenueRows = purchaseCountByCountry;
+
+  const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map();
   for (const row of conversionRows) {
     const code = normalizeCountry(row.country_code);
@@ -700,16 +735,23 @@ async function getCountryStats(start, end, options = {}) {
       revenue: 0,
     });
   }
-  for (const row of revenueRows) {
+
+  // Sum converted counts and convert revenue to GBP across currencies.
+  for (const row of purchaseAgg || []) {
     const code = normalizeCountry(row.country_code);
     if (!code) continue;
     const current = map.get(code) || { country_code: code, total: 0, converted: 0, revenue: 0 };
-    current.converted = Number(row.converted) || 0;
-    current.revenue = Number(row.revenue) || 0;
+    const converted = Number(row.converted) || 0;
+    const revenue = row.revenue != null ? Number(row.revenue) : 0;
+    const cur = fx.normalizeCurrency(row.currency) || 'GBP';
+    current.converted += converted;
+    const gbp = fx.convertToGbp(revenue, cur, ratesToGbp);
+    if (typeof gbp === 'number' && Number.isFinite(gbp)) current.revenue += gbp;
     map.set(code, current);
   }
+
   const out = Array.from(map.values()).map(r => {
-    const revenue = Number(r.revenue) || 0;
+    const revenue = Math.round((Number(r.revenue) || 0) * 100) / 100;
     const converted = r.converted || 0;
     const aov = converted > 0 ? Math.round((revenue / converted) * 100) / 100 : null;
     return {

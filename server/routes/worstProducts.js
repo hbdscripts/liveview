@@ -11,6 +11,7 @@
 const config = require('../config');
 const store = require('../store');
 const { getDb } = require('../db');
+const fx = require('../fx');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const DEFAULT_PAGE_SIZE = 10;
@@ -58,7 +59,7 @@ async function getWorstProducts(req, res) {
 
   // Use the minimal set of columns needed to build the report.
   const rows = await db.all(`
-    SELECT first_path, first_product_handle, has_purchased, order_total
+    SELECT first_path, first_product_handle, has_purchased, order_total, order_currency
     FROM sessions
     WHERE started_at >= ? AND started_at < ?
       ${botFilterSql}
@@ -68,6 +69,7 @@ async function getWorstProducts(req, res) {
       )
   `, [start, end]);
 
+  const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map(); // handle -> { handle, clicks, converted, revenue }
   for (const r of rows || []) {
     const handle = handleFromPath(r.first_path) || normalizeHandle(r.first_product_handle);
@@ -83,7 +85,11 @@ async function getWorstProducts(req, res) {
     if (purchased) {
       entry.converted += 1;
       const ot = r.order_total != null ? Number(r.order_total) : NaN;
-      if (!Number.isNaN(ot) && Number.isFinite(ot)) entry.revenue += ot;
+      if (!Number.isNaN(ot) && Number.isFinite(ot)) {
+        const cur = fx.normalizeCurrency(r.order_currency) || 'GBP';
+        const gbp = fx.convertToGbp(ot, cur, ratesToGbp);
+        if (typeof gbp === 'number' && Number.isFinite(gbp)) entry.revenue += gbp;
+      }
     }
   }
 

@@ -32,7 +32,8 @@ async function getShopifySalesToday(req, res) {
 
   let totalSales = 0;
   let orderCount = 0;
-  let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250`;
+  // Use `fields` to reduce payload and speed up "today sales" fetches.
+  let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250&fields=total_price`;
 
   try {
     while (nextPageUrl) {
