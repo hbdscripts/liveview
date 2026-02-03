@@ -48,9 +48,9 @@
     .main { padding: 1.5rem; margin: 0 auto; }
     .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
-    #stats-country, #stats-best-sellers { display: flex; flex-direction: column; max-height: 320px; }
-    #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3 { margin-bottom: -30px; position: absolute; transition: opacity 0.15s ease; }
-    #stats-country.scrolled .stats-card-header h3, #stats-best-sellers.scrolled .stats-card-header h3 { opacity: 0; pointer-events: none; }
+    #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants { display: flex; flex-direction: column; max-height: 320px; }
+    #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3, #stats-worst-products .stats-card-header h3, #stats-best-variants .stats-card-header h3 { margin-bottom: -30px; position: absolute; transition: opacity 0.15s ease; }
+    #stats-country.scrolled .stats-card-header h3, #stats-best-sellers.scrolled .stats-card-header h3, #stats-worst-products.scrolled .stats-card-header h3, #stats-best-variants.scrolled .stats-card-header h3 { opacity: 0; pointer-events: none; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
@@ -337,6 +337,45 @@
         </table>
       </div>
     </div>
+    <div class="stats-card" id="stats-worst-products">
+      <div class="stats-card-header">
+        <h3>Worst products</h3>
+      </div>
+      <div class="country-table-wrap" id="worst-products-wrap">
+        <table class="by-country-table best-sellers-table">
+          <thead>
+            <tr>
+              <th class="bs-product-col"></th>
+              <th>CR</th>
+              <th>Sales</th>
+              <th>Clicks</th>
+            </tr>
+          </thead>
+          <tbody id="worst-products-body">
+            <tr><td colspan="4" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="stats-card" id="stats-best-variants">
+      <div class="stats-card-header">
+        <h3>Best variants</h3>
+      </div>
+      <div class="country-table-wrap" id="best-variants-wrap">
+        <table class="by-country-table best-sellers-table">
+          <thead>
+            <tr>
+              <th class="bs-product-col"></th>
+              <th>Orders</th>
+              <th>Rev</th>
+            </tr>
+          </thead>
+          <tbody id="best-variants-body">
+            <tr><td colspan="3" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div class="stats-card" id="stats-aov">
       <div class="stats-card-header">
         <h3>Average Order Value</h3>
@@ -395,6 +434,12 @@
     <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
     <span id="pagination-label">Page 1 of 1</span>
     <button type="button" id="pagination-next" aria-label="Next page">Next</button>
+    <span class="muted">Rows</span>
+    <select id="rows-per-page-select" class="stats-select" aria-label="Rows per page">
+      <option value="15">15</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+    </select>
   </div>
   </div>
 
@@ -429,7 +474,16 @@
     const STATS_INTERVAL_MS = 60000;
     fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
-    const ROWS_PER_PAGE = 40;
+    const ROWS_PER_PAGE_KEY = 'livevisitors-rows-per-page';
+    function loadRowsPerPage() {
+      try {
+        const raw = sessionStorage.getItem(ROWS_PER_PAGE_KEY);
+        const n = parseInt(String(raw), 10);
+        if (n === 15 || n === 30 || n === 50) return n;
+      } catch (_) {}
+      return 15;
+    }
+    let rowsPerPage = loadRowsPerPage();
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
@@ -447,6 +501,8 @@
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
     let shopifySalesTodayLoading = false;
     let bestSellersCache = null;
+    let worstProductsCache = null;
+    let bestVariantsCache = null;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
     let saleAudio = null;
@@ -563,6 +619,7 @@
             }
             if (shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
             if (shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
+            if (shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
           // If we were waiting for Shopify sales but no shop is configured, stop showing a placeholder.
@@ -813,10 +870,10 @@
     function renderTable() {
       const tbody = document.getElementById('table-body');
       const sorted = getSortedSessions();
-      const totalPages = Math.max(1, Math.ceil(sorted.length / ROWS_PER_PAGE));
+      const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
-      const start = (currentPage - 1) * ROWS_PER_PAGE;
-      const pageSessions = sorted.slice(start, start + ROWS_PER_PAGE);
+      const start = (currentPage - 1) * rowsPerPage;
+      const pageSessions = sorted.slice(start, start + rowsPerPage);
       if (sorted.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
       } else {
@@ -922,6 +979,84 @@
           renderBestSellers(data);
         })
         .catch(function() { bestSellersCache = null; renderBestSellers(null); });
+    }
+
+    function fetchWorstProducts() {
+      fetch(API + '/api/worst-products?range=' + encodeURIComponent(dateRange) + '&traffic=' + encodeURIComponent(trafficMode || 'all') + '&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          worstProductsCache = data;
+          renderWorstProducts(data);
+        })
+        .catch(function() { worstProductsCache = null; renderWorstProducts(null); });
+    }
+
+    function renderWorstProducts(data) {
+      const tbody = document.getElementById('worst-products-body');
+      if (!tbody) return;
+      if (!data || !Array.isArray(data.worstProducts)) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No data</td></tr>';
+        return;
+      }
+      const rows = data.worstProducts.slice();
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No product landings in this range</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(p) {
+        const handle = p.handle || '';
+        const mainBase = getMainBaseUrl();
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) : '';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.parentElement&&(this.parentElement.style.display=\\'none\\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
+        const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
+        const sales = String(p.converted != null ? p.converted : 0);
+        const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + conversion + '</td><td>' + sales + '</td><td>' + clicks + '</td></tr>';
+      }).join('');
+    }
+
+    function fetchBestVariants() {
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) {
+        bestVariantsCache = null;
+        renderBestVariants(null);
+        return;
+      }
+      fetch(API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) + '&range=' + encodeURIComponent(dateRange), { credentials: 'same-origin' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          bestVariantsCache = data;
+          renderBestVariants(data);
+        })
+        .catch(function() { bestVariantsCache = null; renderBestVariants(null); });
+    }
+
+    function renderBestVariants(data) {
+      const tbody = document.getElementById('best-variants-body');
+      if (!tbody) return;
+      if (!data || !Array.isArray(data.bestVariants)) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No shop or no data</td></tr>';
+        return;
+      }
+      const rows = data.bestVariants.slice();
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No orders in this range</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(v) {
+        const fullName = (v.title || 'Unknown') + (v.variant_title ? (' \u00b7 ' + v.variant_title) : '');
+        const thumbImg = v.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(v.thumb_url) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const mainBase = getMainBaseUrl();
+        const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
+        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        const name = '<span class="bs-name" title="' + escapeHtml(fullName) + '">' + escapeHtml(fullName) + '</span>';
+        const orders = String(v.orders != null ? v.orders : 0);
+        const revenue = formatRevenue(v.revenue);
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td></tr>';
+      }).join('');
     }
 
     function renderBestSellers(data) {
@@ -1082,10 +1217,15 @@
       const primary = document.getElementById('stats-primary');
       const country = document.getElementById('stats-country');
       const bestSellers = document.getElementById('stats-best-sellers');
+      const worstProducts = document.getElementById('stats-worst-products');
+      const bestVariants = document.getElementById('stats-best-variants');
       if (!primary || !country) return;
       const primaryHeight = primary.getBoundingClientRect().height;
-      country.style.maxHeight = Math.floor(primaryHeight) + 'px';
-      if (bestSellers) bestSellers.style.maxHeight = Math.floor(primaryHeight) + 'px';
+      const h = Math.floor(primaryHeight) + 'px';
+      country.style.maxHeight = h;
+      if (bestSellers) bestSellers.style.maxHeight = h;
+      if (worstProducts) worstProducts.style.maxHeight = h;
+      if (bestVariants) bestVariants.style.maxHeight = h;
     }
 
     function updateLiveViewTitle() {
@@ -1150,6 +1290,8 @@
           requestAnimationFrame(function() { renderCountry(statsCache); });
           fetchShopifySales();
           fetchBestSellers();
+          fetchWorstProducts();
+          fetchBestVariants();
         })
         .catch(function() { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats(statsCache || {}); })
         .finally(function() {
@@ -1241,12 +1383,26 @@
       if (currentPage > 1) { currentPage--; renderTable(); }
     });
     document.getElementById('pagination-next').addEventListener('click', function() {
-      const totalPages = Math.max(1, Math.ceil(sessions.length / ROWS_PER_PAGE));
+      const totalPages = Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
       if (currentPage < totalPages) { currentPage++; renderTable(); }
     });
 
     setupSortableHeaders();
     setupBestSellersSort();
+
+    (function initRowsPerPageSelect() {
+      const sel = document.getElementById('rows-per-page-select');
+      if (!sel) return;
+      sel.value = String(rowsPerPage);
+      sel.addEventListener('change', function() {
+        const n = parseInt(String(this.value), 10);
+        if (n !== 15 && n !== 30 && n !== 50) return;
+        rowsPerPage = n;
+        try { sessionStorage.setItem(ROWS_PER_PAGE_KEY, String(n)); } catch (_) {}
+        currentPage = 1;
+        renderTable();
+      });
+    })();
 
     const trackingBtn = document.getElementById('tracking-btn');
     if (trackingBtn) {
@@ -1390,8 +1546,9 @@
           updateLiveViewTitle();
           renderStats(statsCache);
           fetchStats();
-          if (dateRange === 'today') fetchShopifySales();
           fetchBestSellers();
+          fetchWorstProducts();
+          fetchBestVariants();
         });
       }
       (function initTrafficToggle() {
@@ -1456,6 +1613,8 @@
       }
       onScroll('country-table-wrap', 'stats-country');
       onScroll('best-sellers-wrap', 'stats-best-sellers');
+      onScroll('worst-products-wrap', 'stats-worst-products');
+      onScroll('best-variants-wrap', 'stats-best-variants');
     })();
 
     function onMinuteTick() {
