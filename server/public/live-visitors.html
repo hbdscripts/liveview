@@ -50,7 +50,7 @@
     .main { padding: 1.5rem; margin: 0 auto; }
     .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
-    #stats-country { display: flex; flex-direction: column; max-height: 320px; }
+    #stats-country, #stats-best-sellers { display: flex; flex-direction: column; max-height: 320px; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
     .stats-section { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -66,6 +66,11 @@
     .by-country-table th { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
+    .best-sellers-table .bs-product-col { max-width: 0; width: auto; }
+    .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+    .best-sellers-table .product-cell .bs-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
+    .best-sellers-table .product-cell .bs-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 32px; height: 32px; background: var(--border); border-radius: var(--radius); }
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: var(--table-font-size); }
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
@@ -255,21 +260,6 @@
         </div>
       </div>
     </div>
-    <div class="stats-card" id="stats-aov">
-      <div class="stats-card-header">
-        <h3>Average Order Value</h3>
-      </div>
-      <div class="stats-section">
-        <div class="stats-main" id="aov-today"></div>
-        <div class="stats-breakdown">
-          <span>Yesterday: <strong id="aov-yesterday"></strong></span>
-          <span>7 Days: <strong id="aov-7d"></strong></span>
-        </div>
-      </div>
-      <div class="country-table-wrap" id="aov-list-wrap">
-        <ul class="aov-list" id="aov-by-country"></ul>
-      </div>
-    </div>
     <div class="stats-card" id="stats-country">
       <div class="stats-card-header">
         <h3>Country</h3>
@@ -288,6 +278,41 @@
             <tr><td colspan="4" class="empty">Loading...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+    <div class="stats-card" id="stats-best-sellers">
+      <div class="stats-card-header">
+        <h3>Best Sellers</h3>
+      </div>
+      <div class="country-table-wrap" id="best-sellers-wrap">
+        <table class="by-country-table best-sellers-table">
+          <thead>
+            <tr>
+              <th class="bs-product-col">Product</th>
+              <th>Orders</th>
+              <th>&pound;Sales</th>
+              <th>CR%</th>
+            </tr>
+          </thead>
+          <tbody id="best-sellers-body">
+            <tr><td colspan="4" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="stats-card" id="stats-aov">
+      <div class="stats-card-header">
+        <h3>Average Order Value</h3>
+      </div>
+      <div class="stats-section">
+        <div class="stats-main" id="aov-today"></div>
+        <div class="stats-breakdown">
+          <span>Yesterday: <strong id="aov-yesterday"></strong></span>
+          <span>7 Days: <strong id="aov-7d"></strong></span>
+        </div>
+      </div>
+      <div class="country-table-wrap" id="aov-list-wrap">
+        <ul class="aov-list" id="aov-by-country"></ul>
       </div>
     </div>
   </div>
@@ -350,6 +375,7 @@
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let shopifySalesToday = null;
+    let bestSellersCache = null;
     let saleAudio = null;
     let saleMuted = false;
     let currentPage = 1;
@@ -462,6 +488,7 @@
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
             if (shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
+            if (shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
           }
         })
         .catch(function() {});
@@ -747,6 +774,44 @@
         .catch(function() { shopifySalesToday = null; renderSales(statsCache); });
     }
 
+    function fetchBestSellers() {
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) {
+        bestSellersCache = null;
+        renderBestSellers(null);
+        return;
+      }
+      fetch(API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) + '&range=' + encodeURIComponent(dateRange), { credentials: 'same-origin' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          bestSellersCache = data;
+          renderBestSellers(data);
+        })
+        .catch(function() { bestSellersCache = null; renderBestSellers(null); });
+    }
+
+    function renderBestSellers(data) {
+      const tbody = document.getElementById('best-sellers-body');
+      if (!tbody) return;
+      if (!data || !Array.isArray(data.bestSellers)) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No shop or no data</td></tr>';
+        return;
+      }
+      const rows = data.bestSellers;
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No orders in this range</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(p) {
+        const thumb = p.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(p.thumb_url) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
+        const orders = String(p.orders != null ? p.orders : 0);
+        const revenue = formatRevenue(p.revenue);
+        const cr = p.cr != null ? pct(p.cr) : '\u2014';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+      }).join('');
+    }
+
     function renderSales(data) {
       const sales = data.sales || {};
       const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : (sales[dateRange] != null ? sales[dateRange] : 0);
@@ -812,9 +877,11 @@
     function syncCountryTableHeight() {
       const primary = document.getElementById('stats-primary');
       const country = document.getElementById('stats-country');
+      const bestSellers = document.getElementById('stats-best-sellers');
       if (!primary || !country) return;
       const primaryHeight = primary.getBoundingClientRect().height;
       country.style.maxHeight = Math.floor(primaryHeight) + 'px';
+      if (bestSellers) bestSellers.style.maxHeight = Math.floor(primaryHeight) + 'px';
     }
 
     function updateLiveViewTitle() {
@@ -871,6 +938,7 @@
           updateServerTimeDisplay();
           renderStats(data);
           fetchShopifySales();
+          fetchBestSellers();
         })
         .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats({}); })
         .finally(function() { if (overlay) overlay.style.display = 'none'; });
@@ -1046,6 +1114,7 @@
           updateLiveViewTitle();
           renderStats(statsCache);
           if (dateRange === 'today') fetchShopifySales();
+          fetchBestSellers();
         });
       }
       (function initTrafficToggle() {
