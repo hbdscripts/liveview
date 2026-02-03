@@ -943,9 +943,9 @@
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const forRange = breakdown[dateRange];
       const forYesterday = breakdown.yesterday;
-      // Sessions card always shows total sessions (ignore Human filter). Use only total_sessions so we never show human_sessions (232) when total is 2000+.
-      const main = forRange != null ? forRange.total_sessions : null;
-      const yesterday = forYesterday != null ? forYesterday.total_sessions : null;
+      // Show count that matches traffic filter: Human = human_sessions, All = total_sessions.
+      const main = forRange != null ? (trafficMode === 'human' ? forRange.human_sessions : forRange.total_sessions) : null;
+      const yesterday = forYesterday != null ? (trafficMode === 'human' ? forYesterday.human_sessions : forYesterday.total_sessions) : null;
       const sessionsRangeEl = document.getElementById('sessions-range');
       const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
       if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
@@ -1053,7 +1053,8 @@
       if (overlay) overlay.style.display = 'flex';
       var url = API + '/api/stats';
       if (trafficMode === 'human') url += '?traffic=human';
-      fetch(url, { credentials: 'same-origin' })
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(r => r.json())
         .then(data => {
           nextStatsAt = Date.now() + STATS_INTERVAL_MS;
@@ -1240,6 +1241,7 @@
           if (dateRange !== 'today') shopifySalesToday = null;
           updateLiveViewTitle();
           renderStats(statsCache);
+          fetchStats();
           if (dateRange === 'today') fetchShopifySales();
           fetchBestSellers();
         });
@@ -1252,8 +1254,24 @@
           if (humanLink) humanLink.classList.toggle('active', trafficMode === 'human');
         }
         setActive();
-        if (allLink) allLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'all'; setActive(); fetchStats(); });
-        if (humanLink) humanLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'human'; setActive(); fetchStats(); });
+        if (allLink) allLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          trafficMode = 'all';
+          setActive();
+          var u = new URL(window.location.href);
+          u.searchParams.set('traffic', 'all');
+          history.replaceState(null, '', u.toString());
+          fetchStats();
+        });
+        if (humanLink) humanLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          trafficMode = 'human';
+          setActive();
+          var u = new URL(window.location.href);
+          u.searchParams.set('traffic', 'human');
+          history.replaceState(null, '', u.toString());
+          fetchStats();
+        });
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
