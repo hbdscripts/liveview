@@ -796,7 +796,10 @@
         const u = new URL(ref);
         const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
         if (!host) return null;
+        if (host === 'account.heybigday.com') return 'HeyBigDay Account';
+        if (host === 'account.hbdjewellery.com') return 'HBD Account';
         if (host === 'hbdjewellery.com' || host.endsWith('.myshopify.com')) return 'Store';
+        if (host.indexOf('omnisend') !== -1) return 'Omnisend';
         if (host.indexOf('google') !== -1) return 'Google';
         if (host.indexOf('facebook') !== -1 || host.indexOf('fb.') === 0 || host === 'fb.com') return 'Facebook';
         if (host.indexOf('instagram') !== -1) return 'Instagram';
@@ -817,6 +820,8 @@
       if (str) {
         if (str.indexOf('googleads') !== -1) return null;
         if (str.indexOf('google') !== -1) return 'Google';
+        if (str.indexOf('bing') !== -1) return 'Bing';
+        if (str.indexOf('omnisend') !== -1) return 'Omnisend';
         if (str.indexOf('chatgpt') !== -1 || str.indexOf('chat gpt') !== -1) return 'Chatgpt';
         return null;
       }
@@ -837,6 +842,9 @@
     const SOURCE_DIRECT_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632';
     const SOURCE_CONVERTED_BADGE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770087896';
     const SOURCE_UNKNOWN_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816';
+    const SOURCE_OMNISEND_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052';
+    const SOURCE_BING_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094';
+    const SOURCE_LIVEVIEW_SOURCE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/liveview-source-logo.png?v=1770141081';
 
     function sourceCell(s) {
       function icon(src, alt, title, extraClass) {
@@ -857,6 +865,8 @@
         const friendly = sourceFriendlyLabel(s);
         utmLabel = friendly || 'Other (UTM)';
         if (friendly === 'Google') out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (UTM)'));
+        else if (friendly === 'Bing') out.push(icon(SOURCE_BING_IMG, 'Bing', 'Bing (UTM)'));
+        else if (friendly === 'Omnisend') out.push(icon(SOURCE_OMNISEND_IMG, 'Omnisend', 'Omnisend (UTM)'));
         else out.push(icon(SOURCE_UNKNOWN_IMG, utmLabel, utmLabel));
       }
 
@@ -864,6 +874,9 @@
       const refLabel = sourceReferrerFriendlyLabel(s);
       if (refLabel && refLabel !== 'Store' && refLabel !== utmLabel) {
         if (refLabel === 'Google') out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (Referrer)'));
+        else if (refLabel === 'Bing') out.push(icon(SOURCE_BING_IMG, 'Bing', 'Bing (Referrer)'));
+        else if (refLabel === 'Omnisend') out.push(icon(SOURCE_OMNISEND_IMG, 'Omnisend', 'Omnisend (Referrer)'));
+        else if (refLabel === 'HeyBigDay Account' || refLabel === 'HBD Account') out.push(icon(SOURCE_LIVEVIEW_SOURCE_IMG, refLabel, String(refLabel)));
         else out.push(icon(SOURCE_UNKNOWN_IMG, refLabel, String(refLabel)));
       }
 
