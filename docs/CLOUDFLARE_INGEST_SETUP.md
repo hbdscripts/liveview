@@ -106,13 +106,36 @@ Order of execution: the Request Header Transform Rule runs first and sets `x-lv-
 
 ---
 
-## 5. Verify
+## 5. How to tell if the Cloudflare setup worked
 
-1. **Trigger a pixel event** (load a store page that has the pixel, or use your app’s test).
-2. In your app (or DB), confirm that the session/event has:
-   - `cf_known_bot` = 0 or 1
-   - `cf_country` (and optionally `cf_colo`, `cf_asn`) when the request came through CF.
-3. In the **Live Visitors** dashboard, use the **Human** toggle: numbers should drop when you switch from All to Human (fewer sessions = bots excluded).
+### A. Traffic is going through Cloudflare
+
+1. **DNS / hostname**  
+   In a browser or with `curl`, open `https://lv-ingest.hbdjewellery.com/health` (or any path). You should get a response from your app (e.g. `OK`), not a Cloudflare error page. If you get a valid response, DNS and proxy to Railway are correct.
+
+2. **Pixel is using the CF URL**  
+   In your app, ensure **Ingest URL** is `https://lv-ingest.hbdjewellery.com/api/ingest` (set `INGEST_PUBLIC_URL=https://lv-ingest.hbdjewellery.com` in Railway, redeploy, then open the dashboard from Shopify so `/api/pixel/ensure` runs). If the pixel still posts to Railway directly, traffic will not go through the Worker.
+
+3. **Worker is running**  
+   In Cloudflare: **Workers & Pages** → your worker → **Metrics**. After some store traffic, you should see **Invocations** (and success). If invocations are 0, the route or hostname is wrong, or the pixel is not using `lv-ingest.hbdjewellery.com`.
+
+### B. Referrer (Source) enrichment
+
+When the pixel referrer is stripped (e.g. by Shopify), the Worker sends the browser **Referer** to your app as `x-request-referer`. Your app stores it as the session **referrer**.
+
+- **Check:** Open the Live Visitors dashboard, click a session row to open the **side panel**. Under **Source**, look for **Referrer:** followed by a full URL (e.g. from Google, social, or your store). If you see a real referrer URL there for visits that did not send it in the pixel payload, the Worker → app referrer pipeline is working.
+
+### C. Bot tagging (All vs Human)
+
+The Worker sets `x-cf-known-bot` (and the Request Header Transform Rule sets `x-lv-client-bot`) so the app can store `cf_known_bot` and the dashboard can filter **Human** (exclude known bots).
+
+- **Check:** In the dashboard, use the **All** vs **Human** toggle at the top. Switch to **Human**; session counts (and stats like Sessions, Sales) should often be lower than **All** if any traffic is detected as bots. If the numbers are identical and you expect some bot traffic, the bot header may not be reaching the app or the rule may not be set.
+
+### D. Optional: inspect one request
+
+1. **Browser:** On a store page that has the pixel, open DevTools → **Network**. Filter by "ingest" or "lv-ingest". Trigger a page view. You should see a `POST` to `https://lv-ingest.hbdjewellery.com/api/ingest` with status **204** (or 200). That confirms the browser is posting to the CF hostname and the Worker is forwarding to Railway and returning the app response.
+
+2. **Backend:** If you can see Railway (or your server) logs, trigger an ingest from the store and confirm the request hits your app with headers such as `x-cf-known-bot` and, when there is a referrer, `x-request-referer`.
 
 ---
 
