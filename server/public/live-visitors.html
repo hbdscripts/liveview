@@ -45,8 +45,9 @@
     .arrived-cell, .last-seen-cell { font-size: 0.875rem; white-space: nowrap; }
     .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: 3px; margin-right: 0.25rem; vertical-align: middle; display: inline-block; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
-    .last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
-    .last-action-cell a:hover { text-decoration: underline; }
+.last-action-cell a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+.last-action-cell a:hover { text-decoration: underline; }
+.landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
     .thumb-40 { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: var(--border); }
 .table-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
@@ -353,10 +354,10 @@
 
     function landingPageCell(s) {
       var base = getStoreBaseUrl();
-      // Use only first_path / first_product_handle for landing page. Do not fall back to last_path:
-      // Cart/checkouts are last-seen URLs, not landing pages.
-      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : '').trim();
-      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : null;
+      var hasFirst = (s.first_path != null && s.first_path !== '') || (s.first_product_handle != null && s.first_product_handle !== '');
+      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s.last_path != null ? s.last_path : ''))).trim();
+      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : (hasFirst ? null : (s.last_product_handle != null ? s.last_product_handle : null));
+      var isFromLast = !hasFirst && (path || productHandle);
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var isCheckout = path && path.indexOf('/checkouts') === 0;
@@ -370,6 +371,7 @@
         label = escapeHtml(path);
         if (fullUrl) thumbSrc = API + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
+      if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
         var img = thumbSrc ? '<img class="thumb-40" src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'">' : '';
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
@@ -621,7 +623,7 @@
     }
 
     function fetchSessions() {
-      fetch(API + '/api/sessions?filter=' + filter)
+      fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now())
         .then(r => r.json())
         .then(data => {
           var next = data.sessions || [];
@@ -789,6 +791,10 @@
     setInterval(fetchSessions, STATS_INTERVAL_MS);
     setInterval(tickTimeOnSite, 30000);
 
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') { fetchSessions(); fetchStats(); }
+    });
+
     const es = new EventSource(API + '/api/stream');
     es.onmessage = (e) => {
       try {
@@ -802,6 +808,7 @@
             updateKpis();
           } else {
             sessions.unshift(msg.session);
+            sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
             renderTable();
             updateKpis();
           }

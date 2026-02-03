@@ -11,6 +11,7 @@ function list(req, res, next) {
   if (!allowed.includes(filter)) {
     return res.status(400).json({ error: 'Invalid filter' });
   }
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   store.listSessions(filter)
     .then(rows => res.json({ sessions: rows }))
     .catch(err => {
