@@ -69,9 +69,10 @@ const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 app.get('/api/store-base-url', (req, res) => {
   const domain = (config.shopDomain || '').trim().toLowerCase();
-  if (!domain) return res.json({ baseUrl: '' });
-  const baseUrl = domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, '');
-  res.json({ baseUrl });
+  const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));
+  const mainBaseUrl = config.storeMainDomain || baseUrl;
+  const assetsBaseUrl = config.assetsBaseUrl || '';
+  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl });
 });
 
 // Shopify OAuth (install flow)

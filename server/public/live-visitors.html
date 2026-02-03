@@ -406,13 +406,24 @@
     }
 
     var storeBaseUrlFallback = '';
+    var mainBaseUrlFallback = '';
+    var assetsBaseUrlFallback = '';
     (function fetchStoreBaseUrl() {
       fetch(API + '/api/store-base-url', { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          if (d && d.baseUrl) {
-            storeBaseUrlFallback = d.baseUrl;
+          if (d) {
+            if (d.baseUrl) storeBaseUrlFallback = d.baseUrl;
+            if (d.mainBaseUrl) mainBaseUrlFallback = d.mainBaseUrl;
+            if (d.assetsBaseUrl) assetsBaseUrlFallback = d.assetsBaseUrl;
             if (sessions.length) renderTable();
+            if (assetsBaseUrlFallback) {
+              var link = document.querySelector('link[rel="icon"]');
+              if (link) link.href = assetsBaseUrlFallback + '/favicon.png';
+              var favImg = document.querySelector('.next-update-favicon');
+              if (favImg) favImg.src = assetsBaseUrlFallback + '/favicon.png';
+              if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
+            }
           }
         })
         .catch(function() {});
@@ -423,9 +434,16 @@
       if (shop && /\.myshopify\.com$/i.test(shop)) return 'https://' + shop;
       return storeBaseUrlFallback || '';
     }
+    function getMainBaseUrl() {
+      if (mainBaseUrlFallback) return mainBaseUrlFallback;
+      return getStoreBaseUrl();
+    }
+    function getAssetsBase() {
+      if (assetsBaseUrlFallback) return assetsBaseUrlFallback;
+      return (API || '') + '/assets';
+    }
 
     function landingPageCell(s) {
-      var base = getStoreBaseUrl();
       var hasFirst = (s.first_path != null && s.first_path !== '') || (s.first_product_handle != null && s.first_product_handle !== '');
       var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s.last_path != null ? s.last_path : ''))).trim();
       var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : (hasFirst ? null : (s.last_product_handle != null ? s.last_product_handle : null));
@@ -433,19 +451,20 @@
       if (path && !path.startsWith('/')) path = '/' + path;
       if (!path && productHandle) path = '/products/' + (productHandle || '');
       var isCheckout = path && path.indexOf('/checkouts') === 0;
-      var fullUrl = base && path ? base + path : '';
+      var mainBase = getMainBaseUrl();
+      var fullUrl = mainBase && path ? mainBase + path : '';
       var label = '\u2014';
       var thumbSrc = '';
       if (isCheckout) {
         label = 'Cart';
-        thumbSrc = (API || '') + '/assets/checkout.webp';
+        thumbSrc = getAssetsBase() + '/checkout.webp';
       } else if (path) {
         label = escapeHtml(path);
         if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
-        var img = thumbSrc ? '<span class="thumb-card"><img src="' + thumbSrc + '" alt="" onerror="this.style.display=\'none\'"></span>' : '';
+        var img = thumbSrc ? '<span class="thumb-card"><img src="' + thumbSrc + '" alt="" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')"></span>' : '';
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
         return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
       }
@@ -493,7 +512,7 @@
         return ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="UTM params">\u2139</span>';
       }
       if (isGoogleAdsSource(s)) {
-        return '<img src="' + (API || '') + '/assets/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
+        return '<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
       }
       const friendly = sourceFriendlyLabel(s);
       if (friendly) return escapeHtml(friendly) + infoIcon();
@@ -756,14 +775,14 @@
             ${saleBlock}
             Events: ${(data.events || []).length}
           `;
-          const base = getStoreBaseUrl();
+          const mainBase = getMainBaseUrl();
           const eventList = (data.events || []).filter(e => e.type !== 'heartbeat').reverse();
           const events = eventList.map(e => {
             var path = (e.path || '').trim();
             if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
             if (path && !path.startsWith('/')) path = '/' + path;
-            var fullUrl = base && path ? base + path : '';
-            var thumb = fullUrl ? '<span class="thumb-card"><img src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.style.display=\'none\'"></span>' : '';
+            var fullUrl = mainBase && path ? mainBase + path : '';
+            var thumb = fullUrl ? '<span class="thumb-card"><img src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')"></span>' : '';
             var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(e.path || '') + ' ' + (e.product_handle || '') + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
             return '<li>' + thumb + '<span>' + text + '</span></li>';
           }).join('');
@@ -830,7 +849,7 @@
 
     (function initTopBar() {
       saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';
-      saleAudio = new Audio((API || '') + '/assets/cash-register.mp3');
+      saleAudio = new Audio(getAssetsBase() + '/cash-register.mp3');
       const muteBtn = document.getElementById('audio-mute-btn');
       const iconOn = muteBtn && muteBtn.querySelector('.sound-icon-on');
       const iconOff = muteBtn && muteBtn.querySelector('.sound-icon-off');

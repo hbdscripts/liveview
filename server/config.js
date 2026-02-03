@@ -82,6 +82,18 @@ const config = {
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
   /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */
   shopDomain: getEnv('SHOP_DOMAIN', '').trim().toLowerCase() || (getEnv('ALLOWED_SHOP_DOMAIN', '') || '').trim().toLowerCase(),
+  /** Main/public store URL for product images and links (e.g. https://www.hbdjewellery.com). When set, dashboard uses this for og-thumb and last-action links. */
+  storeMainDomain: (function() {
+    const v = (getEnv('STORE_MAIN_DOMAIN', '') || '').trim();
+    if (!v) return '';
+    return v.startsWith('http') ? v.replace(/\/+$/, '') : 'https://' + v.replace(/^\.+/, '').replace(/\/+$/, '');
+  })(),
+  /** Base URL for dashboard assets (favicon, checkout.webp, cash-register.mp3, adwords.png). When set, dashboard loads these from this URL to save app bandwidth. No trailing slash. */
+  assetsBaseUrl: (function() {
+    const v = (getEnv('ASSETS_BASE_URL', '') || '').trim();
+    if (!v) return '';
+    return v.startsWith('http') ? v.replace(/\/+$/, '') : 'https://' + v.replace(/^\.+/, '').replace(/\/+$/, '');
+  })(),
   /** Secret to sign OAuth session cookie (defaults to DASHBOARD_SECRET) */
   oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
   /** Traffic mode for stats: all | human_only (default all). When human_only, exclude cf_known_bot=1. */

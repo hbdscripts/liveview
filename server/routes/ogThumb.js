@@ -1,13 +1,21 @@
 /**
- * GET /api/og-thumb?url=https://store.myshopify.com/path
- * Fetches the URL (allowed: https only, host must contain myshopify.com), parses og:image, redirects to it.
- * Used by dashboard for 40x40 thumbnails next to "Last action" links.
+ * GET /api/og-thumb?url=https://www.example.com/path
+ * Fetches the URL (allowed: https only; host must be myshopify.com or STORE_MAIN_DOMAIN), parses og:image, redirects to it.
+ * Used by dashboard for product thumbnails next to "Last action" links.
  */
+
+const config = require('../config');
 
 function isAllowedUrl(url) {
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' && u.hostname.includes('myshopify.com');
+    if (u.protocol !== 'https:') return false;
+    if (u.hostname.includes('myshopify.com')) return true;
+    if (config.storeMainDomain) {
+      const mainHost = new URL(config.storeMainDomain).hostname;
+      return u.hostname === mainHost;
+    }
+    return false;
   } catch (_) {
     return false;
   }
@@ -26,7 +34,7 @@ async function handleOgThumb(req, res) {
       signal: AbortSignal.timeout(5000),
     });
     if (!resp.ok) {
-      res.status(502).send('Upstream error');
+      res.status(204).end();
       return;
     }
     const html = await resp.text();

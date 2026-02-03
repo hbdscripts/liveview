@@ -33,7 +33,7 @@ function getLoginHtml(queryError) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="icon" type="image/png" href="${config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png' : '/assets/favicon.png'}">
   <title>Sign in</title>
   <style>
     * { box-sizing: border-box; }
