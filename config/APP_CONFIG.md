@@ -65,6 +65,7 @@ In `.env` / Railway: `SHOPIFY_SCOPES=read_products,read_orders,write_pixels,read
 
 - **Top bar:** One date dropdown (Today, Yesterday, Last 3 Days, Last 7 Days) controls all stats; options except Today are enabled only when the backend has data for that range. Center shows "Next update in X s"; right button toggles sale sound (saved in sessionStorage as `livevisitors-sale-muted`).
 - **Sale sound:** MP3 at `assets/cash-register.mp3` is served at `/assets/cash-register.mp3` and plays once when a new sale is detected (today’s converted count increases). Use "Sound on" / "Muted" to toggle; choice is stored in sessionStorage.
+- **Assets (icons):** Files in `assets/` are served at `/assets/...`. To use a new file (e.g. `hicon.webp`), add it to `assets/`, commit, and push so the deploy includes it. The dashboard uses `checkout.webp` and og-thumb for landing/cart; switch to `hicon.webp` in `live-visitors.html` once the file is in the repo.
 
 ## Dashboard access (Google-only for direct visits)
 
