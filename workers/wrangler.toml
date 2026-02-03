@@ -1,0 +1,12 @@
+# Deploy: wrangler deploy (from workers/ or with name workers/ingest-enrich.js)
+# Set ORIGIN_URL in Cloudflare Worker settings (e.g. https://your-app.up.railway.app)
+
+name = "liveview-ingest-enrich"
+main = "ingest-enrich.js"
+compatibility_date = "2024-01-01"
+
+# Route this Worker to your CF-proxied ingest hostname, e.g. lv-ingest.example.com/*
+# routes = [{ pattern = "lv-ingest.example.com/api/ingest", zone_name = "example.com" }]
+
+[vars]
+# ORIGIN_URL must be set in Worker Settings -> Variables (secret or plain)

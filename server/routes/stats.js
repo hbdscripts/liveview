@@ -1,11 +1,14 @@
 /**
  * GET /api/stats – sales + conversion ranges (UK midnight) and country stats.
+ * Query: ?traffic=human for human-only (exclude cf_known_bot=1). Default uses TRAFFIC_MODE env.
  */
 
+const config = require('../config');
 const store = require('../store');
 
 function getStats(req, res, next) {
-  store.getStats()
+  const trafficMode = req.query.traffic === 'human' ? 'human_only' : config.trafficMode;
+  store.getStats({ trafficMode })
     .then(data => res.json(data))
     .catch(err => {
       console.error(err);

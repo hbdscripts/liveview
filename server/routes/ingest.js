@@ -46,6 +46,25 @@ function getVisitorCountry(req) {
   return countryFromIp(getClientIp(req));
 }
 
+/** Build CF context from Worker-added headers (Phase 2). Keys match parseCfContext in store. */
+function getCfContextFromRequest(req) {
+  const knownBot = req.get('x-cf-known-bot');
+  const category = req.get('x-cf-verified-bot-category');
+  const country = req.get('x-cf-country');
+  const colo = req.get('x-cf-colo');
+  const asn = req.get('x-cf-asn');
+  if (knownBot === undefined && category === undefined && country === undefined && colo === undefined && asn === undefined) {
+    return null;
+  }
+  return {
+    cf_known_bot: knownBot,
+    cf_verified_bot_category: category,
+    cf_country: country,
+    cf_colo: colo,
+    cf_asn: asn,
+  };
+}
+
 const ALLOWED_TYPES = store.ALLOWED_EVENT_TYPES;
 
 function ingestRouter(req, res, next) {
@@ -107,10 +126,16 @@ function ingestRouter(req, res, next) {
     if (country) payload.country_code = country;
     const ts = payload.ts || Date.now();
 
+    const cfContext = getCfContextFromRequest(req);
     return Promise.all([
       store.upsertVisitor(payload),
-      store.upsertSession(payload),
+      store.upsertSession(payload, undefined, cfContext),
     ])
+      .then(() => {
+        if (payload.checkout_completed) {
+          return store.insertPurchase(payload, sessionId, payload.country_code);
+        }
+      })
       .then(() => store.insertEvent(sessionId, payload))
       .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
       .then(([sessionRow, visitor]) => {

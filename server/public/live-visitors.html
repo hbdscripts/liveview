@@ -80,6 +80,11 @@
 .live-view-online strong { color: var(--accent); font-size: 20px; }
 .dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
+.traffic-toggle { margin-left: 0.75rem; font-size: 0.8125rem; }
+.traffic-toggle .traffic-link { color: var(--muted); text-decoration: none; }
+.traffic-toggle .traffic-link:hover { color: var(--accent); }
+.traffic-toggle .traffic-link.active { color: var(--accent); font-weight: 600; }
+.traffic-toggle .muted { margin: 0 0.25rem; color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 #audio-mute-btn:hover { color: var(--accent); }
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
@@ -129,6 +134,11 @@
         <option value="3d">Last 3 Days</option>
         <option value="7d">Last 7 Days</option>
       </select>
+      <span class="traffic-toggle" id="traffic-toggle" aria-label="Traffic filter">
+        <a href="#" id="traffic-all" class="traffic-link">All</a>
+        <span class="muted">|</span>
+        <a href="#" id="traffic-human" class="traffic-link">Human only</a>
+      </span>
     </div>
     <div class="dashboard-top-bar-center"><img class="next-update-favicon" src="/assets/favicon.png" alt="">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></div>
     <div class="dashboard-top-bar-right">
@@ -249,6 +259,7 @@
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
+    let trafficMode = (function() { var p = new URLSearchParams(window.location.search); return p.get('traffic') === 'human' ? 'human' : 'all'; })();
     let nextStatsAt = 0;
     let lastConvertedCountToday = 0;
     let saleAudio = null;
@@ -606,7 +617,9 @@
     }
 
     function fetchStats() {
-      fetch(API + '/api/stats', { credentials: 'same-origin' })
+      var url = API + '/api/stats';
+      if (trafficMode === 'human') url += '?traffic=human';
+      fetch(url, { credentials: 'same-origin' })
         .then(r => r.json())
         .then(data => {
           nextStatsAt = Date.now() + STATS_INTERVAL_MS;
@@ -776,6 +789,17 @@
           renderStats(statsCache);
         });
       }
+      (function initTrafficToggle() {
+        const allLink = document.getElementById('traffic-all');
+        const humanLink = document.getElementById('traffic-human');
+        function setActive() {
+          if (allLink) allLink.classList.toggle('active', trafficMode === 'all');
+          if (humanLink) humanLink.classList.toggle('active', trafficMode === 'human');
+        }
+        setActive();
+        if (allLink) allLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'all'; setActive(); fetchStats(); });
+        if (humanLink) humanLink.addEventListener('click', function(e) { e.preventDefault(); trafficMode = 'human'; setActive(); fetchStats(); });
+      })();
       setInterval(function() {
         const el = document.getElementById('next-update-msg');
         if (!el) return;

@@ -1,8 +1,9 @@
 /**
- * Repository: visitors, sessions, events, settings.
+ * Repository: visitors, sessions, events, settings, purchases.
  * All timestamps in epoch ms.
  */
 
+const crypto = require('crypto');
 const { getDb } = require('./db');
 const config = require('./config');
 
@@ -15,6 +16,7 @@ const WHITELIST = new Set([
   'visitor_id', 'session_id', 'event_type', 'path', 'product_handle', 'product_title',
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
   'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
+  'order_id', 'checkout_token',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
   'utm_campaign', 'utm_source', 'utm_medium', 'utm_content',
 ]);
@@ -107,11 +109,25 @@ async function getSession(sessionId) {
   return db.get('SELECT * FROM sessions WHERE session_id = ?', [sessionId]);
 }
 
-async function upsertSession(payload, visitorIsReturning) {
+function parseCfContext(cfContext) {
+  if (!cfContext) return { cfKnownBot: null, cfVerifiedBotCategory: null, cfCountry: null, cfColo: null, cfAsn: null };
+  const knownBot = cfContext.cf_known_bot;
+  const cfKnownBot = knownBot === '1' || knownBot === true ? 1 : (knownBot === '0' || knownBot === false ? 0 : null);
+  return {
+    cfKnownBot,
+    cfVerifiedBotCategory: cfContext.cf_verified_bot_category && String(cfContext.cf_verified_bot_category).trim() ? String(cfContext.cf_verified_bot_category).trim().slice(0, 128) : null,
+    cfCountry: cfContext.cf_country && String(cfContext.cf_country).trim().length === 2 ? String(cfContext.cf_country).trim().toUpperCase() : null,
+    cfColo: cfContext.cf_colo && String(cfContext.cf_colo).trim() ? String(cfContext.cf_colo).trim().slice(0, 32) : null,
+    cfAsn: cfContext.cf_asn != null && String(cfContext.cf_asn).trim() ? String(cfContext.cf_asn).trim().slice(0, 32) : null,
+  };
+}
+
+async function upsertSession(payload, visitorIsReturning, cfContext) {
   const db = getDb();
   const now = payload.ts || Date.now();
   const existing = await db.get('SELECT * FROM sessions WHERE session_id = ?', [payload.session_id]);
   const normalizedCountry = normalizeCountry(payload.country_code);
+  const cf = parseCfContext(cfContext);
   let purchasedAt = typeof existing?.purchased_at === 'number' ? existing.purchased_at : null;
   if (payload.checkout_completed && !purchasedAt) {
     purchasedAt = now;
@@ -167,37 +183,71 @@ async function upsertSession(payload, visitorIsReturning) {
   const utmMedium = trimUtm(payload.utm_medium) ?? existing?.utm_medium ?? null;
   const utmContent = trimUtm(payload.utm_content) ?? existing?.utm_content ?? null;
 
+  const cfKnownBot = cf.cfKnownBot != null ? cf.cfKnownBot : null;
+  const cfVerifiedBotCategory = cf.cfVerifiedBotCategory;
+  const cfCountry = cf.cfCountry;
+  const cfColo = cf.cfColo;
+  const cfAsn = cf.cfAsn;
+
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
+        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 0, NULL, NULL, $21, $22, $23, $24, $25)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
     }
   } else {
+    const cfUpdates = [];
+    const cfParams = [];
+    let p = config.dbUrl ? 18 : 0;
+    if (cfKnownBot != null) {
+      cfUpdates.push(config.dbUrl ? `cf_known_bot = $${++p}` : 'cf_known_bot = ?');
+      cfParams.push(cfKnownBot);
+    }
+    if (cfVerifiedBotCategory !== undefined && cfVerifiedBotCategory !== null) {
+      cfUpdates.push(config.dbUrl ? `cf_verified_bot_category = $${++p}` : 'cf_verified_bot_category = ?');
+      cfParams.push(cfVerifiedBotCategory);
+    }
+    if (cfCountry !== undefined && cfCountry !== null) {
+      cfUpdates.push(config.dbUrl ? `cf_country = $${++p}` : 'cf_country = ?');
+      cfParams.push(cfCountry);
+    }
+    if (cfColo !== undefined && cfColo !== null) {
+      cfUpdates.push(config.dbUrl ? `cf_colo = $${++p}` : 'cf_colo = ?');
+      cfParams.push(cfColo);
+    }
+    if (cfAsn !== undefined && cfAsn !== null) {
+      cfUpdates.push(config.dbUrl ? `cf_asn = $${++p}` : 'cf_asn = ?');
+      cfParams.push(cfAsn);
+    }
+    const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
+    const sessionIdPlaceholder = config.dbUrl ? '$' + (18 + cfParams.length) : '?';
     if (config.dbUrl) {
       await db.run(`
-        UPDATE sessions SET last_seen = ?, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
+        UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
         cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
         order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
         country_code = COALESCE($9, country_code), utm_campaign = COALESCE($10, utm_campaign), utm_source = COALESCE($11, utm_source), utm_medium = COALESCE($12, utm_medium), utm_content = COALESCE($13, utm_content),
         is_checking_out = $14, checkout_started_at = $15, has_purchased = $16, purchased_at = COALESCE($17, purchased_at)
-        WHERE session_id = $18
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
+        ${cfSet}
+        WHERE session_id = ${sessionIdPlaceholder}
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id]);
     } else {
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id];
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
         order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
         country_code = COALESCE(?, country_code), utm_campaign = COALESCE(?, utm_campaign), utm_source = COALESCE(?, utm_source), utm_medium = COALESCE(?, utm_medium), utm_content = COALESCE(?, utm_content),
         is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at)
+        ${cfSet}
         WHERE session_id = ?
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, payload.session_id]);
+      `, placeholders);
     }
   }
 
@@ -244,7 +294,45 @@ async function insertEvent(sessionId, payload) {
   }
 }
 
-/** "Today (24h)" tab: last 24 hours. "All (60 min)" tab: last 60 min. Cleanup uses SESSION_TTL_MINUTES (default 24*60). */
+function computePurchaseKey(payload, sessionId) {
+  const orderId = payload.order_id != null && String(payload.order_id).trim() !== '' ? String(payload.order_id).trim() : null;
+  const token = payload.checkout_token != null && String(payload.checkout_token).trim() !== '' ? String(payload.checkout_token).trim() : null;
+  if (orderId) return 'order:' + orderId;
+  if (token) return 'token:' + token;
+  const ts = payload.ts || Date.now();
+  const roundMin = Math.floor(ts / 60000);
+  const cur = (payload.order_currency || '').toString();
+  const tot = payload.order_total != null ? String(payload.order_total) : '';
+  const hash = crypto.createHash('sha256').update(cur + '|' + tot + '|' + roundMin + '|' + sessionId).digest('hex').slice(0, 32);
+  return 'h:' + hash;
+}
+
+async function insertPurchase(payload, sessionId, countryCode) {
+  if (!payload.checkout_completed) return;
+  const db = getDb();
+  const now = payload.ts || Date.now();
+  const purchaseKey = computePurchaseKey(payload, sessionId);
+  const orderTotal = payload.order_total != null ? (typeof payload.order_total === 'number' ? payload.order_total : parseFloat(payload.order_total)) : null;
+  const orderCurrency = typeof payload.order_currency === 'string' ? payload.order_currency : null;
+  const orderId = payload.order_id != null ? String(payload.order_id) : null;
+  const checkoutToken = payload.checkout_token != null ? String(payload.checkout_token) : null;
+  const country = normalizeCountry(countryCode) || null;
+
+  if (config.dbUrl) {
+    await db.run(`
+      INSERT INTO purchases (purchase_key, session_id, visitor_id, purchased_at, order_total, order_currency, order_id, checkout_token, country_code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (purchase_key) DO NOTHING
+    `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
+  } else {
+    await db.run(`
+      INSERT OR IGNORE INTO purchases (purchase_key, session_id, visitor_id, purchased_at, order_total, order_currency, order_id, checkout_token, country_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
+  }
+}
+
+/** "Today (24h)" tab: last 24 hours. "All (60 min)" tab: last 60 min. Cleanup uses SESSION_RETENTION_DAYS. */
 const TODAY_WINDOW_MINUTES = 24 * 60;
 const ALL_SESSIONS_WINDOW_MINUTES = 60;
 
@@ -320,6 +408,16 @@ async function getSessionEvents(sessionId, limit = 20) {
     ...r,
     ts: r.ts != null ? Number(r.ts) : null,
   }));
+}
+
+/** When trafficMode is human_only, exclude sessions with cf_known_bot = 1. No bot score used. */
+function sessionFilterForTraffic(trafficMode) {
+  if (trafficMode === 'human_only') {
+    return config.dbUrl
+      ? { sql: ' AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)', params: [] }
+      : { sql: ' AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)', params: [] };
+  }
+  return { sql: '', params: [] };
 }
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
@@ -416,80 +514,76 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
 
 async function getSalesTotal(start, end) {
   const db = getDb();
-  // Include sessions that converted in-window; use last_seen when purchased_at is null (legacy/pre-migration)
   const row = config.dbUrl
     ? await db.get(
-      `SELECT COALESCE(SUM(order_total), 0)::float AS total FROM sessions
-       WHERE has_purchased = 1 AND (
-         (purchased_at IS NOT NULL AND purchased_at >= $1 AND purchased_at < $2)
-         OR (purchased_at IS NULL AND last_seen >= $1 AND last_seen < $2)
-       )`,
+      'SELECT COALESCE(SUM(order_total), 0)::float AS total FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2',
       [start, end]
     )
     : await db.get(
-      `SELECT COALESCE(SUM(order_total), 0) AS total FROM sessions
-       WHERE has_purchased = 1 AND (
-         (purchased_at IS NOT NULL AND purchased_at >= ? AND purchased_at < ?)
-         OR (purchased_at IS NULL AND last_seen >= ? AND last_seen < ?)
-       )`,
-      [start, end, start, end]
+      'SELECT COALESCE(SUM(order_total), 0) AS total FROM purchases WHERE purchased_at >= ? AND purchased_at < ?',
+      [start, end]
     );
   return row ? Number(row.total) || 0 : 0;
 }
 
-async function getConversionRate(start, end) {
+async function getConversionRate(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
   const total = config.dbUrl
-    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2', [start, end])
-    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?', [start, end]);
+    ? await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + filter.sql,
+      [start, end, ...filter.params]
+    )
+    : await db.get(
+      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql,
+      [start, end, ...filter.params]
+    );
   const purchased = config.dbUrl
-    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2 AND has_purchased = 1', [start, end])
-    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ? AND has_purchased = 1', [start, end]);
+    ? await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?', [start, end]);
   const t = total?.n ?? 0;
   const p = purchased?.n ?? 0;
   return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
 }
 
-async function getCountryStats(start, end) {
+async function getCountryStats(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
   const conversionRows = config.dbUrl
     ? await db.all(`
-      SELECT country_code, COUNT(*) AS total,
-        COALESCE(SUM(CASE WHEN has_purchased = 1 THEN 1 ELSE 0 END), 0) AS converted
+      SELECT country_code, COUNT(*) AS total
       FROM sessions
       WHERE started_at >= $1 AND started_at < $2
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+        ${filter.sql.replace('sessions.', '')}
       GROUP BY country_code
-    `, [start, end])
+    `, [start, end, ...filter.params])
     : await db.all(`
-      SELECT country_code, COUNT(*) AS total,
-        COALESCE(SUM(CASE WHEN has_purchased = 1 THEN 1 ELSE 0 END), 0) AS converted
+      SELECT country_code, COUNT(*) AS total
       FROM sessions
       WHERE started_at >= ? AND started_at < ?
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+        ${filter.sql.replace('sessions.', '')}
       GROUP BY country_code
-    `, [start, end]);
-  const revenueRows = config.dbUrl
+    `, [start, end, ...filter.params]);
+  const purchaseCountByCountry = config.dbUrl
     ? await db.all(`
-      SELECT country_code, COALESCE(SUM(order_total), 0)::float AS revenue
-      FROM sessions
-      WHERE has_purchased = 1 AND (
-        (purchased_at IS NOT NULL AND purchased_at >= $1 AND purchased_at < $2)
-        OR (purchased_at IS NULL AND last_seen >= $1 AND last_seen < $2)
-      )
+      SELECT country_code, COUNT(*) AS converted, COALESCE(SUM(order_total), 0)::float AS revenue
+      FROM purchases
+      WHERE purchased_at >= $1 AND purchased_at < $2
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
       GROUP BY country_code
     `, [start, end])
     : await db.all(`
-      SELECT country_code, COALESCE(SUM(order_total), 0) AS revenue
-      FROM sessions
-      WHERE has_purchased = 1 AND (
-        (purchased_at IS NOT NULL AND purchased_at >= ? AND purchased_at < ?)
-        OR (purchased_at IS NULL AND last_seen >= ? AND last_seen < ?)
-      )
+      SELECT country_code, COUNT(*) AS converted, COALESCE(SUM(order_total), 0) AS revenue
+      FROM purchases
+      WHERE purchased_at >= ? AND purchased_at < ?
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
       GROUP BY country_code
-    `, [start, end, start, end]);
+    `, [start, end]);
+  const revenueRows = purchaseCountByCountry;
   const map = new Map();
   for (const row of conversionRows) {
     const code = normalizeCountry(row.country_code);
@@ -505,6 +599,7 @@ async function getCountryStats(start, end) {
     const code = normalizeCountry(row.country_code);
     if (!code) continue;
     const current = map.get(code) || { country_code: code, total: 0, converted: 0, revenue: 0 };
+    current.converted = Number(row.converted) || 0;
     current.revenue = Number(row.revenue) || 0;
     map.set(code, current);
   }
@@ -525,23 +620,25 @@ async function getCountryStats(start, end) {
   return out.slice(0, 20);
 }
 
+async function getSessionCounts(start, end, options = {}) {
+  const db = getDb();
+  const totalRow = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?', [start, end]);
+  const filter = sessionFilterForTraffic(options.trafficMode || config.trafficMode || 'all');
+  const humanRow = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + filter.sql, [start, end, ...filter.params])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql, [start, end, ...filter.params]);
+  const total = totalRow ? Number(totalRow.n) || 0 : 0;
+  const human = humanRow ? Number(humanRow.n) || 0 : 0;
+  return { total_sessions: total, human_sessions: human, known_bot_sessions: total - human };
+}
+
 async function getConvertedCount(start, end) {
   const db = getDb();
   const row = config.dbUrl
-    ? await db.get(
-      `SELECT COUNT(*) AS n FROM sessions WHERE has_purchased = 1 AND (
-        (purchased_at IS NOT NULL AND purchased_at >= $1 AND purchased_at < $2)
-        OR (purchased_at IS NULL AND last_seen >= $1 AND last_seen < $2)
-      )`,
-      [start, end]
-    )
-    : await db.get(
-      `SELECT COUNT(*) AS n FROM sessions WHERE has_purchased = 1 AND (
-        (purchased_at IS NOT NULL AND purchased_at >= ? AND purchased_at < ?)
-        OR (purchased_at IS NULL AND last_seen >= ? AND last_seen < ?)
-      )`,
-      [start, end, start, end]
-    );
+    ? await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?', [start, end]);
   return row ? Number(row.n) || 0 : 0;
 }
 
@@ -550,7 +647,9 @@ function aovFromSalesAndCount(sales, count) {
   return Math.round((sales / count) * 100) / 100;
 }
 
-async function getStats() {
+async function getStats(options = {}) {
+  const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
+  const opts = { trafficMode };
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
   const ranges = {};
@@ -561,22 +660,25 @@ async function getStats() {
     RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])
   ));
   const conversionByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end)])
+    RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])
   ));
   const countryByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end)])
+    RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])
   ));
   const salesRolling = Object.fromEntries(await Promise.all(
     SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])
   ));
   const conversionRolling = Object.fromEntries(await Promise.all(
-    CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now)])
+    CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, opts)])
   ));
   const convertedCountByRange = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])
   ));
   const convertedCountRolling = Object.fromEntries(await Promise.all(
     SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now)])
+  ));
+  const trafficBreakdown = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])
   ));
   const aovByRange = {};
   for (const key of RANGE_KEYS) {
@@ -586,9 +688,9 @@ async function getStats() {
   for (const key of Object.keys(salesRolling)) {
     aovRolling[key] = aovFromSalesAndCount(salesRolling[key], convertedCountRolling[key]);
   }
-  const yesterdayOk = await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end);
-  const threeDOk = await rangeHasSessions(ranges['3d'].start, ranges['3d'].end);
-  const sevenDOk = await rangeHasSessions(ranges['7d'].start, ranges['7d'].end);
+  const yesterdayOk = await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts);
+  const threeDOk = await rangeHasSessions(ranges['3d'].start, ranges['3d'].end, opts);
+  const sevenDOk = await rangeHasSessions(ranges['7d'].start, ranges['7d'].end, opts);
   const rangeAvailable = {
     today: true,
     yesterday: yesterdayOk,
@@ -603,14 +705,18 @@ async function getStats() {
     revenueToday: salesByRange.today ?? 0,
     rangeAvailable,
     convertedCount: convertedCountByRange,
+    trafficMode,
+    trafficBreakdown,
   };
 }
 
-async function rangeHasSessions(start, end) {
+async function rangeHasSessions(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
   const row = config.dbUrl
-    ? await db.get('SELECT 1 FROM sessions WHERE started_at >= $1 AND started_at < $2 LIMIT 1', [start, end])
-    : await db.get('SELECT 1 FROM sessions WHERE started_at >= ? AND started_at < ? LIMIT 1', [start, end]);
+    ? await db.get('SELECT 1 FROM sessions WHERE started_at >= $1 AND started_at < $2' + filter.sql + ' LIMIT 1', [start, end, ...filter.params])
+    : await db.get('SELECT 1 FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql + ' LIMIT 1', [start, end, ...filter.params]);
   return !!row;
 }
 
@@ -631,6 +737,8 @@ module.exports = {
   listSessions,
   getSessionEvents,
   getStats,
+  getRangeBounds,
+  resolveAdminTimeZone,
   validateEventType,
   ALLOWED_EVENT_TYPES,
 };
