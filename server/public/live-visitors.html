@@ -1055,17 +1055,24 @@
       if (trafficMode === 'human') url += '?traffic=human';
       url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-        .then(r => r.json())
-        .then(data => {
+        .then(function(r) {
+          if (!r.ok) return {};
+          return r.json();
+        })
+        .then(function(data) {
           nextStatsAt = Date.now() + STATS_INTERVAL_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
-          renderStats(data);
+          renderStats(data && typeof data.country === 'object' ? data : {});
+          requestAnimationFrame(function() { renderCountry(statsCache); });
           fetchShopifySales();
           fetchBestSellers();
         })
-        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats({}); })
-        .finally(function() { if (overlay) overlay.style.display = 'none'; });
+        .catch(function() { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats({}); })
+        .finally(function() {
+          if (overlay) overlay.style.display = 'none';
+          requestAnimationFrame(function() { renderCountry(statsCache); });
+        });
     }
 
     function sessionIdsEqual(a, b) {
