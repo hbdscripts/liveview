@@ -444,6 +444,8 @@
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let shopifySalesToday = null;
+    let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
+    let shopifySalesTodayLoading = false;
     let bestSellersCache = null;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
@@ -543,6 +545,7 @@
     var mainBaseUrlFallback = '';
     var assetsBaseUrlFallback = '';
     var shopForSalesFallback = '';
+    var storeBaseUrlLoaded = false;
     (function fetchStoreBaseUrl() {
       fetch(API + '/api/store-base-url', { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
@@ -561,9 +564,24 @@
             if (shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
             if (shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
           }
+          storeBaseUrlLoaded = true;
+          // If we were waiting for Shopify sales but no shop is configured, stop showing a placeholder.
+          if (typeof renderSales === 'function') renderSales(statsCache);
         })
-        .catch(function() {});
+        .catch(function() { storeBaseUrlLoaded = true; if (typeof renderSales === 'function') renderSales(statsCache); });
     })();
+
+    function getShopForSales() {
+      var shop = getShopParam() || shopForSalesFallback || null;
+      return shop && /\.myshopify\.com$/i.test(shop) ? shop : null;
+    }
+
+    function shouldWaitForShopifySalesToday() {
+      if (dateRange !== 'today') return false;
+      if (getShopForSales()) return true;
+      // If we don't know the shop yet (direct load), wait briefly for /api/store-base-url.
+      return !storeBaseUrlLoaded;
+    }
     function getStoreBaseUrl() {
       var params = new URLSearchParams(window.location.search);
       var shop = params.get('shop');
@@ -865,18 +883,29 @@
     }
 
     function fetchShopifySales() {
-      var shop = getShopParam() || shopForSalesFallback || null;
+      var shop = getShopForSales();
       if (!shop || dateRange !== 'today') {
-        shopifySalesToday = null;
+        // If the store-base-url lookup is done and we still have no shop, stop waiting and fall back to DB.
+        if (dateRange === 'today' && storeBaseUrlLoaded && !shop) shopifySalesTodayLoaded = true;
+        shopifySalesTodayLoading = false;
         return;
       }
+      if (shopifySalesTodayLoading) return;
+      shopifySalesTodayLoading = true;
       fetch(API + '/api/shopify-sales?shop=' + encodeURIComponent(shop), { credentials: 'same-origin' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           shopifySalesToday = data && typeof data.salesToday === 'number' ? data.salesToday : null;
+          shopifySalesTodayLoaded = true;
+          shopifySalesTodayLoading = false;
           renderSales(statsCache);
         })
-        .catch(function() { shopifySalesToday = null; renderSales(statsCache); });
+        .catch(function() {
+          shopifySalesToday = null;
+          shopifySalesTodayLoaded = true;
+          shopifySalesTodayLoading = false;
+          renderSales(statsCache);
+        });
     }
 
     function fetchBestSellers() {
@@ -956,8 +985,23 @@
 
     function renderSales(data) {
       const sales = data.sales || {};
-      const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : (sales[dateRange] != null ? sales[dateRange] : 0);
-      document.getElementById('sales-today').textContent = formatRevenue(mainSales);
+      const salesTodayEl = document.getElementById('sales-today');
+      const baseSales = (sales[dateRange] != null ? sales[dateRange] : 0);
+      const waitingForShopify = shouldWaitForShopifySalesToday();
+      if (dateRange === 'today' && waitingForShopify) {
+        if (shopifySalesToday != null) {
+          if (salesTodayEl) salesTodayEl.textContent = formatRevenue(shopifySalesToday);
+        } else if (!shopifySalesTodayLoaded) {
+          // Avoid showing a misleading DB total first; wait for Shopify once on initial load.
+          if (salesTodayEl) salesTodayEl.textContent = '\u2014';
+        } else {
+          // Shopify unavailable; fall back to DB.
+          if (salesTodayEl) salesTodayEl.textContent = formatRevenue(baseSales);
+        }
+      } else {
+        const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : baseSales;
+        if (salesTodayEl) salesTodayEl.textContent = formatRevenue(mainSales);
+      }
       const salesYesterdayEl = document.getElementById('sales-yesterday');
       const salesMonthEl = document.getElementById('sales-month');
       const salesMonthLabelEl = document.getElementById('sales-month-label');
@@ -1089,6 +1133,8 @@
     function fetchStats() {
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
+      // Start Shopify sales fetch early so Sales doesn't flash a DB value first.
+      if (dateRange === 'today') fetchShopifySales();
       var url = API + '/api/stats?traffic=' + encodeURIComponent(trafficMode || 'all');
       url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       fetch(url, { credentials: 'same-origin', cache: 'no-store' })
