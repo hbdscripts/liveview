@@ -49,7 +49,8 @@
     .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); flex: 1; min-width: 220px; box-sizing: border-box; }
     #stats-country, #stats-best-sellers { display: flex; flex-direction: column; max-height: 320px; }
-    #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3 { margin-bottom: -30px; position: absolute; }
+    #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3 { margin-bottom: -30px; position: absolute; transition: opacity 0.15s ease; }
+    #stats-country.scrolled .stats-card-header h3, #stats-best-sellers.scrolled .stats-card-header h3 { opacity: 0; pointer-events: none; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
@@ -1273,6 +1274,21 @@
       }, 1000);
     })();
     window.addEventListener('resize', syncCountryTableHeight);
+
+    (function setupStatsCardScrollHideHeader() {
+      function onScroll(wrapId, cardId) {
+        const wrap = document.getElementById(wrapId);
+        const card = document.getElementById(cardId);
+        if (!wrap || !card) return;
+        function update() {
+          card.classList.toggle('scrolled', wrap.scrollTop > 0);
+        }
+        wrap.addEventListener('scroll', update);
+        update();
+      }
+      onScroll('country-table-wrap', 'stats-country');
+      onScroll('best-sellers-wrap', 'stats-best-sellers');
+    })();
 
     function onMinuteTick() {
       fetchStats();
