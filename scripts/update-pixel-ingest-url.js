@@ -45,11 +45,13 @@ function fetchStatus() {
 }
 
 function runEnsure(expectedIngestUrl) {
-  const ensureUrl = `${appUrlRaw}/api/pixel/ensure?shop=${encodeURIComponent(shop)}`;
+  const params = new URLSearchParams({ shop });
+  if (expectedIngestUrl) params.set('ingestUrl', expectedIngestUrl);
+  const ensureUrl = `${appUrlRaw}/api/pixel/ensure?${params.toString()}`;
   const usePost = !!expectedIngestUrl;
   console.log('Calling:', usePost ? 'POST ' + ensureUrl + ' (body: ingestUrl)' : 'GET ' + ensureUrl);
   if (expectedIngestUrl) {
-    console.log('(Passing ingestUrl in body so the instance that runs ensure uses this URL even without INGEST_PUBLIC_URL.)\n');
+    console.log('(Passing ingestUrl in query and body so the instance that runs ensure gets it even without INGEST_PUBLIC_URL.)\n');
   } else {
     console.log('(Ensure uses INGEST_PUBLIC_URL from the server; set it in Railway and redeploy first.)\n');
   }
