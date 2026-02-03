@@ -181,7 +181,7 @@
       </span>
     </div>
     <div class="dashboard-top-bar-center">
-      <img class="top-bar-logo" src="/assets/favicon.png" alt="HBD" width="80" height="auto" loading="lazy">
+      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=240" alt="HBD" width="80" height="auto" loading="lazy">
     </div>
     <div class="dashboard-top-bar-right">
       <span class="server-time-block">Server: <span id="server-time-msg">--:--</span></span>
@@ -421,8 +421,6 @@
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png';
-              var logoImg = document.querySelector('.top-bar-logo');
-              if (logoImg) logoImg.src = assetsBaseUrlFallback + '/favicon.png';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
           }
