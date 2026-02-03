@@ -18,8 +18,8 @@
       --radius: 3px;
       --th-bg: #f5f5f5;
       --row-hover: #f5f5f5;
-      --converted-bg: #e9f4e3;
-      --converted-hover: #dcebd4;
+      --converted-bg: #faf9f2;
+      --converted-hover: #faf9f2;
       --returning-bg: #fff;
       --badge-new-fg: #fff;
       --badge-returning: #6366f1;
@@ -57,10 +57,10 @@
     th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.875rem; }
     th { background: var(--th-bg); font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: 0.75rem; }
-    tr:hover { background: var(--row-hover); }
+    tr:hover { background: inherit; }
     tr.returning { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
-    tr.converted:hover { background: var(--converted-hover); }
+    tr.converted:hover { background: var(--converted-bg); }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .arrived-cell, .last-seen-cell { font-size: 0.875rem; white-space: nowrap; }
