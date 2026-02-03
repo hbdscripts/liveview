@@ -943,9 +943,9 @@
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const forRange = breakdown[dateRange];
       const forYesterday = breakdown.yesterday;
-      // Sessions card always shows total sessions (not filtered by Human) so main and Yesterday match total counts.
-      const main = forRange != null ? (forRange.total_sessions ?? forRange.human_sessions) : null;
-      const yesterday = forYesterday != null ? (forYesterday.total_sessions ?? forYesterday.human_sessions) : null;
+      // Sessions card always shows total sessions (ignore Human filter). Use only total_sessions so we never show human_sessions (232) when total is 2000+.
+      const main = forRange != null ? forRange.total_sessions : null;
+      const yesterday = forYesterday != null ? forYesterday.total_sessions : null;
       const sessionsRangeEl = document.getElementById('sessions-range');
       const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
       if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
