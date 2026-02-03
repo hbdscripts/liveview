@@ -223,6 +223,38 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       await db.run(`
         INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
         VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27)
+        ON CONFLICT (session_id) DO UPDATE SET
+          visitor_id = EXCLUDED.visitor_id,
+          started_at = EXCLUDED.started_at,
+          last_seen = EXCLUDED.last_seen,
+          last_path = EXCLUDED.last_path,
+          last_product_handle = EXCLUDED.last_product_handle,
+          first_path = EXCLUDED.first_path,
+          first_product_handle = EXCLUDED.first_product_handle,
+          cart_qty = EXCLUDED.cart_qty,
+          cart_value = EXCLUDED.cart_value,
+          cart_currency = EXCLUDED.cart_currency,
+          order_total = EXCLUDED.order_total,
+          order_currency = EXCLUDED.order_currency,
+          country_code = EXCLUDED.country_code,
+          utm_campaign = EXCLUDED.utm_campaign,
+          utm_source = EXCLUDED.utm_source,
+          utm_medium = EXCLUDED.utm_medium,
+          utm_content = EXCLUDED.utm_content,
+          referrer = EXCLUDED.referrer,
+          entry_url = EXCLUDED.entry_url,
+          is_checking_out = EXCLUDED.is_checking_out,
+          checkout_started_at = EXCLUDED.checkout_started_at,
+          has_purchased = EXCLUDED.has_purchased,
+          purchased_at = EXCLUDED.purchased_at,
+          is_abandoned = EXCLUDED.is_abandoned,
+          abandoned_at = EXCLUDED.abandoned_at,
+          recovered_at = EXCLUDED.recovered_at,
+          cf_known_bot = EXCLUDED.cf_known_bot,
+          cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
+          cf_country = EXCLUDED.cf_country,
+          cf_colo = EXCLUDED.cf_colo,
+          cf_asn = EXCLUDED.cf_asn
       `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
     } else {
       await db.run(`
