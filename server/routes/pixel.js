@@ -30,7 +30,7 @@ async function ensurePixel(req, res) {
   }
 
   let ingestUrl;
-  const override = (req.query.ingestUrl || '').trim();
+  const override = (req.query.ingestUrl || (req.body && typeof req.body.ingestUrl === 'string' ? req.body.ingestUrl : '') || '').trim();
   if (override) {
     try {
       const u = new URL(override);
