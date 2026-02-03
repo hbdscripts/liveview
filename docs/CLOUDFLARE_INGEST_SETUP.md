@@ -63,12 +63,14 @@ The worker prefers the bot signal from a header set by a Cloudflare **Request He
 
 ### Current Cloudflare UI (2024–2025)
 
-**Where to find it:** Zone → **Rules** → **Overview** → **Create rule** → **Request Header Transform Rule**.  
-(If you don’t see “Request Header Transform Rule”, see [Cloudflare: Create a request header transform rule](https://developers.cloudflare.com/rules/transform/request-header-modification/create-dashboard/).)
+**Sidebar:** Under your zone, **Rules** has: **Overview**, **Snippets**, **Trace**, **Settings** (and under Settings: Managed Transforms, Bulk Redirects, etc.).
 
+**Where to find the rule:**
 1. In the Cloudflare dashboard, select the **zone** (e.g. **hbdjewellery.com**), not the account.
-2. In the left sidebar go to **Rules** → **Overview** (the Rules Overview page).
-3. Click **Create rule** → **Request Header Transform Rule**.
+2. In the left sidebar go to **Rules** → **Overview**.
+3. On the Rules Overview page, click **Create rule** (button/dropdown). In the list, choose **Request Header Transform Rule**.
+   - If you don’t see **Request Header Transform Rule**, check **Rules** → **Settings** for **Managed Transforms** or “Configuration Rules”; the exact name/location can vary by plan. Or skip Step 4 and rely on the Worker’s fallback (`request.cf.verifiedBotCategory`).
+   - Docs: [Create a request header transform rule](https://developers.cloudflare.com/rules/transform/request-header-modification/create-dashboard/).
 4. **Rule name:** e.g. `Ingest – set x-lv-client-bot`.
 5. **When incoming requests match:** choose **Custom filter**, then set **Field** = URI Path, **Operator** = equals, **Value** = `/api/ingest`. (Or in Expression Editor: `http.request.uri.path eq "/api/ingest"`.)
 6. **Modify request header:** **Set dynamic**, **Header name** = `x-lv-client-bot`, **Value** = `if(cf.client.bot, "1", "0")`.

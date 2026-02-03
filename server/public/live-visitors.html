@@ -41,8 +41,6 @@
       --online-dot-color: #4caf50;
       --link-fg: #06133b;
       --top-bar-divider: #eee;
-      --sticky-col-shadow: 6px 0 8px -2px rgba(0, 0, 0, 0.12);
-      --sticky-col-min-width: 52px;
       --table-font-size-mobile: 0.8125rem;
     }
     * { box-sizing: border-box; }
@@ -163,8 +161,7 @@
 .table-scroll-wrap table { margin: 0; min-width: 720px; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; }
 .table-scroll-wrap th.source-cell, .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.source-cell, .table-scroll-wrap td.cart-value-cell { text-align: center; width: 1%; white-space: nowrap; padding-right: var(--table-cell-padding-x); }
-    .table-scroll-wrap .sticky-lp-cell { display: block; }
-    /* Desktop: cap LP column width so it doesn't take ~50% of table */
+    /* Cap LP column width so it doesn't take ~50% of table */
     .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { max-width: 240px; }
     .table-scroll-wrap .last-action-cell { min-width: 0; }
     .table-scroll-wrap .last-action-cell a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
@@ -198,11 +195,6 @@
       .live-view-header .live-view-online-center { margin-left: auto; flex: 0; }
       .sessions-table-wrap { margin-left: 0.75rem; margin-right: 0.75rem; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
-      /* Mobile only: sticky first column (LP); inner div for iOS Safari */
-      .table-scroll-wrap th:first-child, .table-scroll-wrap td:first-child { padding: 0; min-width: var(--sticky-col-min-width); max-width: none; vertical-align: middle; }
-      .table-scroll-wrap .sticky-lp-cell { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: var(--sticky-col-shadow); min-width: var(--sticky-col-min-width); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); box-sizing: border-box; min-height: 2.5em; }
-      .table-scroll-wrap thead th .sticky-lp-cell { z-index: 2; background: var(--th-bg); }
-      .table-scroll-wrap tr.converted td .sticky-lp-cell { background: var(--converted-bg); }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel .close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -0.5rem 0 0.5rem 0; }
       th, td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); font-size: var(--table-font-size-mobile); }
@@ -355,7 +347,7 @@
   <table>
     <thead>
       <tr>
-        <th><div class="sticky-lp-cell">LP</div></th>
+        <th>LP</th>
         <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">GEO</th>
         <th>Device</th>
         <th>History</th>
@@ -688,7 +680,7 @@
       const fromCell = flagImg(countryCode);
       const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
       return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
-        <td><div class="sticky-lp-cell">${landingPageCell(s)}</div></td>
+        <td>${landingPageCell(s)}</td>
         <td class="flag-cell">${fromCell}</td>
         <td>${escapeHtml(s.device || '')}</td>
         <td>${visitsLabel}</td>
