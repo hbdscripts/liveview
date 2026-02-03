@@ -98,13 +98,16 @@ async function getWorstProducts(req, res) {
     };
   });
 
-  // Sort: highest clicks first, then lowest CR.
+  // Sort: highest clicks first, then lowest revenue made.
   list.sort((a, b) => {
     if (b.clicks !== a.clicks) return b.clicks - a.clicks;
+    const ar = a.revenue == null ? 0 : a.revenue;
+    const br = b.revenue == null ? 0 : b.revenue;
+    if (ar !== br) return ar - br;
     const acr = a.conversion == null ? 999 : a.conversion;
     const bcr = b.conversion == null ? 999 : b.conversion;
     if (acr !== bcr) return acr - bcr;
-    return (b.converted - a.converted) || (b.revenue - a.revenue);
+    return (a.converted - b.converted) || (a.handle < b.handle ? -1 : a.handle > b.handle ? 1 : 0);
   });
 
   const totalCount = list.length;
