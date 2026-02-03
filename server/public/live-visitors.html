@@ -434,7 +434,13 @@
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
-    let trafficMode = (function() { var p = new URLSearchParams(window.location.search); return p.get('traffic') === 'all' ? 'all' : 'human'; })();
+    let trafficMode = (function() {
+      var p = new URLSearchParams(window.location.search);
+      var t = (p.get('traffic') || '').toLowerCase();
+      if (t === 'human') return 'human';
+      if (t === 'all') return 'all';
+      return 'all';
+    })();
     let nextStatsAt = 0;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
@@ -1084,8 +1090,7 @@
     function fetchStats() {
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
-      var url = API + '/api/stats';
-      if (trafficMode === 'human') url += '?traffic=human';
+      var url = API + '/api/stats?traffic=' + encodeURIComponent(trafficMode || 'all');
       url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {

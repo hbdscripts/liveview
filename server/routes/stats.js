@@ -7,7 +7,8 @@ const config = require('../config');
 const store = require('../store');
 
 function getStats(req, res, next) {
-  const trafficMode = req.query.traffic === 'human' ? 'human_only' : config.trafficMode;
+  const traffic = (req.query.traffic || '').toString().trim().toLowerCase();
+  const trafficMode = traffic === 'human' ? 'human_only' : (traffic === 'all' ? 'all' : config.trafficMode);
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   store.getStats({ trafficMode })
