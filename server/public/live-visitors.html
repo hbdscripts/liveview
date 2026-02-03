@@ -700,6 +700,25 @@
     var HICON_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894';
     var DOLLAR_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223';
 
+    function titleCaseFromHandle(handle) {
+      if (typeof handle !== 'string') return null;
+      let s = handle;
+      try { s = decodeURIComponent(s); } catch (_) {}
+      s = s.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!s) return null;
+      return s.split(' ').filter(Boolean).map(function(w) {
+        const lower = w.toLowerCase();
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      }).join(' ');
+    }
+
+    function productTitleFromPath(path) {
+      if (typeof path !== 'string') return null;
+      const m = path.trim().match(/^\/products\/([^/?#]+)/i);
+      if (!m) return null;
+      return titleCaseFromHandle(m[1]);
+    }
+
     function landingPageCell(s) {
       var hasFirst = (s.first_path != null && s.first_path !== '') || (s.first_product_handle != null && s.first_product_handle !== '');
       var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s.last_path != null ? s.last_path : ''))).trim();
@@ -726,7 +745,9 @@
         label = 'Cart';
         thumbSrc = getAssetsBase() + '/checkout.webp';
       } else if (path) {
-        label = escapeHtml(path);
+        // Display pretty product name for /products/<handle> paths (link stays the same).
+        const prettyProduct = productTitleFromPath(path);
+        label = escapeHtml(prettyProduct || path);
         if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
