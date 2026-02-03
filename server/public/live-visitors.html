@@ -319,7 +319,17 @@
         </div>
       </div>
       <div class="country-table-wrap" id="aov-list-wrap">
-        <ul class="aov-list" id="aov-by-country"></ul>
+        <table class="by-country-table aov-table">
+          <thead>
+            <tr>
+              <th>GEO</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
+          <tbody id="aov-by-country-body">
+            <tr><td colspan="2" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -880,17 +890,17 @@
       if (aovYesterday) aovYesterday.textContent = aov.yesterday != null ? formatRevenue(aov.yesterday) : '\u2014';
       if (aov7d) aov7d.textContent = aov['7d'] != null ? formatRevenue(aov['7d']) : '\u2014';
       const rows = (data.country || {})[dateRange] || [];
-      const ul = document.getElementById('aov-by-country');
-      if (!ul) return;
+      const tbody = document.getElementById('aov-by-country-body');
+      if (!tbody) return;
       if (rows.length === 0) {
-        ul.innerHTML = '<li class="empty">No data</li>';
+        tbody.innerHTML = '<tr><td colspan="2" class="empty">No data</td></tr>';
         return;
       }
-      ul.innerHTML = rows.filter(r => r.aov != null && r.aov > 0).map(r => {
+      tbody.innerHTML = rows.filter(r => r.aov != null && r.aov > 0).map(r => {
         const code = (r.country_code || 'xx').toLowerCase().slice(0, 2);
         const name = countryLabel((r.country_code || 'XX').toUpperCase());
         const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + code + '.png" alt="" loading="lazy">';
-        return '<li><span>' + flag + ' ' + escapeHtml(name) + '</span><strong>' + formatRevenue(r.aov) + '</strong></li>';
+        return '<tr><td>' + flag + ' ' + escapeHtml(name) + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
       }).join('');
     }
 
