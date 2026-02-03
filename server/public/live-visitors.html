@@ -186,6 +186,8 @@
     .card-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     .card-pagination .page-label { min-width: 96px; text-align: center; }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
+    .source-icons { display: inline-flex; align-items: center; gap: 4px; }
+    .source-icons img { width: 20px; height: 20px; }
     @media (max-width: 1800px) {
       .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
       .stats-card { min-width: 0; }
@@ -809,18 +811,24 @@
 
     const SOURCE_GOOGLE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632';
     const SOURCE_DIRECT_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632';
+    const SOURCE_CONVERTED_BADGE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770087896';
 
     function sourceCell(s) {
+      function withConvertedBadge(iconHtml) {
+        if (!s || !s.has_purchased) return iconHtml;
+        const badge = '<img src="' + SOURCE_CONVERTED_BADGE_IMG + '" alt="Converted" class="source-icon-img" width="20" height="20" title="Converted">';
+        return '<span class="source-icons">' + iconHtml + badge + '</span>';
+      }
       if (isGoogleAdsSource(s)) {
-        return '<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">';
+        return withConvertedBadge('<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">');
       }
       const friendly = sourceFriendlyLabel(s);
       if (friendly === 'Google') {
-        return '<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20">';
+        return withConvertedBadge('<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20">');
       }
       if (friendly) return escapeHtml(friendly);
       if (sourceUtmString(s) || (s.referrer && String(s.referrer).trim())) return escapeHtml('Other');
-      return '<img src="' + SOURCE_DIRECT_IMG + '" alt="Direct" class="source-icon-img" width="20" height="20" title="Direct">';
+      return withConvertedBadge('<img src="' + SOURCE_DIRECT_IMG + '" alt="Direct" class="source-icon-img" width="20" height="20" title="Direct">');
     }
 
     function sourceDetailForPanel(s) {
