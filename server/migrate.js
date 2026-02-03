@@ -12,6 +12,8 @@ const { up: up006 } = require('./migrations/006_utm_source_medium_content');
 const { up: up007 } = require('./migrations/007_first_path');
 const { up: up008 } = require('./migrations/008_purchases');
 const { up: up009 } = require('./migrations/009_cf_traffic');
+const { up: up010 } = require('./migrations/010_referrer');
+const { up: up011 } = require('./migrations/011_entry_url');
 
 async function main() {
   const db = getDb();
@@ -24,6 +26,8 @@ async function main() {
   await up007();
   await up008();
   await up009();
+  await up010();
+  await up011();
   console.log('Migrations complete.');
   db.close?.();
   process.exit(0);

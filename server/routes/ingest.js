@@ -141,10 +141,12 @@ function ingestRouter(req, res, next) {
     if (country) payload.country_code = country;
     const deviceFromUA = parseDeviceFromUserAgent(req);
     if (deviceFromUA) payload.device = deviceFromUA;
+    // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
+    const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
+    if (requestReferer) payload.entry_url = requestReferer;
     // Fallback referrer from CF/Worker (request Referer) when pixel referrer is stripped (e.g. by Shopify).
-    if (!payload.referrer || !String(payload.referrer).trim()) {
-      const cfReferer = (req.get('x-request-referer') || '').trim().slice(0, 2048);
-      if (cfReferer) payload.referrer = cfReferer;
+    if ((!payload.referrer || !String(payload.referrer).trim()) && requestReferer) {
+      payload.referrer = requestReferer;
     }
     const ts = payload.ts || Date.now();
 
