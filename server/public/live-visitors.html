@@ -289,11 +289,12 @@
               <th></th>
               <th>CR</th>
               <th>Sales</th>
-              <th>Revenue</th>
+              <th>Clicks</th>
+              <th>Rev</th>
             </tr>
           </thead>
           <tbody id="by-country-body">
-            <tr><td colspan="4" class="empty">Loading...</td></tr>
+            <tr><td colspan="5" class="empty">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -980,7 +981,7 @@
       const tbody = document.getElementById('by-country-body');
       if (!tbody) return;
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(r => {
@@ -989,8 +990,9 @@
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
+        const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenue(r.revenue);
-        return '<tr><td><img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(code) + '" loading="lazy"> ' + escapeHtml(label) + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + revenue + '</td></tr>';
+        return '<tr><td><img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(code) + '" loading="lazy"> ' + escapeHtml(label) + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
     }
 
