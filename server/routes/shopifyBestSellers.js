@@ -1,5 +1,5 @@
 /**
- * GET /api/shopify-best-sellers?shop=xxx.myshopify.com&range=today|yesterday|3d|7d
+ * GET /api/shopify-best-sellers?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10&sort=rev|orders&dir=asc|desc
  * Returns best selling products by revenue for the date range (Shopify Orders + Products API).
  */
 
@@ -8,7 +8,12 @@ const store = require('../store');
 
 const API_VERSION = '2024-01';
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
-const TOP_N = 10;
+
+function clampInt(v, fallback, min, max) {
+  const n = parseInt(String(v), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 async function getShopifyBestSellers(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
@@ -85,10 +90,26 @@ async function getShopifyBestSellers(req, res) {
         orders: e.orderIds.size,
         revenue: Math.round(e.revenue * 100) / 100,
       }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, TOP_N);
+      .sort((a, b) => b.revenue - a.revenue);
 
-    for (const p of list) {
+    const sort = (req.query.sort || 'rev').toString().trim().toLowerCase();
+    const dir = (req.query.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const mult = dir === 'asc' ? 1 : -1;
+    if (sort === 'orders') {
+      list.sort((a, b) => (mult * ((a.orders || 0) - (b.orders || 0))) || (mult * ((a.revenue || 0) - (b.revenue || 0))));
+    } else {
+      // default: rev
+      list.sort((a, b) => (mult * ((a.revenue || 0) - (b.revenue || 0))) || (mult * ((a.orders || 0) - (b.orders || 0))));
+    }
+
+    const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
+    const totalCount = list.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const page = clampInt(req.query.page, 1, 1, totalPages);
+    const startIdx = (page - 1) * pageSize;
+    const pageItems = list.slice(startIdx, startIdx + pageSize);
+
+    for (const p of pageItems) {
       try {
         const prodRes = await fetch(
           `https://${shop}/admin/api/${API_VERSION}/products/${p.product_id}.json`,
@@ -108,7 +129,7 @@ async function getShopifyBestSellers(req, res) {
     }
 
     const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
-    const bestSellers = list.map((p) => ({
+    const bestSellers = pageItems.map((p) => ({
       product_id: p.product_id,
       title: p.title,
       handle: p.handle || null,
@@ -118,7 +139,7 @@ async function getShopifyBestSellers(req, res) {
       cr: conversionRate(p),
     }));
 
-    return res.json({ bestSellers, totalOrders });
+    return res.json({ bestSellers, totalOrders, page, pageSize, totalCount, sort, dir });
   } catch (err) {
     console.error('[shopify-best-sellers]', err);
     return res.status(500).json({ error: 'Failed to fetch best sellers' });

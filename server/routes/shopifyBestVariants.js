@@ -1,5 +1,5 @@
 /**
- * GET /api/shopify-best-variants?shop=xxx.myshopify.com&range=today|yesterday|3d|7d
+ * GET /api/shopify-best-variants?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10
  * Returns best selling variants by revenue for the date range (Shopify Orders + Products API).
  */
 const { getDb } = require('../db');
@@ -7,7 +7,12 @@ const store = require('../store');
 
 const API_VERSION = '2024-01';
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
-const TOP_N = 10;
+
+function clampInt(v, fallback, min, max) {
+  const n = parseInt(String(v), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 async function getShopifyBestVariants(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
@@ -97,11 +102,17 @@ async function getShopifyBestVariants(req, res) {
         orders: e.orderIds.size,
         revenue: Math.round(e.revenue * 100) / 100,
       }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, TOP_N);
+      .sort((a, b) => b.revenue - a.revenue);
+
+    const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
+    const totalCount = list.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const page = clampInt(req.query.page, 1, 1, totalPages);
+    const startIdx = (page - 1) * pageSize;
+    const pageItems = list.slice(startIdx, startIdx + pageSize);
 
     const productCache = new Map(); // product_id -> { handle, thumb_url }
-    for (const v of list) {
+    for (const v of pageItems) {
       const cached = productCache.get(v.product_id);
       if (cached) {
         v.handle = cached.handle;
@@ -134,7 +145,7 @@ async function getShopifyBestVariants(req, res) {
       }
     }
 
-    return res.json({ bestVariants: list, totalOrders });
+    return res.json({ bestVariants: pageItems, totalOrders, page, pageSize, totalCount });
   } catch (err) {
     console.error('[shopify-best-variants]', err);
     return res.status(500).json({ error: 'Failed to fetch best variants' });

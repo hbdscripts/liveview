@@ -1,5 +1,5 @@
 /**
- * GET /api/worst-products?range=today|yesterday|3d|7d&traffic=all|human&limit=10
+ * GET /api/worst-products?range=today|yesterday|3d|7d&traffic=all|human&page=1&pageSize=10
  * "Worst products": high product landing clicks with low conversion.
  *
  * Implementation notes:
@@ -13,8 +13,8 @@ const store = require('../store');
 const { getDb } = require('../db');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
-const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 50;
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 10;
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -46,7 +46,7 @@ async function getWorstProducts(req, res) {
   let range = (req.query.range || 'today').toString().trim().toLowerCase();
   if (!RANGE_KEYS.includes(range)) range = 'today';
 
-  const limit = clampInt(req.query.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
+  const pageSize = clampInt(req.query.pageSize ?? req.query.limit, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
   const trafficMode = trafficToMode(req.query.traffic);
 
   const nowMs = Date.now();
@@ -107,10 +107,19 @@ async function getWorstProducts(req, res) {
     return (b.converted - a.converted) || (b.revenue - a.revenue);
   });
 
+  const totalCount = list.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const page = clampInt(req.query.page, 1, 1, totalPages);
+  const startIdx = (page - 1) * pageSize;
+  const pageItems = list.slice(startIdx, startIdx + pageSize);
+
   res.json({
     range,
     trafficMode,
-    worstProducts: list.slice(0, limit),
+    page,
+    pageSize,
+    totalCount,
+    worstProducts: pageItems,
   });
 }
 
