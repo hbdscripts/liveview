@@ -328,6 +328,7 @@
     let nextStatsAt = 0;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
+    let shopifySalesToday = null;
     let saleAudio = null;
     let saleMuted = false;
     let currentPage = 1;
@@ -701,9 +702,31 @@
       return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
+    function getShopParam() {
+      var p = new URLSearchParams(window.location.search);
+      var shop = p.get('shop') || '';
+      return shop && /\.myshopify\.com$/i.test(shop) ? shop : null;
+    }
+
+    function fetchShopifySales() {
+      var shop = getShopParam();
+      if (!shop || dateRange !== 'today') {
+        shopifySalesToday = null;
+        return;
+      }
+      fetch(API + '/api/shopify-sales?shop=' + encodeURIComponent(shop), { credentials: 'same-origin' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          shopifySalesToday = data && typeof data.salesToday === 'number' ? data.salesToday : null;
+          renderSales(statsCache);
+        })
+        .catch(function() { shopifySalesToday = null; renderSales(statsCache); });
+    }
+
     function renderSales(data) {
       const sales = data.sales || {};
-      document.getElementById('sales-today').textContent = formatRevenue(sales[dateRange] != null ? sales[dateRange] : 0);
+      const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : (sales[dateRange] != null ? sales[dateRange] : 0);
+      document.getElementById('sales-today').textContent = formatRevenue(mainSales);
       const rolling = sales.rolling || {};
       const sales3 = document.getElementById('sales-3h');
       const sales6 = document.getElementById('sales-6h');
@@ -823,8 +846,9 @@
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data);
+          fetchShopifySales();
         })
-        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; renderStats({}); })
+        .catch(() => { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats({}); })
         .finally(function() { if (overlay) overlay.style.display = 'none'; });
     }
 
@@ -994,8 +1018,10 @@
         updateLiveViewTitle();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
+          if (dateRange !== 'today') shopifySalesToday = null;
           updateLiveViewTitle();
           renderStats(statsCache);
+          if (dateRange === 'today') fetchShopifySales();
         });
       }
       (function initTrafficToggle() {
