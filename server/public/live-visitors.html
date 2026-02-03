@@ -115,6 +115,7 @@
     .side-panel ul.events { list-style: none; padding: 0; margin: 0.5rem 0; font-size: 0.85rem; }
     .side-panel ul.events li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
     .side-panel ul.events li .thumb-card { flex-shrink: 0; }
+    .side-panel-source { font-size: 0.8rem; color: var(--text); word-break: break-all; white-space: pre-wrap; margin: 0.25rem 0 1rem; line-height: 1.4; }
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
@@ -175,7 +176,6 @@
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: var(--button-hover-bg); }
 .table-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
-    .source-info-icon { font-size: 0.875rem; color: var(--muted); cursor: help; vertical-align: middle; }
     @media (max-width: 1800px) {
       .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
       .stats-card { min-width: 0; }
@@ -382,6 +382,8 @@
     <span class="close" id="side-close">&times;</span>
     <h3>Session</h3>
     <div class="meta" id="side-meta"></div>
+    <h4>Source</h4>
+    <div class="side-panel-source" id="side-source"></div>
     <h4>Activity:</h4>
     <ul class="events" id="side-events"></ul>
   </div>
@@ -655,25 +657,28 @@
     const SOURCE_DIRECT_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632';
 
     function sourceCell(s) {
-      const fullUtm = sourceLabel(s);
-      const fullTitle = (fullUtm || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-      function infoIcon() {
-        if (!fullUtm) return '';
-        return ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="Source / referrer">\u2139</span>';
-      }
       if (isGoogleAdsSource(s)) {
-        return '<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
+        return '<img src="' + getAssetsBase() + '/adwords.png" alt="Google Ads" class="source-googleads-img" width="20" height="20">';
       }
       const friendly = sourceFriendlyLabel(s);
       if (friendly === 'Google') {
-        return '<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20"' + (fullUtm ? ' title="' + fullTitle + '"' : '') + '>';
+        return '<img src="' + SOURCE_GOOGLE_IMG + '" alt="Google" class="source-icon-img" width="20" height="20">';
       }
-      if (friendly) return escapeHtml(friendly) + infoIcon();
-      if (fullUtm) return escapeHtml('Other') + infoIcon();
-      if (s.referrer && String(s.referrer).trim()) {
-        return escapeHtml('Other') + ' <span class="source-info-icon" title="' + fullTitle + '" aria-label="Referrer">\u2139</span>';
-      }
+      if (friendly) return escapeHtml(friendly);
+      if (sourceUtmString(s) || (s.referrer && String(s.referrer).trim())) return escapeHtml('Other');
       return '<img src="' + SOURCE_DIRECT_IMG + '" alt="Direct" class="source-icon-img" width="20" height="20" title="Direct">';
+    }
+
+    function sourceDetailForPanel(s) {
+      const lines = [];
+      const ref = s.referrer && String(s.referrer).trim();
+      if (ref) lines.push('Referrer: ' + ref);
+      if (s.utm_source != null && String(s.utm_source).trim() !== '') lines.push('utm_source: ' + String(s.utm_source).trim());
+      if (s.utm_medium != null && String(s.utm_medium).trim() !== '') lines.push('utm_medium: ' + String(s.utm_medium).trim());
+      if (s.utm_campaign != null && String(s.utm_campaign).trim() !== '') lines.push('utm_campaign: ' + String(s.utm_campaign).trim());
+      if (s.utm_content != null && String(s.utm_content).trim() !== '') lines.push('utm_content: ' + String(s.utm_content).trim());
+      if (lines.length === 0) return '—';
+      return lines.join('\n');
     }
 
     function renderRow(s) {
@@ -1096,6 +1101,8 @@
       const panel = document.getElementById('side-panel');
       panel.style.display = 'block';
       document.getElementById('side-meta').textContent = 'Loading\u2026';
+      const sideSourceEl = document.getElementById('side-source');
+      if (sideSourceEl) sideSourceEl.textContent = '';
       document.getElementById('side-events').innerHTML = '';
       fetch(API + '/api/sessions/' + encodeURIComponent(sessionId) + '/events?limit=20')
         .then(r => r.json())
@@ -1113,6 +1120,7 @@
             ${saleBlock}
             Events: ${(data.events || []).length}
           `;
+          if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session);
           const mainBase = getMainBaseUrl();
           const eventList = (data.events || []).filter(e => e.type !== 'heartbeat').reverse();
           const events = eventList.map(e => {
