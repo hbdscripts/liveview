@@ -1,0 +1,27 @@
+---
+description: Keep HANDOVER.txt accurate and current
+alwaysApply: true
+---
+
+# Handover maintenance (always-on)
+
+This repo uses `HANDOVER.txt` as the canonical “current state” handover for humans and future agents.
+
+## Requirement
+
+- If you change any **core path**, you MUST update `HANDOVER.txt` in the same commit.
+
+## What counts as a “core path”
+
+- New/changed **routes/endpoints** (Express routes, API contracts)
+- New/changed **dashboard UX** (tabs, panels, tables, modals, fetch/refresh behaviour)
+- New/changed **ingest payload** fields or derivation logic
+- New/changed **DB schema/migrations/indexes**
+- New/changed **auth/access** model (Shopify embed vs direct visit)
+- New/changed **deployment/runtime** behaviour (Railway/GHA, pruning, env var expectations)
+- Any change that materially shifts the **direction/roadmap** described in the handover
+
+## Keep it useful
+
+- Update the “Last updated” line and add a short entry under “Changelog”.
+- Prefer accurate, actionable notes over long explanations.

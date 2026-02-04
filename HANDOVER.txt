@@ -1,0 +1,205 @@
+Live Visitors / AI ENGINE — HANDOVER (keep current)
+Last updated: 2026-02-04
+
+This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
+The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
+
+IMPORTANT (for future agents)
+- Keep this file accurate. If you change core paths (routes, schema, ingest fields, dashboard UX/auth/deploy), update this file in the SAME commit.
+- This repo avoids creating new markdown docs; this handover is intentionally `HANDOVER.txt` (markdown-formatted text).
+
+---
+
+## What the app looks like today (user-facing)
+
+Dashboard URL:
+- `/app/live-visitors` (also `/` typically redirects here after app URL handling)
+
+Main tabs (top row):
+- Home: live visitors table + live KPIs (SSE driven)
+- Breakdown: KPI/cards breakdown for selected date range
+- Traffic: two tables (Source + Traffic Type)
+
+Global date range picker (applies to Breakdown + Traffic):
+- Today / Yesterday / 3 days / 7 days
+
+Traffic tab (new)
+- Layout:
+  - Desktop: 2-column grid (50% / 50%) with two cards
+  - Mobile: stacked (100% each)
+- Tables:
+  - Source table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
+  - Traffic Type table: device/platform breakdown (desktop/mobile/tablet, windows/mac/ios/android/etc.)
+- Each table has a ⚙ settings button that opens a picker modal:
+  - Shows every *detected* source/type (last ~30 days)
+  - Tick which ones should appear in the tables
+  - Selections persist across visits
+
+---
+
+## High-level architecture
+
+Backend:
+- `server/index.js`: Express app, routes, startup migrations, SSE wiring, cleanup timer
+- DB: SQLite by default (local) or Postgres when `DB_URL` is set (production recommended)
+- Migrations: `server/migrations/*.js` (run on startup and via `npm run migrate`)
+
+Frontend:
+- `server/public/live-visitors.html`: single-page dashboard (vanilla JS + Fetch + SSE)
+
+Shopify:
+- Pixel extension: `extensions/live-visitors-pixel/` (Shopify Web Pixels)
+- Shopify Admin APIs used for sales/sessions/best-sellers endpoints
+
+Edge (optional but used for better bot signals):
+- Cloudflare Worker: `workers/ingest-enrich.js`
+  - Enriches ingest requests with CF headers (country/colo/asn + bot signals)
+  - Optional bot blocking at the edge (see `docs/CLOUDFLARE_INGEST_SETUP.md`)
+
+---
+
+## Data flow (end-to-end)
+
+1) Storefront events
+- Shopify Web Pixel sends events to `POST /api/ingest`
+- Ingest requires `INGEST_SECRET` (header `X-Ingest-Secret` or Bearer auth)
+- Cloudflare (optional) adds bot/geo signals via headers
+
+2) Ingest processing
+- `server/routes/ingest.js` parses request, applies whitelist, adds derived fields, writes events + session updates
+
+3) Storage
+- Central store logic in `server/store.js`
+- Session upsert writes to `sessions` table (and related tables as needed)
+
+4) Dashboard queries
+- Home uses SSE: `GET /api/stream`
+- Breakdown uses: `GET /api/stats`
+- Traffic uses: `GET /api/traffic`
+- Traffic prefs saved via: `POST /api/traffic-prefs`
+
+---
+
+## Traffic feature (what was implemented)
+
+### Schema
+Migration added:
+- `server/migrations/021_sessions_traffic_fields.js`
+
+New `sessions` columns (both SQLite + Postgres):
+- `traffic_source_key` (TEXT): normalized marketing/source category (e.g. `google_ads`, `direct`)
+- `ua_device_type` (TEXT): `desktop | mobile | tablet`
+- `ua_platform` (TEXT): `windows | mac | ios | android | chromeos | linux | other`
+- `ua_model` (TEXT, optional): e.g. `iphone`, `ipad` when detected
+
+Indexes added for the above fields.
+
+### Derivation + storage
+Ingest UA parsing:
+- `server/routes/ingest.js` derives `ua_device_type`, `ua_platform`, `ua_model` from the User-Agent string
+
+Traffic source classification:
+- `server/store.js` derives `traffic_source_key` using a “smart” cascade:
+  - UTMs: `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`
+  - Click IDs in entry URL: `gclid`, `fbclid`, `msclkid`, etc.
+  - Referrer host + internal-host detection
+  - Fallback: `direct` when no usable signal
+
+Session upsert:
+- `server/store.js` `upsertSession` writes the derived fields into `sessions`
+- UA fields are normalized (only allowed values) before write
+
+### Traffic API
+New module:
+- `server/routes/traffic.js`
+
+Endpoints:
+- `GET /api/traffic?range=today|yesterday|3d|7d`
+  - Returns:
+    - available sources/types (detected over recent window)
+    - enabled sources/types (from settings)
+    - breakdown rows for enabled items: sessions, orders, revenue (GBP), conversion rate
+- `POST /api/traffic-prefs`
+  - Body can include `sourcesEnabled` and/or `typesEnabled`
+  - Persists to `settings` keys:
+    - `traffic_sources_enabled`
+    - `traffic_types_enabled`
+
+### Traffic UI
+File:
+- `server/public/live-visitors.html`
+
+Additions:
+- New “Traffic” tab + panel
+- Two responsive cards (Source / Traffic Type) with tables
+- Two modals for selection pickers
+- Auto-refresh integration (same cadence as Breakdown)
+
+---
+
+## Auth / access model (important)
+
+Dashboard access:
+- Requests originating from Shopify admin (Referer/Origin) are allowed (embedded app UX)
+- Direct visits can require Google OAuth cookie when configured
+- Middleware: `server/middleware/dashboardAuth.js`
+
+API routes:
+- Most `/api/*` routes are currently registered BEFORE `app.use(dashboardAuth.middleware)` in `server/index.js`,
+  so they are effectively NOT protected by that middleware.
+- The Traffic endpoints (`/api/traffic`, `/api/traffic-prefs`) intentionally follow this pattern so embedded usage works.
+  (A previous route-level auth check was removed to prevent 401s in embedded contexts.)
+
+If you decide to secure API routes:
+- Be careful not to break embedded Shopify admin fetches
+- Apply a consistent auth strategy (e.g. signed token / session that works in iframes)
+
+---
+
+## Deployment + ops notes
+
+Deploy model:
+- Push to `main` triggers deploy (Railway + GitHub Actions)
+- The repo also uses `railway up` for manual deploys
+
+Production pruning:
+- `npm start` runs `scripts/prune-runtime-files.js` to remove non-runtime files from the runtime image
+  (docs, scripts, workers, extensions, .cursor, .github, etc.)
+
+DB persistence:
+- SQLite is ephemeral on many hosts (Railway filesystem is ephemeral)
+- Use Postgres (`DB_URL`) for persistence in production
+
+---
+
+## Guardrails / project conventions
+
+- Do not delete rows from app tables (especially `purchases`). Handle over-reporting via dedupe in stats queries.
+- When making code/config changes: commit + push (deploys are push-driven).
+- “Sentry” checks should be done via the `user-sentry` MCP tools (project: Node, org: lee-cooper, region: de).
+
+---
+
+## Direction (where the app is heading)
+
+Near-term direction:
+- Build richer attribution + breakdowns without collecting PII:
+  - More traffic sources (TikTok/Pinterest/Snap/Klaviyo/etc.)
+  - Better device/platform splits (and optionally browser family later)
+  - Use CF country/colo/asn for geo + network breakdowns
+- Keep embedded Shopify admin experience smooth (avoid auth strategies that break iframe fetches)
+- Keep stats “truthy” by relying on Shopify Orders truth/reconciliation where appropriate
+
+Performance direction:
+- If Traffic queries become heavy, consider:
+  - caching by range
+  - pre-aggregation tables for daily breakdowns
+
+---
+
+## Changelog (high level)
+
+2026-02-04
+- Added Traffic tab (Source + Traffic Type) with persistent pickers
+- Added derived traffic fields to `sessions` via migration 021
+- Added `/api/traffic` + `/api/traffic-prefs`
