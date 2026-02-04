@@ -89,7 +89,9 @@
     .stats-card #stats-best-variants .by-country-table td:first-child { width: 55%; min-width: 180px; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
-    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; border-radius: 100%; object-fit: contain; object-position: center; flex-shrink: 0; display: block; }
+    /* Product thumbnails: shared styling (prevents "thin line" aspect ratios). */
+    .bs-thumb, .landing-thumb { border-radius: 100%; object-fit: cover; object-position: center; flex-shrink: 0; display: block; }
+    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
     .best-sellers-table .product-cell .bs-name { flex: 1; min-width: 4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: break-word; word-break: break-word; line-height: 1.35; font-size: var(--table-font-size); }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
     .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
@@ -118,7 +120,7 @@
 .last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: 12px; font-weight: 500; }
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-    .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; border-radius: 100%; object-fit: contain; object-position: center; display: block; flex-shrink: 0; }
+    .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
     .table-scroll-wrap .last-action-cell .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
 .table-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
@@ -869,7 +871,7 @@
       } else if (path) {
         // Display friendly name: /collections/bracelets -> Bracelets, /products/<handle> -> title-cased (link unchanged).
         label = escapeHtml(friendlyLabelFromPath(path) || path);
-        if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl);
+        if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100';
       }
       if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
       if (thumbSrc || fullUrl) {
@@ -1305,7 +1307,7 @@
         const handle = p.handle || '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) : '';
+        const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100' : '';
         const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
@@ -1836,7 +1838,7 @@
             if (path && !path.startsWith('/')) path = '/' + path;
             var pathLabel = path ? (friendlyLabelFromPath(path) || path) : (e.product_handle || '');
             var fullUrl = mainBase && path ? mainBase + path : '';
-            var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+            var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.style.display=\'none\'">' : '';
             var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(pathLabel) + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
             return '<li>' + thumb + '<span>' + text + '</span></li>';
           }).join('');
