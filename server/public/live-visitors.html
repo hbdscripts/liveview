@@ -31,19 +31,17 @@
       --side-panel-sale-bg: rgba(13, 148, 136, 0.08);
       --button-hover-bg: #f0f0f0;
       --select-arrow: #333;
-      /* Table: universal sizing — 14px section headers, 13px th, 12px td; one gap for all resolutions */
+      /* Table: universal — one gap, one padding, one font stack for all tables at all resolutions */
       --table-gap: 15px;
-      --table-cell-padding-y: 0.65rem;
-      --table-cell-padding-x: 0.85rem;
+      --table-cell-padding-y: 0.6rem;
+      --table-cell-padding-x: 0.8rem;
       --table-font-size: 12px;
       --table-th-font-size: 13px;
       --table-header-font-size: 14px;
-      --table-compact-padding-y: 0.55rem;
-      --table-compact-padding-x: 0.7rem;
+      --table-row-border: 1px solid var(--border);
       --online-dot-color: #4caf50;
       --link-fg: #06133b;
       --top-bar-divider: #eee;
-      --table-font-size-mobile: 12px;
     }
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
@@ -64,12 +62,14 @@
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+    /* All tables share: --table-cell-padding-*, --table-row-border, --table-font-size, --table-th-font-size, th bg/color */
     .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; box-shadow: none; }
-    .by-country-table th, .by-country-table td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); border: none; line-height: 1.4; }
-    .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: 0.75rem; padding-right: 0.75rem; min-width: 0; width: 32%; }
+    .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: var(--table-row-border); line-height: 1.4; }
+    .by-country-table tr:last-child td { border-bottom: none; }
+    .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: var(--table-cell-padding-x); padding-right: var(--table-cell-padding-x); min-width: 0; width: 32%; }
     .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; min-width: 4rem; white-space: nowrap; }
-    .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: 0.75rem; min-width: 5rem; }
-    .by-country-table th { font-size: var(--table-th-font-size); color: var(--text); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: none; }
+    .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
+    .by-country-table th { font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--th-bg); }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
     .by-country-table tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -103,7 +103,8 @@
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
+    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: var(--table-row-border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
+    tr:last-child td { border-bottom: none; }
     th:not(:first-child), td:not(:first-child) { text-align: center; }
     th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
@@ -116,7 +117,7 @@
     .arrived-cell, .last-seen-cell { font-size: var(--table-font-size); white-space: nowrap; }
     .flag-img { width: 26px; height: 20px; object-fit: cover; border-radius: 4px; margin-right: 0.35rem; vertical-align: middle; display: inline-block; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
-.last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: 12px; font-weight: 500; }
+.last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: var(--table-font-size); font-weight: 500; }
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
     .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
@@ -227,8 +228,8 @@
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap.tight-cols { --table-cell-padding-x: 0.6rem; }
 .table-scroll-wrap table { margin: 0; min-width: 800px; table-layout: auto; }
-.table-scroll-wrap th, .table-scroll-wrap td { border-bottom: 1px solid var(--border); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
-.table-scroll-wrap tr:last-child td { border-bottom: none; }
+.table-scroll-wrap th, .table-scroll-wrap td { border-bottom: var(--table-row-border); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
+    .table-scroll-wrap tr:last-child td { border-bottom: none; }
 .table-scroll-wrap th:nth-child(1), .table-scroll-wrap td:nth-child(1) { width: 1%; min-width: 130px; text-align: left; }
 .table-scroll-wrap .last-action-cell { min-width: 60px; }
 .table-scroll-wrap .last-action-cell .landing-thumb { flex-shrink: 0; box-sizing: border-box; }
@@ -280,7 +281,6 @@
       .stats-card #stats-worst-products .by-country-table td:first-child,
       .stats-card #stats-best-variants .by-country-table th:first-child,
       .stats-card #stats-best-variants .by-country-table td:first-child { width: 55%; min-width: 140px; }
-      .by-country-table th, .by-country-table td { padding: 0.5rem 0.5rem; }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: var(--table-header-font-size); }
@@ -290,7 +290,6 @@
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel-close { min-width: 44px; min-height: 44px; }
-      th, td { padding: var(--table-compact-padding-y) var(--table-compact-padding-x); font-size: var(--table-font-size-mobile); }
       .last-action-cell a { display: none; }
       .landing-thumb { width: 32px; height: 32px; }
     }
