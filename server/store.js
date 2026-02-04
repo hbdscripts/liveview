@@ -365,8 +365,10 @@ async function insertEvent(sessionId, payload) {
 function computePurchaseKey(payload, sessionId) {
   const orderId = payload.order_id != null && String(payload.order_id).trim() !== '' ? String(payload.order_id).trim() : null;
   const token = payload.checkout_token != null && String(payload.checkout_token).trim() !== '' ? String(payload.checkout_token).trim() : null;
-  if (orderId) return 'order:' + orderId;
+  // Prefer checkout_token because Shopify can emit checkout_completed once before order_id exists,
+  // and again after the order is created. Both events share the same checkout_token.
   if (token) return 'token:' + token;
+  if (orderId) return 'order:' + orderId;
   const ts = payload.ts || Date.now();
   const roundMin = Math.floor(ts / 60000);
   const cur = (payload.order_currency || '').toString();
@@ -381,9 +383,9 @@ async function insertPurchase(payload, sessionId, countryCode) {
   const now = payload.ts || Date.now();
   const purchaseKey = computePurchaseKey(payload, sessionId);
   const orderTotal = payload.order_total != null ? (typeof payload.order_total === 'number' ? payload.order_total : parseFloat(payload.order_total)) : null;
-  const orderCurrency = typeof payload.order_currency === 'string' ? payload.order_currency : null;
-  const orderId = payload.order_id != null ? String(payload.order_id) : null;
-  const checkoutToken = payload.checkout_token != null ? String(payload.checkout_token) : null;
+  const orderCurrency = typeof payload.order_currency === 'string' && payload.order_currency.trim() ? payload.order_currency.trim() : null;
+  const orderId = payload.order_id != null && String(payload.order_id).trim() !== '' ? String(payload.order_id).trim() : null;
+  const checkoutToken = payload.checkout_token != null && String(payload.checkout_token).trim() !== '' ? String(payload.checkout_token).trim() : null;
   const country = normalizeCountry(countryCode) || null;
 
   if (config.dbUrl) {
@@ -587,27 +589,44 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   return { start: nowMs, end: nowMs };
 }
 
+function purchaseDedupeKeySql() {
+  // Prefer checkout_token; it remains stable even when order_id is missing on early checkout_completed events.
+  // TRIM() to protect against accidental whitespace.
+  return "COALESCE(NULLIF(TRIM(checkout_token), ''), NULLIF(TRIM(order_id), ''), purchase_key)";
+}
+
 async function getSalesTotal(start, end) {
   const db = getDb();
+  const dedupeKey = purchaseDedupeKeySql();
   const rows = config.dbUrl
     ? await db.all(
       `
-        SELECT
-          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
-          COALESCE(SUM(order_total), 0)::float AS total
-        FROM purchases
-        WHERE purchased_at >= $1 AND purchased_at < $2
+        SELECT currency, COALESCE(SUM(total), 0)::float AS total
+        FROM (
+          SELECT
+            COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+            ${dedupeKey} AS dedupe_key,
+            MAX(order_total)::float AS total
+          FROM purchases
+          WHERE purchased_at >= $1 AND purchased_at < $2
+          GROUP BY currency, dedupe_key
+        ) t
         GROUP BY currency
       `,
       [start, end]
     )
     : await db.all(
       `
-        SELECT
-          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
-          COALESCE(SUM(order_total), 0) AS total
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ?
+        SELECT currency, COALESCE(SUM(total), 0) AS total
+        FROM (
+          SELECT
+            COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+            ${dedupeKey} AS dedupe_key,
+            MAX(order_total) AS total
+          FROM purchases
+          WHERE purchased_at >= ? AND purchased_at < ?
+          GROUP BY currency, dedupe_key
+        ) t
         GROUP BY currency
       `,
       [start, end]
@@ -638,11 +657,8 @@ async function getConversionRate(start, end, options = {}) {
       'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql,
       [start, end, ...filter.params]
     );
-  const purchased = config.dbUrl
-    ? await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2', [start, end])
-    : await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?', [start, end]);
   const t = total?.n ?? 0;
-  const p = purchased?.n ?? 0;
+  const p = await getConvertedCount(start, end);
   return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
 }
 
@@ -699,27 +715,36 @@ async function getCountryStats(start, end, options = {}) {
       GROUP BY country_code
     `, [start, end, ...filter.params]);
   // Aggregate purchases by country + currency so we can convert to GBP.
+  const dedupeKey = purchaseDedupeKeySql();
   const purchaseAgg = config.dbUrl
     ? await db.all(`
-      SELECT
-        country_code,
-        COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
-        COUNT(*) AS converted,
-        COALESCE(SUM(order_total), 0)::float AS revenue
-      FROM purchases
-      WHERE purchased_at >= $1 AND purchased_at < $2
-        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0)::float AS revenue
+      FROM (
+        SELECT
+          country_code,
+          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          ${dedupeKey} AS dedupe_key,
+          MAX(order_total)::float AS revenue
+        FROM purchases
+        WHERE purchased_at >= $1 AND purchased_at < $2
+          AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+        GROUP BY country_code, currency, dedupe_key
+      ) t
       GROUP BY country_code, currency
     `, [start, end])
     : await db.all(`
-      SELECT
-        country_code,
-        COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
-        COUNT(*) AS converted,
-        COALESCE(SUM(order_total), 0) AS revenue
-      FROM purchases
-      WHERE purchased_at >= ? AND purchased_at < ?
-        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+      SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
+      FROM (
+        SELECT
+          country_code,
+          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          ${dedupeKey} AS dedupe_key,
+          MAX(order_total) AS revenue
+        FROM purchases
+        WHERE purchased_at >= ? AND purchased_at < ?
+          AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+        GROUP BY country_code, currency, dedupe_key
+      ) t
       GROUP BY country_code, currency
     `, [start, end]);
 
@@ -783,9 +808,10 @@ async function getSessionCounts(start, end, options = {}) {
 
 async function getConvertedCount(start, end) {
   const db = getDb();
+  const dedupeKey = purchaseDedupeKeySql();
   const row = config.dbUrl
-    ? await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2', [start, end])
-    : await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?', [start, end]);
+    ? await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2`, [start, end])
+    : await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?`, [start, end]);
   return row ? Number(row.n) || 0 : 0;
 }
 
