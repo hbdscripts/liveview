@@ -34,8 +34,8 @@ Traffic tab (new)
   - Desktop: 2-column grid (50% / 50%) with two cards
   - Mobile: stacked (100% each)
 - Tables:
-  - Source table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
-  - Traffic Type table: device → platform breakdown (expandable): Desktop/Mobile/Tablet parents with OS children (Windows/Mac/Linux/Chrome OS/iOS/Android/Unknown)
+  - Channels table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
+  - Traffic table: device → platform breakdown (expandable): Desktop/Mobile/Tablet parents with OS children (Windows/Mac/Linux/Chrome OS/iOS/Android/Unknown)
 - Each table has a ⚙ settings button that opens a picker modal:
   - Shows every *detected* source/type (last ~30 days)
   - Tick which ones should appear in the tables
