@@ -665,16 +665,19 @@
       return countryNamesFull[c] || countryNames[c] || c;
     }
 
-    // Add Shopify-style width param to hotlinked images.
+    // Add width=100 to hotlinked images (? or & depending on existing params).
     function hotImg(url) {
-      if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return url;
-      try {
-        const u = new URL(url);
-        u.searchParams.set('width', '100');
-        return u.toString();
-      } catch (_) {
-        return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100';
+      if (typeof url !== 'string') return url;
+      if (/^https?:\/\//i.test(url)) {
+        try {
+          const u = new URL(url);
+          u.searchParams.set('width', '100');
+          return u.toString();
+        } catch (_) {
+          return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100';
+        }
       }
+      return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100';
     }
 
     function flagImg(code) {
@@ -797,7 +800,7 @@
         thumbSrc = HICON_URL;
       } else if (isCheckout) {
         label = 'Cart';
-        thumbSrc = getAssetsBase() + '/checkout.webp';
+        thumbSrc = getAssetsBase() + '/checkout.webp?width=100';
       } else if (path) {
         // Display pretty product name for /products/<handle> paths (link stays the same).
         const prettyProduct = productTitleFromPath(path);
@@ -912,7 +915,7 @@
       const hasGoogleAds = isGoogleAdsSource(s);
       if (hasGoogleAds) {
         utmLabel = 'Google Ads';
-        out.push(icon(getAssetsBase() + '/adwords.png', utmLabel, utmLabel, 'source-googleads-img'));
+        out.push(icon(getAssetsBase() + '/adwords.png?width=100', utmLabel, utmLabel, 'source-googleads-img'));
       } else if (utmStr) {
         const friendly = sourceFriendlyLabel(s);
         utmLabel = friendly || 'Other (UTM)';
