@@ -1915,7 +1915,11 @@
             ['Seen', formatTs(session.last_seen)],
             ['Cart qty', String(session.cart_qty ?? 0)]
           ].map(function (r) { return '<div class="side-panel-detail-row"><span class="side-panel-label">' + escapeHtml(r[0]) + '</span><span class="side-panel-value">' + escapeHtml(String(r[1])) + '</span></div>'; }).join('');
-          document.getElementById('side-meta').innerHTML = metaRows + (saleBlock ? saleBlock : '');
+          var startedMs = session.started_at != null ? Number(session.started_at) : 0;
+          var seenMs = session.last_seen != null ? Number(session.last_seen) : 0;
+          var gapHours = (seenMs - startedMs) / (60 * 60 * 1000);
+          var openTabHint = (gapHours >= 1) ? '<div class="side-panel-detail-row muted" style="margin-top:0.5rem;font-size:0.8em">If Started and Seen are many hours apart, the visitor likely left the tab open; we receive a heartbeat every 30s which updates Seen.</div>' : '';
+          document.getElementById('side-meta').innerHTML = metaRows + openTabHint + (saleBlock ? saleBlock : '');
           if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session);
           document.getElementById('side-cf').innerHTML = buildSidePanelCf(session);
         })
