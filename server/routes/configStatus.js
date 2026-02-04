@@ -223,6 +223,8 @@ async function configStatus(req, res, next) {
           health.shopifySessionsTodayNote = result.error
             ? 'Shopify returned: ' + result.error
             : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
+          // Explain why orders/revenue work but sessions don't: different Shopify APIs (Orders API vs Reports/ShopifyQL)
+          health.shopifySessionsTodayNote += ' Orders and revenue use the Orders API (read_orders); session count uses Reports (ShopifyQL, read_reports)—same app, different API.';
           const missingScope = /access denied|forbidden|required scope|read_reports/i.test(health.shopifySessionsTodayNote);
           if (missingScope && !(scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports'))) {
             health.shopifySessionsTodayNote += ' Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall and reinstall the app from this store\'s Admin.';
