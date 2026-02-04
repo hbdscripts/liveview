@@ -218,12 +218,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const cfCountry = cf.cfCountry;
   const cfColo = cf.cfColo;
   const cfAsn = cf.cfAsn;
+  const isReturningSession = visitorIsReturning ? 1 : 0;
 
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27)
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning)
+        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28)
         ON CONFLICT (session_id) DO UPDATE SET
           visitor_id = EXCLUDED.visitor_id,
           started_at = EXCLUDED.started_at,
@@ -256,12 +257,12 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           cf_country = EXCLUDED.cf_country,
           cf_colo = EXCLUDED.cf_colo,
           cf_asn = EXCLUDED.cf_asn
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession]);
     }
   } else {
     const cfUpdates = [];
@@ -417,7 +418,7 @@ async function listSessions(filter) {
   const abandonedCutoff = now - abandonedRetentionMs;
 
   let sql = `
-    SELECT s.*, v.is_returning, v.returning_count,
+    SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
       COALESCE(s.country_code, v.last_country) AS session_country,
       v.device, v.network_speed
     FROM sessions s
@@ -461,6 +462,8 @@ async function listSessions(filter) {
     const countryCode = (r.session_country || r.country_code || 'XX').toUpperCase().slice(0, 2);
     const out = { ...r, country_code: countryCode };
     delete out.session_country;
+    delete out.visitor_is_returning;
+    out.is_returning = (r.is_returning != null ? r.is_returning : r.visitor_is_returning) ? 1 : 0;
     out.started_at = r.started_at != null ? Number(r.started_at) : null;
     out.last_seen = r.last_seen != null ? Number(r.last_seen) : null;
     out.purchased_at = r.purchased_at != null ? Number(r.purchased_at) : null;
@@ -628,6 +631,58 @@ async function getSalesTotal(start, end) {
             MAX(order_total) AS total
           FROM purchases
           WHERE purchased_at >= ? AND purchased_at < ?
+          GROUP BY currency, dedupe_key
+        ) t
+        GROUP BY currency
+      `,
+      [start, end]
+    );
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  let sum = 0;
+  for (const r of rows || []) {
+    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+    const total = r.total != null ? Number(r.total) : 0;
+    if (!Number.isFinite(total) || total === 0) continue;
+    const gbp = fx.convertToGbp(total, cur, ratesToGbp);
+    if (typeof gbp === 'number' && Number.isFinite(gbp)) sum += gbp;
+  }
+  return Math.round(sum * 100) / 100;
+}
+
+/** Revenue from returning-customer sessions only (sessions.is_returning = 1). Same dedupe and GBP conversion as getSalesTotal. */
+async function getReturningRevenue(start, end) {
+  const db = getDb();
+  const dedupeKeyP = "COALESCE(NULLIF(TRIM(p.checkout_token), ''), NULLIF(TRIM(p.order_id), ''), p.purchase_key)";
+  const rows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT currency, COALESCE(SUM(total), 0)::float AS total
+        FROM (
+          SELECT
+            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
+            ${dedupeKeyP} AS dedupe_key,
+            MAX(p.order_total)::float AS total
+          FROM purchases p
+          INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
+          WHERE p.purchased_at >= $1 AND p.purchased_at < $2
+          GROUP BY currency, dedupe_key
+        ) t
+        GROUP BY currency
+      `,
+      [start, end]
+    )
+    : await db.all(
+      `
+        SELECT currency, COALESCE(SUM(total), 0) AS total
+        FROM (
+          SELECT
+            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
+            ${dedupeKeyP} AS dedupe_key,
+            MAX(p.order_total) AS total
+          FROM purchases p
+          INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
+          WHERE p.purchased_at >= ? AND p.purchased_at < ?
           GROUP BY currency, dedupe_key
         ) t
         GROUP BY currency
@@ -859,6 +914,9 @@ async function getStats(options = {}) {
   const salesByRange = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])
   ));
+  const returningRevenueByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])
+  ));
   const conversionByRange = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])
   ));
@@ -906,6 +964,7 @@ async function getStats(options = {}) {
   };
   return {
     sales: { ...salesByRange, rolling: salesRolling },
+    returningRevenue: { ...returningRevenueByRange },
     conversion: { ...conversionByRange, rolling: conversionRolling },
     productConversion: productConversionByRange,
     country: countryByRange,

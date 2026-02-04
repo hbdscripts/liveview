@@ -173,6 +173,7 @@ const { up: up009 } = require('./migrations/009_cf_traffic');
 const { up: up010 } = require('./migrations/010_referrer');
 const { up: up011 } = require('./migrations/011_entry_url');
 const { up: up012 } = require('./migrations/012_bot_block_counts');
+const { up: up013 } = require('./migrations/013_session_is_returning');
 getDb();
 
 up001()
@@ -187,6 +188,7 @@ up001()
   .then(() => up010())
   .then(() => up011())
   .then(() => up012())
+  .then(() => up013())
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
