@@ -612,7 +612,7 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   return { start: nowMs, end: nowMs };
 }
 
-/** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d is selected. */
+/** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d/1h is selected. */
 async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const db = getDb();
   const now = Date.now();
@@ -622,19 +622,24 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
   const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
+  // Last Hour: filter by activity (last_seen) so we show sessions active in the last hour, not only sessions that started in the last hour
+  const useLastSeen = rangeKey === '1h';
+  const timeCol = useLastSeen ? 's.last_seen' : 's.started_at';
+
   const baseSql = `
     SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
       COALESCE(s.country_code, v.last_country) AS session_country,
       v.device, v.network_speed
     FROM sessions s
     LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
-    WHERE s.started_at >= ${config.dbUrl ? '$1' : '?'} AND s.started_at < ${config.dbUrl ? '$2' : '?'}
+    WHERE ${timeCol} >= ${config.dbUrl ? '$1' : '?'} AND ${timeCol} < ${config.dbUrl ? '$2' : '?'}
   `;
   const baseParams = [start, end];
 
-  const countRow = config.dbUrl
-    ? await db.get('SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= $1 AND s.started_at < $2', [start, end])
-    : await db.get('SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ? AND s.started_at < ?', [start, end]);
+  const countSql = config.dbUrl
+    ? 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= $1 AND ' + timeCol + ' < $2'
+    : 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= ? AND ' + timeCol + ' < ?';
+  const countRow = await db.get(countSql, [start, end]);
   const total = (countRow && countRow.n != null) ? Number(countRow.n) : 0;
 
   const orderLimitOffset = ' ORDER BY s.last_seen DESC LIMIT ' + (config.dbUrl ? '$3' : '?') + ' OFFSET ' + (config.dbUrl ? '$4' : '?');
