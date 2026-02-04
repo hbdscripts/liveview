@@ -1510,7 +1510,8 @@
         saleAudio.currentTime = 0;
         saleAudio.play().catch(function() {});
       }
-      lastConvertedCountToday = typeof conv.today === 'number' ? conv.today : 0;
+      // Only update when we have real data so we don't reset to 0 on error/empty and re-trigger sound next load
+      if (typeof conv.today === 'number') lastConvertedCountToday = conv.today;
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderAov(statsCache);
       renderCountry(statsCache);
@@ -2077,7 +2078,8 @@
           } else if (withinActive) {
             sessions.unshift(session);
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-            becamePurchased = !!session.has_purchased;
+            // Don't play sound when adding a session that's already purchased (e.g. re-add after prune, or heartbeat from old sale)
+            becamePurchased = false;
             needRender = true;
           }
           if (needRender) {
