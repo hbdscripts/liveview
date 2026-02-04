@@ -16,7 +16,7 @@ Dashboard URL:
 - `/app/live-visitors` (also `/` typically redirects here after app URL handling)
 
 Main tabs (top row):
-- Home: live visitors table + live KPIs (SSE driven)
+- Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as an icon; mobile: tabs collapse into a hamburger menu)
 - Breakdown: KPI/cards breakdown for selected date range
 - Traffic: two tables (Source + Traffic Type)
 
@@ -205,3 +205,4 @@ Performance direction:
 - Added `/api/traffic` + `/api/traffic-prefs`
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
+- Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known

@@ -195,19 +195,38 @@
 .top-bar-date-select:focus { outline: none; color: var(--accent); }
 .top-bar-date-select option { color: var(--text); background: var(--card); }
 .next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
+.next-update-live-indicator { display: none; align-items: center; gap: 0.35rem; }
+.live-pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--online-dot-color); animation: live-pulse 1.2s ease-in-out infinite; }
+@keyframes live-pulse { 0% { transform: scale(0.85); opacity: 0.75; } 50% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.85); opacity: 0.75; } }
 .table-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); z-index: 2; }
 .table-loading-overlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; }
 .inline-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; }
 /* Tab switch: Home (main table) vs Breakdown (cards); date range shared on same row */
-.main-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.main-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); position: relative; }
 .main-tabs [role="tab"] { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; }
 .main-tabs [role="tab"]:hover { color: var(--text); }
 .main-tabs [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.main-tabs [role="tab"] .tab-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+.main-tabs [role="tab"] .tab-text { display: inline; }
+@media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
 .main-tabs-spacer { flex: 1; min-width: 0; }
 .main-tabs-date-select { padding: 0.35rem 1.5rem 0.35rem 0.5rem; border: none; background: none; font-size: 0.875rem; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='%23666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.25rem center; background-size: 16px 16px; border-radius: var(--radius); margin-bottom: -1px; }
 .main-tabs-date-select:hover { color: var(--accent); }
 .main-tabs-date-select:focus { outline: none; color: var(--accent); }
 .main-tabs-date-select option { color: var(--text); background: var(--card); }
+.mobile-tabs-btn { display: none; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); cursor: pointer; color: var(--text); font-size: 0.875rem; font-weight: 500; }
+.mobile-tabs-btn:hover { color: var(--accent); }
+.mobile-tabs-btn svg { width: 18px; height: 18px; display: block; }
+.mobile-tabs-menu { display: none; position: absolute; left: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.25rem; z-index: 50; min-width: 180px; }
+.mobile-tabs-menu.open { display: block; }
+.mobile-tabs-item { width: 100%; text-align: left; padding: 0.5rem 0.75rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: var(--text); border-radius: var(--radius); font-family: inherit; }
+.mobile-tabs-item:hover { background: var(--row-hover); }
+.mobile-tabs-item[aria-current="true"] { background: rgba(13, 148, 136, 0.12); color: var(--accent); }
+@media (max-width: 768px) {
+  .main-tabs { gap: 0.5rem; }
+  .main-tabs [role="tab"] { display: none; }
+  .mobile-tabs-btn { display: inline-flex; }
+}
 .main-tab-panel { display: none; }
 .main-tab-panel.active { display: block; }
 .stats-row-wrap { position: relative; }
@@ -233,7 +252,9 @@
 .live-view-header .next-update-block { flex-shrink: 0; }
 .live-view-header .live-view-next-update-center { flex: 1; display: flex; justify-content: center; }
 .live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; margin-right: 10px; }
-.live-view-online .online-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--online-dot-color); flex-shrink: 0; }
+.live-view-online .online-user-icon { width: 16px; height: 16px; flex-shrink: 0; display: block; }
+.live-view-online .online-count-wrap { display: inline-flex; align-items: center; gap: 0.35rem; }
+.mini-spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; }
 .live-view-online strong {
     color: #333;
     font-size: 16px;
@@ -349,12 +370,25 @@
   </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
-    <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Home</button>
+    <button type="button" id="mobile-tabs-btn" class="mobile-tabs-btn" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span id="mobile-tabs-current">Home</span>
+    </button>
+    <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Breakdown</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
+    </div>
+
+    <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
+      <svg class="tab-icon tab-icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg>
+      <span class="tab-text">Home</span>
+    </button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
-      <!-- Date range Today: table tabs Today | Last Hour | Live above table -->
+      <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
       <option value="3d">Last 3 Days</option>
@@ -379,12 +413,23 @@
         <span class="table-title-tabs-sep" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
         <span class="table-title-tabs-sep" aria-hidden="true">|</span>
-        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Live</button>
+        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Now</button>
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
     </h2>
-    <span class="next-update-block live-view-next-update-center">Next update <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span></span>
-    <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
+    <span class="next-update-block live-view-next-update-center" id="next-update-block">
+      <span class="next-update-label" id="next-update-label">Next update</span>
+      <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span>
+      <span class="next-update-live-indicator" id="next-update-live-indicator" aria-hidden="true"><span class="live-pulse-dot"></span> Live</span>
+    </span>
+    <div class="live-view-online">
+      <svg class="online-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Online:
+      <span class="online-count-wrap">
+        <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
+        <strong id="online-count" style="display:none">0</strong>
+      </span>
+    </div>
   </div>
   <div class="sessions-table-wrap">
     <div class="table-loading-overlay sessions-loading-overlay" id="sessions-loading-overlay" style="display: none;"><div class="spinner"></div></div>
@@ -696,6 +741,7 @@
     let nextLiveAt = 0;
     let nextRangeAt = 0; // next refresh for Today/Last Hour (10 min)
     let lastSessionsFetchedAt = 0;
+    let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
     let lastTrafficFetchedAt = 0;
     let liveRefreshInFlight = null;
@@ -706,6 +752,7 @@
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
     let lastSaleAt = null; // ms; authoritative timestamp of most recent sale we know about (Shopify truth preferred)
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
+    let onlineCountInFlight = false;
     let shopifySalesToday = null;
     let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
@@ -761,19 +808,36 @@
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
       if (!block) return;
-      const show = activeMainTab === 'spy' && (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
+      const labelEl = document.getElementById('next-update-label');
+      const timerWrap = document.getElementById('next-update-timer-wrap');
+      const liveEl = document.getElementById('next-update-live-indicator');
+      const progressEl = document.getElementById('next-update-circle-progress');
+
+      const isLive = dateRange === 'live';
+      const show = activeMainTab === 'spy' && (isLive || dateRange === '1h' || dateRange === 'today');
       if (!show) {
         block.style.display = 'none';
         return;
       }
-      block.style.display = '';
-      const progressEl = document.getElementById('next-update-circle-progress');
+
+      block.style.display = 'inline-flex';
+
+      if (isLive) {
+        if (labelEl) labelEl.style.display = 'none';
+        if (timerWrap) timerWrap.style.display = 'none';
+        if (liveEl) liveEl.style.display = 'inline-flex';
+        return;
+      }
+
+      if (labelEl) labelEl.style.display = '';
+      if (timerWrap) timerWrap.style.display = 'inline-flex';
+      if (liveEl) liveEl.style.display = 'none';
       if (!progressEl) return;
-      const isLive = dateRange === 'live';
-      const duration = isLive ? LIVE_REFRESH_MS : RANGE_REFRESH_MS;
-      const target = isLive
-        ? ((typeof nextLiveAt === 'number' && nextLiveAt > Date.now()) ? nextLiveAt : (Date.now() + LIVE_REFRESH_MS))
-        : ((typeof nextRangeAt === 'number' && nextRangeAt > Date.now()) ? nextRangeAt : (Date.now() + RANGE_REFRESH_MS));
+
+      const duration = RANGE_REFRESH_MS;
+      const target = (typeof nextRangeAt === 'number' && nextRangeAt > Date.now())
+        ? nextRangeAt
+        : (Date.now() + RANGE_REFRESH_MS);
       const remaining = Math.max(0, target - Date.now());
       const progress = Math.min(1, 1 - remaining / duration);
       progressEl.style.strokeDasharray = String(NEXT_UPDATE_CIRCLE_C);
@@ -1729,7 +1793,7 @@
           const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
-        const fallback = { live: 'Live', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour' };
+        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour' };
         if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
@@ -2080,6 +2144,7 @@
             sessions = data.sessions || [];
             sessionsTotal = typeof data.total === 'number' ? data.total : sessions.length;
           }
+          lastSessionsMode = isLive ? 'live' : 'range';
           lastSessionsFetchedAt = Date.now();
           if (isLive) nextLiveAt = Date.now() + LIVE_REFRESH_MS;
           else if (dateRange === 'today' || dateRange === '1h') nextRangeAt = Date.now() + RANGE_REFRESH_MS;
@@ -2098,30 +2163,50 @@
     }
 
     function fetchOnlineCount() {
+      if (onlineCountInFlight) return;
+      onlineCountInFlight = true;
       fetch(API + '/api/sessions?filter=active&countOnly=1&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           if (data != null && typeof data.count === 'number') {
             lastOnlineCount = data.count;
-            updateKpis();
           }
         })
-        .catch(function() {});
+        .catch(function() {})
+        .then(function() {
+          onlineCountInFlight = false;
+          updateKpis();
+        });
     }
 
     function updateKpis() {
       const el = document.getElementById('online-count');
+      const spinner = document.getElementById('online-count-spinner');
       if (!el) return;
+      function showSpinner() {
+        if (spinner) spinner.style.display = '';
+        el.style.display = 'none';
+      }
+      function showCount(n) {
+        if (spinner) spinner.style.display = 'none';
+        el.style.display = '';
+        el.textContent = String(n);
+      }
       if (dateRange === 'live') {
+        if (lastSessionsMode !== 'live') {
+          showSpinner();
+          fetchSessions();
+          return;
+        }
         const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
-        el.textContent = active;
+        showCount(active);
         return;
       }
       // Online is real people online right now; show count regardless of date range (Today, Yesterday, etc.)
       if (lastOnlineCount != null) {
-        el.textContent = lastOnlineCount;
+        showCount(lastOnlineCount);
       } else {
-        el.textContent = '\u2026';
+        showSpinner();
         fetchOnlineCount();
       }
     }
@@ -2606,11 +2691,42 @@
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
         const panelTraffic = document.getElementById('tab-panel-traffic');
+        const mobileBtn = document.getElementById('mobile-tabs-btn');
+        const mobileMenu = document.getElementById('mobile-tabs-menu');
+        const mobileCurrent = document.getElementById('mobile-tabs-current');
+
+        function closeMobileMenu() {
+          if (!mobileMenu || !mobileBtn) return;
+          mobileMenu.classList.remove('open');
+          mobileBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        function syncMobileMenu(tab) {
+          if (mobileCurrent) {
+            mobileCurrent.textContent = tab === 'stats' ? 'Breakdown' : (tab === 'traffic' ? 'Traffic' : 'Home');
+          }
+          if (mobileMenu) {
+            mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
+              const t = btn.getAttribute('data-tab');
+              btn.setAttribute('aria-current', t === tab ? 'true' : 'false');
+            });
+          }
+        }
+
+        function toggleMobileMenu() {
+          if (!mobileMenu || !mobileBtn) return;
+          const nextOpen = !mobileMenu.classList.contains('open');
+          mobileMenu.classList.toggle('open', nextOpen);
+          mobileBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        }
+
         function setTab(tab) {
           const isSpy = tab === 'spy';
           const isStats = tab === 'stats';
           const isTraffic = tab === 'traffic';
           activeMainTab = tab;
+          syncMobileMenu(tab);
+          closeMobileMenu();
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
@@ -2646,6 +2762,30 @@
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
+        if (mobileBtn && mobileMenu) {
+          mobileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMobileMenu();
+          });
+          mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+              e.preventDefault();
+              const t = btn.getAttribute('data-tab') || 'spy';
+              setTab(t);
+            });
+          });
+          document.addEventListener('click', function(e) {
+            if (!mobileMenu.classList.contains('open')) return;
+            const target = e.target;
+            if (mobileMenu.contains(target) || mobileBtn.contains(target)) return;
+            closeMobileMenu();
+          });
+          document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            closeMobileMenu();
+          });
+        }
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
