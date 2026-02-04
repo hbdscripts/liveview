@@ -12,6 +12,12 @@ const GRAPHQL_API_VERSION = '2025-10'; // shopifyqlQuery available from 2025-10
 /**
  * Returns { count, error } where count is a number or null, and error is a short message if the request failed.
  */
+function firstErrorMsg(json) {
+  const err = json?.errors?.[0];
+  if (err && typeof err.message === 'string') return err.message;
+  return null;
+}
+
 async function fetchShopifySessionsToday(shop, accessToken) {
   const query = 'FROM sessions SHOW sessions DURING today';
   const graphqlUrl = `https://${shop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
@@ -40,16 +46,24 @@ async function fetchShopifySessionsToday(shop, accessToken) {
     return { count: null, error: 'Invalid JSON from Shopify' };
   }
   if (!res.ok) {
-    const msg = json?.errors?.[0]?.message || json?.message || `HTTP ${res.status}`;
+    const msg = firstErrorMsg(json) || json?.message || `HTTP ${res.status}`;
+    console.error('[config-status] Shopify sessions request failed:', res.status, String(text).slice(0, 500));
     return { count: null, error: String(msg).slice(0, 120) };
   }
+  const graphqlError = firstErrorMsg(json);
+  if (graphqlError) {
+    console.error('[config-status] Shopify GraphQL error:', graphqlError, String(text).slice(0, 500));
+    return { count: null, error: String(graphqlError).slice(0, 120) };
+  }
   if (!json?.data?.shopifyqlQuery) {
-    const msg = json?.errors?.[0]?.message || 'No shopifyqlQuery in response';
-    return { count: null, error: String(msg).slice(0, 120) };
+    const msg = 'No shopifyqlQuery in response';
+    console.error('[config-status] Shopify sessions:', msg, String(text).slice(0, 500));
+    return { count: null, error: msg };
   }
   const q = json.data.shopifyqlQuery;
   if (q.parseErrors?.length) {
-    return { count: null, error: (q.parseErrors[0] || 'Parse error').slice(0, 120) };
+    const msg = (q.parseErrors[0] || 'Parse error').slice(0, 120);
+    return { count: null, error: msg };
   }
   const table = q.tableData;
   if (!table?.rows?.length) return { count: 0, error: '' };
@@ -210,7 +224,11 @@ async function configStatus(req, res, next) {
             : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      health.shopifySessionsTodayNote = (err && err.message ? String(err.message).slice(0, 80) : 'Error loading Shopify sessions') + '. Check server logs.';
+    }
+  } else if (health.shopifySessionsTodayNote === undefined || health.shopifySessionsTodayNote === '') {
+    health.shopifySessionsTodayNote = 'Open the app with ?shop=yourstore.myshopify.com in the URL, or set ALLOWED_SHOP_DOMAIN (or SHOP_DOMAIN) in Railway, so Config can fetch Shopify sessions.';
   }
 
   if (hasPurchases) {
