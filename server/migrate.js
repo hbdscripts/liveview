@@ -14,6 +14,7 @@ const { up: up008 } = require('./migrations/008_purchases');
 const { up: up009 } = require('./migrations/009_cf_traffic');
 const { up: up010 } = require('./migrations/010_referrer');
 const { up: up011 } = require('./migrations/011_entry_url');
+const { up: up012 } = require('./migrations/012_bot_block_counts');
 
 async function main() {
   const db = getDb();
@@ -28,6 +29,7 @@ async function main() {
   await up009();
   await up010();
   await up011();
+  await up012();
   console.log('Migrations complete.');
   db.close?.();
   process.exit(0);

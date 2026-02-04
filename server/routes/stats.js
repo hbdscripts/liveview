@@ -1,14 +1,12 @@
 /**
  * GET /api/stats – sales + conversion ranges (UK midnight) and country stats.
- * Query: ?traffic=human for human-only (exclude cf_known_bot=1). Default uses TRAFFIC_MODE env.
+ * Human-only (exclude cf_known_bot=1); bots are blocked at the edge.
  */
 
-const config = require('../config');
 const store = require('../store');
 
 function getStats(req, res, next) {
-  const traffic = (req.query.traffic || '').toString().trim().toLowerCase();
-  const trafficMode = traffic === 'human' ? 'human_only' : (traffic === 'all' ? 'all' : config.trafficMode);
+  const trafficMode = 'human_only';
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   store.getStats({ trafficMode })

@@ -1,10 +1,51 @@
 /**
  * GET /api/config-status – non-sensitive config for admin panel.
+ * Optional ?shop=xxx.myshopify.com to fetch Shopify sessions (today); otherwise uses ALLOWED_SHOP_DOMAIN.
  */
 
 const config = require('../config');
 const store = require('../store');
 const { getDb, isPostgres } = require('../db');
+
+const GRAPHQL_API_VERSION = '2025-10'; // shopifyqlQuery available from 2025-10
+
+async function fetchShopifySessionsToday(shop, accessToken) {
+  const query = 'FROM sessions SHOW sessions DURING today';
+  const graphqlUrl = `https://${shop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
+  const res = await fetch(graphqlUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': accessToken,
+    },
+    body: JSON.stringify({
+      query: `query($q: String!) { shopifyqlQuery(query: $q) { tableData { columns { name } rows } parseErrors } }`,
+      variables: { q: query },
+    }),
+  });
+  const text = await res.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch (_) {
+    return null;
+  }
+  if (!res.ok || !json?.data?.shopifyqlQuery) return null;
+  const q = json.data.shopifyqlQuery;
+  if (q.parseErrors?.length) return null;
+  const table = q.tableData;
+  if (!table?.rows?.length) return 0;
+  const columns = (table.columns || []).map((c) => c.name);
+  const sessionsIdx = columns.findIndex((n) => String(n).toLowerCase().includes('sessions'));
+  if (sessionsIdx === -1) return null;
+  let total = 0;
+  for (const row of table.rows) {
+    const val = Array.isArray(row) ? row[sessionsIdx] : row[columns[sessionsIdx]];
+    const n = typeof val === 'number' ? val : parseInt(String(val || '').replace(/,/g, ''), 10);
+    if (Number.isFinite(n)) total += n;
+  }
+  return total;
+}
 
 async function configStatus(req, res, next) {
   const hasShopify = !!(config.shopify.apiKey && config.shopify.apiSecret);
@@ -53,7 +94,13 @@ async function configStatus(req, res, next) {
     sessions: {},
     purchases: {},
     events: {},
-    cfKnownBot: {},
+    botsLast24h: 0,
+    humanLast24h: 0,
+    shopifySessionsToday: null,
+    sessionsToday: null,
+    botsToday: 0,
+    humanToday: 0,
+    botsBlockedAtEdge: 0, // from Worker callback POST /api/bot-blocked
   };
 
   const hasSessions = await tableExists('sessions');
@@ -72,6 +119,10 @@ async function configStatus(req, res, next) {
       health.sessions.last24h = num(r24?.n) ?? 0;
     } catch (_) {}
     try {
+      const rt = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [todayBounds.start]);
+      health.sessionsToday = num(rt?.n) ?? 0;
+    } catch (_) {}
+    try {
       const ry = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?', [yesterdayBounds.start, yesterdayBounds.end]);
       health.sessions.yesterday = num(ry?.n) ?? 0;
     } catch (_) {}
@@ -88,11 +139,22 @@ async function configStatus(req, res, next) {
         FROM sessions
         WHERE started_at >= ?
       `, [last24hStart]);
-      health.cfKnownBot = {
-        known_bot: num(cf?.known_bot) ?? 0,
-        known_human: num(cf?.known_human) ?? 0,
-        unknown: num(cf?.unknown) ?? 0,
-      };
+      const kb = num(cf?.known_bot) ?? 0;
+      const kh = num(cf?.known_human) ?? 0;
+      const ku = num(cf?.unknown) ?? 0;
+      health.botsLast24h = kb;
+      health.humanLast24h = kh + ku;
+    } catch (_) {}
+    try {
+      const cfToday = await db.get(`
+        SELECT
+          SUM(CASE WHEN cf_known_bot = 1 THEN 1 ELSE 0 END) AS known_bot,
+          SUM(CASE WHEN cf_known_bot = 0 OR cf_known_bot IS NULL THEN 1 ELSE 0 END) AS human
+        FROM sessions
+        WHERE started_at >= ?
+      `, [todayBounds.start]);
+      health.botsToday = num(cfToday?.known_bot) ?? 0;
+      health.humanToday = num(cfToday?.human) ?? 0;
     } catch (_) {}
   }
 
@@ -100,6 +162,23 @@ async function configStatus(req, res, next) {
     try {
       const r = await db.get('SELECT COUNT(*) AS n FROM events WHERE type = ? AND ts >= ?', ['checkout_completed', last24hStart]);
       health.events.checkoutCompletedLast24h = num(r?.n) ?? 0;
+    } catch (_) {}
+  }
+
+  try {
+    const todayStr = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone: store.resolveAdminTimeZone() });
+    const blockRow = await db.get('SELECT "count" AS n FROM bot_block_counts WHERE date = ?', [todayStr]);
+    if (blockRow != null) health.botsBlockedAtEdge = num(blockRow.n) ?? 0;
+  } catch (_) {}
+
+  const shop = (req.query.shop || config.allowedShopDomain || config.shopDomain || '').trim().toLowerCase();
+  if (shop && shop.endsWith('.myshopify.com')) {
+    try {
+      const row = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+      if (row?.access_token) {
+        const n = await fetchShopifySessionsToday(shop, row.access_token);
+        if (typeof n === 'number') health.shopifySessionsToday = n;
+      }
     } catch (_) {}
   }
 
@@ -126,7 +205,6 @@ async function configStatus(req, res, next) {
     ingestPublicUrl: config.ingestPublicUrl || '',
     trackingEnabled,
     adminTimezone: config.adminTimezone,
-    trafficMode: config.trafficMode,
     sessionRetentionDays: config.sessionRetentionDays,
     db: { engine: dbEngine, configured: isPostgres() },
     sentry: { configured: !!(config.sentryDsn && config.sentryDsn.trim()) },

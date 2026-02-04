@@ -1,5 +1,9 @@
 # Deploy: wrangler deploy (from workers/ or with name workers/ingest-enrich.js)
 # Set ORIGIN_URL in Cloudflare Worker settings (e.g. https://your-app.up.railway.app)
+#
+# To filter all bots (Google, Bing, Merchant Center, etc.): set BLOCK_KNOWN_BOTS = "1"
+# AND add a Request Header Transform Rule that sets x-lv-client-bot = 1 when cf.client.bot eq true.
+# See docs/CLOUDFLARE_INGEST_SETUP.md.
 
 name = "liveview-ingest-enrich"
 main = "ingest-enrich.js"
@@ -10,4 +14,5 @@ compatibility_date = "2024-01-01"
 
 [vars]
 # ORIGIN_URL must be set in Worker Settings -> Variables (secret or plain)
-# BLOCK_KNOWN_BOTS = "1" to block known/verified bots (Google, Bing, etc.) at the edge so they never hit your app or DB
+# BLOCK_KNOWN_BOTS = "1" to block known/verified bots (Google, Bing, Merchant Center, etc.) at the edge
+# INGEST_SECRET = same value as your app's INGEST_SECRET so the Worker can POST to /api/bot-blocked and the config panel shows "Bots blocked: X"

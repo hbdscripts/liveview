@@ -167,11 +167,6 @@
 .live-view-spy-icon svg { width: 15px; height: 15px; }
 .dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
-.traffic-toggle { margin-left: 0.75rem; font-size: 0.8125rem; }
-.traffic-toggle .traffic-link { color: var(--muted); text-decoration: none; }
-.traffic-toggle .traffic-link:hover { color: var(--accent); }
-.traffic-toggle .traffic-link.active { color: var(--accent); font-weight: 600; }
-.traffic-toggle .muted { margin: 0 0.25rem; color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 #audio-mute-btn:hover { color: var(--accent); }
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
@@ -264,11 +259,6 @@
         <option value="3d">Last 3 Days</option>
         <option value="7d">Last 7 Days</option>
       </select>
-      <span class="traffic-toggle" id="traffic-toggle" aria-label="Traffic filter">
-        <a href="#" id="traffic-all" class="traffic-link">All</a>
-        <span class="muted">|</span>
-        <a href="#" id="traffic-human" class="traffic-link">Human</a>
-      </span>
     </div>
     <div class="dashboard-top-bar-center">
       <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=240" alt="HBD" width="60" height="auto" loading="lazy">
@@ -539,13 +529,6 @@
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
-    let trafficMode = (function() {
-      var p = new URLSearchParams(window.location.search);
-      var t = (p.get('traffic') || '').toLowerCase();
-      if (t === 'human') return 'human';
-      if (t === 'all') return 'all';
-      return 'all';
-    })();
     let nextStatsAt = 0;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
@@ -1127,7 +1110,6 @@
     function fetchWorstProducts() {
       fetch(
         API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
-          '&traffic=' + encodeURIComponent(trafficMode || 'all') +
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)),
         { credentials: 'same-origin' }
@@ -1441,9 +1423,8 @@
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const forRange = breakdown[dateRange];
       const forYesterday = breakdown.yesterday;
-      // Show count that matches traffic filter: Human = human_sessions, All = total_sessions.
-      const main = forRange != null ? (trafficMode === 'human' ? forRange.human_sessions : forRange.total_sessions) : null;
-      const yesterday = forYesterday != null ? (trafficMode === 'human' ? forYesterday.human_sessions : forYesterday.total_sessions) : null;
+      const main = forRange != null ? forRange.human_sessions : null;
+      const yesterday = forYesterday != null ? forYesterday.human_sessions : null;
       const sessionsRangeEl = document.getElementById('sessions-range');
       const sessionsYesterdayEl = document.getElementById('sessions-yesterday');
       if (sessionsRangeEl) sessionsRangeEl.textContent = formatSessions(main);
@@ -1568,7 +1549,7 @@
       if (overlay) overlay.style.display = 'flex';
       // Start Shopify sales fetch early so Sales doesn't flash a DB value first.
       if (dateRange === 'today') fetchShopifySales();
-      var url = API + '/api/stats?traffic=' + encodeURIComponent(trafficMode || 'all');
+      var url = API + '/api/stats';
       url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {
@@ -1747,7 +1728,15 @@
       });
     }
 
-    fetch(API + '/api/config-status')
+    fetch((function() {
+      var url = API + '/api/config-status';
+      try {
+        var shop = getShopParam();
+        if (!shop && typeof shopForSalesFallback === 'string' && shopForSalesFallback) shop = shopForSalesFallback;
+        if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
+      } catch (_) {}
+      return url;
+    })())
       .then(r => r.json())
       .then(c => {
         function statusRow(ok, label) {
@@ -1765,15 +1754,29 @@
         html += valueRow('Ingest URL', c.ingestUrl || '');
         if (c.ingestPublicUrl) html += valueRow('Ingest Public URL', c.ingestPublicUrl);
         html += valueRow('Tracking', c.trackingEnabled ? 'ON' : 'OFF');
-        if (c.trafficMode) html += valueRow('Traffic mode (default)', c.trafficMode);
         if (c.sessionRetentionDays != null) html += valueRow('Session retention (days)', c.sessionRetentionDays);
         html += statusRow(!!c.sentry?.configured, 'Sentry');
 
         const h = c.health || null;
         if (h) {
-          html += '<div class="config-row"><strong>Data health (last 24h)</strong></div>';
+          html += '<div class="config-row"><strong>Today (same timezone as Shopify)</strong></div>';
+          html += '<div class="config-row" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.5rem;">Pixel runs via Cloudflare; bots blocked at the edge never reach us.</div>';
+          if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (ours)', formatSessions(h.sessionsToday));
+          if (typeof h.shopifySessionsToday === 'number') {
+            html += valueRow('Shopify Sessions', formatSessions(h.shopifySessionsToday));
+            if (typeof h.sessionsToday === 'number') {
+              const blocked = Math.max(0, h.shopifySessionsToday - h.sessionsToday);
+              html += valueRow('Bots blocked (est.)', formatSessions(blocked));
+            }
+          } else {
+            html += valueRow('Shopify Sessions', '\u2014');
+          }
+          if (typeof h.botsToday === 'number') html += valueRow('Bots (tagged)', formatSessions(h.botsToday));
+          if (typeof h.humanToday === 'number') html += valueRow('Human', formatSessions(h.humanToday));
+          if (typeof h.botsBlockedAtEdge === 'number') html += valueRow('Bots blocked', formatSessions(h.botsBlockedAtEdge));
+
+          html += '<div class="config-row" style="margin-top:0.75rem;"><strong>Data health (last 24h)</strong></div>';
           if (h.sessions) {
-            if (typeof h.sessions.last24h === 'number') html += valueRow('Sessions', formatSessions(h.sessions.last24h));
             if (typeof h.sessions.purchasedLast24h === 'number') html += valueRow('Sessions marked purchased', formatSessions(h.sessions.purchasedLast24h));
             if (typeof h.sessions.max_last_seen === 'number') html += valueRow('Last session seen', formatTs(h.sessions.max_last_seen));
           }
@@ -1781,15 +1784,6 @@
           if (h.purchases) {
             if (typeof h.purchases.last24h === 'number') html += valueRow('Purchases rows', formatSessions(h.purchases.last24h));
             if (typeof h.purchases.max_purchased_at === 'number') html += valueRow('Last purchase', formatTs(h.purchases.max_purchased_at));
-          }
-          if (h.cfKnownBot && (typeof h.cfKnownBot.known_bot === 'number' || typeof h.cfKnownBot.unknown === 'number')) {
-            const kb = Number(h.cfKnownBot.known_bot || 0);
-            const kh = Number(h.cfKnownBot.known_human || 0);
-            const ku = Number(h.cfKnownBot.unknown || 0);
-            html += valueRow('CF bot tagging', 'bots=' + kb + ', human=' + kh + ', unknown=' + ku);
-            if (kb === 0 && (kh + ku) > 0) {
-              html += '<div class="config-row missing">No bots detected. If Human/All looks identical, ensure the Cloudflare rule sets <code>x-lv-client-bot</code> (see docs/CLOUDFLARE_INGEST_SETUP.md Step 4).</div>';
-            }
           }
           if (h.sessions && h.events && h.purchases && typeof h.events.checkoutCompletedLast24h === 'number' && typeof h.purchases.last24h === 'number') {
             if (h.events.checkoutCompletedLast24h > 0 && h.purchases.last24h === 0) {
@@ -1879,39 +1873,6 @@
           fetchBestVariants();
         });
       }
-      (function initTrafficToggle() {
-        const allLink = document.getElementById('traffic-all');
-        const humanLink = document.getElementById('traffic-human');
-        function setActive() {
-          if (allLink) allLink.classList.toggle('active', trafficMode === 'all');
-          if (humanLink) humanLink.classList.toggle('active', trafficMode === 'human');
-        }
-        setActive();
-        if (allLink) allLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          trafficMode = 'all';
-          countryPage = 1;
-          aovPage = 1;
-          worstProductsPage = 1;
-          setActive();
-          var u = new URL(window.location.href);
-          u.searchParams.set('traffic', 'all');
-          history.replaceState(null, '', u.toString());
-          fetchStats();
-        });
-        if (humanLink) humanLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          trafficMode = 'human';
-          countryPage = 1;
-          aovPage = 1;
-          worstProductsPage = 1;
-          setActive();
-          var u = new URL(window.location.href);
-          u.searchParams.set('traffic', 'human');
-          history.replaceState(null, '', u.toString());
-          fetchStats();
-        });
-      })();
       (function initMainTabs() {
         const TAB_KEY = 'livevisitors-main-tab';
         const tabSpy = document.getElementById('tab-spy');

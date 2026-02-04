@@ -66,6 +66,7 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/settings/tracking', settingsRouter.getTracking);
 app.put('/api/settings/tracking', express.json(), settingsRouter.putTracking);
 app.get('/api/config-status', configStatusRouter);
+app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.post('/api/pixel/ensure', pixelRouter.ensurePixel);

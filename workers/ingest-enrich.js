@@ -1,14 +1,18 @@
 /**
- * Cloudflare Worker: enrich ingest requests with CF metadata (no bot score).
+ * Cloudflare Worker: enrich ingest requests with CF metadata; optionally block all known bots at the edge.
  * Deploy on the ingest hostname/path so POST /api/ingest goes through CF.
  *
  * Env vars:
  * - ORIGIN_URL (required): e.g. https://your-app.up.railway.app
- * - BLOCK_KNOWN_BOTS (optional): "1" to block known/verified bots at the edge (Google, Bing, etc. never reach your app or DB)
+ * - BLOCK_KNOWN_BOTS (optional): "1" to block known/verified bots (Google, Bing, Merchant Center, etc.) at the edge so they never reach your app or DB.
  *
- * Business-safe approach:
- * - Prefer bot signal via a Cloudflare rule injecting header x-lv-client-bot from cf.client.bot.
- * - Use request.cf.botManagement?.verifiedBot and verifiedBotCategory only as best-effort secondary signals (may be empty).
+ * To filter all bots you must also add a Cloudflare Request Header Transform Rule that sets
+ * x-lv-client-bot = 1 when cf.client.bot eq true (and optionally scope to path /api/ingest).
+ * Without that rule, request.cf.botManagement may be empty on some plans. See docs/CLOUDFLARE_INGEST_SETUP.md.
+ *
+ * Bot signal (in order of use):
+ * 1. Header x-lv-client-bot (set by Transform Rule from cf.client.bot) – covers verified crawlers.
+ * 2. request.cf.botManagement.verifiedBot and verifiedBotCategory – best-effort, may be empty.
  */
 
 function str(v) {
@@ -101,11 +105,21 @@ export default {
 
     // Optional: block known bots at ingest so they never enter your DB.
     if (str(env.BLOCK_KNOWN_BOTS).trim() === '1' && knownBot) {
+      const botBlockSecret = str(env.INGEST_SECRET).trim();
+      if (botBlockSecret) {
+        ctx.waitUntil(
+          fetch(originUrl.replace(/\/$/, '') + '/api/bot-blocked', {
+            method: 'POST',
+            headers: { 'X-Internal-Secret': botBlockSecret },
+          }).catch(() => {})
+        );
+      }
       return new Response(null, {
         status: 204,
         headers: {
           'access-control-allow-origin': '*',
           'vary': 'origin',
+          'x-lv-blocked': 'bot', // visible in Workers Logs / Tail so you can see blocks
         },
       });
     }

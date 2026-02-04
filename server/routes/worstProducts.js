@@ -1,5 +1,5 @@
 /**
- * GET /api/worst-products?range=today|yesterday|3d|7d&traffic=all|human&page=1&pageSize=10
+ * GET /api/worst-products?range=today|yesterday|3d|7d&page=1&pageSize=10
  * "Worst products": products with meaningful traffic that have the lowest conversion
  * (underperformers: lots of landings, few or no sales).
  *
@@ -10,7 +10,6 @@
  * - Sort: worst conversion first, then most clicks (so high-traffic poor converters appear first).
  */
 
-const config = require('../config');
 const store = require('../store');
 const { getDb } = require('../db');
 const fx = require('../fx');
@@ -40,19 +39,12 @@ function handleFromPath(path) {
   return m ? normalizeHandle(m[1]) : null;
 }
 
-function trafficToMode(traffic) {
-  const t = (traffic || '').toString().trim().toLowerCase();
-  if (t === 'human') return 'human_only';
-  if (t === 'all') return 'all';
-  return config.trafficMode || 'all';
-}
-
 async function getWorstProducts(req, res) {
   let range = (req.query.range || 'today').toString().trim().toLowerCase();
   if (!RANGE_KEYS.includes(range)) range = 'today';
 
   const pageSize = clampInt(req.query.pageSize ?? req.query.limit, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
-  const trafficMode = trafficToMode(req.query.traffic);
+  const trafficMode = 'human_only';
 
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();

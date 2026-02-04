@@ -57,7 +57,23 @@
 
 ## Scopes
 
-In `.env` / Railway: `SHOPIFY_SCOPES=read_products,read_orders,write_pixels,read_customer_events` (write_pixels + read_customer_events needed for pixel API). Must match `shopify.app.toml` and app configuration in Partners.
+In `.env` / Railway: `SHOPIFY_SCOPES=read_products,read_orders,write_pixels,read_customer_events,read_reports` (write_pixels + read_customer_events for pixel API; read_reports for config panel “Shopify Sessions” today via ShopifyQL). Must match `shopify.app.toml` and app configuration in Partners. After adding `read_reports`, re-install or re-authorize the app so the store grants the new scope.
+
+---
+
+## Traffic and bots (Cloudflare at the edge)
+
+- **Flow:** Storefront → Cloudflare (blocks bots) → pixel / ingest. So traffic that reaches the pixel is already “human-ish”; blocked bots never hit the ingest and never create sessions in the DB.
+- **To filter all bots (Google, Bing, Merchant Center, etc.):** Set Worker env `BLOCK_KNOWN_BOTS=1` and add a Cloudflare **Request Header Transform Rule** that sets `x-lv-client-bot = 1` when `cf.client.bot eq true`. See **docs/CLOUDFLARE_INGEST_SETUP.md** for step-by-step.
+- **Our data = Shopify sessions minus bots blocked at the edge.** The dashboard always uses “human” data (we no longer show All vs Human); all stats are based on sessions we recorded (i.e. traffic that reached the pixel).
+- **How many bots were blocked?** You can’t count them from our DB (they never reached us). You need **Shopify Sessions** (same time range, e.g. since midnight UK) minus **Our sessions** for that range. In the config panel (click “i”): when “Shopify Sessions” is available, we show **Bots blocked at edge (est.)** = Shopify Sessions − Sessions today. Until Shopify Sessions is wired (Shopify doesn’t expose session count via public API), that estimate shows “—” and the panel explains: “Bots blocked = Shopify Sessions − Ours (same range).”
+- **Config panel (Data health):**
+  - **Sessions (ours)** = sessions we recorded (last 24h). This is effectively “human” traffic that reached the pixel.
+  - **Sessions today (since midnight UK)** = our count for the same range as Shopify (for comparison).
+  - **Shopify Sessions (since midnight UK)** = what Shopify recorded (— until we have an API or manual feed).
+  - **Bots blocked at edge (est.)** = Shopify Sessions − Sessions today when both are available.
+  - **Bots (tagged in DB)** = sessions that *did* reach the pixel but were flagged as bot (e.g. by `x-lv-client-bot`). With Cloudflare blocking at the edge, this is usually 0 or low.
+  - **Human (used for stats)** = sessions we use for all dashboard stats (cf_known_bot 0 or null); with edge blocking this should be close to “Sessions (ours)”.
 
 ---
 
