@@ -1,7 +1,7 @@
 /**
  * GET /api/shopify-sales?shop=xxx.myshopify.com
- * Returns today's total sales and order count from Shopify Orders API (since midnight in ADMIN_TIMEZONE)
- * so the dashboard Sales figure matches Shopify.
+ * Returns today's total sales and order count from Shopify Orders API (since midnight in ADMIN_TIMEZONE).
+ * Uses financial_status=paid only so figures match Shopify dashboard Total sales and Orders.
  */
 
 const config = require('../config');
@@ -32,8 +32,8 @@ async function getShopifySalesToday(req, res) {
 
   let totalSales = 0;
   let orderCount = 0;
-  // Use `fields` to reduce payload and speed up "today sales" fetches.
-  let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250&fields=total_price`;
+  // Only paid orders so Total sales and Orders match Shopify dashboard (excludes pending, refunded, etc.).
+  let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&financial_status=paid&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250&fields=total_price`;
 
   try {
     while (nextPageUrl) {
