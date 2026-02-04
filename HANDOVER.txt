@@ -204,3 +204,4 @@ Performance direction:
 - Added derived traffic fields to `sessions` via migration 021
 - Added `/api/traffic` + `/api/traffic-prefs`
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
+- Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)

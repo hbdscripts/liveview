@@ -703,7 +703,8 @@
     let trafficRefreshInFlight = null;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
-    let lastSaleAt = null; // ms; when we last knew a sale happened (from sound trigger or config-status)
+    let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
+    let lastSaleAt = null; // ms; authoritative timestamp of most recent sale we know about (Shopify truth preferred)
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let shopifySalesToday = null;
     let shopifyOrderCountToday = null;
@@ -809,6 +810,16 @@
       if (!el) return;
       if (lastSaleAt == null) { el.textContent = '\u2014'; return; }
       el.textContent = formatRelative(lastSaleAt);
+    }
+
+    function setLastSaleAt(ms) {
+      const n = toMs(ms);
+      if (n == null) return;
+      const cur = lastSaleAt == null ? null : toMs(lastSaleAt);
+      if (cur == null || n > cur) {
+        lastSaleAt = n;
+        updateLastSaleAgo();
+      }
     }
 
     function formatDuration(startMs) {
@@ -1765,17 +1776,20 @@
     }
 
     function renderStats(data) {
-      const prevConverted = (statsCache.convertedCount || {}).today;
       statsCache = data || {};
       const conv = statsCache.convertedCount || {};
-      if (typeof conv.today === 'number' && typeof lastConvertedCountToday === 'number' && conv.today > lastConvertedCountToday && !saleMuted && saleAudio) {
-        saleAudio.currentTime = 0;
-        saleAudio.play().catch(function() {});
-        lastSaleAt = Date.now();
-        if (typeof updateLastSaleAgo === 'function') updateLastSaleAgo();
+      const haveToday = (typeof conv.today === 'number' && Number.isFinite(conv.today));
+      if (haveToday) {
+        const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
+        if (increased && !saleMuted && saleAudio) {
+          saleAudio.currentTime = 0;
+          saleAudio.play().catch(function() {});
+          // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
+          try { refreshConfigStatus(); } catch (_) {}
+        }
+        lastConvertedCountToday = conv.today;
+        hasSeenConvertedCountToday = true;
       }
-      // Only update when we have real data so we don't reset to 0 on error/empty and re-trigger sound next load
-      if (typeof conv.today === 'number') lastConvertedCountToday = conv.today;
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderAov(statsCache);
       renderCountry(statsCache);
@@ -2424,9 +2438,11 @@
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
 
+          // Footer: keep "Last sale" accurate. Prefer Shopify truth order.created_at, else evidence last checkout_completed.
           if (truthToday && typeof truthToday.lastOrderCreatedAt === 'number') {
-            lastSaleAt = truthToday.lastOrderCreatedAt;
-            if (typeof updateLastSaleAgo === 'function') updateLastSaleAgo();
+            setLastSaleAt(truthToday.lastOrderCreatedAt);
+          } else if (evidenceToday && typeof evidenceToday.lastOccurredAt === 'number') {
+            setLastSaleAt(evidenceToday.lastOccurredAt);
           }
           return c;
         })
@@ -2740,10 +2756,14 @@
     const es = new EventSource(API + '/api/stream');
     es.onmessage = (e) => {
       try {
-        if (activeMainTab !== 'spy' || dateRange !== 'live') return;
         const msg = JSON.parse(e.data);
         if (msg.type === 'session_update' && msg.session) {
           const session = msg.session;
+          // Keep footer "Last sale" correct even when not on Live tab.
+          if (session && session.has_purchased && session.purchased_at != null) {
+            setLastSaleAt(session.purchased_at);
+          }
+          if (activeMainTab !== 'spy' || dateRange !== 'live') return;
           const lastSeen = session.last_seen != null ? Number(session.last_seen) : 0;
           const startedAt = session.started_at != null ? Number(session.started_at) : 0;
           const withinActive = lastSeen >= Date.now() - ACTIVE_WINDOW_MS;
@@ -2779,6 +2799,9 @@
                 saleAudio.currentTime = 0;
                 saleAudio.play().catch(function() {});
               }
+              // Update footer immediately when a sale happens.
+              setLastSaleAt(session.purchased_at || session.last_seen || Date.now());
+              try { refreshConfigStatus(); } catch (_) {}
             }
             renderTable();
             updateKpis();
