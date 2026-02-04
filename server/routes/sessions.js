@@ -25,9 +25,19 @@ function list(req, res, next) {
     return;
   }
   const filter = req.query.filter || 'active';
+  const countOnly = req.query.countOnly === '1' || req.query.countOnly === 'true';
   const allowed = ['today', 'active', 'recent', 'abandoned', 'converted', 'all'];
   if (!allowed.includes(filter)) {
     return res.status(400).json({ error: 'Invalid filter' });
+  }
+  if (filter === 'active' && countOnly) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return store.getActiveSessionCount()
+      .then(count => res.json({ count }))
+      .catch(err => {
+        console.error(err);
+        res.status(500).json({ error: 'Internal error' });
+      });
   }
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   store.listSessions(filter)

@@ -590,6 +590,7 @@
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let lastSaleAt = null; // ms; when we last knew a sale happened (from sound trigger or config-status)
+    let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let shopifySalesToday = null;
     let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
@@ -1777,15 +1778,33 @@
       return liveRefreshInFlight;
     }
 
+    function fetchOnlineCount() {
+      fetch(API + '/api/sessions?filter=active&countOnly=1&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (data != null && typeof data.count === 'number') {
+            lastOnlineCount = data.count;
+            updateKpis();
+          }
+        })
+        .catch(function() {});
+    }
+
     function updateKpis() {
       const el = document.getElementById('online-count');
       if (!el) return;
-      if (dateRange !== 'live') {
-        el.textContent = '\u2014';
+      if (dateRange === 'live') {
+        const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
+        el.textContent = active;
         return;
       }
-      const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
-      el.textContent = active;
+      // Online is real people online right now; show count regardless of date range (Today, Yesterday, etc.)
+      if (lastOnlineCount != null) {
+        el.textContent = lastOnlineCount;
+      } else {
+        el.textContent = '\u2026';
+        fetchOnlineCount();
+      }
     }
 
     function cfSection(title, value) {
@@ -2097,6 +2116,7 @@
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
+          if (dateRange !== 'live') lastOnlineCount = null;
           countryPage = 1;
           aovPage = 1;
           bestSellersPage = 1;
@@ -2208,6 +2228,11 @@
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
+    // Online count: when not on Live, refresh every 60s so Online always shows real people online
+    setInterval(function() {
+      if (activeMainTab !== 'spy' || dateRange === 'live') return;
+      fetchOnlineCount();
+    }, LIVE_REFRESH_MS);
     // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
     setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange !== 'live') return;

@@ -474,6 +474,18 @@ async function listSessions(filter) {
   });
 }
 
+/** Count of sessions currently "online" (active window: last_seen and started_at within config windows). Used for Online display regardless of date range. */
+async function getActiveSessionCount() {
+  const db = getDb();
+  const now = Date.now();
+  const activeCutoff = now - config.activeWindowMinutes * 60 * 1000;
+  const arrivedCutoff = now - config.liveArrivedWindowMinutes * 60 * 1000;
+  const row = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= $1 AND started_at >= $2', [activeCutoff, arrivedCutoff])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions WHERE last_seen >= ? AND started_at >= ?', [activeCutoff, arrivedCutoff]);
+  return row ? Number(row.n) || 0 : 0;
+}
+
 async function getSessionEvents(sessionId, limit = 20) {
   const db = getDb();
   const rows = await db.all(
@@ -1062,6 +1074,7 @@ module.exports = {
   insertEvent,
   listSessions,
   listSessionsByRange,
+  getActiveSessionCount,
   getSessionEvents,
   getStats,
   getRangeBounds,
