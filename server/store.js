@@ -370,11 +370,12 @@ function computePurchaseKey(payload, sessionId) {
   // and again after the order is created. Both events share the same checkout_token.
   if (token) return 'token:' + token;
   if (orderId) return 'order:' + orderId;
+  // 15-min bucket so multiple checkout_completed events for same order (e.g. thank-you reload) dedupe
   const ts = payload.ts || Date.now();
-  const roundMin = Math.floor(ts / 60000);
+  const round15Min = Math.floor(ts / (15 * 60000));
   const cur = (payload.order_currency || '').toString();
   const tot = payload.order_total != null ? String(payload.order_total) : '';
-  const hash = crypto.createHash('sha256').update(cur + '|' + tot + '|' + roundMin + '|' + sessionId).digest('hex').slice(0, 32);
+  const hash = crypto.createHash('sha256').update(cur + '|' + tot + '|' + round15Min + '|' + sessionId).digest('hex').slice(0, 32);
   return 'h:' + hash;
 }
 
@@ -400,6 +401,16 @@ async function insertPurchase(payload, sessionId, countryCode) {
       INSERT OR IGNORE INTO purchases (purchase_key, session_id, visitor_id, purchased_at, order_total, order_currency, order_id, checkout_token, country_code)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
+  }
+  // Avoid double-counting: migration 008 backfilled legacy:session_id for sessions with has_purchased=1.
+  // When we later get a real checkout_completed with token/order for that session, remove the legacy row.
+  if ((purchaseKey.startsWith('token:') || purchaseKey.startsWith('order:')) && sessionId) {
+    const legacyKey = 'legacy:' + sessionId;
+    if (config.dbUrl) {
+      await db.run('DELETE FROM purchases WHERE purchase_key = $1', [legacyKey]);
+    } else {
+      await db.run('DELETE FROM purchases WHERE purchase_key = ?', [legacyKey]);
+    }
   }
 }
 
