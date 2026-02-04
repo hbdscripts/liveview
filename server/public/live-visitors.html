@@ -1670,10 +1670,7 @@
       const bounceVal = bounceMap[kpiRange];
       if (kpiRange === 'today') {
         if (typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
-        if (typeof shopifySessionsToday === 'number') sessionsVal = shopifySessionsToday;
-        if (typeof shopifySessionsToday === 'number' && shopifySessionsToday > 0 && typeof shopifyOrderCountToday === 'number') {
-          convVal = Math.round((shopifyOrderCountToday / shopifySessionsToday) * 1000) / 10;
-        }
+        // Sessions and CR always use our (human-only) data so they reflect bot filtering: ours < Shopify, CR higher
         if (typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0 && typeof shopifySalesToday === 'number') {
           aovVal = Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100;
         }
