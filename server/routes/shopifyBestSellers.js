@@ -59,13 +59,17 @@ async function getShopifyBestSellers(req, res) {
           const first = errJson?.errors && (errJson.errors[0] || errJson.errors);
           if (typeof first === 'string') message = first;
           else if (first?.message) message = first.message;
+          if ((!message || message === 'Shopify API error') && errJson) {
+            if (typeof errJson.error === 'string') message = errJson.error;
+            else if (typeof errJson.message === 'string') message = errJson.message;
+          }
         } catch (_) {}
         const hint =
           orderRes.status === 429
             ? 'Shopify rate limit. Try again in a few minutes.'
             : orderRes.status === 401 || orderRes.status === 403
               ? hasReadOrders
-                ? 'Token includes read_orders but Shopify denied access. See error above; try re-authorizing the app in Shopify Admin (Apps → your app → open) or check app permissions in Partners.'
+                ? 'Token includes read_orders but Shopify denied access. The message above is from Shopify (e.g. Protected Customer Data or access denied). In Shopify Developer or Partners: check your app’s API access / scopes; enable Protected Customer Data if required. In the store: Apps → your app → open to re-authorize.'
                 : 'Token may be missing or lack read_orders scope. Add read_orders to SHOPIFY_SCOPES, redeploy, then uninstall and reinstall the app from Shopify Admin.'
               : undefined;
         return res.status(502).json({
