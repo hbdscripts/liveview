@@ -33,14 +33,22 @@ function scopesSatisfy(grantedScopes, requiredScopes) {
 }
 
 function verifyHmac(query) {
-  const { hmac, ...rest } = query;
+  const q = (query && typeof query === 'object') ? query : {};
+  const { hmac, ...rest } = q;
   if (!hmac || !apiSecret) return false;
   const message = Object.keys(rest)
     .sort()
     .map((k) => `${k}=${rest[k]}`)
     .join('&');
   const digest = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(digest, 'hex'));
+  try {
+    const a = Buffer.from(String(hmac), 'hex');
+    const b = Buffer.from(digest, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch (_) {
+    return false;
+  }
 }
 
 function buildAuthorizeUrl(shop, state, redirectUri) {
@@ -207,7 +215,7 @@ async function isAccessTokenValid(shop, accessToken) {
   }
 }
 
-/** GET / - App URL: if shop + hmac + timestamp (no code), redirect to OAuth only when no session; else show dashboard in iframe */
+/** GET / - App URL: if shop + hmac + timestamp (no code), redirect to OAuth only when no session; else render dashboard in iframe */
 async function handleAppUrl(req, res, next) {
   const { shop, hmac, timestamp, code, host } = req.query;
   if (!apiKey || !apiSecret) {
@@ -217,26 +225,33 @@ async function handleAppUrl(req, res, next) {
     if (!verifyHmac(req.query)) {
       return res.status(400).send('Invalid HMAC.');
     }
+    const shopNorm = String(shop).trim().toLowerCase();
     try {
       // Already installed: we have a token for this shop → show app in iframe (no OAuth redirect).
       const db = getDb();
-      const session = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
+      const session = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shopNorm]);
       if (session && session.access_token) {
         const scopeOk = scopesSatisfy(session.scope || '', scopes || '');
         if (!scopeOk) {
-          await writeAudit('system', 'shopify_token_missing_scopes', { shop, have: session.scope || '', need: scopes || '' });
+          await writeAudit('system', 'shopify_token_missing_scopes', { shop: shopNorm, have: session.scope || '', need: scopes || '' });
         } else {
-          const tokenOk = await isAccessTokenValid(shop, session.access_token);
+          const tokenOk = await isAccessTokenValid(shopNorm, session.access_token);
           if (tokenOk) {
-            return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+            // Important: do NOT redirect internally to /app/live-visitors here.
+            // Inside Shopify admin this can cause auth loops when cookies are blocked or Referer is stripped.
+            // Instead, let the caller render the dashboard on this signed App URL request.
+            res.locals = res.locals || {};
+            res.locals.renderEmbeddedDashboard = true;
+            res.locals.shop = shopNorm;
+            return;
           }
-          await writeAudit('system', 'shopify_token_invalid', { shop, at: Date.now() });
+          await writeAudit('system', 'shopify_token_invalid', { shop: shopNorm, at: Date.now() });
           // Fall through to OAuth re-authorize when token is invalid/revoked.
         }
       }
     } catch (err) {
       console.error('[auth] App URL session check:', err);
-      return next(err);
+      throw err;
     }
     const state = crypto.randomBytes(16).toString('hex');
     const redirectUri = getRedirectUri(req);
@@ -244,7 +259,7 @@ async function handleAppUrl(req, res, next) {
       console.error('[auth] No valid redirect_uri (set SHOPIFY_APP_URL or ensure request has Host)');
       return res.status(500).send('App URL not configured. Set SHOPIFY_APP_URL in your deployment.');
     }
-    const authUrl = buildAuthorizeUrl(shop, state, redirectUri);
+    const authUrl = buildAuthorizeUrl(shopNorm, state, redirectUri);
     if (host && typeof host === 'string' && host.length > 0) {
       const authUrlB64 = Buffer.from(authUrl, 'utf8').toString('base64');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -258,7 +273,6 @@ async function handleAppUrl(req, res, next) {
     }
     return res.redirect(302, authUrl);
   }
-  next();
 }
 
 module.exports = {

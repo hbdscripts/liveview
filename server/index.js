@@ -146,9 +146,13 @@ app.get('/app/live-visitors', (req, res) => {
 app.get('/', async (req, res, next) => {
   try {
     await auth.handleAppUrl(req, res, next);
-    if (!res.headersSent) {
-      res.redirect(302, '/app/live-visitors');
+    if (res.headersSent) return;
+    if (res.locals && res.locals.renderEmbeddedDashboard) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
+      return;
     }
+    res.redirect(302, '/app/live-visitors');
   } catch (err) {
     next(err);
   }

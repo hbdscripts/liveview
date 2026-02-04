@@ -133,10 +133,49 @@ function verifyOauthSession(cookieValue) {
   }
 }
 
+function verifyShopifyHmac(query) {
+  const apiSecret = (config.shopify && config.shopify.apiSecret) ? String(config.shopify.apiSecret) : '';
+  if (!apiSecret) return false;
+  const q = (query && typeof query === 'object') ? query : {};
+  const hmac = (q.hmac != null) ? String(q.hmac) : '';
+  if (!hmac) return false;
+  const rest = {};
+  for (const k of Object.keys(q)) {
+    if (k === 'hmac') continue;
+    rest[k] = q[k];
+  }
+  const message = Object.keys(rest)
+    .sort()
+    .map((k) => `${k}=${rest[k]}`)
+    .join('&');
+  const digest = crypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+  try {
+    const a = Buffer.from(hmac, 'hex');
+    const b = Buffer.from(digest, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch (_) {
+    return false;
+  }
+}
+
+function isShopifySignedAppUrlRequest(req) {
+  if (!req || req.method !== 'GET' || req.path !== '/') return false;
+  const q = req.query || {};
+  const shopNorm = String(q.shop || '').trim().toLowerCase();
+  if (!shopNorm) return false;
+  if (!q.hmac || !q.timestamp) return false;
+  const shopMatch = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/.test(shopNorm);
+  if (!shopMatch) return false;
+  return verifyShopifyHmac(q);
+}
+
 function allow(req) {
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
   // From Shopify admin: always allow (embed / open from Admin)
   if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
+  // Embedded app load: allow signed Shopify App URL requests even if Referer/Origin are stripped.
+  if (isShopifySignedAppUrlRequest(req)) return true;
   // Direct visit: require Google OAuth session when Google is configured
   if (hasGoogle) {
     const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);

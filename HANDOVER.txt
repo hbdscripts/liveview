@@ -216,3 +216,4 @@ Performance direction:
 - Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
 - Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
 - Dashboard: Breakdown/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
+- Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
