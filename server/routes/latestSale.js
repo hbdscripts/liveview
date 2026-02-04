@@ -74,6 +74,7 @@ async function getLatestSale(req, res) {
     const bounds = store.getRangeBounds('today', nowMs, tz);
 
     let row = null;
+    let source = null;
     if (shop) {
       // Prefer orders that are linked to a session via evidence so we can show a country flag.
       row = await db.get(
@@ -100,6 +101,7 @@ async function getLatestSale(req, res) {
         `,
         [shop, bounds.start, bounds.end]
       );
+      if (row) source = 'orders_shopify_linked';
 
       // Fall back to truth-only when we have no linked evidence yet.
       if (!row) {
@@ -124,6 +126,7 @@ async function getLatestSale(req, res) {
           `,
           [shop, bounds.start, bounds.end]
         );
+        if (row) source = 'orders_shopify';
       }
     }
 
@@ -146,6 +149,7 @@ async function getLatestSale(req, res) {
         `,
         [bounds.start, bounds.end]
       );
+      if (row) source = 'purchases';
     }
 
     res.setHeader('Cache-Control', 'no-store');
@@ -161,6 +165,7 @@ async function getLatestSale(req, res) {
     const gbp = total == null ? null : fx.convertToGbp(total, currency, ratesToGbp);
 
     const sale = {
+      source: source || null,
       orderId: safeStr(row.order_id, 64) || null,
       orderName: safeStr(row.order_name, 64) || null,
       createdAt: row.created_at != null ? Number(row.created_at) : null,

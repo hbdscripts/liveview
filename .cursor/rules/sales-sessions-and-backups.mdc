@@ -1,0 +1,15 @@
+---
+description: Sales/sessions mismatches must be fixed non-destructively
+globs:
+alwaysApply: true
+---
+
+# Sales + sessions: non-destructive repair only
+
+- **Never delete, truncate, or "wipe" rows** in these core tables to make numbers “match Shopify”:
+  - `purchases`
+  - `purchase_events`
+  - `orders_shopify`
+  - `sessions`
+- If numbers differ, fix it by **changing reporting sources**, improving **dedupe in queries**, running **reconciliation**, or adding **append-only snapshots** (e.g. `reconcile_snapshots`, `shopify_sessions_snapshots`) — **not** by removing data.
+- **Recovery** is done by **restoring from backups** (SQLite file backups or Postgres backup tables), not by deleting rows.

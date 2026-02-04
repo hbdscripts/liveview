@@ -201,6 +201,8 @@ const { up: up019 } = require('./migrations/019_customer_order_facts');
 const { up: up020 } = require('./migrations/020_bot_block_counts_updated_at');
 const { up: up021 } = require('./migrations/021_sessions_traffic_fields');
 const { up: up022 } = require('./migrations/022_report_indexes');
+const { up: up023 } = require('./migrations/023_reconcile_snapshots');
+const { up: up024 } = require('./migrations/024_shopify_sessions_snapshots');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 
@@ -233,6 +235,8 @@ async function migrateAndStart() {
   await up020();
   await up021();
   await up022();
+  await up023();
+  await up024();
 
   if (preBackup) {
     await writeAudit('system', 'backup', {
@@ -259,6 +263,29 @@ async function migrateAndStart() {
         salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'today').catch(() => {});
       } catch (_) {}
     }, 1000);
+
+    // Daily backups (fail-open). Retain last 7.
+    (function scheduleDailyBackups() {
+      if (process.env.DISABLE_SCHEDULED_BACKUPS === '1' || process.env.DISABLE_SCHEDULED_BACKUPS === 'true') return;
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const TABLES = ['orders_shopify', 'purchases', 'purchase_events', 'sessions'];
+      async function runOnce() {
+        try {
+          const meta = await backup.backup({ label: 'daily', tables: TABLES, retention: { keep: 7 } });
+          await writeAudit('system', 'backup', { when: 'scheduled_daily', ...meta });
+        } catch (err) {
+          try {
+            await writeAudit('system', 'backup_error', {
+              when: 'scheduled_daily',
+              error: err && err.message ? String(err.message).slice(0, 220) : 'backup_failed',
+            });
+          } catch (_) {}
+        }
+      }
+      // Run shortly after boot, then every 24h.
+      setTimeout(() => { runOnce().catch(() => {}); }, 15000);
+      setInterval(() => { runOnce().catch(() => {}); }, DAY_MS);
+    })();
   });
 }
 

@@ -25,6 +25,7 @@ async function getSalesDiagnostics(req, res) {
   const nowMs = Date.now();
   const rangeKey = clampRange(req.query.range || 'today');
   const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
+  const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
 
   // Best-effort: keep truth cache fresh for today.
   if (shop && rangeKey === 'today') {
@@ -36,6 +37,15 @@ async function getSalesDiagnostics(req, res) {
   const truthOrderCount = shop ? await salesTruth.getTruthOrderCount(shop, bounds.start, bounds.end) : 0;
   const truthRevenueGbp = shop ? await salesTruth.getTruthSalesTotalGbp(shop, bounds.start, bounds.end) : 0;
   const health = await salesTruth.getTruthHealth(shop || '', rangeKey === 'today' ? 'today' : 'today');
+
+  // Pixel-derived totals (purchases, deduped in query).
+  let pixelOrderCount = null;
+  let pixelRevenueGbp = null;
+  try {
+    const s = await store.getPixelSalesSummary(bounds.start, bounds.end);
+    pixelOrderCount = typeof s.orderCount === 'number' ? s.orderCount : null;
+    pixelRevenueGbp = typeof s.revenueGbp === 'number' ? s.revenueGbp : null;
+  } catch (_) {}
 
   // Evidence counts (append-only).
   let evidenceTotal = 0;
@@ -65,9 +75,16 @@ async function getSalesDiagnostics(req, res) {
     shop,
     timeZone,
     range: { key: rangeKey, start: bounds.start, end: bounds.end },
+    reporting,
     truth: { orderCount: truthOrderCount, revenueGbp: truthRevenueGbp },
+    pixel: { orderCount: pixelOrderCount, revenueGbp: pixelRevenueGbp, label: 'pixel-derived (purchases)' },
     evidence: { checkoutCompleted: evidenceTotal, linked: evidenceLinked, unlinked: evidenceUnlinked },
     health,
+    drift: {
+      pixelVsTruthOrders: (typeof pixelOrderCount === 'number') ? (pixelOrderCount - truthOrderCount) : null,
+      pixelVsTruthRevenueGbp: (typeof pixelRevenueGbp === 'number') ? Math.round((pixelRevenueGbp - truthRevenueGbp) * 100) / 100 : null,
+      evidenceVsTruthOrders: (evidenceTotal != null) ? (evidenceTotal - truthOrderCount) : null,
+    },
   });
 }
 

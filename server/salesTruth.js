@@ -563,7 +563,11 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   try {
     const now = Date.now();
     if (!lastPreReconcileBackupAt || (now - lastPreReconcileBackupAt) > PRE_RECONCILE_BACKUP_TTL_MS) {
-      await backup.backup({ label: 'pre_reconcile', tables: ['orders_shopify', 'purchase_events', 'purchases'] });
+      await backup.backup({
+        label: 'pre_reconcile',
+        tables: ['orders_shopify', 'purchase_events', 'purchases', 'sessions'],
+        retention: { keep: 7 },
+      });
       lastPreReconcileBackupAt = now;
       await writeAudit('system', 'backup', { when: 'pre_reconcile', shop: safeShop, ts: now });
     }
@@ -601,13 +605,18 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       for (const order of orders) {
         fetched += 1;
         const row = orderToRow(safeShop, order, Date.now());
-        if (row.customer_id) customerIdsInRange.add(String(row.customer_id));
-        // Shopify-fetched summary (truth source).
-        shopifyOrderCount += 1;
-        const cur = (row.currency && String(row.currency).trim()) ? String(row.currency).trim().toUpperCase() : 'GBP';
-        const amt = row.total_price != null ? Number(row.total_price) : 0;
-        if (Number.isFinite(amt) && amt !== 0) {
-          shopifyRevenueByCurrency.set(cur, (shopifyRevenueByCurrency.get(cur) || 0) + amt);
+        // Shopify-fetched summary (truth source). Keep filters aligned with reporting:
+        // exclude test orders + cancelled orders, and keep paid only.
+        const status = row.financial_status != null ? String(row.financial_status).trim().toLowerCase() : '';
+        const reportable = (row.test == null || Number(row.test) === 0) && row.cancelled_at == null && status === 'paid';
+        if (reportable) {
+          if (row.customer_id) customerIdsInRange.add(String(row.customer_id));
+          shopifyOrderCount += 1;
+          const cur = (row.currency && String(row.currency).trim()) ? String(row.currency).trim().toUpperCase() : 'GBP';
+          const amt = row.total_price != null ? Number(row.total_price) : 0;
+          if (Number.isFinite(amt) && amt !== 0) {
+            shopifyRevenueByCurrency.set(cur, (shopifyRevenueByCurrency.get(cur) || 0) + amt);
+          }
         }
         const r = await upsertOrder(row);
         inserted += r.inserted;
@@ -679,6 +688,18 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
         returning,
       },
     });
+    // Append-only reconcile snapshot (audit trail). Fail-open if table doesn't exist yet.
+    try {
+      const db = getDb();
+      const fetchedAt = Date.now();
+      const scopeKey = String(scope || 'range').slice(0, 64);
+      await db.run(
+        `INSERT INTO reconcile_snapshots
+          (shop, scope, range_start_ts, range_end_ts, shopify_order_count, shopify_revenue_gbp, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [safeShop, scopeKey, startMs, endMs, shopifyOrderCount, shopifyRevenueGbp, fetchedAt]
+      );
+    } catch (_) {}
     return {
       ok: true,
       inserted,
@@ -704,6 +725,73 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       details,
     });
     return { ok: false, error: msg, inserted, updated, fetched };
+  }
+}
+
+/**
+ * Verify-only: fetch Shopify Orders API totals without mutating orders_shopify.
+ * Returns { ok, orderCount, revenueGbp, revenueByCurrency, fetched, error }.
+ */
+async function fetchShopifyOrdersSummary(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return { ok: false, error: 'No shop configured', orderCount: 0, revenueGbp: 0, fetched: 0, revenueByCurrency: {} };
+  const token = await getAccessToken(safeShop);
+  if (!token) return { ok: false, error: 'No access token for shop', orderCount: 0, revenueGbp: 0, fetched: 0, revenueByCurrency: {} };
+
+  const startIso = new Date(startMs).toISOString();
+  const endIso = new Date(endMs).toISOString();
+  const firstUrl = ordersApiUrl(safeShop, startIso, endIso);
+
+  let fetched = 0;
+  let orderCount = 0;
+  const revenueByCurrency = new Map(); // currency -> number
+  let nextUrl = firstUrl;
+
+  try {
+    while (nextUrl) {
+      const res = await shopifyFetchWithRetry(nextUrl, token, { maxRetries: 6 });
+      const text = await res.text();
+      if (!res.ok) {
+        const err = { status: res.status, body: text ? String(text).slice(0, 500) : '' };
+        throw Object.assign(new Error(`Shopify Orders API error (HTTP ${res.status})`), { details: err });
+      }
+      let json;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      const orders = json && Array.isArray(json.orders) ? json.orders : [];
+      for (const order of orders) {
+        fetched += 1;
+        const row = orderToRow(safeShop, order, Date.now());
+        const status = row.financial_status != null ? String(row.financial_status).trim().toLowerCase() : '';
+        const reportable = (row.test == null || Number(row.test) === 0) && row.cancelled_at == null && status === 'paid';
+        if (!reportable) continue;
+        orderCount += 1;
+        const cur = (row.currency && String(row.currency).trim()) ? String(row.currency).trim().toUpperCase() : 'GBP';
+        const amt = row.total_price != null ? Number(row.total_price) : 0;
+        if (Number.isFinite(amt) && amt !== 0) {
+          revenueByCurrency.set(cur, (revenueByCurrency.get(cur) || 0) + amt);
+        }
+      }
+      nextUrl = parseNextPageUrl(res.headers.get('link'));
+    }
+
+    const ratesToGbp = await fx.getRatesToGbp();
+    let revenueGbp = 0;
+    for (const [cur, amt] of revenueByCurrency.entries()) {
+      const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+      if (typeof gbp === 'number' && Number.isFinite(gbp)) revenueGbp += gbp;
+    }
+    revenueGbp = Math.round(revenueGbp * 100) / 100;
+
+    return {
+      ok: true,
+      fetched,
+      orderCount,
+      revenueGbp,
+      revenueByCurrency: Object.fromEntries(Array.from(revenueByCurrency.entries()).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    };
+  } catch (err) {
+    const msg = err && err.message ? String(err.message) : 'Verify fetch failed';
+    return { ok: false, error: msg, fetched, orderCount, revenueGbp: 0, revenueByCurrency: Object.fromEntries(Array.from(revenueByCurrency.entries())) };
   }
 }
 
@@ -1010,6 +1098,7 @@ module.exports = {
   getAccessToken,
   ensureReconciled,
   reconcileRange,
+  fetchShopifyOrdersSummary,
   shouldReconcile,
   getTruthOrderCount,
   getTruthSalesTotalGbp,

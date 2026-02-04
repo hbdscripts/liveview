@@ -63,6 +63,18 @@ async function copySqliteDb(label) {
   return { engine: 'sqlite', src, dest, ts, sizeBytes };
 }
 
+function safeLabelForSqlite(label) {
+  return (label && String(label).trim())
+    ? String(label).trim().replace(/[^a-z0-9_-]+/gi, '-').slice(0, 32)
+    : 'backup';
+}
+
+function safeLabelForPostgres(label) {
+  return (label && String(label).trim())
+    ? String(label).trim().replace(/[^a-z0-9_-]+/gi, '_').slice(0, 24)
+    : 'backup';
+}
+
 function isSafeIdent(name) {
   return typeof name === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
 }
@@ -78,18 +90,73 @@ async function createPostgresBackupTable(tableName, label) {
   if (!isSafeIdent(tableName)) throw new Error('Unsafe table name: ' + tableName);
   const db = getDb();
   const ts = timestampUtc();
-  const safeLabel = (label && String(label).trim()) ? String(label).trim().replace(/[^a-z0-9_-]+/gi, '_').slice(0, 24) : 'backup';
+  const safeLabel = safeLabelForPostgres(label);
   const backupName = `${tableName}_backup_${safeLabel}_${ts}`.replace(/-/g, '_');
   // CREATE TABLE AS SELECT is safe and works without pg_dump.
   await db.run(`CREATE TABLE ${backupName} AS SELECT * FROM ${tableName}`);
   return { engine: 'postgres', table: tableName, backupTable: backupName, ts };
 }
 
+async function pruneSqliteBackups({ label, keep = 7 } = {}) {
+  const backupsDir = path.join(__dirname, 'backups');
+  const safeLabel = safeLabelForSqlite(label);
+  const prefix = `live_visitors_${safeLabel}_`;
+  let files = [];
+  try {
+    files = await fs.promises.readdir(backupsDir);
+  } catch (_) {
+    return { ok: true, deleted: [], keep };
+  }
+  const matches = (files || [])
+    .filter((f) => typeof f === 'string' && f.startsWith(prefix) && f.endsWith('.sqlite'))
+    .slice()
+    // Filename includes sortable UTC timestamp; descending = newest first.
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  const keepN = Math.min(Math.max(parseInt(String(keep), 10) || 7, 1), 50);
+  const toDelete = matches.slice(keepN);
+  const deleted = [];
+  for (const f of toDelete) {
+    const full = path.join(backupsDir, f);
+    try {
+      await fs.promises.unlink(full);
+      deleted.push(full);
+    } catch (_) {}
+  }
+  return { ok: true, deleted, keep: keepN };
+}
+
+async function prunePostgresBackupTables({ tables, label, keep = 7 } = {}) {
+  const db = getDb();
+  const safeLabel = safeLabelForPostgres(label).replace(/-/g, '_');
+  const keepN = Math.min(Math.max(parseInt(String(keep), 10) || 7, 1), 50);
+  const deleted = [];
+  for (const base of Array.isArray(tables) ? tables : []) {
+    if (!isSafeIdent(base)) continue;
+    const prefix = `${base}_backup_${safeLabel}_`;
+    try {
+      const rows = await db.all(
+        `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE ? ORDER BY tablename DESC`,
+        [prefix + '%']
+      );
+      const names = (rows || []).map((r) => r && r.tablename ? String(r.tablename) : '').filter(Boolean);
+      const toDrop = names.slice(keepN);
+      for (const name of toDrop) {
+        if (!isSafeIdent(name)) continue;
+        try {
+          await db.run(`DROP TABLE IF EXISTS ${name}`);
+          deleted.push(name);
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+  return { ok: true, deleted, keep: keepN };
+}
+
 /**
  * Backup core tables before applying new schema or running reconciliation.
  * Returns metadata suitable for writing into audit_log.
  */
-async function backup({ label = 'pre', tables = null } = {}) {
+async function backup({ label = 'pre', tables = null, retention = null } = {}) {
   if (isPostgres()) {
     const requested = Array.isArray(tables) && tables.length ? tables : ['purchases', 'sessions', 'events', 'shop_sessions'];
     const out = [];
@@ -102,10 +169,24 @@ async function backup({ label = 'pre', tables = null } = {}) {
         // Fail-open for individual tables; continue backing up others.
       }
     }
-    return { engine: 'postgres', label, backups: out, ts: timestampUtc() };
+    let pruned = null;
+    try {
+      const keep = retention && retention.keep != null ? retention.keep : null;
+      if (keep != null) pruned = await prunePostgresBackupTables({ tables: requested, label, keep });
+    } catch (_) {
+      pruned = null;
+    }
+    return { engine: 'postgres', label, backups: out, pruned, ts: timestampUtc() };
   }
   const fileBackup = await copySqliteDb(label);
-  return { engine: 'sqlite', label, backup: fileBackup, ts: timestampUtc() };
+  let pruned = null;
+  try {
+    const keep = retention && retention.keep != null ? retention.keep : null;
+    if (keep != null) pruned = await pruneSqliteBackups({ label, keep });
+  } catch (_) {
+    pruned = null;
+  }
+  return { engine: 'sqlite', label, backup: fileBackup, pruned, ts: timestampUtc() };
 }
 
 /**

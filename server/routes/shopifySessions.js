@@ -5,6 +5,7 @@
 
 const { getDb } = require('../db');
 const { fetchShopifySessionsToday } = require('./configStatus');
+const store = require('../store');
 
 async function getShopifySessionsToday(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
@@ -23,6 +24,20 @@ async function getShopifySessionsToday(req, res) {
   try {
     const result = await fetchShopifySessionsToday(shop, row.access_token);
     if (typeof result.count === 'number') {
+      // Append snapshot (today). Fail-open if table doesn't exist.
+      try {
+        const timeZone = store.resolveAdminTimeZone();
+        const nowMs = Date.now();
+        const bounds = store.getRangeBounds('today', nowMs, timeZone);
+        const dayYmd = new Date(bounds.start).toLocaleDateString('en-CA', { timeZone });
+        await store.saveShopifySessionsSnapshot({
+          shop,
+          snapshotKey: 'today',
+          dayYmd,
+          sessionsCount: result.count,
+          fetchedAt: nowMs,
+        });
+      } catch (_) {}
       return res.json({ sessionsToday: result.count });
     }
     return res.status(502).json({ error: result.error || 'Shopify sessions unavailable' });

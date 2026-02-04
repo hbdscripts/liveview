@@ -47,6 +47,7 @@ async function getWorstProducts(req, res) {
 
   const pageSize = clampInt(req.query.pageSize ?? req.query.limit, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
   const trafficMode = 'human_only';
+  const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
 
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
@@ -56,13 +57,41 @@ async function getWorstProducts(req, res) {
   const botFilterSql = trafficMode === 'human_only' ? ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)' : '';
 
   const shop = salesTruth.resolveShopForSales('');
-  if (shop) {
+  if (shop && reporting.ordersSource === 'orders_shopify') {
     // Best-effort: keep truth cache warm for this range (throttled).
     try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
   }
 
   // Session landings, with optional linked truth orders for attribution (sum(revenue) <= truth total).
-  const rows = shop ? await db.all(
+  const rows = (reporting.ordersSource === 'pixel') ? await db.all(
+    `
+      SELECT
+        s.session_id,
+        s.first_path,
+        s.first_product_handle,
+        p.order_key AS order_id,
+        p.currency AS currency,
+        p.total_price AS total_price
+      FROM sessions s
+      LEFT JOIN (
+        SELECT
+          session_id,
+          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS currency,
+          ${store.purchaseDedupeKeySql('p')} AS order_key,
+          order_total AS total_price
+        FROM purchases p
+        WHERE purchased_at >= ? AND purchased_at < ?
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+      ) p ON p.session_id = s.session_id
+      WHERE s.started_at >= ? AND s.started_at < ?
+        ${botFilterSql}
+        AND (
+          s.first_path LIKE '/products/%'
+          OR (s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != '')
+        )
+    `,
+    [start, end, start, end]
+  ) : (shop ? await db.all(
     `
       SELECT
         s.session_id,
@@ -107,7 +136,7 @@ async function getWorstProducts(req, res) {
         )
     `,
     [start, end]
-  );
+  ));
 
   const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map(); // handle -> { handle, clicks, orderIds:Set, converted, revenue }
@@ -173,6 +202,7 @@ async function getWorstProducts(req, res) {
   res.json({
     range,
     trafficMode,
+    reporting,
     page,
     pageSize,
     totalCount,

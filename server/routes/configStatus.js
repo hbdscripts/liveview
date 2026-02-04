@@ -9,8 +9,8 @@ const store = require('../store');
 const { getDb, isPostgres } = require('../db');
 const salesTruth = require('../salesTruth');
 const pkg = require('../../package.json');
+const shopifyQl = require('../shopifyQl');
 
-const GRAPHQL_API_VERSION = '2025-10'; // shopifyqlQuery available from 2025-10
 const PIXEL_API_VERSION = '2024-01';
 
 /**
@@ -23,64 +23,7 @@ function firstErrorMsg(json) {
 }
 
 async function fetchShopifySessionsToday(shop, accessToken) {
-  const query = 'FROM sessions SHOW sessions DURING today';
-  const graphqlUrl = `https://${shop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
-  let res;
-  let text;
-  try {
-    res = await fetch(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken,
-      },
-      body: JSON.stringify({
-        query: `query($q: String!) { shopifyqlQuery(query: $q) { tableData { columns { name } rows } parseErrors } }`,
-        variables: { q: query },
-      }),
-    });
-    text = await res.text();
-  } catch (err) {
-    return { count: null, error: err && err.message ? String(err.message).slice(0, 80) : 'Network error' };
-  }
-  let json;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch (_) {
-    return { count: null, error: 'Invalid JSON from Shopify' };
-  }
-  if (!res.ok) {
-    const msg = firstErrorMsg(json) || json?.message || `HTTP ${res.status}`;
-    console.error('[config-status] Shopify sessions request failed:', res.status, String(text).slice(0, 500));
-    return { count: null, error: String(msg).slice(0, 120) };
-  }
-  const graphqlError = firstErrorMsg(json);
-  if (graphqlError) {
-    console.error('[config-status] Shopify GraphQL error:', graphqlError, String(text).slice(0, 500));
-    return { count: null, error: String(graphqlError).slice(0, 120) };
-  }
-  if (!json?.data?.shopifyqlQuery) {
-    const msg = 'No shopifyqlQuery in response';
-    console.error('[config-status] Shopify sessions:', msg, String(text).slice(0, 500));
-    return { count: null, error: msg };
-  }
-  const q = json.data.shopifyqlQuery;
-  if (q.parseErrors?.length) {
-    const msg = (q.parseErrors[0] || 'Parse error').slice(0, 120);
-    return { count: null, error: msg };
-  }
-  const table = q.tableData;
-  if (!table?.rows?.length) return { count: 0, error: '' };
-  const columns = (table.columns || []).map((c) => c.name);
-  const sessionsIdx = columns.findIndex((n) => String(n).toLowerCase().includes('sessions'));
-  if (sessionsIdx === -1) return { count: null, error: 'Sessions column not found' };
-  let total = 0;
-  for (const row of table.rows) {
-    const val = Array.isArray(row) ? row[sessionsIdx] : row[columns[sessionsIdx]];
-    const n = typeof val === 'number' ? val : parseInt(String(val || '').replace(/,/g, ''), 10);
-    if (Number.isFinite(n)) total += n;
-  }
-  return { count: total, error: '' };
+  return shopifyQl.fetchShopifySessionsCount(shop, accessToken, { during: 'today' });
 }
 
 function safeJsonParse(str) {
@@ -167,13 +110,19 @@ async function configStatus(req, res, next) {
   const tables = {
     sessions: await tableExists('sessions'),
     events: await tableExists('events'),
+    purchases: await tableExists('purchases'),
     orders_shopify: await tableExists('orders_shopify'),
     customer_order_facts: await tableExists('customer_order_facts'),
     purchase_events: await tableExists('purchase_events'),
     reconcile_state: await tableExists('reconcile_state'),
+    reconcile_snapshots: await tableExists('reconcile_snapshots'),
+    shopify_sessions_snapshots: await tableExists('shopify_sessions_snapshots'),
     audit_log: await tableExists('audit_log'),
     bot_block_counts: await tableExists('bot_block_counts'),
   };
+
+  let reporting = { ordersSource: 'orders_shopify', sessionsSource: 'sessions' };
+  try { reporting = await store.getReportingConfig(); } catch (_) {}
 
   // --- Shopify token / scopes ---
   let token = '';
@@ -258,6 +207,17 @@ async function configStatus(req, res, next) {
     if (typeof result.count === 'number') {
       traffic.shopifySessionsToday = result.count;
       traffic.shopifySessionsTodayNote = '';
+      // Append Shopify sessions snapshot (today). Fail-open if table doesn't exist.
+      try {
+        const dayYmd = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone });
+        await store.saveShopifySessionsSnapshot({
+          shop,
+          snapshotKey: 'today',
+          dayYmd,
+          sessionsCount: result.count,
+          fetchedAt: now,
+        });
+      } catch (_) {}
     } else {
       traffic.shopifySessionsToday = null;
       traffic.shopifySessionsTodayNote = result.error ? String(result.error) : 'Shopify sessions unavailable';
@@ -283,6 +243,9 @@ async function configStatus(req, res, next) {
   };
   const evidence = {
     today: { checkoutCompleted: null, linked: null, unlinked: null, lastOccurredAt: null },
+  };
+  const pixelDerived = {
+    today: { orderCount: null, revenueGbp: null },
   };
 
   if (shop && tables.orders_shopify) {
@@ -326,6 +289,15 @@ async function configStatus(req, res, next) {
       evidence.today.linked = row?.linked != null ? Number(row.linked) || 0 : 0;
       evidence.today.unlinked = row?.unlinked != null ? Number(row.unlinked) || 0 : 0;
       evidence.today.lastOccurredAt = num(row?.max_occurred_at);
+    } catch (_) {}
+  }
+
+  // Pixel-derived totals (purchases table, deduped in query). Useful for debugging drift.
+  if (tables.purchases) {
+    try {
+      const s = await store.getPixelSalesSummary(todayBounds.start, todayBounds.end);
+      pixelDerived.today.orderCount = typeof s.orderCount === 'number' ? s.orderCount : null;
+      pixelDerived.today.revenueGbp = typeof s.revenueGbp === 'number' ? s.revenueGbp : null;
     } catch (_) {}
   }
 
@@ -403,6 +375,7 @@ async function configStatus(req, res, next) {
       configured: isPostgres(),
       tables,
     },
+    reporting,
     ingest: {
       effectiveIngestUrl,
       ingestPublicUrl: config.ingestPublicUrl || '',
@@ -417,9 +390,16 @@ async function configStatus(req, res, next) {
       boundsToday: todayBounds,
       truth,
       evidence,
+      pixel: pixelDerived,
       drift: {
         orders: (typeof evidence.today.checkoutCompleted === 'number' && typeof truth.today.orderCount === 'number')
           ? (evidence.today.checkoutCompleted - truth.today.orderCount)
+          : null,
+        pixelVsTruthOrders: (typeof pixelDerived.today.orderCount === 'number' && typeof truth.today.orderCount === 'number')
+          ? (pixelDerived.today.orderCount - truth.today.orderCount)
+          : null,
+        pixelVsTruthRevenueGbp: (typeof pixelDerived.today.revenueGbp === 'number' && typeof truth.today.revenueGbp === 'number')
+          ? Math.round((pixelDerived.today.revenueGbp - truth.today.revenueGbp) * 100) / 100
           : null,
       },
     },

@@ -8,6 +8,7 @@ const { getDb } = require('./db');
 const config = require('./config');
 const fx = require('./fx');
 const salesTruth = require('./salesTruth');
+const shopifyQl = require('./shopifyQl');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -234,6 +235,30 @@ async function setSetting(key, value) {
   } else {
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
   }
+}
+
+// Reporting sources (used to switch between Shopify truth vs pixel-derived reporting)
+const REPORTING_ORDERS_SOURCE_KEY = 'reporting_orders_source'; // orders_shopify | pixel
+const REPORTING_SESSIONS_SOURCE_KEY = 'reporting_sessions_source'; // sessions | shopify_sessions
+
+function normalizeReportingOrdersSource(v) {
+  const s = v == null ? '' : String(v).trim().toLowerCase();
+  if (s === 'orders_shopify' || s === 'pixel') return s;
+  return null;
+}
+
+function normalizeReportingSessionsSource(v) {
+  const s = v == null ? '' : String(v).trim().toLowerCase();
+  if (s === 'sessions' || s === 'shopify_sessions') return s;
+  return null;
+}
+
+async function getReportingConfig() {
+  const rawOrders = await getSetting(REPORTING_ORDERS_SOURCE_KEY);
+  const rawSessions = await getSetting(REPORTING_SESSIONS_SOURCE_KEY);
+  const ordersSource = normalizeReportingOrdersSource(rawOrders) || 'orders_shopify';
+  const sessionsSource = normalizeReportingSessionsSource(rawSessions) || 'sessions';
+  return { ordersSource, sessionsSource };
 }
 
 async function isTrackingEnabled() {
@@ -821,6 +846,150 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   return { start: nowMs, end: nowMs };
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function ymdFromParts(parts) {
+  if (!parts) return '';
+  const y = Number(parts.year);
+  const m = Number(parts.month);
+  const d = Number(parts.day);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return '';
+  return String(y).padStart(4, '0') + '-' + pad2(m) + '-' + pad2(d);
+}
+
+function ymdFromMs(ms, timeZone) {
+  const parts = getTimeZoneParts(new Date(ms), timeZone);
+  return ymdFromParts(parts);
+}
+
+function listYmdsInBounds(startMs, endMs, timeZone) {
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+  const startParts = getTimeZoneParts(new Date(start), timeZone);
+  const endParts = getTimeZoneParts(new Date(Math.max(start, end - 1)), timeZone);
+  let cur = { year: startParts.year, month: startParts.month, day: startParts.day };
+  const last = { year: endParts.year, month: endParts.month, day: endParts.day };
+  const out = [];
+  for (let guard = 0; guard < 400; guard++) {
+    const ymd = ymdFromParts(cur);
+    if (ymd) out.push(ymd);
+    if (cur.year === last.year && cur.month === last.month && cur.day === last.day) break;
+    cur = addDaysToParts(cur, 1);
+  }
+  return out;
+}
+
+async function saveShopifySessionsSnapshot({ shop, snapshotKey, dayYmd, sessionsCount, fetchedAt } = {}) {
+  const db = getDb();
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const ymd = typeof dayYmd === 'string' ? dayYmd.trim() : '';
+  const snapKey = snapshotKey != null ? String(snapshotKey).trim().slice(0, 64) : null;
+  const count = sessionsCount != null ? parseInt(String(sessionsCount), 10) : NaN;
+  const at = fetchedAt != null ? Number(fetchedAt) : Date.now();
+  if (!safeShop) return { ok: false, error: 'missing_shop' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return { ok: false, error: 'invalid_day' };
+  if (!Number.isFinite(count) || count < 0) return { ok: false, error: 'invalid_count' };
+  if (!Number.isFinite(at) || at <= 0) return { ok: false, error: 'invalid_fetched_at' };
+  try {
+    await db.run(
+      `INSERT INTO shopify_sessions_snapshots (snapshot_key, shop, day_ymd, sessions_count, fetched_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [snapKey, safeShop, ymd, count, at]
+    );
+  } catch (_) {
+    // Fail-open if table doesn't exist yet.
+  }
+  return { ok: true };
+}
+
+async function getLatestShopifySessionsSnapshot(shop, dayYmd) {
+  const db = getDb();
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const ymd = typeof dayYmd === 'string' ? dayYmd.trim() : '';
+  if (!safeShop || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+  try {
+    const row = await db.get(
+      `SELECT sessions_count, fetched_at
+       FROM shopify_sessions_snapshots
+       WHERE shop = ? AND day_ymd = ?
+       ORDER BY fetched_at DESC
+       LIMIT 1`,
+      [safeShop, ymd]
+    );
+    if (!row) return null;
+    const count = row.sessions_count != null ? Number(row.sessions_count) : null;
+    const fetchedAt = row.fetched_at != null ? Number(row.fetched_at) : null;
+    return { sessionsCount: Number.isFinite(count) ? count : null, fetchedAt: Number.isFinite(fetchedAt) ? fetchedAt : null };
+  } catch (_) {
+    return null;
+  }
+}
+
+const SHOPIFY_SESSIONS_TODAY_REFRESH_MS = 5 * 60 * 1000;
+const shopifySessionsFetchInflight = new Map(); // shop|ymd -> Promise<number|null>
+
+async function fetchShopifySessionsCountForDay(shop, dayYmd, timeZone, { snapshotKey } = {}) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dayYmd || ''))) return null;
+  const token = await salesTruth.getAccessToken(safeShop);
+  if (!token) return null;
+  const tz = timeZone || resolveAdminTimeZone();
+  const todayYmd = ymdFromMs(Date.now(), tz);
+  const during = String(dayYmd) === todayYmd ? 'today' : String(dayYmd);
+  const result = await shopifyQl.fetchShopifySessionsCount(safeShop, token, { during });
+  if (typeof result.count !== 'number') return null;
+  const fetchedAt = Date.now();
+  await saveShopifySessionsSnapshot({
+    shop: safeShop,
+    snapshotKey: snapshotKey != null ? snapshotKey : ('d:' + String(dayYmd)),
+    dayYmd: String(dayYmd),
+    sessionsCount: result.count,
+    fetchedAt,
+  });
+  return result.count;
+}
+
+async function getShopifySessionsCountForBounds(shop, startMs, endMs, timeZone, { fetchIfMissing = false } = {}) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop) return null;
+  const tz = timeZone || resolveAdminTimeZone();
+  const ymds = listYmdsInBounds(startMs, endMs, tz);
+  if (!ymds.length) return 0;
+
+  const todayYmd = ymdFromMs(Date.now(), tz);
+  let total = 0;
+  for (const ymd of ymds) {
+    const latest = await getLatestShopifySessionsSnapshot(safeShop, ymd);
+    const isToday = ymd === todayYmd;
+    const freshEnough = latest && typeof latest.sessionsCount === 'number' && (!isToday || (latest.fetchedAt && (Date.now() - latest.fetchedAt) < SHOPIFY_SESSIONS_TODAY_REFRESH_MS));
+    if (freshEnough) {
+      total += Number(latest.sessionsCount) || 0;
+      continue;
+    }
+    if (!fetchIfMissing) return null;
+
+    const inflightKey = safeShop + '|' + ymd;
+    let p = shopifySessionsFetchInflight.get(inflightKey);
+    if (!p) {
+      p = fetchShopifySessionsCountForDay(safeShop, ymd, tz).catch(() => null).finally(() => {
+        if (shopifySessionsFetchInflight.get(inflightKey) === p) shopifySessionsFetchInflight.delete(inflightKey);
+      });
+      shopifySessionsFetchInflight.set(inflightKey, p);
+    }
+    const fetched = await p;
+    if (typeof fetched === 'number') {
+      total += fetched;
+    } else {
+      return null;
+    }
+  }
+  return total;
+}
+
 /** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d/1h is selected. */
 async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const db = getDb();
@@ -902,8 +1071,88 @@ function purchaseFilterExcludeDuplicateH(alias) {
   )`;
 }
 
-/** Total sales in range (all purchases). Dedupe in query only; never delete rows. */
-async function getSalesTotal(start, end) {
+async function getPixelSalesSummary(start, end) {
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT
+        COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS currency,
+        COUNT(*) AS orders,
+        COALESCE(SUM(order_total), 0) AS revenue
+      FROM purchases p
+      WHERE purchased_at >= ? AND purchased_at < ?
+        ${purchaseFilterExcludeDuplicateH('p')}
+      GROUP BY currency
+    `,
+    [start, end]
+  );
+  const ratesToGbp = await fx.getRatesToGbp();
+  let orderCount = 0;
+  let revenueGbp = 0;
+  const revenueByCurrency = {};
+  for (const r of rows || []) {
+    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+    const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
+    const rev = r && r.revenue != null ? Number(r.revenue) : 0;
+    const revNum = Number.isFinite(rev) ? rev : 0;
+    orderCount += orders;
+    revenueByCurrency[cur] = Math.round(revNum * 100) / 100;
+    const gbp = fx.convertToGbp(revNum, cur, ratesToGbp);
+    if (typeof gbp === 'number' && Number.isFinite(gbp)) revenueGbp += gbp;
+  }
+  revenueGbp = Math.round(revenueGbp * 100) / 100;
+  return { orderCount, revenueGbp, revenueByCurrency };
+}
+
+async function getPixelSalesTotalGbp(start, end) {
+  const s = await getPixelSalesSummary(start, end);
+  return s && typeof s.revenueGbp === 'number' ? s.revenueGbp : 0;
+}
+
+async function getPixelOrderCount(start, end) {
+  const s = await getPixelSalesSummary(start, end);
+  return s && typeof s.orderCount === 'number' ? s.orderCount : 0;
+}
+
+async function getPixelReturningRevenueGbp(start, end) {
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT
+        COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+        COALESCE(SUM(p.order_total), 0) AS revenue
+      FROM purchases p
+      INNER JOIN sessions s ON s.session_id = p.session_id
+      WHERE p.purchased_at >= ? AND p.purchased_at < ?
+        AND s.is_returning = 1
+        ${purchaseFilterExcludeDuplicateH('p')}
+      GROUP BY currency
+    `,
+    [start, end]
+  );
+  const ratesToGbp = await fx.getRatesToGbp();
+  let revenueGbp = 0;
+  for (const r of rows || []) {
+    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+    const rev = r && r.revenue != null ? Number(r.revenue) : 0;
+    const revNum = Number.isFinite(rev) ? rev : 0;
+    const gbp = fx.convertToGbp(revNum, cur, ratesToGbp);
+    if (typeof gbp === 'number' && Number.isFinite(gbp)) revenueGbp += gbp;
+  }
+  return Math.round(revenueGbp * 100) / 100;
+}
+
+function isDayLikeRangeKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  const k = key.trim().toLowerCase();
+  if (k === 'today' || k === 'yesterday' || k === '3d' || k === '7d' || k === 'month') return true;
+  return /^d:\d{4}-\d{2}-\d{2}$/.test(k);
+}
+
+/** Total sales in range. Dedupe in query only; never delete rows. */
+async function getSalesTotal(start, end, options = {}) {
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  if (ordersSource === 'pixel') return getPixelSalesTotalGbp(start, end);
   // Truth: Shopify Orders API cached in orders_shopify.
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
@@ -911,7 +1160,9 @@ async function getSalesTotal(start, end) {
 }
 
 /** Revenue from returning-customer sessions only (sessions.is_returning = 1). Same dedupe and GBP conversion as getSalesTotal. */
-async function getReturningRevenue(start, end) {
+async function getReturningRevenue(start, end, options = {}) {
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  if (ordersSource === 'pixel') return getPixelReturningRevenueGbp(start, end);
   // Truth-based returning revenue: customers with a prior paid order before start.
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
@@ -922,17 +1173,30 @@ async function getConversionRate(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
-  const total = config.dbUrl
-    ? await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + filter.sql,
-      [start, end, ...filter.params]
-    )
-    : await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql,
-      [start, end, ...filter.params]
-    );
-  const t = total?.n ?? 0;
-  const p = await getConvertedCount(start, end);
+  const sessionsSource = options?.reporting?.sessionsSource || 'sessions';
+  const rangeKey = typeof options.rangeKey === 'string' ? options.rangeKey : '';
+  const timeZone = options.timeZone || resolveAdminTimeZone();
+
+  let t = null;
+  if (sessionsSource === 'shopify_sessions' && isDayLikeRangeKey(rangeKey)) {
+    const shop = salesTruth.resolveShopForSales('');
+    if (shop) {
+      t = await getShopifySessionsCountForBounds(shop, start, end, timeZone, { fetchIfMissing: true });
+    }
+  }
+  if (t == null) {
+    const total = config.dbUrl
+      ? await db.get(
+        'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + filter.sql,
+        [start, end, ...filter.params]
+      )
+      : await db.get(
+        'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + filter.sql,
+        [start, end, ...filter.params]
+      );
+    t = total?.n ?? 0;
+  }
+  const p = await getConvertedCount(start, end, options);
   return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
 }
 
@@ -957,25 +1221,45 @@ async function getProductConversionRate(start, end, options = {}) {
   const t = total?.n ?? 0;
   if (t <= 0) return null;
 
-  // Truth conversions attributed to product-landed sessions via linked evidence.
-  const shop = salesTruth.resolveShopForSales('');
-  if (!shop) return null;
-  const convertedRow = await db.get(
-    `
-      SELECT COUNT(DISTINCT o.order_id) AS n
-      FROM sessions s
-      INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
-      INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-      WHERE s.started_at >= ? AND s.started_at < ?
-        ${productFilter.replace(/sessions\./g, 's.')}
-        AND o.created_at >= ? AND o.created_at < ?
-        AND (o.test IS NULL OR o.test = 0)
-        AND o.cancelled_at IS NULL
-        AND o.financial_status = 'paid'
-    `,
-    [shop, start, end, start, end]
-  );
-  const c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  let c = 0;
+  if (ordersSource === 'pixel') {
+    const convertedRow = await db.get(
+      `
+        SELECT COUNT(*) AS n FROM (
+          SELECT DISTINCT ${purchaseDedupeKeySql('p')} AS k
+          FROM sessions s
+          INNER JOIN purchases p ON p.session_id = s.session_id
+          WHERE s.started_at >= ? AND s.started_at < ?
+            ${productFilter.replace(/sessions\./g, 's.')}
+            AND p.purchased_at >= ? AND p.purchased_at < ?
+            ${purchaseFilterExcludeDuplicateH('p')}
+        ) t
+      `,
+      [start, end, start, end, ...filter.params]
+    );
+    c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
+  } else {
+    // Truth conversions attributed to product-landed sessions via linked evidence.
+    const shop = salesTruth.resolveShopForSales('');
+    if (!shop) return null;
+    const convertedRow = await db.get(
+      `
+        SELECT COUNT(DISTINCT o.order_id) AS n
+        FROM sessions s
+        INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
+        INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+        WHERE s.started_at >= ? AND s.started_at < ?
+          ${productFilter.replace(/sessions\./g, 's.')}
+          AND o.created_at >= ? AND o.created_at < ?
+          AND (o.test IS NULL OR o.test = 0)
+          AND o.cancelled_at IS NULL
+          AND o.financial_status = 'paid'
+      `,
+      [shop, start, end, start, end, ...filter.params]
+    );
+    c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
+  }
   return t > 0 ? Math.round((c / t) * 1000) / 10 : null;
 }
 
@@ -1002,34 +1286,54 @@ async function getCountryStats(start, end, options = {}) {
       GROUP BY country_code
     `, [start, end, ...filter.params]);
   // Truth revenue by country is attributed via linked purchase evidence (so sum(revenue) <= truth total).
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
   const shop = salesTruth.resolveShopForSales('');
-  const purchaseAgg = shop
+  const purchaseAgg = ordersSource === 'pixel'
     ? await db.all(
       `
         SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
         FROM (
-          SELECT DISTINCT
-            s.country_code AS country_code,
-            COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-            o.order_id AS order_id,
-            o.total_price AS revenue
-          FROM purchase_events pe
-          INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-          INNER JOIN sessions s ON s.session_id = pe.session_id
-          WHERE pe.shop = ?
-            AND pe.event_type = 'checkout_completed'
-            AND o.created_at >= ? AND o.created_at < ?
-            AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-            ${filter.sql.replace(/sessions\./g, 's.')}
-            AND (o.test IS NULL OR o.test = 0)
-            AND o.cancelled_at IS NULL
-            AND o.financial_status = 'paid'
+          SELECT
+            COALESCE(NULLIF(TRIM(p.country_code), ''), 'XX') AS country_code,
+            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+            ${purchaseDedupeKeySql('p')} AS order_key,
+            p.order_total AS revenue
+          FROM purchases p
+          WHERE p.purchased_at >= ? AND p.purchased_at < ?
+            AND p.country_code IS NOT NULL AND TRIM(p.country_code) != '' AND p.country_code != 'XX'
+            ${purchaseFilterExcludeDuplicateH('p')}
         ) t
         GROUP BY country_code, currency
       `,
-      [shop, start, end, ...filter.params]
+      [start, end]
     )
-    : [];
+    : (shop
+      ? await db.all(
+        `
+          SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
+          FROM (
+            SELECT DISTINCT
+              s.country_code AS country_code,
+              COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
+              o.order_id AS order_id,
+              o.total_price AS revenue
+            FROM purchase_events pe
+            INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+            INNER JOIN sessions s ON s.session_id = pe.session_id
+            WHERE pe.shop = ?
+              AND pe.event_type = 'checkout_completed'
+              AND o.created_at >= ? AND o.created_at < ?
+              AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+              ${filter.sql.replace(/sessions\./g, 's.')}
+              AND (o.test IS NULL OR o.test = 0)
+              AND o.cancelled_at IS NULL
+              AND o.financial_status = 'paid'
+          ) t
+          GROUP BY country_code, currency
+        `,
+        [shop, start, end, ...filter.params]
+      )
+      : []);
 
   const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map();
@@ -1075,7 +1379,7 @@ async function getCountryStats(start, end, options = {}) {
   return out.slice(0, 20);
 }
 
-async function getSessionCounts(start, end, options = {}) {
+async function getSessionCountsFromSessionsTable(start, end, options = {}) {
   const db = getDb();
   const totalRow = config.dbUrl
     ? await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2', [start, end])
@@ -1089,7 +1393,25 @@ async function getSessionCounts(start, end, options = {}) {
   return { total_sessions: total, human_sessions: human, known_bot_sessions: total - human };
 }
 
-async function getConvertedCount(start, end) {
+async function getSessionCounts(start, end, options = {}) {
+  const sessionsSource = options?.reporting?.sessionsSource || 'sessions';
+  const rangeKey = typeof options.rangeKey === 'string' ? options.rangeKey : '';
+  const timeZone = options.timeZone || resolveAdminTimeZone();
+  if (sessionsSource !== 'shopify_sessions' || !isDayLikeRangeKey(rangeKey)) {
+    return getSessionCountsFromSessionsTable(start, end, options);
+  }
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return getSessionCountsFromSessionsTable(start, end, options);
+  const n = await getShopifySessionsCountForBounds(shop, start, end, timeZone, { fetchIfMissing: true });
+  if (typeof n === 'number' && Number.isFinite(n)) {
+    return { total_sessions: n, human_sessions: n, known_bot_sessions: null };
+  }
+  return { total_sessions: null, human_sessions: null, known_bot_sessions: null };
+}
+
+async function getConvertedCount(start, end, options = {}) {
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  if (ordersSource === 'pixel') return getPixelOrderCount(start, end);
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
   return salesTruth.getTruthOrderCount(shop, start, end);
@@ -1117,7 +1439,7 @@ async function getBounceRate(start, end, options = {}) {
       WHERE s.started_at >= ? AND s.started_at < ? ${filterAlias}
       AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = 'page_viewed') = 1
     `, [start, end, ...filter.params]);
-  const breakdown = await getSessionCounts(start, end, options);
+  const breakdown = await getSessionCountsFromSessionsTable(start, end, options);
   const total = breakdown.human_sessions ?? 0;
   const singlePage = singlePageRow ? Number(singlePageRow.n) || 0 : 0;
   if (total <= 0) return null;
@@ -1126,9 +1448,10 @@ async function getBounceRate(start, end, options = {}) {
 
 async function getStats(options = {}) {
   const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
-  const opts = { trafficMode };
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
+  const reporting = await getReportingConfig();
+  const opts = { trafficMode, timeZone, reporting };
   const requestedRangeRaw =
     typeof options.rangeKey === 'string' ? options.rangeKey :
       (typeof options.range === 'string' ? options.range : '');
@@ -1146,7 +1469,7 @@ async function getStats(options = {}) {
   // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthTodaySync = null;
-  if (salesShop) {
+  if (salesShop && reporting.ordersSource === 'orders_shopify') {
     try {
       salesTruthTodaySync = await salesTruth.ensureReconciled(salesShop, ranges.today.start, ranges.today.end, 'today');
     } catch (_) {
@@ -1169,19 +1492,19 @@ async function getStats(options = {}) {
     yesterdayOk,
     salesTruthHealth,
   ] = await Promise.all([
-    Promise.all(rangeKeys.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])),
-    Promise.all(rangeKeys.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])),
-    Promise.all(rangeKeys.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(rangeKeys.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(rangeKeys.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])),
-    Promise.all(CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, opts)])),
-    Promise.all(rangeKeys.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])),
-    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now)])),
-    Promise.all(rangeKeys.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(rangeKeys.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now, { ...opts, rangeKey: w.key })])),
+    Promise.all(CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, { ...opts, rangeKey: w.key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now, { ...opts, rangeKey: w.key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
     rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts),
-    salesTruth.getTruthHealth(salesShop || '', 'today'),
+    (salesShop ? salesTruth.getTruthHealth(salesShop || '', 'today') : Promise.resolve(null)),
   ]);
   const salesByRange = Object.fromEntries(salesByRangeEntries);
   const returningRevenueByRange = Object.fromEntries(returningRevenueByRangeEntries);
@@ -1215,6 +1538,7 @@ async function getStats(options = {}) {
     aov: { ...aovByRange, rolling: aovRolling },
     bounce: bounceByRange,
     revenueToday: salesByRange.today ?? 0,
+    reporting,
     salesTruth: {
       shop: salesShop || '',
       todaySync: salesTruthTodaySync,
@@ -1245,6 +1569,7 @@ module.exports = {
   sanitize,
   getSetting,
   setSetting,
+  getReportingConfig,
   isTrackingEnabled,
   getVisitor,
   upsertVisitor,
@@ -1256,9 +1581,19 @@ module.exports = {
   listSessionsByRange,
   getActiveSessionCount,
   getSessionEvents,
+  // Reporting helpers (pixel vs truth)
+  getPixelSalesSummary,
+  getPixelSalesTotalGbp,
+  getPixelOrderCount,
+  // Shopify sessions snapshots (for optional Shopify sessions denominator)
+  saveShopifySessionsSnapshot,
+  getLatestShopifySessionsSnapshot,
   getStats,
   getRangeBounds,
   resolveAdminTimeZone,
+  // Shared SQL helpers for pixel dedupe
+  purchaseDedupeKeySql,
+  purchaseFilterExcludeDuplicateH,
   validateEventType,
   ALLOWED_EVENT_TYPES,
 };

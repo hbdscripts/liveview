@@ -181,6 +181,7 @@ async function getTraffic(req, res) {
 
   const db = getDb();
   const prefs = await getPrefs();
+  const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
 
   // --- Available Sources (last 30d) ---
   const since30d = now - 30 * 24 * 60 * 60 * 1000;
@@ -218,7 +219,28 @@ async function getTraffic(req, res) {
 
   const shop = salesTruth.resolveShopForSales('');
   let salesBySource = new Map();
-  if (shop) {
+  if (reporting.ordersSource === 'pixel') {
+    const salesRows = await db.all(
+      `
+        SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+        FROM (
+          SELECT
+            s.traffic_source_key AS traffic_source_key,
+            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+            p.order_total AS revenue
+          FROM purchases p
+          INNER JOIN sessions s ON s.session_id = p.session_id
+          WHERE p.purchased_at >= ? AND p.purchased_at < ?
+            AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
+            ${humanOnlyClause('s')}
+            ${store.purchaseFilterExcludeDuplicateH('p')}
+        ) t
+        GROUP BY traffic_source_key, currency
+      `,
+      [bounds.start, bounds.end]
+    );
+    salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
+  } else if (shop) {
     const salesRows = await db.all(
       `
         SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
@@ -316,7 +338,31 @@ async function getTraffic(req, res) {
 
   // --- Type breakdown (range): sales ---
   let salesByPair = new Map();
-  if (shop) {
+  if (reporting.ordersSource === 'pixel') {
+    const salesPairRows = await db.all(
+      `
+        SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+        FROM (
+          SELECT
+            (
+              COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
+              || '|' ||
+              COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
+            ) AS pair_key,
+            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+            p.order_total AS revenue
+          FROM purchases p
+          INNER JOIN sessions s ON s.session_id = p.session_id
+          WHERE p.purchased_at >= ? AND p.purchased_at < ?
+            ${humanOnlyClause('s')}
+            ${store.purchaseFilterExcludeDuplicateH('p')}
+        ) t
+        GROUP BY pair_key, currency
+      `,
+      [bounds.start, bounds.end]
+    );
+    salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
+  } else if (shop) {
     const salesPairRows = await db.all(
       `
         SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
@@ -410,6 +456,7 @@ async function getTraffic(req, res) {
     now,
     timeZone,
     range: { key: rangeKey, start: bounds.start, end: bounds.end },
+    reporting,
     prefs,
     sources: {
       enabled: prefs.sourcesEnabled,

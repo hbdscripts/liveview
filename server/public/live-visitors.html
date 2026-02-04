@@ -3177,6 +3177,7 @@
           const shopify = c && c.shopify ? c.shopify : {};
           const db = c && c.db ? c.db : {};
           const ingest = c && c.ingest ? c.ingest : {};
+          const reporting = c && c.reporting ? c.reporting : {};
           const traffic = c && c.traffic ? c.traffic : {};
           const sales = c && c.sales ? c.sales : {};
           const truth = sales && sales.truth ? sales.truth : {};
@@ -3184,6 +3185,11 @@
           const health = truth && truth.health ? truth.health : {};
           const evidenceToday = sales && sales.evidence && sales.evidence.today ? sales.evidence.today : {};
           const driftOrders = sales && sales.drift && typeof sales.drift.orders === 'number' ? sales.drift.orders : null;
+          const pixelDerivedToday = sales && sales.pixel && sales.pixel.today ? sales.pixel.today : {};
+          const pixelDerivedOrders = (typeof pixelDerivedToday.orderCount === 'number') ? pixelDerivedToday.orderCount : null;
+          const pixelDerivedRevenue = (typeof pixelDerivedToday.revenueGbp === 'number') ? pixelDerivedToday.revenueGbp : null;
+          const driftPixelOrders = sales && sales.drift && typeof sales.drift.pixelVsTruthOrders === 'number' ? sales.drift.pixelVsTruthOrders : null;
+          const driftPixelRevenue = sales && sales.drift && typeof sales.drift.pixelVsTruthRevenueGbp === 'number' ? sales.drift.pixelVsTruthRevenueGbp : null;
           const pixel = c && c.pixel ? c.pixel : {};
 
           const truthOrders = (typeof truthToday.orderCount === 'number') ? truthToday.orderCount : null;
@@ -3196,6 +3202,12 @@
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
 
           let html = '';
+
+          if (reporting && (reporting.ordersSource || reporting.sessionsSource)) {
+            html += section('Reporting sources');
+            if (reporting.ordersSource) html += row('Orders source', code(reporting.ordersSource));
+            if (reporting.sessionsSource) html += row('Sessions source', code(reporting.sessionsSource));
+          }
 
           html += section('Sales truth (Shopify Orders API)');
           html += row('Shop', shopify.shop ? code(shopify.shop) : '<span class="config-row missing">MISSING</span>');
@@ -3226,7 +3238,12 @@
           if (truth && truth.lastVerify && truth.lastVerify.ts) {
             html += row('Last verify', (truth.lastVerify.ok ? '<span class="config-row ok">OK</span>' : '<span class="config-row missing">CHECK</span>') + ' · ' + code(formatTs(truth.lastVerify.ts)));
             const vd = truth.lastVerify.todayDiff || null;
-            if (vd && (vd.orderCount !== 0 || vd.revenueGbp !== 0 || vd.returningCustomerCount !== 0 || vd.returningRevenueGbp !== 0)) {
+            if (vd && (
+              (typeof vd.orderCount === 'number' && vd.orderCount !== 0) ||
+              (typeof vd.revenueGbp === 'number' && vd.revenueGbp !== 0) ||
+              (typeof vd.returningCustomerCount === 'number' && vd.returningCustomerCount !== 0) ||
+              (typeof vd.returningRevenueGbp === 'number' && vd.returningRevenueGbp !== 0)
+            )) {
               html += row('Verify diff (today)', code(JSON.stringify(vd)), 'missing');
             }
           }
@@ -3243,6 +3260,16 @@
           if (typeof evidenceToday.lastOccurredAt === 'number') html += row('Last evidence event', code(formatTs(evidenceToday.lastOccurredAt)));
           if (truthOrders != null && truthOrders > 0 && evTotal === 0) {
             html += note('Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.');
+          }
+
+          if (pixelDerivedOrders != null || pixelDerivedRevenue != null) {
+            let line = (pixelDerivedOrders != null ? (code(pixelDerivedOrders) + ' orders') : '\u2014');
+            if (pixelDerivedRevenue != null) line += ' · ' + code(formatRevenue(pixelDerivedRevenue));
+            if (driftPixelOrders != null) line += ' · drift vs truth ' + code((driftPixelOrders >= 0 ? '+' + driftPixelOrders : String(driftPixelOrders)));
+            if (driftPixelRevenue != null) line += ' · \u00a3 drift ' + code(String(driftPixelRevenue >= 0 ? ('+' + driftPixelRevenue) : driftPixelRevenue));
+            html += row('Today (purchases)', line);
+          } else {
+            html += row('Today (purchases)', '\u2014');
           }
 
           html += section('Pixel settings (Shopify)');

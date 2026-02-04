@@ -183,8 +183,44 @@ DB persistence:
 ## Guardrails / project conventions
 
 - Do not delete rows from app tables (especially `purchases`). Handle over-reporting via dedupe in stats queries.
+- Never delete or truncate `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to “fix” mismatches vs Shopify. Fix mismatches by changing reporting sources, improving reconciliation, or using snapshots/backups.
 - When making code/config changes: commit + push (deploys are push-driven).
 - “Sentry” checks should be done via the `user-sentry` MCP tools (project: Node, org: lee-cooper, region: de).
+
+---
+
+## Sales, sessions, backups (non-destructive)
+
+Core rule:
+- **We never delete/truncate rows** in `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to make numbers “match Shopify”.
+- If numbers differ, we **change reporting sources** (truth vs pixel; our sessions vs Shopify sessions), run reconciliation, or add snapshots — we do **not** remove data.
+
+Reporting source config (settings table):
+- Orders source (`settings.key = reporting_orders_source`):
+  - `orders_shopify` (default): report using Shopify Orders truth cached in `orders_shopify`
+  - `pixel`: report using pixel-derived orders in `purchases` (deduped in queries; no deletes)
+- Sessions source (`settings.key = reporting_sessions_source`):
+  - `sessions` (default): report using our `sessions` table
+  - `shopify_sessions`: report using `shopify_sessions_snapshots` (ShopifyQL snapshots)
+
+Append-only audit tables:
+- `reconcile_snapshots`: appended after every successful `salesTruth.reconcileRange` (shop/scope/range + Shopify orderCount/revenueGbp + fetched_at)
+- `shopify_sessions_snapshots`: appended whenever we fetch Shopify sessions (and on-demand when using Shopify sessions reporting)
+
+Verify vs reconcile:
+- `GET /api/verify-sales`: **verify-only** drift (no reconciliation, no writes to `orders_shopify`). Optional: `?source=snapshot` uses latest `reconcile_snapshots`.
+- `POST/GET /api/reconcile-sales`: reconciliation (Shopify → `orders_shopify`) and snapshot append.
+
+Backups + recovery:
+- Daily backups run in-process (fail-open) and keep the **last 7** backups.
+- Manual/cron backup command: `npm run backup:daily` (runs `server/runDailyBackup.js`).
+- SQLite backups:
+  - Location: `server/backups/` (files like `live_visitors_daily_YYYYMMDD_HHMMSS.sqlite`)
+  - Restore: stop the server and replace `live_visitors.sqlite` with a chosen backup file.
+- Postgres backups:
+  - Stored as backup tables (e.g. `orders_shopify_backup_daily_YYYYMMDD_HHMMSS`)
+  - Restore: copy data from backup tables back into the live tables (do this carefully; prefer restoring to a new DB then switching `DB_URL`).
+- Disable in-process scheduled backups with `DISABLE_SCHEDULED_BACKUPS=1`.
 
 ---
 
@@ -213,6 +249,11 @@ Performance direction:
 - Added `/api/traffic` + `/api/traffic-prefs`
 - Date picker: change dropdown to Today / Yesterday / Custom (calendar for last 30 days)
   - Added `GET /api/available-days` and custom day keys `d:YYYY-MM-DD` across report endpoints
+- Sales/sessions non-destructive foundations:
+  - Added `reconcile_snapshots` + `shopify_sessions_snapshots` (append-only)
+  - Added reporting source settings (`reporting_orders_source`, `reporting_sessions_source`) and wired stats/traffic/worst-products to use them
+  - Made `/api/verify-sales` verify-only (no reconcile first), with optional snapshot compare
+  - Added daily backup scheduling + `npm run backup:daily` (retain last 7)
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
