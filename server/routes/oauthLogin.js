@@ -5,6 +5,7 @@
 
 const crypto = require('crypto');
 const config = require('../config');
+const { getDb, isPostgres } = require('../db');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 const auth = require('./auth');
 
@@ -153,6 +154,29 @@ async function handleShopifyLoginCallback(req, res) {
     const errText = await tokenRes.text();
     console.error('[oauth] Shopify token error:', tokenRes.status, errText);
     return res.redirect(302, '/app/login?error=shopify_token');
+  }
+  const tokenData = await tokenRes.json();
+  const accessToken = tokenData && tokenData.access_token;
+  const scope = (tokenData && tokenData.scope) || '';
+  if (accessToken) {
+    try {
+      const db = getDb();
+      const now = Date.now();
+      if (isPostgres()) {
+        await db.run(
+          'INSERT INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (shop) DO UPDATE SET access_token = ?, scope = ?, updated_at = ?',
+          [shopNorm, accessToken, scope, now, accessToken, scope, now]
+        );
+      } else {
+        await db.run(
+          'INSERT OR REPLACE INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?)',
+          [shopNorm, accessToken, scope, now]
+        );
+      }
+    } catch (err) {
+      console.error('[oauth] Failed to persist Shopify access token:', err);
+      // Fail-open: dashboard login can still succeed.
+    }
   }
   const token = signOauthSession({ shop: shopNorm });
   if (!token) {
