@@ -741,6 +741,23 @@
       }
       return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100';
     }
+    // Product thumbs: request square (width + height) so object-fit: cover gives identical framing.
+    function hotImgSquare(url) {
+      if (typeof url !== 'string') return url;
+      if (/^https?:\/\//i.test(url)) {
+        try {
+          const u = new URL(url);
+          u.searchParams.set('width', '100');
+          u.searchParams.set('height', '100');
+          if (u.hostname.includes('shopify.com')) u.searchParams.set('crop', 'center');
+          return u.toString();
+        } catch (_) {
+          const sep = url.indexOf('?') >= 0 ? '&' : '?';
+          return url + sep + 'width=100&height=100';
+        }
+      }
+      return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100&height=100';
+    }
 
     function flagImg(code) {
       if (!code || code === 'XX') return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/xx.png') + '" alt="?" loading="lazy">';
@@ -1372,7 +1389,7 @@
         const variantName = (v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
         const productName = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
         const displayName = variantName + (productName ? (' \u2014 ' + productName) : '');
-        const thumbUrl = v.thumb_url ? (hotImg(String(v.thumb_url)) || String(v.thumb_url)) : null;
+        const thumbUrl = v.thumb_url ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
         const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
@@ -1405,7 +1422,7 @@
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
-        const thumbUrl = p.thumb_url ? (hotImg(String(p.thumb_url)) || String(p.thumb_url)) : null;
+        const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && p.handle) ? mainBase + '/products/' + escapeHtml(p.handle) : '';

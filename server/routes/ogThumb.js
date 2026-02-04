@@ -46,6 +46,8 @@ async function handleOgThumb(req, res) {
       try {
         const u = new URL(imgUrl);
         u.searchParams.set('width', '100');
+        u.searchParams.set('height', '100');
+        if (u.hostname.includes('shopify.com')) u.searchParams.set('crop', 'center');
         imgUrl = u.toString();
       } catch (_) {}
       res.redirect(302, imgUrl);
