@@ -52,8 +52,8 @@
     #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
     #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3, #stats-worst-products .stats-card-header h3, #stats-best-variants .stats-card-header h3 { margin-bottom: -30px; position: absolute; transition: opacity 0.15s ease; }
     #stats-country.scrolled .stats-card-header h3, #stats-best-sellers.scrolled .stats-card-header h3, #stats-worst-products.scrolled .stats-card-header h3, #stats-best-variants.scrolled .stats-card-header h3 { opacity: 0; pointer-events: none; }
-    .stats-card h3 { margin: 0; font-size: var(--table-header-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; /* margin-bottom: 0.5rem; */ }
+    .stats-card h3 { margin: 0; font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
+    .stats-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); padding-bottom: 0; min-height: 0; }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
     .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
     .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
