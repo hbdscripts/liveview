@@ -809,7 +809,7 @@
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
-              if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
+              if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
@@ -842,6 +842,7 @@
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
+    var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
 
     function titleCaseFromHandle(handle) {
       if (typeof handle !== 'string') return null;
@@ -2201,7 +2202,7 @@
 
     (function initTopBar() {
       saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';
-      saleAudio = new Audio(getAssetsBase() + '/cash-register.mp3');
+      saleAudio = new Audio(CASH_REGISTER_MP3_URL);
       const muteBtn = document.getElementById('audio-mute-btn');
       const iconOn = muteBtn && muteBtn.querySelector('.sound-icon-on');
       const iconOff = muteBtn && muteBtn.querySelector('.sound-icon-off');
