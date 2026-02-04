@@ -14,6 +14,7 @@ const API_VERSION = '2024-01';
 const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
 const CUSTOMER_FACTS_NULL_RECHECK_TTL_MS = 6 * 60 * 60 * 1000;
 let lastPreReconcileBackupAt = 0;
+let _lineItemsTableOk = null; // null unknown, true exists, false missing
 
 function truthy(v) {
   return v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
@@ -66,6 +67,143 @@ function intOrNull(v) {
   if (v == null) return null;
   const n = typeof v === 'number' ? v : parseInt(String(v), 10);
   return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function parseFloatSafe(v) {
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeTitle(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return s || 'Unknown';
+}
+
+function normalizeVariantTitle(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return null;
+  return s.toLowerCase() === 'default title' ? null : s;
+}
+
+async function lineItemsTableOk() {
+  if (_lineItemsTableOk === true) return true;
+  if (_lineItemsTableOk === false) return false;
+  try {
+    await getDb().get('SELECT 1 FROM orders_shopify_line_items LIMIT 1');
+    _lineItemsTableOk = true;
+    return true;
+  } catch (_) {
+    _lineItemsTableOk = false;
+    return false;
+  }
+}
+
+async function upsertOrderLineItems(shop, order, orderRow) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop || !orderRow || !orderRow.order_id) return { ok: false, inserted: 0, updated: 0, rows: 0, reason: 'missing_shop_or_order' };
+  if (!(await lineItemsTableOk())) return { ok: false, inserted: 0, updated: 0, rows: 0, reason: 'no_table' };
+  const items = order && Array.isArray(order.line_items) ? order.line_items : [];
+  if (!items.length) return { ok: true, inserted: 0, updated: 0, rows: 0 };
+
+  const orderId = String(orderRow.order_id);
+  const orderCreatedAt = orderRow.created_at != null ? Number(orderRow.created_at) : null;
+  if (orderCreatedAt == null || !Number.isFinite(orderCreatedAt)) return { ok: false, inserted: 0, updated: 0, rows: 0, reason: 'missing_created_at' };
+  const currency = orderRow.currency != null ? String(orderRow.currency).trim() : null;
+  const orderUpdatedAt = orderRow.updated_at != null ? Number(orderRow.updated_at) : null;
+  const orderFinancialStatus = orderRow.financial_status != null ? String(orderRow.financial_status).trim().toLowerCase() : null;
+  const orderCancelledAt = orderRow.cancelled_at != null ? Number(orderRow.cancelled_at) : null;
+  const orderTest = orderRow.test != null ? Number(orderRow.test) : null;
+  const syncedAt = orderRow.synced_at != null ? Number(orderRow.synced_at) : Date.now();
+
+  const cols = [
+    'shop',
+    'line_item_id',
+    'order_id',
+    'order_created_at',
+    'order_updated_at',
+    'order_financial_status',
+    'order_cancelled_at',
+    'order_test',
+    'currency',
+    'product_id',
+    'variant_id',
+    'quantity',
+    'unit_price',
+    'line_revenue',
+    'title',
+    'variant_title',
+    'synced_at',
+  ];
+
+  const db = getDb();
+  const CHUNK = 50; // keep under SQLite parameter limits
+  let rows = 0;
+  for (let i = 0; i < items.length; i += CHUNK) {
+    const chunk = items.slice(i, i + CHUNK);
+    const values = [];
+    const params = [];
+    for (const li of chunk) {
+      const lineItemId = extractNumericId(li?.id);
+      if (!lineItemId) continue;
+      const productId = extractNumericId(li?.product_id);
+      const variantId = extractNumericId(li?.variant_id);
+      const qtyRaw = intOrNull(li?.quantity);
+      const qty = qtyRaw != null && Number.isFinite(qtyRaw) ? Math.max(0, Math.trunc(qtyRaw)) : 0;
+      const unitPrice = parseFloatSafe(li?.price);
+      const lineRevenue = qty * unitPrice;
+      const title = normalizeTitle(li?.title);
+      const variantTitle = normalizeVariantTitle(li?.variant_title);
+
+      values.push('(' + cols.map(() => '?').join(',') + ')');
+      params.push(
+        safeShop,
+        String(lineItemId),
+        orderId,
+        Math.trunc(orderCreatedAt),
+        Number.isFinite(orderUpdatedAt) ? Math.trunc(orderUpdatedAt) : null,
+        orderFinancialStatus,
+        Number.isFinite(orderCancelledAt) ? Math.trunc(orderCancelledAt) : null,
+        orderTest,
+        currency || null,
+        productId ? String(productId) : null,
+        variantId ? String(variantId) : null,
+        qty,
+        unitPrice,
+        lineRevenue,
+        title,
+        variantTitle,
+        Math.trunc(syncedAt),
+      );
+      rows += 1;
+    }
+    if (!values.length) continue;
+
+    await db.run(
+      `
+      INSERT INTO orders_shopify_line_items (${cols.join(', ')})
+      VALUES ${values.join(', ')}
+      ON CONFLICT (shop, line_item_id) DO UPDATE SET
+        order_id = EXCLUDED.order_id,
+        order_created_at = EXCLUDED.order_created_at,
+        order_updated_at = EXCLUDED.order_updated_at,
+        order_financial_status = EXCLUDED.order_financial_status,
+        order_cancelled_at = EXCLUDED.order_cancelled_at,
+        order_test = EXCLUDED.order_test,
+        currency = EXCLUDED.currency,
+        product_id = EXCLUDED.product_id,
+        variant_id = EXCLUDED.variant_id,
+        quantity = EXCLUDED.quantity,
+        unit_price = EXCLUDED.unit_price,
+        line_revenue = EXCLUDED.line_revenue,
+        title = EXCLUDED.title,
+        variant_title = EXCLUDED.variant_title,
+        synced_at = EXCLUDED.synced_at
+      `,
+      params
+    );
+  }
+
+  return { ok: true, rows };
 }
 
 function shopMoneyAmount(setObj) {
@@ -586,6 +724,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   let inserted = 0;
   let updated = 0;
   let evidenceLinked = 0;
+  let lineItemsRows = 0;
   let shopifyOrderCount = 0;
   const shopifyRevenueByCurrency = new Map(); // currency -> number
   const customerIdsInRange = new Set(); // customer_id strings present in fetched orders
@@ -621,6 +760,12 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
         const r = await upsertOrder(row);
         inserted += r.inserted;
         updated += r.updated;
+        try {
+          const li = await upsertOrderLineItems(safeShop, order, row);
+          if (li && li.ok && li.rows) lineItemsRows += Number(li.rows) || 0;
+        } catch (_) {
+          // Fail-open: line-items facts are an optimization; do not block reconciliation.
+        }
         evidenceLinked += await backfillEvidenceLinksForOrder(safeShop, row.order_id, row.checkout_token);
       }
       nextUrl = parseNextPageUrl(res.headers.get('link'));
@@ -680,6 +825,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       inserted,
       updated,
       evidenceLinked,
+      lineItemsRows,
       customerFacts: factsResult,
       shopify: {
         orderCount: shopifyOrderCount,

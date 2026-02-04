@@ -6,10 +6,9 @@
 const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
-const productAggCache = require('../productAggCache');
 const productMetaCache = require('../shopifyProductMetaCache');
+const reportCache = require('../reportCache');
 
-const API_VERSION = '2024-01';
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 
 function clampInt(v, fallback, min, max) {
@@ -43,57 +42,113 @@ async function getShopifyBestSellers(req, res) {
   const token = row.access_token;
 
   try {
-    // Ensure Shopify truth cache is populated for this range (throttled).
-    await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
-    const agg = await productAggCache.getAgg(shop, start, end, { ttlMs: 15 * 60 * 1000, force });
-    const totalOrders = agg && typeof agg.totalOrders === 'number' ? agg.totalOrders : 0;
-    const list = Array.isArray(agg && agg.products) ? agg.products.slice() : [];
-
     const sort = (req.query.sort || 'rev').toString().trim().toLowerCase();
     const dir = (req.query.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
-    const mult = dir === 'asc' ? 1 : -1;
-    if (sort === 'orders') {
-      list.sort((a, b) => (mult * ((a.orders || 0) - (b.orders || 0))) || (mult * ((a.revenue || 0) - (b.revenue || 0))));
-    } else {
-      // default: rev
-      list.sort((a, b) => (mult * ((a.revenue || 0) - (b.revenue || 0))) || (mult * ((a.orders || 0) - (b.orders || 0))));
-    }
-
     const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
-    const totalCount = list.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    const page = clampInt(req.query.page, 1, 1, totalPages);
-    const startIdx = (page - 1) * pageSize;
-    const pageItems = list.slice(startIdx, startIdx + pageSize);
+    const cached = await reportCache.getOrComputeJson(
+      {
+        shop,
+        endpoint: 'shopify-best-sellers',
+        rangeKey: range,
+        rangeStartTs: start,
+        rangeEndTs: end,
+        params: { page: req.query.page, pageSize, sort, dir },
+        ttlMs: 10 * 60 * 1000,
+        force,
+      },
+      async () => {
+        const t0 = Date.now();
+        // Ensure Shopify truth cache is populated for this range (throttled).
+        await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
 
-    await Promise.all(
-      pageItems.map(async (p) => {
-        try {
-          const meta = await productMetaCache.getProductMeta(shop, token, p.product_id);
-          p.thumb_url = meta && meta.ok ? (meta.thumb_url || null) : null;
-          p.handle = meta && meta.ok ? (meta.handle || null) : null;
-        } catch (_) {
-          p.thumb_url = null;
-          p.handle = null;
+        const totalOrders = await salesTruth.getTruthOrderCount(shop, start, end);
+
+        const countRow = await db.get(
+          `
+            SELECT COUNT(DISTINCT product_id) AS n
+            FROM orders_shopify_line_items
+            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND product_id IS NOT NULL AND TRIM(product_id) != ''
+          `,
+          [shop, start, end]
+        );
+        const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+        const page = clampInt(req.query.page, 1, 1, totalPages);
+        const offset = (page - 1) * pageSize;
+
+        const orderBy =
+          sort === 'orders'
+            ? `orders ${dir.toUpperCase()}, revenue ${dir.toUpperCase()}`
+            : `revenue ${dir.toUpperCase()}, orders ${dir.toUpperCase()}`;
+
+        const rows = await db.all(
+          `
+            SELECT
+              product_id,
+              MAX(title) AS title,
+              COUNT(DISTINCT order_id) AS orders,
+              COALESCE(SUM(line_revenue), 0) AS revenue
+            FROM orders_shopify_line_items
+            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND product_id IS NOT NULL AND TRIM(product_id) != ''
+            GROUP BY product_id
+            ORDER BY ${orderBy}
+            LIMIT ? OFFSET ?
+          `,
+          [shop, start, end, pageSize, offset]
+        );
+
+        const pageItems = (rows || []).map((r) => ({
+          product_id: r && r.product_id != null ? String(r.product_id) : '',
+          title: r && r.title != null ? String(r.title) : 'Unknown',
+          orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
+          revenue: Math.round(((r && r.revenue != null ? Number(r.revenue) : 0) || 0) * 100) / 100,
+        }));
+
+        await Promise.all(
+          pageItems.map(async (p) => {
+            try {
+              const meta = await productMetaCache.getProductMeta(shop, token, p.product_id);
+              p.thumb_url = meta && meta.ok ? (meta.thumb_url || null) : null;
+              p.handle = meta && meta.ok ? (meta.handle || null) : null;
+            } catch (_) {
+              p.thumb_url = null;
+              p.handle = null;
+            }
+          })
+        );
+
+        const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
+        const bestSellers = pageItems.map((p) => ({
+          product_id: p.product_id,
+          title: p.title,
+          handle: p.handle || null,
+          thumb_url: p.thumb_url || null,
+          orders: p.orders,
+          revenue: p.revenue,
+          cr: conversionRate(p),
+        }));
+
+        const t1 = Date.now();
+        if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
+          console.log('[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms=%s', range, sort, dir, page, (t1 - t0));
         }
-      })
-    );
 
-    const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
-    const bestSellers = pageItems.map((p) => ({
-      product_id: p.product_id,
-      title: p.title,
-      handle: p.handle || null,
-      thumb_url: p.thumb_url || null,
-      orders: p.orders,
-      revenue: p.revenue,
-      cr: conversionRate(p),
-    }));
+        return { bestSellers, totalOrders, page, pageSize, totalCount, sort, dir };
+      }
+    );
 
     // Cache: Shopify-derived report; allow 15 min caching to reduce API load.
     res.setHeader('Cache-Control', 'private, max-age=900');
     res.setHeader('Vary', 'Cookie');
-    return res.json({ bestSellers, totalOrders, page, pageSize, totalCount, sort, dir });
+    return res.json(cached && cached.ok ? cached.data : { bestSellers: [], totalOrders: 0, page: 1, pageSize, totalCount: 0, sort, dir });
   } catch (err) {
     console.error('[shopify-best-sellers]', err);
     return res.status(500).json({ error: 'Failed to fetch best sellers' });

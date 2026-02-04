@@ -11,6 +11,7 @@ const store = require('../store');
 const fx = require('../fx');
 const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
+const reportCache = require('../reportCache');
 
 const SOURCE_LABELS = {
   google_organic: 'Google Organic',
@@ -178,301 +179,333 @@ async function getTraffic(req, res) {
   const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(rangeKeyRaw);
   const rangeKey = (allowedRange.has(rangeKeyRaw) || isDayKey) ? rangeKeyRaw : 'today';
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
+  const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();
   const prefs = await getPrefs();
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
-
-  // --- Available Sources (last 30d) ---
-  const since30d = now - 30 * 24 * 60 * 60 * 1000;
-  const availableSources = await db.all(
-    `
-      SELECT traffic_source_key AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
-      FROM sessions
-      WHERE last_seen >= ?
-        AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
-        ${humanOnlyClause('sessions')}
-      GROUP BY traffic_source_key
-      ORDER BY sessions DESC
-    `,
-    [since30d]
-  );
-
-  // --- Source breakdown (range) ---
-  const sessionsBySourceRows = await db.all(
-    `
-      SELECT traffic_source_key AS key, COUNT(*) AS sessions
-      FROM sessions
-      WHERE started_at >= ? AND started_at < ?
-        AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
-        ${humanOnlyClause('sessions')}
-      GROUP BY traffic_source_key
-    `,
-    [bounds.start, bounds.end]
-  );
-  const sessionsBySource = new Map();
-  for (const r of sessionsBySourceRows || []) {
-    const k = r && r.key != null ? String(r.key).trim() : '';
-    if (!k) continue;
-    sessionsBySource.set(k, Number(r.sessions) || 0);
-  }
-
   const shop = salesTruth.resolveShopForSales('');
-  let salesBySource = new Map();
-  if (reporting.ordersSource === 'pixel') {
-    const salesRows = await db.all(
-      `
-        SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-        FROM (
+
+  const cached = await reportCache.getOrComputeJson(
+    {
+      shop: shop || '',
+      endpoint: 'traffic',
+      rangeKey,
+      rangeStartTs: bounds.start,
+      rangeEndTs: bounds.end,
+      params: { prefs, reporting },
+      ttlMs: 5 * 60 * 1000,
+      force,
+    },
+    async () => {
+      const t0 = Date.now();
+
+      // --- Available Sources (last 30d) ---
+      const since30d = now - 30 * 24 * 60 * 60 * 1000;
+      const availableSources = await db.all(
+        `
+          SELECT traffic_source_key AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
+          FROM sessions
+          WHERE last_seen >= ?
+            AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
+            ${humanOnlyClause('sessions')}
+          GROUP BY traffic_source_key
+          ORDER BY sessions DESC
+        `,
+        [since30d]
+      );
+
+      // --- Source breakdown (range) ---
+      const sessionsBySourceRows = await db.all(
+        `
+          SELECT traffic_source_key AS key, COUNT(*) AS sessions
+          FROM sessions
+          WHERE started_at >= ? AND started_at < ?
+            AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
+            ${humanOnlyClause('sessions')}
+          GROUP BY traffic_source_key
+        `,
+        [bounds.start, bounds.end]
+      );
+      const sessionsBySource = new Map();
+      for (const r of sessionsBySourceRows || []) {
+        const k = r && r.key != null ? String(r.key).trim() : '';
+        if (!k) continue;
+        sessionsBySource.set(k, Number(r.sessions) || 0);
+      }
+
+      let salesBySource = new Map();
+      if (reporting.ordersSource === 'pixel') {
+        const salesRows = await db.all(
+          `
+            SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+            FROM (
+              SELECT
+                s.traffic_source_key AS traffic_source_key,
+                COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+                p.order_total AS revenue
+              FROM purchases p
+              INNER JOIN sessions s ON s.session_id = p.session_id
+              WHERE p.purchased_at >= ? AND p.purchased_at < ?
+                AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
+                ${humanOnlyClause('s')}
+                ${store.purchaseFilterExcludeDuplicateH('p')}
+            ) t
+            GROUP BY traffic_source_key, currency
+          `,
+          [bounds.start, bounds.end]
+        );
+        salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
+      } else if (shop) {
+        const salesRows = await db.all(
+          `
+            SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+            FROM (
+              SELECT DISTINCT
+                s.traffic_source_key AS traffic_source_key,
+                COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
+                o.order_id AS order_id,
+                o.total_price AS revenue
+              FROM purchase_events pe
+              INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+              INNER JOIN sessions s ON s.session_id = pe.session_id
+              WHERE pe.shop = ?
+                AND pe.event_type = 'checkout_completed'
+                AND o.created_at >= ? AND o.created_at < ?
+                AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
+                ${humanOnlyClause('s')}
+                AND (o.test IS NULL OR o.test = 0)
+                AND o.cancelled_at IS NULL
+                AND o.financial_status = 'paid'
+            ) t
+            GROUP BY traffic_source_key, currency
+          `,
+          [shop, bounds.start, bounds.end]
+        );
+        salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
+      }
+
+      const sourceRows = (prefs.sourcesEnabled || []).map((key) => {
+        const sessions = sessionsBySource.get(key) || 0;
+        const sales = salesBySource.get(key) || { orders: 0, revenueGbp: 0 };
+        const orders = Number(sales.orders) || 0;
+        const revenueGbp = Number(sales.revenueGbp) || 0;
+        return {
+          key,
+          label: labelForSourceKey(key),
+          sessions,
+          orders,
+          revenueGbp,
+          conversionPct: conversionPct(orders, sessions),
+        };
+      });
+
+      // --- Available Types (last 30d) ---
+      const sessionsByDevice30 = await db.all(
+        `
+          SELECT ua_device_type AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
+          FROM sessions
+          WHERE last_seen >= ?
+            AND ua_device_type IS NOT NULL AND TRIM(ua_device_type) != ''
+            ${humanOnlyClause('sessions')}
+          GROUP BY ua_device_type
+        `,
+        [since30d]
+      );
+
+      // Build an "available" list only for keys we actually have
+      const availableTypes = [];
+      function pushAvailType(typeKey, sessions, lastSeen) {
+        if (!sessions || sessions <= 0) return;
+        availableTypes.push({ key: typeKey, label: labelForTypeKey(typeKey), sessions, last_seen: toNum(lastSeen) });
+      }
+      const device30 = new Map((sessionsByDevice30 || []).map(r => [String(r.key || '').trim().toLowerCase(), r]));
+      for (const k of ['desktop', 'mobile', 'tablet']) {
+        const r = device30.get(k);
+        pushAvailType('device:' + k, Number(r?.sessions) || 0, r?.last_seen);
+      }
+      availableTypes.sort((a, b) => (b.sessions - a.sessions) || ((b.last_seen || 0) - (a.last_seen || 0)));
+
+      // --- Type breakdown (range): device -> platform ---
+      const sessionsByPairRows = await db.all(
+        `
           SELECT
-            s.traffic_source_key AS traffic_source_key,
-            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-            p.order_total AS revenue
-          FROM purchases p
-          INNER JOIN sessions s ON s.session_id = p.session_id
-          WHERE p.purchased_at >= ? AND p.purchased_at < ?
-            AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
-            ${humanOnlyClause('s')}
-            ${store.purchaseFilterExcludeDuplicateH('p')}
-        ) t
-        GROUP BY traffic_source_key, currency
-      `,
-      [bounds.start, bounds.end]
-    );
-    salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
-  } else if (shop) {
-    const salesRows = await db.all(
-      `
-        SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-        FROM (
-          SELECT DISTINCT
-            s.traffic_source_key AS traffic_source_key,
-            COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-            o.order_id AS order_id,
-            o.total_price AS revenue
-          FROM purchase_events pe
-          INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-          INNER JOIN sessions s ON s.session_id = pe.session_id
-          WHERE pe.shop = ?
-            AND pe.event_type = 'checkout_completed'
-            AND o.created_at >= ? AND o.created_at < ?
-            AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
-            ${humanOnlyClause('s')}
-            AND (o.test IS NULL OR o.test = 0)
-            AND o.cancelled_at IS NULL
-            AND o.financial_status = 'paid'
-        ) t
-        GROUP BY traffic_source_key, currency
-      `,
-      [shop, bounds.start, bounds.end]
-    );
-    salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
-  }
+            COALESCE(NULLIF(TRIM(ua_device_type), ''), 'unknown') AS device,
+            COALESCE(NULLIF(TRIM(ua_platform), ''), 'other') AS platform,
+            COUNT(*) AS sessions
+          FROM sessions
+          WHERE started_at >= ? AND started_at < ?
+            ${humanOnlyClause('sessions')}
+          GROUP BY device, platform
+        `,
+        [bounds.start, bounds.end]
+      );
+      const sessionsByPair = new Map(); // "device|platform" -> sessions
+      const platformsByDevice = new Map(); // device -> Set(platform)
+      for (const r of sessionsByPairRows || []) {
+        const device = r && r.device != null ? String(r.device).trim().toLowerCase() : '';
+        const platform = r && r.platform != null ? String(r.platform).trim().toLowerCase() : '';
+        if (!device || !platform) continue;
+        const sessions = Number(r.sessions) || 0;
+        sessionsByPair.set(device + '|' + platform, sessions);
+        if (!platformsByDevice.has(device)) platformsByDevice.set(device, new Set());
+        platformsByDevice.get(device).add(platform);
+      }
 
-  const sourceRows = (prefs.sourcesEnabled || []).map((key) => {
-    const sessions = sessionsBySource.get(key) || 0;
-    const sales = salesBySource.get(key) || { orders: 0, revenueGbp: 0 };
-    const orders = Number(sales.orders) || 0;
-    const revenueGbp = Number(sales.revenueGbp) || 0;
-    return {
-      key,
-      label: labelForSourceKey(key),
-      sessions,
-      orders,
-      revenueGbp,
-      conversionPct: conversionPct(orders, sessions),
-    };
-  });
+      // --- Type breakdown (range): sales ---
+      let salesByPair = new Map();
+      if (reporting.ordersSource === 'pixel') {
+        const salesPairRows = await db.all(
+          `
+            SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+            FROM (
+              SELECT
+                (
+                  COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
+                  || '|' ||
+                  COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
+                ) AS pair_key,
+                COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+                p.order_total AS revenue
+              FROM purchases p
+              INNER JOIN sessions s ON s.session_id = p.session_id
+              WHERE p.purchased_at >= ? AND p.purchased_at < ?
+                ${humanOnlyClause('s')}
+                ${store.purchaseFilterExcludeDuplicateH('p')}
+            ) t
+            GROUP BY pair_key, currency
+          `,
+          [bounds.start, bounds.end]
+        );
+        salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
+      } else if (shop) {
+        const salesPairRows = await db.all(
+          `
+            SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
+            FROM (
+              SELECT DISTINCT
+                (
+                  COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
+                  || '|' ||
+                  COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
+                ) AS pair_key,
+                COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
+                o.order_id AS order_id,
+                o.total_price AS revenue
+              FROM purchase_events pe
+              INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+              INNER JOIN sessions s ON s.session_id = pe.session_id
+              WHERE pe.shop = ?
+                AND pe.event_type = 'checkout_completed'
+                AND o.created_at >= ? AND o.created_at < ?
+                ${humanOnlyClause('s')}
+                AND (o.test IS NULL OR o.test = 0)
+                AND o.cancelled_at IS NULL
+                AND o.financial_status = 'paid'
+            ) t
+            GROUP BY pair_key, currency
+          `,
+          [shop, bounds.start, bounds.end]
+        );
+        salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
+      }
 
-  // --- Available Types (last 30d) ---
-  const sessionsByDevice30 = await db.all(
-    `
-      SELECT ua_device_type AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
-      FROM sessions
-      WHERE last_seen >= ?
-        AND ua_device_type IS NOT NULL AND TRIM(ua_device_type) != ''
-        ${humanOnlyClause('sessions')}
-      GROUP BY ua_device_type
-    `,
-    [since30d]
-  );
-
-  // Build an "available" list only for keys we actually have
-  const availableTypes = [];
-  function pushAvailType(typeKey, sessions, lastSeen) {
-    if (!sessions || sessions <= 0) return;
-    availableTypes.push({ key: typeKey, label: labelForTypeKey(typeKey), sessions, last_seen: toNum(lastSeen) });
-  }
-  const device30 = new Map((sessionsByDevice30 || []).map(r => [String(r.key || '').trim().toLowerCase(), r]));
-  for (const k of ['desktop', 'mobile', 'tablet']) {
-    const r = device30.get(k);
-    pushAvailType('device:' + k, Number(r?.sessions) || 0, r?.last_seen);
-  }
-  availableTypes.sort((a, b) => (b.sessions - a.sessions) || ((b.last_seen || 0) - (a.last_seen || 0)));
-
-  // --- Type breakdown (range): device -> platform ---
-  const sessionsByPairRows = await db.all(
-    `
-      SELECT
-        COALESCE(NULLIF(TRIM(ua_device_type), ''), 'unknown') AS device,
-        COALESCE(NULLIF(TRIM(ua_platform), ''), 'other') AS platform,
-        COUNT(*) AS sessions
-      FROM sessions
-      WHERE started_at >= ? AND started_at < ?
-        ${humanOnlyClause('sessions')}
-      GROUP BY device, platform
-    `,
-    [bounds.start, bounds.end]
-  );
-  const sessionsByPair = new Map(); // "device|platform" -> sessions
-  const platformsByDevice = new Map(); // device -> Set(platform)
-  for (const r of sessionsByPairRows || []) {
-    const device = r && r.device != null ? String(r.device).trim().toLowerCase() : '';
-    const platform = r && r.platform != null ? String(r.platform).trim().toLowerCase() : '';
-    if (!device || !platform) continue;
-    const sessions = Number(r.sessions) || 0;
-    sessionsByPair.set(device + '|' + platform, sessions);
-    if (!platformsByDevice.has(device)) platformsByDevice.set(device, new Set());
-    platformsByDevice.get(device).add(platform);
-  }
-
-  // --- Type breakdown (range): sales ---
-  let salesByPair = new Map();
-  if (reporting.ordersSource === 'pixel') {
-    const salesPairRows = await db.all(
-      `
-        SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-        FROM (
-          SELECT
-            (
-              COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
-              || '|' ||
-              COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
-            ) AS pair_key,
-            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-            p.order_total AS revenue
-          FROM purchases p
-          INNER JOIN sessions s ON s.session_id = p.session_id
-          WHERE p.purchased_at >= ? AND p.purchased_at < ?
-            ${humanOnlyClause('s')}
-            ${store.purchaseFilterExcludeDuplicateH('p')}
-        ) t
-        GROUP BY pair_key, currency
-      `,
-      [bounds.start, bounds.end]
-    );
-    salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
-  } else if (shop) {
-    const salesPairRows = await db.all(
-      `
-        SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-        FROM (
-          SELECT DISTINCT
-            (
-              COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
-              || '|' ||
-              COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
-            ) AS pair_key,
-            COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-            o.order_id AS order_id,
-            o.total_price AS revenue
-          FROM purchase_events pe
-          INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-          INNER JOIN sessions s ON s.session_id = pe.session_id
-          WHERE pe.shop = ?
-            AND pe.event_type = 'checkout_completed'
-            AND o.created_at >= ? AND o.created_at < ?
-            ${humanOnlyClause('s')}
-            AND (o.test IS NULL OR o.test = 0)
-            AND o.cancelled_at IS NULL
-            AND o.financial_status = 'paid'
-        ) t
-        GROUP BY pair_key, currency
-      `,
-      [shop, bounds.start, bounds.end]
-    );
-    salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
-  }
-
-  const platformOrder = {
-    desktop: ['windows', 'mac', 'linux', 'chromeos', 'other'],
-    mobile: ['ios', 'android', 'other'],
-    tablet: ['ios', 'android', 'other'],
-  };
-  const enabledDevices = (prefs.typesEnabled || [])
-    .map((k) => (String(k || '').toLowerCase().startsWith('device:') ? String(k).toLowerCase().slice('device:'.length) : ''))
-    .filter((d) => ALLOWED_DEVICES.has(d));
-
-  const typeRows = enabledDevices.map((device) => {
-    const base = platformOrder[device] ? platformOrder[device].slice() : ['other'];
-    const extras = Array.from(platformsByDevice.get(device) || [])
-      .map((p) => String(p || '').trim().toLowerCase())
-      .filter((p) => p && base.indexOf(p) === -1);
-    extras.sort();
-    const platforms = base.concat(extras);
-
-    const children = platforms.map((platform) => {
-      const pairKey = device + '|' + platform;
-      const sessions = sessionsByPair.get(pairKey) || 0;
-      const sales = salesByPair.get(pairKey) || { orders: 0, revenueGbp: 0 };
-      const orders = Number(sales.orders) || 0;
-      const revenueGbp = Number(sales.revenueGbp) || 0;
-      return {
-        key: 'platform:' + platform,
-        platform,
-        label: labelForTypeKey('platform:' + platform),
-        sessions,
-        orders,
-        revenueGbp,
-        conversionPct: conversionPct(orders, sessions),
+      const platformOrder = {
+        desktop: ['windows', 'mac', 'linux', 'chromeos', 'other'],
+        mobile: ['ios', 'android', 'other'],
+        tablet: ['ios', 'android', 'other'],
       };
-    });
+      const enabledDevices = (prefs.typesEnabled || [])
+        .map((k) => (String(k || '').toLowerCase().startsWith('device:') ? String(k).toLowerCase().slice('device:'.length) : ''))
+        .filter((d) => ALLOWED_DEVICES.has(d));
 
-    const totals = children.reduce(
-      (acc, r) => {
-        acc.sessions += Number(r.sessions) || 0;
-        acc.orders += Number(r.orders) || 0;
-        acc.revenueGbp += Number(r.revenueGbp) || 0;
-        return acc;
-      },
-      { sessions: 0, orders: 0, revenueGbp: 0 }
-    );
-    totals.revenueGbp = Math.round((Number(totals.revenueGbp) || 0) * 100) / 100;
-    return {
-      key: 'device:' + device,
-      device,
-      label: labelForTypeKey('device:' + device),
-      sessions: totals.sessions,
-      orders: totals.orders,
-      revenueGbp: totals.revenueGbp,
-      conversionPct: conversionPct(totals.orders, totals.sessions),
-      children,
-    };
-  });
+      const typeRows = enabledDevices.map((device) => {
+        const base = platformOrder[device] ? platformOrder[device].slice() : ['other'];
+        const extras = Array.from(platformsByDevice.get(device) || [])
+          .map((p) => String(p || '').trim().toLowerCase())
+          .filter((p) => p && base.indexOf(p) === -1);
+        extras.sort();
+        const platforms = base.concat(extras);
+
+        const children = platforms.map((platform) => {
+          const pairKey = device + '|' + platform;
+          const sessions = sessionsByPair.get(pairKey) || 0;
+          const sales = salesByPair.get(pairKey) || { orders: 0, revenueGbp: 0 };
+          const orders = Number(sales.orders) || 0;
+          const revenueGbp = Number(sales.revenueGbp) || 0;
+          return {
+            key: 'platform:' + platform,
+            platform,
+            label: labelForTypeKey('platform:' + platform),
+            sessions,
+            orders,
+            revenueGbp,
+            conversionPct: conversionPct(orders, sessions),
+          };
+        });
+
+        const totals = children.reduce(
+          (acc, r) => {
+            acc.sessions += Number(r.sessions) || 0;
+            acc.orders += Number(r.orders) || 0;
+            acc.revenueGbp += Number(r.revenueGbp) || 0;
+            return acc;
+          },
+          { sessions: 0, orders: 0, revenueGbp: 0 }
+        );
+        totals.revenueGbp = Math.round((Number(totals.revenueGbp) || 0) * 100) / 100;
+        return {
+          key: 'device:' + device,
+          device,
+          label: labelForTypeKey('device:' + device),
+          sessions: totals.sessions,
+          orders: totals.orders,
+          revenueGbp: totals.revenueGbp,
+          conversionPct: conversionPct(totals.orders, totals.sessions),
+          children,
+        };
+      });
+
+      const t1 = Date.now();
+      if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
+        console.log('[traffic] range=%s ms=%s', rangeKey, (t1 - t0));
+      }
+
+      return {
+        now,
+        timeZone,
+        range: { key: rangeKey, start: bounds.start, end: bounds.end },
+        reporting,
+        prefs,
+        sources: {
+          enabled: prefs.sourcesEnabled,
+          available: (availableSources || []).map((r) => ({
+            key: String(r.key || '').trim().toLowerCase(),
+            label: labelForSourceKey(r.key),
+            sessions: Number(r.sessions) || 0,
+            last_seen: toNum(r.last_seen),
+          })),
+          rows: sourceRows,
+        },
+        types: {
+          enabled: prefs.typesEnabled,
+          available: availableTypes,
+          rows: typeRows,
+        },
+      };
+    }
+  );
 
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
-  res.json({
+  res.json(cached && cached.ok ? cached.data : {
     now,
     timeZone,
     range: { key: rangeKey, start: bounds.start, end: bounds.end },
     reporting,
     prefs,
-    sources: {
-      enabled: prefs.sourcesEnabled,
-      available: (availableSources || []).map((r) => ({
-        key: String(r.key || '').trim().toLowerCase(),
-        label: labelForSourceKey(r.key),
-        sessions: Number(r.sessions) || 0,
-        last_seen: toNum(r.last_seen),
-      })),
-      rows: sourceRows,
-    },
-    types: {
-      enabled: prefs.typesEnabled,
-      available: availableTypes,
-      rows: typeRows,
-    },
+    sources: { enabled: prefs.sourcesEnabled, available: [], rows: [] },
+    types: { enabled: prefs.typesEnabled, available: [], rows: [] },
   });
 }
 

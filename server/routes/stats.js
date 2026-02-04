@@ -4,6 +4,7 @@
  */
 
 const store = require('../store');
+const reportCache = require('../reportCache');
 
 const STATS_MEMO_TTL_MS = 30 * 1000;
 const statsMemoByKey = new Map(); // rangeKey -> { at, data, inflight }
@@ -34,8 +35,25 @@ function getStats(req, res, next) {
     return;
   }
 
-  const inflight = store.getStats({ trafficMode, rangeKey: rangeKey || undefined })
+  const timeZone = store.resolveAdminTimeZone();
+  const { start: todayStart } = store.getRangeBounds('today', now, timeZone);
+
+  const inflight = reportCache.getOrComputeJson(
+    {
+      shop: '',
+      endpoint: 'stats',
+      rangeKey: rangeKey || 'default',
+      rangeStartTs: todayStart,
+      rangeEndTs: now,
+      params: { trafficMode, rangeKey: rangeKey || null },
+      ttlMs: 15 * 60 * 1000,
+      force,
+    },
+    () => store.getStats({ trafficMode, rangeKey: rangeKey || undefined })
+  )
+    .then((r) => (r && r.ok ? r.data : null))
     .then((data) => {
+      if (!data) throw new Error('stats_cache_failed');
       statsMemoByKey.set(memoKey, { at: Date.now(), data, inflight: null });
       return data;
     })

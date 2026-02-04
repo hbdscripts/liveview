@@ -246,16 +246,17 @@ Performance direction:
 Report load speed (biggest pain):
 - **Symptoms**: “Products” / “Breakdown” / “Traffic” reports can feel slow or appear stuck (client uses long fetches + overlays; server work can exceed client timeouts on large datasets).
 - **Root causes** (current):
-  - “Products” endpoints still depend on parsing Shopify order JSON (`orders_shopify.raw_json`) for aggregations (first run per range can be heavy).
-  - Caches are mostly **in-memory** (lost on deploy/restart; not shared across instances).
-  - Some report endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
+  - “Breakdown” + “Traffic” endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
+  - Shopify reconciliation (Orders API fetch) can still dominate first-run latency for a range (network + rate limiting).
+  - Some caches are still **in-memory** (e.g. Shopify product metadata); persisted caching now exists for report payloads (see below).
   - SQLite in production is slow/ephemeral; Postgres is recommended for real shops.
-- **Non-destructive remedies** (recommended roadmap):
-  - **Persisted line-item facts**: on reconciliation, write an append-only (or upserted) `order_line_items` (or daily rollup) table so “Best sellers / variants” is pure SQL `GROUP BY` (no JSON parsing at request time). This is the single biggest win.
+- **Implemented (non-destructive)**:
+  - **Persisted line-item facts**: `orders_shopify_line_items` (migration 025) populated during `server/salesTruth.js` reconciliation (UPSERT). Product reports are now SQL `GROUP BY` (no `orders_shopify.raw_json` parsing in request path).
+  - **Persistent caching**: `report_cache` (migration 026) stores precomputed report payloads with TTL; used by `/api/shopify-best-sellers`, `/api/shopify-best-variants`, `/api/worst-products`, `/api/traffic`, `/api/stats`.
+  - **Instrumentation**: lightweight per-endpoint timing logs (trigger with `?timing=1`, and also logs when slow).
+- **Still recommended**:
   - **Daily rollups**: maintain `daily_stats` tables (orders/revenue/sessions by day + channel/device/etc.) and serve report ranges by summing days.
-  - **Persistent caching**: store precomputed aggregates (keyed by shop+range) in DB with TTL, or in Redis, so deploys don’t cold-start.
   - **More targeted indexes**: keep adding composite indexes matching the most expensive query patterns (especially for joined report queries).
-  - **Instrumentation**: add timing logs per endpoint (and/or Sentry performance) to pinpoint slow queries and cold-start costs.
 
 Shopify sessions snapshots (new capability, still limited):
 - Currently we snapshot Shopify “today” sessions in `shopify_sessions_snapshots` when fetched.
@@ -291,5 +292,6 @@ Backups durability:
 - Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
 - Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
 - Dashboard: Breakdown/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
+- Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
 - Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
 - Dashboard: sale toast overlays Sales+Sessions KPIs (flag + top product + order £) for 10s; Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`)
