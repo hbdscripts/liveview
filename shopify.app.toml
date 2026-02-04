@@ -8,7 +8,7 @@ embedded = true
 
 [access_scopes]
 # write_pixels + read_customer_events required to set pixel settings via API (webPixelCreate/webPixelUpdate)
-scopes = "read_products,read_orders,write_pixels,read_customer_events,read_reports"
+scopes = "read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports"
 
 [auth]
 redirect_urls = [

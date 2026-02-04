@@ -48,7 +48,7 @@ const config = {
     apiKey: getEnv('SHOPIFY_API_KEY', ''),
     apiSecret: getEnv('SHOPIFY_API_SECRET', ''),
     appUrl: getEnv('SHOPIFY_APP_URL', 'http://localhost:3000'),
-    scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders,write_pixels,read_customer_events,read_reports'),
+    scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports'),
   },
   ingestSecret: getEnv('INGEST_SECRET', ''),
   /** If set, pixel Ingest URL uses this (e.g. https://lv-ingest.hbdjewellery.com) so traffic goes through Cloudflare. Otherwise SHOPIFY_APP_URL + /api/ingest. */

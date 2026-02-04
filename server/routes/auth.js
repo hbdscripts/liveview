@@ -14,6 +14,24 @@ const apiSecret = config.shopify.apiSecret;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
 const scopes = config.shopify.scopes || 'read_products,read_orders';
 
+function parseScopeSet(scopeStr) {
+  return new Set(
+    String(scopeStr || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+function scopesSatisfy(grantedScopes, requiredScopes) {
+  const granted = parseScopeSet(grantedScopes);
+  const required = parseScopeSet(requiredScopes);
+  for (const s of required) {
+    if (!granted.has(s)) return false;
+  }
+  return true;
+}
+
 function verifyHmac(query) {
   const { hmac, ...rest } = query;
   if (!hmac || !apiSecret) return false;
@@ -202,14 +220,19 @@ async function handleAppUrl(req, res, next) {
     try {
       // Already installed: we have a token for this shop → show app in iframe (no OAuth redirect).
       const db = getDb();
-      const session = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+      const session = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
       if (session && session.access_token) {
-        const tokenOk = await isAccessTokenValid(shop, session.access_token);
-        if (tokenOk) {
-          return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+        const scopeOk = scopesSatisfy(session.scope || '', scopes || '');
+        if (!scopeOk) {
+          await writeAudit('system', 'shopify_token_missing_scopes', { shop, have: session.scope || '', need: scopes || '' });
+        } else {
+          const tokenOk = await isAccessTokenValid(shop, session.access_token);
+          if (tokenOk) {
+            return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+          }
+          await writeAudit('system', 'shopify_token_invalid', { shop, at: Date.now() });
+          // Fall through to OAuth re-authorize when token is invalid/revoked.
         }
-        await writeAudit('system', 'shopify_token_invalid', { shop, at: Date.now() });
-        // Fall through to OAuth re-authorize when token is invalid/revoked.
       }
     } catch (err) {
       console.error('[auth] App URL session check:', err);
