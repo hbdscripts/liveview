@@ -552,6 +552,9 @@
     let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
     let shopifySalesTodayLoading = false;
+    let shopifySessionsToday = null;
+    let shopifySessionsTodayLoaded = false;
+    let shopifySessionsTodayLoading = false;
     let bestSellersCache = null;
     let worstProductsCache = null;
     let bestVariantsCache = null;
@@ -718,8 +721,10 @@
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
-            // Only fetch Shopify-derived stats tables when viewing Stats (manual / 15-min cadence).
-            if (activeMainTab === 'stats' && shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
+            if (shopForSalesFallback && dateRange === 'today') {
+              if (typeof fetchShopifySales === 'function') fetchShopifySales();
+              if (typeof fetchShopifySessions === 'function') fetchShopifySessions();
+            }
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
@@ -1139,6 +1144,7 @@
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
+          renderLiveKpis(statsCache);
         })
         .catch(function() {
           shopifySalesToday = null;
@@ -1146,6 +1152,32 @@
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
+          renderLiveKpis(statsCache);
+        });
+    }
+
+    function fetchShopifySessions() {
+      var shop = getShopForSales();
+      if (!shop || dateRange !== 'today') {
+        if (dateRange === 'today' && storeBaseUrlLoaded && !shop) shopifySessionsTodayLoaded = true;
+        shopifySessionsTodayLoading = false;
+        return;
+      }
+      if (shopifySessionsTodayLoading) return;
+      shopifySessionsTodayLoading = true;
+      fetch(API + '/api/shopify-sessions?shop=' + encodeURIComponent(shop), { credentials: 'same-origin' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          shopifySessionsToday = data && typeof data.sessionsToday === 'number' ? data.sessionsToday : null;
+          shopifySessionsTodayLoaded = true;
+          shopifySessionsTodayLoading = false;
+          renderLiveKpis(statsCache);
+        })
+        .catch(function() {
+          shopifySessionsToday = null;
+          shopifySessionsTodayLoaded = true;
+          shopifySessionsTodayLoading = false;
+          renderLiveKpis(statsCache);
         });
     }
 
@@ -1517,12 +1549,21 @@
       const aovMap = data.aov || {};
       const bounceMap = data.bounce || {};
       const forRange = breakdown[dateRange];
-      const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
+      let sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
       let salesVal = sales[dateRange];
-      if (dateRange === 'today' && typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
-      const convVal = conv[dateRange];
-      const aovVal = aovMap[dateRange];
+      let convVal = conv[dateRange];
+      let aovVal = aovMap[dateRange];
       const bounceVal = bounceMap[dateRange];
+      if (dateRange === 'today') {
+        if (typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
+        if (typeof shopifySessionsToday === 'number') sessionsVal = shopifySessionsToday;
+        if (typeof shopifySessionsToday === 'number' && shopifySessionsToday > 0 && typeof shopifyOrderCountToday === 'number') {
+          convVal = Math.round((shopifyOrderCountToday / shopifySessionsToday) * 1000) / 10;
+        }
+        if (typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0 && typeof shopifySalesToday === 'number') {
+          aovVal = Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100;
+        }
+      }
       const salesEl = document.getElementById('live-kpi-sales');
       const sessionsEl = document.getElementById('live-kpi-sessions');
       const convEl = document.getElementById('live-kpi-conv');
@@ -1557,6 +1598,10 @@
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data && typeof data.country === 'object' ? data : {});
+          if (dateRange === 'today' && activeMainTab === 'spy' && getShopForSales()) {
+            fetchShopifySales();
+            fetchShopifySessions();
+          }
           return data;
         })
         .catch(function(err) {
@@ -1578,8 +1623,7 @@
       setTbodyLoading('worst-products-body', 4);
       setTbodyLoading('best-variants-body', 3);
 
-      // Start Shopify sales fetch early so Sales doesn't flash a DB value first.
-      if (dateRange === 'today') fetchShopifySales();
+      if (dateRange === 'today') { fetchShopifySales(); fetchShopifySessions(); }
 
       const tasks = [
         fetchStatsData({ force }),
@@ -1893,7 +1937,7 @@
         updateLiveViewTitle();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
-          if (dateRange !== 'today') shopifySalesToday = null;
+          if (dateRange !== 'today') { shopifySalesToday = null; shopifySessionsToday = null; }
           countryPage = 1;
           aovPage = 1;
           bestSellersPage = 1;
@@ -1929,9 +1973,8 @@
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           updateNextUpdateUi();
           if (tab === 'stats') {
-            const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
-            if (stale) refreshStats({ force: false });
-            else renderStats(statsCache || {});
+            // Always refresh when entering Stats so main stats + BEST + WORST + VARIANTS load (no stuck "Loading...")
+            refreshStats({ force: true });
           } else {
             const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > LIVE_REFRESH_MS;
             const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
