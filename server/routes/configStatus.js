@@ -1,13 +1,17 @@
 /**
- * GET /api/config-status – non-sensitive config for admin panel.
- * Optional ?shop=xxx.myshopify.com to fetch Shopify sessions (today); otherwise uses ALLOWED_SHOP_DOMAIN.
+ * GET /api/config-status – diagnostics-only payload for the dashboard settings modal.
+ *
+ * Optional ?shop=xxx.myshopify.com to fetch Shopify-backed diagnostics; otherwise falls back to ALLOWED_SHOP_DOMAIN / SHOP_DOMAIN.
  */
 
 const config = require('../config');
 const store = require('../store');
 const { getDb, isPostgres } = require('../db');
+const salesTruth = require('../salesTruth');
+const pkg = require('../../package.json');
 
 const GRAPHQL_API_VERSION = '2025-10'; // shopifyqlQuery available from 2025-10
+const PIXEL_API_VERSION = '2024-01';
 
 /**
  * Returns { count, error } where count is a number or null, and error is a short message if the request failed.
@@ -79,29 +83,71 @@ async function fetchShopifySessionsToday(shop, accessToken) {
   return { count: total, error: '' };
 }
 
+function safeJsonParse(str) {
+  if (!str || typeof str !== 'string') return null;
+  try {
+    return JSON.parse(str);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchShopifyWebPixelIngestUrl(shop, accessToken) {
+  const graphqlUrl = `https://${shop}/admin/api/${PIXEL_API_VERSION}/graphql.json`;
+  let res;
+  let text;
+  try {
+    res = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query: 'query { webPixel { settings } }' }),
+    });
+    text = await res.text();
+  } catch (err) {
+    return { ok: false, installed: null, ingestUrl: null, message: err && err.message ? String(err.message).slice(0, 120) : 'Network error' };
+  }
+
+  const json = safeJsonParse(text) || null;
+  const gqlErrors = Array.isArray(json?.errors) ? json.errors : [];
+  const notFound = gqlErrors.some((e) => {
+    const code = (e && e.extensions && e.extensions.code) ? String(e.extensions.code) : '';
+    const msg = e && e.message ? String(e.message) : '';
+    return code.toUpperCase() === 'RESOURCE_NOT_FOUND' || /no web pixel was found/i.test(msg);
+  });
+  if (notFound) {
+    return { ok: true, installed: false, ingestUrl: null, message: 'No web pixel for this app (yet)' };
+  }
+
+  if (!res.ok) {
+    const msg = firstErrorMsg(json) || json?.message || `HTTP ${res.status}`;
+    return { ok: false, installed: null, ingestUrl: null, message: String(msg).slice(0, 180) };
+  }
+  if (gqlErrors.length > 0) {
+    const msg = firstErrorMsg(json) || 'GraphQL error';
+    return { ok: false, installed: null, ingestUrl: null, message: String(msg).slice(0, 180) };
+  }
+
+  const raw = json?.data?.webPixel?.settings;
+  if (raw == null) return { ok: true, installed: true, ingestUrl: null, message: 'Pixel installed but settings are empty' };
+  const settings = (typeof raw === 'object' && raw !== null) ? raw : safeJsonParse(raw);
+  const ingestUrl = (settings && typeof settings.ingestUrl === 'string') ? settings.ingestUrl : null;
+  return { ok: true, installed: true, ingestUrl, message: '' };
+}
+
 async function configStatus(req, res, next) {
-  const hasShopify = !!(config.shopify.apiKey && config.shopify.apiSecret);
-  const hasAppUrl = !!config.shopify.appUrl;
-  const hasIngestSecret = !!config.ingestSecret;
-  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
-    ? config.ingestPublicUrl
-    : config.shopify.appUrl.replace(/\/$/, '');
-  const ingestUrl = `${ingestBase}/api/ingest`;
-
-  const trackingEnabled = true;
-
   const now = Date.now();
   const last24hStart = now - 24 * 60 * 60 * 1000;
   const timeZone = store.resolveAdminTimeZone();
   const todayBounds = store.getRangeBounds('today', now, timeZone);
-  const yesterdayBounds = store.getRangeBounds('yesterday', now, timeZone);
 
   const db = getDb();
   const dbEngine = isPostgres() ? 'postgres' : 'sqlite';
 
   async function tableExists(name) {
     try {
-      // If table exists but is empty, db.get returns null (still ok).
       await db.get(`SELECT 1 FROM ${name} LIMIT 1`);
       return true;
     } catch (_) {
@@ -114,54 +160,61 @@ async function configStatus(req, res, next) {
     return Number.isFinite(n) ? n : null;
   }
 
-  const health = {
-    now,
-    timeZone,
-    ranges: { today: todayBounds, yesterday: yesterdayBounds },
-    db: { engine: dbEngine },
-    tables: {},
-    sessions: {},
-    purchases: {},
-    events: {},
-    botsLast24h: 0,
-    humanLast24h: 0,
-    shopifySessionsToday: null,
-    shopifySessionsTodayNote: '',
-    storedScopes: '',
-    /** Scopes the server would request on next OAuth (from SHOPIFY_SCOPES). Shown so user can confirm env before reinstalling. */
-    serverScopes: (config.shopify.scopes || '').split(',').map((s) => s.trim()).filter(Boolean).join(', '),
-    sessionsToday: null,
-    botsToday: 0,
-    humanToday: 0,
-    botsBlockedAtEdge: 0, // from Worker callback POST /api/bot-blocked
+  const shop = salesTruth.resolveShopForSales(req.query.shop || '');
+  const serverScopes = (config.shopify.scopes || '').split(',').map((s) => s.trim()).filter(Boolean).join(', ');
+
+  // --- DB tables ---
+  const tables = {
+    sessions: await tableExists('sessions'),
+    events: await tableExists('events'),
+    orders_shopify: await tableExists('orders_shopify'),
+    purchase_events: await tableExists('purchase_events'),
+    reconcile_state: await tableExists('reconcile_state'),
+    audit_log: await tableExists('audit_log'),
+    bot_block_counts: await tableExists('bot_block_counts'),
   };
 
-  const hasSessions = await tableExists('sessions');
-  const hasEvents = await tableExists('events');
-  const hasPurchases = await tableExists('purchases');
-  health.tables = { sessions: hasSessions, events: hasEvents, purchases: hasPurchases };
-
-  if (hasSessions) {
+  // --- Shopify token / scopes ---
+  let token = '';
+  let storedScopes = '';
+  if (shop) {
     try {
-      const maxRow = await db.get('SELECT MAX(started_at) AS max_started_at, MAX(last_seen) AS max_last_seen FROM sessions');
-      health.sessions.max_started_at = num(maxRow?.max_started_at);
-      health.sessions.max_last_seen = num(maxRow?.max_last_seen);
+      const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
+      token = row?.access_token ? String(row.access_token) : '';
+      storedScopes = typeof row?.scope === 'string'
+        ? row.scope.split(',').map((s) => s.trim()).filter(Boolean).join(', ')
+        : '';
+    } catch (_) {}
+  }
+
+  // --- Traffic diagnostics (ours, bot-tagged, edge blocked) ---
+  const traffic = {
+    today: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null, botsBlockedAtEdge: 0, totalTrafficEst: null },
+    last24h: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null },
+    shopifySessionsToday: null,
+    shopifySessionsTodayNote: '',
+  };
+  if (tables.sessions) {
+    try {
+      const r = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [todayBounds.start]);
+      traffic.today.sessionsReachedApp = num(r?.n) ?? 0;
+    } catch (_) {}
+    try {
+      const cfToday = await db.get(`
+        SELECT
+          SUM(CASE WHEN cf_known_bot = 1 THEN 1 ELSE 0 END) AS known_bot,
+          SUM(CASE WHEN cf_known_bot = 0 OR cf_known_bot IS NULL THEN 1 ELSE 0 END) AS human
+        FROM sessions
+        WHERE started_at >= ?
+      `, [todayBounds.start]);
+      const bots = num(cfToday?.known_bot) ?? 0;
+      const human = num(cfToday?.human) ?? 0;
+      traffic.today.botSessionsTagged = bots;
+      traffic.today.humanSessions = human;
     } catch (_) {}
     try {
       const r24 = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [last24hStart]);
-      health.sessions.last24h = num(r24?.n) ?? 0;
-    } catch (_) {}
-    try {
-      const rt = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [todayBounds.start]);
-      health.sessionsToday = num(rt?.n) ?? 0;
-    } catch (_) {}
-    try {
-      const ry = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?', [yesterdayBounds.start, yesterdayBounds.end]);
-      health.sessions.yesterday = num(ry?.n) ?? 0;
-    } catch (_) {}
-    try {
-      const rp = await db.get('SELECT COUNT(*) AS n FROM sessions WHERE has_purchased = 1 AND purchased_at >= ?', [last24hStart]);
-      health.sessions.purchasedLast24h = num(rp?.n) ?? 0;
+      traffic.last24h.sessionsReachedApp = num(r24?.n) ?? 0;
     } catch (_) {}
     try {
       const cf = await db.get(`
@@ -175,107 +228,185 @@ async function configStatus(req, res, next) {
       const kb = num(cf?.known_bot) ?? 0;
       const kh = num(cf?.known_human) ?? 0;
       const ku = num(cf?.unknown) ?? 0;
-      health.botsLast24h = kb;
-      health.humanLast24h = kh + ku;
-    } catch (_) {}
-    try {
-      const cfToday = await db.get(`
-        SELECT
-          SUM(CASE WHEN cf_known_bot = 1 THEN 1 ELSE 0 END) AS known_bot,
-          SUM(CASE WHEN cf_known_bot = 0 OR cf_known_bot IS NULL THEN 1 ELSE 0 END) AS human
-        FROM sessions
-        WHERE started_at >= ?
-      `, [todayBounds.start]);
-      health.botsToday = num(cfToday?.known_bot) ?? 0;
-      health.humanToday = num(cfToday?.human) ?? 0;
+      traffic.last24h.botSessionsTagged = kb;
+      traffic.last24h.humanSessions = kh + ku;
     } catch (_) {}
   }
-
-  if (hasEvents) {
+  if (tables.bot_block_counts) {
     try {
-      const r = await db.get('SELECT COUNT(*) AS n FROM events WHERE type = ? AND ts >= ?', ['checkout_completed', last24hStart]);
-      health.events.checkoutCompletedLast24h = num(r?.n) ?? 0;
+      const todayStr = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone });
+      const blockRow = await db.get('SELECT "count" AS n FROM bot_block_counts WHERE date = ?', [todayStr]);
+      if (blockRow != null) traffic.today.botsBlockedAtEdge = num(blockRow.n) ?? 0;
     } catch (_) {}
   }
+  if (typeof traffic.today.sessionsReachedApp === 'number' && typeof traffic.today.botsBlockedAtEdge === 'number') {
+    traffic.today.totalTrafficEst = traffic.today.sessionsReachedApp + traffic.today.botsBlockedAtEdge;
+  }
 
-  try {
-    const todayStr = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone: store.resolveAdminTimeZone() });
-    const blockRow = await db.get('SELECT "count" AS n FROM bot_block_counts WHERE date = ?', [todayStr]);
-    if (blockRow != null) health.botsBlockedAtEdge = num(blockRow.n) ?? 0;
-  } catch (_) {}
-
-  const shop = (req.query.shop || config.allowedShopDomain || config.shopDomain || '').trim().toLowerCase();
-  if (shop && shop.endsWith('.myshopify.com')) {
-    try {
-      const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
-      const token = row?.access_token;
-      const scope = typeof row?.scope === 'string' ? row.scope : '';
-      health.storedScopes = scope ? scope.split(',').map((s) => s.trim()).filter(Boolean).join(', ') : '';
-      if (!token) {
-        health.shopifySessionsTodayNote = 'No Shopify access token for this shop. Install the app (OAuth) or reinstall from Shopify Admin.';
-      } else {
-        // Always try the API when we have a token; show count or real error (e.g. missing read_reports → 403 / access denied).
-        const result = await fetchShopifySessionsToday(shop, token);
-        if (typeof result.count === 'number') {
-          health.shopifySessionsToday = result.count;
-          health.shopifySessionsTodayNote = '';
-        } else {
-          const errMsg = result.error ? String(result.error) : '';
-          const isAuthError = /http\s*401|http\s*403|unauthorized|invalid access token|access token/i.test(errMsg);
-          if (isAuthError) {
-            health.shopifySessionsTodayNote =
-              'Shopify returned ' + (errMsg ? errMsg : 'HTTP 401/403') +
-              '. The stored access token is invalid/revoked. Open the app from Shopify Admin to re-authorize, or uninstall + reinstall the app.';
-          } else {
-            health.shopifySessionsTodayNote = errMsg
-              ? 'Shopify returned: ' + errMsg
-              : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
-            // Explain why orders/revenue work but sessions don't: different Shopify APIs (Orders API vs Reports/ShopifyQL)
-            health.shopifySessionsTodayNote += ' Orders and revenue use the Orders API (read_orders); session count uses Reports (ShopifyQL, read_reports)—same app, different API.';
-            const missingScope = /access denied|forbidden|required scope/i.test(errMsg);
-            if (missingScope && !(scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports'))) {
-              health.shopifySessionsTodayNote += ' Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall and reinstall the app from this store\'s Admin.';
-            }
-            if (errMsg && /protected customer|customer data|level 2/i.test(errMsg)) {
-              health.shopifySessionsTodayNote += ' Enable Protected Customer Data in Partners (App setup → API access).';
-            }
-          }
-        }
-      }
-    } catch (err) {
-      health.shopifySessionsTodayNote = (err && err.message ? String(err.message).slice(0, 80) : 'Error loading Shopify sessions') + '. Check server logs.';
+  // Shopify sessions today (ShopifyQL). Useful for diagnosing "why Shopify sessions don't match ours".
+  if (shop && token) {
+    const result = await fetchShopifySessionsToday(shop, token);
+    if (typeof result.count === 'number') {
+      traffic.shopifySessionsToday = result.count;
+      traffic.shopifySessionsTodayNote = '';
+    } else {
+      traffic.shopifySessionsToday = null;
+      traffic.shopifySessionsTodayNote = result.error ? String(result.error) : 'Shopify sessions unavailable';
     }
-  } else if (health.shopifySessionsTodayNote === undefined || health.shopifySessionsTodayNote === '') {
-    health.shopifySessionsTodayNote = 'Open the app with ?shop=yourstore.myshopify.com in the URL, or set ALLOWED_SHOP_DOMAIN (or SHOP_DOMAIN) in Railway, so Config can fetch Shopify sessions.';
+  } else if (shop && !token) {
+    traffic.shopifySessionsTodayNote = 'No Shopify access token stored for this shop (install/reinstall from Shopify Admin).';
+  } else if (!shop) {
+    traffic.shopifySessionsTodayNote = 'Missing shop domain (open the dashboard with ?shop=store.myshopify.com or set ALLOWED_SHOP_DOMAIN).';
   }
 
-  if (hasPurchases) {
+  // --- Sales truth + evidence diagnostics ---
+  const truth = {
+    today: { orderCount: null, revenueGbp: null, lastOrderCreatedAt: null },
+    health: await salesTruth.getTruthHealth(shop || '', 'today'),
+    lastVerify: null,
+    lastReconcile: null,
+  };
+  const evidence = {
+    today: { checkoutCompleted: null, linked: null, unlinked: null, lastOccurredAt: null },
+  };
+
+  if (shop && tables.orders_shopify) {
     try {
-      const maxRow = await db.get('SELECT MAX(purchased_at) AS max_purchased_at FROM purchases');
-      health.purchases.max_purchased_at = num(maxRow?.max_purchased_at);
+      truth.today.orderCount = await salesTruth.getTruthOrderCount(shop, todayBounds.start, todayBounds.end);
+      truth.today.revenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, todayBounds.start, todayBounds.end);
     } catch (_) {}
     try {
-      const r24 = await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ?', [last24hStart]);
-      health.purchases.last24h = num(r24?.n) ?? 0;
-    } catch (_) {}
-    try {
-      const ry = await db.get('SELECT COUNT(*) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?', [yesterdayBounds.start, yesterdayBounds.end]);
-      health.purchases.yesterday = num(ry?.n) ?? 0;
+      const r = await db.get(
+        `SELECT MAX(created_at) AS max_created_at
+         FROM orders_shopify
+         WHERE shop = ?
+           AND created_at >= ? AND created_at < ?
+           AND (test IS NULL OR test = 0)
+           AND cancelled_at IS NULL
+           AND financial_status = 'paid'`,
+        [shop, todayBounds.start, todayBounds.end]
+      );
+      truth.today.lastOrderCreatedAt = num(r?.max_created_at);
     } catch (_) {}
   }
 
+  if (shop && tables.purchase_events) {
+    try {
+      const row = await db.get(
+        `
+        SELECT
+          COUNT(*) AS total,
+          SUM(CASE WHEN linked_order_id IS NOT NULL THEN 1 ELSE 0 END) AS linked,
+          SUM(CASE WHEN linked_order_id IS NULL THEN 1 ELSE 0 END) AS unlinked,
+          MAX(occurred_at) AS max_occurred_at
+        FROM purchase_events
+        WHERE shop = ? AND event_type = 'checkout_completed'
+          AND occurred_at >= ? AND occurred_at < ?
+        `,
+        [shop, todayBounds.start, todayBounds.end]
+      );
+      evidence.today.checkoutCompleted = row?.total != null ? Number(row.total) || 0 : 0;
+      evidence.today.linked = row?.linked != null ? Number(row.linked) || 0 : 0;
+      evidence.today.unlinked = row?.unlinked != null ? Number(row.unlinked) || 0 : 0;
+      evidence.today.lastOccurredAt = num(row?.max_occurred_at);
+    } catch (_) {}
+  }
+
+  // --- Pixel diagnostics (Shopify web pixel settings for this app) ---
+  let pixel = { ok: false, installed: null, ingestUrl: null, message: '' };
+  if (shop && token) {
+    pixel = await fetchShopifyWebPixelIngestUrl(shop, token);
+  } else if (shop && !token) {
+    pixel = { ok: false, installed: null, ingestUrl: null, message: 'No Shopify token stored for this shop yet' };
+  } else {
+    pixel = { ok: false, installed: null, ingestUrl: null, message: 'No shop specified' };
+  }
+
+  // --- Audit breadcrumbs (best-effort; no extra Shopify calls) ---
+  async function latestAudit(action) {
+    if (!tables.audit_log) return null;
+    try {
+      const rows = await db.all('SELECT ts, details_json FROM audit_log WHERE action = ? ORDER BY ts DESC LIMIT 25', [action]);
+      for (const row of rows || []) {
+        const details = safeJsonParse(row.details_json);
+        if (!details || (shop && details.shop && String(details.shop).toLowerCase() !== String(shop).toLowerCase())) continue;
+        return { ts: num(row.ts), details };
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  const lastVerify = await latestAudit('verify_sales');
+  if (lastVerify && lastVerify.details && Array.isArray(lastVerify.details.results)) {
+    const allOk = lastVerify.details.results.every((r) => r && r.ok === true);
+    const today = lastVerify.details.results.find((r) => r && r.range && r.range.key === 'today') || null;
+    truth.lastVerify = {
+      ts: lastVerify.ts,
+      ok: allOk,
+      todayDiff: today && today.diff ? today.diff : null,
+    };
+  }
+  const lastReconcile = await latestAudit('reconcile_orders_shopify');
+  if (lastReconcile && lastReconcile.details) {
+    truth.lastReconcile = {
+      ts: lastReconcile.ts,
+      scope: lastReconcile.details.scope || '',
+      fetched: num(lastReconcile.details.fetched),
+      inserted: num(lastReconcile.details.inserted),
+      updated: num(lastReconcile.details.updated),
+      evidenceLinked: num(lastReconcile.details.evidenceLinked),
+      shopify: lastReconcile.details.shopify || null,
+    };
+  }
+
+  // --- Ingest config (non-sensitive) ---
+  const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+    ? config.ingestPublicUrl.replace(/\/$/, '')
+    : (config.shopify.appUrl || '').replace(/\/$/, '');
+  const effectiveIngestUrl = ingestBase ? `${ingestBase}/api/ingest` : '';
+
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
   res.json({
-    shopify: { configured: hasShopify },
-    appUrl: { configured: hasAppUrl, value: config.shopify.appUrl },
-    ingestSecret: { configured: hasIngestSecret },
-    ingestUrl,
-    ingestPublicUrl: config.ingestPublicUrl || '',
-    trackingEnabled,
-    adminTimezone: config.adminTimezone,
-    sessionRetentionDays: config.sessionRetentionDays,
-    db: { engine: dbEngine, configured: isPostgres() },
-    sentry: { configured: !!(config.sentryDsn && config.sentryDsn.trim()) },
-    health,
+    now,
+    timeZone,
+    app: {
+      version: pkg.version || '0.0.0',
+      nodeEnv: process.env.NODE_ENV || 'development',
+      sentryConfigured: !!(config.sentryDsn && config.sentryDsn.trim()),
+    },
+    shopify: {
+      shop,
+      hasToken: !!token,
+      storedScopes,
+      serverScopes,
+    },
+    db: {
+      engine: dbEngine,
+      configured: isPostgres(),
+      tables,
+    },
+    ingest: {
+      effectiveIngestUrl,
+      ingestPublicUrl: config.ingestPublicUrl || '',
+      allowedIngestOrigins: config.allowedIngestOrigins || [],
+      ingestSecretConfigured: !!(config.ingestSecret && String(config.ingestSecret).trim()),
+    },
+    traffic: {
+      boundsToday: todayBounds,
+      ...traffic,
+    },
+    sales: {
+      boundsToday: todayBounds,
+      truth,
+      evidence,
+      drift: {
+        orders: (typeof evidence.today.checkoutCompleted === 'number' && typeof truth.today.orderCount === 'number')
+          ? (evidence.today.checkoutCompleted - truth.today.orderCount)
+          : null,
+      },
+    },
+    pixel,
   });
 }
 
