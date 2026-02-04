@@ -27,7 +27,9 @@ Main tabs (top row):
 - Traffic: two tables (Source + Traffic Type)
 
 Global date range picker (applies to Breakdown + Products + Traffic):
-- Today / Yesterday / 3 days / 7 days
+- Today / Yesterday / Custom…
+  - Custom opens a calendar popup (last 30 days). Grey dates have no session data.
+  - Custom selection is represented internally as a day key: `d:YYYY-MM-DD` (admin timezone) and is supported across sessions/stats/products/traffic APIs.
 
 Traffic tab (new)
 - Layout:
@@ -120,7 +122,7 @@ New module:
 - `server/routes/traffic.js`
 
 Endpoints:
-- `GET /api/traffic?range=today|yesterday|3d|7d`
+- `GET /api/traffic?range=today|yesterday|d:YYYY-MM-DD` (legacy `3d`/`7d` still accepted)
   - Returns:
     - available sources/types (detected over recent window)
     - enabled sources/types (from settings)
@@ -209,6 +211,8 @@ Performance direction:
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
 - Added derived traffic fields to `sessions` via migration 021
 - Added `/api/traffic` + `/api/traffic-prefs`
+- Date picker: change dropdown to Today / Yesterday / Custom (calendar for last 30 days)
+  - Added `GET /api/available-days` and custom day keys `d:YYYY-MM-DD` across report endpoints
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known

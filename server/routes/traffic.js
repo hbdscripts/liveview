@@ -173,9 +173,10 @@ function labelForTypeKey(key) {
 async function getTraffic(req, res) {
   const now = Date.now();
   const timeZone = store.resolveAdminTimeZone();
-  const rangeKeyRaw = typeof req.query.range === 'string' ? req.query.range : '';
+  const rangeKeyRaw = typeof req.query.range === 'string' ? req.query.range.trim().toLowerCase() : '';
   const allowedRange = new Set(['today', 'yesterday', '3d', '7d']);
-  const rangeKey = allowedRange.has(rangeKeyRaw) ? rangeKeyRaw : 'today';
+  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(rangeKeyRaw);
+  const rangeKey = (allowedRange.has(rangeKeyRaw) || isDayKey) ? rangeKeyRaw : 'today';
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
 
   const db = getDb();

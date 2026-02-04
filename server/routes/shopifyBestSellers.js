@@ -6,6 +6,8 @@
 const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
+const productAggCache = require('../productAggCache');
+const productMetaCache = require('../shopifyProductMetaCache');
 
 const API_VERSION = '2024-01';
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
@@ -22,7 +24,9 @@ async function getShopifyBestSellers(req, res) {
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
-  if (!RANGE_KEYS.includes(range)) range = 'today';
+  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
+  if (!RANGE_KEYS.includes(range) && !isDayKey) range = 'today';
+  const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();
   const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
@@ -37,60 +41,13 @@ async function getShopifyBestSellers(req, res) {
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
 
   const token = row.access_token;
-  const productMap = new Map(); // product_id -> { product_id, title, orders: Set<order_id>, revenue }
-  let totalOrders = 0;
 
   try {
     // Ensure Shopify truth cache is populated for this range (throttled).
     await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
-
-    const orderRows = await db.all(
-      `
-        SELECT order_id, raw_json
-        FROM orders_shopify
-        WHERE shop = ? AND created_at >= ? AND created_at < ?
-          AND (test IS NULL OR test = 0)
-          AND cancelled_at IS NULL
-          AND financial_status = 'paid'
-      `,
-      [shop, start, end]
-    );
-
-    totalOrders = Array.isArray(orderRows) ? orderRows.length : 0;
-    for (const r of orderRows || []) {
-      let order = null;
-      try {
-        order = r && r.raw_json ? JSON.parse(r.raw_json) : null;
-      } catch (_) {
-        order = null;
-      }
-      const orderId = r && r.order_id ? r.order_id : (order && order.id ? String(order.id) : null);
-      const lineItems = order && Array.isArray(order.line_items) ? order.line_items : [];
-      for (const li of lineItems) {
-        const productId = li && li.product_id ? li.product_id : null;
-        if (!productId) continue;
-        const qty = Math.max(0, parseInt(li.quantity, 10) || 0);
-        const price = parseFloat(li.price) || 0;
-        const lineTotal = qty * price;
-        const title = (li.title || '').trim() || 'Unknown';
-        let entry = productMap.get(productId);
-        if (!entry) {
-          entry = { product_id: productId, title, orderIds: new Set(), revenue: 0 };
-          productMap.set(productId, entry);
-        }
-        if (orderId) entry.orderIds.add(orderId);
-        entry.revenue += lineTotal;
-      }
-    }
-
-    const list = Array.from(productMap.values())
-      .map((e) => ({
-        product_id: e.product_id,
-        title: e.title,
-        orders: e.orderIds.size,
-        revenue: Math.round(e.revenue * 100) / 100,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
+    const agg = await productAggCache.getAgg(shop, start, end, { ttlMs: 15 * 60 * 1000, force });
+    const totalOrders = agg && typeof agg.totalOrders === 'number' ? agg.totalOrders : 0;
+    const list = Array.isArray(agg && agg.products) ? agg.products.slice() : [];
 
     const sort = (req.query.sort || 'rev').toString().trim().toLowerCase();
     const dir = (req.query.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
@@ -109,24 +66,18 @@ async function getShopifyBestSellers(req, res) {
     const startIdx = (page - 1) * pageSize;
     const pageItems = list.slice(startIdx, startIdx + pageSize);
 
-    for (const p of pageItems) {
-      try {
-        const prodRes = await fetch(
-          `https://${shop}/admin/api/${API_VERSION}/products/${p.product_id}.json`,
-          { headers: { 'X-Shopify-Access-Token': token } }
-        );
-        if (prodRes.ok) {
-          const prodData = await prodRes.json();
-          const prod = prodData.product || {};
-          const img = prod.image || (Array.isArray(prod.images) && prod.images[0]) || null;
-          p.thumb_url = img && (img.src || img.url) ? (img.src || img.url) : null;
-          p.handle = (prod.handle && String(prod.handle).trim()) || null;
+    await Promise.all(
+      pageItems.map(async (p) => {
+        try {
+          const meta = await productMetaCache.getProductMeta(shop, token, p.product_id);
+          p.thumb_url = meta && meta.ok ? (meta.thumb_url || null) : null;
+          p.handle = meta && meta.ok ? (meta.handle || null) : null;
+        } catch (_) {
+          p.thumb_url = null;
+          p.handle = null;
         }
-      } catch (_) {
-        p.thumb_url = null;
-        p.handle = null;
-      }
-    }
+      })
+    );
 
     const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
     const bestSellers = pageItems.map((p) => ({

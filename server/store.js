@@ -700,7 +700,7 @@ function sessionFilterForTraffic(trafficMode) {
   return { sql: '', params: [] };
 }
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', 'month'];
+const DEFAULT_RANGE_KEYS = ['today', 'yesterday'];
 const SALES_ROLLING_WINDOWS = [
   { key: '3h', ms: 3 * 60 * 60 * 1000 },
   { key: '6h', ms: 6 * 60 * 60 * 1000 },
@@ -776,6 +776,25 @@ function startOfDayUtcMs(parts, timeZone) {
 function getRangeBounds(rangeKey, nowMs, timeZone) {
   const todayParts = getTimeZoneParts(new Date(nowMs), timeZone);
   const startToday = startOfDayUtcMs(todayParts, timeZone);
+  // Custom day: d:YYYY-MM-DD (in admin timezone)
+  if (typeof rangeKey === 'string' && rangeKey.startsWith('d:')) {
+    const m = rangeKey.match(/^d:(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const year = parseInt(m[1], 10);
+      const month = parseInt(m[2], 10);
+      const day = parseInt(m[3], 10);
+      if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const start = zonedTimeToUtcMs(year, month, day, 0, 0, 0, timeZone);
+        const nextParts = addDaysToParts({ year, month, day }, 1);
+        const endFull = zonedTimeToUtcMs(nextParts.year, nextParts.month, nextParts.day, 0, 0, 0, timeZone);
+        const isToday = year === todayParts.year && month === todayParts.month && day === todayParts.day;
+        const end = isToday ? nowMs : endFull;
+        // Clamp future dates.
+        if (start >= nowMs) return { start: nowMs, end: nowMs };
+        return { start, end: Math.max(start, end) };
+      }
+    }
+  }
   if (rangeKey === '1h') {
     return { start: nowMs - 60 * 60 * 1000, end: nowMs };
   }
@@ -1110,8 +1129,18 @@ async function getStats(options = {}) {
   const opts = { trafficMode };
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
+  const requestedRangeRaw =
+    typeof options.rangeKey === 'string' ? options.rangeKey :
+      (typeof options.range === 'string' ? options.range : '');
+  const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
+  const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const allowedLegacy = new Set(['3d', '7d', 'month']);
+  const rangeKeys = DEFAULT_RANGE_KEYS.slice();
+  if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || allowedLegacy.has(requestedRange))) {
+    rangeKeys.push(requestedRange);
+  }
   const ranges = {};
-  for (const key of RANGE_KEYS) {
+  for (const key of rangeKeys) {
     ranges[key] = getRangeBounds(key, now, timeZone);
   }
   // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
@@ -1138,24 +1167,20 @@ async function getStats(options = {}) {
     trafficBreakdownEntries,
     bounceByRangeEntries,
     yesterdayOk,
-    threeDOk,
-    sevenDOk,
     salesTruthHealth,
   ] = await Promise.all([
-    Promise.all(RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])),
+    Promise.all(rangeKeys.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])),
+    Promise.all(rangeKeys.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])),
     Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])),
     Promise.all(CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, opts)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])),
+    Promise.all(rangeKeys.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])),
     Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])),
-    Promise.all(RANGE_KEYS.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(rangeKeys.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])),
     rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts),
-    rangeHasSessions(ranges['3d'].start, ranges['3d'].end, opts),
-    rangeHasSessions(ranges['7d'].start, ranges['7d'].end, opts),
     salesTruth.getTruthHealth(salesShop || '', 'today'),
   ]);
   const salesByRange = Object.fromEntries(salesByRangeEntries);
@@ -1170,7 +1195,7 @@ async function getStats(options = {}) {
   const trafficBreakdown = Object.fromEntries(trafficBreakdownEntries);
   const bounceByRange = Object.fromEntries(bounceByRangeEntries);
   const aovByRange = {};
-  for (const key of RANGE_KEYS) {
+  for (const key of rangeKeys) {
     aovByRange[key] = aovFromSalesAndCount(salesByRange[key], convertedCountByRange[key]);
   }
   const aovRolling = {};
@@ -1180,9 +1205,6 @@ async function getStats(options = {}) {
   const rangeAvailable = {
     today: true,
     yesterday: yesterdayOk,
-    '3d': threeDOk && yesterdayOk,
-    '7d': sevenDOk && yesterdayOk,
-    month: true,
   };
   return {
     sales: { ...salesByRange, rolling: salesRolling },

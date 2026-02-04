@@ -399,6 +399,17 @@
     .config-modal-title { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .config-close { border: none; background: none; cursor: pointer; font-size: 1.25rem; line-height: 1; color: var(--muted); }
     .config-close:hover { color: var(--accent); }
+    .date-cal { display: grid; gap: 1rem; }
+    .date-cal-month { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; background: rgba(255,255,255,0.6); }
+    .date-cal-month-title { font-size: 0.8125rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem; }
+    .date-cal-weekdays, .date-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem; }
+    .date-cal-weekday { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; padding: 0.15rem 0; }
+    .date-cal-spacer { height: 32px; }
+    .date-cal-day { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; padding: 0.4rem 0; font-size: 0.85rem; font-weight: 600; text-align: center; }
+    .date-cal-day:hover { border-color: rgba(13, 148, 136, 0.6); color: var(--accent); }
+    .date-cal-day[disabled], .date-cal-day.disabled { opacity: 0.35; cursor: not-allowed; }
+    .date-cal-day.selected { background: rgba(13, 148, 136, 0.12); border-color: rgba(13, 148, 136, 0.6); color: var(--accent); }
+    .date-cal-day.today { box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.25); }
     .config-row { font-size: 0.8125rem; color: var(--text); margin: 0.25rem 0; word-break: break-word; }
     .config-row.ok { color: #0f766e; }
     .config-row.missing { color: #b91c1c; }
@@ -432,8 +443,7 @@
       <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
-      <option value="3d">Last 3 Days</option>
-      <option value="7d">Last 7 Days</option>
+      <option value="custom" id="date-opt-custom">Custom…</option>
     </select>
   </div>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
@@ -788,6 +798,17 @@
     </div>
   </div>
 
+  <div class="config-modal" id="date-custom-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Custom date">
+      <div class="config-modal-header">
+        <h3 class="config-modal-title">Custom date</h3>
+        <button type="button" class="config-close" id="date-custom-close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="muted" style="margin-bottom: 0.5rem;">Select a day (last 30 days). Grey dates have no data.</div>
+      <div id="date-custom-calendar" class="date-cal"></div>
+    </div>
+  </div>
+
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
@@ -814,6 +835,7 @@
     let trafficCache = null;
     let trafficTypeExpanded = {}; // device -> boolean (Traffic Type tree)
     let dateRange = 'live';
+    let customDayYmd = null; // YYYY-MM-DD for dateRange keys like d:YYYY-MM-DD
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
     let activeMainTab = 'spy';
@@ -1825,7 +1847,7 @@
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
           '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
       if (force) url += '&_=' + Date.now();
-      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
         .then(function(result) {
           if (result.ok) {
@@ -1848,7 +1870,7 @@
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
       if (force) url += '&_=' + Date.now();
-      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           worstProductsCache = data;
@@ -1905,7 +1927,7 @@
           '&page=' + encodeURIComponent(String(bestVariantsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
       if (force) url += '&_=' + Date.now();
-      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
         .then(function(result) {
           if (result.ok) {
@@ -2123,6 +2145,39 @@
       }).join('');
     }
 
+    function isCustomDayRangeKey(v) {
+      return typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
+    }
+
+    function ymdFromDayKey(dayKey) {
+      if (!isCustomDayRangeKey(dayKey)) return null;
+      return dayKey.slice(2);
+    }
+
+    function formatYmdLabel(ymd) {
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return String(ymd || '');
+      const y = parseInt(String(ymd).slice(0, 4), 10);
+      const m = parseInt(String(ymd).slice(5, 7), 10);
+      const d = parseInt(String(ymd).slice(8, 10), 10);
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(ymd || '');
+      const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      try {
+        return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(dt);
+      } catch (_) {
+        return String(ymd || '');
+      }
+    }
+
+    function setCustomSelectLabel(ymd) {
+      const opt = document.getElementById('date-opt-custom');
+      if (!opt) return;
+      if (ymd && /^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) {
+        opt.textContent = 'Custom · ' + formatYmdLabel(String(ymd));
+      } else {
+        opt.textContent = 'Custom…';
+      }
+    }
+
     function updateLiveViewTitle() {
       const tabsWrap = document.getElementById('table-title-tabs');
       const textEl = document.getElementById('table-title-text');
@@ -2137,11 +2192,13 @@
         });
       } else {
         let label = null;
-        if (sel) {
+        if (isCustomDayRangeKey(dateRange)) {
+          label = formatYmdLabel(ymdFromDayKey(dateRange));
+        } else if (sel) {
           const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
-        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour' };
+        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
         if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
@@ -2156,15 +2213,22 @@
       if (!sel) return;
       const hasLive = sel.querySelector('option[value="live"]');
       if (hasLive) hasLive.remove();
-      if (activeMainTab === 'spy') {
+      if (isCustomDayRangeKey(dateRange)) {
+        const ymd = ymdFromDayKey(dateRange);
+        if (ymd) customDayYmd = ymd;
+        sel.value = 'custom';
+      } else if (activeMainTab === 'spy') {
+        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Custom.
         sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
       } else {
+        // Other tabs only use day ranges; if somehow on live/1h, treat as Today.
         if (dateRange === 'live') {
           dateRange = 'today';
-          sel.value = 'today';
           sessionsTotal = null;
         }
+        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
       }
+      setCustomSelectLabel(customDayYmd);
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
     }
@@ -2173,18 +2237,238 @@
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
       const opts = sel.querySelectorAll('option');
-      const keys = ['today', 'yesterday', '3d', '7d'];
+      const keys = ['today', 'yesterday'];
       const start = 0;
       keys.forEach((key, i) => {
         const o = opts[start + i];
         if (o) o.disabled = !available[key];
       });
-      if (dateRange !== 'live' && !available[dateRange]) {
+      if (dateRange !== 'live' && !isCustomDayRangeKey(dateRange) && available && available[dateRange] === false) {
         dateRange = 'today';
         sel.value = 'today';
+        customDayYmd = null;
+        setCustomSelectLabel(null);
       }
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
+    }
+
+    // Custom date calendar (last 30 days, disabled if no data)
+    let availableDaysMemo = null;
+    let availableDaysMemoAt = 0;
+    let availableDaysInflight = null;
+    const AVAILABLE_DAYS_MEMO_TTL_MS = 60 * 1000;
+
+    function fetchAvailableDays(days, opts = {}) {
+      const force = !!opts.force;
+      const now = Date.now();
+      if (!force && availableDaysMemo && (now - availableDaysMemoAt) < AVAILABLE_DAYS_MEMO_TTL_MS) {
+        return Promise.resolve(availableDaysMemo);
+      }
+      if (!force && availableDaysInflight) return availableDaysInflight;
+      const url = API + '/api/available-days?days=' + encodeURIComponent(String(days || 30)) + (force ? ('&_=' + now) : '');
+      const p = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
+        .then((r) => (r && r.ok) ? r.json() : null)
+        .then((data) => {
+          if (data && data.ok) {
+            availableDaysMemo = data;
+            availableDaysMemoAt = Date.now();
+          }
+          return data;
+        })
+        .catch(() => null)
+        .finally(() => {
+          if (availableDaysInflight === p) availableDaysInflight = null;
+        });
+      availableDaysInflight = p;
+      return p;
+    }
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function weekdayMon0(year, month, day, timeZone) {
+      const dt = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      try {
+        const wd = new Intl.DateTimeFormat('en-US', { timeZone: timeZone || undefined, weekday: 'short' }).format(dt);
+        const map = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+        if (map[wd] != null) return map[wd];
+      } catch (_) {}
+      const dow = dt.getUTCDay(); // 0=Sun..6=Sat
+      return (dow + 6) % 7; // Mon=0..Sun=6
+    }
+
+    function daysInMonth(year, month) {
+      // month: 1-12
+      return new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+    }
+
+    function renderCustomCalendar(container, payload) {
+      if (!container) return;
+      const data = payload && payload.ok ? payload : null;
+      if (!data || !Array.isArray(data.days)) {
+        container.innerHTML = '<div class="muted">Could not load calendar.</div>';
+        return;
+      }
+      const timeZone = data.timeZone || undefined;
+      const list = data.days.slice(); // { date, hasSessions } (today -> older)
+      const availableByYmd = new Map();
+      const ymdSet = new Set();
+      for (const it of list) {
+        if (!it || !it.date) continue;
+        const ymd = String(it.date);
+        ymdSet.add(ymd);
+        availableByYmd.set(ymd, !!it.hasSessions);
+      }
+      const months = [];
+      for (let i = list.length - 1; i >= 0; i--) {
+        const ymd = list[i] && list[i].date ? String(list[i].date) : '';
+        const key = ymd.slice(0, 7);
+        if (key && (months.length === 0 || months[months.length - 1] !== key)) months.push(key);
+      }
+      const partsToMonthTitle = (year, month) => {
+        const dt = new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
+        try {
+          return new Intl.DateTimeFormat('en-GB', { timeZone: timeZone || undefined, month: 'long', year: 'numeric' }).format(dt);
+        } catch (_) {
+          return year + '-' + pad2(month);
+        }
+      };
+      const selectedYmd = customDayYmd || (isCustomDayRangeKey(dateRange) ? ymdFromDayKey(dateRange) : null);
+      const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      container.innerHTML = months.map((mk) => {
+        const y = parseInt(mk.slice(0, 4), 10);
+        const m = parseInt(mk.slice(5, 7), 10);
+        if (!Number.isFinite(y) || !Number.isFinite(m)) return '';
+        const firstOffset = weekdayMon0(y, m, 1, timeZone);
+        const dim = daysInMonth(y, m);
+        const title = partsToMonthTitle(y, m);
+        const weekdayRow = '<div class="date-cal-weekdays">' + weekdayLabels.map((w) => '<div class="date-cal-weekday">' + w + '</div>').join('') + '</div>';
+        let cells = '';
+        for (let i = 0; i < firstOffset; i++) cells += '<div class="date-cal-spacer"></div>';
+        for (let d = 1; d <= dim; d++) {
+          const ymd = y + '-' + pad2(m) + '-' + pad2(d);
+          if (!ymdSet.has(ymd)) {
+            cells += '<div class="date-cal-spacer"></div>';
+            continue;
+          }
+          const has = !!availableByYmd.get(ymd);
+          const isSelected = selectedYmd && selectedYmd === ymd;
+          const isToday = list[0] && String(list[0].date) === ymd;
+          const cls = [
+            'date-cal-day',
+            has ? '' : 'disabled',
+            isSelected ? 'selected' : '',
+            isToday ? 'today' : '',
+          ].filter(Boolean).join(' ');
+          const disabledAttr = has ? '' : ' disabled';
+          cells += '<button type="button" class="' + cls + '" data-ymd="' + ymd + '"' + disabledAttr + '>' + d + '</button>';
+        }
+        return '<div class="date-cal-month">' +
+          '<div class="date-cal-month-title">' + title + '</div>' +
+          weekdayRow +
+          '<div class="date-cal-grid">' + cells + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function closeCustomDateModal() {
+      const modal = document.getElementById('date-custom-modal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      const sel = document.getElementById('global-date-select');
+      if (sel) sel.value = isCustomDayRangeKey(dateRange) ? 'custom' : ((dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange);
+      setCustomSelectLabel(customDayYmd);
+    }
+
+    function applyDateRangeChange() {
+      if (dateRange !== 'live') lastOnlineCount = null;
+      countryPage = 1;
+      aovPage = 1;
+      bestSellersPage = 1;
+      bestVariantsPage = 1;
+      worstProductsPage = 1;
+      currentPage = 1;
+      updateLiveViewTitle();
+      updateRowsPerPageVisibility();
+      // Reset caches when range changes.
+      bestSellersCache = null;
+      bestVariantsCache = null;
+      worstProductsCache = null;
+      trafficCache = null;
+      lastStatsFetchedAt = 0;
+      lastProductsFetchedAt = 0;
+      lastTrafficFetchedAt = 0;
+      updateNextUpdateUi();
+
+      if (activeMainTab === 'stats') {
+        refreshStats({ force: false });
+      } else if (activeMainTab === 'traffic') {
+        refreshTraffic({ force: false });
+        fetchStatsData({ force: false });
+      } else if (activeMainTab === 'products') {
+        refreshProducts({ force: false });
+        fetchStatsData({ force: false });
+      } else {
+        renderLiveKpis(statsCache || {});
+        updateKpis();
+        fetchSessions();
+        fetchStatsData({ force: false });
+      }
+    }
+
+    function openCustomDateModal() {
+      const modal = document.getElementById('date-custom-modal');
+      const cal = document.getElementById('date-custom-calendar');
+      if (!modal || !cal) return;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      cal.innerHTML = '<div class="muted">Loading…</div>';
+      fetchAvailableDays(30).then((payload) => {
+        renderCustomCalendar(cal, payload);
+      });
+    }
+
+    function selectCustomDay(ymd) {
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
+      customDayYmd = ymd;
+      dateRange = 'd:' + ymd;
+      const sel = document.getElementById('global-date-select');
+      if (sel) sel.value = 'custom';
+      setCustomSelectLabel(customDayYmd);
+      closeCustomDateModal();
+      applyDateRangeChange();
+    }
+
+    let customDateModalInited = false;
+    function initCustomDateModal() {
+      if (customDateModalInited) return;
+      customDateModalInited = true;
+      const modal = document.getElementById('date-custom-modal');
+      if (!modal) return;
+      const closeBtn = document.getElementById('date-custom-close-btn');
+      if (closeBtn) closeBtn.addEventListener('click', function(e) { e.preventDefault(); closeCustomDateModal(); });
+      modal.addEventListener('click', function(e) {
+        if (e && e.target === modal) closeCustomDateModal();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (!modal.classList.contains('open')) return;
+        const key = e && (e.key || e.code) ? String(e.key || e.code) : '';
+        if (key === 'Escape') closeCustomDateModal();
+      });
+      const cal = document.getElementById('date-custom-calendar');
+      if (cal) {
+        cal.addEventListener('click', function(e) {
+          const t = e && e.target ? e.target : null;
+          if (!t) return;
+          const btn = t.closest ? t.closest('button.date-cal-day') : null;
+          if (!btn) return;
+          if (btn.disabled) return;
+          const ymd = btn.getAttribute('data-ymd') || '';
+          if (!ymd) return;
+          selectCustomDay(ymd);
+        });
+      }
     }
 
     function renderStats(data) {
@@ -2260,6 +2544,23 @@
       return new Promise(function(resolve) { setTimeout(resolve, n); });
     }
 
+    function fetchWithTimeout(url, options, timeoutMs) {
+      const ms = Number(timeoutMs) || 0;
+      const timeout = ms > 0 ? ms : 25000;
+      if (typeof AbortController === 'undefined') {
+        return Promise.race([
+          fetch(url, options),
+          new Promise(function(_, reject) {
+            setTimeout(function() { reject(new Error('Request timed out')); }, timeout);
+          }),
+        ]);
+      }
+      const controller = new AbortController();
+      const timer = setTimeout(function() { try { controller.abort(); } catch (_) {} }, timeout);
+      const opts = Object.assign({}, options || {}, { signal: controller.signal });
+      return fetch(url, opts).finally(function() { clearTimeout(timer); });
+    }
+
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
@@ -2296,10 +2597,10 @@
 
     function fetchStatsData(options = {}) {
       const force = !!options.force;
-      let url = API + '/api/stats';
+      let url = API + '/api/stats?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
-      return fetch(url, { credentials: 'same-origin', cache: cacheMode })
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 30000)
         .then(function(r) {
           if (!r.ok) throw new Error('Stats HTTP ' + r.status);
           return r.json();
@@ -2519,7 +2820,7 @@
       let url = API + '/api/traffic?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
-      return fetch(url, { credentials: 'same-origin', cache: cacheMode })
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
         .then(function(r) {
           if (!r.ok) throw new Error('Traffic HTTP ' + r.status);
           return r.json();
@@ -3136,42 +3437,20 @@
       if (dateSelect) {
         syncDateSelectOptions();
         // Dropdown has no Live option (Live is via table tabs); show today when live/1h
-        dateSelect.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
+        dateSelect.value = isCustomDayRangeKey(dateRange) ? 'custom' : ((dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange);
         updateLiveViewTitle();
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
-          dateRange = this.value;
-          if (dateRange !== 'live') lastOnlineCount = null;
-          countryPage = 1;
-          aovPage = 1;
-          bestSellersPage = 1;
-          worstProductsPage = 1;
-          bestVariantsPage = 1;
-          currentPage = 1;
-          updateLiveViewTitle();
-          updateRowsPerPageVisibility();
-          bestSellersCache = null;
-          worstProductsCache = null;
-          bestVariantsCache = null;
-          lastStatsFetchedAt = 0;
-          lastTrafficFetchedAt = 0;
-          lastProductsFetchedAt = 0;
-          updateNextUpdateUi();
-          if (activeMainTab === 'stats') {
-            refreshStats({ force: false });
-          } else if (activeMainTab === 'traffic') {
-            refreshTraffic({ force: true });
-            fetchStatsData({ force: false });
-          } else if (activeMainTab === 'products') {
-            refreshProducts({ force: true });
-            fetchStatsData({ force: false });
-          } else {
-            renderLiveKpis(statsCache || {});
-            updateKpis();
-            fetchSessions();
-            fetchStatsData({ force: false });
+          const next = String(this.value || '').trim().toLowerCase();
+          if (next === 'custom') {
+            openCustomDateModal();
+            return;
           }
+          if (next !== 'today' && next !== 'yesterday') return;
+          dateRange = next;
+          applyDateRangeChange();
         });
+        initCustomDateModal();
       }
       (function initTableTitleTabs() {
         const tabsWrap = document.getElementById('table-title-tabs');
@@ -3255,14 +3534,14 @@
           updateNextUpdateUi();
           if (tab === 'stats') {
             // Always refresh when entering Breakdown so tables are never stuck on "Loading..."
-            refreshStats({ force: true });
+            refreshStats({ force: false });
           } else if (tab === 'products') {
-            refreshProducts({ force: true });
+            refreshProducts({ force: false });
             const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
             if (staleStats) fetchStatsData({ force: false });
             else renderLiveKpis(statsCache || {});
           } else if (tab === 'traffic') {
-            refreshTraffic({ force: true });
+            refreshTraffic({ force: false });
             const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
             if (staleStats) fetchStatsData({ force: false });
             else renderLiveKpis(statsCache || {});

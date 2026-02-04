@@ -30,6 +30,7 @@ const shopifyBestSellers = require('./routes/shopifyBestSellers');
 const shopifyBestVariants = require('./routes/shopifyBestVariants');
 const worstProducts = require('./routes/worstProducts');
 const ogThumb = require('./routes/ogThumb');
+const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
@@ -88,6 +89,7 @@ app.get('/api/shopify-best-sellers', shopifyBestSellers.getShopifyBestSellers);
 app.get('/api/shopify-best-variants', shopifyBestVariants.getShopifyBestVariants);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
+app.get('/api/available-days', availableDays.getAvailableDays);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 app.get('/api/store-base-url', (req, res) => {
@@ -198,6 +200,7 @@ const { up: up018 } = require('./migrations/018_orders_shopify_returning_fields'
 const { up: up019 } = require('./migrations/019_customer_order_facts');
 const { up: up020 } = require('./migrations/020_bot_block_counts_updated_at');
 const { up: up021 } = require('./migrations/021_sessions_traffic_fields');
+const { up: up022 } = require('./migrations/022_report_indexes');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 
@@ -229,6 +232,7 @@ async function migrateAndStart() {
   await up019();
   await up020();
   await up021();
+  await up022();
 
   if (preBackup) {
     await writeAudit('system', 'backup', {

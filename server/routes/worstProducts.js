@@ -42,7 +42,8 @@ function handleFromPath(path) {
 
 async function getWorstProducts(req, res) {
   let range = (req.query.range || 'today').toString().trim().toLowerCase();
-  if (!RANGE_KEYS.includes(range)) range = 'today';
+  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
+  if (!RANGE_KEYS.includes(range) && !isDayKey) range = 'today';
 
   const pageSize = clampInt(req.query.pageSize ?? req.query.limit, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
   const trafficMode = 'human_only';
