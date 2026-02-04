@@ -411,6 +411,25 @@ async function insertPurchase(payload, sessionId, countryCode) {
     } else {
       await db.run('DELETE FROM purchases WHERE purchase_key = ?', [legacyKey]);
     }
+    // Also remove any h: row for same session + total + currency (within 15 min) so we don't count the same order twice
+    // (first event had no order_id/token and created h:hash, second event had order_id/token).
+    const bucketStart = Math.floor(now / (15 * 60000)) * (15 * 60000);
+    const bucketEnd = bucketStart + 15 * 60000;
+    const ot = Number.isNaN(orderTotal) ? null : orderTotal;
+    const oc = orderCurrency || null;
+    if (config.dbUrl) {
+      await db.run(
+        `DELETE FROM purchases WHERE purchase_key LIKE 'h:%' AND session_id = $1 AND purchased_at >= $2 AND purchased_at < $3
+         AND (order_total IS NOT DISTINCT FROM $4) AND (order_currency IS NOT DISTINCT FROM $5)`,
+        [sessionId, bucketStart, bucketEnd, ot, oc]
+      );
+    } else {
+      await db.run(
+        `DELETE FROM purchases WHERE purchase_key LIKE 'h:%' AND session_id = ? AND purchased_at >= ? AND purchased_at < ?
+         AND (order_total IS ? OR (order_total IS NULL AND ? IS NULL)) AND (order_currency IS ? OR (order_currency IS NULL AND ? IS NULL))`,
+        [sessionId, bucketStart, bucketEnd, ot, ot, oc, oc]
+      );
+    }
   }
 }
 
@@ -669,10 +688,14 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   return { sessions, total };
 }
 
-function purchaseDedupeKeySql() {
-  // Prefer checkout_token; it remains stable even when order_id is missing on early checkout_completed events.
-  // TRIM() to protect against accidental whitespace.
-  return "COALESCE(NULLIF(TRIM(checkout_token), ''), NULLIF(TRIM(order_id), ''), purchase_key)";
+function purchaseDedupeKeySql(alias = '') {
+  // Prefer checkout_token, then order_id. For rows without either (h: hash), dedupe by session+total+currency+15min
+  // so multiple checkout_completed events in same 15min for same order count as one.
+  const p = alias ? alias + '.' : '';
+  const bucket = config.dbUrl
+    ? `FLOOR(${p}purchased_at/900000.0)::bigint`
+    : `CAST(${p}purchased_at/900000 AS INTEGER)`;
+  return `CASE WHEN NULLIF(TRIM(${p}checkout_token), '') IS NOT NULL THEN TRIM(${p}checkout_token) WHEN NULLIF(TRIM(${p}order_id), '') IS NOT NULL THEN TRIM(${p}order_id) ELSE ${p}session_id || '_' || COALESCE(CAST(${p}order_total AS TEXT), '0') || '_' || COALESCE(NULLIF(TRIM(${p}order_currency), ''), 'GBP') || '_' || ${bucket} END`;
 }
 
 /** Total sales in range (all purchases). Includes purchases with null/empty/XX country; overall >= sum(country revenue). */
@@ -728,7 +751,7 @@ async function getSalesTotal(start, end) {
 /** Revenue from returning-customer sessions only (sessions.is_returning = 1). Same dedupe and GBP conversion as getSalesTotal. */
 async function getReturningRevenue(start, end) {
   const db = getDb();
-  const dedupeKeyP = "COALESCE(NULLIF(TRIM(p.checkout_token), ''), NULLIF(TRIM(p.order_id), ''), p.purchase_key)";
+  const dedupeKeyP = purchaseDedupeKeySql('p');
   const rows = config.dbUrl
     ? await db.all(
       `
