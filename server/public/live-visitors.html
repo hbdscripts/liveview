@@ -128,7 +128,6 @@
     .empty { text-align: center; padding: 2rem; color: var(--muted); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.dashboard-top-bar-left { display: flex; align-items: center; }
 .dashboard-top-bar-center { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
 .dashboard-top-bar-center .top-bar-logo { width: 60px; height: auto; display: block; object-fit: contain; }
 .next-update-timer { width: 30px; text-align: center; font-weight: 500; display: inline-block; }
@@ -141,6 +140,10 @@
 .refresh-btn svg { width: 15px; height: 15px; }
 .refresh-btn.spinning svg { animation: refresh-spin 0.8s linear; }
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
+.top-bar-date-select { padding: 0.35rem 1.5rem 0.35rem 0.5rem; border: none; background: none; font-size: 0.875rem; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.25rem center; border-radius: var(--radius); }
+.top-bar-date-select:hover { color: var(--accent); }
+.top-bar-date-select:focus { outline: none; color: var(--accent); }
+.top-bar-date-select option { color: var(--text); background: var(--card); }
 .next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
 .table-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); z-index: 2; }
 .table-loading-overlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; }
@@ -172,7 +175,7 @@
 .live-view-online strong { color: var(--accent); font-size: 17px; }
 .live-view-spy-icon { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; flex-shrink: 0; }
 .live-view-spy-icon svg { width: 15px; height: 15px; }
-.dashboard-top-bar select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
+.dashboard-top-bar select:not(.top-bar-date-select) { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 #audio-mute-btn:hover { color: var(--accent); }
@@ -255,14 +258,6 @@
 </head>
 <body>
   <div class="dashboard-top-bar">
-    <div class="dashboard-top-bar-left">
-      <select id="global-date-select" aria-label="Date range">
-        <option value="today">Today</option>
-        <option value="yesterday">Yesterday</option>
-        <option value="3d">Last 3 Days</option>
-        <option value="7d">Last 7 Days</option>
-      </select>
-    </div>
     <div class="dashboard-top-bar-center">
       <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=100" alt="HBD" width="60" height="auto" loading="lazy">
     </div>
@@ -279,6 +274,13 @@
       </button>
       <span class="top-bar-divider" aria-hidden="true"></span>
       <button type="button" id="config-open-btn" class="config-btn" title="Config / Health" aria-label="Config / Health">i</button>
+      <span class="top-bar-divider" aria-hidden="true"></span>
+      <select id="global-date-select" class="top-bar-date-select" aria-label="Date range">
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="3d">Last 3 Days</option>
+        <option value="7d">Last 7 Days</option>
+      </select>
     </div>
   </div>
   <main class="main">
