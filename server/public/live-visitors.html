@@ -334,11 +334,11 @@
   </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
-    <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Live</button>
+    <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Home</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
-      <!-- Live option injected when on Live tab only -->
+      <!-- Today shows Live | Last Hour | Today tabs above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
       <option value="3d">Last 3 Days</option>
@@ -1613,16 +1613,10 @@
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
       const hasLive = sel.querySelector('option[value="live"]');
+      if (hasLive) hasLive.remove();
       if (activeMainTab === 'spy') {
-        if (!hasLive) {
-          const opt = document.createElement('option');
-          opt.value = 'live';
-          opt.textContent = 'Live';
-          sel.insertBefore(opt, sel.firstChild);
-        }
-        sel.value = (dateRange === '1h') ? 'today' : dateRange;
+        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
       } else {
-        if (hasLive) hasLive.remove();
         if (dateRange === 'live') {
           dateRange = 'today';
           sel.value = 'today';
@@ -1638,7 +1632,7 @@
       if (!sel) return;
       const opts = sel.querySelectorAll('option');
       const keys = ['today', 'yesterday', '3d', '7d'];
-      const start = (activeMainTab === 'spy' && opts[0] && opts[0].value === 'live') ? 1 : 0;
+      const start = 0;
       keys.forEach((key, i) => {
         const o = opts[start + i];
         if (o) o.disabled = !available[key];
@@ -2152,7 +2146,8 @@
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         syncDateSelectOptions();
-        dateSelect.value = dateRange;
+        // Dropdown has no Live option (Live is via table tabs); show today when live/1h
+        dateSelect.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
         updateLiveViewTitle();
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
