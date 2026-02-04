@@ -65,6 +65,10 @@
     .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
     .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: var(--table-row-border); line-height: 1.4; }
     .by-country-table tr:last-child td { border-bottom: none; }
+    /* Full-width row separator: draw on tr so no gap under first column (flex cell) */
+    .by-country-table tbody tr { box-shadow: inset 0 -1px 0 0 var(--border); }
+    .by-country-table tbody tr:last-child { box-shadow: none; }
+    .by-country-table tbody td { border-bottom: none !important; }
     .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: var(--table-cell-padding-x); padding-right: var(--table-cell-padding-x); min-width: 0; width: 32%; }
     .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; min-width: 4rem; white-space: nowrap; }
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
