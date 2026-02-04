@@ -215,3 +215,4 @@ Performance direction:
 - Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Breakdown
 - Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
 - Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
+- Dashboard: Breakdown/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready

@@ -219,6 +219,10 @@
 .table-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); z-index: 2; }
 .table-loading-overlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; }
 .inline-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; }
+.report-loading-overlay { background: rgba(255,255,255,0.96); }
+.report-build-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem; padding: 1rem; text-align: center; }
+.report-build-title { font-size: 0.95rem; font-weight: 700; color: var(--accent); letter-spacing: -0.1px; }
+.report-build-step { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
 /* Tab switch: Home (main table) vs Breakdown (cards); date range shared on same row */
 .main-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); position: relative; }
 .main-tabs [role="tab"] { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; }
@@ -248,6 +252,8 @@
 .main-tab-panel { display: none; }
 .main-tab-panel.active { display: block; }
 .stats-row-wrap { position: relative; }
+.report-building .stats-row,
+.report-building .traffic-grid { visibility: hidden; }
 .sessions-table-wrap { position: relative; }
 .live-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
@@ -490,7 +496,13 @@
   </div>
   <div id="tab-panel-stats" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-stats">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay" id="stats-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="stats-loading-overlay" style="display: none;">
+      <div class="report-build-wrap">
+        <div class="spinner"></div>
+        <div class="report-build-title">building reports</div>
+        <div class="report-build-step" id="stats-build-step">—</div>
+      </div>
+    </div>
   <div class="stats-row">
     <div class="stats-card" id="stats-country">
       <div class="country-table-wrap" id="country-table-wrap">
@@ -541,7 +553,13 @@
 
   <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay" id="products-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="products-loading-overlay" style="display: none;">
+      <div class="report-build-wrap">
+        <div class="spinner"></div>
+        <div class="report-build-title">building reports</div>
+        <div class="report-build-step" id="products-build-step">—</div>
+      </div>
+    </div>
   <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
       <div class="country-table-wrap" id="best-sellers-wrap">
@@ -614,7 +632,13 @@
 
   <div id="tab-panel-traffic" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-traffic">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay" id="traffic-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="traffic-loading-overlay" style="display: none;">
+      <div class="report-build-wrap">
+        <div class="spinner"></div>
+        <div class="report-build-title">building reports</div>
+        <div class="report-build-step" id="traffic-build-step">—</div>
+      </div>
+    </div>
   <div class="traffic-grid">
     <div class="stats-card" id="traffic-sources-card">
       <div class="traffic-card-header">
@@ -779,6 +803,7 @@
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
+    let reportBuildTokens = { stats: 0, products: 0, traffic: 0 };
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
@@ -2030,6 +2055,46 @@
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
     }
 
+    function delay(ms) {
+      const n = Number(ms) || 0;
+      if (n <= 0) return Promise.resolve();
+      return new Promise(function(resolve) { setTimeout(resolve, n); });
+    }
+
+    function startReportBuild(opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      const key = opts.key ? String(opts.key) : '';
+      if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
+        return { step: function() {}, finish: function() {} };
+      }
+
+      reportBuildTokens[key] = (reportBuildTokens[key] || 0) + 1;
+      const token = reportBuildTokens[key];
+      const overlayId = opts.overlayId ? String(opts.overlayId) : '';
+      const stepId = opts.stepId ? String(opts.stepId) : '';
+      const overlay = overlayId ? document.getElementById(overlayId) : null;
+      const wrap = overlay ? overlay.parentElement : null;
+      const stepEl = stepId ? document.getElementById(stepId) : null;
+
+      if (wrap) wrap.classList.add('report-building');
+      if (overlay) overlay.style.display = 'flex';
+      if (stepEl) stepEl.textContent = '';
+
+      function step(text) {
+        if (reportBuildTokens[key] !== token) return;
+        if (!stepEl) return;
+        stepEl.textContent = text != null ? String(text) : '';
+      }
+
+      function finish() {
+        if (reportBuildTokens[key] !== token) return;
+        if (overlay) overlay.style.display = 'none';
+        if (wrap) wrap.classList.remove('report-building');
+      }
+
+      return { step: step, finish: finish };
+    }
+
     function fetchStatsData(options = {}) {
       const force = !!options.force;
       let url = API + '/api/stats';
@@ -2058,13 +2123,22 @@
       const force = !!options.force;
       if (statsRefreshInFlight) return statsRefreshInFlight;
 
-      var overlay = document.getElementById('stats-loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-
+      const build = startReportBuild({ key: 'stats', overlayId: 'stats-loading-overlay', stepId: 'stats-build-step' });
+      build.step('building countries...');
       statsRefreshInFlight = fetchStatsData({ force })
+        .then(function(data) {
+          build.step('building countries... done');
+          return delay(180).then(function() {
+            build.step('building average order...');
+            return delay(120).then(function() {
+              build.step('building average order... done');
+              return delay(180).then(function() { return data; });
+            });
+          });
+        })
         .finally(function() {
           statsRefreshInFlight = null;
-          if (overlay) overlay.style.display = 'none';
+          build.finish();
         });
       return statsRefreshInFlight;
     }
@@ -2073,20 +2147,30 @@
       const force = !!options.force;
       if (productsRefreshInFlight) return productsRefreshInFlight;
 
-      var overlay = document.getElementById('products-loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+      const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
+      const bestP = fetchBestSellers({ force });
+      const worstP = fetchWorstProducts({ force });
+      const variantsP = fetchBestVariants({ force });
+      function settled(p) {
+        return Promise.resolve(p)
+          .then(function(v) { return { ok: true, value: v }; })
+          .catch(function(err) { console.error(err); return { ok: false, error: err }; });
+      }
+      const bestS = settled(bestP);
+      const worstS = settled(worstP);
+      const variantsS = settled(variantsP);
 
-      const tasks = [
-        fetchBestSellers({ force }),
-        fetchWorstProducts({ force }),
-        fetchBestVariants({ force }),
-      ];
-
-      productsRefreshInFlight = Promise.allSettled(tasks)
+      productsRefreshInFlight = Promise.resolve()
+        .then(function() { build.step('building best products...'); return bestS; })
+        .then(function() { build.step('building best products... done'); return delay(180); })
+        .then(function() { build.step('building worst products...'); return worstS; })
+        .then(function() { build.step('building worst products... done'); return delay(180); })
+        .then(function() { build.step('building variants...'); return variantsS; })
+        .then(function() { build.step('building variants... done'); return delay(180); })
         .then(function() { lastProductsFetchedAt = Date.now(); })
         .finally(function() {
           productsRefreshInFlight = null;
-          if (overlay) overlay.style.display = 'none';
+          build.finish();
         });
       return productsRefreshInFlight;
     }
@@ -2256,12 +2340,23 @@
     function refreshTraffic(options = {}) {
       const force = !!options.force;
       if (trafficRefreshInFlight) return trafficRefreshInFlight;
-      var overlay = document.getElementById('traffic-loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+
+      const build = startReportBuild({ key: 'traffic', overlayId: 'traffic-loading-overlay', stepId: 'traffic-build-step' });
+      build.step('building channels...');
       trafficRefreshInFlight = fetchTrafficData({ force })
+        .then(function(data) {
+          build.step('building channels... done');
+          return delay(180).then(function() {
+            build.step('building traffic...');
+            return delay(120).then(function() {
+              build.step('building traffic... done');
+              return delay(180).then(function() { return data; });
+            });
+          });
+        })
         .finally(function() {
           trafficRefreshInFlight = null;
-          if (overlay) overlay.style.display = 'none';
+          build.finish();
         });
       return trafficRefreshInFlight;
     }
