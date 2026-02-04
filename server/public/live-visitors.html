@@ -165,7 +165,10 @@
     .empty { padding: 1.5rem 1rem; color: var(--muted); font-size: var(--table-font-size); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.next-update-timer { width: 30px; text-align: center; font-weight: 500; display: inline-block; }
+.next-update-timer { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; }
+.next-update-timer .next-update-circle { display: block; }
+.next-update-timer .next-update-circle-bg { opacity: 0.2; }
+.next-update-timer .next-update-circle-progress { transition: stroke-dashoffset 0.3s linear; }
 .server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; margin: 0 5px 0 0; }
 .server-time-tz { font-size: 0.7rem; opacity: 0.9; margin-left: 0.2rem; }
 .top-bar-divider { width: 1px; height: 1.2em; background: var(--top-bar-divider); flex-shrink: 0; }
@@ -367,7 +370,7 @@
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
     </h2>
-    <span class="next-update-block live-view-next-update-center">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
+    <span class="next-update-block live-view-next-update-center">Next update <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="24" height="24"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span></span>
     <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
   </div>
   <div class="sessions-table-wrap">
@@ -659,31 +662,27 @@
       el.textContent = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
+    const NEXT_UPDATE_CIRCLE_C = 2 * Math.PI * 15.9;
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
       if (!block) return;
       const show = activeMainTab === 'spy' && (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
       if (!show) {
         block.style.display = 'none';
-        const el = document.getElementById('next-update-msg');
-        if (el) el.textContent = '';
         return;
       }
       block.style.display = '';
-      const el = document.getElementById('next-update-msg');
-      if (!el) return;
+      const progressEl = document.getElementById('next-update-circle-progress');
+      if (!progressEl) return;
       const isLive = dateRange === 'live';
+      const duration = isLive ? LIVE_REFRESH_MS : RANGE_REFRESH_MS;
       const target = isLive
         ? ((typeof nextLiveAt === 'number' && nextLiveAt > Date.now()) ? nextLiveAt : (Date.now() + LIVE_REFRESH_MS))
         : ((typeof nextRangeAt === 'number' && nextRangeAt > Date.now()) ? nextRangeAt : (Date.now() + RANGE_REFRESH_MS));
-      const sec = Math.max(0, Math.ceil((target - Date.now()) / 1000));
-      if (sec >= 60) {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        el.textContent = s > 0 ? m + ' m ' + s + ' s' : m + ' m';
-      } else {
-        el.textContent = sec + ' s';
-      }
+      const remaining = Math.max(0, target - Date.now());
+      const progress = Math.min(1, 1 - remaining / duration);
+      progressEl.style.strokeDasharray = String(NEXT_UPDATE_CIRCLE_C);
+      progressEl.style.strokeDashoffset = String(NEXT_UPDATE_CIRCLE_C * (1 - progress));
     }
 
     function toMs(v) {
@@ -1671,7 +1670,26 @@
       renderLiveKpis(statsCache);
     }
 
+    // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
+    // numbers were over- or under-reporting. To restore real values: in renderLiveKpis below, remove the
+    // "N/A" block and uncomment the "Real values (when fixed)" block so KPIs use data again.
     function renderLiveKpis(data) {
+      const salesEl = document.getElementById('live-kpi-sales');
+      const sessionsEl = document.getElementById('live-kpi-sessions');
+      const convEl = document.getElementById('live-kpi-conv');
+      const returningEl = document.getElementById('live-kpi-returning');
+      const aovEl = document.getElementById('live-kpi-aov');
+      const bounceEl = document.getElementById('live-kpi-bounce');
+      const salesLabelEl = document.getElementById('live-kpi-sales-label');
+      // Temporary: show N/A in all KPI value boxes until sales/revenue dedupe is trusted.
+      if (salesLabelEl) salesLabelEl.textContent = 'Sales';
+      if (salesEl) salesEl.textContent = 'N/A';
+      if (sessionsEl) sessionsEl.textContent = 'N/A';
+      if (convEl) convEl.textContent = 'N/A';
+      if (returningEl) returningEl.textContent = 'N/A';
+      if (aovEl) aovEl.textContent = 'N/A';
+      if (bounceEl) bounceEl.textContent = 'N/A';
+      /* Real values (when fixed): uncomment this block and remove the N/A block above.
       const sales = data.sales || {};
       const convertedCountMap = data.convertedCount || {};
       const returningRevenue = data.returningRevenue || {};
@@ -1688,14 +1706,6 @@
       let convVal = conv[kpiRange];
       let aovVal = aovMap[kpiRange];
       const bounceVal = bounceMap[kpiRange];
-      // All KPIs use our DB only (human_only). Shopify data is only in Config (i) panel for comparison.
-      const salesEl = document.getElementById('live-kpi-sales');
-      const sessionsEl = document.getElementById('live-kpi-sessions');
-      const convEl = document.getElementById('live-kpi-conv');
-      const returningEl = document.getElementById('live-kpi-returning');
-      const aovEl = document.getElementById('live-kpi-aov');
-      const bounceEl = document.getElementById('live-kpi-bounce');
-      const salesLabelEl = document.getElementById('live-kpi-sales-label');
       if (salesLabelEl) salesLabelEl.textContent = (orderCountVal != null && salesVal != null) ? orderCountVal + ' Sales' : 'Sales';
       if (salesEl) {
         if (salesVal != null) salesEl.textContent = formatRevenue(salesVal);
@@ -1706,6 +1716,7 @@
       if (returningEl) returningEl.textContent = (returningVal != null && typeof returningVal === 'number') ? formatRevenue(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+      */
     }
 
     function fetchStatsData(options = {}) {
