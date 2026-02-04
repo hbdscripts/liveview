@@ -1533,6 +1533,11 @@
         if (typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0 && typeof shopifySalesToday === 'number') {
           aovVal = Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100;
         }
+        // Don't show money (Sales, AOV) until Shopify has loaded for today – avoid flashing wrong DB figure first
+        if (shouldWaitForShopifySalesToday() && !shopifySalesTodayLoaded) {
+          salesVal = null;
+          aovVal = null;
+        }
       }
       const salesEl = document.getElementById('live-kpi-sales');
       const sessionsEl = document.getElementById('live-kpi-sessions');
