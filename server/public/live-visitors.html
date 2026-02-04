@@ -376,7 +376,7 @@
     <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
     <span id="pagination-label">1 of 1</span>
     <button type="button" id="pagination-next" aria-label="Next page">Next</button>
-    <span class="muted">Rows</span>
+    <span id="rows-per-page-wrap"><span class="muted">Rows</span>
     <select id="rows-per-page-select" class="stats-select" aria-label="Rows per page">
       <option value="15">15</option>
       <option value="25" selected>25</option>
@@ -384,7 +384,7 @@
       <option value="50">50</option>
       <option value="75">75</option>
       <option value="100">100</option>
-    </select>
+    </select></span>
   </div>
   </div>
   </div>
@@ -1586,6 +1586,11 @@
       if (textEl) textEl.textContent = label || fallback[dateRange] || 'Live';
     }
 
+    function updateRowsPerPageVisibility() {
+      const wrap = document.getElementById('rows-per-page-wrap');
+      if (wrap) wrap.style.display = dateRange === 'live' ? 'none' : '';
+    }
+
     function syncDateSelectOptions() {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
@@ -1607,6 +1612,7 @@
         }
       }
       updateLiveViewTitle();
+      updateRowsPerPageVisibility();
     }
 
     function applyRangeAvailable(available) {
@@ -1624,6 +1630,7 @@
         sel.value = 'today';
       }
       updateLiveViewTitle();
+      updateRowsPerPageVisibility();
     }
 
     function renderStats(data) {
@@ -2119,6 +2126,7 @@
         syncDateSelectOptions();
         dateSelect.value = dateRange;
         updateLiveViewTitle();
+        updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
           if (dateRange !== 'today' && dateRange !== 'live') { shopifySalesToday = null; shopifySessionsToday = null; }
@@ -2129,6 +2137,7 @@
           bestVariantsPage = 1;
           currentPage = 1;
           updateLiveViewTitle();
+          updateRowsPerPageVisibility();
           bestSellersCache = null;
           worstProductsCache = null;
           bestVariantsCache = null;
