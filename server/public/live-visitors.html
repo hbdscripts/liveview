@@ -341,7 +341,7 @@
   </div>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
     <div class="live-kpi-grid" id="live-kpi-grid">
-      <div class="live-kpi-cell"><div class="live-kpi-label">Sales</div><div class="live-kpi-value" id="live-kpi-sales">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label" id="live-kpi-sales-label">Sales</div><div class="live-kpi-value" id="live-kpi-sales">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div></div>
@@ -1653,9 +1653,10 @@
       const returningEl = document.getElementById('live-kpi-returning');
       const aovEl = document.getElementById('live-kpi-aov');
       const bounceEl = document.getElementById('live-kpi-bounce');
+      const salesLabelEl = document.getElementById('live-kpi-sales-label');
+      if (salesLabelEl) salesLabelEl.textContent = (orderCountVal != null && salesVal != null) ? orderCountVal + ' Sales' : 'Sales';
       if (salesEl) {
-        if (orderCountVal != null && salesVal != null) salesEl.textContent = orderCountVal + '  ' + formatRevenue(salesVal);
-        else if (salesVal != null) salesEl.textContent = formatRevenue(salesVal);
+        if (salesVal != null) salesEl.textContent = formatRevenue(salesVal);
         else salesEl.textContent = '\u2014';
       }
       if (sessionsEl) sessionsEl.textContent = formatSessions(sessionsVal);
