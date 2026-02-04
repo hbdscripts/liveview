@@ -157,12 +157,13 @@
 .main-tab-panel.active { display: block; }
 .stats-row-wrap { position: relative; }
 .sessions-table-wrap { position: relative; }
-.live-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+.live-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; }
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.75rem; text-align: center; box-shadow: var(--shadow); }
-.live-kpi-cell .live-kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; margin-bottom: 0.2rem; }
-.live-kpi-cell .live-kpi-value { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.live-kpi-cell .live-kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.2rem; }
+.live-kpi-cell .live-kpi-value { font-size: 1.1rem; font-weight: 700; color: #0d9488; }
+.shared-kpi-wrap { margin-bottom: 1rem; }
 @media (max-width: 768px) {
-  .live-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+  .live-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
   .live-kpi-cell .live-kpi-value { font-size: 1rem; }
 }
 .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
@@ -288,14 +289,16 @@
     <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Live</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Stats</button>
   </div>
-  <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
-  <div class="live-kpi-grid" id="live-kpi-grid" aria-label="Live view KPIs for selected date range">
-    <div class="live-kpi-cell"><div class="live-kpi-label">Sales</div><div class="live-kpi-value" id="live-kpi-sales">—</div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Bounce rate</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
+  <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
+    <div class="live-kpi-grid" id="live-kpi-grid">
+      <div class="live-kpi-cell"><div class="live-kpi-label">Sales</div><div class="live-kpi-value" id="live-kpi-sales">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Bounce rate</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
+    </div>
   </div>
+  <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
     <h2 class="table-title" id="table-title"><span class="live-view-spy-icon" id="live-view-spy-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 5C9.89024 5 7.99432 5.92747 6.49128 7.00884C4.98034 8.0959 3.78013 9.40024 3.04026 10.2985C2.21965 11.2948 2.21965 12.7052 3.04026 13.7015C3.78013 14.5998 4.98034 15.9041 6.49128 16.9912C7.99432 18.0725 9.89024 19 12.0002 19C14.1101 19 16.006 18.0725 17.5091 16.9912C19.02 15.9041 20.2202 14.5998 20.9601 13.7015C21.7807 12.7052 21.7807 11.2948 20.9601 10.2985C20.2202 9.40025 19.02 8.0959 17.5091 7.00885C16.006 5.92747 14.1101 5 12.0002 5ZM12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10ZM8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12Z" fill="currentColor"></path></svg></span><span id="table-title-text">Today</span></h2>
     <span class="next-update-block live-view-next-update-center">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
@@ -339,37 +342,6 @@
   <div class="stats-row-wrap">
     <div class="table-loading-overlay stats-loading-overlay" id="stats-loading-overlay" style="display: none;"><div class="spinner"></div></div>
   <div class="stats-row">
-    <div class="stats-card" id="stats-primary">
-      <div class="stats-section">
-        <div class="stats-card-header">
-          <h3>Sales</h3>
-        </div>
-        <div class="stats-main" id="sales-today"></div>
-        <div class="stats-breakdown">
-          <span>Yesterday: <strong id="sales-yesterday"></strong></span>
-        </div>
-      </div>
-      <div class="stats-divider"></div>
-      <div class="stats-section">
-        <div class="stats-card-header">
-          <h3>Conversion rate</h3>
-        </div>
-        <div class="stats-main" id="conversion-range"></div>
-        <div class="stats-breakdown">
-          <span>Product Conversion Rate: <strong id="conversion-product-cr"></strong></span>
-        </div>
-      </div>
-      <div class="stats-divider"></div>
-      <div class="stats-section">
-        <div class="stats-card-header">
-          <h3>Sessions</h3>
-        </div>
-        <div class="stats-main" id="sessions-range"></div>
-        <div class="stats-breakdown">
-          <span>Yesterday: <strong id="sessions-yesterday"></strong></span>
-        </div>
-      </div>
-    </div>
     <div class="stats-card" id="stats-country">
       <div class="stats-card-header">
         <h3>Country</h3>
@@ -1534,9 +1506,6 @@
       }
       lastConvertedCountToday = typeof conv.today === 'number' ? conv.today : 0;
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
-      renderSales(statsCache);
-      renderConversion(statsCache);
-      renderSessions(statsCache);
       renderAov(statsCache);
       renderCountry(statsCache);
       renderLiveKpis(statsCache);
