@@ -9,6 +9,22 @@ const config = require('../config');
 const store = require('../store');
 const { getDb, isPostgres } = require('../db');
 
+let ensuredTable = false;
+async function ensureBotBlockCountsTable(db) {
+  if (ensuredTable) return;
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS bot_block_counts (
+        date TEXT PRIMARY KEY,
+        "count" INTEGER NOT NULL DEFAULT 0
+      );
+    `.trim());
+    ensuredTable = true;
+  } catch (_) {
+    // fail-open: request will surface the insert error
+  }
+}
+
 function todayDateStr() {
   const timeZone = store.resolveAdminTimeZone();
   const todayBounds = store.getRangeBounds('today', Date.now(), timeZone);
@@ -29,14 +45,15 @@ async function postBotBlocked(req, res) {
   const db = getDb();
 
   try {
+    await ensureBotBlockCountsTable(db);
     if (isPostgres()) {
       await db.run(
-        'INSERT INTO bot_block_counts (date, count) VALUES ($1, 1) ON CONFLICT (date) DO UPDATE SET count = bot_block_counts.count + 1',
+        'INSERT INTO bot_block_counts (date, "count") VALUES ($1, 1) ON CONFLICT (date) DO UPDATE SET "count" = bot_block_counts."count" + 1',
         [dateStr]
       );
     } else {
       await db.run(
-        'INSERT INTO bot_block_counts (date, count) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET count = count + 1',
+        'INSERT INTO bot_block_counts (date, "count") VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET "count" = "count" + 1',
         [dateStr]
       );
     }
