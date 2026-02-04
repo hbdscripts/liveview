@@ -2050,7 +2050,6 @@
           if (h) {
             html += section('Today');
             if (h.timeZone) html += noteRow('Timezone: ' + h.timeZone);
-            html += noteRow('Bots blocked at edge never reach the app/DB (so they are not in the session count below). Tagged bots are sessions that reached the app and were classified as bot.');
 
             if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (reached app)', formatSessions(h.sessionsToday));
             if (typeof h.humanToday === 'number') html += valueRow('Human sessions', formatSessions(h.humanToday));
@@ -2069,8 +2068,6 @@
             } else {
               html += valueRow('Shopify sessions (today)', '\u2014');
               if (h.shopifySessionsTodayNote) html += noteRow(h.shopifySessionsTodayNote);
-              if (h.serverScopes) html += noteRow('Server would request: ' + escapeHtml(h.serverScopes));
-              if (h.storedScopes) html += noteRow('Stored scopes: ' + escapeHtml(h.storedScopes));
             }
 
             html += section('Health (last 24h)');
