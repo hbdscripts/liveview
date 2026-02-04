@@ -1128,7 +1128,8 @@
         : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
       const start = (currentPage - 1) * rowsPerPage;
-      const pageSessions = isRangeMode ? sessions : getSortedSessions().slice(start, start + rowsPerPage);
+      const sorted = getSortedSessions();
+      const pageSessions = isRangeMode ? sorted : sorted.slice(start, start + rowsPerPage);
       if (pageSessions.length === 0) {
         var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
         tbody.innerHTML = '<tr><td colspan="9" class="empty">' + escapeHtml(emptyMsg) + '</td></tr>';
