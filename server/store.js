@@ -436,9 +436,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           cf_colo = EXCLUDED.cf_colo,
           cf_asn = EXCLUDED.cf_asn,
           traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
-          ua_device_type = COALESCE(sessions.ua_device_type, EXCLUDED.ua_device_type),
-          ua_platform = COALESCE(sessions.ua_platform, EXCLUDED.ua_platform),
-          ua_model = COALESCE(sessions.ua_model, EXCLUDED.ua_model)
+          ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
+          ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
+          ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model)
       `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel]);
     } else {
       await db.run(`
@@ -482,9 +482,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         entry_url = COALESCE($15, entry_url),
         is_checking_out = $16, checkout_started_at = $17, has_purchased = $18, purchased_at = COALESCE($19, purchased_at),
         traffic_source_key = COALESCE($20, traffic_source_key),
-        ua_device_type = COALESCE(ua_device_type, $21),
-        ua_platform = COALESCE(ua_platform, $22),
-        ua_model = COALESCE(ua_model, $23)
+        ua_device_type = COALESCE($21, ua_device_type),
+        ua_platform = COALESCE($22, ua_platform),
+        ua_model = COALESCE($23, ua_model)
         ${cfSet}
         WHERE session_id = ${sessionIdPlaceholder}
       `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, ...cfParams, payload.session_id]);
@@ -499,9 +499,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         entry_url = COALESCE(?, entry_url),
         is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at),
         traffic_source_key = COALESCE(?, traffic_source_key),
-        ua_device_type = COALESCE(ua_device_type, ?),
-        ua_platform = COALESCE(ua_platform, ?),
-        ua_model = COALESCE(ua_model, ?)
+        ua_device_type = COALESCE(?, ua_device_type),
+        ua_platform = COALESCE(?, ua_platform),
+        ua_model = COALESCE(?, ua_model)
         ${cfSet}
         WHERE session_id = ?
       `, placeholders);

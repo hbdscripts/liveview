@@ -58,6 +58,15 @@
     .traffic-picker-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0; font-size: 0.8125rem; }
     .traffic-picker-item input { width: 16px; height: 16px; }
     .traffic-picker-meta { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+    /* Traffic Type: device -> platform expandable tree */
+    .traffic-type-toggle { display: inline-flex; align-items: center; gap: 0.35rem; border: none; background: none; padding: 0; margin: 0; cursor: pointer; color: var(--link-fg); font: inherit; font-size: var(--table-font-size); font-weight: 600; }
+    .traffic-type-toggle:hover { color: var(--accent); }
+    .traffic-type-toggle .chev { width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+    .traffic-type-toggle .chev::before { content: '▸'; line-height: 1; }
+    .traffic-type-toggle[aria-expanded="true"] .chev::before { content: '▾'; }
+    .traffic-type-parent td:first-child { white-space: nowrap; }
+    .traffic-type-child td:first-child { padding-left: calc(var(--table-cell-padding-x) + 18px); }
+    .traffic-type-child td:first-child::before { content: '›'; display: inline-block; margin-right: 6px; color: var(--muted); }
     /* Single thead row: title in first cell, column labels in rest; one line */
     .stats-card .by-country-table thead th { white-space: nowrap; margin: 0; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; text-align: left; background: var(--th-bg); border-bottom: var(--table-row-border); }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
@@ -754,6 +763,7 @@
     let sessionsLoadError = null;
     let statsCache = {};
     let trafficCache = null;
+    let trafficTypeExpanded = {}; // device -> boolean (Traffic Type tree)
     let dateRange = 'live';
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
@@ -2117,7 +2127,54 @@
       }
 
       renderRows('traffic-sources-body', sources ? sources.rows : [], 'Click the settings icon to add sources.');
-      renderRows('traffic-types-body', types ? types.rows : [], 'Click the settings icon to add types.');
+      (function renderTypeTree() {
+        const body = document.getElementById('traffic-types-body');
+        if (!body) return;
+        const groups = types && Array.isArray(types.rows) ? types.rows.slice() : [];
+        if (!groups.length) {
+          body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml('Click the settings icon to choose devices.') + '</td></tr>';
+          return;
+        }
+        let html = '';
+        groups.forEach(function(g) {
+          const device = (g && g.device != null) ? String(g.device).trim().toLowerCase() : '';
+          const open = !!(device && trafficTypeExpanded && trafficTypeExpanded[device]);
+          const label = escapeHtml((g && g.label) ? String(g.label) : (g && g.key ? String(g.key) : '—'));
+          const cr = (g && typeof g.conversionPct === 'number') ? pct(g.conversionPct) : '—';
+          const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
+          const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
+          const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenue(g.revenueGbp) : '—';
+          html += '<tr class="traffic-type-parent" data-device="' + escapeHtml(device) + '">' +
+            '<td>' +
+              '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+                '<span class="chev" aria-hidden="true"></span>' +
+                '<span>' + label + '</span>' +
+              '</button>' +
+            '</td>' +
+            '<td>' + escapeHtml(cr || '—') + '</td>' +
+            '<td>' + escapeHtml(orders || '—') + '</td>' +
+            '<td>' + escapeHtml(sessions || '—') + '</td>' +
+            '<td>' + escapeHtml(rev || '—') + '</td>' +
+          '</tr>';
+
+          const kids = (g && Array.isArray(g.children)) ? g.children : [];
+          kids.forEach(function(c) {
+            const clabel = escapeHtml((c && c.label) ? String(c.label) : (c && c.platform ? String(c.platform) : (c && c.key ? String(c.key) : '—')));
+            const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
+            const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
+            const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
+            const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenue(c.revenueGbp) : '—';
+            html += '<tr class="traffic-type-child" data-parent="' + escapeHtml(device) + '"' + (open ? '' : ' style="display:none"') + '>' +
+              '<td>' + clabel + '</td>' +
+              '<td>' + escapeHtml(ccr || '—') + '</td>' +
+              '<td>' + escapeHtml(corders || '—') + '</td>' +
+              '<td>' + escapeHtml(csessions || '—') + '</td>' +
+              '<td>' + escapeHtml(crev || '—') + '</td>' +
+            '</tr>';
+          });
+        });
+        body.innerHTML = html;
+      })();
     }
 
     function renderTrafficPickers(data) {
@@ -2725,6 +2782,27 @@
         if (e.key !== 'Escape') return;
         if (sourcesModal.classList.contains('open')) close(sourcesModal);
         if (typesModal.classList.contains('open')) close(typesModal);
+      });
+    })();
+
+    (function initTrafficTypeTree() {
+      const body = document.getElementById('traffic-types-body');
+      if (!body) return;
+      body.addEventListener('click', function(e) {
+        const target = e && e.target ? e.target : null;
+        const btn = target && target.closest ? target.closest('.traffic-type-toggle') : null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const device = (btn.getAttribute('data-device') || '').trim().toLowerCase();
+        if (!device) return;
+        if (!trafficTypeExpanded || typeof trafficTypeExpanded !== 'object') trafficTypeExpanded = {};
+        const nextOpen = !trafficTypeExpanded[device];
+        trafficTypeExpanded[device] = nextOpen;
+        btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        body.querySelectorAll('tr.traffic-type-child[data-parent="' + device + '"]').forEach(function(tr) {
+          tr.style.display = nextOpen ? '' : 'none';
+        });
       });
     })();
 

@@ -52,6 +52,8 @@ function parseDeviceFromUserAgent(req) {
   const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
   if (!ua) return null;
   const s = ua.toLowerCase();
+  // iPadOS can present as "Macintosh" but still includes "Mobile".
+  if (/\bmacintosh\b/.test(s) && /\bmobile\b/.test(s) && !/\biphone\b/.test(s) && !/\bipod\b/.test(s)) return 'iOS';
   if (/iphone|ipad|ipod/.test(s)) return 'iOS';
   if (/android/.test(s)) return 'Android';
   if (/windows phone|windows mobile/.test(s)) return 'Windows Phone';
@@ -74,7 +76,8 @@ function parseTrafficTypeFromUserAgent(req) {
   const s = ua.toLowerCase();
 
   const isIphone = /\biphone\b/.test(s) || /\bipod\b/.test(s);
-  const isIpad = /\bipad\b/.test(s);
+  // iPadOS can present as "Macintosh" but still includes "Mobile".
+  const isIpad = /\bipad\b/.test(s) || (/\bmacintosh\b/.test(s) && /\bmobile\b/.test(s) && !isIphone);
   const isAndroid = /\bandroid\b/.test(s);
 
   // Form factor heuristics

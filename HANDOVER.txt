@@ -35,7 +35,7 @@ Traffic tab (new)
   - Mobile: stacked (100% each)
 - Tables:
   - Source table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
-  - Traffic Type table: device/platform breakdown (desktop/mobile/tablet, windows/mac/ios/android/etc.)
+  - Traffic Type table: device → platform breakdown (expandable): Desktop/Mobile/Tablet parents with OS children (Windows/Mac/Linux/Chrome OS/iOS/Android/Unknown)
 - Each table has a ⚙ settings button that opens a picker modal:
   - Shows every *detected* source/type (last ~30 days)
   - Tick which ones should appear in the tables
@@ -214,3 +214,4 @@ Performance direction:
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
 - Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Breakdown
 - Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
+- Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
