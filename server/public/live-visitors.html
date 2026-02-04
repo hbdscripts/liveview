@@ -1807,7 +1807,7 @@
             html += noteRow('Bots blocked at edge never reach the app/DB. Tagged bots are sessions that reached the app and were classified as bot.');
 
             if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (total)', formatSessions(h.sessionsToday));
-            if (typeof h.humanToday === 'number') html += valueRow('Human sessions (used)', formatSessions(h.humanToday));
+            if (typeof h.humanToday === 'number') html += valueRow('Human sessions', formatSessions(h.humanToday));
             if (typeof h.botsToday === 'number') html += valueRow('Bot sessions tagged (reached app)', formatSessions(h.botsToday));
             if (typeof h.botsBlockedAtEdge === 'number') html += valueRow('Bot ingest calls blocked at edge', formatSessions(h.botsBlockedAtEdge));
 

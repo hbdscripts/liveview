@@ -198,7 +198,7 @@ async function configStatus(req, res, next) {
       if (!token) {
         health.shopifySessionsTodayNote = 'No Shopify access token for this shop. Install the app (OAuth) or reinstall from Shopify Admin.';
       } else if (!scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports')) {
-        health.shopifySessionsTodayNote = 'Stored token is missing read_reports. Uninstall the app and reinstall from Shopify Admin so a new token is issued with the requested scopes (check SHOPIFY_SCOPES includes read_reports).';
+        health.shopifySessionsTodayNote = 'Shopify sessions (today) will show here after you reinstall the app — the current token is missing the read_reports scope. Uninstall the app, then reinstall from Shopify Admin so a new token is issued with read_reports (ensure SHOPIFY_SCOPES includes read_reports).';
       } else {
         const result = await fetchShopifySessionsToday(shop, token);
         if (typeof result.count === 'number') {
@@ -244,3 +244,4 @@ async function configStatus(req, res, next) {
 }
 
 module.exports = configStatus;
+module.exports.fetchShopifySessionsToday = fetchShopifySessionsToday;
