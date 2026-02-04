@@ -24,12 +24,14 @@ async function getShopifyBestSellers(req, res) {
   if (!RANGE_KEYS.includes(range)) range = 'today';
 
   const db = getDb();
-  const row = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+  const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
   if (!row || !row.access_token) {
     return res.status(401).json({
       error: 'No access token for this store. Install the app (complete OAuth) first.',
     });
   }
+  const storedScopes = (typeof row.scope === 'string' ? row.scope : '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const hasReadOrders = storedScopes.includes('read_orders');
 
   const timeZone = store.resolveAdminTimeZone();
   const nowMs = Date.now();
@@ -58,14 +60,19 @@ async function getShopifyBestSellers(req, res) {
           if (typeof first === 'string') message = first;
           else if (first?.message) message = first.message;
         } catch (_) {}
+        const hint =
+          orderRes.status === 429
+            ? 'Shopify rate limit. Try again in a few minutes.'
+            : orderRes.status === 401 || orderRes.status === 403
+              ? hasReadOrders
+                ? 'Token includes read_orders but Shopify denied access. See error above; try re-authorizing the app in Shopify Admin (Apps → your app → open) or check app permissions in Partners.'
+                : 'Token may be missing or lack read_orders scope. Add read_orders to SHOPIFY_SCOPES, redeploy, then uninstall and reinstall the app from Shopify Admin.'
+              : undefined;
         return res.status(502).json({
           error: message,
           shopifyStatus: orderRes.status,
-          hint: orderRes.status === 401 || orderRes.status === 403
-            ? 'Token may be missing or lack read_orders scope. Reinstall the app from Shopify Admin.'
-            : orderRes.status === 429
-              ? 'Shopify rate limit. Try again in a few minutes.'
-              : undefined,
+          hint,
+          storedScopeIncludesReadOrders: hasReadOrders,
         });
       }
       const data = await orderRes.json();
