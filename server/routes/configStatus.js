@@ -168,6 +168,7 @@ async function configStatus(req, res, next) {
     sessions: await tableExists('sessions'),
     events: await tableExists('events'),
     orders_shopify: await tableExists('orders_shopify'),
+    customer_order_facts: await tableExists('customer_order_facts'),
     purchase_events: await tableExists('purchase_events'),
     reconcile_state: await tableExists('reconcile_state'),
     audit_log: await tableExists('audit_log'),
@@ -189,7 +190,7 @@ async function configStatus(req, res, next) {
 
   // --- Traffic diagnostics (ours, bot-tagged, edge blocked) ---
   const traffic = {
-    today: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null, botsBlockedAtEdge: 0, totalTrafficEst: null },
+    today: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null, botsBlockedAtEdge: 0, botsBlockedAtEdgeUpdatedAt: null, totalTrafficEst: null },
     last24h: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null },
     shopifySessionsToday: null,
     shopifySessionsTodayNote: '',
@@ -235,8 +236,16 @@ async function configStatus(req, res, next) {
   if (tables.bot_block_counts) {
     try {
       const todayStr = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone });
-      const blockRow = await db.get('SELECT "count" AS n FROM bot_block_counts WHERE date = ?', [todayStr]);
-      if (blockRow != null) traffic.today.botsBlockedAtEdge = num(blockRow.n) ?? 0;
+      try {
+        const blockRow = await db.get('SELECT "count" AS n, updated_at FROM bot_block_counts WHERE date = ?', [todayStr]);
+        if (blockRow != null) {
+          traffic.today.botsBlockedAtEdge = num(blockRow.n) ?? 0;
+          traffic.today.botsBlockedAtEdgeUpdatedAt = num(blockRow.updated_at);
+        }
+      } catch (_) {
+        const blockRow = await db.get('SELECT "count" AS n FROM bot_block_counts WHERE date = ?', [todayStr]);
+        if (blockRow != null) traffic.today.botsBlockedAtEdge = num(blockRow.n) ?? 0;
+      }
     } catch (_) {}
   }
   if (typeof traffic.today.sessionsReachedApp === 'number' && typeof traffic.today.botsBlockedAtEdge === 'number') {

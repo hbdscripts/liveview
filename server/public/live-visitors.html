@@ -2116,7 +2116,13 @@
 
           html += section('Ingest / Edge');
           html += row('Ingest secret', ingest.ingestSecretConfigured ? '<span class="config-row ok">SET</span>' : '<span class="config-row missing">MISSING</span>');
-          if (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') html += row('Bots blocked at edge (today)', code(formatSessions(traffic.today.botsBlockedAtEdge)));
+          if (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') {
+            let line = code(formatSessions(traffic.today.botsBlockedAtEdge));
+            if (typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') {
+              line += ' · last ' + code(formatTs(traffic.today.botsBlockedAtEdgeUpdatedAt));
+            }
+            html += row('Bots blocked at edge (today)', line);
+          }
 
           html += section('Traffic (sessions)');
           if (traffic && traffic.today) {
@@ -2148,6 +2154,7 @@
             add('sessions', !!t.sessions);
             add('events', !!t.events);
             add('orders_shopify', !!t.orders_shopify);
+            add('customer_order_facts', !!t.customer_order_facts);
             add('purchase_events', !!t.purchase_events);
             add('reconcile_state', !!t.reconcile_state);
             add('audit_log', !!t.audit_log);

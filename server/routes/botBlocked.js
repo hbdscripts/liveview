@@ -16,7 +16,8 @@ async function ensureBotBlockCountsTable(db) {
     await db.exec(`
       CREATE TABLE IF NOT EXISTS bot_block_counts (
         date TEXT PRIMARY KEY,
-        "count" INTEGER NOT NULL DEFAULT 0
+        "count" INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER
       );
     `.trim());
     ensuredTable = true;
@@ -43,18 +44,19 @@ async function postBotBlocked(req, res) {
 
   const dateStr = todayDateStr();
   const db = getDb();
+  const now = Date.now();
 
   try {
     await ensureBotBlockCountsTable(db);
     if (isPostgres()) {
       await db.run(
-        'INSERT INTO bot_block_counts (date, "count") VALUES ($1, 1) ON CONFLICT (date) DO UPDATE SET "count" = bot_block_counts."count" + 1',
-        [dateStr]
+        'INSERT INTO bot_block_counts (date, "count", updated_at) VALUES ($1, 1, $2) ON CONFLICT (date) DO UPDATE SET "count" = bot_block_counts."count" + 1, updated_at = EXCLUDED.updated_at',
+        [dateStr, now]
       );
     } else {
       await db.run(
-        'INSERT INTO bot_block_counts (date, "count") VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET "count" = "count" + 1',
-        [dateStr]
+        'INSERT INTO bot_block_counts (date, "count", updated_at) VALUES (?, 1, ?) ON CONFLICT(date) DO UPDATE SET "count" = "count" + 1, updated_at = excluded.updated_at',
+        [dateStr, now]
       );
     }
     return res.status(204).end();
