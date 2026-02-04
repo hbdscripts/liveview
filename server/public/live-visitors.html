@@ -298,7 +298,8 @@
       .main { padding: 20px; }
       .stats-card { padding: 1rem; }
     }
-    .dashboard-footer { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 15px 0 15px; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; background: #eee; }
+    .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 15px 20px; font-size: 0.8125rem; color: var(--muted); background: #eee; border-top: 1px solid var(--border); }
+    body { padding-bottom: 52px; }
     .dashboard-footer .footer-time { white-space: nowrap; }
     .dashboard-footer .refresh-btn,
     .dashboard-footer #audio-mute-btn,
