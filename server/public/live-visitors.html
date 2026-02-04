@@ -2121,7 +2121,7 @@
 
           html += section('System');
           if (app && app.version) html += row('App version', code(app.version));
-          if (db && db.engine) html += row('DB', code(db.engine + (db.configured ? '' : ' (non-persisted)')));
+          if (db && db.engine) html += row('DB', code(db.engine + (db.configured ? '' : ' (DB_URL not set)')));
           if (db && db.tables) {
             const t = db.tables;
             const bits = [];
