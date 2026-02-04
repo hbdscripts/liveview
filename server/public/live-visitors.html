@@ -47,8 +47,9 @@
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
     .main { padding: 24px; margin: 0 auto; max-width: 1600px; }
-    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; align-items: stretch; }
-    .stats-card { background: var(--card); padding: 1.35rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-bottom: 1.5rem; align-items: stretch; }
+    .stats-card { background: var(--card); padding: 1.35rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
+    .stats-card:last-child { margin-right: 0; }
     /* Stats tables: keep cards tall so they don't look empty while loading */
     #tab-panel-stats .stats-card { min-height: 500px; }
     #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
@@ -90,13 +91,16 @@
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: var(--radius); }
     .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
     .best-sellers-table th.sortable:hover { color: var(--accent); }
-    .best-sellers-table th.th-sort-asc::after { content: ' \25b4'; font-size: 0.65em; opacity: 0.8; }
-    .best-sellers-table th.th-sort-desc::after { content: ' \25be'; font-size: 0.65em; opacity: 0.8; }
+    .best-sellers-table th.th-sort-asc::after,
+    .best-sellers-table th.th-sort-desc::after { content: ''; display: inline-block; width: 12px; height: 12px; margin-left: 6px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+    .best-sellers-table th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 8l4-4 4 4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 8l4-4 4 4'/%3E%3C/svg%3E"); }
+    .best-sellers-table th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); }
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: var(--table-font-size); }
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
+    th:not(:first-child), td:not(:first-child) { text-align: center; }
     th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
     tr:hover { background: inherit; }
@@ -134,15 +138,13 @@
     .empty { text-align: center; padding: 1.5rem 1rem; color: var(--muted); font-size: var(--table-font-size); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.dashboard-top-bar-center { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
-.dashboard-top-bar-center .top-bar-logo { width: 60px; height: auto; display: block; object-fit: contain; }
 .next-update-timer { width: 30px; text-align: center; font-weight: 500; display: inline-block; }
-.dashboard-top-bar-right { display: flex; align-items: center; gap: 5px; }
 .server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; margin: 0 5px 0 0; }
 .server-time-tz { font-size: 0.7rem; opacity: 0.9; margin-left: 0.2rem; }
 .top-bar-divider { width: 1px; height: 1.2em; background: var(--top-bar-divider); flex-shrink: 0; }
 .refresh-btn { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 .refresh-btn:hover { color: var(--accent); }
+.refresh-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .refresh-btn svg { width: 15px; height: 15px; }
 .refresh-btn.spinning svg { animation: refresh-spin 0.8s linear; }
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
@@ -189,6 +191,7 @@
 .dashboard-top-bar select option:disabled { color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
 #audio-mute-btn:hover { color: var(--accent); }
+#audio-mute-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
 #audio-mute-btn svg { width: 20px; height: 20px; }
 .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
@@ -196,21 +199,24 @@
 .table-scroll-wrap table { margin: 0; min-width: 800px; table-layout: auto; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: 1px solid var(--border); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
 .table-scroll-wrap tr:last-child td { border-bottom: none; }
-.table-scroll-wrap th:nth-child(1), .table-scroll-wrap td:nth-child(1) { width: 1%; min-width: 44px; text-align: center; }
+.table-scroll-wrap th:nth-child(1), .table-scroll-wrap td:nth-child(1) { width: 1%; min-width: 44px; text-align: left; }
 .table-scroll-wrap th:nth-child(2), .table-scroll-wrap td:nth-child(2) { min-width: 56px; }
-.table-scroll-wrap th.source-cell, .table-scroll-wrap td.source-cell { min-width: 90px; max-width: 160px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.cart-value-cell { width: 1%; min-width: 4.5rem; max-width: 6rem; text-align: left; white-space: nowrap; }
+.table-scroll-wrap th.source-cell, .table-scroll-wrap td.source-cell { min-width: 90px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.cart-value-cell { width: 1%; min-width: 4.5rem; max-width: 6rem; white-space: nowrap; }
 .table-scroll-wrap .last-action-cell { min-width: 100px; max-width: 180px; }
 .table-scroll-wrap .last-action-cell a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: inline-block; }
 .table-scroll-wrap .cart-value-sale { color: var(--accent); font-weight: 600; }
 .table-scroll-wrap th.sortable { cursor: pointer; user-select: none; }
 .table-scroll-wrap th.sortable:hover { color: var(--accent); }
-.table-scroll-wrap th.th-sort-asc::after { content: ' \25b4'; font-size: 0.65em; opacity: 0.8; }
-.table-scroll-wrap th.th-sort-desc::after { content: ' \25be'; font-size: 0.65em; opacity: 0.8; }
+.table-scroll-wrap th.th-sort-asc::after,
+.table-scroll-wrap th.th-sort-desc::after { content: ''; display: inline-block; width: 12px; height: 12px; margin-left: 6px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+.table-scroll-wrap th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 8l4-4 4 4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 8l4-4 4 4'/%3E%3C/svg%3E"); }
+.table-scroll-wrap th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='black' d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); }
 .table-scroll-wrap .arrived-cell, .table-scroll-wrap .last-seen-cell { min-width: 4.5rem; }
 .table-pagination { display: flex; align-items: center; justify-content: center; gap: 1.25rem; padding: 0.75rem 0 1.25rem; font-size: 0.9375rem; color: var(--muted); }
 .table-pagination button { padding: 0.4rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); cursor: pointer; font-size: 0.9375rem; }
 .table-pagination button:hover:not(:disabled) { border-color: var(--accent); background: var(--button-hover-bg); }
+.table-pagination button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .table-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 .card-pagination { display: none; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.5rem 0 0; font-size: 0.8125rem; color: var(--muted); }
 .card-pagination button { padding: 0.3rem 0.65rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); cursor: pointer; font-size: 0.8125rem; }
@@ -221,22 +227,18 @@
     .source-icons { display: inline-flex; align-items: center; gap: 4px; }
     .source-icons img { width: 20px; height: 20px; }
     @media (max-width: 1800px) {
-      .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+      .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
       .stats-card { min-width: 0; }
       .best-sellers-table .bs-product-col { max-width: 200px; min-width: 100px; }
     }
     @media (max-width: 768px) {
-      .dashboard-top-bar-center { display: none; }
       .dashboard-top-bar { padding-left: 20px; padding-right: 20px; }
       .main { padding: 20px; }
-      .stats-row { grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+      .stats-row { grid-template-columns: 1fr; gap: 0; margin-bottom: 1.25rem; }
       .stats-card { min-width: 100%; padding: 1.15rem; }
       .stats-card:first-child { min-width: 100%; }
-      .best-sellers-table .bs-product-col { max-width: 140px; min-width: 90px; }
+      .best-sellers-table .bs-product-col { max-width: 220px; min-width: 140px; }
       .by-country-table th, .by-country-table td { padding: 0.5rem 0.5rem; }
-      /* On mobile, show ISO codes instead of country labels (top tables). */
-      .by-country-table .country-name { display: none; }
-      .by-country-table .country-code { display: inline; }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: var(--table-header-font-size); }
@@ -255,10 +257,15 @@
       .main { padding: 20px; }
       .stats-card { padding: 1rem; }
     }
-    .dashboard-footer { text-align: center; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; }
+    .dashboard-footer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 0.75rem 1rem; font-size: 0.8125rem; color: var(--muted); margin: 0 auto; }
+    .dashboard-footer .footer-time { white-space: nowrap; }
+    .dashboard-footer .refresh-btn,
+    .dashboard-footer #audio-mute-btn,
+    .dashboard-footer .config-btn { flex-shrink: 0; }
 
     .config-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: var(--card); cursor: pointer; color: var(--text); font-size: 12px; line-height: 1; }
-    .config-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .config-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .config-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .config-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 9999; }
     .config-modal.open { display: flex; }
     .config-modal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); width: 560px; max-width: 100%; max-height: 80vh; overflow: auto; padding: 1rem; }
@@ -273,23 +280,6 @@
 </head>
 <body>
   <div class="dashboard-top-bar">
-    <div class="dashboard-top-bar-center">
-      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=100" alt="HBD" width="60" height="auto" loading="lazy">
-    </div>
-    <div class="dashboard-top-bar-right">
-      <span class="server-time-block"><span id="server-time-msg">--:--</span> <span class="server-time-tz" aria-label="UK time (GMT/BST)">UK</span></span>
-      <span class="top-bar-divider" aria-hidden="true"></span>
-      <button type="button" id="refresh-btn" class="refresh-btn" title="Refresh" aria-label="Refresh">
-        <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
-      </button>
-      <span class="top-bar-divider" aria-hidden="true"></span>
-      <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
-        <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
-        <svg class="sound-icon-off" style="display:none" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
-      </button>
-      <span class="top-bar-divider" aria-hidden="true"></span>
-      <button type="button" id="config-open-btn" class="config-btn" title="Config / Health" aria-label="Config / Health">i</button>
-    </div>
   </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
@@ -493,7 +483,17 @@
     <ul class="events" id="side-events"></ul>
   </div>
   </main>
-  <footer class="dashboard-footer" id="dashboard-footer">Liveview v<span id="app-version">—</span></footer>
+  <footer class="dashboard-footer" id="dashboard-footer">
+    <span class="footer-time"><span id="server-time-msg">--:--</span> <span class="server-time-tz" aria-label="UK time (GMT/BST)">UK</span></span>
+    <button type="button" id="refresh-btn" class="refresh-btn" title="Refresh" aria-label="Refresh">
+      <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
+    </button>
+    <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
+      <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
+      <svg class="sound-icon-off" style="display:none" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
+    </button>
+    <button type="button" id="config-open-btn" class="config-btn" title="Config / Health" aria-label="Config / Health">i</button>
+  </footer>
 
   <div class="config-modal" id="config-modal" aria-hidden="true">
     <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Config and health">
@@ -509,8 +509,8 @@
     const API = '';
     const LIVE_REFRESH_MS = 60000;
     const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
+    const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 15 * 60 * 1000;
-    fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
     const ROWS_PER_PAGE_KEY = 'livevisitors-rows-per-page';
@@ -1629,7 +1629,11 @@
         .then(data => {
           var next = data.sessions || [];
           var cutoff = Date.now() - ACTIVE_WINDOW_MS;
-          next = next.filter(function(s) { return (s.last_seen != null && s.last_seen >= cutoff); });
+          var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
+          next = next.filter(function(s) {
+            return (s.last_seen != null && s.last_seen >= cutoff) &&
+              (s.started_at != null && s.started_at >= arrivedCutoff);
+          });
           next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
           var listChanged = !sessionIdsEqual(sessions, next);
           sessions = next;
@@ -2021,12 +2025,16 @@
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
-    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min
+    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
     setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange !== 'today') return;
       var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+      var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
       var before = sessions.length;
-      sessions = sessions.filter(function(s) { return s.last_seen != null && s.last_seen >= cutoff; });
+      sessions = sessions.filter(function(s) {
+        return s.last_seen != null && s.last_seen >= cutoff &&
+          s.started_at != null && s.started_at >= arrivedCutoff;
+      });
       if (sessions.length !== before) { currentPage = 1; renderTable(); updateKpis(); }
     }, 30000);
 
@@ -2049,12 +2057,14 @@
         if (msg.type === 'session_update' && msg.session) {
           const session = msg.session;
           const lastSeen = session.last_seen != null ? Number(session.last_seen) : 0;
+          const startedAt = session.started_at != null ? Number(session.started_at) : 0;
           const withinActive = lastSeen >= Date.now() - ACTIVE_WINDOW_MS;
+          const withinArrived = startedAt >= Date.now() - ARRIVED_WINDOW_MS;
           const idx = sessions.findIndex(s => s.session_id === session.session_id);
           let becamePurchased = false;
           let needRender = false;
           if (idx >= 0) {
-            if (!withinActive) {
+            if (!withinActive || !withinArrived) {
               sessions.splice(idx, 1);
               needRender = true;
             } else {
@@ -2067,7 +2077,7 @@
               sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
               if (becamePurchased) needRender = true;
             }
-          } else if (withinActive) {
+          } else if (withinActive && withinArrived) {
             sessions.unshift(session);
             sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
             // Don't play sound when adding a session that's already purchased (e.g. re-add after prune, or heartbeat from old sale)

@@ -1,8 +1,30 @@
 # App audit (bugs and fixes)
 
-Audit date: 2025-02-04. Updated: 2025-02-04 (Live KPIs, header, sound + stale sessions).
+Audit date: 2025-02-04. Updated: 2025-02-04 (full audit: dead code, cleanup optimization, a11y, docs).
 
-## Fixes applied this session
+## Full audit (2025-02-04) – fixes applied
+
+### Server
+
+- **index.js:** Removed redundant `configStatusRouter` alias; route now uses `configStatus` directly.
+- **dashboardAuth.js:** Simplified `pathname === '/' && pathname.length === 1` to `pathname === '/'`.
+- **cleanup.js:** Event pruning now uses one DELETE per session (subquery with `ORDER BY ts DESC LIMIT ?`) instead of SELECT + DELETE, cutting DB round-trips in half for that step.
+
+### Dashboard (live-visitors.html)
+
+- **Dead CSS removed:** `.dashboard-top-bar-center`, `.dashboard-top-bar-center .top-bar-logo`, `.dashboard-top-bar-right`, and the 768px rule that hid `.dashboard-top-bar-center` (logo/top-bar controls were moved to footer).
+- **Unused request removed:** Version fetch (`/api/version`) dropped; version div was removed from footer so the request had no effect.
+- **Accessibility:** Added `:focus-visible` styles for refresh button, pagination buttons, config button, and audio mute button so keyboard focus is clearly visible.
+
+### Not changed (verified OK)
+
+- **XSS:** User/session data in innerHTML is consistently escaped via `escapeHtml()` (textContent → innerHTML pattern).
+- **Config/store/db:** Typed config, parameterized queries, and store logic are sound.
+- **Worker/extension:** Modern ES modules and logic; no issues found.
+
+---
+
+## Fixes applied (earlier sessions)
 
 ### 1. Spy mode: persistent sale
 
@@ -30,7 +52,7 @@ All code related to dragging table headers to change column width has been remov
 
 ## Other findings (no code change)
 
-- **Cleanup scalability:** `server/cleanup.js` loads all session IDs then, per session, loads event IDs to prune. With a very large number of sessions this could be slow; consider batching or a single SQL pass if it becomes an issue.
+- **Cleanup:** Now uses one DELETE per session (subquery) instead of SELECT + DELETE; still one round-trip per session. For very large session counts, a single batched SQL pass could be added later if needed.
 - **Ingest broadcast:** Every ingest request (including heartbeats) triggers an SSE broadcast. The dashboard only re-renders the Live table when `becamePurchased` is true, so extra broadcasts don’t cause wrong UI—just more messages. Acceptable.
 - **Rate limit:** In-memory token buckets in `server/rateLimit.js` don’t persist across restarts; rate limits reset on deploy. Acceptable for current use.
 - **botBlocked fallback:** `server/routes/botBlocked.js` has `ensureBotBlockCountsTable()` that creates the table if missing. With 012 now run on startup, this is redundant but harmless.
@@ -56,9 +78,12 @@ All code related to dragging table headers to change column width has been remov
 
 ---
 
-## Files touched
+## Files touched (all sessions)
 
-- `server/public/live-visitors.html` – Spy filter default, TH resize removal, Live header order, Live KPI grid, SSE sound + active-window filter
-- `server/index.js` – Migration 012 in startup chain
-- `server/store.js` – getBounceRate, bounce in getStats
+- `server/public/live-visitors.html` – Spy filter, TH resize removal, Live KPIs, SSE sound + active-window filter, arrived-window filter, dead CSS removal, version fetch removal, focus-visible styles
+- `server/index.js` – Migration 012, configStatus alias removal
+- `server/store.js` – getBounceRate, bounce in getStats, liveArrivedWindowMinutes for active filter
+- `server/cleanup.js` – Event pruning: one DELETE per session (subquery)
+- `server/middleware/dashboardAuth.js` – pathname check simplification
+- `server/config.js` – liveArrivedWindowMinutes
 - `docs/APP_AUDIT.md` – This audit

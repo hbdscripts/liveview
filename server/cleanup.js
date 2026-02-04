@@ -43,22 +43,22 @@ async function run() {
     `, [retentionCutoff, abandonedCutoff]);
   }
 
-  // Per session: keep only last MAX_EVENTS_PER_SESSION events (delete older ones)
+  // Per session: keep only last maxEventsPerSession events (one DELETE per session that has excess)
   const sessions = await db.all('SELECT session_id FROM sessions');
   const maxEvents = config.maxEventsPerSession;
-  for (const row of sessions) {
-    const events = await db.all(
-      config.dbUrl ? 'SELECT id FROM events WHERE session_id = $1 ORDER BY ts DESC' : 'SELECT id FROM events WHERE session_id = ? ORDER BY ts DESC',
-      [row.session_id]
-    );
-    if (events.length > maxEvents) {
-      const keepIds = events.slice(0, maxEvents).map(e => e.id);
-      const ph = keepIds.map((_, i) => (config.dbUrl ? `$${i + 2}` : '?')).join(',');
-      const params = config.dbUrl ? [row.session_id, ...keepIds] : [row.session_id, ...keepIds];
-      const sql = config.dbUrl
-        ? `DELETE FROM events WHERE session_id = $1 AND id NOT IN (${ph})`
-        : `DELETE FROM events WHERE session_id = ? AND id NOT IN (${ph})`;
-      await db.run(sql, params);
+  if (config.dbUrl) {
+    for (const row of sessions) {
+      await db.run(
+        'DELETE FROM events WHERE session_id = $1 AND id NOT IN (SELECT id FROM events WHERE session_id = $1 ORDER BY ts DESC LIMIT $2)',
+        [row.session_id, maxEvents]
+      );
+    }
+  } else {
+    for (const row of sessions) {
+      await db.run(
+        'DELETE FROM events WHERE session_id = ? AND id NOT IN (SELECT id FROM events WHERE session_id = ? ORDER BY ts DESC LIMIT ?)',
+        [row.session_id, row.session_id, maxEvents]
+      );
     }
   }
 }

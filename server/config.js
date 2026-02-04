@@ -62,6 +62,8 @@ const config = {
   })(),
   adminTimezone: getEnv('ADMIN_TIMEZONE', 'Europe/London'),
   activeWindowMinutes: getInt('ACTIVE_WINDOW_MINUTES', 5),
+  /** Live dashboard: only show sessions that arrived within this many minutes (so long-lived tabs don't stay forever). */
+  liveArrivedWindowMinutes: getInt('LIVE_ARRIVED_WINDOW_MINUTES', 60),
   recentWindowMinutes: getInt('RECENT_WINDOW_MINUTES', 15),
   sessionTtlMinutes: getInt('SESSION_TTL_MINUTES', 24 * 60),
   /** Retention in days for stats stability; cleanup deletes only when BOTH last_seen and started_at are older than this */

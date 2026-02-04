@@ -69,7 +69,7 @@ function verifySession(cookieValue) {
 
 function isProtectedPath(pathname) {
   if (pathname === '/app/live-visitors' || pathname === '/app/login' || pathname === '/app/logout') return true;
-  if (pathname === '/' && pathname.length === 1) return true;
+  if (pathname === '/') return true;
   if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||

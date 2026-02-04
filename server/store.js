@@ -437,6 +437,9 @@ async function listSessions(filter) {
   } else if (filter === 'active') {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(activeCutoff);
+    const arrivedCutoff = now - config.liveArrivedWindowMinutes * 60 * 1000;
+    sql += ` AND s.started_at >= ${ph()}`;
+    params.push(arrivedCutoff);
   } else if (filter === 'recent') {
     sql += ` AND s.last_seen >= ${ph()}`;
     params.push(recentCutoff);
