@@ -111,6 +111,14 @@ Revenue appears when (1) data is in a **persistent DB**, and (2) the pixel sends
 
 ---
 
+## Orders / revenue dedupe (Sales vs Shopify)
+
+- The pixel records **checkout_completed** events in the `purchases` table.
+- Shopify can emit **checkout_completed** more than once for a single order (e.g. one event before `order_id` exists, another after the order is created).
+- To prevent “4 sales vs 3 orders” situations, we **dedupe purchases by `checkout_token`** when storing and when aggregating stats.
+
+---
+
 ## Database on Railway
 
 Without `DB_URL`, the app uses SQLite on the app’s filesystem; on Railway that is **ephemeral** (data lost on deploy/restart).
