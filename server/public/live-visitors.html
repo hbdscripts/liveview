@@ -47,7 +47,7 @@
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
     .main { padding: 24px; margin: 0 auto; max-width: 1600px; }
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
-    .stats-card { background: var(--card); padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
+    .stats-card { background: var(--card); padding: 0; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
     .stats-card:last-child { margin-right: 0; }
     #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
     /* Title row: first thead row th (match Live table th style); header on one line */
@@ -276,7 +276,7 @@
       .dashboard-top-bar { padding-left: 20px; padding-right: 20px; }
       .main { padding: 20px; }
       .stats-row { grid-template-columns: 1fr; gap: var(--table-gap); margin-bottom: 1.25rem; }
-      .stats-card { min-width: 100%; padding: 1.15rem; }
+      .stats-card { min-width: 100%; padding: 0; }
       .stats-card:first-child { min-width: 100%; }
       .stats-card #stats-best-sellers .by-country-table th:first-child,
       .stats-card #stats-best-sellers .by-country-table td:first-child,
@@ -299,7 +299,7 @@
     @media (max-width: 480px) {
       .dashboard-top-bar { padding-left: 20px; padding-right: 20px; }
       .main { padding: 20px; }
-      .stats-card { padding: 1rem; }
+      .stats-card { padding: 0; }
     }
     .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: var(--muted); background: #eee; }
     body { padding-bottom: 52px; }
