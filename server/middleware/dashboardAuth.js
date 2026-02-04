@@ -74,7 +74,7 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||
-      pathname.startsWith('/api/traffic')) return true;
+      pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale') return true;
   return false;
 }
 

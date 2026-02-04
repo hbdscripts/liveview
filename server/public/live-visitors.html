@@ -255,13 +255,27 @@
 .report-building .stats-row,
 .report-building .traffic-grid { visibility: hidden; }
 .sessions-table-wrap { position: relative; }
-.live-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
+.live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--kpi-gap); }
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
 .live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
 .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #0d9488; line-height: 1.3; }
+.sale-toast-host { position: relative; overflow: visible; }
+.sale-toast-host.toast-open { z-index: 10; }
+.sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid var(--border); background: rgba(255, 255, 255, 0.98); box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; }
+.sale-toast.active { opacity: 1; transform: translateY(0); }
+.sale-toast .sale-toast-flag { display: flex; align-items: stretch; }
+.sale-toast .sale-toast-flag .flag-img { width: 42px; height: 100%; object-fit: cover; border-radius: 6px; margin: 0; }
+.sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
+.sale-toast .sale-toast-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; line-height: 1.1; }
+.sale-toast .sale-toast-product { font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sale-toast .sale-toast-amount { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: var(--accent); letter-spacing: -0.2px; }
+.kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
+.kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+.kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
+.kpi-ticker.run .kpi-ticker-stack { transform: translateY(-100%); }
 .shared-kpi-wrap { margin-bottom: 1.25rem; }
 @media (max-width: 768px) {
-  .live-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .live-kpi-grid { --kpi-gap: 0.5rem; grid-template-columns: repeat(2, 1fr); gap: var(--kpi-gap); }
   .live-kpi-cell .live-kpi-value { font-size: 1rem; }
 }
 .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
@@ -424,7 +438,18 @@
   </div>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
     <div class="live-kpi-grid" id="live-kpi-grid">
-      <div class="live-kpi-cell"><div class="live-kpi-label" id="live-kpi-sales-label">Sales</div><div class="live-kpi-value" id="live-kpi-sales">—</div></div>
+      <div class="live-kpi-cell sale-toast-host" id="live-kpi-sales-cell">
+        <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
+        <div class="live-kpi-value" id="live-kpi-sales">—</div>
+        <div class="sale-toast" id="sale-toast" aria-hidden="true" style="display:none">
+          <div class="sale-toast-flag" id="sale-toast-flag"></div>
+          <div class="sale-toast-mid">
+            <div class="sale-toast-title">New Order</div>
+            <div class="sale-toast-product" id="sale-toast-product">—</div>
+          </div>
+          <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+        </div>
+      </div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div></div>
@@ -829,6 +854,11 @@
     let bestSellersSortDir = 'desc';
     let saleAudio = null;
     let saleMuted = false;
+    let saleToastActive = false;
+    let saleToastHideTimer = null;
+    let saleToastPendingKpi = null; // { labelText, valueText }
+    let saleToastLastOrderId = null;
+    let saleToastLastShownAt = 0;
     let currentPage = 1;
     let sortBy = 'last_seen';
     let sortDir = 'desc';
@@ -1556,6 +1586,169 @@
       return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
+    function animateTickerText(el, nextText) {
+      if (!el) return;
+      const prev = el.textContent != null ? String(el.textContent) : '';
+      const next = nextText != null ? String(nextText) : '';
+      if (prev === next) {
+        el.textContent = next;
+        return;
+      }
+      const wrap = document.createElement('span');
+      wrap.className = 'kpi-ticker';
+      const stack = document.createElement('span');
+      stack.className = 'kpi-ticker-stack';
+      const a = document.createElement('span');
+      a.className = 'kpi-ticker-line';
+      a.textContent = prev;
+      const b = document.createElement('span');
+      b.className = 'kpi-ticker-line';
+      b.textContent = next;
+      stack.appendChild(a);
+      stack.appendChild(b);
+      wrap.appendChild(stack);
+      while (el.firstChild) el.removeChild(el.firstChild);
+      el.appendChild(wrap);
+      requestAnimationFrame(function() { wrap.classList.add('run'); });
+      setTimeout(function() {
+        // Finalize (but only if the wrapper is still present).
+        if (el && el.contains(wrap)) el.textContent = next;
+      }, 460);
+    }
+
+    function setSaleToastContent(patch) {
+      patch = patch && typeof patch === 'object' ? patch : {};
+      const cc = (patch.countryCode || 'XX').toString().trim().toUpperCase().slice(0, 2) || 'XX';
+      const product = patch.productTitle != null ? String(patch.productTitle) : '';
+      const amountGbp = patch.amountGbp != null ? Number(patch.amountGbp) : null;
+      const flagEl = document.getElementById('sale-toast-flag');
+      const productEl = document.getElementById('sale-toast-product');
+      const amountEl = document.getElementById('sale-toast-amount');
+      if (flagEl) flagEl.innerHTML = flagImg(cc);
+      if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
+      if (amountEl) amountEl.textContent = (amountGbp != null && Number.isFinite(amountGbp)) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
+    }
+
+    function showSaleToast() {
+      const host = document.getElementById('live-kpi-sales-cell');
+      const toast = document.getElementById('sale-toast');
+      if (!host || !toast) return;
+      saleToastActive = true;
+      saleToastLastShownAt = Date.now();
+      host.classList.add('toast-open');
+      toast.style.display = 'flex';
+      toast.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(function() { toast.classList.add('active'); });
+    }
+
+    function applyPendingSalesKpiUpdate() {
+      if (!saleToastPendingKpi) return;
+      const labelEl = document.getElementById('live-kpi-sales-label');
+      const valueEl = document.getElementById('live-kpi-sales');
+      if (labelEl) {
+        labelEl.title = '';
+        animateTickerText(labelEl, saleToastPendingKpi.labelText);
+      }
+      if (valueEl) animateTickerText(valueEl, saleToastPendingKpi.valueText);
+      saleToastPendingKpi = null;
+    }
+
+    function hideSaleToast() {
+      const host = document.getElementById('live-kpi-sales-cell');
+      const toast = document.getElementById('sale-toast');
+      if (saleToastHideTimer) {
+        clearTimeout(saleToastHideTimer);
+        saleToastHideTimer = null;
+      }
+      if (!host || !toast) {
+        saleToastActive = false;
+        applyPendingSalesKpiUpdate();
+        return;
+      }
+      toast.classList.remove('active');
+      toast.setAttribute('aria-hidden', 'true');
+      setTimeout(function() {
+        toast.style.display = 'none';
+        host.classList.remove('toast-open');
+        saleToastActive = false;
+        applyPendingSalesKpiUpdate();
+      }, 260);
+    }
+
+    let latestSaleFetchInFlight = null;
+    function fetchLatestSaleForToast() {
+      if (latestSaleFetchInFlight) return latestSaleFetchInFlight;
+      const url = API + '/api/latest-sale?_=' + Date.now();
+      latestSaleFetchInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) { return (json && json.ok && json.sale) ? json.sale : null; })
+        .catch(function() { return null; })
+        .finally(function() { latestSaleFetchInFlight = null; });
+      return latestSaleFetchInFlight;
+    }
+
+    function buildSalesKpiUpdateFromStats(data) {
+      const rangeKey = getStatsRange();
+      const sales = data && data.sales ? data.sales : {};
+      const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
+      const salesVal = typeof sales[rangeKey] === 'number' ? sales[rangeKey] : null;
+      const orderCountVal = typeof convertedCountMap[rangeKey] === 'number' ? convertedCountMap[rangeKey] : null;
+      return {
+        labelText: orderCountVal != null ? (orderCountVal + ' Orders') : 'Orders',
+        valueText: salesVal != null ? (formatRevenue(salesVal) || '\u2014') : '\u2014',
+      };
+    }
+
+    function triggerSaleToast(opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      const session = opts.session || null;
+      const kpiUpdate = opts.kpiUpdate || null;
+      const playSound = opts.playSound !== false;
+
+      // Freeze the Sales KPI until the toast fades away.
+      if (kpiUpdate && typeof kpiUpdate.labelText === 'string' && typeof kpiUpdate.valueText === 'string') {
+        saleToastPendingKpi = { labelText: kpiUpdate.labelText, valueText: kpiUpdate.valueText };
+      }
+
+      showSaleToast();
+
+      // Fast, best-effort content from the session update (then refined by truth).
+      try {
+        const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
+        let productTitle = '';
+        if (session && session.last_product_handle) productTitle = titleCaseFromHandle(String(session.last_product_handle));
+        let amountGbp = null;
+        if (session && session.order_total != null) {
+          const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
+          if (Number.isFinite(n)) amountGbp = n;
+        }
+        setSaleToastContent({ countryCode: cc, productTitle: productTitle || 'Processing\u2026', amountGbp });
+      } catch (_) {}
+
+      if (playSound && !saleMuted && saleAudio) {
+        saleAudio.currentTime = 0;
+        saleAudio.play().catch(function() {});
+      }
+
+      if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
+      saleToastHideTimer = setTimeout(hideSaleToast, 10000);
+
+      fetchLatestSaleForToast().then(function(sale) {
+        if (!sale) return;
+        const orderId = sale.orderId != null ? String(sale.orderId) : '';
+        if (orderId) saleToastLastOrderId = orderId;
+        const cc = sale.countryCode ? String(sale.countryCode).toUpperCase().slice(0, 2) : 'XX';
+        const product = sale.productTitle && String(sale.productTitle).trim() ? String(sale.productTitle).trim() : '';
+        const amount = sale.amountGbp != null ? Number(sale.amountGbp) : null;
+        if (!saleToastActive) return;
+        setSaleToastContent({
+          countryCode: cc || 'XX',
+          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '—'),
+          amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
+        });
+      });
+    }
+
     function getShopParam() {
       var p = new URLSearchParams(window.location.search);
       var shop = p.get('shop') || '';
@@ -2000,9 +2193,14 @@
       const haveToday = (typeof conv.today === 'number' && Number.isFinite(conv.today));
       if (haveToday) {
         const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
-        if (increased && !saleMuted && saleAudio) {
-          saleAudio.currentTime = 0;
-          saleAudio.play().catch(function() {});
+        if (increased) {
+          const kpiUpdate = buildSalesKpiUpdateFromStats(statsCache);
+          // If a real-time sale toast is already open (e.g. SSE Live), don't double-trigger audio/toast.
+          if (saleToastActive) {
+            saleToastPendingKpi = kpiUpdate;
+          } else {
+            triggerSaleToast({ origin: 'stats', kpiUpdate: kpiUpdate, playSound: true });
+          }
           // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
           try { refreshConfigStatus(); } catch (_) {}
         }
@@ -2043,11 +2241,12 @@
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
 
-      if (salesLabelEl) {
+      const freezeSales = !!saleToastActive;
+      if (salesLabelEl && !freezeSales) {
         salesLabelEl.textContent = orderCountVal != null ? (orderCountVal + ' Orders') : 'Orders';
         salesLabelEl.title = '';
       }
-      if (salesEl) salesEl.textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
+      if (salesEl && !freezeSales) salesEl.textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
       if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (returningEl) returningEl.textContent = returningVal != null ? formatRevenue(returningVal) : '\u2014';
@@ -3271,13 +3470,12 @@
           if (needRender) {
             if (becamePurchased) {
               currentPage = 1;
-              if (!saleMuted && saleAudio) {
-                saleAudio.currentTime = 0;
-                saleAudio.play().catch(function() {});
-              }
+              triggerSaleToast({ origin: 'sse', session: session, playSound: true });
               // Update footer immediately when a sale happens.
               setLastSaleAt(session.purchased_at || session.last_seen || Date.now());
               try { refreshConfigStatus(); } catch (_) {}
+              // Pull updated KPIs so Sales/Orders can animate after the toast fades.
+              try { fetchStatsData({ force: true }); } catch (_) {}
             }
             renderTable();
             updateKpis();
