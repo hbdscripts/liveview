@@ -12,6 +12,7 @@ const backup = require('./backup');
 
 const API_VERSION = '2024-01';
 const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
+const CUSTOMER_FACTS_NULL_RECHECK_TTL_MS = 6 * 60 * 60 * 1000;
 let lastPreReconcileBackupAt = 0;
 
 function truthy(v) {
@@ -110,10 +111,12 @@ async function upsertCustomerOrderFact(shop, customerId, firstPaidOrderAtMs, che
   }
 }
 
-async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerIds, { maxCustomers = 250 } = {}) {
+async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerIds, beforeMs, { maxCustomers = 250 } = {}) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop || !accessToken) return { ok: false, checked: 0, fetched: 0, stored: 0, errors: 0, reason: 'missing_shop_or_token' };
   const db = getDb();
+  const boundaryMs = beforeMs != null ? Number(beforeMs) : Date.now();
+  const boundaryIso = new Date(boundaryMs).toISOString();
 
   // If table isn't present yet, skip (fail-open).
   try {
@@ -132,18 +135,24 @@ async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerI
 
   for (const cid of list) {
     checked += 1;
+    let prevFirstPaidAt = null;
     try {
       const existing = await db.get(
-        'SELECT first_paid_order_at FROM customer_order_facts WHERE shop = ? AND customer_id = ?',
+        'SELECT first_paid_order_at, checked_at FROM customer_order_facts WHERE shop = ? AND customer_id = ?',
         [safeShop, cid]
       );
-      if (existing && existing.first_paid_order_at != null) continue;
+      prevFirstPaidAt = existing && existing.first_paid_order_at != null ? Number(existing.first_paid_order_at) : null;
+      if (prevFirstPaidAt != null && Number.isFinite(prevFirstPaidAt) && prevFirstPaidAt < boundaryMs) continue;
+
+      const prevCheckedAt = existing && existing.checked_at != null ? Number(existing.checked_at) : null;
+      // If we have never found a prior paid order yet (null), avoid rechecking too frequently.
+      if ((prevFirstPaidAt == null || !Number.isFinite(prevFirstPaidAt)) && prevCheckedAt && (Date.now() - prevCheckedAt) < CUSTOMER_FACTS_NULL_RECHECK_TTL_MS) continue;
     } catch (_) {
       // continue; we'll try fetch + insert anyway
     }
 
     try {
-      const url = firstPaidOrderForCustomerApiUrl(safeShop, cid);
+      const url = priorPaidOrderForCustomerBeforeApiUrl(safeShop, cid, boundaryIso);
       const res = await shopifyFetchWithRetry(url, accessToken, { maxRetries: 6 });
       const text = await res.text();
       if (!res.ok) {
@@ -153,12 +162,12 @@ async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerI
       let json = null;
       try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
       const order = json && Array.isArray(json.orders) ? json.orders[0] : null;
-      const firstPaidOrderAt = parseMs(order?.created_at);
-      if (firstPaidOrderAt == null) {
-        errors += 1;
-        continue;
+      const priorPaidOrderAt = parseMs(order?.created_at);
+      let nextFirstPaidAt = prevFirstPaidAt;
+      if (priorPaidOrderAt != null && (nextFirstPaidAt == null || !Number.isFinite(nextFirstPaidAt) || priorPaidOrderAt < nextFirstPaidAt)) {
+        nextFirstPaidAt = priorPaidOrderAt;
       }
-      await upsertCustomerOrderFact(safeShop, cid, firstPaidOrderAt, Date.now());
+      await upsertCustomerOrderFact(safeShop, cid, nextFirstPaidAt, Date.now());
       fetched += 1;
       stored += 1;
     } catch (_) {
@@ -168,7 +177,7 @@ async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerI
 
   try {
     if (fetched > 0 || errors > 0) {
-      await writeAudit('system', 'ensure_customer_order_facts', { shop: safeShop, checked, fetched, stored, errors });
+      await writeAudit('system', 'ensure_customer_order_facts', { shop: safeShop, checked, fetched, stored, errors, boundaryMs });
     }
   } catch (_) {}
 
@@ -256,7 +265,7 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
   return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
 }
 
-function firstPaidOrderForCustomerApiUrl(shop, customerId) {
+function priorPaidOrderForCustomerBeforeApiUrl(shop, customerId, beforeIso) {
   const fields = [
     'id',
     'name',
@@ -280,7 +289,7 @@ function firstPaidOrderForCustomerApiUrl(shop, customerId) {
     'status=any' +
     '&financial_status=paid' +
     '&customer_id=' + encodeURIComponent(String(customerId || '').trim()) +
-    '&order=created_at%20asc' +
+    '&created_at_max=' + encodeURIComponent(String(beforeIso || '').trim()) +
     '&limit=1' +
     '&fields=' + encodeURIComponent(fields);
   return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
@@ -626,6 +635,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
           safeShop,
           token,
           Array.from(customerIdsInRange),
+          startMs,
           { maxCustomers: scope === 'today' ? 200 : 400 }
         );
       } catch (_) {
