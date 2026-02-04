@@ -90,7 +90,7 @@
     .stats-card #stats-best-variants .by-country-table td:first-child { width: 55%; min-width: 180px; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
-    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
+    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; object-fit: contain; object-position: center; border-radius: var(--radius); flex-shrink: 0; }
     .best-sellers-table .product-cell .bs-name { flex: 1; min-width: 4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: break-word; word-break: break-word; line-height: 1.35; font-size: var(--table-font-size); }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: var(--radius); }
     .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
@@ -121,7 +121,7 @@
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
     .thumb-card { display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; padding: 0; background: none; border: none; border-radius: 4px; box-shadow: var(--shadow); flex-shrink: 0; box-sizing: border-box; }
     .thumb-card--sale { border: none; padding: 0; box-shadow: none; background: none; }
-    .thumb-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 100px; display: block; }
+    .thumb-card img { width: 100%; height: 100%; object-fit: contain; object-position: center; border-radius: 100px; display: block; }
 .table-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: var(--badge-new-fg); }
