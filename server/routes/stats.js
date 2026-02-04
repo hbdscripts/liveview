@@ -7,8 +7,9 @@ const store = require('../store');
 
 function getStats(req, res, next) {
   const trafficMode = 'human_only';
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
+  // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
+  res.setHeader('Cache-Control', 'private, max-age=900');
+  res.setHeader('Vary', 'Cookie');
   store.getStats({ trafficMode })
     .then(data => res.json(data))
     .catch(err => {

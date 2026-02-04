@@ -579,6 +579,27 @@
       el.textContent = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
+    function updateNextUpdateUi() {
+      const block = document.querySelector('#tab-panel-spy .next-update-block');
+      if (!block) return;
+      const show = activeMainTab === 'spy' && dateRange === 'today';
+      if (!show) {
+        block.style.display = 'none';
+        const el = document.getElementById('next-update-msg');
+        if (el) el.textContent = '';
+        return;
+      }
+      // Clear inline style so CSS (e.g. mobile) can control visibility.
+      block.style.display = '';
+      const el = document.getElementById('next-update-msg');
+      if (!el) return;
+      const target = (typeof nextLiveAt === 'number' && nextLiveAt > Date.now())
+        ? nextLiveAt
+        : (Date.now() + LIVE_REFRESH_MS);
+      const sec = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+      el.textContent = sec + ' s';
+    }
+
     function toMs(v) {
       if (v == null || v === '') return null;
       let n = typeof v === 'number' ? v : Number(v);
@@ -668,12 +689,13 @@
             if (sessions.length) renderTable();
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
-              if (link) link.href = assetsBaseUrlFallback + '/favicon.png';
+              if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
-            if (shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
-            if (shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
-            if (shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
+            // Only fetch Shopify-derived stats tables when viewing Stats (manual / 15-min cadence).
+            if (activeMainTab === 'stats' && shopForSalesFallback && dateRange === 'today' && typeof fetchShopifySales === 'function') fetchShopifySales();
+            if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
+            if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
           // If we were waiting for Shopify sales but no shop is configured, stop showing a placeholder.
@@ -1096,43 +1118,47 @@
         });
     }
 
-    function fetchBestSellers() {
+    function fetchBestSellers(options = {}) {
+      const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) {
         bestSellersCache = null;
         renderBestSellers(null);
-        return;
+        return Promise.resolve(null);
       }
-      fetch(
-        API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) +
+      setTbodyLoading('best-sellers-body', 4);
+      let url = API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(bestSellersPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)) +
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
-          '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc')),
-        { credentials: 'same-origin' }
-      )
+          '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
+      if (force) url += '&_=' + Date.now();
+      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           bestSellersCache = data;
           renderBestSellers(data);
+          return data;
         })
-        .catch(function() { bestSellersCache = null; renderBestSellers(null); });
+        .catch(function() { bestSellersCache = null; renderBestSellers(null); return null; });
     }
 
-    function fetchWorstProducts() {
-      fetch(
-        API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
+    function fetchWorstProducts(options = {}) {
+      const force = !!options.force;
+      setTbodyLoading('worst-products-body', 4);
+      let url = API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)),
-        { credentials: 'same-origin' }
-      )
+          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
+      if (force) url += '&_=' + Date.now();
+      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           worstProductsCache = data;
           renderWorstProducts(data);
+          return data;
         })
-        .catch(function() { worstProductsCache = null; renderWorstProducts(null); });
+        .catch(function() { worstProductsCache = null; renderWorstProducts(null); return null; });
     }
 
     function renderWorstProducts(data) {
@@ -1169,26 +1195,28 @@
       }).join('');
     }
 
-    function fetchBestVariants() {
+    function fetchBestVariants(options = {}) {
+      const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) {
         bestVariantsCache = null;
         renderBestVariants(null);
-        return;
+        return Promise.resolve(null);
       }
-      fetch(
-        API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) +
+      setTbodyLoading('best-variants-body', 3);
+      let url = API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(bestVariantsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)),
-        { credentials: 'same-origin' }
-      )
+          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
+      if (force) url += '&_=' + Date.now();
+      return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           bestVariantsCache = data;
           renderBestVariants(data);
+          return data;
         })
-        .catch(function() { bestVariantsCache = null; renderBestVariants(null); });
+        .catch(function() { bestVariantsCache = null; renderBestVariants(null); return null; });
     }
 
     function renderBestVariants(data) {
@@ -1546,34 +1574,65 @@
       renderCountry(statsCache);
     }
 
-    function fetchStats() {
-      var overlay = document.getElementById('stats-loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-      // Start Shopify sales fetch early so Sales doesn't flash a DB value first.
-      if (dateRange === 'today') fetchShopifySales();
-      var url = API + '/api/stats';
-      url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
-      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+    function setTbodyLoading(tbodyId, colSpan, label) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+      const text = (label && String(label).trim()) ? String(label).trim() : 'Loading…';
+      tbody.innerHTML = '<tr><td colspan="' + String(colSpan || 1) + '" class="empty"><span class="inline-spinner" aria-label="' + escapeHtml(text) + '"></span></td></tr>';
+    }
+
+    function fetchStatsData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/stats';
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetch(url, { credentials: 'same-origin', cache: cacheMode })
         .then(function(r) {
           if (!r.ok) throw new Error('Stats HTTP ' + r.status);
           return r.json();
         })
         .then(function(data) {
-          nextStatsAt = Date.now() + STATS_INTERVAL_MS;
+          lastStatsFetchedAt = Date.now();
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data && typeof data.country === 'object' ? data : {});
-          requestAnimationFrame(function() { renderCountry(statsCache); });
-          fetchShopifySales();
-          fetchBestSellers();
-          fetchWorstProducts();
-          fetchBestVariants();
+          return data;
         })
-        .catch(function() { nextStatsAt = Date.now() + STATS_INTERVAL_MS; shopifySalesToday = null; renderStats(statsCache || {}); })
-        .finally(function() {
-          if (overlay) overlay.style.display = 'none';
-          requestAnimationFrame(function() { renderCountry(statsCache); });
+        .catch(function(err) {
+          console.error(err);
+          renderStats(statsCache || {});
+          return null;
         });
+    }
+
+    function refreshStats(options = {}) {
+      const force = !!options.force;
+      if (statsRefreshInFlight) return statsRefreshInFlight;
+
+      var overlay = document.getElementById('stats-loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      setTbodyLoading('by-country-body', 5);
+      setTbodyLoading('aov-by-country-body', 2);
+      setTbodyLoading('best-sellers-body', 4);
+      setTbodyLoading('worst-products-body', 4);
+      setTbodyLoading('best-variants-body', 3);
+
+      // Start Shopify sales fetch early so Sales doesn't flash a DB value first.
+      if (dateRange === 'today') fetchShopifySales();
+
+      const tasks = [
+        fetchStatsData({ force }),
+        fetchBestSellers({ force }),
+        fetchWorstProducts({ force }),
+        fetchBestVariants({ force }),
+      ];
+
+      statsRefreshInFlight = Promise.allSettled(tasks)
+        .finally(function() {
+          statsRefreshInFlight = null;
+          if (overlay) overlay.style.display = 'none';
+        });
+      return statsRefreshInFlight;
     }
 
     function sessionIdsEqual(a, b) {
@@ -1584,9 +1643,10 @@
     }
 
     function fetchSessions() {
+      if (liveRefreshInFlight) return liveRefreshInFlight;
       var overlay = document.getElementById('sessions-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
-      fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now())
+      liveRefreshInFlight = fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
         .then(r => r.json())
         .then(data => {
           var next = data.sessions || [];
@@ -1594,13 +1654,20 @@
           var listChanged = !sessionIdsEqual(sessions, next);
           sessions = next;
           if (listChanged) currentPage = 1;
+          lastSessionsFetchedAt = Date.now();
+          nextLiveAt = Date.now() + LIVE_REFRESH_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderTable();
           updateKpis();
+          return next;
         })
-        .catch(() => { sessions = []; currentPage = 1; renderTable(); })
-        .finally(function() { if (overlay) overlay.style.display = 'none'; });
+        .catch(() => { sessions = []; currentPage = 1; renderTable(); return null; })
+        .finally(function() {
+          liveRefreshInFlight = null;
+          if (overlay) overlay.style.display = 'none';
+        });
+      return liveRefreshInFlight;
     }
 
     function updateKpis() {
@@ -1871,11 +1938,17 @@
           worstProductsPage = 1;
           bestVariantsPage = 1;
           updateLiveViewTitle();
-          renderStats(statsCache);
-          fetchStats();
-          fetchBestSellers();
-          fetchWorstProducts();
-          fetchBestVariants();
+          bestSellersCache = null;
+          worstProductsCache = null;
+          bestVariantsCache = null;
+          lastStatsFetchedAt = 0;
+          updateNextUpdateUi();
+          if (activeMainTab === 'stats') {
+            refreshStats({ force: false });
+          } else if (activeMainTab === 'spy' && dateRange === 'today') {
+            // Returning to Today in Live should resume live updates immediately.
+            fetchSessions();
+          }
         });
       }
       (function initMainTabs() {
@@ -1886,16 +1959,28 @@
         const panelStats = document.getElementById('tab-panel-stats');
         function setTab(tab) {
           const isSpy = tab === 'spy';
+          activeMainTab = tab;
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isSpy ? 'false' : 'true');
           if (panelSpy) { panelSpy.classList.toggle('active', isSpy); panelSpy.style.display = isSpy ? '' : 'none'; }
           if (panelStats) { panelStats.classList.toggle('active', !isSpy); panelStats.style.display = isSpy ? 'none' : ''; }
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
+          updateNextUpdateUi();
+          if (tab === 'stats') {
+            const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
+            if (stale) refreshStats({ force: false });
+            else renderStats(statsCache || {});
+          } else {
+            const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > LIVE_REFRESH_MS;
+            if (stale) fetchSessions();
+          }
         }
+        let initialTab = 'spy';
         try {
           const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'spy') setTab(saved);
+          if (saved === 'stats' || saved === 'spy') initialTab = saved;
         } catch (_) {}
+        setTab(initialTab);
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
       })();
@@ -1905,21 +1990,18 @@
           btn.addEventListener('click', function() {
             btn.classList.add('spinning');
             setTimeout(function() { btn.classList.remove('spinning'); }, 800);
-            fetchStats();
-            fetchSessions();
+            if (activeMainTab === 'stats') refreshStats({ force: true });
+            else fetchSessions();
           });
         }
       })();
       updateServerTimeDisplay();
+      updateNextUpdateUi();
       setInterval(function() {
         updateServerTimeDisplay();
-        const el = document.getElementById('next-update-msg');
-        if (!el) return;
-        const sec = Math.max(0, Math.ceil((nextStatsAt - Date.now()) / 1000));
-        el.textContent = sec + ' s';
+        updateNextUpdateUi();
       }, 1000);
     })();
-    window.addEventListener('resize', syncCountryTableHeight);
 
     (function setupStatsCardScrollHideHeader() {
       function onScroll(wrapId, cardId) {
@@ -1938,16 +2020,35 @@
       onScroll('best-variants-wrap', 'stats-best-variants');
     })();
 
-    function onMinuteTick() {
-      fetchStats();
+    function onLiveAutoRefreshTick() {
+      if (activeMainTab !== 'spy') return;
+      if (dateRange !== 'today') return;
+      if (document.visibilityState !== 'visible') return;
       fetchSessions();
     }
-    onMinuteTick();
-    setInterval(onMinuteTick, STATS_INTERVAL_MS);
+
+    function onStatsAutoRefreshTick() {
+      if (activeMainTab !== 'stats') return;
+      if (dateRange !== 'today') return;
+      if (document.visibilityState !== 'visible') return;
+      refreshStats({ force: false });
+    }
+
+    // Live updates: every 60s (Today only). Stats: every 15 minutes (Today only).
+    setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
+    setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
 
     document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') { fetchSessions(); fetchStats(); }
+      if (document.visibilityState !== 'visible') return;
+      updateNextUpdateUi();
+      if (activeMainTab === 'stats') {
+        const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
+        if (stale) refreshStats({ force: false });
+      } else {
+        const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > LIVE_REFRESH_MS;
+        if (stale) fetchSessions();
+      }
     });
 
     const es = new EventSource(API + '/api/stream');
