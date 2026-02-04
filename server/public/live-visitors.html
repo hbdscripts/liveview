@@ -788,15 +788,10 @@
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
-            if (shopForSalesFallback && getStatsRange() === 'today') {
-              if (typeof fetchShopifySales === 'function') fetchShopifySales();
-              if (typeof fetchShopifySessions === 'function') fetchShopifySessions();
-            }
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
-          // If we were waiting for Shopify sales but no shop is configured, stop showing a placeholder.
           if (typeof renderSales === 'function') renderSales(statsCache);
         })
         .catch(function() { storeBaseUrlLoaded = true; if (typeof renderSales === 'function') renderSales(statsCache); });
@@ -807,12 +802,6 @@
       return shop && /\.myshopify\.com$/i.test(shop) ? shop : null;
     }
 
-    function shouldWaitForShopifySalesToday() {
-      if (getStatsRange() !== 'today') return false;
-      if (getShopForSales()) return true;
-      // If we don't know the shop yet (direct load), wait briefly for /api/store-base-url.
-      return !storeBaseUrlLoaded;
-    }
     function getStoreBaseUrl() {
       var params = new URLSearchParams(window.location.search);
       var shop = params.get('shop');
@@ -1482,21 +1471,7 @@
       const salesTodayEl = document.getElementById('sales-today');
       const range = getStatsRange();
       const baseSales = (sales[range] != null ? sales[range] : 0);
-      const waitingForShopify = shouldWaitForShopifySalesToday();
-      if (range === 'today' && waitingForShopify) {
-        if (shopifySalesToday != null) {
-          if (salesTodayEl) salesTodayEl.textContent = formatRevenue(shopifySalesToday);
-        } else if (!shopifySalesTodayLoaded) {
-          // Avoid showing a misleading DB total first; wait for Shopify once on initial load.
-          if (salesTodayEl) salesTodayEl.textContent = '\u2014';
-        } else {
-          // Shopify unavailable; fall back to DB.
-          if (salesTodayEl) salesTodayEl.textContent = formatRevenue(baseSales);
-        }
-      } else {
-        const mainSales = (range === 'today' && shopifySalesToday != null) ? shopifySalesToday : baseSales;
-        if (salesTodayEl) salesTodayEl.textContent = formatRevenue(mainSales);
-      }
+      if (salesTodayEl) salesTodayEl.textContent = formatRevenue(baseSales);
       const salesYesterdayEl = document.getElementById('sales-yesterday');
       if (salesYesterdayEl) salesYesterdayEl.textContent = formatRevenue(sales.yesterday);
     }
@@ -1668,20 +1643,7 @@
       let convVal = conv[kpiRange];
       let aovVal = aovMap[kpiRange];
       const bounceVal = bounceMap[kpiRange];
-      // On Breakdown tab use our stats for Sales/AOV so they match the country table (same source).
-      // On Live tab use Shopify for today when available.
-      if (kpiRange === 'today' && activeMainTab === 'spy') {
-        if (typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
-        // Sessions and CR always use our (human-only) data so they reflect bot filtering: ours < Shopify, CR higher
-        if (typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0 && typeof shopifySalesToday === 'number') {
-          aovVal = Math.round((shopifySalesToday / shopifyOrderCountToday) * 100) / 100;
-        }
-        // Don't show money (Sales, AOV) until Shopify has loaded for today – avoid flashing wrong DB figure first
-        if (shouldWaitForShopifySalesToday() && !shopifySalesTodayLoaded) {
-          salesVal = null;
-          aovVal = null;
-        }
-      }
+      // All KPIs use our DB only (human_only). Shopify data is only in Config (i) panel for comparison.
       const salesEl = document.getElementById('live-kpi-sales');
       const sessionsEl = document.getElementById('live-kpi-sessions');
       const convEl = document.getElementById('live-kpi-conv');
@@ -1711,10 +1673,6 @@
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data && typeof data.country === 'object' ? data : {});
-          if (getStatsRange() === 'today' && activeMainTab === 'spy' && getShopForSales()) {
-            fetchShopifySales();
-            fetchShopifySessions();
-          }
           return data;
         })
         .catch(function(err) {
@@ -1730,8 +1688,6 @@
 
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
-
-      if (getStatsRange() === 'today') { fetchShopifySales(); fetchShopifySessions(); }
 
       const tasks = [
         fetchStatsData({ force }),
@@ -2131,7 +2087,6 @@
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
-          if (dateRange !== 'today' && dateRange !== 'live') { shopifySalesToday = null; shopifySessionsToday = null; }
           countryPage = 1;
           aovPage = 1;
           bestSellersPage = 1;
