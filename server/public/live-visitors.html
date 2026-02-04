@@ -377,6 +377,7 @@
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Breakdown</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
     </div>
 
@@ -385,6 +386,7 @@
       <span class="tab-text">Home</span>
     </button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
+    <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
@@ -494,6 +496,34 @@
         <button type="button" id="country-next">Next</button>
       </div>
     </div>
+    <div class="stats-card" id="stats-aov">
+      <div class="country-table-wrap" id="aov-list-wrap">
+        <table id="aov-table" class="by-country-table aov-table">
+          <thead>
+            <tr>
+              <th>Average Order Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="aov-by-country-body">
+            <tr><td colspan="2" class="empty">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-pagination" id="aov-pagination" aria-label="AOV pagination">
+        <button type="button" id="aov-prev">Prev</button>
+        <span class="page-label" id="aov-label">Page 1 of 1</span>
+        <button type="button" id="aov-next">Next</button>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
+  <div class="stats-row-wrap">
+    <div class="table-loading-overlay stats-loading-overlay" id="products-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+  <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
       <div class="country-table-wrap" id="best-sellers-wrap">
         <table id="best-sellers-table" class="by-country-table best-sellers-table">
@@ -557,26 +587,6 @@
         <button type="button" id="best-variants-prev">Prev</button>
         <span class="page-label" id="best-variants-label">Page 1 of 1</span>
         <button type="button" id="best-variants-next">Next</button>
-      </div>
-    </div>
-    <div class="stats-card" id="stats-aov">
-      <div class="country-table-wrap" id="aov-list-wrap">
-        <table id="aov-table" class="by-country-table aov-table">
-          <thead>
-            <tr>
-              <th>Average Order Value</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="aov-by-country-body">
-            <tr><td colspan="2" class="empty">—</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="card-pagination" id="aov-pagination" aria-label="AOV pagination">
-        <button type="button" id="aov-prev">Prev</button>
-        <span class="page-label" id="aov-label">Page 1 of 1</span>
-        <button type="button" id="aov-next">Next</button>
       </div>
     </div>
   </div>
@@ -744,9 +754,11 @@
     let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
     let lastTrafficFetchedAt = 0;
+    let lastProductsFetchedAt = 0;
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
+    let productsRefreshInFlight = null;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
@@ -980,8 +992,8 @@
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
-            if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
-            if (activeMainTab === 'stats' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
           if (typeof renderSales === 'function') renderSales(statsCache);
@@ -1931,19 +1943,34 @@
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
 
-      const tasks = [
-        fetchStatsData({ force }),
-        fetchBestSellers({ force }),
-        fetchWorstProducts({ force }),
-        fetchBestVariants({ force }),
-      ];
-
-      statsRefreshInFlight = Promise.allSettled(tasks)
+      statsRefreshInFlight = fetchStatsData({ force })
         .finally(function() {
           statsRefreshInFlight = null;
           if (overlay) overlay.style.display = 'none';
         });
       return statsRefreshInFlight;
+    }
+
+    function refreshProducts(options = {}) {
+      const force = !!options.force;
+      if (productsRefreshInFlight) return productsRefreshInFlight;
+
+      var overlay = document.getElementById('products-loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+
+      const tasks = [
+        fetchBestSellers({ force }),
+        fetchWorstProducts({ force }),
+        fetchBestVariants({ force }),
+      ];
+
+      productsRefreshInFlight = Promise.allSettled(tasks)
+        .then(function() { lastProductsFetchedAt = Date.now(); })
+        .finally(function() {
+          productsRefreshInFlight = null;
+          if (overlay) overlay.style.display = 'none';
+        });
+      return productsRefreshInFlight;
     }
 
     function renderTrafficTables(data) {
@@ -2648,11 +2675,16 @@
           bestVariantsCache = null;
           lastStatsFetchedAt = 0;
           lastTrafficFetchedAt = 0;
+          lastProductsFetchedAt = 0;
           updateNextUpdateUi();
           if (activeMainTab === 'stats') {
             refreshStats({ force: false });
           } else if (activeMainTab === 'traffic') {
             refreshTraffic({ force: true });
+            fetchStatsData({ force: false });
+          } else if (activeMainTab === 'products') {
+            refreshProducts({ force: true });
+            fetchStatsData({ force: false });
           } else {
             renderLiveKpis(statsCache || {});
             updateKpis();
@@ -2687,9 +2719,11 @@
         const TAB_KEY = 'livevisitors-main-tab';
         const tabSpy = document.getElementById('tab-spy');
         const tabStats = document.getElementById('tab-stats');
+        const tabProducts = document.getElementById('tab-products');
         const tabTraffic = document.getElementById('tab-traffic');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
+        const panelProducts = document.getElementById('tab-panel-products');
         const panelTraffic = document.getElementById('tab-panel-traffic');
         const mobileBtn = document.getElementById('mobile-tabs-btn');
         const mobileMenu = document.getElementById('mobile-tabs-menu');
@@ -2703,7 +2737,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'stats' ? 'Breakdown' : (tab === 'traffic' ? 'Traffic' : 'Home');
+            mobileCurrent.textContent = tab === 'stats' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : 'Home'));
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -2723,22 +2757,30 @@
         function setTab(tab) {
           const isSpy = tab === 'spy';
           const isStats = tab === 'stats';
+          const isProducts = tab === 'products';
           const isTraffic = tab === 'traffic';
           activeMainTab = tab;
           syncMobileMenu(tab);
           closeMobileMenu();
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
+          if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
           if (panelSpy) { panelSpy.classList.toggle('active', isSpy); panelSpy.style.display = isSpy ? '' : 'none'; }
           if (panelStats) { panelStats.classList.toggle('active', isStats); panelStats.style.display = isStats ? '' : 'none'; }
+          if (panelProducts) { panelProducts.classList.toggle('active', isProducts); panelProducts.style.display = isProducts ? '' : 'none'; }
           if (panelTraffic) { panelTraffic.classList.toggle('active', isTraffic); panelTraffic.style.display = isTraffic ? '' : 'none'; }
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
           if (tab === 'stats') {
-            // Always refresh when entering Stats so main stats + BEST + WORST + VARIANTS load (no stuck "Loading...")
+            // Always refresh when entering Breakdown so tables are never stuck on "Loading..."
             refreshStats({ force: true });
+          } else if (tab === 'products') {
+            refreshProducts({ force: true });
+            const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
+            if (staleStats) fetchStatsData({ force: false });
+            else renderLiveKpis(statsCache || {});
           } else if (tab === 'traffic') {
             refreshTraffic({ force: true });
             const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
@@ -2756,11 +2798,12 @@
         let initialTab = 'spy';
         try {
           const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'spy' || saved === 'traffic') initialTab = saved;
+          if (saved === 'stats' || saved === 'spy' || saved === 'products' || saved === 'traffic') initialTab = saved;
         } catch (_) {}
         setTab(initialTab);
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
+        if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
         if (mobileBtn && mobileMenu) {
           mobileBtn.addEventListener('click', function(e) {
@@ -2794,6 +2837,7 @@
             btn.classList.add('spinning');
             setTimeout(function() { btn.classList.remove('spinning'); }, 800);
             if (activeMainTab === 'stats') refreshStats({ force: true });
+            else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
             else fetchSessions();
           });
@@ -2846,6 +2890,13 @@
       refreshStats({ force: false });
     }
 
+    function onProductsAutoRefreshTick() {
+      if (activeMainTab !== 'products') return;
+      if (getStatsRange() !== 'today') return;
+      if (document.visibilityState !== 'visible') return;
+      refreshProducts({ force: false });
+    }
+
     function onTrafficAutoRefreshTick() {
       if (activeMainTab !== 'traffic') return;
       if (getStatsRange() !== 'today') return;
@@ -2853,10 +2904,11 @@
       refreshTraffic({ force: false });
     }
 
-    // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Stats: every 15 min (Today only).
+    // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Breakdown/Products/Traffic: every 15 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (10 min interval)
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
+    setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
     // Online count: when not on Live, refresh every 60s so Online always shows real people online
@@ -2883,6 +2935,9 @@
       if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
+      } else if (activeMainTab === 'products') {
+        const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
+        if (staleProducts) refreshProducts({ force: false });
       } else if (activeMainTab === 'traffic') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });

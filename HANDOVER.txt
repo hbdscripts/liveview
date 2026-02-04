@@ -17,10 +17,11 @@ Dashboard URL:
 
 Main tabs (top row):
 - Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as an icon; mobile: tabs collapse into a hamburger menu)
-- Breakdown: KPI/cards breakdown for selected date range
+- Breakdown: Countries + Average Order Value tables for selected date range
+- Products: Best / Worst / Variants tables for selected date range
 - Traffic: two tables (Source + Traffic Type)
 
-Global date range picker (applies to Breakdown + Traffic):
+Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / 3 days / 7 days
 
 Traffic tab (new)
@@ -206,3 +207,4 @@ Performance direction:
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
+- Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Breakdown
