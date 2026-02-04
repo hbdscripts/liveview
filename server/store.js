@@ -911,39 +911,49 @@ async function getStats(options = {}) {
   for (const key of RANGE_KEYS) {
     ranges[key] = getRangeBounds(key, now, timeZone);
   }
-  const salesByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])
-  ));
-  const returningRevenueByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])
-  ));
-  const conversionByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])
-  ));
-  const productConversionByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])
-  ));
-  const countryByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])
-  ));
-  const salesRolling = Object.fromEntries(await Promise.all(
-    SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])
-  ));
-  const conversionRolling = Object.fromEntries(await Promise.all(
-    CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, opts)])
-  ));
-  const convertedCountByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])
-  ));
-  const convertedCountRolling = Object.fromEntries(await Promise.all(
-    SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now)])
-  ));
-  const trafficBreakdown = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])
-  ));
-  const bounceByRange = Object.fromEntries(await Promise.all(
-    RANGE_KEYS.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])
-  ));
+  // Run all stats queries in one parallel batch to avoid N+1 (many sequential DB round-trips). Fixes NODE-1.
+  const [
+    salesByRangeEntries,
+    returningRevenueByRangeEntries,
+    conversionByRangeEntries,
+    productConversionByRangeEntries,
+    countryByRangeEntries,
+    salesRollingEntries,
+    conversionRollingEntries,
+    convertedCountByRangeEntries,
+    convertedCountRollingEntries,
+    trafficBreakdownEntries,
+    bounceByRangeEntries,
+    yesterdayOk,
+    threeDOk,
+    sevenDOk,
+  ] = await Promise.all([
+    Promise.all(RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now)])),
+    Promise.all(CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, opts)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end)])),
+    Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getConvertedCount(now - w.ms, now)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])),
+    Promise.all(RANGE_KEYS.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])),
+    rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts),
+    rangeHasSessions(ranges['3d'].start, ranges['3d'].end, opts),
+    rangeHasSessions(ranges['7d'].start, ranges['7d'].end, opts),
+  ]);
+  const salesByRange = Object.fromEntries(salesByRangeEntries);
+  const returningRevenueByRange = Object.fromEntries(returningRevenueByRangeEntries);
+  const conversionByRange = Object.fromEntries(conversionByRangeEntries);
+  const productConversionByRange = Object.fromEntries(productConversionByRangeEntries);
+  const countryByRange = Object.fromEntries(countryByRangeEntries);
+  const salesRolling = Object.fromEntries(salesRollingEntries);
+  const conversionRolling = Object.fromEntries(conversionRollingEntries);
+  const convertedCountByRange = Object.fromEntries(convertedCountByRangeEntries);
+  const convertedCountRolling = Object.fromEntries(convertedCountRollingEntries);
+  const trafficBreakdown = Object.fromEntries(trafficBreakdownEntries);
+  const bounceByRange = Object.fromEntries(bounceByRangeEntries);
   const aovByRange = {};
   for (const key of RANGE_KEYS) {
     aovByRange[key] = aovFromSalesAndCount(salesByRange[key], convertedCountByRange[key]);
@@ -952,9 +962,6 @@ async function getStats(options = {}) {
   for (const key of Object.keys(salesRolling)) {
     aovRolling[key] = aovFromSalesAndCount(salesRolling[key], convertedCountRolling[key]);
   }
-  const yesterdayOk = await rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts);
-  const threeDOk = await rangeHasSessions(ranges['3d'].start, ranges['3d'].end, opts);
-  const sevenDOk = await rangeHasSessions(ranges['7d'].start, ranges['7d'].end, opts);
   const rangeAvailable = {
     today: true,
     yesterday: yesterdayOk,
