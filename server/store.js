@@ -820,6 +820,30 @@ function aovFromSalesAndCount(sales, count) {
   return Math.round((sales / count) * 100) / 100;
 }
 
+/** Bounce rate: (single-page sessions / total sessions) × 100. Industry standard: single-page = session with exactly one page_viewed (user left without a second page). */
+async function getBounceRate(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
+  const filterAlias = filter.sql.replace(/sessions\./g, 's.');
+  const db = getDb();
+  const singlePageRow = config.dbUrl
+    ? await db.get(`
+      SELECT COUNT(*) AS n FROM sessions s
+      WHERE s.started_at >= $1 AND s.started_at < $2 ${filterAlias}
+      AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = 'page_viewed') = 1
+    `, [start, end, ...filter.params])
+    : await db.get(`
+      SELECT COUNT(*) AS n FROM sessions s
+      WHERE s.started_at >= ? AND s.started_at < ? ${filterAlias}
+      AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = 'page_viewed') = 1
+    `, [start, end, ...filter.params]);
+  const breakdown = await getSessionCounts(start, end, options);
+  const total = breakdown.human_sessions ?? 0;
+  const singlePage = singlePageRow ? Number(singlePageRow.n) || 0 : 0;
+  if (total <= 0) return null;
+  return Math.round((singlePage / total) * 1000) / 10;
+}
+
 async function getStats(options = {}) {
   const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
   const opts = { trafficMode };
@@ -856,6 +880,9 @@ async function getStats(options = {}) {
   const trafficBreakdown = Object.fromEntries(await Promise.all(
     RANGE_KEYS.map(async key => [key, await getSessionCounts(ranges[key].start, ranges[key].end, opts)])
   ));
+  const bounceByRange = Object.fromEntries(await Promise.all(
+    RANGE_KEYS.map(async key => [key, await getBounceRate(ranges[key].start, ranges[key].end, opts)])
+  ));
   const aovByRange = {};
   for (const key of RANGE_KEYS) {
     aovByRange[key] = aovFromSalesAndCount(salesByRange[key], convertedCountByRange[key]);
@@ -880,6 +907,7 @@ async function getStats(options = {}) {
     productConversion: productConversionByRange,
     country: countryByRange,
     aov: { ...aovByRange, rolling: aovRolling },
+    bounce: bounceByRange,
     revenueToday: salesByRange.today ?? 0,
     rangeAvailable,
     convertedCount: convertedCountByRange,

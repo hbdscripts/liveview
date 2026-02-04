@@ -1,6 +1,6 @@
 # App audit (bugs and fixes)
 
-Audit date: 2025-02-04.
+Audit date: 2025-02-04. Updated: 2025-02-04 (Live KPIs, header, sound + stale sessions).
 
 ## Fixes applied this session
 
@@ -37,8 +37,28 @@ All code related to dragging table headers to change column width has been remov
 
 ---
 
+## Step 3 audit: Sale sound and old sales in Live
+
+**Findings:**
+
+1. **Sale sound only played from Stats refresh**  
+   The sound was triggered only inside `renderStats()` when `conv.today > lastConvertedCountToday`. That runs when stats are fetched (Stats tab or initial load). When the user was on the **Live** tab and a sale arrived via SSE (`session_update` with `becamePurchased`), the code only called `renderTable()` and `updateKpis()` and never played the sound.
+
+2. **Old sales still appearing from SSE**  
+   The Live list uses filter `active` (5 min) for the initial fetch, but every SSE `session_update` was merged or added regardless of age. A delayed or late SSE for a purchase from hours ago would add that session to the list, so old sales could keep showing.
+
+**Fixes applied:**
+
+- **Sound:** When the SSE handler sets `becamePurchased`, it now plays the sale sound (if not muted) in addition to re-rendering the table and KPIs.
+- **Stale sessions:**  
+  - New sessions from SSE are only added if `last_seen` is within the active window (5 min).  
+  - Existing sessions that receive an update but are now outside the active window are removed from the list and the table is re-rendered.
+
+---
+
 ## Files touched
 
-- `server/public/live-visitors.html` – Spy filter default, TH resize removal
+- `server/public/live-visitors.html` – Spy filter default, TH resize removal, Live header order, Live KPI grid, SSE sound + active-window filter
 - `server/index.js` – Migration 012 in startup chain
+- `server/store.js` – getBounceRate, bounce in getStats
 - `docs/APP_AUDIT.md` – This audit
