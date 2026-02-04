@@ -17,6 +17,11 @@ Dashboard URL:
 
 Main tabs (top row):
 - Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as an icon; mobile: tabs collapse into a hamburger menu)
+- Home “Landing Page” cell:
+  - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
+    - `Entry: <name>`
+    - `Exit: <name>`
+  - Otherwise, shows the single thumbnail + label (existing behaviour)
 - Breakdown: Countries + Average Order Value tables for selected date range
 - Products: Best / Worst / Variants tables for selected date range
 - Traffic: two tables (Source + Traffic Type)
@@ -208,3 +213,4 @@ Performance direction:
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
 - Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Breakdown
+- Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
