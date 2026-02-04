@@ -208,6 +208,12 @@
 }
 .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
 .live-view-header .table-title { margin: 0; font-size: var(--table-header-font-size); font-weight: 500; color: var(--text); flex-shrink: 0; display: flex; align-items: center; gap: 0.35rem; letter-spacing: -0.1px; }
+.table-title-tabs { display: inline-flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.table-title-tabs button { padding: 0.2rem 0.5rem; margin: 0; border: none; background: none; font-size: inherit; font-weight: 500; color: var(--muted); cursor: pointer; border-radius: var(--radius); }
+.table-title-tabs button:hover { color: var(--text); }
+.table-title-tabs button[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+.table-title-tabs-sep { margin: 0 0.35rem; color: var(--border); font-weight: 400; user-select: none; }
+.table-title-label { display: inline; }
 .live-view-header .live-view-online { flex-shrink: 0; }
 .live-view-header .next-update-block { flex-shrink: 0; }
 .live-view-header .live-view-next-update-center { flex: 1; display: flex; justify-content: center; }
@@ -351,7 +357,16 @@
   </div>
   <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
-    <h2 class="table-title" id="table-title"><span id="table-title-text">Today</span></h2>
+    <h2 class="table-title" id="table-title">
+      <span id="table-title-tabs" class="table-title-tabs" role="tablist" aria-label="Time window" style="display: none;">
+        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Live</button>
+        <span class="table-title-tabs-sep" aria-hidden="true">|</span>
+        <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
+        <span class="table-title-tabs-sep" aria-hidden="true">|</span>
+        <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
+      </span>
+      <span id="table-title-text" class="table-title-label">Today</span>
+    </h2>
     <span class="next-update-block live-view-next-update-center">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
     <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
   </div>
@@ -579,8 +594,8 @@
     let sessionsLoadError = null;
     let statsCache = {};
     let dateRange = 'live';
-    /** When dateRange is 'live', stats/KPIs and Breakdown all use today's data; only the main table shows live visitors. */
-    function getStatsRange() { return dateRange === 'live' ? 'today' : dateRange; }
+    /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
+    function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
     let lastSessionsFetchedAt = 0;
@@ -1567,15 +1582,26 @@
     }
 
     function updateLiveViewTitle() {
+      const tabsWrap = document.getElementById('table-title-tabs');
       const textEl = document.getElementById('table-title-text');
       const sel = document.getElementById('global-date-select');
-      let label = null;
-      if (sel) {
-        const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
-        label = opt && opt.textContent ? String(opt.textContent).trim() : null;
+      const showTabs = (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
+      if (tabsWrap) tabsWrap.style.display = showTabs ? 'inline-flex' : 'none';
+      if (textEl) textEl.style.display = showTabs ? 'none' : 'inline';
+      if (showTabs && tabsWrap) {
+        ['live', '1h', 'today'].forEach(function(r) {
+          const btn = document.getElementById('table-tab-' + (r === '1h' ? '1h' : r));
+          if (btn) btn.setAttribute('aria-selected', dateRange === r ? 'true' : 'false');
+        });
+      } else {
+        let label = null;
+        if (sel) {
+          const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
+          label = opt && opt.textContent ? String(opt.textContent).trim() : null;
+        }
+        const fallback = { live: 'Live', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour' };
+        if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
-      const fallback = { live: 'Live', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days' };
-      if (textEl) textEl.textContent = label || fallback[dateRange] || 'Live';
     }
 
     function updateRowsPerPageVisibility() {
@@ -1594,7 +1620,7 @@
           opt.textContent = 'Live';
           sel.insertBefore(opt, sel.firstChild);
         }
-        sel.value = dateRange;
+        sel.value = (dateRange === '1h') ? 'today' : dateRange;
       } else {
         if (hasLive) hasLive.remove();
         if (dateRange === 'live') {
@@ -2155,6 +2181,28 @@
           }
         });
       }
+      (function initTableTitleTabs() {
+        const tabsWrap = document.getElementById('table-title-tabs');
+        if (!tabsWrap) return;
+        function setRangeFromTab(range) {
+          dateRange = range;
+          if (dateRange === '1h') {
+            const sel = document.getElementById('global-date-select');
+            if (sel) sel.value = 'today';
+          }
+          lastOnlineCount = null;
+          countryPage = 1;
+          updateLiveViewTitle();
+          updateRowsPerPageVisibility();
+          renderLiveKpis(statsCache || {});
+          updateKpis();
+          fetchSessions();
+          updateNextUpdateUi();
+        }
+        document.querySelectorAll('#table-title-tabs button[data-range]').forEach(function(btn) {
+          btn.addEventListener('click', function() { setRangeFromTab(btn.getAttribute('data-range')); });
+        });
+      })();
       (function initMainTabs() {
         const TAB_KEY = 'livevisitors-main-tab';
         const tabSpy = document.getElementById('tab-spy');

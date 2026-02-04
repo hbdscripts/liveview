@@ -7,7 +7,7 @@ const store = require('../store');
 
 function list(req, res, next) {
   const range = req.query.range;
-  const rangeAllowed = ['today', 'yesterday', '3d', '7d'];
+  const rangeAllowed = ['today', 'yesterday', '3d', '7d', '1h'];
   if (range != null && range !== '') {
     if (!rangeAllowed.includes(range)) {
       return res.status(400).json({ error: 'Invalid range' });
