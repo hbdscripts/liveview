@@ -89,9 +89,9 @@
     .stats-card #stats-best-variants .by-country-table td:first-child { width: 55%; min-width: 180px; }
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
-    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; object-fit: contain; object-position: center; border-radius: var(--radius); flex-shrink: 0; }
+    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; border-radius: 100%; object-fit: contain; object-position: center; flex-shrink: 0; display: block; }
     .best-sellers-table .product-cell .bs-name { flex: 1; min-width: 4em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: break-word; word-break: break-word; line-height: 1.35; font-size: var(--table-font-size); }
-    .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: var(--radius); }
+    .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
     .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
     .best-sellers-table th.sortable:hover { color: var(--accent); }
     .best-sellers-table th.th-sort-asc::after,
@@ -1299,7 +1299,7 @@
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) : '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.parentElement&&(this.parentElement.style.display=\'none\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
         const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
