@@ -1,0 +1,11 @@
+---
+description: Do not create markdown documentation files; put content in chat instead
+globs: 
+alwaysApply: true
+---
+
+# Documentation: no new .md files
+
+- **Do not create new .md files** (e.g. README additions, new docs in `docs/`, new `.cursor` or config markdown) for documentation, breakdowns, or explanations that could go in the chat.
+- **Put that content directly in the chat** instead. If the user asks for a breakdown, audit, tech stack, or "document this for AI", respond in the conversation — do not create or update `docs/*.md`, `README.md`, or other markdown files for that purpose.
+- **Existing .md files** (e.g. `README.md`, `config/APP_CONFIG.md`, `docs/CLOUDFLARE_INGEST_SETUP.md`) may still be **edited** when the user explicitly asks to change documented behaviour or when code/config changes require it; the rule is to **avoid creating new** documentation files and to prefer chat for one-off explanations.
