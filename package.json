@@ -5,7 +5,7 @@
   "description": "Private Shopify app: Live Visitors admin dashboard",
   "scripts": {
     "dev": "node server/index.js",
-    "start": "NODE_ENV=production node server/index.js",
+    "start": "NODE_ENV=production node scripts/prune-runtime-files.js && NODE_ENV=production node server/index.js",
     "migrate": "node server/migrate.js",
     "generate-ingest-secret": "node scripts/generate-ingest-secret.js",
     "deploy": "node scripts/shopify-deploy.js",
