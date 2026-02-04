@@ -496,6 +496,7 @@
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
+    const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
     const STATS_REFRESH_MS = 15 * 60 * 1000;
     fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
@@ -1624,6 +1625,8 @@
         .then(r => r.json())
         .then(data => {
           var next = data.sessions || [];
+          var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+          next = next.filter(function(s) { return (s.last_seen != null && s.last_seen >= cutoff); });
           next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
           var listChanged = !sessionIdsEqual(sessions, next);
           sessions = next;
@@ -1645,7 +1648,7 @@
     }
 
     function updateKpis() {
-      const active = sessions.filter(s => s.last_seen >= Date.now() - 5 * 60 * 1000).length;
+      const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
       const el = document.getElementById('online-count');
       if (el) el.textContent = active;
     }
@@ -2015,6 +2018,14 @@
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
+    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min
+    setInterval(function() {
+      if (activeMainTab !== 'spy' || dateRange !== 'today') return;
+      var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+      var before = sessions.length;
+      sessions = sessions.filter(function(s) { return s.last_seen != null && s.last_seen >= cutoff; });
+      if (sessions.length !== before) { currentPage = 1; renderTable(); updateKpis(); }
+    }, 30000);
 
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
@@ -2028,7 +2039,6 @@
       }
     });
 
-    const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
     const es = new EventSource(API + '/api/stream');
     es.onmessage = (e) => {
       try {
