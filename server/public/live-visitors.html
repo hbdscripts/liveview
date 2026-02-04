@@ -2057,6 +2057,15 @@
           html += row('Token stored', shopify.hasToken ? '<span class="config-row ok">YES</span>' : '<span class="config-row missing">NO</span>');
           if (shopify.storedScopes) html += row('Stored scopes', code(shopify.storedScopes));
           if (shopify.serverScopes) html += row('Server scopes', code(shopify.serverScopes));
+          if (shopify.storedScopes && shopify.serverScopes) {
+            const have = String(shopify.storedScopes).split(',').map(s => s.trim()).filter(Boolean);
+            const need = String(shopify.serverScopes).split(',').map(s => s.trim()).filter(Boolean);
+            const missing = need.filter(s => have.indexOf(s) === -1);
+            if (missing.length) {
+              html += row('Missing scopes', code(missing.join(', ')), 'missing');
+              html += note('Re-open the app from Shopify Admin to re-authorize and grant missing scopes.');
+            }
+          }
           html += row('Today (truth)', (truthOrders != null ? (code(truthOrders) + ' orders') : '\u2014') + (truthRevenue != null ? (' · ' + code(formatRevenue(truthRevenue))) : ''));
           if (truthReturningCustomers != null || truthReturningRevenue != null) {
             html += row(
