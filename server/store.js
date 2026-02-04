@@ -411,10 +411,10 @@ async function insertPurchase(payload, sessionId, countryCode) {
     } else {
       await db.run('DELETE FROM purchases WHERE purchase_key = ?', [legacyKey]);
     }
-    // Also remove any h: row for same session + total + currency (within 15 min) so we don't count the same order twice
-    // (first event had no order_id/token and created h:hash, second event had order_id/token).
-    const bucketStart = Math.floor(now / (15 * 60000)) * (15 * 60000);
-    const bucketEnd = bucketStart + 15 * 60000;
+    // Remove h: row for same session + total + currency only if within 2 min (same order likely; 15 min was too aggressive and could delete a different order).
+    const windowMs = 2 * 60 * 1000;
+    const bucketStart = now - windowMs;
+    const bucketEnd = now + windowMs;
     const ot = Number.isNaN(orderTotal) ? null : orderTotal;
     const oc = orderCurrency || null;
     if (config.dbUrl) {
