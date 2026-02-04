@@ -131,53 +131,43 @@ function ingestRouter(req, res, next) {
     return res.status(429).json({ error: 'Too many requests' });
   }
 
-  store.isTrackingEnabled().then(enabled => {
-    if (!enabled) {
-      return res.status(204).end();
-    }
+  const payload = store.sanitize(body);
+  const country = getVisitorCountry(req);
+  if (country) payload.country_code = country;
+  const deviceFromUA = parseDeviceFromUserAgent(req);
+  if (deviceFromUA) payload.device = deviceFromUA;
+  // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
+  const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
+  if (requestReferer) payload.entry_url = requestReferer;
+  // Fallback referrer from CF/Worker (request Referer) when pixel referrer is stripped (e.g. by Shopify).
+  if ((!payload.referrer || !String(payload.referrer).trim()) && requestReferer) {
+    payload.referrer = requestReferer;
+  }
 
-    const payload = store.sanitize(body);
-    const country = getVisitorCountry(req);
-    if (country) payload.country_code = country;
-    const deviceFromUA = parseDeviceFromUserAgent(req);
-    if (deviceFromUA) payload.device = deviceFromUA;
-    // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
-    const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
-    if (requestReferer) payload.entry_url = requestReferer;
-    // Fallback referrer from CF/Worker (request Referer) when pixel referrer is stripped (e.g. by Shopify).
-    if ((!payload.referrer || !String(payload.referrer).trim()) && requestReferer) {
-      payload.referrer = requestReferer;
-    }
-    const ts = payload.ts || Date.now();
-
-    const cfContext = getCfContextFromRequest(req);
-    return store.upsertVisitor(payload)
-      .then(() => store.upsertSession(payload, undefined, cfContext))
-      .then(() => store.insertPurchase(payload, sessionId, payload.country_code))
-      .then(() => store.insertEvent(sessionId, payload))
-      .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
-      .then(([sessionRow, visitor]) => {
-        if (sessionRow) {
-          const countryCode = sessionRow.country_code || visitor?.last_country || 'XX';
-          sse.broadcast({
-            type: 'session_update',
-            session: {
-              ...sessionRow,
-              country_code: countryCode,
-              is_returning: sessionRow.is_returning ?? 0,
-            },
-          });
-        }
-        res.status(200).json({ ok: true });
-      })
-      .catch(err => {
-        console.error('Ingest error:', err);
-        res.status(500).json({ error: 'Internal error' });
-      });
-  }).catch(err => {
-    console.error('Ingest error:', err);
-    res.status(500).json({ error: 'Internal error' });
-  });
+  const cfContext = getCfContextFromRequest(req);
+  store.upsertVisitor(payload)
+    .then(() => store.upsertSession(payload, undefined, cfContext))
+    .then(() => store.insertPurchase(payload, sessionId, payload.country_code))
+    .then(() => store.insertEvent(sessionId, payload))
+    .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
+    .then(([sessionRow, visitor]) => {
+      if (sessionRow) {
+        const countryCode = sessionRow.country_code || visitor?.last_country || 'XX';
+        sse.broadcast({
+          type: 'session_update',
+          session: {
+            ...sessionRow,
+            country_code: countryCode,
+            is_returning: sessionRow.is_returning ?? 0,
+          },
+        });
+      }
+      res.status(200).json({ ok: true });
+    })
+    .catch(err => {
+      console.error('Ingest error:', err);
+      res.status(500).json({ error: 'Internal error' });
+    });
 }
 
 module.exports = ingestRouter;

@@ -77,11 +77,11 @@ These rules prevent the stats from drifting or looking wrong over time:
 - **Country stats** use `sessions.country_code` captured at event time, not `visitors.last_country` (which changes later and can skew historical reports).
 - **Migration `004_session_stats_fields`** backfills `sessions.country_code` and `purchased_at` for old rows and adds indexes. Older data is approximate until new purchase events arrive.
 
-## Privacy and disabling tracking
+## Privacy
 
 - The app does not collect PII (no email, phone, name, address, IP, full user agent, or full referrer).
 - Only anonymous `visitor_id` and `session_id` (generated client-side) and whitelisted event fields are stored.
-- To disable tracking quickly: use the **Tracking toggle** in the admin dashboard, or set the DB setting `tracking_enabled` to `false`. Ingestion then returns 204 and does not persist events.
+- Tracking is always on (no dashboard kill switch). To stop ingestion, disable/uninstall the Web Pixel in Shopify or change its Ingest URL/secret.
 - Coverage depends on customer privacy settings; the dashboard shows a note and an optional “Consent (debug)” column for diagnostics.
 
 ## Scripts
@@ -101,7 +101,7 @@ The project runs **Shopify CLI directly** from scripts (like theme check in anot
 ## Main files and folders
 
 - `server/` – Config, DB, migrations, ingest, SSE, cleanup, API routes, static admin UI.
-- `server/public/live-visitors.html` – Dashboard (table, tabs, side panel, KPIs, config status, tracking toggle).
+- `server/public/live-visitors.html` – Dashboard (table, tabs, side panel, KPIs, config status).
 - `extensions/live-visitors-pixel/` – Web Pixel extension (`shopify.extension.toml` + `src/index.js`).
 - `.env.example` – All env vars with short descriptions.
 - `config/APP_CONFIG.md` – Where to get credentials, URLs, ingest secret, common mistakes.

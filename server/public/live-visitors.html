@@ -244,10 +244,6 @@
     .config-modal-title { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .config-close { border: none; background: none; cursor: pointer; font-size: 1.25rem; line-height: 1; color: var(--muted); }
     .config-close:hover { color: var(--accent); }
-    .config-actions { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
-    #tracking-btn { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); cursor: pointer; color: var(--text); font-size: 0.75rem; }
-    #tracking-btn:hover { border-color: var(--accent); background: var(--button-hover-bg); }
-    #tracking-btn.off { opacity: 0.8; }
     .config-row { font-size: 0.8125rem; color: var(--text); margin: 0.25rem 0; word-break: break-word; }
     .config-row.ok { color: #0f766e; }
     .config-row.missing { color: #b91c1c; }
@@ -504,10 +500,6 @@
       <div class="config-modal-header">
         <h3 class="config-modal-title">Config &amp; health</h3>
         <button type="button" class="config-close" id="config-close-btn" aria-label="Close">×</button>
-      </div>
-      <div class="config-actions">
-        <button type="button" id="tracking-btn">Tracking —</button>
-        <span id="tracking-label" class="muted"></span>
       </div>
       <div id="config-status"></div>
     </div>
@@ -1718,26 +1710,6 @@
       });
     })();
 
-    const trackingBtn = document.getElementById('tracking-btn');
-    if (trackingBtn) {
-      trackingBtn.addEventListener('click', () => {
-        const enabled = trackingBtn.classList.contains('off');
-        fetch(API + '/api/settings/tracking', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled }),
-        })
-          .then(r => r.json())
-          .then(data => {
-            trackingBtn.textContent = data.enabled ? 'Tracking ON' : 'Tracking OFF';
-            trackingBtn.classList.toggle('off', !data.enabled);
-            const label = document.getElementById('tracking-label');
-            if (label) label.textContent = data.enabled ? 'Tracking is on.' : 'Tracking is off (ingest returns 204).';
-          })
-          .catch(() => {});
-      });
-    }
-
     function getConfigStatusUrl() {
       var url = API + '/api/config-status';
       try {
@@ -1779,8 +1751,7 @@
           html += section('Ingest');
           html += valueRow('Ingest URL', c.ingestUrl || '');
           if (c.ingestPublicUrl) html += valueRow('Ingest Public URL', c.ingestPublicUrl);
-          html += valueRow('Tracking', c.trackingEnabled ? 'ON' : 'OFF');
-          if (!c.trackingEnabled) html += noteRow('Tracking OFF: /api/ingest returns 204 and nothing is stored.');
+          html += valueRow('Tracking', 'ON (always)');
           if (c.sessionRetentionDays != null) html += valueRow('Session retention (days)', c.sessionRetentionDays);
 
           const h = c.health || null;
@@ -1827,10 +1798,6 @@
 
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
-          const tb = document.getElementById('tracking-btn');
-          const tl = document.getElementById('tracking-label');
-          if (tb) { tb.textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF'; tb.classList.toggle('off', !c.trackingEnabled); }
-          if (tl) tl.textContent = c.trackingEnabled ? 'Tracking is on.' : 'Tracking is off.';
 
           return c;
         })

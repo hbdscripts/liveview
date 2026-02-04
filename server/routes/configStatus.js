@@ -56,10 +56,7 @@ async function configStatus(req, res, next) {
     : config.shopify.appUrl.replace(/\/$/, '');
   const ingestUrl = `${ingestBase}/api/ingest`;
 
-  let trackingEnabled = config.trackingDefaultEnabled;
-  try {
-    trackingEnabled = await store.isTrackingEnabled();
-  } catch (_) {}
+  const trackingEnabled = true;
 
   const now = Date.now();
   const last24hStart = now - 24 * 60 * 60 * 1000;

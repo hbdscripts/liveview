@@ -51,7 +51,7 @@
 - **Pixel not loading:** Extension must have `customer_privacy` so it runs without consent (analytics=false, marketing=false, preferences=false, sale_of_data=disabled).
 - **No rows in dashboard:** `INGEST_SECRET` must match in Railway and in the pixel extension. Browse the storefront; first event is usually `page_viewed`.
 - **Country (From column):** We set country on the server from `CF-IPCountry` (if behind Cloudflare) or geoip-lite on client IP. Pixel doesn’t get visitor country from Shopify.
-- **Tracking off:** Use dashboard “Tracking toggle” or DB setting `tracking_enabled=true`.
+- **Tracking:** Always on (no dashboard kill switch). To stop ingestion, disable/uninstall the Web Pixel in Shopify or change its Ingest URL/secret.
 
 ---
 
