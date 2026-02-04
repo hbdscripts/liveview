@@ -588,6 +588,8 @@
     let sessionsLoadError = null;
     let statsCache = {};
     let dateRange = 'live';
+    /** When dateRange is 'live', stats/KPIs and Breakdown all use today's data; only the main table shows live visitors. */
+    function getStatsRange() { return dateRange === 'live' ? 'today' : dateRange; }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
     let lastSessionsFetchedAt = 0;
@@ -795,7 +797,7 @@
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
-            if (shopForSalesFallback && (dateRange === 'today' || dateRange === 'live')) {
+            if (shopForSalesFallback && getStatsRange() === 'today') {
               if (typeof fetchShopifySales === 'function') fetchShopifySales();
               if (typeof fetchShopifySessions === 'function') fetchShopifySessions();
             }
@@ -815,7 +817,7 @@
     }
 
     function shouldWaitForShopifySalesToday() {
-      if (dateRange !== 'today') return false;
+      if (getStatsRange() !== 'today') return false;
       if (getShopForSales()) return true;
       // If we don't know the shop yet (direct load), wait briefly for /api/store-base-url.
       return !storeBaseUrlLoaded;
@@ -1216,9 +1218,9 @@
 
     function fetchShopifySales() {
       var shop = getShopForSales();
-      if (!shop || dateRange !== 'today') {
+      if (!shop || getStatsRange() !== 'today') {
         // If the store-base-url lookup is done and we still have no shop, stop waiting and fall back to DB.
-        if ((dateRange === 'today' || dateRange === 'live') && storeBaseUrlLoaded && !shop) shopifySalesTodayLoaded = true;
+        if (getStatsRange() === 'today' && storeBaseUrlLoaded && !shop) shopifySalesTodayLoaded = true;
         shopifySalesTodayLoading = false;
         return;
       }
@@ -1246,8 +1248,8 @@
 
     function fetchShopifySessions() {
       var shop = getShopForSales();
-      if (!shop || dateRange !== 'today') {
-        if ((dateRange === 'today' || dateRange === 'live') && storeBaseUrlLoaded && !shop) shopifySessionsTodayLoaded = true;
+      if (!shop || getStatsRange() !== 'today') {
+        if (getStatsRange() === 'today' && storeBaseUrlLoaded && !shop) shopifySessionsTodayLoaded = true;
         shopifySessionsTodayLoading = false;
         return;
       }
@@ -1278,7 +1280,7 @@
         return Promise.resolve(null);
       }
       let url = API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) +
-          '&range=' + encodeURIComponent(dateRange) +
+          '&range=' + encodeURIComponent(getStatsRange()) +
           '&page=' + encodeURIComponent(String(bestSellersPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)) +
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
@@ -1296,7 +1298,7 @@
 
     function fetchWorstProducts(options = {}) {
       const force = !!options.force;
-      let url = API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
+      let url = API + '/api/worst-products?range=' + encodeURIComponent(getStatsRange()) +
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
       if (force) url += '&_=' + Date.now();
@@ -1353,7 +1355,7 @@
         return Promise.resolve(null);
       }
       let url = API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) +
-          '&range=' + encodeURIComponent(dateRange) +
+          '&range=' + encodeURIComponent(getStatsRange()) +
           '&page=' + encodeURIComponent(String(bestVariantsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
       if (force) url += '&_=' + Date.now();
@@ -1486,9 +1488,10 @@
     function renderSales(data) {
       const sales = data.sales || {};
       const salesTodayEl = document.getElementById('sales-today');
-      const baseSales = (sales[dateRange] != null ? sales[dateRange] : 0);
+      const range = getStatsRange();
+      const baseSales = (sales[range] != null ? sales[range] : 0);
       const waitingForShopify = shouldWaitForShopifySalesToday();
-      if ((dateRange === 'today' || dateRange === 'live') && waitingForShopify) {
+      if (range === 'today' && waitingForShopify) {
         if (shopifySalesToday != null) {
           if (salesTodayEl) salesTodayEl.textContent = formatRevenue(shopifySalesToday);
         } else if (!shopifySalesTodayLoaded) {
@@ -1499,7 +1502,7 @@
           if (salesTodayEl) salesTodayEl.textContent = formatRevenue(baseSales);
         }
       } else {
-        const mainSales = ((dateRange === 'today' || dateRange === 'live') && shopifySalesToday != null) ? shopifySalesToday : baseSales;
+        const mainSales = (range === 'today' && shopifySalesToday != null) ? shopifySalesToday : baseSales;
         if (salesTodayEl) salesTodayEl.textContent = formatRevenue(mainSales);
       }
       const salesYesterdayEl = document.getElementById('sales-yesterday');
@@ -1508,15 +1511,16 @@
 
     function renderConversion(data) {
       const c = data.conversion || {};
-      document.getElementById('conversion-range').textContent = pct(c[dateRange]);
-      const productCr = (data.productConversion || {})[dateRange];
+      const range = getStatsRange();
+      document.getElementById('conversion-range').textContent = pct(c[range]);
+      const productCr = (data.productConversion || {})[range];
       const productCrEl = document.getElementById('conversion-product-cr');
       if (productCrEl) productCrEl.textContent = productCr != null ? pct(productCr) : '\u2014';
     }
 
     function renderSessions(data) {
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
-      const forRange = breakdown[dateRange];
+      const forRange = breakdown[getStatsRange()];
       const forYesterday = breakdown.yesterday;
       const main = forRange != null ? forRange.human_sessions : null;
       const yesterday = forYesterday != null ? forYesterday.human_sessions : null;
@@ -1527,7 +1531,7 @@
     }
 
     function renderAov(data) {
-      const rows = (data.country || {})[dateRange] || [];
+      const rows = (data.country || {})[getStatsRange()] || [];
       const tbody = document.getElementById('aov-by-country-body');
       if (!tbody) return;
       const filtered = rows.filter(r => r.aov != null && r.aov > 0);
@@ -1553,7 +1557,7 @@
 
     function renderCountry(data) {
       const c = data.country || {};
-      const rows = c[dateRange] || [];
+      const rows = c[getStatsRange()] || [];
       const tbody = document.getElementById('by-country-body');
       if (!tbody) return;
       if (rows.length === 0) {
@@ -1657,7 +1661,7 @@
       const conv = data.conversion || {};
       const aovMap = data.aov || {};
       const bounceMap = data.bounce || {};
-      const kpiRange = dateRange === 'live' ? 'today' : dateRange;
+      const kpiRange = getStatsRange();
       const forRange = breakdown[kpiRange];
       let sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
       let salesVal = sales[kpiRange];
@@ -1709,7 +1713,7 @@
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data && typeof data.country === 'object' ? data : {});
-          if ((dateRange === 'today' || dateRange === 'live') && activeMainTab === 'spy' && getShopForSales()) {
+          if (getStatsRange() === 'today' && activeMainTab === 'spy' && getShopForSales()) {
             fetchShopifySales();
             fetchShopifySessions();
           }
@@ -1729,7 +1733,7 @@
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
 
-      if (dateRange === 'today') { fetchShopifySales(); fetchShopifySessions(); }
+      if (getStatsRange() === 'today') { fetchShopifySales(); fetchShopifySessions(); }
 
       const tasks = [
         fetchStatsData({ force }),
@@ -2229,7 +2233,7 @@
 
     function onStatsAutoRefreshTick() {
       if (activeMainTab !== 'stats') return;
-      if (dateRange !== 'today') return;
+      if (getStatsRange() !== 'today') return;
       if (document.visibilityState !== 'visible') return;
       refreshStats({ force: false });
     }
