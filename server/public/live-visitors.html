@@ -194,7 +194,13 @@
 .live-view-header .live-view-next-update-center { flex: 1; display: flex; justify-content: center; }
 .live-view-online { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; margin-right: 10px; }
 .live-view-online .online-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--online-dot-color); flex-shrink: 0; }
-.live-view-online strong { color: var(--accent); font-size: 17px; }
+.live-view-online strong {
+    color: #333;
+    font-size: 16px;
+    line-height: 15px;
+    vertical-align: middle;
+    padding: 2px 0 0 0;
+}
 .dashboard-top-bar select:not(.top-bar-date-select) { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.875rem; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 12px 12px; padding-right: 1.75rem; }
 .dashboard-top-bar select option:disabled { color: var(--muted); }
 #audio-mute-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; background: none; cursor: pointer; color: var(--text); }
