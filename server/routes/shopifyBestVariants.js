@@ -50,7 +50,22 @@ async function getShopifyBestVariants(req, res) {
       if (!orderRes.ok) {
         const errText = await orderRes.text();
         console.error('[shopify-best-variants] Orders API error:', orderRes.status, errText);
-        return res.status(502).json({ error: 'Shopify API error', details: orderRes.status });
+        let message = 'Shopify API error';
+        try {
+          const errJson = errText ? JSON.parse(errText) : null;
+          const first = errJson?.errors && (errJson.errors[0] || errJson.errors);
+          if (typeof first === 'string') message = first;
+          else if (first?.message) message = first.message;
+        } catch (_) {}
+        return res.status(502).json({
+          error: message,
+          shopifyStatus: orderRes.status,
+          hint: orderRes.status === 401 || orderRes.status === 403
+            ? 'Token may be missing or lack read_orders scope. Reinstall the app from Shopify Admin.'
+            : orderRes.status === 429
+              ? 'Shopify rate limit. Try again in a few minutes.'
+              : undefined,
+        });
       }
       const data = await orderRes.json();
       const orders = data.orders || [];

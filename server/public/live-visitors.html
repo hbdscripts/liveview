@@ -1269,11 +1269,18 @@
           '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
       if (force) url += '&_=' + Date.now();
       return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(data) {
-          bestSellersCache = data;
-          renderBestSellers(data);
-          return data;
+        .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
+        .then(function(result) {
+          if (result.ok) {
+            bestSellersCache = result.data;
+            renderBestSellers(result.data);
+            return result.data;
+          }
+          var msg = (result.data && result.data.error) ? result.data.error : ('Error ' + result.status);
+          if (result.data && result.data.hint) msg += '. ' + result.data.hint;
+          bestSellersCache = null;
+          renderBestSellers(null, msg);
+          return null;
         })
         .catch(function() { bestSellersCache = null; renderBestSellers(null); return null; });
     }
@@ -1342,20 +1349,27 @@
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
       if (force) url += '&_=' + Date.now();
       return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(data) {
-          bestVariantsCache = data;
-          renderBestVariants(data);
-          return data;
+        .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
+        .then(function(result) {
+          if (result.ok) {
+            bestVariantsCache = result.data;
+            renderBestVariants(result.data);
+            return result.data;
+          }
+          var msg = (result.data && result.data.error) ? result.data.error : ('Error ' + result.status);
+          if (result.data && result.data.hint) msg += '. ' + result.data.hint;
+          bestVariantsCache = null;
+          renderBestVariants(null, msg);
+          return null;
         })
         .catch(function() { bestVariantsCache = null; renderBestVariants(null); return null; });
     }
 
-    function renderBestVariants(data) {
+    function renderBestVariants(data, errorMessage) {
       const tbody = document.getElementById('best-variants-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestVariants)) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">No shop or no data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
         updateCardPagination('best-variants', 1, 1);
         return;
       }
@@ -1385,11 +1399,11 @@
       }).join('');
     }
 
-    function renderBestSellers(data) {
+    function renderBestSellers(data, errorMessage) {
       const tbody = document.getElementById('best-sellers-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestSellers)) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">No shop or no data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
         updateBestSellersSortHeaders();
         updateCardPagination('best-sellers', 1, 1);
         return;
