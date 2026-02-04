@@ -327,6 +327,7 @@
       <option value="15">15</option>
       <option value="30">30</option>
       <option value="50">50</option>
+      <option value="100">100</option>
     </select>
   </div>
   </div>
@@ -523,13 +524,14 @@
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
     const ROWS_PER_PAGE_KEY = 'livevisitors-rows-per-page';
+    const ROWS_PER_PAGE_OPTIONS = [15, 30, 50, 100];
     function loadRowsPerPage() {
       try {
         const raw = sessionStorage.getItem(ROWS_PER_PAGE_KEY);
         const n = parseInt(String(raw), 10);
-        if (n === 15 || n === 30 || n === 50) return n;
+        if (ROWS_PER_PAGE_OPTIONS.indexOf(n) >= 0) return n;
       } catch (_) {}
-      return 15;
+      return 50;
     }
     let rowsPerPage = loadRowsPerPage();
     let sessions = [];
@@ -1714,11 +1716,12 @@
       sel.value = String(rowsPerPage);
       sel.addEventListener('change', function() {
         const n = parseInt(String(this.value), 10);
-        if (n !== 15 && n !== 30 && n !== 50) return;
+        if (ROWS_PER_PAGE_OPTIONS.indexOf(n) < 0) return;
         rowsPerPage = n;
         try { sessionStorage.setItem(ROWS_PER_PAGE_KEY, String(n)); } catch (_) {}
         currentPage = 1;
         renderTable();
+        updateKpis();
       });
     })();
 
