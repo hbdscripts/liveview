@@ -365,7 +365,7 @@
             </tr>
           </thead>
           <tbody id="by-country-body">
-            <tr><td colspan="5" class="empty">Loading...</td></tr>
+            <tr><td colspan="5" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -390,7 +390,7 @@
             </tr>
           </thead>
           <tbody id="best-sellers-body">
-            <tr><td colspan="4" class="empty">Loading...</td></tr>
+            <tr><td colspan="4" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -415,7 +415,7 @@
             </tr>
           </thead>
           <tbody id="worst-products-body">
-            <tr><td colspan="4" class="empty">Loading...</td></tr>
+            <tr><td colspan="4" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -439,7 +439,7 @@
             </tr>
           </thead>
           <tbody id="best-variants-body">
-            <tr><td colspan="3" class="empty">Loading...</td></tr>
+            <tr><td colspan="3" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -462,7 +462,7 @@
             </tr>
           </thead>
           <tbody id="aov-by-country-body">
-            <tr><td colspan="2" class="empty">Loading...</td></tr>
+            <tr><td colspan="2" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -1169,7 +1169,6 @@
         renderBestSellers(null);
         return Promise.resolve(null);
       }
-      setTbodyLoading('best-sellers-body', 4);
       let url = API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(bestSellersPage || 1)) +
@@ -1189,7 +1188,6 @@
 
     function fetchWorstProducts(options = {}) {
       const force = !!options.force;
-      setTbodyLoading('worst-products-body', 4);
       let url = API + '/api/worst-products?range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
           '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
@@ -1246,7 +1244,6 @@
         renderBestVariants(null);
         return Promise.resolve(null);
       }
-      setTbodyLoading('best-variants-body', 3);
       let url = API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(dateRange) +
           '&page=' + encodeURIComponent(String(bestVariantsPage || 1)) +
@@ -1557,13 +1554,6 @@
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
     }
 
-    function setTbodyLoading(tbodyId, colSpan, label) {
-      const tbody = document.getElementById(tbodyId);
-      if (!tbody) return;
-      const text = (label && String(label).trim()) ? String(label).trim() : 'Loading…';
-      tbody.innerHTML = '<tr><td colspan="' + String(colSpan || 1) + '" class="empty"><span class="inline-spinner" aria-label="' + escapeHtml(text) + '"></span></td></tr>';
-    }
-
     function fetchStatsData(options = {}) {
       const force = !!options.force;
       let url = API + '/api/stats';
@@ -1598,11 +1588,6 @@
 
       var overlay = document.getElementById('stats-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
-      setTbodyLoading('by-country-body', 5);
-      setTbodyLoading('aov-by-country-body', 2);
-      setTbodyLoading('best-sellers-body', 4);
-      setTbodyLoading('worst-products-body', 4);
-      setTbodyLoading('best-variants-body', 3);
 
       if (dateRange === 'today') { fetchShopifySales(); fetchShopifySessions(); }
 
