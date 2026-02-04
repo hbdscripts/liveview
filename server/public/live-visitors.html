@@ -63,15 +63,16 @@
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
-    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); }
+    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; }
     .by-country-table th, .by-country-table td { padding: var(--table-compact-padding-y) 0.35rem; border-bottom: none; }
-    .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: 0; margin-left: 0; min-width: 0; }
+    .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: 0; margin-left: 0; min-width: 0; width: 30%; }
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: 0; }
-    .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; white-space: nowrap; width: 1%; }
+    .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; white-space: nowrap; }
     .by-country-table th { font-size: 0.7rem; color: #777; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; background: none; }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .by-country-table tbody td:first-child > * { min-width: 0; }
     .by-country-table .country-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .by-country-table.aov-table .country-label { overflow: visible; text-overflow: clip; white-space: normal; }
     .by-country-table .country-name { display: inline; }
     .by-country-table .country-code { display: none; }
     .by-country-table .flag-img { width: 24px; height: 18px; object-fit: cover; border-radius: var(--radius); }
@@ -469,14 +470,14 @@
     </div>
     <div class="stats-card" id="stats-aov">
       <div class="stats-card-header">
-        <h3>AOV</h3>
+        <h3>Average Order Value</h3>
       </div>
       <div class="country-table-wrap" id="aov-list-wrap">
         <table id="aov-table" class="by-country-table aov-table">
           <thead>
             <tr>
-              <th>GEO</th>
-              <th>AOV</th>
+              <th>Country</th>
+              <th>Average Order Value</th>
             </tr>
           </thead>
           <tbody id="aov-by-country-body">
@@ -650,11 +651,18 @@
     }
 
     var countryNames = { GB: 'UK', US: 'USA', CA: 'CA', AU: 'AU', DE: 'DE', FR: 'FR', IE: 'IE', ES: 'ES', IT: 'IT', NL: 'NL', IN: 'IN', JP: 'JP', DK: 'DK', SE: 'SE', NO: 'NO', TH: 'TH', NZ: 'NZ', RO: 'RO', BE: 'BE', FI: 'FI', AE: 'UAE', XX: '\u2014' };
+    var countryNamesFull = { GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia', DE: 'Germany', FR: 'France', IE: 'Ireland', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', IN: 'India', JP: 'Japan', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', TH: 'Thailand', NZ: 'New Zealand', RO: 'Romania', BE: 'Belgium', FI: 'Finland', AE: 'United Arab Emirates', XX: '\u2014' };
 
     function countryLabel(code) {
       if (!code) return 'Unknown';
       var c = (code || 'XX').toUpperCase().slice(0, 2);
       return countryNames[c] || c;
+    }
+
+    function countryLabelFull(code) {
+      if (!code) return 'Unknown';
+      var c = (code || 'XX').toUpperCase().slice(0, 2);
+      return countryNamesFull[c] || countryNames[c] || c;
     }
 
     // Add Shopify-style width param to hotlinked images.
@@ -1414,7 +1422,7 @@
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const code = iso.toLowerCase();
-        const label = countryLabel(iso);
+        const label = countryLabelFull(iso);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + code + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(iso) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
