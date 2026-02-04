@@ -92,11 +92,6 @@
     th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: var(--table-font-size); }
     th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
-    table[data-resizable="true"] th { position: relative; }
-    .col-resizer { position: absolute; top: 0; right: 0; width: 10px; height: 100%; cursor: col-resize; user-select: none; touch-action: none; }
-    .col-resizer::after { content: ''; position: absolute; top: 20%; bottom: 20%; left: 4px; width: 1px; background: transparent; }
-    table[data-resizable="true"] th:hover .col-resizer::after { background: rgba(0,0,0,0.18); }
-    table[data-resizable="true"] th.resizing .col-resizer::after { background: var(--accent); }
     tr:hover { background: inherit; }
     tr.returning { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
@@ -291,7 +286,7 @@
   <div class="sessions-table-wrap">
     <div class="table-loading-overlay sessions-loading-overlay" id="sessions-loading-overlay" style="display: none;"><div class="spinner"></div></div>
   <div class="table-scroll-wrap">
-  <table id="sessions-table" data-resizable="true">
+  <table id="sessions-table">
     <thead>
       <tr>
         <th>LP</th>
@@ -361,7 +356,7 @@
         <h3>Country</h3>
       </div>
       <div class="country-table-wrap" id="country-table-wrap">
-        <table id="country-table" class="by-country-table" data-resizable="true">
+        <table id="country-table" class="by-country-table">
           <thead>
             <tr>
               <th></th>
@@ -387,7 +382,7 @@
         <h3>Best</h3>
       </div>
       <div class="country-table-wrap" id="best-sellers-wrap">
-        <table id="best-sellers-table" class="by-country-table best-sellers-table" data-resizable="true">
+        <table id="best-sellers-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
               <th class="bs-product-col"></th>
@@ -412,7 +407,7 @@
         <h3>Worst</h3>
       </div>
       <div class="country-table-wrap" id="worst-products-wrap">
-        <table id="worst-products-table" class="by-country-table best-sellers-table" data-resizable="true">
+        <table id="worst-products-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
               <th class="bs-product-col"></th>
@@ -437,7 +432,7 @@
         <h3>Variants</h3>
       </div>
       <div class="country-table-wrap" id="best-variants-wrap">
-        <table id="best-variants-table" class="by-country-table best-sellers-table" data-resizable="true">
+        <table id="best-variants-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
               <th class="bs-product-col"></th>
@@ -461,7 +456,7 @@
         <h3>AOV</h3>
       </div>
       <div class="country-table-wrap" id="aov-list-wrap">
-        <table id="aov-table" class="by-country-table aov-table" data-resizable="true">
+        <table id="aov-table" class="by-country-table aov-table">
           <thead>
             <tr>
               <th>GEO</th>
@@ -567,7 +562,8 @@
           .catch(function () {});
       }
     })();
-    let filter = 'today';
+    // 'active' = last 5 min so old sales drop off; 'today' = 24h (sessions stay including old sales).
+    let filter = 'active';
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
@@ -1340,102 +1336,6 @@
       label.textContent = 'Page ' + page + ' of ' + pages;
     }
 
-    function initResizableTables() {
-      const tables = document.querySelectorAll('table[data-resizable="true"]');
-      tables.forEach(function(table) {
-        const id = table.getAttribute('id') || '';
-        if (!id) return;
-        const thead = table.querySelector('thead');
-        const headerRow = thead ? thead.querySelector('tr') : null;
-        if (!headerRow) return;
-        const ths = Array.from(headerRow.querySelectorAll('th'));
-        if (ths.length === 0) return;
-
-        // Ensure colgroup exists and matches column count.
-        let colgroup = table.querySelector('colgroup');
-        if (!colgroup) {
-          colgroup = document.createElement('colgroup');
-          for (let i = 0; i < ths.length; i++) colgroup.appendChild(document.createElement('col'));
-          table.insertBefore(colgroup, thead);
-        } else {
-          const existingCols = colgroup.querySelectorAll('col');
-          if (existingCols.length !== ths.length) {
-            colgroup.innerHTML = '';
-            for (let i = 0; i < ths.length; i++) colgroup.appendChild(document.createElement('col'));
-          }
-        }
-        const cols = Array.from(colgroup.querySelectorAll('col'));
-
-        // Apply saved widths.
-        const key = 'livevisitors-colwidths:' + id;
-        try {
-          const raw = sessionStorage.getItem(key);
-          if (raw) {
-            const widths = JSON.parse(raw);
-            if (Array.isArray(widths) && widths.length === cols.length) {
-              widths.forEach(function(w, i) {
-                if (typeof w === 'number' && w > 20) cols[i].style.width = Math.round(w) + 'px';
-              });
-            }
-          }
-        } catch (_) {}
-
-        function saveWidths() {
-          try {
-            const widths = ths.map(th => Math.round(th.getBoundingClientRect().width));
-            sessionStorage.setItem(key, JSON.stringify(widths));
-          } catch (_) {}
-        }
-
-        // Add resize handles to header cells.
-        ths.forEach(function(th, i) {
-          if (i >= cols.length - 1) return; // no handle on last column
-          if (th.querySelector('.col-resizer')) return;
-          const handle = document.createElement('div');
-          handle.className = 'col-resizer';
-          handle.setAttribute('role', 'separator');
-          handle.setAttribute('aria-orientation', 'vertical');
-
-          handle.addEventListener('pointerdown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const startX = e.clientX;
-            const startWidth = th.getBoundingClientRect().width;
-            const minWidth = 40;
-            const maxWidth = 1200;
-            const pointerId = e.pointerId;
-            th.classList.add('resizing');
-            try { handle.setPointerCapture(pointerId); } catch (_) {}
-
-            function onMove(ev) {
-              if (ev.pointerId !== pointerId) return;
-              const delta = ev.clientX - startX;
-              const next = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
-              cols[i].style.width = Math.round(next) + 'px';
-              if (id === 'sessions-table') syncSessionsTableTightMode();
-            }
-
-            function onUp(ev) {
-              if (ev.pointerId !== pointerId) return;
-              th.classList.remove('resizing');
-              document.removeEventListener('pointermove', onMove);
-              document.removeEventListener('pointerup', onUp);
-              document.removeEventListener('pointercancel', onUp);
-              try { handle.releasePointerCapture(pointerId); } catch (_) {}
-              saveWidths();
-              if (id === 'sessions-table') syncSessionsTableTightMode();
-            }
-
-            document.addEventListener('pointermove', onMove);
-            document.addEventListener('pointerup', onUp);
-            document.addEventListener('pointercancel', onUp);
-          });
-
-          th.appendChild(handle);
-        });
-      });
-    }
-
     function renderSales(data) {
       const sales = data.sales || {};
       const salesTodayEl = document.getElementById('sales-today');
@@ -1737,7 +1637,6 @@
 
     setupSortableHeaders();
     setupBestSellersSort();
-    initResizableTables();
 
     (function initTopTablePagination() {
       function bind(prefix, onPrev, onNext) {
