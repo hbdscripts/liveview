@@ -334,7 +334,7 @@
   <table id="sessions-table">
     <thead>
       <tr>
-        <th>LP</th>
+        <th>Landing Page</th>
         <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">GEO</th>
         <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0">Source</th>
         <th>Device</th>
@@ -815,7 +815,7 @@
       var fullUrl = mainBase && path ? mainBase + path : '';
       var label = '\u2014';
       var thumbSrc = '';
-      // Keep the LP thumbnail stable even after purchase; do not swap to a "sale" icon.
+      // Keep the Landing Page thumbnail stable even after purchase; do not swap to a "sale" icon.
       if (isHomeOrOrders) {
         label = path === '/' ? 'Home' : escapeHtml(path);
         thumbSrc = HICON_URL;
