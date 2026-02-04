@@ -121,7 +121,9 @@ function handleShopifyLoginRedirect(req, res) {
   }
   const redirect = (req.query && req.query.redirect) || '/app/live-visitors';
   const state = stateEncode({ rnd: crypto.randomBytes(16).toString('hex'), r: redirect });
-  const redirectUri = `${appUrl}/auth/shopify-login/callback`;
+  // Use the main OAuth callback (already whitelisted in Shopify app settings).
+  // This avoids "redirect_uri not whitelisted" when /auth/shopify-login/callback isn't configured in Shopify.
+  const redirectUri = `${appUrl}/auth/callback`;
   const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${encodeURIComponent(apiKey)}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
   res.redirect(302, authUrl);
 }

@@ -116,6 +116,16 @@ async function ensurePixel(req, res) {
   const listQuery = `query { webPixels(first: 50) { edges { node { id settings } } } }`;
   const singlePixelQuery = `query { webPixel { id } }`;
 
+  function isWebPixelNotFoundError(err) {
+    const gql = err && err.graphqlErrors ? err.graphqlErrors : null;
+    if (!Array.isArray(gql) || gql.length === 0) return false;
+    return gql.some((e) => {
+      const code = (e && e.extensions && e.extensions.code) ? String(e.extensions.code) : '';
+      const msg = e && e.message ? String(e.message) : '';
+      return code.toUpperCase() === 'RESOURCE_NOT_FOUND' || /no web pixel was found/i.test(msg);
+    });
+  }
+
   function parseSettingsFromNode(raw) {
     if (raw == null) return null;
     if (typeof raw === 'object' && raw !== null) return raw;
@@ -129,10 +139,24 @@ async function ensurePixel(req, res) {
 
   try {
     // Prefer singular webPixel (returns current app's pixel when using app access token)
-    const singleData = await shopifyGraphql(shop, row.access_token, singlePixelQuery);
-    let existingId = singleData?.data?.webPixel?.id || null;
+    let existingId = null;
+    let singleNotFound = false;
+    try {
+      const singleData = await shopifyGraphql(shop, row.access_token, singlePixelQuery);
+      existingId = singleData?.data?.webPixel?.id || null;
+    } catch (err) {
+      // Shopify returns a GraphQL error when the app has no pixel yet. Treat that as "none", not a failure.
+      if (isWebPixelNotFoundError(err)) {
+        singleNotFound = true;
+        existingId = null;
+      } else {
+        throw err;
+      }
+    }
 
-    if (!existingId) {
+    // If the singular query succeeded but did not return an id (or isn't supported), fall back to listing.
+    // If the singular query explicitly said "not found", we skip listing and create a new pixel for this app.
+    if (!existingId && !singleNotFound) {
       const listData = await shopifyGraphql(shop, row.access_token, listQuery);
       const edges = listData?.data?.webPixels?.edges || [];
       // If we have to fall back to listing, try to pick the pixel that looks like ours
@@ -301,6 +325,14 @@ async function getPixelStatus(req, res) {
     return res.json({ ok: true, ingestUrl });
   } catch (err) {
     const maybeErrors = err && err.graphqlErrors ? err.graphqlErrors : null;
+    const notFound = Array.isArray(maybeErrors) && maybeErrors.some((e) => {
+      const code = (e && e.extensions && e.extensions.code) ? String(e.extensions.code) : '';
+      const msg = e && e.message ? String(e.message) : '';
+      return code.toUpperCase() === 'RESOURCE_NOT_FOUND' || /no web pixel was found/i.test(msg);
+    });
+    if (notFound) {
+      return res.json({ ok: true, ingestUrl: null, message: 'No web pixel for this app (yet)' });
+    }
     console.error('[pixel] status error:', err && err.message ? err.message : err, maybeErrors || '');
     return res.status(502).json({
       error: 'Request to Shopify failed',

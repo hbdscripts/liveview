@@ -342,13 +342,15 @@ async function upsertReconcileState(shop, scope, patch) {
   if (!safeShop || !scope) return;
   const scopeKey = String(scope).slice(0, 64);
   const current = await db.get('SELECT * FROM reconcile_state WHERE shop = ? AND scope = ?', [safeShop, scopeKey]);
+  // IMPORTANT: patch values must be able to clear fields (set NULL).
+  // Do not use ?? here because passing { last_error: null } should overwrite the prior value.
   const next = {
     shop: safeShop,
     scope: scopeKey,
-    last_success_at: patch.last_success_at ?? current?.last_success_at ?? null,
-    last_attempt_at: patch.last_attempt_at ?? current?.last_attempt_at ?? null,
-    last_error: patch.last_error ?? current?.last_error ?? null,
-    cursor_json: patch.cursor_json ?? current?.cursor_json ?? null,
+    last_success_at: Object.prototype.hasOwnProperty.call(patch, 'last_success_at') ? patch.last_success_at : (current?.last_success_at ?? null),
+    last_attempt_at: Object.prototype.hasOwnProperty.call(patch, 'last_attempt_at') ? patch.last_attempt_at : (current?.last_attempt_at ?? null),
+    last_error: Object.prototype.hasOwnProperty.call(patch, 'last_error') ? patch.last_error : (current?.last_error ?? null),
+    cursor_json: Object.prototype.hasOwnProperty.call(patch, 'cursor_json') ? patch.cursor_json : (current?.cursor_json ?? null),
   };
   if (current) {
     await db.run(

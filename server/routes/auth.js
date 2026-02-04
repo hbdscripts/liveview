@@ -7,6 +7,7 @@ const config = require('../config');
 const { getDb, isPostgres } = require('../db');
 const { writeAudit } = require('../audit');
 const salesTruth = require('../salesTruth');
+const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
@@ -37,6 +38,30 @@ function getRedirectUri(req) {
     return `${proto}://${host}/auth/callback`;
   }
   return `${appUrl}/auth/callback`;
+}
+
+function stateDecode(str) {
+  if (!str || typeof str !== 'string') return null;
+  try {
+    return JSON.parse(Buffer.from(str, 'base64url').toString('utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function isSafeRelativeRedirectPath(p) {
+  if (!p || typeof p !== 'string') return false;
+  if (!p.startsWith('/')) return false;
+  if (p.startsWith('//')) return false;
+  if (p.includes('://')) return false;
+  return true;
+}
+
+function setOauthCookie(res, value) {
+  const maxAge = 24 * 60 * 60;
+  let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
+  if (process.env.NODE_ENV === 'production') set += '; Secure';
+  res.setHeader('Set-Cookie', set);
 }
 
 /** GET /auth/callback or /auth/shopify/callback - Shopify redirects here with code, shop, hmac, state, timestamp [, host] */
@@ -79,18 +104,22 @@ async function handleCallback(req, res) {
     const data = await tokenRes.json();
     const accessToken = data.access_token;
     const scope = data.scope || '';
+    const shopNorm = String(shop).trim().toLowerCase();
+    const decodedState = stateDecode(state);
+    const wantsOauthCookie = !!(decodedState && typeof decodedState === 'object' && typeof decodedState.r === 'string');
+    const stateRedirect = wantsOauthCookie && isSafeRelativeRedirectPath(decodedState.r) ? decodedState.r : null;
 
     const db = getDb();
     const now = Date.now();
     if (isPostgres()) {
       await db.run(
         'INSERT INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (shop) DO UPDATE SET access_token = ?, scope = ?, updated_at = ?',
-        [shop, accessToken, scope, now, accessToken, scope, now]
+        [shopNorm, accessToken, scope, now, accessToken, scope, now]
       );
     } else {
       await db.run(
         'INSERT OR REPLACE INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?)',
-        [shop, accessToken, scope, now]
+        [shopNorm, accessToken, scope, now]
       );
     }
 
@@ -99,11 +128,21 @@ async function handleCallback(req, res) {
       const endMs = now;
       const startMs = endMs - 48 * 60 * 60 * 1000;
       setTimeout(() => {
-        salesTruth.reconcileRange(shop, startMs, endMs, 'today').catch(() => {});
+        salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(() => {});
       }, 0);
     } catch (_) {
       // ignore
     }
+
+    // If this callback came from the dashboard "Login with Shopify" flow (state is our base64url JSON),
+    // set the oauth_session cookie so direct visits can work (no Shopify admin Referer).
+    try {
+      const allowed = !config.allowedShopDomain || shopNorm === String(config.allowedShopDomain).trim().toLowerCase();
+      if (wantsOauthCookie && allowed) {
+        const token = signOauthSession({ shop: shopNorm });
+        if (token) setOauthCookie(res, token);
+      }
+    } catch (_) {}
 
     let redirectUrl;
     if (host && typeof host === 'string' && host.length > 0) {
@@ -115,6 +154,8 @@ async function handleCallback(req, res) {
         hostDecoded = host;
       }
       redirectUrl = `https://${hostDecoded}/apps/${apiKey}/`;
+    } else if (stateRedirect) {
+      redirectUrl = stateRedirect;
     } else {
       const base = (appUrl && appUrl.startsWith('http')) ? appUrl.replace(/\/$/, '') : null;
       if (base) {
