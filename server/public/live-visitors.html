@@ -2054,7 +2054,7 @@
           if (configStatusEl) configStatusEl.innerHTML = html;
 
           if (h && h.purchases && typeof h.purchases.max_purchased_at === 'number') {
-            lastSaleAt = Math.max(lastSaleAt || 0, h.purchases.max_purchased_at);
+            lastSaleAt = h.purchases.max_purchased_at;
             if (typeof updateLastSaleAgo === 'function') updateLastSaleAgo();
           }
           return c;
