@@ -300,7 +300,7 @@
         <th>Device</th>
         <th>History</th>
         <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0">Arrived</th>
-        <th>Last Seen</th>
+        <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0">Last Seen</th>
         <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0">Cart</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
@@ -550,9 +550,9 @@
     let saleAudio = null;
     let saleMuted = false;
     let currentPage = 1;
-    let sortBy = '';
-    let sortDir = 'asc';
-    const SORT_DEFAULTS = { from: 'asc', arrived: 'desc', source: 'asc', cart: 'desc' };
+    let sortBy = 'last_seen';
+    let sortDir = 'desc';
+    const SORT_DEFAULTS = { from: 'asc', arrived: 'desc', source: 'asc', cart: 'desc', last_seen: 'desc' };
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -1001,6 +1001,11 @@
         if (sortBy === 'cart') {
           va = cartSortValue(a);
           vb = cartSortValue(b);
+          return mult * (va - vb);
+        }
+        if (sortBy === 'last_seen') {
+          va = toMs(a.last_seen) ?? 0;
+          vb = toMs(b.last_seen) ?? 0;
           return mult * (va - vb);
         }
         return 0;
@@ -1840,6 +1845,7 @@
             } else {
               html += valueRow('Shopify sessions (today)', '\u2014');
               if (h.shopifySessionsTodayNote) html += noteRow(h.shopifySessionsTodayNote);
+              if (h.storedScopes) html += noteRow('Stored scopes: ' + escapeHtml(h.storedScopes));
             }
 
             html += section('Health (last 24h)');

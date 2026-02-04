@@ -59,6 +59,12 @@
 
 In `.env` / Railway: `SHOPIFY_SCOPES=read_products,read_orders,write_pixels,read_customer_events,read_reports` (write_pixels + read_customer_events for pixel API; read_reports for config panel “Shopify Sessions” today via ShopifyQL). Must match `shopify.app.toml` and app configuration in Partners. After adding `read_reports`, re-install or re-authorize the app so the store grants the new scope.
 
+**Audit checklist – Shopify Sessions (config panel “i”):**
+1. **SHOPIFY_SCOPES** in Railway must include `read_reports` (server uses this for the OAuth authorize URL in `server/routes/auth.js`).
+2. **Token** is stored in `shop_sessions` (shop, access_token, scope) on OAuth callback; the **scope** string is whatever Shopify returned when the merchant approved the app.
+3. If “Shopify sessions (today)” shows **—**, the config panel now shows **Stored scopes:** so you can confirm whether `read_reports` is in the stored token. If it’s missing, the token was issued before you added the scope: **uninstall the app and reinstall from Shopify Admin** so a new token is issued.
+4. If the stored token includes `read_reports` but Shopify still returns an error, the note will show “Shopify returned: …” (e.g. access denied; ShopifyQL may require Protected Customer Data access in Partners).
+
 ---
 
 ## Traffic and bots (Cloudflare at the edge)

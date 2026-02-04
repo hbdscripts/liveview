@@ -9,42 +9,60 @@ const { getDb, isPostgres } = require('../db');
 
 const GRAPHQL_API_VERSION = '2025-10'; // shopifyqlQuery available from 2025-10
 
+/**
+ * Returns { count, error } where count is a number or null, and error is a short message if the request failed.
+ */
 async function fetchShopifySessionsToday(shop, accessToken) {
   const query = 'FROM sessions SHOW sessions DURING today';
   const graphqlUrl = `https://${shop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
-  const res = await fetch(graphqlUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': accessToken,
-    },
-    body: JSON.stringify({
-      query: `query($q: String!) { shopifyqlQuery(query: $q) { tableData { columns { name } rows } parseErrors } }`,
-      variables: { q: query },
-    }),
-  });
-  const text = await res.text();
+  let res;
+  let text;
+  try {
+    res = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({
+        query: `query($q: String!) { shopifyqlQuery(query: $q) { tableData { columns { name } rows } parseErrors } }`,
+        variables: { q: query },
+      }),
+    });
+    text = await res.text();
+  } catch (err) {
+    return { count: null, error: err && err.message ? String(err.message).slice(0, 80) : 'Network error' };
+  }
   let json;
   try {
     json = text ? JSON.parse(text) : null;
   } catch (_) {
-    return null;
+    return { count: null, error: 'Invalid JSON from Shopify' };
   }
-  if (!res.ok || !json?.data?.shopifyqlQuery) return null;
+  if (!res.ok) {
+    const msg = json?.errors?.[0]?.message || json?.message || `HTTP ${res.status}`;
+    return { count: null, error: String(msg).slice(0, 120) };
+  }
+  if (!json?.data?.shopifyqlQuery) {
+    const msg = json?.errors?.[0]?.message || 'No shopifyqlQuery in response';
+    return { count: null, error: String(msg).slice(0, 120) };
+  }
   const q = json.data.shopifyqlQuery;
-  if (q.parseErrors?.length) return null;
+  if (q.parseErrors?.length) {
+    return { count: null, error: (q.parseErrors[0] || 'Parse error').slice(0, 120) };
+  }
   const table = q.tableData;
-  if (!table?.rows?.length) return 0;
+  if (!table?.rows?.length) return { count: 0, error: '' };
   const columns = (table.columns || []).map((c) => c.name);
   const sessionsIdx = columns.findIndex((n) => String(n).toLowerCase().includes('sessions'));
-  if (sessionsIdx === -1) return null;
+  if (sessionsIdx === -1) return { count: null, error: 'Sessions column not found' };
   let total = 0;
   for (const row of table.rows) {
     const val = Array.isArray(row) ? row[sessionsIdx] : row[columns[sessionsIdx]];
     const n = typeof val === 'number' ? val : parseInt(String(val || '').replace(/,/g, ''), 10);
     if (Number.isFinite(n)) total += n;
   }
-  return total;
+  return { count: total, error: '' };
 }
 
 async function configStatus(req, res, next) {
@@ -95,6 +113,7 @@ async function configStatus(req, res, next) {
     humanLast24h: 0,
     shopifySessionsToday: null,
     shopifySessionsTodayNote: '',
+    storedScopes: '',
     sessionsToday: null,
     botsToday: 0,
     humanToday: 0,
@@ -175,16 +194,20 @@ async function configStatus(req, res, next) {
       const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
       const token = row?.access_token;
       const scope = typeof row?.scope === 'string' ? row.scope : '';
+      health.storedScopes = scope ? scope.split(',').map((s) => s.trim()).filter(Boolean).join(', ') : '';
       if (!token) {
-        health.shopifySessionsTodayNote = 'No Shopify access token found for this shop (complete OAuth / reinstall).';
-      } else if (!scope.toLowerCase().split(',').map(s => s.trim()).includes('read_reports')) {
-        health.shopifySessionsTodayNote = 'Shopify Sessions requires read_reports. Re-authorize the app so the store grants the new scope.';
+        health.shopifySessionsTodayNote = 'No Shopify access token for this shop. Install the app (OAuth) or reinstall from Shopify Admin.';
+      } else if (!scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports')) {
+        health.shopifySessionsTodayNote = 'Stored token is missing read_reports. Uninstall the app and reinstall from Shopify Admin so a new token is issued with the requested scopes (check SHOPIFY_SCOPES includes read_reports).';
       } else {
-        const n = await fetchShopifySessionsToday(shop, token);
-        if (typeof n === 'number') {
-          health.shopifySessionsToday = n;
+        const result = await fetchShopifySessionsToday(shop, token);
+        if (typeof result.count === 'number') {
+          health.shopifySessionsToday = result.count;
+          health.shopifySessionsTodayNote = '';
         } else {
-          health.shopifySessionsTodayNote = 'Shopify Sessions unavailable (ShopifyQL requires read_reports + protected customer data access).';
+          health.shopifySessionsTodayNote = result.error
+            ? 'Shopify returned: ' + result.error
+            : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
         }
       }
     } catch (_) {}
