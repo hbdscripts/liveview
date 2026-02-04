@@ -735,7 +735,8 @@ async function getProductConversionRate(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
-  const productFilter = filter.sql.replace(/sessions\./g, '') + PRODUCT_LANDING_SQL;
+  // Keep sessions. prefixes so we can safely re-alias (s.) in joined queries.
+  const productFilter = filter.sql + PRODUCT_LANDING_SQL;
   const total = config.dbUrl
     ? await db.get(
       'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + productFilter,
