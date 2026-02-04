@@ -220,17 +220,25 @@ async function configStatus(req, res, next) {
           health.shopifySessionsToday = result.count;
           health.shopifySessionsTodayNote = '';
         } else {
-          health.shopifySessionsTodayNote = result.error
-            ? 'Shopify returned: ' + result.error
-            : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
-          // Explain why orders/revenue work but sessions don't: different Shopify APIs (Orders API vs Reports/ShopifyQL)
-          health.shopifySessionsTodayNote += ' Orders and revenue use the Orders API (read_orders); session count uses Reports (ShopifyQL, read_reports)—same app, different API.';
-          const missingScope = /access denied|forbidden|required scope|read_reports/i.test(health.shopifySessionsTodayNote);
-          if (missingScope && !(scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports'))) {
-            health.shopifySessionsTodayNote += ' Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall and reinstall the app from this store\'s Admin.';
-          }
-          if (result.error && /protected customer|customer data|level 2/i.test(String(result.error))) {
-            health.shopifySessionsTodayNote += ' Enable Protected Customer Data in Partners (App setup → API access).';
+          const errMsg = result.error ? String(result.error) : '';
+          const isAuthError = /http\s*401|http\s*403|unauthorized|invalid access token|access token/i.test(errMsg);
+          if (isAuthError) {
+            health.shopifySessionsTodayNote =
+              'Shopify returned ' + (errMsg ? errMsg : 'HTTP 401/403') +
+              '. The stored access token is invalid/revoked. Open the app from Shopify Admin to re-authorize, or uninstall + reinstall the app.';
+          } else {
+            health.shopifySessionsTodayNote = errMsg
+              ? 'Shopify returned: ' + errMsg
+              : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
+            // Explain why orders/revenue work but sessions don't: different Shopify APIs (Orders API vs Reports/ShopifyQL)
+            health.shopifySessionsTodayNote += ' Orders and revenue use the Orders API (read_orders); session count uses Reports (ShopifyQL, read_reports)—same app, different API.';
+            const missingScope = /access denied|forbidden|required scope/i.test(errMsg);
+            if (missingScope && !(scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports'))) {
+              health.shopifySessionsTodayNote += ' Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall and reinstall the app from this store\'s Admin.';
+            }
+            if (errMsg && /protected customer|customer data|level 2/i.test(errMsg)) {
+              health.shopifySessionsTodayNote += ' Enable Protected Customer Data in Partners (App setup → API access).';
+            }
           }
         }
       }

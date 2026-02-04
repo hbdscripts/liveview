@@ -5,6 +5,7 @@
 const crypto = require('crypto');
 const config = require('../config');
 const { getDb, isPostgres } = require('../db');
+const { writeAudit } = require('../audit');
 
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
@@ -121,6 +122,20 @@ async function handleCallback(req, res) {
   }
 }
 
+async function isAccessTokenValid(shop, accessToken) {
+  if (!shop || !accessToken) return false;
+  try {
+    const res = await fetch(`https://${shop}/admin/api/2024-01/shop.json`, {
+      headers: { 'X-Shopify-Access-Token': accessToken },
+    });
+    if (res.status === 401 || res.status === 403) return false;
+    // Fail-open: treat other statuses as "valid enough" to avoid OAuth loops on transient errors.
+    return true;
+  } catch (_) {
+    return true;
+  }
+}
+
 /** GET / - App URL: if shop + hmac + timestamp (no code), redirect to OAuth only when no session; else show dashboard in iframe */
 async function handleAppUrl(req, res, next) {
   const { shop, hmac, timestamp, code, host } = req.query;
@@ -136,7 +151,12 @@ async function handleAppUrl(req, res, next) {
       const db = getDb();
       const session = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
       if (session && session.access_token) {
-        return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+        const tokenOk = await isAccessTokenValid(shop, session.access_token);
+        if (tokenOk) {
+          return res.redirect(302, `/app/live-visitors?shop=${encodeURIComponent(shop)}`);
+        }
+        await writeAudit('system', 'shopify_token_invalid', { shop, at: Date.now() });
+        // Fall through to OAuth re-authorize when token is invalid/revoked.
       }
     } catch (err) {
       console.error('[auth] App URL session check:', err);

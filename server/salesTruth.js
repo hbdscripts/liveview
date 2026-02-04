@@ -435,7 +435,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       const text = await res.text();
       if (!res.ok) {
         const err = { status: res.status, body: text ? String(text).slice(0, 500) : '' };
-        throw Object.assign(new Error('Shopify Orders API error'), { details: err });
+        throw Object.assign(new Error(`Shopify Orders API error (HTTP ${res.status})`), { details: err });
       }
       let json;
       try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
