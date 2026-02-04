@@ -344,10 +344,10 @@
         <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">GEO</th>
         <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0">Source</th>
         <th>Device</th>
-        <th>History</th>
+        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0">Cart</th>
         <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0">Arrived</th>
         <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0">Seen</th>
-        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0">Cart</th>
+        <th>History</th>
         <th class="consent-col" style="display:none">Consent (debug)</th>
       </tr>
     </thead>
@@ -1009,10 +1009,10 @@
         <td class="flag-cell">${fromCell}</td>
         <td class="source-cell">${sourceCell(s)}</td>
         <td>${escapeHtml(s.device || '')}</td>
-        <td>${visitsLabel}</td>
+        <td class="cart-value-cell">${cartOrSaleCell}</td>
         <td class="arrived-cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></td>
         <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
-        <td class="cart-value-cell">${cartOrSaleCell}</td>
+        <td>${visitsLabel}</td>
         <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
       </tr>`;
     }
