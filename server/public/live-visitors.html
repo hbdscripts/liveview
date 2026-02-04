@@ -578,7 +578,7 @@
     const API = '';
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 10 * 60 * 1000; // Today and Last Hour refresh every 10 min
-    const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
+    const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 15 * 60 * 1000;
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
@@ -597,7 +597,7 @@
     let sessions = [];
     let sessionsLoadError = null;
     let statsCache = {};
-    let dateRange = 'today';
+    let dateRange = 'live';
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
     let activeMainTab = 'spy';
@@ -2320,7 +2320,7 @@
       if (activeMainTab !== 'spy' || dateRange === 'live') return;
       fetchOnlineCount();
     }, LIVE_REFRESH_MS);
-    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
+    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 10 min or if arrived too long ago
     setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange !== 'live') return;
       var cutoff = Date.now() - ACTIVE_WINDOW_MS;
