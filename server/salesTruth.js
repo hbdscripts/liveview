@@ -82,6 +82,99 @@ async function getAccessToken(shop) {
   return row && row.access_token ? String(row.access_token) : '';
 }
 
+async function upsertCustomerOrderFact(shop, customerId, firstPaidOrderAtMs, checkedAtMs) {
+  const db = getDb();
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop || !customerId) return;
+  const cid = String(customerId).trim();
+  if (!cid) return;
+  const firstMs = firstPaidOrderAtMs != null ? Number(firstPaidOrderAtMs) : null;
+  const checkedMs = checkedAtMs != null ? Number(checkedAtMs) : Date.now();
+  try {
+    if (isPostgres()) {
+      await db.run(
+        `INSERT INTO customer_order_facts (shop, customer_id, first_paid_order_at, checked_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (shop, customer_id)
+         DO UPDATE SET first_paid_order_at = EXCLUDED.first_paid_order_at, checked_at = EXCLUDED.checked_at`,
+        [safeShop, cid, firstMs, checkedMs]
+      );
+    } else {
+      await db.run(
+        'INSERT OR REPLACE INTO customer_order_facts (shop, customer_id, first_paid_order_at, checked_at) VALUES (?, ?, ?, ?)',
+        [safeShop, cid, firstMs, checkedMs]
+      );
+    }
+  } catch (_) {
+    // Fail-open: if table doesn't exist yet, ignore.
+  }
+}
+
+async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerIds, { maxCustomers = 250 } = {}) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop || !accessToken) return { ok: false, checked: 0, fetched: 0, stored: 0, errors: 0, reason: 'missing_shop_or_token' };
+  const db = getDb();
+
+  // If table isn't present yet, skip (fail-open).
+  try {
+    await db.get('SELECT 1 FROM customer_order_facts LIMIT 1');
+  } catch (_) {
+    return { ok: false, checked: 0, fetched: 0, stored: 0, errors: 0, reason: 'no_customer_order_facts_table' };
+  }
+
+  const uniq = Array.from(new Set((customerIds || []).map((c) => (c == null ? '' : String(c).trim())).filter(Boolean)));
+  const list = uniq.slice(0, Math.max(0, maxCustomers | 0));
+
+  let checked = 0;
+  let fetched = 0;
+  let stored = 0;
+  let errors = 0;
+
+  for (const cid of list) {
+    checked += 1;
+    try {
+      const existing = await db.get(
+        'SELECT first_paid_order_at FROM customer_order_facts WHERE shop = ? AND customer_id = ?',
+        [safeShop, cid]
+      );
+      if (existing && existing.first_paid_order_at != null) continue;
+    } catch (_) {
+      // continue; we'll try fetch + insert anyway
+    }
+
+    try {
+      const url = firstPaidOrderForCustomerApiUrl(safeShop, cid);
+      const res = await shopifyFetchWithRetry(url, accessToken, { maxRetries: 6 });
+      const text = await res.text();
+      if (!res.ok) {
+        errors += 1;
+        continue;
+      }
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      const order = json && Array.isArray(json.orders) ? json.orders[0] : null;
+      const firstPaidOrderAt = parseMs(order?.created_at);
+      if (firstPaidOrderAt == null) {
+        errors += 1;
+        continue;
+      }
+      await upsertCustomerOrderFact(safeShop, cid, firstPaidOrderAt, Date.now());
+      fetched += 1;
+      stored += 1;
+    } catch (_) {
+      errors += 1;
+    }
+  }
+
+  try {
+    if (fetched > 0 || errors > 0) {
+      await writeAudit('system', 'ensure_customer_order_facts', { shop: safeShop, checked, fetched, stored, errors });
+    }
+  } catch (_) {}
+
+  return { ok: true, checked, fetched, stored, errors };
+}
+
 async function backfillEvidenceLinksForOrder(shop, orderId, checkoutToken) {
   const db = getDb();
   if (!shop || !orderId) return 0;
@@ -159,6 +252,36 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
     '&created_at_min=' + encodeURIComponent(createdMinIso) +
     '&created_at_max=' + encodeURIComponent(createdMaxIso) +
     '&limit=250' +
+    '&fields=' + encodeURIComponent(fields);
+  return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
+}
+
+function firstPaidOrderForCustomerApiUrl(shop, customerId) {
+  const fields = [
+    'id',
+    'name',
+    'order_number',
+    'created_at',
+    'processed_at',
+    'updated_at',
+    'financial_status',
+    'cancelled_at',
+    'test',
+    'currency',
+    'total_price',
+    'subtotal_price',
+    'total_tax',
+    'total_discounts',
+    'total_shipping_price_set',
+    'customer',
+    'checkout_token',
+  ].join(',');
+  const qs =
+    'status=any' +
+    '&financial_status=paid' +
+    '&customer_id=' + encodeURIComponent(String(customerId || '').trim()) +
+    '&order=created_at%20asc' +
+    '&limit=1' +
     '&fields=' + encodeURIComponent(fields);
   return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
 }
@@ -452,9 +575,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   let evidenceLinked = 0;
   let shopifyOrderCount = 0;
   const shopifyRevenueByCurrency = new Map(); // currency -> number
-  let shopifyReturningOrderCount = 0;
-  const shopifyReturningRevenueByCurrency = new Map(); // currency -> number
-  const shopifyReturningCustomerIds = new Set(); // customer_id string
+  const customerIdsInRange = new Set(); // customer_id strings present in fetched orders
   let nextUrl = firstUrl;
 
   try {
@@ -471,20 +592,13 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       for (const order of orders) {
         fetched += 1;
         const row = orderToRow(safeShop, order, Date.now());
+        if (row.customer_id) customerIdsInRange.add(String(row.customer_id));
         // Shopify-fetched summary (truth source).
         shopifyOrderCount += 1;
         const cur = (row.currency && String(row.currency).trim()) ? String(row.currency).trim().toUpperCase() : 'GBP';
         const amt = row.total_price != null ? Number(row.total_price) : 0;
         if (Number.isFinite(amt) && amt !== 0) {
           shopifyRevenueByCurrency.set(cur, (shopifyRevenueByCurrency.get(cur) || 0) + amt);
-        }
-        const isReturning = row.customer_orders_count != null && Number(row.customer_orders_count) >= 2;
-        if (isReturning) {
-          shopifyReturningOrderCount += 1;
-          if (row.customer_id) shopifyReturningCustomerIds.add(String(row.customer_id));
-          if (Number.isFinite(amt) && amt !== 0) {
-            shopifyReturningRevenueByCurrency.set(cur, (shopifyReturningRevenueByCurrency.get(cur) || 0) + amt);
-          }
         }
         const r = await upsertOrder(row);
         inserted += r.inserted;
@@ -502,12 +616,40 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
     }
     shopifyRevenueGbp = Math.round(shopifyRevenueGbp * 100) / 100;
 
-    let shopifyReturningRevenueGbp = 0;
-    for (const [cur, amt] of shopifyReturningRevenueByCurrency.entries()) {
-      const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
-      if (typeof gbp === 'number' && Number.isFinite(gbp)) shopifyReturningRevenueGbp += gbp;
+    // Returning customers require customer history. We keep a small truth cache (first paid order per customer)
+    // populated lazily from Shopify Orders API (read_orders).
+    const shouldEnsureFacts = scope === 'today' || String(scope || '').startsWith('verify_');
+    let factsResult = null;
+    if (shouldEnsureFacts && customerIdsInRange.size > 0) {
+      try {
+        factsResult = await ensureCustomerOrderFactsForCustomers(
+          safeShop,
+          token,
+          Array.from(customerIdsInRange),
+          { maxCustomers: scope === 'today' ? 200 : 400 }
+        );
+      } catch (_) {
+        factsResult = { ok: false, reason: 'ensure_failed' };
+      }
     }
-    shopifyReturningRevenueGbp = Math.round(shopifyReturningRevenueGbp * 100) / 100;
+
+    let returning = null;
+    try {
+      const rows = await getTruthReturningRevenueRows(safeShop, startMs, endMs);
+      const revenueGbp = await sumRowsToGbp(rows);
+      const revenueByCurrency = {};
+      for (const r of rows || []) {
+        const cur = (r && r.currency != null) ? String(r.currency).trim().toUpperCase() : 'GBP';
+        const total = r && r.total != null ? Number(r.total) : 0;
+        if (!cur) continue;
+        revenueByCurrency[cur] = Math.round((Number(total) || 0) * 100) / 100;
+      }
+      const customerCount = await getTruthReturningCustomerCount(safeShop, startMs, endMs);
+      const orderCount = await getTruthReturningOrderCount(safeShop, startMs, endMs);
+      returning = { customerCount, orderCount, revenueGbp, revenueByCurrency };
+    } catch (_) {
+      returning = { customerCount: 0, orderCount: 0, revenueGbp: 0, revenueByCurrency: {} };
+    }
 
     await upsertReconcileState(safeShop, scope, { last_success_at: Date.now(), last_error: null });
     await writeAudit('system', 'reconcile_orders_shopify', {
@@ -519,16 +661,12 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       inserted,
       updated,
       evidenceLinked,
+      customerFacts: factsResult,
       shopify: {
         orderCount: shopifyOrderCount,
         revenueGbp: shopifyRevenueGbp,
         revenueByCurrency: Object.fromEntries(Array.from(shopifyRevenueByCurrency.entries()).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-        returning: {
-          customerCount: shopifyReturningCustomerIds.size,
-          orderCount: shopifyReturningOrderCount,
-          revenueGbp: shopifyReturningRevenueGbp,
-          revenueByCurrency: Object.fromEntries(Array.from(shopifyReturningRevenueByCurrency.entries()).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-        },
+        returning,
       },
     });
     return {
@@ -540,12 +678,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
         orderCount: shopifyOrderCount,
         revenueGbp: shopifyRevenueGbp,
         revenueByCurrency: Object.fromEntries(Array.from(shopifyRevenueByCurrency.entries()).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-        returning: {
-          customerCount: shopifyReturningCustomerIds.size,
-          orderCount: shopifyReturningOrderCount,
-          revenueGbp: shopifyReturningRevenueGbp,
-          revenueByCurrency: Object.fromEntries(Array.from(shopifyReturningRevenueByCurrency.entries()).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-        },
+        returning,
       },
     };
   } catch (err) {
@@ -636,6 +769,19 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return [];
   const db = getDb();
+  const sqlFacts = `
+    SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
+    FROM orders_shopify o
+    INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      AND (o.test IS NULL OR o.test = 0)
+      AND o.cancelled_at IS NULL
+      AND o.financial_status = 'paid'
+      AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+      AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
+    GROUP BY currency
+  `;
+
   const sqlWithOrdersCount = `
     SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
     FROM orders_shopify o
@@ -659,6 +805,11 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
       )
     GROUP BY currency
   `;
+  try {
+    return await db.all(sqlFacts, [safeShop, startMs, endMs, startMs]);
+  } catch (_) {
+    // Fall through to older heuristics.
+  }
   try {
     return await db.all(sqlWithOrdersCount, [safeShop, startMs, endMs, startMs]);
   } catch (e) {
@@ -692,10 +843,68 @@ async function getTruthReturningRevenueGbp(shop, startMs, endMs) {
   return sumRowsToGbp(rows);
 }
 
+async function getTruthReturningOrderCount(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return 0;
+  const db = getDb();
+  try {
+    const row = await db.get(
+      `
+      SELECT COUNT(*) AS n
+      FROM orders_shopify o
+      INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+        AND (o.test IS NULL OR o.test = 0)
+        AND o.cancelled_at IS NULL
+        AND o.financial_status = 'paid'
+        AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+        AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
+      `,
+      [safeShop, startMs, endMs, startMs]
+    );
+    return row && row.n != null ? Number(row.n) || 0 : 0;
+  } catch (_) {
+    // Best-effort fallback: count orders from customers who have prior paid orders in DB.
+    const row = await db.get(
+      `
+      SELECT COUNT(*) AS n
+      FROM orders_shopify o
+      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+        AND (o.test IS NULL OR o.test = 0)
+        AND o.cancelled_at IS NULL
+        AND o.financial_status = 'paid'
+        AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+        AND EXISTS (
+          SELECT 1 FROM orders_shopify p
+          WHERE p.shop = o.shop AND p.customer_id = o.customer_id
+            AND (p.test IS NULL OR p.test = 0)
+            AND p.cancelled_at IS NULL
+            AND p.financial_status = 'paid'
+            AND p.created_at < ?
+        )
+      `,
+      [safeShop, startMs, endMs, startMs]
+    );
+    return row && row.n != null ? Number(row.n) || 0 : 0;
+  }
+}
+
 async function getTruthReturningCustomerCount(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return 0;
   const db = getDb();
+  const sqlFacts = `
+    SELECT COUNT(DISTINCT o.customer_id) AS n
+    FROM orders_shopify o
+    INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      AND (o.test IS NULL OR o.test = 0)
+      AND o.cancelled_at IS NULL
+      AND o.financial_status = 'paid'
+      AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+      AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
+  `;
+
   const sql = `
     SELECT COUNT(DISTINCT o.customer_id) AS n
     FROM orders_shopify o
@@ -718,6 +927,12 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
         )
       )
   `;
+  try {
+    const row = await db.get(sqlFacts, [safeShop, startMs, endMs, startMs]);
+    return row && row.n != null ? Number(row.n) || 0 : 0;
+  } catch (_) {
+    // Fall through to older heuristics.
+  }
   try {
     const row = await db.get(sql, [safeShop, startMs, endMs, startMs]);
     return row && row.n != null ? Number(row.n) || 0 : 0;
@@ -789,6 +1004,7 @@ module.exports = {
   getTruthOrderCount,
   getTruthSalesTotalGbp,
   getTruthReturningRevenueGbp,
+  getTruthReturningOrderCount,
   getTruthReturningCustomerCount,
   getTruthHealth,
   extractNumericId,
