@@ -649,6 +649,7 @@ function purchaseDedupeKeySql() {
   return "COALESCE(NULLIF(TRIM(checkout_token), ''), NULLIF(TRIM(order_id), ''), purchase_key)";
 }
 
+/** Total sales in range (all purchases). Includes purchases with null/empty/XX country; overall >= sum(country revenue). */
 async function getSalesTotal(start, end) {
   const db = getDb();
   const dedupeKey = purchaseDedupeKeySql();
@@ -799,6 +800,7 @@ async function getProductConversionRate(start, end, options = {}) {
   return t > 0 ? Math.round((c / t) * 1000) / 10 : null;
 }
 
+/** Sessions and revenue by country. Revenue excludes purchases with null/empty/XX country_code; sum(revenue) <= getSalesTotal. */
 async function getCountryStats(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);

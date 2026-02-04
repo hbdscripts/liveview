@@ -26,6 +26,15 @@ Audit date: 2025-02-04. Updated: 2025-02-04 (full audit: dead code, cleanup opti
 
 ## Fixes applied (earlier sessions)
 
+### Sales vs country breakdown alignment
+
+**Cause:** On the Breakdown tab, the top "Sales" KPI could show **Shopify** sales today (when a shop is connected), while the country table came from **our stats API** (pixel purchases by country). Two different sources made overall sales and sum of country REV disagree. Conversion rate was not the cause.
+
+**Fix:** On the **Breakdown** tab we now use **our stats** for the Sales (and AOV) KPI, so the same source drives both the top number and the country table. Overall sales can still exceed the sum of country REV when some purchases have no country (null/empty/XX); backend comments in `getSalesTotal` and `getCountryStats` document this.
+
+- **Live tab (today):** Sales can still show Shopify when configured.
+- **Breakdown tab:** Sales = pixel sales for the selected range; aligns with country breakdown.
+
 ### 1. Spy mode: persistent sale
 
 **Cause:** The Live (Spy) tab was using session filter `today` (last 24 hours). Any session that had activity in the last 24h stayed in the list, including sessions that had converted (purchased) hours ago. So an old sale kept appearing because the session was still within the "today" window.
