@@ -118,7 +118,8 @@
 .last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: 12px; font-weight: 500; }
 .last-action-cell a:hover { text-decoration: underline; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-    .landing-thumb { width: 50px; height: 50px; border-radius: 100%; object-fit: contain; object-position: center; display: block; flex-shrink: 0; }
+    .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; border-radius: 100%; object-fit: contain; object-position: center; display: block; flex-shrink: 0; }
+    .table-scroll-wrap .last-action-cell .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
 .table-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: var(--badge-new-fg); }
@@ -228,6 +229,8 @@
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: 1px solid var(--border); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
 .table-scroll-wrap tr:last-child td { border-bottom: none; }
 .table-scroll-wrap th:nth-child(1), .table-scroll-wrap td:nth-child(1) { width: 1%; min-width: 130px; text-align: left; }
+.table-scroll-wrap .last-action-cell { min-width: 60px; }
+.table-scroll-wrap .last-action-cell .landing-thumb { flex-shrink: 0; box-sizing: border-box; }
 .table-scroll-wrap th:nth-child(2), .table-scroll-wrap td:nth-child(2) { min-width: 56px; }
 .table-scroll-wrap th.source-cell, .table-scroll-wrap td.source-cell { min-width: 90px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .table-scroll-wrap th.cart-value-cell, .table-scroll-wrap td.cart-value-cell { width: 1%; min-width: 4.5rem; max-width: 6rem; white-space: nowrap; }
