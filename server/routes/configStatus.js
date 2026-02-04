@@ -213,12 +213,8 @@ async function configStatus(req, res, next) {
       health.storedScopes = scope ? scope.split(',').map((s) => s.trim()).filter(Boolean).join(', ') : '';
       if (!token) {
         health.shopifySessionsTodayNote = 'No Shopify access token for this shop. Install the app (OAuth) or reinstall from Shopify Admin.';
-      } else if (!scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports')) {
-        const serverHasReadReports = (config.shopify.scopes || '').toLowerCase().includes('read_reports');
-        health.shopifySessionsTodayNote = serverHasReadReports
-          ? 'Shopify sessions (today) will show here after you reinstall the app — the current token is missing read_reports. Uninstall the app from Shopify Admin, then reinstall it so a new token is issued with read_reports.'
-          : 'Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall the app from Shopify Admin and reinstall it so a new token is issued with read_reports.';
       } else {
+        // Always try the API when we have a token; show count or real error (e.g. missing read_reports → 403 / access denied).
         const result = await fetchShopifySessionsToday(shop, token);
         if (typeof result.count === 'number') {
           health.shopifySessionsToday = result.count;
@@ -227,6 +223,13 @@ async function configStatus(req, res, next) {
           health.shopifySessionsTodayNote = result.error
             ? 'Shopify returned: ' + result.error
             : 'Shopify Sessions unavailable (ShopifyQL may require Protected Customer Data access in Partners).';
+          const missingScope = /access denied|forbidden|required scope|read_reports/i.test(health.shopifySessionsTodayNote);
+          if (missingScope && !(scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports'))) {
+            health.shopifySessionsTodayNote += ' Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall and reinstall the app from this store\'s Admin.';
+          }
+          if (result.error && /protected customer|customer data|level 2/i.test(String(result.error))) {
+            health.shopifySessionsTodayNote += ' Enable Protected Customer Data in Partners (App setup → API access).';
+          }
         }
       }
     } catch (err) {

@@ -1970,12 +1970,16 @@
           if (h) {
             html += section('Today');
             if (h.timeZone) html += noteRow('Timezone: ' + h.timeZone);
-            html += noteRow('Bots blocked at edge never reach the app/DB. Tagged bots are sessions that reached the app and were classified as bot.');
+            html += noteRow('Bots blocked at edge never reach the app/DB (so they are not in the session count below). Tagged bots are sessions that reached the app and were classified as bot.');
 
-            if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (total)', formatSessions(h.sessionsToday));
+            if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (reached app)', formatSessions(h.sessionsToday));
             if (typeof h.humanToday === 'number') html += valueRow('Human sessions', formatSessions(h.humanToday));
             if (typeof h.botsToday === 'number') html += valueRow('Bot sessions tagged (reached app)', formatSessions(h.botsToday));
             if (typeof h.botsBlockedAtEdge === 'number') html += valueRow('Bot ingest calls blocked at edge', formatSessions(h.botsBlockedAtEdge));
+            if (typeof h.sessionsToday === 'number' && typeof h.botsBlockedAtEdge === 'number') {
+              html += valueRow('Total traffic (est.)', formatSessions(h.sessionsToday + h.botsBlockedAtEdge));
+              html += noteRow('Total traffic (est.) = Sessions (reached app) + Bot ingest blocked.');
+            }
 
             if (typeof h.shopifySessionsToday === 'number') {
               html += valueRow('Shopify sessions (today)', formatSessions(h.shopifySessionsToday));
