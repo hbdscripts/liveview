@@ -582,6 +582,7 @@
     }
     let rowsPerPage = loadRowsPerPage();
     let sessions = [];
+    let sessionsLoadError = null;
     let statsCache = {};
     let dateRange = 'today';
     let activeMainTab = 'spy';
@@ -1106,7 +1107,8 @@
       const start = (currentPage - 1) * rowsPerPage;
       const pageSessions = sorted.slice(start, start + rowsPerPage);
       if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">No sessions in this view.</td></tr>';
+        var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">' + escapeHtml(emptyMsg) + '</td></tr>';
       } else {
         tbody.innerHTML = pageSessions.map(renderRow).join('');
         document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
@@ -1698,8 +1700,18 @@
       var overlay = document.getElementById('sessions-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
       liveRefreshInFlight = fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
-        .then(r => r.json())
-        .then(data => {
+        .then(function(r) {
+          if (!r.ok) {
+            sessionsLoadError = r.status === 502 ? 'Server error (502). Try again or refresh.' : 'Server error (' + r.status + ').';
+            sessions = [];
+            renderTable();
+            return null;
+          }
+          return r.json();
+        })
+        .then(function(data) {
+          if (data == null) return null;
+          sessionsLoadError = null;
           var next = data.sessions || [];
           var cutoff = Date.now() - ACTIVE_WINDOW_MS;
           var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
@@ -1719,7 +1731,7 @@
           updateKpis();
           return next;
         })
-        .catch(() => { sessions = []; currentPage = 1; renderTable(); return null; })
+        .catch(function() { sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; currentPage = 1; renderTable(); return null; })
         .finally(function() {
           liveRefreshInFlight = null;
           if (overlay) overlay.style.display = 'none';
