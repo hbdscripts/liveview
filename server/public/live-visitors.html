@@ -165,10 +165,10 @@
     .empty { padding: 1.5rem 1rem; color: var(--muted); font-size: var(--table-font-size); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.next-update-timer { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; }
+.next-update-timer { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
 .next-update-timer .next-update-circle { display: block; }
 .next-update-timer .next-update-circle-bg { opacity: 0.2; }
-.next-update-timer .next-update-circle-progress { transition: stroke-dashoffset 0.3s linear; }
+.next-update-timer .next-update-circle-progress { stroke: #0d9488; transition: stroke-dashoffset 0.3s linear; }
 .server-time-block { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; margin: 0 5px 0 0; }
 .server-time-tz { font-size: 0.7rem; opacity: 0.9; margin-left: 0.2rem; }
 .top-bar-divider { width: 1px; height: 1.2em; background: var(--top-bar-divider); flex-shrink: 0; }
@@ -370,7 +370,7 @@
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
     </h2>
-    <span class="next-update-block live-view-next-update-center">Next update <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="24" height="24"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span></span>
+    <span class="next-update-block live-view-next-update-center">Next update <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span></span>
     <div class="live-view-online"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
   </div>
   <div class="sessions-table-wrap">
