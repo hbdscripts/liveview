@@ -1668,7 +1668,9 @@
       let convVal = conv[kpiRange];
       let aovVal = aovMap[kpiRange];
       const bounceVal = bounceMap[kpiRange];
-      if (kpiRange === 'today') {
+      // On Breakdown tab use our stats for Sales/AOV so they match the country table (same source).
+      // On Live tab use Shopify for today when available.
+      if (kpiRange === 'today' && activeMainTab === 'spy') {
         if (typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
         // Sessions and CR always use our (human-only) data so they reflect bot filtering: ours < Shopify, CR higher
         if (typeof shopifyOrderCountToday === 'number' && shopifyOrderCountToday > 0 && typeof shopifySalesToday === 'number') {
@@ -2027,6 +2029,7 @@
             } else {
               html += valueRow('Shopify sessions (today)', '\u2014');
               if (h.shopifySessionsTodayNote) html += noteRow(h.shopifySessionsTodayNote);
+              if (h.serverScopes) html += noteRow('Server would request: ' + escapeHtml(h.serverScopes));
               if (h.storedScopes) html += noteRow('Stored scopes: ' + escapeHtml(h.storedScopes));
             }
 

@@ -128,6 +128,8 @@ async function configStatus(req, res, next) {
     shopifySessionsToday: null,
     shopifySessionsTodayNote: '',
     storedScopes: '',
+    /** Scopes the server would request on next OAuth (from SHOPIFY_SCOPES). Shown so user can confirm env before reinstalling. */
+    serverScopes: (config.shopify.scopes || '').split(',').map((s) => s.trim()).filter(Boolean).join(', '),
     sessionsToday: null,
     botsToday: 0,
     humanToday: 0,
@@ -212,7 +214,10 @@ async function configStatus(req, res, next) {
       if (!token) {
         health.shopifySessionsTodayNote = 'No Shopify access token for this shop. Install the app (OAuth) or reinstall from Shopify Admin.';
       } else if (!scope.toLowerCase().split(',').map((s) => s.trim()).includes('read_reports')) {
-        health.shopifySessionsTodayNote = 'Shopify sessions (today) will show here after you reinstall the app — the current token is missing the read_reports scope. Uninstall the app, then reinstall from Shopify Admin so a new token is issued with read_reports (ensure SHOPIFY_SCOPES includes read_reports).';
+        const serverHasReadReports = (config.shopify.scopes || '').toLowerCase().includes('read_reports');
+        health.shopifySessionsTodayNote = serverHasReadReports
+          ? 'Shopify sessions (today) will show here after you reinstall the app — the current token is missing read_reports. Uninstall the app from Shopify Admin, then reinstall it so a new token is issued with read_reports.'
+          : 'Add read_reports to SHOPIFY_SCOPES in Railway, redeploy, then uninstall the app from Shopify Admin and reinstall it so a new token is issued with read_reports.';
       } else {
         const result = await fetchShopifySessionsToday(shop, token);
         if (typeof result.count === 'number') {
