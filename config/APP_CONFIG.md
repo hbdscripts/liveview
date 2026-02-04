@@ -87,7 +87,7 @@ In `.env` / Railway: `SHOPIFY_SCOPES=read_products,read_orders,write_pixels,read
 
 - **All dashboard numbers are from our DB only.** Time range uses `ADMIN_TIMEZONE` (e.g. Europe/London) midnight-to-now for “today”. Shopify data is **not** shown in the main KPIs; it appears only in the Config panel (click “i”) so you can compare “Shopify sessions (today)” vs “Human sessions” and see “Shopify − ours (human)” (bots blocked est.).
 - **Number audit (source = our API `/api/stats`, human_only):**
-  - **Sales** = `getSalesTotal(start, end)` — purchases table, GBP-converted revenue in range.
+  - **Sales** = order count + `getSalesTotal(start, end)` — displayed as "N  £X.XX" (N = orders in range, so you can pair with Shopify Orders). Source: purchases table, GBP-converted; deduped by checkout_token/order_id. If our revenue exceeds Shopify, check for duplicate rows (e.g. checkout_completed without checkout_token/order_id can create multiple rows per order).
   - **Sessions** = `trafficBreakdown[range].human_sessions` — sessions in range with `cf_known_bot` not set.
   - **Conversion rate** = `converted_count / human_sessions` in range (purchases deduped by order id).
   - **AOV** = sales / converted_count in range.
