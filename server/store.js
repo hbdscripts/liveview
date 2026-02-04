@@ -402,35 +402,7 @@ async function insertPurchase(payload, sessionId, countryCode) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
   }
-  // Avoid double-counting: migration 008 backfilled legacy:session_id for sessions with has_purchased=1.
-  // When we later get a real checkout_completed with token/order for that session, remove the legacy row.
-  if ((purchaseKey.startsWith('token:') || purchaseKey.startsWith('order:')) && sessionId) {
-    const legacyKey = 'legacy:' + sessionId;
-    if (config.dbUrl) {
-      await db.run('DELETE FROM purchases WHERE purchase_key = $1', [legacyKey]);
-    } else {
-      await db.run('DELETE FROM purchases WHERE purchase_key = ?', [legacyKey]);
-    }
-    // Remove h: row for same session + total + currency only if within 2 min (same order likely; 15 min was too aggressive and could delete a different order).
-    const windowMs = 2 * 60 * 1000;
-    const bucketStart = now - windowMs;
-    const bucketEnd = now + windowMs;
-    const ot = Number.isNaN(orderTotal) ? null : orderTotal;
-    const oc = orderCurrency || null;
-    if (config.dbUrl) {
-      await db.run(
-        `DELETE FROM purchases WHERE purchase_key LIKE 'h:%' AND session_id = $1 AND purchased_at >= $2 AND purchased_at < $3
-         AND (order_total IS NOT DISTINCT FROM $4) AND (order_currency IS NOT DISTINCT FROM $5)`,
-        [sessionId, bucketStart, bucketEnd, ot, oc]
-      );
-    } else {
-      await db.run(
-        `DELETE FROM purchases WHERE purchase_key LIKE 'h:%' AND session_id = ? AND purchased_at >= ? AND purchased_at < ?
-         AND (order_total IS ? OR (order_total IS NULL AND ? IS NULL)) AND (order_currency IS ? OR (order_currency IS NULL AND ? IS NULL))`,
-        [sessionId, bucketStart, bucketEnd, ot, ot, oc, oc]
-      );
-    }
-  }
+  // Never delete purchase rows (project rule: no DB deletes without backup). Dedupe is done in stats queries only.
 }
 
 /** "Today (24h)" tab: last 24 hours. "All (60 min)" tab: last 60 min. Cleanup uses SESSION_RETENTION_DAYS. */
@@ -689,8 +661,7 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
 }
 
 function purchaseDedupeKeySql(alias = '') {
-  // Prefer checkout_token, then order_id. For rows without either (h: hash), dedupe by session+total+currency+15min
-  // so multiple checkout_completed events in same 15min for same order count as one.
+  // Prefer checkout_token, then order_id. For rows without either (h: hash), dedupe by session+total+currency+15min.
   const p = alias ? alias + '.' : '';
   const bucket = config.dbUrl
     ? `FLOOR(${p}purchased_at/900000.0)::bigint`
@@ -698,21 +669,42 @@ function purchaseDedupeKeySql(alias = '') {
   return `CASE WHEN NULLIF(TRIM(${p}checkout_token), '') IS NOT NULL THEN TRIM(${p}checkout_token) WHEN NULLIF(TRIM(${p}order_id), '') IS NOT NULL THEN TRIM(${p}order_id) ELSE ${p}session_id || '_' || COALESCE(CAST(${p}order_total AS TEXT), '0') || '_' || COALESCE(NULLIF(TRIM(${p}order_currency), ''), 'GBP') || '_' || ${bucket} END`;
 }
 
-/** Total sales in range (all purchases). Includes purchases with null/empty/XX country; overall >= sum(country revenue). */
+/** SQL AND clause: exclude h: rows when a token/order row exists for same (session, total, currency, 15min bucket). Prevents double-counting without deleting data. */
+function purchaseFilterExcludeDuplicateH(alias) {
+  const p = alias || 'p';
+  const bucketCmp = config.dbUrl
+    ? `FLOOR(p2.purchased_at/900000.0) = FLOOR(${p}.purchased_at/900000.0)`
+    : `CAST(p2.purchased_at/900000 AS INTEGER) = CAST(${p}.purchased_at/900000 AS INTEGER)`;
+  const sameRow = config.dbUrl
+    ? `(p2.order_total IS NOT DISTINCT FROM ${p}.order_total) AND (p2.order_currency IS NOT DISTINCT FROM ${p}.order_currency)`
+    : `(p2.order_total IS ${p}.order_total OR (p2.order_total IS NULL AND ${p}.order_total IS NULL)) AND (p2.order_currency IS ${p}.order_currency OR (p2.order_currency IS NULL AND ${p}.order_currency IS NULL))`;
+  return ` AND (
+    (NULLIF(TRIM(${p}.checkout_token), '') IS NOT NULL OR NULLIF(TRIM(${p}.order_id), '') IS NOT NULL)
+    OR (${p}.purchase_key LIKE 'h:%' AND NOT EXISTS (
+      SELECT 1 FROM purchases p2
+      WHERE (NULLIF(TRIM(p2.checkout_token), '') IS NOT NULL OR NULLIF(TRIM(p2.order_id), '') IS NOT NULL)
+        AND p2.session_id = ${p}.session_id AND ${sameRow} AND ${bucketCmp}
+    ))
+  )`;
+}
+
+/** Total sales in range (all purchases). Dedupe in query only; never delete rows. */
 async function getSalesTotal(start, end) {
   const db = getDb();
-  const dedupeKey = purchaseDedupeKeySql();
+  const dedupeKey = purchaseDedupeKeySql('p');
+  const filterH = purchaseFilterExcludeDuplicateH('p');
   const rows = config.dbUrl
     ? await db.all(
       `
         SELECT currency, COALESCE(SUM(total), 0)::float AS total
         FROM (
           SELECT
-            COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
             ${dedupeKey} AS dedupe_key,
-            MAX(order_total)::float AS total
-          FROM purchases
-          WHERE purchased_at >= $1 AND purchased_at < $2
+            MAX(p.order_total)::float AS total
+          FROM purchases p
+          WHERE p.purchased_at >= $1 AND p.purchased_at < $2
+          ${filterH}
           GROUP BY currency, dedupe_key
         ) t
         GROUP BY currency
@@ -724,11 +716,12 @@ async function getSalesTotal(start, end) {
         SELECT currency, COALESCE(SUM(total), 0) AS total
         FROM (
           SELECT
-            COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
             ${dedupeKey} AS dedupe_key,
-            MAX(order_total) AS total
-          FROM purchases
-          WHERE purchased_at >= ? AND purchased_at < ?
+            MAX(p.order_total) AS total
+          FROM purchases p
+          WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          ${filterH}
           GROUP BY currency, dedupe_key
         ) t
         GROUP BY currency
@@ -752,6 +745,7 @@ async function getSalesTotal(start, end) {
 async function getReturningRevenue(start, end) {
   const db = getDb();
   const dedupeKeyP = purchaseDedupeKeySql('p');
+  const filterH = purchaseFilterExcludeDuplicateH('p');
   const rows = config.dbUrl
     ? await db.all(
       `
@@ -764,6 +758,7 @@ async function getReturningRevenue(start, end) {
           FROM purchases p
           INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
           WHERE p.purchased_at >= $1 AND p.purchased_at < $2
+          ${filterH}
           GROUP BY currency, dedupe_key
         ) t
         GROUP BY currency
@@ -781,6 +776,7 @@ async function getReturningRevenue(start, end) {
           FROM purchases p
           INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
           WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          ${filterH}
           GROUP BY currency, dedupe_key
         ) t
         GROUP BY currency
@@ -872,19 +868,21 @@ async function getCountryStats(start, end, options = {}) {
       GROUP BY country_code
     `, [start, end, ...filter.params]);
   // Aggregate purchases by country + currency so we can convert to GBP.
-  const dedupeKey = purchaseDedupeKeySql();
+  const dedupeKey = purchaseDedupeKeySql('p');
+  const filterH = purchaseFilterExcludeDuplicateH('p');
   const purchaseAgg = config.dbUrl
     ? await db.all(`
       SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0)::float AS revenue
       FROM (
         SELECT
-          country_code,
-          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          p.country_code,
+          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
           ${dedupeKey} AS dedupe_key,
-          MAX(order_total)::float AS revenue
-        FROM purchases
-        WHERE purchased_at >= $1 AND purchased_at < $2
-          AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+          MAX(p.order_total)::float AS revenue
+        FROM purchases p
+        WHERE p.purchased_at >= $1 AND p.purchased_at < $2
+          AND p.country_code IS NOT NULL AND p.country_code != '' AND p.country_code != 'XX'
+          ${filterH}
         GROUP BY country_code, currency, dedupe_key
       ) t
       GROUP BY country_code, currency
@@ -893,13 +891,14 @@ async function getCountryStats(start, end, options = {}) {
       SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
       FROM (
         SELECT
-          country_code,
-          COALESCE(NULLIF(order_currency, ''), 'GBP') AS currency,
+          p.country_code,
+          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
           ${dedupeKey} AS dedupe_key,
-          MAX(order_total) AS revenue
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ?
-          AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
+          MAX(p.order_total) AS revenue
+        FROM purchases p
+        WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          AND p.country_code IS NOT NULL AND p.country_code != '' AND p.country_code != 'XX'
+          ${filterH}
         GROUP BY country_code, currency, dedupe_key
       ) t
       GROUP BY country_code, currency
@@ -965,10 +964,11 @@ async function getSessionCounts(start, end, options = {}) {
 
 async function getConvertedCount(start, end) {
   const db = getDb();
-  const dedupeKey = purchaseDedupeKeySql();
+  const dedupeKey = purchaseDedupeKeySql('p');
+  const filterH = purchaseFilterExcludeDuplicateH('p');
   const row = config.dbUrl
-    ? await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases WHERE purchased_at >= $1 AND purchased_at < $2`, [start, end])
-    : await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases WHERE purchased_at >= ? AND purchased_at < ?`, [start, end]);
+    ? await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases p WHERE p.purchased_at >= $1 AND p.purchased_at < $2 ${filterH}`, [start, end])
+    : await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases p WHERE p.purchased_at >= ? AND p.purchased_at < ? ${filterH}`, [start, end]);
   return row ? Number(row.n) || 0 : 0;
 }
 
