@@ -25,6 +25,7 @@ const { up: up017 } = require('./migrations/017_sales_truth_and_evidence');
 const { up: up018 } = require('./migrations/018_orders_shopify_returning_fields');
 const { up: up019 } = require('./migrations/019_customer_order_facts');
 const { up: up020 } = require('./migrations/020_bot_block_counts_updated_at');
+const { up: up021 } = require('./migrations/021_sessions_traffic_fields');
 
 async function main() {
   const db = getDb();
@@ -49,6 +50,7 @@ async function main() {
   await up018();
   await up019();
   await up020();
+  await up021();
   if (preBackup) {
     await writeAudit('system', 'backup', { when: 'manual_migrate_pre_truth_schema', ...preBackup });
   }

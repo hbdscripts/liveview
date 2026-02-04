@@ -62,6 +62,45 @@ function parseDeviceFromUserAgent(req) {
   return null;
 }
 
+/**
+ * Parse User-Agent to stable, storage-friendly traffic type fields for sessions.
+ * - ua_device_type: desktop | mobile | tablet
+ * - ua_platform: windows | mac | ios | android | chromeos | linux | other
+ * - ua_model: iphone | ipad | (optional)
+ */
+function parseTrafficTypeFromUserAgent(req) {
+  const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
+  if (!ua) return null;
+  const s = ua.toLowerCase();
+
+  const isIphone = /\biphone\b/.test(s) || /\bipod\b/.test(s);
+  const isIpad = /\bipad\b/.test(s);
+  const isAndroid = /\bandroid\b/.test(s);
+
+  // Form factor heuristics
+  let uaDeviceType = 'desktop';
+  if (isIpad || /\btablet\b/.test(s) || (isAndroid && !/\bmobile\b/.test(s))) {
+    uaDeviceType = 'tablet';
+  } else if (/\bmobi\b/.test(s) || isIphone || isAndroid) {
+    uaDeviceType = 'mobile';
+  }
+
+  // Platform/OS heuristics
+  let uaPlatform = 'other';
+  if (isIphone || isIpad || /\bipod\b/.test(s)) uaPlatform = 'ios';
+  else if (isAndroid) uaPlatform = 'android';
+  else if (/\bwindows\b/.test(s)) uaPlatform = 'windows';
+  else if (/\bmacintosh\b|\bmac os\b|\bmac os x\b/.test(s)) uaPlatform = 'mac';
+  else if (/\bcros\b/.test(s)) uaPlatform = 'chromeos';
+  else if (/\blinux\b|\bubuntu\b|\bfedora\b/.test(s)) uaPlatform = 'linux';
+
+  let uaModel = null;
+  if (isIphone) uaModel = 'iphone';
+  else if (isIpad) uaModel = 'ipad';
+
+  return { uaDeviceType, uaPlatform, uaModel };
+}
+
 /** Build CF context from Worker-added headers (Phase 2). Keys match parseCfContext in store. */
 function getCfContextFromRequest(req) {
   const knownBot = req.get('x-cf-known-bot');
@@ -137,6 +176,12 @@ function ingestRouter(req, res, next) {
   if (country) payload.country_code = country;
   const deviceFromUA = parseDeviceFromUserAgent(req);
   if (deviceFromUA) payload.device = deviceFromUA;
+  const trafficType = parseTrafficTypeFromUserAgent(req);
+  if (trafficType) {
+    payload.ua_device_type = trafficType.uaDeviceType;
+    payload.ua_platform = trafficType.uaPlatform;
+    if (trafficType.uaModel) payload.ua_model = trafficType.uaModel;
+  }
   // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
   const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
   if (requestReferer) payload.entry_url = requestReferer;

@@ -47,9 +47,17 @@
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
     .main { padding: 24px; margin: 0 auto; max-width: 1600px; }
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
+    .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
+    @media (max-width: 768px) { .traffic-grid { grid-template-columns: 1fr; } }
     .stats-card { background: var(--card); padding: 0; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
     .stats-card:last-child { margin-right: 0; }
     #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
+    .traffic-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); background: var(--th-bg); border-bottom: var(--table-row-border); }
+    .traffic-card-title { margin: 0; font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
+    .traffic-picker-list { display: flex; flex-direction: column; gap: 0.25rem; }
+    .traffic-picker-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0; font-size: 0.8125rem; }
+    .traffic-picker-item input { width: 16px; height: 16px; }
+    .traffic-picker-meta { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
     /* Single thead row: title in first cell, column labels in rest; one line */
     .stats-card .by-country-table thead th { white-space: nowrap; margin: 0; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; text-align: left; background: var(--th-bg); border-bottom: var(--table-row-border); }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
@@ -339,6 +347,7 @@
   <div class="main-tabs" role="tablist" aria-label="View">
     <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Home</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
+    <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
       <!-- Date range Today: table tabs Today | Last Hour | Live above table -->
@@ -525,6 +534,58 @@
   </div>
   </div>
 
+  <div id="tab-panel-traffic" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-traffic">
+  <div class="stats-row-wrap">
+    <div class="table-loading-overlay stats-loading-overlay" id="traffic-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+  <div class="traffic-grid">
+    <div class="stats-card" id="traffic-sources-card">
+      <div class="traffic-card-header">
+        <h3 class="traffic-card-title">Source</h3>
+        <button type="button" id="traffic-sources-config-btn" class="config-btn" title="Select sources" aria-label="Select sources">⚙</button>
+      </div>
+      <div class="country-table-wrap">
+        <table id="traffic-sources-table" class="by-country-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>CR%</th>
+              <th>Orders</th>
+              <th>Sessions</th>
+              <th>Rev</th>
+            </tr>
+          </thead>
+          <tbody id="traffic-sources-body">
+            <tr><td colspan="5" class="empty">Click ⚙ to add sources.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="stats-card" id="traffic-types-card">
+      <div class="traffic-card-header">
+        <h3 class="traffic-card-title">Traffic Type</h3>
+        <button type="button" id="traffic-types-config-btn" class="config-btn" title="Select traffic types" aria-label="Select traffic types">⚙</button>
+      </div>
+      <div class="country-table-wrap">
+        <table id="traffic-types-table" class="by-country-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>CR%</th>
+              <th>Orders</th>
+              <th>Sessions</th>
+              <th>Rev</th>
+            </tr>
+          </thead>
+          <tbody id="traffic-types-body">
+            <tr><td colspan="5" class="empty">Click ⚙ to add types.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+
   <div id="side-panel" class="side-panel" style="display:none">
     <header class="side-panel-header">
       <h3 class="side-panel-title">Session</h3>
@@ -574,6 +635,28 @@
     </div>
   </div>
 
+  <div class="config-modal" id="traffic-sources-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Traffic sources">
+      <div class="config-modal-header">
+        <h3 class="config-modal-title">Traffic · Sources</h3>
+        <button type="button" class="config-close" id="traffic-sources-close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="muted" style="margin-bottom: 0.5rem;">Tick sources to show in the Traffic table. New sources appear here as they’re detected.</div>
+      <div id="traffic-sources-picker" class="traffic-picker-list"></div>
+    </div>
+  </div>
+
+  <div class="config-modal" id="traffic-types-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Traffic types">
+      <div class="config-modal-header">
+        <h3 class="config-modal-title">Traffic · Types</h3>
+        <button type="button" class="config-close" id="traffic-types-close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="muted" style="margin-bottom: 0.5rem;">Tick device/platform types to show in the Traffic table.</div>
+      <div id="traffic-types-picker" class="traffic-picker-list"></div>
+    </div>
+  </div>
+
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
@@ -597,6 +680,7 @@
     let sessions = [];
     let sessionsLoadError = null;
     let statsCache = {};
+    let trafficCache = null;
     let dateRange = 'live';
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
@@ -605,8 +689,10 @@
     let nextRangeAt = 0; // next refresh for Today/Last Hour (10 min)
     let lastSessionsFetchedAt = 0;
     let lastStatsFetchedAt = 0;
+    let lastTrafficFetchedAt = 0;
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
+    let trafficRefreshInFlight = null;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let lastSaleAt = null; // ms; when we last knew a sale happened (from sound trigger or config-status)
@@ -1757,6 +1843,153 @@
       return statsRefreshInFlight;
     }
 
+    function renderTrafficTables(data) {
+      const sources = data && data.sources ? data.sources : null;
+      const types = data && data.types ? data.types : null;
+
+      function renderRows(bodyId, rows, emptyText) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        const list = Array.isArray(rows) ? rows.slice() : [];
+        list.sort(function(a, b) {
+          return (Number(b && b.revenueGbp) || 0) - (Number(a && a.revenueGbp) || 0) ||
+            (Number(b && b.orders) || 0) - (Number(a && a.orders) || 0) ||
+            (Number(b && b.sessions) || 0) - (Number(a && a.sessions) || 0);
+        });
+        if (!list.length) {
+          body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml(emptyText || '—') + '</td></tr>';
+          return;
+        }
+        let html = '';
+        list.forEach(function(r) {
+          const label = escapeHtml((r && r.label) ? String(r.label) : (r && r.key ? String(r.key) : '—'));
+          const cr = (r && typeof r.conversionPct === 'number') ? pct(r.conversionPct) : '—';
+          const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '—';
+          const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '—';
+          const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenue(r.revenueGbp) : '—';
+          html += '<tr>' +
+            '<td>' + label + '</td>' +
+            '<td>' + escapeHtml(cr || '—') + '</td>' +
+            '<td>' + escapeHtml(orders || '—') + '</td>' +
+            '<td>' + escapeHtml(sessions || '—') + '</td>' +
+            '<td>' + escapeHtml(rev || '—') + '</td>' +
+            '</tr>';
+        });
+        body.innerHTML = html;
+      }
+
+      renderRows('traffic-sources-body', sources ? sources.rows : [], 'Click ⚙ to add sources.');
+      renderRows('traffic-types-body', types ? types.rows : [], 'Click ⚙ to add types.');
+    }
+
+    function renderTrafficPickers(data) {
+      function renderPicker(containerId, available, enabled, onChange) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        const have = new Set((enabled || []).map(function(k) { return String(k || '').trim().toLowerCase(); }).filter(Boolean));
+        const list = Array.isArray(available) ? available.slice() : [];
+        if (!list.length) {
+          el.innerHTML = '<div class="config-row muted">No items yet.</div>';
+          return;
+        }
+        let html = '';
+        list.forEach(function(item) {
+          const key = item && item.key != null ? String(item.key).trim().toLowerCase() : '';
+          if (!key) return;
+          const label = escapeHtml(item.label != null ? String(item.label) : key);
+          const checked = have.has(key);
+          const meta = (item && typeof item.sessions === 'number') ? (formatSessions(item.sessions) + ' sessions') : '';
+          html += '<label class="traffic-picker-item">' +
+            '<input type="checkbox" data-key="' + key + '"' + (checked ? ' checked' : '') + ' />' +
+            '<span>' + label + '</span>' +
+            (meta ? ('<span class="traffic-picker-meta">' + escapeHtml(meta) + '</span>') : '') +
+            '</label>';
+        });
+        el.innerHTML = html;
+        el.onchange = function(e) {
+          const t = e && e.target ? e.target : null;
+          if (!t || t.tagName !== 'INPUT') return;
+          const keys = Array.from(el.querySelectorAll('input[type="checkbox"][data-key]:checked'))
+            .map(function(inp) { return (inp.getAttribute('data-key') || '').trim(); })
+            .filter(Boolean);
+          onChange(keys);
+        };
+      }
+
+      renderPicker(
+        'traffic-sources-picker',
+        data && data.sources ? data.sources.available : [],
+        data && data.sources ? data.sources.enabled : [],
+        function(keys) { saveTrafficPrefs({ sourcesEnabled: keys }); }
+      );
+      renderPicker(
+        'traffic-types-picker',
+        data && data.types ? data.types.available : [],
+        data && data.types ? data.types.enabled : [],
+        function(keys) { saveTrafficPrefs({ typesEnabled: keys }); }
+      );
+    }
+
+    function renderTraffic(data) {
+      trafficCache = data || trafficCache || null;
+      renderTrafficTables(trafficCache);
+      renderTrafficPickers(trafficCache);
+    }
+
+    function fetchTrafficData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/traffic?range=' + encodeURIComponent(getStatsRange());
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetch(url, { credentials: 'same-origin', cache: cacheMode })
+        .then(function(r) {
+          if (!r.ok) throw new Error('Traffic HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          lastTrafficFetchedAt = Date.now();
+          renderTraffic(data && typeof data === 'object' ? data : null);
+          return data;
+        })
+        .catch(function(err) {
+          console.error(err);
+          renderTraffic(trafficCache || null);
+          return null;
+        });
+    }
+
+    function refreshTraffic(options = {}) {
+      const force = !!options.force;
+      if (trafficRefreshInFlight) return trafficRefreshInFlight;
+      var overlay = document.getElementById('traffic-loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      trafficRefreshInFlight = fetchTrafficData({ force })
+        .finally(function() {
+          trafficRefreshInFlight = null;
+          if (overlay) overlay.style.display = 'none';
+        });
+      return trafficRefreshInFlight;
+    }
+
+    function saveTrafficPrefs(payload) {
+      if (!payload || typeof payload !== 'object') return Promise.resolve(null);
+      return fetch(API + '/api/traffic-prefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(payload),
+      })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) {
+          if (!json || json.ok !== true) return null;
+          // Re-fetch so tables match new enabled selections.
+          refreshTraffic({ force: true });
+          return json;
+        })
+        .catch(function(err) { console.error(err); return null; });
+    }
+
     function sessionIdsEqual(a, b) {
       if (!a && !b) return true;
       if (!a || !b || a.length !== b.length) return false;
@@ -2200,6 +2433,40 @@
       document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
     })();
 
+    (function initTrafficModals() {
+      const sourcesModal = document.getElementById('traffic-sources-modal');
+      const typesModal = document.getElementById('traffic-types-modal');
+      const openSourcesBtn = document.getElementById('traffic-sources-config-btn');
+      const openTypesBtn = document.getElementById('traffic-types-config-btn');
+      const closeSourcesBtn = document.getElementById('traffic-sources-close-btn');
+      const closeTypesBtn = document.getElementById('traffic-types-close-btn');
+      if (!sourcesModal || !typesModal) return;
+
+      function open(modal) {
+        try { refreshTraffic({ force: true }); } catch (_) {}
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+      function close(modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      if (openSourcesBtn) openSourcesBtn.addEventListener('click', function() { open(sourcesModal); });
+      if (openTypesBtn) openTypesBtn.addEventListener('click', function() { open(typesModal); });
+      if (closeSourcesBtn) closeSourcesBtn.addEventListener('click', function() { close(sourcesModal); });
+      if (closeTypesBtn) closeTypesBtn.addEventListener('click', function() { close(typesModal); });
+
+      sourcesModal.addEventListener('click', function(e) { if (e.target === sourcesModal) close(sourcesModal); });
+      typesModal.addEventListener('click', function(e) { if (e.target === typesModal) close(typesModal); });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (sourcesModal.classList.contains('open')) close(sourcesModal);
+        if (typesModal.classList.contains('open')) close(typesModal);
+      });
+    })();
+
     (function initTopBar() {
       saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true';
       saleAudio = new Audio(CASH_REGISTER_MP3_URL);
@@ -2254,9 +2521,12 @@
           worstProductsCache = null;
           bestVariantsCache = null;
           lastStatsFetchedAt = 0;
+          lastTrafficFetchedAt = 0;
           updateNextUpdateUi();
           if (activeMainTab === 'stats') {
             refreshStats({ force: false });
+          } else if (activeMainTab === 'traffic') {
+            refreshTraffic({ force: true });
           } else {
             renderLiveKpis(statsCache || {});
             updateKpis();
@@ -2291,21 +2561,32 @@
         const TAB_KEY = 'livevisitors-main-tab';
         const tabSpy = document.getElementById('tab-spy');
         const tabStats = document.getElementById('tab-stats');
+        const tabTraffic = document.getElementById('tab-traffic');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
+        const panelTraffic = document.getElementById('tab-panel-traffic');
         function setTab(tab) {
           const isSpy = tab === 'spy';
+          const isStats = tab === 'stats';
+          const isTraffic = tab === 'traffic';
           activeMainTab = tab;
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
-          if (tabStats) tabStats.setAttribute('aria-selected', isSpy ? 'false' : 'true');
+          if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
+          if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
           if (panelSpy) { panelSpy.classList.toggle('active', isSpy); panelSpy.style.display = isSpy ? '' : 'none'; }
-          if (panelStats) { panelStats.classList.toggle('active', !isSpy); panelStats.style.display = isSpy ? 'none' : ''; }
+          if (panelStats) { panelStats.classList.toggle('active', isStats); panelStats.style.display = isStats ? '' : 'none'; }
+          if (panelTraffic) { panelTraffic.classList.toggle('active', isTraffic); panelTraffic.style.display = isTraffic ? '' : 'none'; }
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
           if (tab === 'stats') {
             // Always refresh when entering Stats so main stats + BEST + WORST + VARIANTS load (no stuck "Loading...")
             refreshStats({ force: true });
+          } else if (tab === 'traffic') {
+            refreshTraffic({ force: true });
+            const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
+            if (staleStats) fetchStatsData({ force: false });
+            else renderLiveKpis(statsCache || {});
           } else {
             const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
             const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
@@ -2318,11 +2599,12 @@
         let initialTab = 'spy';
         try {
           const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'spy') initialTab = saved;
+          if (saved === 'stats' || saved === 'spy' || saved === 'traffic') initialTab = saved;
         } catch (_) {}
         setTab(initialTab);
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
+        if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
@@ -2331,6 +2613,7 @@
             btn.classList.add('spinning');
             setTimeout(function() { btn.classList.remove('spinning'); }, 800);
             if (activeMainTab === 'stats') refreshStats({ force: true });
+            else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
             else fetchSessions();
           });
         }
@@ -2382,10 +2665,18 @@
       refreshStats({ force: false });
     }
 
+    function onTrafficAutoRefreshTick() {
+      if (activeMainTab !== 'traffic') return;
+      if (getStatsRange() !== 'today') return;
+      if (document.visibilityState !== 'visible') return;
+      refreshTraffic({ force: false });
+    }
+
     // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Stats: every 15 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (10 min interval)
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
+    setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
     // Online count: when not on Live, refresh every 60s so Online always shows real people online
     setInterval(function() {
@@ -2411,6 +2702,9 @@
       if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
+      } else if (activeMainTab === 'traffic') {
+        const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
+        if (staleTraffic) refreshTraffic({ force: false });
       } else {
         const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
         const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;

@@ -19,6 +19,7 @@ const sessionsRouter = require('./routes/sessions');
 const configStatus = require('./routes/configStatus');
 const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
+const trafficRouter = require('./routes/traffic');
 const pixelRouter = require('./routes/pixel');
 const shopifySales = require('./routes/shopifySales');
 const salesDiagnostics = require('./routes/salesDiagnostics');
@@ -69,6 +70,8 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/config-status', configStatus);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
+app.get('/api/traffic', dashboardAuth.middleware, trafficRouter.getTraffic);
+app.post('/api/traffic-prefs', dashboardAuth.middleware, trafficRouter.setTrafficPrefs);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
 app.get('/api/reconcile-sales', reconcileSales.reconcileSales);
 app.post('/api/reconcile-sales', reconcileSales.reconcileSales);
@@ -188,6 +191,7 @@ const { up: up017 } = require('./migrations/017_sales_truth_and_evidence');
 const { up: up018 } = require('./migrations/018_orders_shopify_returning_fields');
 const { up: up019 } = require('./migrations/019_customer_order_facts');
 const { up: up020 } = require('./migrations/020_bot_block_counts_updated_at');
+const { up: up021 } = require('./migrations/021_sessions_traffic_fields');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 
@@ -218,6 +222,7 @@ async function migrateAndStart() {
   await up018();
   await up019();
   await up020();
+  await up021();
 
   if (preBackup) {
     await writeAudit('system', 'backup', {

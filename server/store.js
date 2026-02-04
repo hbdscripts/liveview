@@ -20,6 +20,7 @@ const WHITELIST = new Set([
   'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
   'order_id', 'checkout_token',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
+  'ua_device_type', 'ua_platform', 'ua_model',
   'utm_campaign', 'utm_source', 'utm_medium', 'utm_content',
   'referrer',
   'entry_url',
@@ -54,6 +55,170 @@ function normalizeCountry(value) {
   const c = value.trim().toUpperCase();
   if (c.length !== 2 || c === 'XX' || c === 'T1') return null;
   return c;
+}
+
+function trimLower(v, maxLen = 256) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  if (!s) return null;
+  const out = s.length > maxLen ? s.slice(0, maxLen) : s;
+  return out.toLowerCase();
+}
+
+function safeUrlHost(url) {
+  if (typeof url !== 'string') return '';
+  const raw = url.trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch (_) {
+    // Handle schemeless URLs like "example.com/path"
+    try {
+      return new URL('https://' + raw).hostname.toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
+}
+
+function safeUrlParams(url) {
+  if (typeof url !== 'string') return null;
+  const raw = url.trim();
+  if (!raw) return null;
+  try {
+    return new URL(raw).searchParams;
+  } catch (_) {
+    try {
+      return new URL('https://' + raw).searchParams;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+let _internalHostsCache = null;
+function internalHostSet() {
+  if (_internalHostsCache) return _internalHostsCache;
+  const set = new Set();
+  function addHostFromUrl(url) {
+    if (!url || typeof url !== 'string') return;
+    try { set.add(new URL(url).hostname.toLowerCase()); } catch (_) {}
+  }
+  function addHost(host) {
+    const h = typeof host === 'string' ? host.trim().toLowerCase() : '';
+    if (!h) return;
+    // Config may be "domain" or "https://domain"
+    try { set.add(new URL(h.startsWith('http') ? h : ('https://' + h)).hostname.toLowerCase()); } catch (_) {}
+  }
+  addHost(config.shopDomain);
+  addHost(config.allowedShopDomain);
+  addHostFromUrl(config.storeMainDomain);
+  // Shopify checkout/self-referral sources
+  set.add('checkout.shopify.com');
+  set.add('shopify.com');
+  _internalHostsCache = set;
+  return set;
+}
+
+function isInternalHost(hostname) {
+  const host = typeof hostname === 'string' ? hostname.trim().toLowerCase() : '';
+  if (!host) return false;
+  const set = internalHostSet();
+  for (const h of set) {
+    if (!h) continue;
+    if (host === h) return true;
+    if (host.endsWith('.' + h)) return true;
+  }
+  return false;
+}
+
+function isPaidMedium(m) {
+  const s = trimLower(m, 64) || '';
+  if (!s) return false;
+  if (s === 'cpc' || s === 'ppc' || s === 'paid' || s === 'paidsearch' || s === 'paid_search') return true;
+  if (s.includes('cpc') || s.includes('ppc') || s.includes('paid')) return true;
+  return false;
+}
+
+/**
+ * Derive a stable source key using:
+ * - Shopify pixel UTMs (utm_source/utm_medium/etc)
+ * - Cloudflare/Worker fallback entry_url/referrer (including click IDs like gclid)
+ */
+function deriveTrafficSourceKey({ utmSource, utmMedium, utmCampaign, utmContent, referrer, entryUrl } = {}) {
+  const us = trimLower(utmSource, 128) || '';
+  const um = trimLower(utmMedium, 64) || '';
+  const uc = trimLower(utmCampaign, 128) || '';
+  const ucon = trimLower(utmContent, 128) || '';
+
+  const refHost = safeUrlHost(referrer || '');
+  const entryParams = safeUrlParams(entryUrl || '');
+
+  const hasGclid = !!(entryParams && (entryParams.get('gclid') || entryParams.get('gbraid') || entryParams.get('wbraid')));
+  const hasMsclkid = !!(entryParams && entryParams.get('msclkid'));
+  const hasFbclid = !!(entryParams && entryParams.get('fbclid'));
+  const paid = isPaidMedium(um);
+
+  // 1) Explicit UTMs win (Shopify pixel)
+  if (us.includes('omnisend') || (um === 'email' && (us.includes('omnisend') || uc.includes('omnisend') || ucon.includes('omnisend')))) {
+    return 'omnisend';
+  }
+  if (us.includes('google') || us.includes('googleads') || us.includes('adwords')) {
+    if (paid || hasGclid) return 'google_ads';
+    return 'google_organic';
+  }
+  if (us.includes('bing') || us.includes('microsoft')) {
+    if (paid || hasMsclkid) return 'bing_ads';
+    return 'bing_organic';
+  }
+  if (us.includes('facebook') || us === 'fb' || us.includes('instagram')) {
+    if (paid || hasFbclid) return 'facebook_ads';
+    return 'facebook_organic';
+  }
+
+  // 2) Click IDs (Cloudflare/Worker entry_url)
+  if (hasGclid) return 'google_ads';
+  if (hasMsclkid) return 'bing_ads';
+  if (hasFbclid) return 'facebook_ads';
+
+  // 3) Referrer host (Cloudflare/Worker fallback)
+  if (refHost && !isInternalHost(refHost)) {
+    if (refHost.includes('google.')) return 'google_organic';
+    if (refHost.endsWith('bing.com') || refHost.endsWith('search.msn.com') || refHost.includes('bing.')) return 'bing_organic';
+    if (
+      refHost.endsWith('facebook.com') ||
+      refHost === 'l.facebook.com' ||
+      refHost === 'm.facebook.com' ||
+      refHost === 'lm.facebook.com'
+    ) {
+      return 'facebook_organic';
+    }
+  }
+
+  // 4) Direct / internal
+  const hasAnyUtm = !!(us || um || uc || ucon);
+  if (!hasAnyUtm && (!refHost || isInternalHost(refHost))) return 'direct';
+
+  return null;
+}
+
+function normalizeUaDeviceType(v) {
+  const s = trimLower(v, 16);
+  if (s === 'desktop' || s === 'mobile' || s === 'tablet') return s;
+  return null;
+}
+
+function normalizeUaPlatform(v) {
+  const s = trimLower(v, 16);
+  if (!s) return null;
+  if (s === 'windows' || s === 'mac' || s === 'ios' || s === 'android' || s === 'chromeos' || s === 'linux' || s === 'other') return s;
+  return null;
+}
+
+function normalizeUaModel(v) {
+  const s = trimLower(v, 16);
+  if (s === 'iphone' || s === 'ipad') return s;
+  return null;
 }
 
 async function getSetting(key) {
@@ -214,6 +379,18 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const hasExistingEntryUrl = existing?.entry_url != null && String(existing.entry_url).trim() !== '';
   const updateEntryUrl = hasExistingEntryUrl ? null : (trimUrl(payload.entry_url) ?? null);
 
+  const trafficSourceKey = deriveTrafficSourceKey({
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    referrer,
+    entryUrl,
+  });
+  const uaDeviceType = normalizeUaDeviceType(payload.ua_device_type);
+  const uaPlatform = normalizeUaPlatform(payload.ua_platform);
+  const uaModel = normalizeUaModel(payload.ua_model);
+
   const cfKnownBot = cf.cfKnownBot != null ? cf.cfKnownBot : null;
   const cfVerifiedBotCategory = cf.cfVerifiedBotCategory;
   const cfCountry = cf.cfCountry;
@@ -224,8 +401,8 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28)
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model)
+        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
         ON CONFLICT (session_id) DO UPDATE SET
           visitor_id = EXCLUDED.visitor_id,
           started_at = EXCLUDED.started_at,
@@ -257,18 +434,22 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
           cf_country = EXCLUDED.cf_country,
           cf_colo = EXCLUDED.cf_colo,
-          cf_asn = EXCLUDED.cf_asn
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession]);
+          cf_asn = EXCLUDED.cf_asn,
+          traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
+          ua_device_type = COALESCE(sessions.ua_device_type, EXCLUDED.ua_device_type),
+          ua_platform = COALESCE(sessions.ua_platform, EXCLUDED.ua_platform),
+          ua_model = COALESCE(sessions.ua_model, EXCLUDED.ua_model)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel]);
     }
   } else {
     const cfUpdates = [];
     const cfParams = [];
-    let p = config.dbUrl ? 19 : 0;
+    let p = config.dbUrl ? 23 : 0;
     if (cfKnownBot != null) {
       cfUpdates.push(config.dbUrl ? `cf_known_bot = $${++p}` : 'cf_known_bot = ?');
       cfParams.push(cfKnownBot);
@@ -290,7 +471,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       cfParams.push(cfAsn);
     }
     const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
-    const sessionIdPlaceholder = config.dbUrl ? '$' + (20 + cfParams.length) : '?';
+    const sessionIdPlaceholder = config.dbUrl ? '$' + (24 + cfParams.length) : '?';
     if (config.dbUrl) {
       await db.run(`
         UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
@@ -299,12 +480,16 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         country_code = COALESCE($9, country_code), utm_campaign = COALESCE($10, utm_campaign), utm_source = COALESCE($11, utm_source), utm_medium = COALESCE($12, utm_medium), utm_content = COALESCE($13, utm_content),
         referrer = COALESCE($14, referrer),
         entry_url = COALESCE($15, entry_url),
-        is_checking_out = $16, checkout_started_at = $17, has_purchased = $18, purchased_at = COALESCE($19, purchased_at)
+        is_checking_out = $16, checkout_started_at = $17, has_purchased = $18, purchased_at = COALESCE($19, purchased_at),
+        traffic_source_key = COALESCE($20, traffic_source_key),
+        ua_device_type = COALESCE(ua_device_type, $21),
+        ua_platform = COALESCE(ua_platform, $22),
+        ua_model = COALESCE(ua_model, $23)
         ${cfSet}
         WHERE session_id = ${sessionIdPlaceholder}
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, ...cfParams, payload.session_id]);
     } else {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, ...cfParams, payload.session_id];
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, ...cfParams, payload.session_id];
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
@@ -312,7 +497,11 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         country_code = COALESCE(?, country_code), utm_campaign = COALESCE(?, utm_campaign), utm_source = COALESCE(?, utm_source), utm_medium = COALESCE(?, utm_medium), utm_content = COALESCE(?, utm_content),
         referrer = COALESCE(?, referrer),
         entry_url = COALESCE(?, entry_url),
-        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at)
+        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at),
+        traffic_source_key = COALESCE(?, traffic_source_key),
+        ua_device_type = COALESCE(ua_device_type, ?),
+        ua_platform = COALESCE(ua_platform, ?),
+        ua_model = COALESCE(ua_model, ?)
         ${cfSet}
         WHERE session_id = ?
       `, placeholders);
