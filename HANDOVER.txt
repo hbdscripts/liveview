@@ -241,6 +241,36 @@ Performance direction:
 
 ---
 
+## Known weaknesses + remedies (high priority)
+
+Report load speed (biggest pain):
+- **Symptoms**: “Products” / “Breakdown” / “Traffic” reports can feel slow or appear stuck (client uses long fetches + overlays; server work can exceed client timeouts on large datasets).
+- **Root causes** (current):
+  - “Products” endpoints still depend on parsing Shopify order JSON (`orders_shopify.raw_json`) for aggregations (first run per range can be heavy).
+  - Caches are mostly **in-memory** (lost on deploy/restart; not shared across instances).
+  - Some report endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
+  - SQLite in production is slow/ephemeral; Postgres is recommended for real shops.
+- **Non-destructive remedies** (recommended roadmap):
+  - **Persisted line-item facts**: on reconciliation, write an append-only (or upserted) `order_line_items` (or daily rollup) table so “Best sellers / variants” is pure SQL `GROUP BY` (no JSON parsing at request time). This is the single biggest win.
+  - **Daily rollups**: maintain `daily_stats` tables (orders/revenue/sessions by day + channel/device/etc.) and serve report ranges by summing days.
+  - **Persistent caching**: store precomputed aggregates (keyed by shop+range) in DB with TTL, or in Redis, so deploys don’t cold-start.
+  - **More targeted indexes**: keep adding composite indexes matching the most expensive query patterns (especially for joined report queries).
+  - **Instrumentation**: add timing logs per endpoint (and/or Sentry performance) to pinpoint slow queries and cold-start costs.
+
+Shopify sessions snapshots (new capability, still limited):
+- Currently we snapshot Shopify “today” sessions in `shopify_sessions_snapshots` when fetched.
+- For range reporting with Shopify sessions, we need either:
+  - scheduled daily snapshots for every day, or
+  - on-demand backfill (ShopifyQL `DURING YYYY-MM-DD`) with caching and rate-limit handling.
+
+Backups durability:
+- SQLite backups live in `server/backups/` (on-disk). On Railway ephemeral storage, this is **not durable**.
+- For production, prefer:
+  - Postgres with backup tables, plus a **real** external backup/export (or use managed Postgres backups),
+  - or upload SQLite backups to durable storage (S3/R2) from a cron job.
+
+---
+
 ## Changelog (high level)
 
 2026-02-04
