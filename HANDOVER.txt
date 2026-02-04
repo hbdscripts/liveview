@@ -16,7 +16,7 @@ Dashboard URL:
 - `/app/live-visitors` (also `/` typically redirects here after app URL handling)
 
 Main tabs (top row):
-- Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as an icon; mobile: tabs collapse into a hamburger menu)
+- Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu)
 - Home “Landing Page” cell:
   - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
     - `Entry: <name>`
@@ -293,5 +293,6 @@ Backups durability:
 - Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
 - Dashboard: Breakdown/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
 - Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
+- Dashboard: replace Home tab SVG icon with birdseye PNG (25x25)
 - Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
 - Dashboard: sale toast overlays Sales+Sessions KPIs (flag + top product + order £) for 10s; Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`)

@@ -229,6 +229,7 @@
 .main-tabs [role="tab"]:hover { color: var(--text); }
 .main-tabs [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .main-tabs [role="tab"] .tab-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+.main-tabs [role="tab"] .tab-icon-home { width: 25px; height: 25px; object-fit: contain; }
 .main-tabs [role="tab"] .tab-text { display: inline; }
 @media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
 .main-tabs-spacer { flex: 1; min-width: 0; }
@@ -432,7 +433,7 @@
     </div>
 
     <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
-      <svg class="tab-icon tab-icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></svg>
+      <img class="tab-icon tab-icon-home" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" aria-hidden="true" decoding="async" />
       <span class="tab-text">Home</span>
     </button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
