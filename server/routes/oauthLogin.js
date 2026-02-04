@@ -8,6 +8,7 @@ const config = require('../config');
 const { getDb, isPostgres } = require('../db');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 const auth = require('./auth');
+const salesTruth = require('../salesTruth');
 
 const SESSION_HOURS = 24;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
@@ -172,6 +173,17 @@ async function handleShopifyLoginCallback(req, res) {
           'INSERT OR REPLACE INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?)',
           [shopNorm, accessToken, scope, now]
         );
+      }
+
+      // Kick off background reconcile after login reauth (helps recover immediately after token revocation).
+      try {
+        const endMs = now;
+        const startMs = endMs - 48 * 60 * 60 * 1000;
+        setTimeout(() => {
+          salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(() => {});
+        }, 0);
+      } catch (_) {
+        // ignore
       }
     } catch (err) {
       console.error('[oauth] Failed to persist Shopify access token:', err);

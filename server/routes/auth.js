@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const { getDb, isPostgres } = require('../db');
 const { writeAudit } = require('../audit');
+const salesTruth = require('../salesTruth');
 
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
@@ -91,6 +92,17 @@ async function handleCallback(req, res) {
         'INSERT OR REPLACE INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?)',
         [shop, accessToken, scope, now]
       );
+    }
+
+    // Kick off a background reconcile immediately after (re)authorization so truth tables are correct ASAP.
+    try {
+      const endMs = now;
+      const startMs = endMs - 48 * 60 * 60 * 1000;
+      setTimeout(() => {
+        salesTruth.reconcileRange(shop, startMs, endMs, 'today').catch(() => {});
+      }, 0);
+    } catch (_) {
+      // ignore
     }
 
     let redirectUrl;
