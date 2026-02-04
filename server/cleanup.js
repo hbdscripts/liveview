@@ -35,12 +35,12 @@ async function run() {
         WHERE last_seen < ? AND started_at < ?
         AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
       )
-    `, [retentionCutoff, abandonedCutoff]);
+    `, [retentionCutoff, retentionCutoff, abandonedCutoff]);
     await db.run(`
       DELETE FROM sessions
       WHERE last_seen < ? AND started_at < ?
       AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
-    `, [retentionCutoff, abandonedCutoff]);
+    `, [retentionCutoff, retentionCutoff, abandonedCutoff]);
   }
 
   // Per session: keep only last maxEventsPerSession events (one DELETE per session that has excess)

@@ -8,20 +8,10 @@
 const { getDb, isPostgres } = require('../db');
 
 async function up() {
-  const db = getDb();
-  const rows = isPostgres()
-    ? await db.all("SELECT DISTINCT session_id FROM purchases WHERE purchase_key LIKE 'token:%' OR purchase_key LIKE 'order:%'")
-    : await db.all("SELECT DISTINCT session_id FROM purchases WHERE purchase_key LIKE 'token:%' OR purchase_key LIKE 'order:%'");
-  if (!rows || rows.length === 0) return;
-  const sessionIds = rows.map((r) => r.session_id).filter(Boolean);
-  for (const sessionId of sessionIds) {
-    const legacyKey = 'legacy:' + sessionId;
-    if (isPostgres()) {
-      await db.run('DELETE FROM purchases WHERE purchase_key = $1', [legacyKey]);
-    } else {
-      await db.run('DELETE FROM purchases WHERE purchase_key = ?', [legacyKey]);
-    }
-  }
+  // IMPORTANT: non-destructive migrations only.
+  // We never delete from purchases in migrations or runtime (see .cursor/rules/no-delete-without-backup.mdc).
+  // Dedupe is handled in stats queries and via canonical Shopify truth tables.
+  return;
 }
 
 module.exports = { up };

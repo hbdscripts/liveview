@@ -7,6 +7,7 @@
 
 const config = require('../config');
 const store = require('../store');
+const salesEvidence = require('../salesEvidence');
 const rateLimit = require('../rateLimit');
 const sse = require('../sse');
 
@@ -147,7 +148,17 @@ function ingestRouter(req, res, next) {
   const cfContext = getCfContextFromRequest(req);
   store.upsertVisitor(payload)
     .then(({ isReturning } = {}) => store.upsertSession(payload, isReturning, cfContext))
-    .then(() => store.insertPurchase(payload, sessionId, payload.country_code))
+    .then(() => {
+      // Evidence only: always append purchase_events for checkout_completed.
+      const isCheckoutCompleted =
+        payload &&
+        (payload.event_type === 'checkout_completed' ||
+          payload.checkout_completed === true ||
+          payload.checkout_completed === 1 ||
+          payload.checkout_completed === '1');
+      if (!isCheckoutCompleted) return null;
+      return salesEvidence.insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext });
+    })
     .then(() => store.insertEvent(sessionId, payload))
     .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
     .then(([sessionRow, visitor]) => {

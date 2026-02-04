@@ -13,6 +13,7 @@
 const store = require('../store');
 const { getDb } = require('../db');
 const fx = require('../fx');
+const salesTruth = require('../salesTruth');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const DEFAULT_PAGE_SIZE = 10;
@@ -51,40 +52,85 @@ async function getWorstProducts(req, res) {
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
 
   const db = getDb();
-  const botFilterSql = trafficMode === 'human_only' ? ' AND (cf_known_bot IS NULL OR cf_known_bot = 0)' : '';
+  const botFilterSql = trafficMode === 'human_only' ? ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)' : '';
 
-  // Use the minimal set of columns needed to build the report.
-  const rows = await db.all(`
-    SELECT first_path, first_product_handle, has_purchased, order_total, order_currency
-    FROM sessions
-    WHERE started_at >= ? AND started_at < ?
-      ${botFilterSql}
-      AND (
-        first_path LIKE '/products/%'
-        OR (first_product_handle IS NOT NULL AND TRIM(COALESCE(first_product_handle, '')) != '')
-      )
-  `, [start, end]);
+  const shop = salesTruth.resolveShopForSales('');
+  if (shop) {
+    // Best-effort: keep truth cache warm for this range (throttled).
+    try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
+  }
+
+  // Session landings, with optional linked truth orders for attribution (sum(revenue) <= truth total).
+  const rows = shop ? await db.all(
+    `
+      SELECT
+        s.session_id,
+        s.first_path,
+        s.first_product_handle,
+        p.order_id AS order_id,
+        p.currency AS currency,
+        p.total_price AS total_price
+      FROM sessions s
+      LEFT JOIN (
+        SELECT DISTINCT
+          pe.session_id AS session_id,
+          o.order_id AS order_id,
+          COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
+          o.total_price AS total_price
+        FROM purchase_events pe
+        INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+        WHERE pe.shop = ?
+          AND pe.event_type = 'checkout_completed'
+          AND o.created_at >= ? AND o.created_at < ?
+          AND (o.test IS NULL OR o.test = 0)
+          AND o.cancelled_at IS NULL
+          AND o.financial_status = 'paid'
+      ) p ON p.session_id = s.session_id
+      WHERE s.started_at >= ? AND s.started_at < ?
+        ${botFilterSql}
+        AND (
+          s.first_path LIKE '/products/%'
+          OR (s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != '')
+        )
+    `,
+    [shop, start, end, start, end]
+  ) : await db.all(
+    `
+      SELECT s.session_id, s.first_path, s.first_product_handle, NULL AS order_id, NULL AS currency, NULL AS total_price
+      FROM sessions s
+      WHERE s.started_at >= ? AND s.started_at < ?
+        ${botFilterSql}
+        AND (
+          s.first_path LIKE '/products/%'
+          OR (s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != '')
+        )
+    `,
+    [start, end]
+  );
 
   const ratesToGbp = await fx.getRatesToGbp();
-  const map = new Map(); // handle -> { handle, clicks, converted, revenue }
+  const map = new Map(); // handle -> { handle, clicks, orderIds:Set, converted, revenue }
   for (const r of rows || []) {
     const handle = handleFromPath(r.first_path) || normalizeHandle(r.first_product_handle);
     if (!handle) continue;
     let entry = map.get(handle);
     if (!entry) {
-      entry = { handle, clicks: 0, converted: 0, revenue: 0 };
+      entry = { handle, clicks: 0, orderIds: new Set(), converted: 0, revenue: 0 };
       map.set(handle, entry);
     }
     entry.clicks += 1;
 
-    const purchased = Number(r.has_purchased) === 1 || r.has_purchased === true;
-    if (purchased) {
-      entry.converted += 1;
-      const ot = r.order_total != null ? Number(r.order_total) : NaN;
-      if (!Number.isNaN(ot) && Number.isFinite(ot)) {
-        const cur = fx.normalizeCurrency(r.order_currency) || 'GBP';
-        const gbp = fx.convertToGbp(ot, cur, ratesToGbp);
-        if (typeof gbp === 'number' && Number.isFinite(gbp)) entry.revenue += gbp;
+    const oid = r.order_id != null ? String(r.order_id) : '';
+    if (oid) {
+      if (!entry.orderIds.has(oid)) {
+        entry.orderIds.add(oid);
+        entry.converted += 1;
+        const amt = r.total_price != null ? Number(r.total_price) : NaN;
+        if (Number.isFinite(amt)) {
+          const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+          const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+          if (typeof gbp === 'number' && Number.isFinite(gbp)) entry.revenue += gbp;
+        }
       }
     }
   }

@@ -3,6 +3,8 @@
  */
 require('dotenv').config();
 const { getDb } = require('./db');
+const backup = require('./backup');
+const { writeAudit } = require('./audit');
 const { up: up001 } = require('./migrations/001_initial');
 const { up: up002 } = require('./migrations/002_shop_sessions');
 const { up: up003 } = require('./migrations/003_cart_order_money');
@@ -15,9 +17,15 @@ const { up: up009 } = require('./migrations/009_cf_traffic');
 const { up: up010 } = require('./migrations/010_referrer');
 const { up: up011 } = require('./migrations/011_entry_url');
 const { up: up012 } = require('./migrations/012_bot_block_counts');
+const { up: up013 } = require('./migrations/013_session_is_returning');
+const { up: up014 } = require('./migrations/014_dedupe_legacy_purchases');
+const { up: up015 } = require('./migrations/015_backfill_session_is_returning');
+const { up: up016 } = require('./migrations/016_dedupe_h_purchases');
+const { up: up017 } = require('./migrations/017_sales_truth_and_evidence');
 
 async function main() {
   const db = getDb();
+  const preBackup = await backup.backupBeforeTruthSchemaCreate();
   await up001();
   await up002();
   await up003();
@@ -30,6 +38,14 @@ async function main() {
   await up010();
   await up011();
   await up012();
+  await up013();
+  await up014();
+  await up015();
+  await up016();
+  await up017();
+  if (preBackup) {
+    await writeAudit('system', 'backup', { when: 'manual_migrate_pre_truth_schema', ...preBackup });
+  }
   console.log('Migrations complete.');
   db.close?.();
   process.exit(0);

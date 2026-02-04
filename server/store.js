@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { getDb } = require('./db');
 const config = require('./config');
 const fx = require('./fx');
+const salesTruth = require('./salesTruth');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -695,110 +696,18 @@ function purchaseFilterExcludeDuplicateH(alias) {
 
 /** Total sales in range (all purchases). Dedupe in query only; never delete rows. */
 async function getSalesTotal(start, end) {
-  const db = getDb();
-  const dedupeKey = purchaseDedupeKeySql('p');
-  const filterH = purchaseFilterExcludeDuplicateH('p');
-  const rows = config.dbUrl
-    ? await db.all(
-      `
-        SELECT currency, COALESCE(SUM(total), 0)::float AS total
-        FROM (
-          SELECT
-            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
-            ${dedupeKey} AS dedupe_key,
-            MAX(p.order_total)::float AS total
-          FROM purchases p
-          WHERE p.purchased_at >= $1 AND p.purchased_at < $2
-          ${filterH}
-          GROUP BY currency, dedupe_key
-        ) t
-        GROUP BY currency
-      `,
-      [start, end]
-    )
-    : await db.all(
-      `
-        SELECT currency, COALESCE(SUM(total), 0) AS total
-        FROM (
-          SELECT
-            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
-            ${dedupeKey} AS dedupe_key,
-            MAX(p.order_total) AS total
-          FROM purchases p
-          WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          ${filterH}
-          GROUP BY currency, dedupe_key
-        ) t
-        GROUP BY currency
-      `,
-      [start, end]
-    );
-
-  const ratesToGbp = await fx.getRatesToGbp();
-  let sum = 0;
-  for (const r of rows || []) {
-    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
-    const total = r.total != null ? Number(r.total) : 0;
-    if (!Number.isFinite(total) || total === 0) continue;
-    const gbp = fx.convertToGbp(total, cur, ratesToGbp);
-    if (typeof gbp === 'number' && Number.isFinite(gbp)) sum += gbp;
-  }
-  return Math.round(sum * 100) / 100;
+  // Truth: Shopify Orders API cached in orders_shopify.
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return 0;
+  return salesTruth.getTruthSalesTotalGbp(shop, start, end);
 }
 
 /** Revenue from returning-customer sessions only (sessions.is_returning = 1). Same dedupe and GBP conversion as getSalesTotal. */
 async function getReturningRevenue(start, end) {
-  const db = getDb();
-  const dedupeKeyP = purchaseDedupeKeySql('p');
-  const filterH = purchaseFilterExcludeDuplicateH('p');
-  const rows = config.dbUrl
-    ? await db.all(
-      `
-        SELECT currency, COALESCE(SUM(total), 0)::float AS total
-        FROM (
-          SELECT
-            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
-            ${dedupeKeyP} AS dedupe_key,
-            MAX(p.order_total)::float AS total
-          FROM purchases p
-          INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
-          WHERE p.purchased_at >= $1 AND p.purchased_at < $2
-          ${filterH}
-          GROUP BY currency, dedupe_key
-        ) t
-        GROUP BY currency
-      `,
-      [start, end]
-    )
-    : await db.all(
-      `
-        SELECT currency, COALESCE(SUM(total), 0) AS total
-        FROM (
-          SELECT
-            COALESCE(NULLIF(p.order_currency, ''), 'GBP') AS currency,
-            ${dedupeKeyP} AS dedupe_key,
-            MAX(p.order_total) AS total
-          FROM purchases p
-          INNER JOIN sessions s ON p.session_id = s.session_id AND COALESCE(s.is_returning, 0) = 1
-          WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          ${filterH}
-          GROUP BY currency, dedupe_key
-        ) t
-        GROUP BY currency
-      `,
-      [start, end]
-    );
-
-  const ratesToGbp = await fx.getRatesToGbp();
-  let sum = 0;
-  for (const r of rows || []) {
-    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
-    const total = r.total != null ? Number(r.total) : 0;
-    if (!Number.isFinite(total) || total === 0) continue;
-    const gbp = fx.convertToGbp(total, cur, ratesToGbp);
-    if (typeof gbp === 'number' && Number.isFinite(gbp)) sum += gbp;
-  }
-  return Math.round(sum * 100) / 100;
+  // Truth-based returning revenue: customers with a prior paid order before start.
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return 0;
+  return salesTruth.getTruthReturningRevenueGbp(shop, start, end);
 }
 
 async function getConversionRate(start, end, options = {}) {
@@ -826,7 +735,7 @@ async function getProductConversionRate(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
-  const productFilter = filter.sql.replace('sessions.', '') + PRODUCT_LANDING_SQL;
+  const productFilter = filter.sql.replace(/sessions\./g, '') + PRODUCT_LANDING_SQL;
   const total = config.dbUrl
     ? await db.get(
       'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2' + productFilter,
@@ -836,17 +745,28 @@ async function getProductConversionRate(start, end, options = {}) {
       'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ?' + productFilter,
       [start, end, ...filter.params]
     );
-  const converted = config.dbUrl
-    ? await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= $1 AND started_at < $2 AND has_purchased = 1' + productFilter,
-      [start, end, ...filter.params]
-    )
-    : await db.get(
-      'SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ? AND started_at < ? AND has_purchased = 1' + productFilter,
-      [start, end, ...filter.params]
-    );
   const t = total?.n ?? 0;
-  const c = converted?.n ?? 0;
+  if (t <= 0) return null;
+
+  // Truth conversions attributed to product-landed sessions via linked evidence.
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return null;
+  const convertedRow = await db.get(
+    `
+      SELECT COUNT(DISTINCT o.order_id) AS n
+      FROM sessions s
+      INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
+      INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+      WHERE s.started_at >= ? AND s.started_at < ?
+        ${productFilter.replace(/sessions\./g, 's.')}
+        AND o.created_at >= ? AND o.created_at < ?
+        AND (o.test IS NULL OR o.test = 0)
+        AND o.cancelled_at IS NULL
+        AND o.financial_status = 'paid'
+    `,
+    [shop, start, end, start, end]
+  );
+  const c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
   return t > 0 ? Math.round((c / t) * 1000) / 10 : null;
 }
 
@@ -861,7 +781,7 @@ async function getCountryStats(start, end, options = {}) {
       FROM sessions
       WHERE started_at >= $1 AND started_at < $2
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
-        ${filter.sql.replace('sessions.', '')}
+        ${filter.sql.replace(/sessions\./g, '')}
       GROUP BY country_code
     `, [start, end, ...filter.params])
     : await db.all(`
@@ -869,45 +789,38 @@ async function getCountryStats(start, end, options = {}) {
       FROM sessions
       WHERE started_at >= ? AND started_at < ?
         AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
-        ${filter.sql.replace('sessions.', '')}
+        ${filter.sql.replace(/sessions\./g, '')}
       GROUP BY country_code
     `, [start, end, ...filter.params]);
-  // Aggregate purchases by country + currency so we can convert to GBP.
-  const dedupeKey = purchaseDedupeKeySql('p');
-  const filterH = purchaseFilterExcludeDuplicateH('p');
-  const purchaseAgg = config.dbUrl
-    ? await db.all(`
-      SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0)::float AS revenue
-      FROM (
-        SELECT
-          p.country_code,
-          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-          ${dedupeKey} AS dedupe_key,
-          MAX(p.order_total)::float AS revenue
-        FROM purchases p
-        WHERE p.purchased_at >= $1 AND p.purchased_at < $2
-          AND p.country_code IS NOT NULL AND p.country_code != '' AND p.country_code != 'XX'
-          ${filterH}
-        GROUP BY country_code, currency, dedupe_key
-      ) t
-      GROUP BY country_code, currency
-    `, [start, end])
-    : await db.all(`
-      SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
-      FROM (
-        SELECT
-          p.country_code,
-          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-          ${dedupeKey} AS dedupe_key,
-          MAX(p.order_total) AS revenue
-        FROM purchases p
-        WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          AND p.country_code IS NOT NULL AND p.country_code != '' AND p.country_code != 'XX'
-          ${filterH}
-        GROUP BY country_code, currency, dedupe_key
-      ) t
-      GROUP BY country_code, currency
-    `, [start, end]);
+  // Truth revenue by country is attributed via linked purchase evidence (so sum(revenue) <= truth total).
+  const shop = salesTruth.resolveShopForSales('');
+  const purchaseAgg = shop
+    ? await db.all(
+      `
+        SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
+        FROM (
+          SELECT DISTINCT
+            s.country_code AS country_code,
+            COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
+            o.order_id AS order_id,
+            o.total_price AS revenue
+          FROM purchase_events pe
+          INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+          INNER JOIN sessions s ON s.session_id = pe.session_id
+          WHERE pe.shop = ?
+            AND pe.event_type = 'checkout_completed'
+            AND o.created_at >= ? AND o.created_at < ?
+            AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+            ${filter.sql.replace(/sessions\./g, 's.')}
+            AND (o.test IS NULL OR o.test = 0)
+            AND o.cancelled_at IS NULL
+            AND o.financial_status = 'paid'
+        ) t
+        GROUP BY country_code, currency
+      `,
+      [shop, start, end, ...filter.params]
+    )
+    : [];
 
   const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map();
@@ -968,13 +881,9 @@ async function getSessionCounts(start, end, options = {}) {
 }
 
 async function getConvertedCount(start, end) {
-  const db = getDb();
-  const dedupeKey = purchaseDedupeKeySql('p');
-  const filterH = purchaseFilterExcludeDuplicateH('p');
-  const row = config.dbUrl
-    ? await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases p WHERE p.purchased_at >= $1 AND p.purchased_at < $2 ${filterH}`, [start, end])
-    : await db.get(`SELECT COUNT(DISTINCT ${dedupeKey}) AS n FROM purchases p WHERE p.purchased_at >= ? AND p.purchased_at < ? ${filterH}`, [start, end]);
-  return row ? Number(row.n) || 0 : 0;
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return 0;
+  return salesTruth.getTruthOrderCount(shop, start, end);
 }
 
 function aovFromSalesAndCount(sales, count) {
@@ -1015,6 +924,16 @@ async function getStats(options = {}) {
   for (const key of RANGE_KEYS) {
     ranges[key] = getRangeBounds(key, now, timeZone);
   }
+  // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
+  const salesShop = salesTruth.resolveShopForSales('');
+  let salesTruthTodaySync = null;
+  if (salesShop) {
+    try {
+      salesTruthTodaySync = await salesTruth.ensureReconciled(salesShop, ranges.today.start, ranges.today.end, 'today');
+    } catch (_) {
+      salesTruthTodaySync = { ok: false, error: 'reconcile_failed' };
+    }
+  }
   // Run all stats queries in one parallel batch to avoid N+1 (many sequential DB round-trips). Fixes NODE-1.
   const [
     salesByRangeEntries,
@@ -1031,6 +950,7 @@ async function getStats(options = {}) {
     yesterdayOk,
     threeDOk,
     sevenDOk,
+    salesTruthHealth,
   ] = await Promise.all([
     Promise.all(RANGE_KEYS.map(async key => [key, await getSalesTotal(ranges[key].start, ranges[key].end)])),
     Promise.all(RANGE_KEYS.map(async key => [key, await getReturningRevenue(ranges[key].start, ranges[key].end)])),
@@ -1046,6 +966,7 @@ async function getStats(options = {}) {
     rangeHasSessions(ranges.yesterday.start, ranges.yesterday.end, opts),
     rangeHasSessions(ranges['3d'].start, ranges['3d'].end, opts),
     rangeHasSessions(ranges['7d'].start, ranges['7d'].end, opts),
+    salesTruth.getTruthHealth(salesShop || '', 'today'),
   ]);
   const salesByRange = Object.fromEntries(salesByRangeEntries);
   const returningRevenueByRange = Object.fromEntries(returningRevenueByRangeEntries);
@@ -1082,6 +1003,11 @@ async function getStats(options = {}) {
     aov: { ...aovByRange, rolling: aovRolling },
     bounce: bounceByRange,
     revenueToday: salesByRange.today ?? 0,
+    salesTruth: {
+      shop: salesShop || '',
+      todaySync: salesTruthTodaySync,
+      health: salesTruthHealth,
+    },
     rangeAvailable,
     convertedCount: convertedCountByRange,
     trafficMode,

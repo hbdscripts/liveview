@@ -330,6 +330,8 @@
     .config-row { font-size: 0.8125rem; color: var(--text); margin: 0.25rem 0; word-break: break-word; }
     .config-row.ok { color: #0f766e; }
     .config-row.missing { color: #b91c1c; }
+    .kpi-subline { margin-top: 0.4rem; font-size: 0.78rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .kpi-subline strong { color: var(--text); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -357,6 +359,7 @@
       <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Bounce rate</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
     </div>
+    <div class="kpi-subline" id="sales-diagnostics-line" aria-label="Sales drift diagnostics">Loading sales diagnostics…</div>
   </div>
   <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
@@ -1681,42 +1684,89 @@
       const aovEl = document.getElementById('live-kpi-aov');
       const bounceEl = document.getElementById('live-kpi-bounce');
       const salesLabelEl = document.getElementById('live-kpi-sales-label');
-      // Temporary: show N/A in all KPI value boxes until sales/revenue dedupe is trusted.
-      if (salesLabelEl) salesLabelEl.textContent = 'Sales';
-      if (salesEl) salesEl.textContent = 'N/A';
-      if (sessionsEl) sessionsEl.textContent = 'N/A';
-      if (convEl) convEl.textContent = 'N/A';
-      if (returningEl) returningEl.textContent = 'N/A';
-      if (aovEl) aovEl.textContent = 'N/A';
-      if (bounceEl) bounceEl.textContent = 'N/A';
-      /* Real values (when fixed): uncomment this block and remove the N/A block above.
-      const sales = data.sales || {};
-      const convertedCountMap = data.convertedCount || {};
-      const returningRevenue = data.returningRevenue || {};
-      const breakdown = data.trafficBreakdown || {};
-      const conv = data.conversion || {};
-      const aovMap = data.aov || {};
-      const bounceMap = data.bounce || {};
+      const sales = data && data.sales ? data.sales : {};
+      const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
+      const returningRevenue = data && data.returningRevenue ? data.returningRevenue : {};
+      const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
+      const conv = data && data.conversion ? data.conversion : {};
+      const aovMap = data && data.aov ? data.aov : {};
+      const bounceMap = data && data.bounce ? data.bounce : {};
       const kpiRange = getStatsRange();
       const forRange = breakdown[kpiRange];
-      let sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
-      let salesVal = sales[kpiRange];
+      const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
+      const salesVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       const orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
-      const returningVal = returningRevenue[kpiRange];
-      let convVal = conv[kpiRange];
-      let aovVal = aovMap[kpiRange];
-      const bounceVal = bounceMap[kpiRange];
-      if (salesLabelEl) salesLabelEl.textContent = (orderCountVal != null && salesVal != null) ? orderCountVal + ' Sales' : 'Sales';
-      if (salesEl) {
-        if (salesVal != null) salesEl.textContent = formatRevenue(salesVal);
-        else salesEl.textContent = '\u2014';
+      const returningVal = typeof returningRevenue[kpiRange] === 'number' ? returningRevenue[kpiRange] : null;
+      const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
+      const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
+      const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
+
+      if (salesLabelEl) {
+        salesLabelEl.textContent = orderCountVal != null ? (orderCountVal + ' Orders') : 'Orders';
+        try {
+          const h = data && data.salesTruth && data.salesTruth.health ? data.salesTruth.health : null;
+          if (h && (h.lastError || h.lastSuccessAt)) {
+            const staleSec = (h.staleMs != null && typeof h.staleMs === 'number') ? Math.round(h.staleMs / 1000) : null;
+            const bits = [];
+            if (h.lastSuccessAt) bits.push('Last sync: ' + new Date(h.lastSuccessAt).toLocaleString());
+            if (staleSec != null) bits.push('Stale: ' + staleSec + 's');
+            if (h.lastError) bits.push('Error: ' + String(h.lastError).slice(0, 160));
+            salesLabelEl.title = bits.join(' · ');
+          } else {
+            salesLabelEl.title = '';
+          }
+        } catch (_) {}
       }
-      if (sessionsEl) sessionsEl.textContent = formatSessions(sessionsVal);
+      if (salesEl) salesEl.textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
+      if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (returningEl) returningEl.textContent = (returningVal != null && typeof returningVal === 'number') ? formatRevenue(returningVal) : '\u2014';
+      if (returningEl) returningEl.textContent = returningVal != null ? formatRevenue(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
-      */
+    }
+
+    function renderSalesDiagnostics(data) {
+      const el = document.getElementById('sales-diagnostics-line');
+      if (!el) return;
+      if (!data || typeof data !== 'object') {
+        el.textContent = 'Sales diagnostics unavailable';
+        return;
+      }
+      const truth = data.truth || {};
+      const evidence = data.evidence || {};
+      const health = data.health || {};
+      const truthOrders = (typeof truth.orderCount === 'number') ? truth.orderCount : null;
+      const truthRevenue = (typeof truth.revenueGbp === 'number') ? truth.revenueGbp : null;
+      const ev = (typeof evidence.checkoutCompleted === 'number') ? evidence.checkoutCompleted : null;
+      const linked = (typeof evidence.linked === 'number') ? evidence.linked : null;
+      const unlinked = (typeof evidence.unlinked === 'number') ? evidence.unlinked : null;
+      const drift = (ev != null && truthOrders != null) ? (ev - truthOrders) : null;
+      const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
+
+      const parts = [];
+      if (truthOrders != null) parts.push('Truth orders: ' + truthOrders);
+      if (truthRevenue != null) parts.push('Truth revenue: ' + formatRevenue(truthRevenue));
+      if (ev != null) parts.push('Pixel checkout_completed: ' + ev);
+      if (linked != null && unlinked != null) parts.push('Linked: ' + linked + ' · Unlinked: ' + unlinked);
+      if (drift != null) parts.push('Drift: ' + (drift >= 0 ? '+' + drift : String(drift)));
+      if (staleSec != null) parts.push('Sync age: ' + staleSec + 's');
+      if (health && health.lastError) parts.push('Last error: ' + String(health.lastError).slice(0, 120));
+
+      el.textContent = parts.length ? parts.join(' · ') : 'Sales diagnostics ready';
+    }
+
+    function fetchSalesDiagnostics(options = {}) {
+      const force = !!options.force;
+      const range = getStatsRange();
+      var shop = getShopForSales();
+      let url = API + '/api/sales-diagnostics?range=' + encodeURIComponent(range);
+      if (shop) url += '&shop=' + encodeURIComponent(shop);
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetch(url, { credentials: 'same-origin', cache: cacheMode })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) { renderSalesDiagnostics(data); return data; })
+        .catch(function() { renderSalesDiagnostics(null); return null; });
     }
 
     function fetchStatsData(options = {}) {
@@ -1752,6 +1802,7 @@
 
       const tasks = [
         fetchStatsData({ force }),
+        fetchSalesDiagnostics({ force }),
         fetchBestSellers({ force }),
         fetchWorstProducts({ force }),
         fetchBestVariants({ force }),

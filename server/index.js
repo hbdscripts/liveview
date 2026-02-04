@@ -21,6 +21,9 @@ const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
 const pixelRouter = require('./routes/pixel');
 const shopifySales = require('./routes/shopifySales');
+const salesDiagnostics = require('./routes/salesDiagnostics');
+const verifySales = require('./routes/verifySales');
+const reconcileSales = require('./routes/reconcileSales');
 const shopifyBestSellers = require('./routes/shopifyBestSellers');
 const shopifyBestVariants = require('./routes/shopifyBestVariants');
 const worstProducts = require('./routes/worstProducts');
@@ -66,6 +69,10 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/config-status', configStatus);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
+app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
+app.get('/api/reconcile-sales', reconcileSales.reconcileSales);
+app.post('/api/reconcile-sales', reconcileSales.reconcileSales);
+app.get('/api/verify-sales', verifySales.verifySales);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.post('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.get('/api/pixel/status', pixelRouter.getPixelStatus);
@@ -177,35 +184,67 @@ const { up: up013 } = require('./migrations/013_session_is_returning');
 const { up: up014 } = require('./migrations/014_dedupe_legacy_purchases');
 const { up: up015 } = require('./migrations/015_backfill_session_is_returning');
 const { up: up016 } = require('./migrations/016_dedupe_h_purchases');
-getDb();
+const { up: up017 } = require('./migrations/017_sales_truth_and_evidence');
+const backup = require('./backup');
+const { writeAudit } = require('./audit');
 
-up001()
-  .then(() => up002())
-  .then(() => up003())
-  .then(() => up004())
-  .then(() => up005())
-  .then(() => up006())
-  .then(() => up007())
-  .then(() => up008())
-  .then(() => up009())
-  .then(() => up010())
-  .then(() => up011())
-  .then(() => up012())
-  .then(() => up013())
-  .then(() => up014())
-  .then(() => up015())
-  .then(() => up016())
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
-      console.log('Dashboard: /app/live-visitors');
-      console.log('Ingest: POST /api/ingest (header: X-Ingest-Secret or Authorization: Bearer <secret>)');
+async function migrateAndStart() {
+  // Open DB early so backups can inspect/operate.
+  getDb();
+
+  // Required: backup before introducing the Sales Truth schema (first deploy only).
+  const preBackup = await backup.backupBeforeTruthSchemaCreate();
+
+  await up001();
+  await up002();
+  await up003();
+  await up004();
+  await up005();
+  await up006();
+  await up007();
+  await up008();
+  await up009();
+  await up010();
+  await up011();
+  await up012();
+  await up013();
+  await up014();
+  await up015();
+  await up016();
+  await up017();
+
+  if (preBackup) {
+    await writeAudit('system', 'backup', {
+      when: 'startup_pre_truth_schema',
+      ...preBackup,
     });
-  })
-  .catch(err => {
-    console.error('Migration failed:', err);
-    process.exit(1);
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
+    console.log('Dashboard: /app/live-visitors');
+    console.log('Ingest: POST /api/ingest (header: X-Ingest-Secret or Authorization: Bearer <secret>)');
+
+    // Restore correctness ASAP: reconcile today's Shopify orders into orders_shopify (fail-open; throttled).
+    setTimeout(() => {
+      try {
+        const store = require('./store');
+        const salesTruth = require('./salesTruth');
+        const shop = salesTruth.resolveShopForSales('');
+        if (!shop) return;
+        const tz = store.resolveAdminTimeZone();
+        const nowMs = Date.now();
+        const bounds = store.getRangeBounds('today', nowMs, tz);
+        salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'today').catch(() => {});
+      } catch (_) {}
+    }, 1000);
   });
+}
+
+migrateAndStart().catch(err => {
+  console.error('Migration failed:', err);
+  process.exit(1);
+});
 
 // TTL cleanup every 2 minutes
 setInterval(() => {

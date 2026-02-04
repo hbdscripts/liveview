@@ -4,11 +4,9 @@
  * Uses financial_status=paid only so figures match Shopify dashboard Total sales and Orders.
  */
 
-const config = require('../config');
 const { getDb } = require('../db');
 const store = require('../store');
-
-const API_VERSION = '2024-01';
+const salesTruth = require('../salesTruth');
 
 async function getShopifySalesToday(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
@@ -27,45 +25,23 @@ async function getShopifySalesToday(req, res) {
   const timeZone = store.resolveAdminTimeZone();
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds('today', nowMs, timeZone);
-  const createdMin = new Date(start).toISOString();
-  const createdMax = new Date(end).toISOString();
-
-  let totalSales = 0;
-  let orderCount = 0;
-  // Only paid orders so Total sales and Orders match Shopify dashboard (excludes pending, refunded, etc.).
-  let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&financial_status=paid&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250&fields=total_price`;
-
+  // Keep truth cache warm (throttled). Fail-open: if Shopify fails, return last-synced DB truth.
   try {
-    while (nextPageUrl) {
-      const orderRes = await fetch(nextPageUrl, {
-        headers: { 'X-Shopify-Access-Token': row.access_token },
-      });
-      if (!orderRes.ok) {
-        const errText = await orderRes.text();
-        console.error('[shopify-sales] Orders API error:', orderRes.status, errText);
-        return res.status(502).json({ error: 'Shopify API error', details: orderRes.status });
-      }
-      const data = await orderRes.json();
-      const orders = data.orders || [];
-      for (const order of orders) {
-        const price = order.total_price != null ? parseFloat(String(order.total_price)) : 0;
-        if (!Number.isNaN(price)) {
-          totalSales += price;
-          orderCount += 1;
-        }
-      }
-      const link = orderRes.headers.get('link');
-      nextPageUrl = null;
-      if (link && (link.includes('rel="next"') || link.includes('rel=next'))) {
-        const match = link.match(/<([^>]+)>;\s*rel="?next"?/);
-        if (match) nextPageUrl = match[1];
-      }
-    }
-    return res.json({ salesToday: Math.round(totalSales * 100) / 100, orderCountToday: orderCount });
-  } catch (err) {
-    console.error('[shopify-sales]', err);
-    return res.status(500).json({ error: 'Failed to fetch Shopify sales' });
-  }
+    await salesTruth.ensureReconciled(shop, start, end, 'today');
+  } catch (_) {}
+
+  const [salesToday, orderCountToday, health] = await Promise.all([
+    salesTruth.getTruthSalesTotalGbp(shop, start, end),
+    salesTruth.getTruthOrderCount(shop, start, end),
+    salesTruth.getTruthHealth(shop, 'today'),
+  ]);
+
+  return res.json({
+    source: 'orders_shopify',
+    salesToday,
+    orderCountToday,
+    health,
+  });
 }
 
 module.exports = { getShopifySalesToday };

@@ -5,6 +5,7 @@
 
 const { getDb } = require('../db');
 const store = require('../store');
+const salesTruth = require('../salesTruth');
 
 const API_VERSION = '2024-01';
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
@@ -30,82 +31,55 @@ async function getShopifyBestSellers(req, res) {
       error: 'No access token for this store. Install the app (complete OAuth) first.',
     });
   }
-  const storedScopes = (typeof row.scope === 'string' ? row.scope : '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  const hasReadOrders = storedScopes.includes('read_orders');
 
   const timeZone = store.resolveAdminTimeZone();
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
-  const createdMin = new Date(start).toISOString();
-  const createdMax = new Date(end).toISOString();
 
   const token = row.access_token;
   const productMap = new Map(); // product_id -> { product_id, title, orders: Set<order_id>, revenue }
   let totalOrders = 0;
 
   try {
-    let nextPageUrl = `https://${shop}/admin/api/${API_VERSION}/orders.json?status=any&created_at_min=${encodeURIComponent(createdMin)}&created_at_max=${encodeURIComponent(createdMax)}&limit=250`;
+    // Ensure Shopify truth cache is populated for this range (throttled).
+    await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
 
-    while (nextPageUrl) {
-      const orderRes = await fetch(nextPageUrl, {
-        headers: { 'X-Shopify-Access-Token': token },
-      });
-      if (!orderRes.ok) {
-        const errText = await orderRes.text();
-        console.error('[shopify-best-sellers] Orders API error:', orderRes.status, errText);
-        let message = 'Shopify API error';
-        try {
-          const errJson = errText ? JSON.parse(errText) : null;
-          const first = errJson?.errors && (errJson.errors[0] || errJson.errors);
-          if (typeof first === 'string') message = first;
-          else if (first?.message) message = first.message;
-          if ((!message || message === 'Shopify API error') && errJson) {
-            if (typeof errJson.error === 'string') message = errJson.error;
-            else if (typeof errJson.message === 'string') message = errJson.message;
-          }
-        } catch (_) {}
-        const hint =
-          orderRes.status === 429
-            ? 'Shopify rate limit. Try again in a few minutes.'
-            : orderRes.status === 401 || orderRes.status === 403
-              ? hasReadOrders
-                ? 'Token includes read_orders but Shopify denied access. The message above is from Shopify (e.g. Protected Customer Data or access denied). In Shopify Developer or Partners: check your app’s API access / scopes; enable Protected Customer Data if required. In the store: Apps → your app → open to re-authorize.'
-                : 'Token may be missing or lack read_orders scope. Add read_orders to SHOPIFY_SCOPES, redeploy, then uninstall and reinstall the app from Shopify Admin.'
-              : undefined;
-        return res.status(502).json({
-          error: message,
-          shopifyStatus: orderRes.status,
-          hint,
-          storedScopeIncludesReadOrders: hasReadOrders,
-        });
+    const orderRows = await db.all(
+      `
+        SELECT order_id, raw_json
+        FROM orders_shopify
+        WHERE shop = ? AND created_at >= ? AND created_at < ?
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `,
+      [shop, start, end]
+    );
+
+    totalOrders = Array.isArray(orderRows) ? orderRows.length : 0;
+    for (const r of orderRows || []) {
+      let order = null;
+      try {
+        order = r && r.raw_json ? JSON.parse(r.raw_json) : null;
+      } catch (_) {
+        order = null;
       }
-      const data = await orderRes.json();
-      const orders = data.orders || [];
-      for (const order of orders) {
-        totalOrders += 1;
-        const orderId = order.id;
-        const lineItems = order.line_items || [];
-        for (const li of lineItems) {
-          const productId = li.product_id;
-          if (!productId) continue;
-          const qty = Math.max(0, parseInt(li.quantity, 10) || 0);
-          const price = parseFloat(li.price) || 0;
-          const lineTotal = qty * price;
-          const title = (li.title || '').trim() || 'Unknown';
-          let entry = productMap.get(productId);
-          if (!entry) {
-            entry = { product_id: productId, title, orderIds: new Set(), revenue: 0 };
-            productMap.set(productId, entry);
-          }
-          entry.orderIds.add(orderId);
-          entry.revenue += lineTotal;
+      const orderId = r && r.order_id ? r.order_id : (order && order.id ? String(order.id) : null);
+      const lineItems = order && Array.isArray(order.line_items) ? order.line_items : [];
+      for (const li of lineItems) {
+        const productId = li && li.product_id ? li.product_id : null;
+        if (!productId) continue;
+        const qty = Math.max(0, parseInt(li.quantity, 10) || 0);
+        const price = parseFloat(li.price) || 0;
+        const lineTotal = qty * price;
+        const title = (li.title || '').trim() || 'Unknown';
+        let entry = productMap.get(productId);
+        if (!entry) {
+          entry = { product_id: productId, title, orderIds: new Set(), revenue: 0 };
+          productMap.set(productId, entry);
         }
-      }
-      const link = orderRes.headers.get('link');
-      nextPageUrl = null;
-      if (link && (link.includes('rel="next"') || link.includes('rel=next'))) {
-        const match = link.match(/<([^>]+)>;\s*rel="?next"?/);
-        if (match) nextPageUrl = match[1];
+        if (orderId) entry.orderIds.add(orderId);
+        entry.revenue += lineTotal;
       }
     }
 
