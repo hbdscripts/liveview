@@ -50,7 +50,8 @@
     .stats-card { background: var(--card); padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
     .stats-card:last-child { margin-right: 0; }
     #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
-    /* Title row: first thead row th (match Live table th style) */
+    /* Title row: first thead row th (match Live table th style); header on one line */
+    .stats-card .by-country-table thead th { white-space: nowrap; }
     .stats-card .by-country-table thead tr:first-child th { margin: 0; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; text-align: left; background: var(--th-bg); border-bottom: var(--table-row-border); }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
     .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
