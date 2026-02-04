@@ -261,7 +261,13 @@ async function configStatus(req, res, next) {
 
   // --- Sales truth + evidence diagnostics ---
   const truth = {
-    today: { orderCount: null, revenueGbp: null, lastOrderCreatedAt: null },
+    today: {
+      orderCount: null,
+      revenueGbp: null,
+      returningCustomerCount: null,
+      returningRevenueGbp: null,
+      lastOrderCreatedAt: null,
+    },
     health: await salesTruth.getTruthHealth(shop || '', 'today'),
     lastVerify: null,
     lastReconcile: null,
@@ -274,6 +280,8 @@ async function configStatus(req, res, next) {
     try {
       truth.today.orderCount = await salesTruth.getTruthOrderCount(shop, todayBounds.start, todayBounds.end);
       truth.today.revenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, todayBounds.start, todayBounds.end);
+      truth.today.returningCustomerCount = await salesTruth.getTruthReturningCustomerCount(shop, todayBounds.start, todayBounds.end);
+      truth.today.returningRevenueGbp = await salesTruth.getTruthReturningRevenueGbp(shop, todayBounds.start, todayBounds.end);
     } catch (_) {}
     try {
       const r = await db.get(

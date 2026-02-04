@@ -48,11 +48,17 @@ async function verifySales(req, res) {
       shopify = reconcile && reconcile.shopify ? reconcile.shopify : null;
       const orderCount = await salesTruth.getTruthOrderCount(shop, start, end);
       const revenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, start, end);
-      dbTruth = { orderCount, revenueGbp };
+      const returningCustomerCount = await salesTruth.getTruthReturningCustomerCount(shop, start, end);
+      const returningRevenueGbp = await salesTruth.getTruthReturningRevenueGbp(shop, start, end);
+      dbTruth = { orderCount, revenueGbp, returningCustomerCount, returningRevenueGbp };
       if (shopify && dbTruth) {
+        const shopifyReturningCustomers = shopify?.returning?.customerCount != null ? Number(shopify.returning.customerCount) : null;
+        const shopifyReturningRevenueGbp = shopify?.returning?.revenueGbp != null ? Number(shopify.returning.revenueGbp) : null;
         diff = {
           orderCount: (dbTruth.orderCount || 0) - (shopify.orderCount || 0),
           revenueGbp: round2((dbTruth.revenueGbp || 0) - (shopify.revenueGbp || 0)),
+          returningCustomerCount: (dbTruth.returningCustomerCount || 0) - (shopifyReturningCustomers || 0),
+          returningRevenueGbp: round2((dbTruth.returningRevenueGbp || 0) - (shopifyReturningRevenueGbp || 0)),
         };
       }
     } catch (e) {
@@ -63,7 +69,7 @@ async function verifySales(req, res) {
       shopify,
       dbTruth,
       diff,
-      ok: !!(diff && diff.orderCount === 0 && diff.revenueGbp === 0),
+      ok: !!(diff && diff.orderCount === 0 && diff.revenueGbp === 0 && diff.returningCustomerCount === 0 && diff.returningRevenueGbp === 0),
       error,
     });
   }

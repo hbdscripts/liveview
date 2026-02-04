@@ -22,6 +22,7 @@ const { up: up014 } = require('./migrations/014_dedupe_legacy_purchases');
 const { up: up015 } = require('./migrations/015_backfill_session_is_returning');
 const { up: up016 } = require('./migrations/016_dedupe_h_purchases');
 const { up: up017 } = require('./migrations/017_sales_truth_and_evidence');
+const { up: up018 } = require('./migrations/018_orders_shopify_returning_fields');
 
 async function main() {
   const db = getDb();
@@ -43,6 +44,7 @@ async function main() {
   await up015();
   await up016();
   await up017();
+  await up018();
   if (preBackup) {
     await writeAudit('system', 'backup', { when: 'manual_migrate_pre_truth_schema', ...preBackup });
   }

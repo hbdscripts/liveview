@@ -2043,6 +2043,8 @@
 
           const truthOrders = (typeof truthToday.orderCount === 'number') ? truthToday.orderCount : null;
           const truthRevenue = (typeof truthToday.revenueGbp === 'number') ? truthToday.revenueGbp : null;
+          const truthReturningCustomers = (typeof truthToday.returningCustomerCount === 'number') ? truthToday.returningCustomerCount : null;
+          const truthReturningRevenue = (typeof truthToday.returningRevenueGbp === 'number') ? truthToday.returningRevenueGbp : null;
           const evTotal = (typeof evidenceToday.checkoutCompleted === 'number') ? evidenceToday.checkoutCompleted : null;
           const evLinked = (typeof evidenceToday.linked === 'number') ? evidenceToday.linked : null;
           const evUnlinked = (typeof evidenceToday.unlinked === 'number') ? evidenceToday.unlinked : null;
@@ -2056,6 +2058,13 @@
           if (shopify.storedScopes) html += row('Stored scopes', code(shopify.storedScopes));
           if (shopify.serverScopes) html += row('Server scopes', code(shopify.serverScopes));
           html += row('Today (truth)', (truthOrders != null ? (code(truthOrders) + ' orders') : '\u2014') + (truthRevenue != null ? (' · ' + code(formatRevenue(truthRevenue))) : ''));
+          if (truthReturningCustomers != null || truthReturningRevenue != null) {
+            html += row(
+              'Returning (truth)',
+              (truthReturningCustomers != null ? (code(truthReturningCustomers) + ' customers') : '\u2014') +
+                (truthReturningRevenue != null ? (' · ' + code(formatRevenue(truthReturningRevenue))) : '')
+            );
+          }
           if (typeof truthToday.lastOrderCreatedAt === 'number') html += row('Last order (created_at)', code(formatTs(truthToday.lastOrderCreatedAt)));
           html += row('Sync age', staleSec != null ? code(staleSec + 's') : '\u2014');
           if (health && health.lastSuccessAt) html += row('Last sync', code(formatTs(health.lastSuccessAt)));
