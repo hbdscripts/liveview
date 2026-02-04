@@ -1660,7 +1660,7 @@
       }
       if (sessionsEl) sessionsEl.textContent = formatSessions(sessionsVal);
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (returningEl) returningEl.textContent = returningVal != null ? formatRevenue(returningVal) : '\u2014';
+      if (returningEl) returningEl.textContent = (returningVal != null && typeof returningVal === 'number') ? formatRevenue(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
     }
@@ -2133,6 +2133,8 @@
           if (activeMainTab === 'stats') {
             refreshStats({ force: false });
           } else {
+            renderLiveKpis(statsCache || {});
+            updateKpis();
             fetchSessions();
             fetchStatsData({ force: false });
           }
