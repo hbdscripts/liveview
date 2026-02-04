@@ -43,6 +43,11 @@ async function handleOgThumb(req, res) {
     if (match && match[1]) {
       let imgUrl = match[1].trim();
       if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+      try {
+        const u = new URL(imgUrl);
+        u.searchParams.set('width', '100');
+        imgUrl = u.toString();
+      } catch (_) {}
       res.redirect(302, imgUrl);
       return;
     }
