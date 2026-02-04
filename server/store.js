@@ -595,6 +595,54 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   return { start: nowMs, end: nowMs };
 }
 
+/** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d is selected. */
+async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
+  const db = getDb();
+  const now = Date.now();
+  const tz = timeZone || resolveAdminTimeZone();
+  const bounds = getRangeBounds(rangeKey, now, tz);
+  const { start, end } = bounds;
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+  const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+
+  const baseSql = `
+    SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
+      COALESCE(s.country_code, v.last_country) AS session_country,
+      v.device, v.network_speed
+    FROM sessions s
+    LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
+    WHERE s.started_at >= ${config.dbUrl ? '$1' : '?'} AND s.started_at < ${config.dbUrl ? '$2' : '?'}
+  `;
+  const baseParams = [start, end];
+
+  const countRow = config.dbUrl
+    ? await db.get('SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= $1 AND s.started_at < $2', [start, end])
+    : await db.get('SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ? AND s.started_at < ?', [start, end]);
+  const total = (countRow && countRow.n != null) ? Number(countRow.n) : 0;
+
+  const orderLimitOffset = ' ORDER BY s.last_seen DESC LIMIT ' + (config.dbUrl ? '$3' : '?') + ' OFFSET ' + (config.dbUrl ? '$4' : '?');
+  const rows = config.dbUrl
+    ? await db.all(baseSql + orderLimitOffset, [...baseParams, limitNum, offsetNum])
+    : await db.all(baseSql + orderLimitOffset, [...baseParams, limitNum, offsetNum]);
+
+  const sessions = rows.map(r => {
+    const countryCode = (r.session_country || r.country_code || 'XX').toUpperCase().slice(0, 2);
+    const out = { ...r, country_code: countryCode };
+    delete out.session_country;
+    delete out.visitor_is_returning;
+    out.is_returning = (r.is_returning != null ? r.is_returning : r.visitor_is_returning) ? 1 : 0;
+    out.started_at = r.started_at != null ? Number(r.started_at) : null;
+    out.last_seen = r.last_seen != null ? Number(r.last_seen) : null;
+    out.purchased_at = r.purchased_at != null ? Number(r.purchased_at) : null;
+    out.checkout_started_at = r.checkout_started_at != null ? Number(r.checkout_started_at) : null;
+    out.abandoned_at = r.abandoned_at != null ? Number(r.abandoned_at) : null;
+    out.recovered_at = r.recovered_at != null ? Number(r.recovered_at) : null;
+    return out;
+  });
+
+  return { sessions, total };
+}
+
 function purchaseDedupeKeySql() {
   // Prefer checkout_token; it remains stable even when order_id is missing on early checkout_completed events.
   // TRIM() to protect against accidental whitespace.
@@ -1011,6 +1059,7 @@ module.exports = {
   insertPurchase,
   insertEvent,
   listSessions,
+  listSessionsByRange,
   getSessionEvents,
   getStats,
   getRangeBounds,

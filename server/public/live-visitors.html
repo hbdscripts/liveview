@@ -330,6 +330,7 @@
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
+      <!-- Live option injected when on Live tab only -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
       <option value="3d">Last 3 Days</option>
@@ -584,7 +585,7 @@
     let sessions = [];
     let sessionsLoadError = null;
     let statsCache = {};
-    let dateRange = 'today';
+    let dateRange = 'live';
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
     let lastSessionsFetchedAt = 0;
@@ -630,8 +631,9 @@
           .catch(function () {});
       }
     })();
-    // 'active' = last 5 min so old sales drop off; 'today' = 24h (sessions stay including old sales).
+    // 'active' = Live view (last 5 min + arrived 60 min). Range mode uses ?range= with pagination.
     let filter = 'active';
+    let sessionsTotal = null; // set when fetching by range (today/yesterday/3d/7d); null for Live
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
@@ -646,7 +648,7 @@
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
       if (!block) return;
-      const show = activeMainTab === 'spy' && dateRange === 'today';
+      const show = activeMainTab === 'spy' && dateRange === 'live';
       if (!show) {
         block.style.display = 'none';
         const el = document.getElementById('next-update-msg');
@@ -766,7 +768,7 @@
               if (link) link.href = assetsBaseUrlFallback + '/favicon.png?width=100';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = assetsBaseUrlFallback + '/cash-register.mp3';
             }
-            if (shopForSalesFallback && dateRange === 'today') {
+            if (shopForSalesFallback && (dateRange === 'today' || dateRange === 'live')) {
               if (typeof fetchShopifySales === 'function') fetchShopifySales();
               if (typeof fetchShopifySessions === 'function') fetchShopifySessions();
             }
@@ -1100,11 +1102,13 @@
 
     function renderTable() {
       const tbody = document.getElementById('table-body');
-      const sorted = getSortedSessions();
-      const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
+      const isRangeMode = sessionsTotal != null;
+      const totalPages = isRangeMode
+        ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
+        : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
       const start = (currentPage - 1) * rowsPerPage;
-      const pageSessions = sorted.slice(start, start + rowsPerPage);
+      const pageSessions = isRangeMode ? sessions : getSortedSessions().slice(start, start + rowsPerPage);
       if (sorted.length === 0) {
         var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
         tbody.innerHTML = '<tr><td colspan="9" class="empty">' + escapeHtml(emptyMsg) + '</td></tr>';
@@ -1187,7 +1191,7 @@
       var shop = getShopForSales();
       if (!shop || dateRange !== 'today') {
         // If the store-base-url lookup is done and we still have no shop, stop waiting and fall back to DB.
-        if (dateRange === 'today' && storeBaseUrlLoaded && !shop) shopifySalesTodayLoaded = true;
+        if ((dateRange === 'today' || dateRange === 'live') && storeBaseUrlLoaded && !shop) shopifySalesTodayLoaded = true;
         shopifySalesTodayLoading = false;
         return;
       }
@@ -1216,7 +1220,7 @@
     function fetchShopifySessions() {
       var shop = getShopForSales();
       if (!shop || dateRange !== 'today') {
-        if (dateRange === 'today' && storeBaseUrlLoaded && !shop) shopifySessionsTodayLoaded = true;
+        if ((dateRange === 'today' || dateRange === 'live') && storeBaseUrlLoaded && !shop) shopifySessionsTodayLoaded = true;
         shopifySessionsTodayLoading = false;
         return;
       }
@@ -1457,7 +1461,7 @@
       const salesTodayEl = document.getElementById('sales-today');
       const baseSales = (sales[dateRange] != null ? sales[dateRange] : 0);
       const waitingForShopify = shouldWaitForShopifySalesToday();
-      if (dateRange === 'today' && waitingForShopify) {
+      if ((dateRange === 'today' || dateRange === 'live') && waitingForShopify) {
         if (shopifySalesToday != null) {
           if (salesTodayEl) salesTodayEl.textContent = formatRevenue(shopifySalesToday);
         } else if (!shopifySalesTodayLoaded) {
@@ -1468,7 +1472,7 @@
           if (salesTodayEl) salesTodayEl.textContent = formatRevenue(baseSales);
         }
       } else {
-        const mainSales = (dateRange === 'today' && shopifySalesToday != null) ? shopifySalesToday : baseSales;
+        const mainSales = ((dateRange === 'today' || dateRange === 'live') && shopifySalesToday != null) ? shopifySalesToday : baseSales;
         if (salesTodayEl) salesTodayEl.textContent = formatRevenue(mainSales);
       }
       const salesYesterdayEl = document.getElementById('sales-yesterday');
@@ -1557,8 +1561,31 @@
         const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
         label = opt && opt.textContent ? String(opt.textContent).trim() : null;
       }
-      const fallback = { today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days' };
-      if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
+      const fallback = { live: 'Live', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days' };
+      if (textEl) textEl.textContent = label || fallback[dateRange] || 'Live';
+    }
+
+    function syncDateSelectOptions() {
+      const sel = document.getElementById('global-date-select');
+      if (!sel) return;
+      const hasLive = sel.querySelector('option[value="live"]');
+      if (activeMainTab === 'spy') {
+        if (!hasLive) {
+          const opt = document.createElement('option');
+          opt.value = 'live';
+          opt.textContent = 'Live';
+          sel.insertBefore(opt, sel.firstChild);
+        }
+        sel.value = dateRange;
+      } else {
+        if (hasLive) hasLive.remove();
+        if (dateRange === 'live') {
+          dateRange = 'today';
+          sel.value = 'today';
+          sessionsTotal = null;
+        }
+      }
+      updateLiveViewTitle();
     }
 
     function applyRangeAvailable(available) {
@@ -1566,10 +1593,12 @@
       if (!sel) return;
       const opts = sel.querySelectorAll('option');
       const keys = ['today', 'yesterday', '3d', '7d'];
+      const start = (activeMainTab === 'spy' && opts[0] && opts[0].value === 'live') ? 1 : 0;
       keys.forEach((key, i) => {
-        if (opts[i]) opts[i].disabled = !available[key];
+        const o = opts[start + i];
+        if (o) o.disabled = !available[key];
       });
-      if (!available[dateRange]) {
+      if (dateRange !== 'live' && !available[dateRange]) {
         dateRange = 'today';
         sel.value = 'today';
       }
@@ -1599,14 +1628,15 @@
       const conv = data.conversion || {};
       const aovMap = data.aov || {};
       const bounceMap = data.bounce || {};
-      const forRange = breakdown[dateRange];
+      const kpiRange = dateRange === 'live' ? 'today' : dateRange;
+      const forRange = breakdown[kpiRange];
       let sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
-      let salesVal = sales[dateRange];
-      const returningVal = returningRevenue[dateRange];
-      let convVal = conv[dateRange];
-      let aovVal = aovMap[dateRange];
-      const bounceVal = bounceMap[dateRange];
-      if (dateRange === 'today') {
+      let salesVal = sales[kpiRange];
+      const returningVal = returningRevenue[kpiRange];
+      let convVal = conv[kpiRange];
+      let aovVal = aovMap[kpiRange];
+      const bounceVal = bounceMap[kpiRange];
+      if (kpiRange === 'today') {
         if (typeof shopifySalesToday === 'number') salesVal = shopifySalesToday;
         if (typeof shopifySessionsToday === 'number') sessionsVal = shopifySessionsToday;
         if (typeof shopifySessionsToday === 'number' && shopifySessionsToday > 0 && typeof shopifyOrderCountToday === 'number') {
@@ -1650,7 +1680,7 @@
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderStats(data && typeof data.country === 'object' ? data : {});
-          if (dateRange === 'today' && activeMainTab === 'spy' && getShopForSales()) {
+          if ((dateRange === 'today' || dateRange === 'live') && activeMainTab === 'spy' && getShopForSales()) {
             fetchShopifySales();
             fetchShopifySessions();
           }
@@ -1698,11 +1728,21 @@
       if (liveRefreshInFlight) return liveRefreshInFlight;
       var overlay = document.getElementById('sessions-loading-overlay');
       if (overlay) overlay.style.display = 'flex';
-      liveRefreshInFlight = fetch(API + '/api/sessions?filter=' + filter + '&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+      var isLive = dateRange === 'live';
+      var url;
+      if (isLive) {
+        url = API + '/api/sessions?filter=active&_=' + Date.now();
+      } else {
+        var limit = rowsPerPage;
+        var offset = (currentPage - 1) * rowsPerPage;
+        url = API + '/api/sessions?range=' + encodeURIComponent(dateRange) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
+      }
+      liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {
           if (!r.ok) {
             sessionsLoadError = r.status === 502 ? 'Server error (502). Try again or refresh.' : 'Server error (' + r.status + ').';
             sessions = [];
+            sessionsTotal = null;
             renderTable();
             return null;
           }
@@ -1711,26 +1751,32 @@
         .then(function(data) {
           if (data == null) return null;
           sessionsLoadError = null;
-          var next = data.sessions || [];
-          var cutoff = Date.now() - ACTIVE_WINDOW_MS;
-          var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
-          next = next.filter(function(s) {
-            return (s.last_seen != null && s.last_seen >= cutoff) &&
-              (s.started_at != null && s.started_at >= arrivedCutoff);
-          });
-          next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-          var listChanged = !sessionIdsEqual(sessions, next);
-          sessions = next;
-          if (listChanged) currentPage = 1;
+          if (isLive) {
+            sessionsTotal = null;
+            var next = data.sessions || [];
+            var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+            var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
+            next = next.filter(function(s) {
+              return (s.last_seen != null && s.last_seen >= cutoff) &&
+                (s.started_at != null && s.started_at >= arrivedCutoff);
+            });
+            next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
+            var listChanged = !sessionIdsEqual(sessions, next);
+            sessions = next;
+            if (listChanged) currentPage = 1;
+          } else {
+            sessions = data.sessions || [];
+            sessionsTotal = typeof data.total === 'number' ? data.total : sessions.length;
+          }
           lastSessionsFetchedAt = Date.now();
           nextLiveAt = Date.now() + LIVE_REFRESH_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderTable();
           updateKpis();
-          return next;
+          return sessions;
         })
-        .catch(function() { sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; currentPage = 1; renderTable(); return null; })
+        .catch(function() { sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
         .finally(function() {
           liveRefreshInFlight = null;
           if (overlay) overlay.style.display = 'none';
@@ -1739,9 +1785,14 @@
     }
 
     function updateKpis() {
-      const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
       const el = document.getElementById('online-count');
-      if (el) el.textContent = active;
+      if (!el) return;
+      if (dateRange !== 'live') {
+        el.textContent = '\u2014';
+        return;
+      }
+      const active = sessions.filter(s => s.last_seen >= Date.now() - ACTIVE_WINDOW_MS).length;
+      el.textContent = active;
     }
 
     function cfSection(title, value) {
@@ -1812,11 +1863,17 @@
     });
 
     document.getElementById('pagination-prev').addEventListener('click', function() {
-      if (currentPage > 1) { currentPage--; renderTable(); }
+      if (currentPage <= 1) return;
+      currentPage--;
+      if (sessionsTotal != null) fetchSessions(); else renderTable();
     });
     document.getElementById('pagination-next').addEventListener('click', function() {
-      const totalPages = Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
-      if (currentPage < totalPages) { currentPage++; renderTable(); }
+      const totalPages = sessionsTotal != null
+        ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
+        : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
+      if (currentPage >= totalPages) return;
+      currentPage++;
+      if (sessionsTotal != null) fetchSessions(); else renderTable();
     });
 
     setupSortableHeaders();
@@ -1867,8 +1924,7 @@
           rowsPerPage = n;
           try { sessionStorage.setItem(ROWS_PER_PAGE_KEY, String(n)); } catch (_) {}
           currentPage = 1;
-          renderTable();
-          updateKpis();
+          if (sessionsTotal != null) fetchSessions(); else { renderTable(); updateKpis(); }
         });
       }
       if (document.readyState === 'loading') {
@@ -2030,16 +2086,18 @@
       })();
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
+        syncDateSelectOptions();
         dateSelect.value = dateRange;
         updateLiveViewTitle();
         dateSelect.addEventListener('change', function() {
           dateRange = this.value;
-          if (dateRange !== 'today') { shopifySalesToday = null; shopifySessionsToday = null; }
+          if (dateRange !== 'today' && dateRange !== 'live') { shopifySalesToday = null; shopifySessionsToday = null; }
           countryPage = 1;
           aovPage = 1;
           bestSellersPage = 1;
           worstProductsPage = 1;
           bestVariantsPage = 1;
+          currentPage = 1;
           updateLiveViewTitle();
           bestSellersCache = null;
           worstProductsCache = null;
@@ -2049,7 +2107,7 @@
           if (activeMainTab === 'stats') {
             refreshStats({ force: false });
           } else {
-            if (dateRange === 'today') fetchSessions();
+            fetchSessions();
             fetchStatsData({ force: false });
           }
         });
@@ -2068,6 +2126,7 @@
           if (panelSpy) { panelSpy.classList.toggle('active', isSpy); panelSpy.style.display = isSpy ? '' : 'none'; }
           if (panelStats) { panelStats.classList.toggle('active', !isSpy); panelStats.style.display = isSpy ? 'none' : ''; }
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
+          syncDateSelectOptions();
           updateNextUpdateUi();
           if (tab === 'stats') {
             // Always refresh when entering Stats so main stats + BEST + WORST + VARIANTS load (no stuck "Loading...")
@@ -2127,7 +2186,7 @@
 
     function onLiveAutoRefreshTick() {
       if (activeMainTab !== 'spy') return;
-      if (dateRange !== 'today') return;
+      if (dateRange !== 'live') return;
       if (document.visibilityState !== 'visible') return;
       fetchSessions();
     }
@@ -2145,7 +2204,7 @@
     setInterval(tickTimeOnSite, 30000);
     // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
     setInterval(function() {
-      if (activeMainTab !== 'spy' || dateRange !== 'today') return;
+      if (activeMainTab !== 'spy' || dateRange !== 'live') return;
       var cutoff = Date.now() - ACTIVE_WINDOW_MS;
       var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
       var before = sessions.length;
@@ -2171,6 +2230,7 @@
     const es = new EventSource(API + '/api/stream');
     es.onmessage = (e) => {
       try {
+        if (activeMainTab !== 'spy' || dateRange !== 'live') return;
         const msg = JSON.parse(e.data);
         if (msg.type === 'session_update' && msg.session) {
           const session = msg.session;
