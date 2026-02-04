@@ -55,11 +55,21 @@ async function getShopifyBestVariants(req, res) {
       },
       async () => {
         const t0 = Date.now();
+        let msReconcile = 0;
+        let msDbTotalOrders = 0;
+        let msDbCount = 0;
+        let msDbAgg = 0;
+        let msMeta = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
+        const tReconcile0 = Date.now();
         await salesTruth.ensureReconciled(shop, start, end, `best_variants_${range}`);
+        msReconcile = Date.now() - tReconcile0;
 
+        const tTotalOrders0 = Date.now();
         const totalOrders = await salesTruth.getTruthOrderCount(shop, start, end);
+        msDbTotalOrders = Date.now() - tTotalOrders0;
 
+        const tCount0 = Date.now();
         const countRow = await db.get(
           `
             SELECT COUNT(DISTINCT variant_id) AS n
@@ -72,11 +82,13 @@ async function getShopifyBestVariants(req, res) {
           `,
           [shop, start, end]
         );
+        msDbCount = Date.now() - tCount0;
         const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
         const page = clampInt(req.query.page, 1, 1, totalPages);
         const offset = (page - 1) * pageSize;
 
+        const tAgg0 = Date.now();
         const rows = await db.all(
           `
             SELECT
@@ -98,6 +110,7 @@ async function getShopifyBestVariants(req, res) {
           `,
           [shop, start, end, pageSize, offset]
         );
+        msDbAgg = Date.now() - tAgg0;
 
         const pageItems = (rows || []).map((r) => ({
           variant_id: r && r.variant_id != null ? String(r.variant_id) : '',
@@ -108,6 +121,7 @@ async function getShopifyBestVariants(req, res) {
           revenue: Math.round(((r && r.revenue != null ? Number(r.revenue) : 0) || 0) * 100) / 100,
         }));
 
+        const tMeta0 = Date.now();
         await Promise.all(
           pageItems.map(async (v) => {
             try {
@@ -120,10 +134,22 @@ async function getShopifyBestVariants(req, res) {
             }
           })
         );
+        msMeta = Date.now() - tMeta0;
 
         const t1 = Date.now();
-        if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
-          console.log('[shopify-best-variants] range=%s page=%s ms=%s', range, page, (t1 - t0));
+        const totalMs = t1 - t0;
+        if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
+          console.log(
+            '[shopify-best-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_totalOrders=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
+            range,
+            page,
+            totalMs,
+            msReconcile,
+            msDbTotalOrders,
+            msDbCount,
+            msDbAgg,
+            msMeta
+          );
         }
 
         return { bestVariants: pageItems, totalOrders, page, pageSize, totalCount };

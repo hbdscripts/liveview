@@ -58,11 +58,21 @@ async function getShopifyBestSellers(req, res) {
       },
       async () => {
         const t0 = Date.now();
+        let msReconcile = 0;
+        let msDbTotalOrders = 0;
+        let msDbCount = 0;
+        let msDbAgg = 0;
+        let msMeta = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
+        const tReconcile0 = Date.now();
         await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
+        msReconcile = Date.now() - tReconcile0;
 
+        const tTotalOrders0 = Date.now();
         const totalOrders = await salesTruth.getTruthOrderCount(shop, start, end);
+        msDbTotalOrders = Date.now() - tTotalOrders0;
 
+        const tCount0 = Date.now();
         const countRow = await db.get(
           `
             SELECT COUNT(DISTINCT product_id) AS n
@@ -75,6 +85,7 @@ async function getShopifyBestSellers(req, res) {
           `,
           [shop, start, end]
         );
+        msDbCount = Date.now() - tCount0;
         const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
         const page = clampInt(req.query.page, 1, 1, totalPages);
@@ -85,6 +96,7 @@ async function getShopifyBestSellers(req, res) {
             ? `orders ${dir.toUpperCase()}, revenue ${dir.toUpperCase()}`
             : `revenue ${dir.toUpperCase()}, orders ${dir.toUpperCase()}`;
 
+        const tAgg0 = Date.now();
         const rows = await db.all(
           `
             SELECT
@@ -104,6 +116,7 @@ async function getShopifyBestSellers(req, res) {
           `,
           [shop, start, end, pageSize, offset]
         );
+        msDbAgg = Date.now() - tAgg0;
 
         const pageItems = (rows || []).map((r) => ({
           product_id: r && r.product_id != null ? String(r.product_id) : '',
@@ -112,6 +125,7 @@ async function getShopifyBestSellers(req, res) {
           revenue: Math.round(((r && r.revenue != null ? Number(r.revenue) : 0) || 0) * 100) / 100,
         }));
 
+        const tMeta0 = Date.now();
         await Promise.all(
           pageItems.map(async (p) => {
             try {
@@ -124,6 +138,7 @@ async function getShopifyBestSellers(req, res) {
             }
           })
         );
+        msMeta = Date.now() - tMeta0;
 
         const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
         const bestSellers = pageItems.map((p) => ({
@@ -137,8 +152,21 @@ async function getShopifyBestSellers(req, res) {
         }));
 
         const t1 = Date.now();
-        if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
-          console.log('[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms=%s', range, sort, dir, page, (t1 - t0));
+        const totalMs = t1 - t0;
+        if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
+          console.log(
+            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_totalOrders=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
+            range,
+            sort,
+            dir,
+            page,
+            totalMs,
+            msReconcile,
+            msDbTotalOrders,
+            msDbCount,
+            msDbAgg,
+            msMeta
+          );
         }
 
         return { bestSellers, totalOrders, page, pageSize, totalCount, sort, dir };

@@ -18,6 +18,7 @@ function getStats(req, res, next) {
   const rangeKeyRaw = req && req.query && typeof req.query.range === 'string' ? req.query.range : '';
   const rangeKey = rangeKeyRaw ? String(rangeKeyRaw).trim().toLowerCase() : '';
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
+  const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
   const now = Date.now();
   const memoKey = rangeKey || '';
   const memo = statsMemoByKey.get(memoKey) || { at: 0, data: null, inflight: null };
@@ -49,9 +50,21 @@ function getStats(req, res, next) {
       ttlMs: 15 * 60 * 1000,
       force,
     },
-    () => store.getStats({ trafficMode, rangeKey: rangeKey || undefined })
+    () => {
+      const t0 = Date.now();
+      return store.getStats({ trafficMode, rangeKey: rangeKey || undefined }).then((data) => {
+        const totalMs = Date.now() - t0;
+        if (timing || totalMs > 2000) {
+          console.log('[stats] range=%s ms_total=%s', rangeKey || 'default', totalMs);
+        }
+        return data;
+      });
+    }
   )
-    .then((r) => (r && r.ok ? r.data : null))
+    .then((r) => {
+      if (timing) console.log('[stats] range=%s cacheHit=%s', rangeKey || 'default', r && r.cacheHit ? 1 : 0);
+      return r && r.ok ? r.data : null;
+    })
     .then((data) => {
       if (!data) throw new Error('stats_cache_failed');
       statsMemoByKey.set(memoKey, { at: Date.now(), data, inflight: null });

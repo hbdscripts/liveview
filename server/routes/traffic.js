@@ -199,9 +199,17 @@ async function getTraffic(req, res) {
     },
     async () => {
       const t0 = Date.now();
+      let msAvailSources = 0;
+      let msSessionsBySource = 0;
+      let msSalesBySource = 0;
+      let msAvailTypes = 0;
+      let msSessionsByPair = 0;
+      let msSalesByPair = 0;
+      let msBuild = 0;
 
       // --- Available Sources (last 30d) ---
       const since30d = now - 30 * 24 * 60 * 60 * 1000;
+      const tAvail0 = Date.now();
       const availableSources = await db.all(
         `
           SELECT traffic_source_key AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
@@ -214,8 +222,10 @@ async function getTraffic(req, res) {
         `,
         [since30d]
       );
+      msAvailSources = Date.now() - tAvail0;
 
       // --- Source breakdown (range) ---
+      const tSessionsBySource0 = Date.now();
       const sessionsBySourceRows = await db.all(
         `
           SELECT traffic_source_key AS key, COUNT(*) AS sessions
@@ -233,7 +243,9 @@ async function getTraffic(req, res) {
         if (!k) continue;
         sessionsBySource.set(k, Number(r.sessions) || 0);
       }
+      msSessionsBySource = Date.now() - tSessionsBySource0;
 
+      const tSalesBySource0 = Date.now();
       let salesBySource = new Map();
       if (reporting.ordersSource === 'pixel') {
         const salesRows = await db.all(
@@ -284,6 +296,7 @@ async function getTraffic(req, res) {
         );
         salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
       }
+      msSalesBySource = Date.now() - tSalesBySource0;
 
       const sourceRows = (prefs.sourcesEnabled || []).map((key) => {
         const sessions = sessionsBySource.get(key) || 0;
@@ -301,6 +314,7 @@ async function getTraffic(req, res) {
       });
 
       // --- Available Types (last 30d) ---
+      const tAvailTypes0 = Date.now();
       const sessionsByDevice30 = await db.all(
         `
           SELECT ua_device_type AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
@@ -325,8 +339,10 @@ async function getTraffic(req, res) {
         pushAvailType('device:' + k, Number(r?.sessions) || 0, r?.last_seen);
       }
       availableTypes.sort((a, b) => (b.sessions - a.sessions) || ((b.last_seen || 0) - (a.last_seen || 0)));
+      msAvailTypes = Date.now() - tAvailTypes0;
 
       // --- Type breakdown (range): device -> platform ---
+      const tSessionsByPair0 = Date.now();
       const sessionsByPairRows = await db.all(
         `
           SELECT
@@ -351,8 +367,10 @@ async function getTraffic(req, res) {
         if (!platformsByDevice.has(device)) platformsByDevice.set(device, new Set());
         platformsByDevice.get(device).add(platform);
       }
+      msSessionsByPair = Date.now() - tSessionsByPair0;
 
       // --- Type breakdown (range): sales ---
+      const tSalesByPair0 = Date.now();
       let salesByPair = new Map();
       if (reporting.ordersSource === 'pixel') {
         const salesPairRows = await db.all(
@@ -409,7 +427,9 @@ async function getTraffic(req, res) {
         );
         salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
       }
+      msSalesByPair = Date.now() - tSalesByPair0;
 
+      const tBuild0 = Date.now();
       const platformOrder = {
         desktop: ['windows', 'mac', 'linux', 'chromeos', 'other'],
         mobile: ['ios', 'android', 'other'],
@@ -465,10 +485,23 @@ async function getTraffic(req, res) {
           children,
         };
       });
+      msBuild = Date.now() - tBuild0;
 
       const t1 = Date.now();
-      if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
-        console.log('[traffic] range=%s ms=%s', rangeKey, (t1 - t0));
+      const totalMs = t1 - t0;
+      if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
+        console.log(
+          '[traffic] range=%s ms_total=%s ms_availSources=%s ms_sessionsBySource=%s ms_salesBySource=%s ms_availTypes=%s ms_sessionsByPair=%s ms_salesByPair=%s ms_build=%s',
+          rangeKey,
+          totalMs,
+          msAvailSources,
+          msSessionsBySource,
+          msSalesBySource,
+          msAvailTypes,
+          msSessionsByPair,
+          msSalesByPair,
+          msBuild
+        );
       }
 
       return {

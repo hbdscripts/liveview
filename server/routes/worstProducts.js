@@ -72,12 +72,18 @@ async function getWorstProducts(req, res) {
     },
     async () => {
       const t0 = Date.now();
+      let msReconcile = 0;
+      let msRows = 0;
+      let msAgg = 0;
       if (shop && reporting.ordersSource === 'orders_shopify') {
         // Best-effort: keep truth cache warm for this range (throttled).
+        const tReconcile0 = Date.now();
         try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
+        msReconcile = Date.now() - tReconcile0;
       }
 
       // Session landings, with optional linked truth orders for attribution (sum(revenue) <= truth total).
+      const tRows0 = Date.now();
       const rows = (reporting.ordersSource === 'pixel') ? await db.all(
         `
           SELECT
@@ -160,7 +166,9 @@ async function getWorstProducts(req, res) {
         `,
         [start, end]
       ));
+      msRows = Date.now() - tRows0;
 
+      const tAgg0 = Date.now();
       const ratesToGbp = await fx.getRatesToGbp();
       const map = new Map(); // handle -> { handle, clicks, orderIds:Set, converted, revenue }
       for (const r of rows || []) {
@@ -218,10 +226,20 @@ async function getWorstProducts(req, res) {
       const page = clampInt(req.query.page, 1, 1, totalPages);
       const startIdx = (page - 1) * pageSize;
       const pageItems = list.slice(startIdx, startIdx + pageSize);
+      msAgg = Date.now() - tAgg0;
 
       const t1 = Date.now();
-      if (req.query && (req.query.timing === '1' || (t1 - t0) > 1500)) {
-        console.log('[worst-products] range=%s page=%s ms=%s', range, page, (t1 - t0));
+      const totalMs = t1 - t0;
+      if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
+        console.log(
+          '[worst-products] range=%s page=%s ms_total=%s ms_reconcile=%s ms_rows=%s ms_agg=%s',
+          range,
+          page,
+          totalMs,
+          msReconcile,
+          msRows,
+          msAgg
+        );
       }
 
       return {
