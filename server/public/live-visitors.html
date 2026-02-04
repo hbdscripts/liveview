@@ -2080,8 +2080,9 @@
           if (health && health.lastError) html += row('Last error', code(String(health.lastError).slice(0, 220)), 'missing');
           if (truth && truth.lastVerify && truth.lastVerify.ts) {
             html += row('Last verify', (truth.lastVerify.ok ? '<span class="config-row ok">OK</span>' : '<span class="config-row missing">CHECK</span>') + ' · ' + code(formatTs(truth.lastVerify.ts)));
-            if (truth.lastVerify.todayDiff && (truth.lastVerify.todayDiff.orderCount !== 0 || truth.lastVerify.todayDiff.revenueGbp !== 0)) {
-              html += row('Verify diff (today)', code(JSON.stringify(truth.lastVerify.todayDiff)), 'missing');
+            const vd = truth.lastVerify.todayDiff || null;
+            if (vd && (vd.orderCount !== 0 || vd.revenueGbp !== 0 || vd.returningCustomerCount !== 0 || vd.returningRevenueGbp !== 0)) {
+              html += row('Verify diff (today)', code(JSON.stringify(vd)), 'missing');
             }
           }
 
