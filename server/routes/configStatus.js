@@ -97,6 +97,7 @@ async function configStatus(req, res, next) {
     botsLast24h: 0,
     humanLast24h: 0,
     shopifySessionsToday: null,
+    shopifySessionsTodayNote: '',
     sessionsToday: null,
     botsToday: 0,
     humanToday: 0,
@@ -174,10 +175,20 @@ async function configStatus(req, res, next) {
   const shop = (req.query.shop || config.allowedShopDomain || config.shopDomain || '').trim().toLowerCase();
   if (shop && shop.endsWith('.myshopify.com')) {
     try {
-      const row = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
-      if (row?.access_token) {
-        const n = await fetchShopifySessionsToday(shop, row.access_token);
-        if (typeof n === 'number') health.shopifySessionsToday = n;
+      const row = await db.get('SELECT access_token, scope FROM shop_sessions WHERE shop = ?', [shop]);
+      const token = row?.access_token;
+      const scope = typeof row?.scope === 'string' ? row.scope : '';
+      if (!token) {
+        health.shopifySessionsTodayNote = 'No Shopify access token found for this shop (complete OAuth / reinstall).';
+      } else if (!scope.toLowerCase().split(',').map(s => s.trim()).includes('read_reports')) {
+        health.shopifySessionsTodayNote = 'Shopify Sessions requires read_reports. Re-authorize the app so the store grants the new scope.';
+      } else {
+        const n = await fetchShopifySessionsToday(shop, token);
+        if (typeof n === 'number') {
+          health.shopifySessionsToday = n;
+        } else {
+          health.shopifySessionsTodayNote = 'Shopify Sessions unavailable (ShopifyQL requires read_reports + protected customer data access).';
+        }
       }
     } catch (_) {}
   }

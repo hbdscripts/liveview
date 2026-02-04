@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="icon" type="image/png" href="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770086377" />
+  <link rel="icon" type="image/png" href="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770086377&width=100" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -48,7 +48,9 @@
     .main { padding: 1.5rem; margin: 0 auto; }
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; align-items: stretch; }
     .stats-card { background: var(--card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; }
-    #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; max-height: 320px; }
+    /* Stats tables: keep cards tall so they don't look empty while loading */
+    #tab-panel-stats .stats-card { min-height: 500px; }
+    #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-aov { display: flex; flex-direction: column; }
     #stats-country .stats-card-header h3, #stats-best-sellers .stats-card-header h3, #stats-worst-products .stats-card-header h3, #stats-best-variants .stats-card-header h3 { margin-bottom: -30px; position: absolute; transition: opacity 0.15s ease; }
     #stats-country.scrolled .stats-card-header h3, #stats-best-sellers.scrolled .stats-card-header h3, #stats-worst-products.scrolled .stats-card-header h3, #stats-best-variants.scrolled .stats-card-header h3 { opacity: 0; pointer-events: none; }
     .stats-card h3 { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -146,7 +148,8 @@
 .next-update-block { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; color: var(--muted); }
 .table-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); z-index: 2; }
 .table-loading-overlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; }
-/* Tab switch: Spy View (main table) vs Stats (cards) */
+.inline-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; }
+/* Tab switch: Live (main table) vs Stats (cards) */
 .main-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
 .main-tabs [role="tab"] { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; }
 .main-tabs [role="tab"]:hover { color: var(--text); }
@@ -261,7 +264,7 @@
       </select>
     </div>
     <div class="dashboard-top-bar-center">
-      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=240" alt="HBD" width="60" height="auto" loading="lazy">
+      <img class="top-bar-logo" src="https://www.hbdjewellery.com/cdn/shop/files/HBDDarkLogo.webp?width=100" alt="HBD" width="60" height="auto" loading="lazy">
     </div>
     <div class="dashboard-top-bar-right">
       <span class="server-time-block"><span id="server-time-msg">--:--</span> <span class="server-time-tz" aria-label="UK time (GMT/BST)">UK</span></span>
@@ -280,12 +283,12 @@
   </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
-    <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Spy View</button>
+    <button type="button" role="tab" id="tab-spy" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">Live</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Stats</button>
   </div>
   <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
-    <h2 class="table-title" id="table-title"><span class="live-view-spy-icon" id="live-view-spy-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 5C9.89024 5 7.99432 5.92747 6.49128 7.00884C4.98034 8.0959 3.78013 9.40024 3.04026 10.2985C2.21965 11.2948 2.21965 12.7052 3.04026 13.7015C3.78013 14.5998 4.98034 15.9041 6.49128 16.9912C7.99432 18.0725 9.89024 19 12.0002 19C14.1101 19 16.006 18.0725 17.5091 16.9912C19.02 15.9041 20.2202 14.5998 20.9601 13.7015C21.7807 12.7052 21.7807 11.2948 20.9601 10.2985C20.2202 9.40025 19.02 8.0959 17.5091 7.00885C16.006 5.92747 14.1101 5 12.0002 5ZM12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10ZM8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12Z" fill="currentColor"></path></svg></span><span id="table-title-text">Spy View</span></h2>
+    <h2 class="table-title" id="table-title"><span class="live-view-spy-icon" id="live-view-spy-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 5C9.89024 5 7.99432 5.92747 6.49128 7.00884C4.98034 8.0959 3.78013 9.40024 3.04026 10.2985C2.21965 11.2948 2.21965 12.7052 3.04026 13.7015C3.78013 14.5998 4.98034 15.9041 6.49128 16.9912C7.99432 18.0725 9.89024 19 12.0002 19C14.1101 19 16.006 18.0725 17.5091 16.9912C19.02 15.9041 20.2202 14.5998 20.9601 13.7015C21.7807 12.7052 21.7807 11.2948 20.9601 10.2985C20.2202 9.40025 19.02 8.0959 17.5091 7.00885C16.006 5.92747 14.1101 5 12.0002 5ZM12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10ZM8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12Z" fill="currentColor"></path></svg></span><span id="table-title-text">Today</span></h2>
     <div class="live-view-online live-view-online-center"><span class="online-dot"></span> Online: <strong id="online-count">0</strong></div>
     <span class="next-update-block">Next update in: <span id="next-update-msg" class="next-update-timer">-- s</span></span>
   </div>
@@ -512,7 +515,8 @@
 
   <script>
     const API = '';
-    const STATS_INTERVAL_MS = 60000;
+    const LIVE_REFRESH_MS = 60000;
+    const STATS_REFRESH_MS = 15 * 60 * 1000;
     fetch(API + '/api/version').then(r => r.json()).then(d => { const el = document.getElementById('app-version'); if (el) el.textContent = d.version || '—'; }).catch(() => {});
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
@@ -529,7 +533,12 @@
     let sessions = [];
     let statsCache = {};
     let dateRange = 'today';
-    let nextStatsAt = 0;
+    let activeMainTab = 'spy';
+    let nextLiveAt = 0;
+    let lastSessionsFetchedAt = 0;
+    let lastStatsFetchedAt = 0;
+    let liveRefreshInFlight = null;
+    let statsRefreshInFlight = null;
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let shopifySalesToday = null;
@@ -622,10 +631,22 @@
       return countryNames[c] || c;
     }
 
+    // Add Shopify-style width param to hotlinked images.
+    function hotImg(url) {
+      if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return url;
+      try {
+        const u = new URL(url);
+        u.searchParams.set('width', '100');
+        return u.toString();
+      } catch (_) {
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100';
+      }
+    }
+
     function flagImg(code) {
-      if (!code || code === 'XX') return '<img class="flag-img" src="https://flagcdn.com/w40/xx.png" alt="?" loading="lazy">';
+      if (!code || code === 'XX') return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/xx.png') + '" alt="?" loading="lazy">';
       const c = (code || 'xx').toLowerCase().slice(0, 2);
-      return '<img class="flag-img" src="https://flagcdn.com/w40/' + escapeHtml(c) + '.png" alt="' + escapeHtml(code) + '" loading="lazy">';
+      return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + escapeHtml(c) + '.png') + '" alt="' + escapeHtml(code) + '" loading="lazy">';
     }
 
     function arrivedAgo(startedAt) {
@@ -695,8 +716,8 @@
       return (API || '') + '/assets';
     }
 
-    var HICON_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894';
-    var DOLLAR_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223';
+    var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
+    var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
 
     function titleCaseFromHandle(handle) {
       if (typeof handle !== 'string') return null;
@@ -833,19 +854,19 @@
       return 'Direct';
     }
 
-    const SOURCE_GOOGLE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632';
-    const SOURCE_DIRECT_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632';
-    const SOURCE_CONVERTED_BADGE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770087896';
-    const SOURCE_UNKNOWN_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816';
-    const SOURCE_OMNISEND_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052';
-    const SOURCE_BING_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094';
-    const SOURCE_LIVEVIEW_SOURCE_IMG = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/liveview-source-logo.png?v=1770141081';
+    const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
+    const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
+    const SOURCE_CONVERTED_BADGE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770087896');
+    const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
+    const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
+    const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
+    const SOURCE_LIVEVIEW_SOURCE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/liveview-source-logo.png?v=1770141081');
 
     function sourceCell(s) {
       function icon(src, alt, title, extraClass) {
         const cls = (extraClass ? (extraClass + ' ') : '') + 'source-icon-img';
         const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
-        return '<img src="' + src + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
+        return '<img src="' + escapeHtml(hotImg(src) || src || '') + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
       }
 
       const out = [];
@@ -1200,7 +1221,8 @@
         const variantName = (v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
         const productName = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
         const displayName = variantName + (productName ? (' \u2014 ' + productName) : '');
-        const thumbImg = v.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(v.thumb_url) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbUrl = v.thumb_url ? (hotImg(String(v.thumb_url)) || String(v.thumb_url)) : null;
+        const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
@@ -1232,7 +1254,8 @@
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
-        const thumbImg = p.thumb_url ? '<img class="bs-thumb" src="' + escapeHtml(p.thumb_url) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbUrl = p.thumb_url ? (hotImg(String(p.thumb_url)) || String(p.thumb_url)) : null;
+        const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && p.handle) ? mainBase + '/products/' + escapeHtml(p.handle) : '';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
@@ -1450,7 +1473,7 @@
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const code = iso.toLowerCase();
         const label = countryLabel(iso);
-        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + code + '.png" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + code + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(iso) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
       }).join('');
@@ -1479,36 +1502,24 @@
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenue(r.revenue);
-        const flag = '<img class="flag-img" src="https://flagcdn.com/w40/' + ccode + '.png" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
     }
 
-    function syncCountryTableHeight() {
-      const primary = document.getElementById('stats-primary');
-      const country = document.getElementById('stats-country');
-      const bestSellers = document.getElementById('stats-best-sellers');
-      const worstProducts = document.getElementById('stats-worst-products');
-      const bestVariants = document.getElementById('stats-best-variants');
-      const aov = document.getElementById('stats-aov');
-      if (!primary || !country) return;
-      const primaryHeight = primary.getBoundingClientRect().height;
-      const h = Math.floor(primaryHeight) + 'px';
-      country.style.maxHeight = h;
-      if (bestSellers) bestSellers.style.maxHeight = h;
-      if (worstProducts) worstProducts.style.maxHeight = h;
-      if (bestVariants) bestVariants.style.maxHeight = h;
-      if (aov) aov.style.maxHeight = h;
-    }
-
     function updateLiveViewTitle() {
       const textEl = document.getElementById('table-title-text');
       const iconEl = document.getElementById('live-view-spy-icon');
-      if (!textEl) return;
-      const labels = { today: 'Spy View', yesterday: 'Yesterday', '3d': '3 Days', '7d': '7 Days' };
-      textEl.textContent = labels[dateRange] || 'Spy View';
-      if (iconEl) iconEl.style.display = dateRange === 'today' ? 'inline-flex' : 'none';
+      const sel = document.getElementById('global-date-select');
+      let label = null;
+      if (sel) {
+        const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
+        label = opt && opt.textContent ? String(opt.textContent).trim() : null;
+      }
+      const fallback = { today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days' };
+      if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
+      if (iconEl) iconEl.style.display = 'inline-flex';
     }
 
     function applyRangeAvailable(available) {
@@ -1541,7 +1552,6 @@
       renderSessions(statsCache);
       renderAov(statsCache);
       renderCountry(statsCache);
-      requestAnimationFrame(syncCountryTableHeight);
     }
 
     function fetchStats() {
@@ -1728,7 +1738,7 @@
       });
     }
 
-    fetch((function() {
+    function getConfigStatusUrl() {
       var url = API + '/api/config-status';
       try {
         var shop = getShopParam();
@@ -1736,84 +1746,112 @@
         if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
       } catch (_) {}
       return url;
-    })())
-      .then(r => r.json())
-      .then(c => {
-        function statusRow(ok, label) {
-          return '<div class="config-row ' + (ok ? 'ok' : 'missing') + '">' + (ok ? 'OK' : 'MISSING') + ' ' + label + '</div>';
-        }
-        function valueRow(label, value) {
-          return '<div class="config-row">' + escapeHtml(label) + ': ' + escapeHtml(value == null ? '' : String(value)) + '</div>';
-        }
+    }
 
-        let html = '';
-        html += statusRow(!!c.shopify?.configured, 'Shopify API');
-        html += statusRow(!!c.appUrl?.configured, 'App URL');
-        html += statusRow(!!c.ingestSecret?.configured, 'Ingest secret');
-        html += statusRow(!!c.db?.configured, 'DB (' + (c.db?.engine || 'unknown') + ')');
-        html += valueRow('Ingest URL', c.ingestUrl || '');
-        if (c.ingestPublicUrl) html += valueRow('Ingest Public URL', c.ingestPublicUrl);
-        html += valueRow('Tracking', c.trackingEnabled ? 'ON' : 'OFF');
-        if (c.sessionRetentionDays != null) html += valueRow('Session retention (days)', c.sessionRetentionDays);
-        html += statusRow(!!c.sentry?.configured, 'Sentry');
+    function refreshConfigStatus() {
+      const configStatusEl = document.getElementById('config-status');
+      if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row">Loading…</div>';
 
-        const h = c.health || null;
-        if (h) {
-          html += '<div class="config-row"><strong>Today (same timezone as Shopify)</strong></div>';
-          html += '<div class="config-row" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.5rem;">Pixel runs via Cloudflare; bots blocked at the edge never reach us.</div>';
-          if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (ours)', formatSessions(h.sessionsToday));
-          if (typeof h.shopifySessionsToday === 'number') {
-            html += valueRow('Shopify Sessions', formatSessions(h.shopifySessionsToday));
-            if (typeof h.sessionsToday === 'number') {
-              const blocked = Math.max(0, h.shopifySessionsToday - h.sessionsToday);
-              html += valueRow('Bots blocked (est.)', formatSessions(blocked));
+      return fetch(getConfigStatusUrl(), { credentials: 'same-origin', cache: 'no-store' })
+        .then(r => r.json())
+        .then(c => {
+          function statusRow(ok, label) {
+            return '<div class="config-row ' + (ok ? 'ok' : 'missing') + '">' + (ok ? 'OK' : 'MISSING') + ' ' + label + '</div>';
+          }
+          function valueRow(label, value) {
+            return '<div class="config-row">' + escapeHtml(label) + ': ' + escapeHtml(value == null ? '' : String(value)) + '</div>';
+          }
+          function noteRow(text) {
+            return '<div class="config-row" style="font-size:0.8rem;color:var(--muted);">' + escapeHtml(text) + '</div>';
+          }
+          function section(title) {
+            return '<div class="config-row" style="margin-top:0.75rem;"><strong>' + escapeHtml(title) + '</strong></div>';
+          }
+
+          let html = '';
+          html += section('Status');
+          html += statusRow(!!c.shopify?.configured, 'Shopify API');
+          html += statusRow(!!c.appUrl?.configured, 'App URL');
+          html += statusRow(!!c.ingestSecret?.configured, 'Ingest secret');
+          html += statusRow(!!c.db?.configured, 'DB (' + (c.db?.engine || 'unknown') + ')');
+          html += statusRow(!!c.sentry?.configured, 'Sentry');
+
+          html += section('Ingest');
+          html += valueRow('Ingest URL', c.ingestUrl || '');
+          if (c.ingestPublicUrl) html += valueRow('Ingest Public URL', c.ingestPublicUrl);
+          html += valueRow('Tracking', c.trackingEnabled ? 'ON' : 'OFF');
+          if (!c.trackingEnabled) html += noteRow('Tracking OFF: /api/ingest returns 204 and nothing is stored.');
+          if (c.sessionRetentionDays != null) html += valueRow('Session retention (days)', c.sessionRetentionDays);
+
+          const h = c.health || null;
+          if (h) {
+            html += section('Today');
+            if (h.timeZone) html += noteRow('Timezone: ' + h.timeZone);
+            html += noteRow('Bots blocked at edge never reach the app/DB. Tagged bots are sessions that reached the app and were classified as bot.');
+
+            if (typeof h.sessionsToday === 'number') html += valueRow('Sessions (total)', formatSessions(h.sessionsToday));
+            if (typeof h.humanToday === 'number') html += valueRow('Human sessions (used)', formatSessions(h.humanToday));
+            if (typeof h.botsToday === 'number') html += valueRow('Bot sessions tagged (reached app)', formatSessions(h.botsToday));
+            if (typeof h.botsBlockedAtEdge === 'number') html += valueRow('Bot ingest calls blocked at edge', formatSessions(h.botsBlockedAtEdge));
+
+            if (typeof h.shopifySessionsToday === 'number') {
+              html += valueRow('Shopify sessions (today)', formatSessions(h.shopifySessionsToday));
+              if (typeof h.humanToday === 'number') {
+                html += valueRow('Shopify − ours (human)', formatSessions(h.shopifySessionsToday - h.humanToday));
+              }
+            } else {
+              html += valueRow('Shopify sessions (today)', '\u2014');
+              if (h.shopifySessionsTodayNote) html += noteRow(h.shopifySessionsTodayNote);
             }
-          } else {
-            html += valueRow('Shopify Sessions', '\u2014');
-          }
-          if (typeof h.botsToday === 'number') html += valueRow('Bots (tagged)', formatSessions(h.botsToday));
-          if (typeof h.humanToday === 'number') html += valueRow('Human', formatSessions(h.humanToday));
-          if (typeof h.botsBlockedAtEdge === 'number') html += valueRow('Bots blocked', formatSessions(h.botsBlockedAtEdge));
 
-          html += '<div class="config-row" style="margin-top:0.75rem;"><strong>Data health (last 24h)</strong></div>';
-          if (h.sessions) {
-            if (typeof h.sessions.purchasedLast24h === 'number') html += valueRow('Sessions marked purchased', formatSessions(h.sessions.purchasedLast24h));
-            if (typeof h.sessions.max_last_seen === 'number') html += valueRow('Last session seen', formatTs(h.sessions.max_last_seen));
-          }
-          if (h.events && typeof h.events.checkoutCompletedLast24h === 'number') html += valueRow('checkout_completed events', formatSessions(h.events.checkoutCompletedLast24h));
-          if (h.purchases) {
-            if (typeof h.purchases.last24h === 'number') html += valueRow('Purchases rows', formatSessions(h.purchases.last24h));
-            if (typeof h.purchases.max_purchased_at === 'number') html += valueRow('Last purchase', formatTs(h.purchases.max_purchased_at));
-          }
-          if (h.sessions && h.events && h.purchases && typeof h.events.checkoutCompletedLast24h === 'number' && typeof h.purchases.last24h === 'number') {
-            if (h.events.checkoutCompletedLast24h > 0 && h.purchases.last24h === 0) {
-              html += '<div class="config-row missing">We are seeing <code>checkout_completed</code> events but not inserting purchases rows. This will make conversion look too low.</div>';
+            html += section('Health (last 24h)');
+            if (h.sessions) {
+              if (typeof h.sessions.purchasedLast24h === 'number') html += valueRow('Sessions marked purchased', formatSessions(h.sessions.purchasedLast24h));
+              if (typeof h.sessions.max_last_seen === 'number') html += valueRow('Last session seen', formatTs(h.sessions.max_last_seen));
+            }
+            if (h.events && typeof h.events.checkoutCompletedLast24h === 'number') html += valueRow('checkout_completed events', formatSessions(h.events.checkoutCompletedLast24h));
+            if (h.purchases) {
+              if (typeof h.purchases.last24h === 'number') html += valueRow('Purchases rows', formatSessions(h.purchases.last24h));
+              if (typeof h.purchases.max_purchased_at === 'number') html += valueRow('Last purchase', formatTs(h.purchases.max_purchased_at));
+            }
+            if (h.sessions && h.events && h.purchases && typeof h.events.checkoutCompletedLast24h === 'number' && typeof h.purchases.last24h === 'number') {
+              if (h.events.checkoutCompletedLast24h > 0 && h.purchases.last24h === 0) {
+                html += '<div class="config-row missing">We are seeing <code>checkout_completed</code> events but not inserting purchases rows. This will make conversion look too low.</div>';
+              }
             }
           }
-        }
 
-        if (c.db && c.db.engine === 'sqlite' && !c.db.configured) {
-          html += '<div class="config-row missing">SQLite is in use (DB_URL not set). On Railway this can reset on deploy/restart → yesterday stats will be low.</div>';
-        }
+          if (c.db && c.db.engine === 'sqlite' && !c.db.configured) {
+            html += '<div class="config-row missing">SQLite is in use (DB_URL not set). On Railway this can reset on deploy/restart → yesterday stats will be low.</div>';
+          }
 
-        const configStatusEl = document.getElementById('config-status');
-        if (configStatusEl) configStatusEl.innerHTML = html;
-        const tb = document.getElementById('tracking-btn');
-        const tl = document.getElementById('tracking-label');
-        if (tb) { tb.textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF'; tb.classList.toggle('off', !c.trackingEnabled); }
-        if (tl) tl.textContent = c.trackingEnabled ? 'Tracking is on.' : 'Tracking is off.';
-      })
-      .catch(() => {
-        const configStatusEl = document.getElementById('config-status');
-        if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row missing">Could not load config status.</div>';
-      });
+          const configStatusEl = document.getElementById('config-status');
+          if (configStatusEl) configStatusEl.innerHTML = html;
+          const tb = document.getElementById('tracking-btn');
+          const tl = document.getElementById('tracking-label');
+          if (tb) { tb.textContent = c.trackingEnabled ? 'Tracking ON' : 'Tracking OFF'; tb.classList.toggle('off', !c.trackingEnabled); }
+          if (tl) tl.textContent = c.trackingEnabled ? 'Tracking is on.' : 'Tracking is off.';
+
+          return c;
+        })
+        .catch(() => {
+          const configStatusEl = document.getElementById('config-status');
+          if (configStatusEl) configStatusEl.innerHTML = '<div class="config-row missing">Could not load config status.</div>';
+        });
+    }
+
+    refreshConfigStatus();
 
     (function initConfigModal() {
       const modal = document.getElementById('config-modal');
       const openBtn = document.getElementById('config-open-btn');
       const closeBtn = document.getElementById('config-close-btn');
       if (!modal) return;
-      function open() { modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); }
+      function open() {
+        try { refreshConfigStatus(); } catch (_) {}
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
       if (openBtn) openBtn.addEventListener('click', open);
       if (closeBtn) closeBtn.addEventListener('click', close);
