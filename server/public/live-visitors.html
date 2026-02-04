@@ -338,7 +338,7 @@
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
-      <!-- Today shows Live | Last Hour | Today tabs above table -->
+      <!-- Date range Today: table tabs Today | Last Hour | Live above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
       <option value="3d">Last 3 Days</option>
@@ -359,11 +359,11 @@
   <div class="live-view-header">
     <h2 class="table-title" id="table-title">
       <span id="table-title-tabs" class="table-title-tabs" role="tablist" aria-label="Time window" style="display: none;">
-        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Live</button>
+        <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
         <span class="table-title-tabs-sep" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
         <span class="table-title-tabs-sep" aria-hidden="true">|</span>
-        <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
+        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Live</button>
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
     </h2>
@@ -574,6 +574,7 @@
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
+    const RANGE_REFRESH_MS = 10 * 60 * 1000; // Today and Last Hour refresh every 10 min
     const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 15 * 60 * 1000;
@@ -593,11 +594,12 @@
     let sessions = [];
     let sessionsLoadError = null;
     let statsCache = {};
-    let dateRange = 'live';
+    let dateRange = 'today';
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
+    let nextRangeAt = 0; // next refresh for Today/Last Hour (10 min)
     let lastSessionsFetchedAt = 0;
     let lastStatsFetchedAt = 0;
     let liveRefreshInFlight = null;
@@ -660,22 +662,28 @@
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
       if (!block) return;
-      const show = activeMainTab === 'spy' && dateRange === 'live';
+      const show = activeMainTab === 'spy' && (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
       if (!show) {
         block.style.display = 'none';
         const el = document.getElementById('next-update-msg');
         if (el) el.textContent = '';
         return;
       }
-      // Clear inline style so CSS (e.g. mobile) can control visibility.
       block.style.display = '';
       const el = document.getElementById('next-update-msg');
       if (!el) return;
-      const target = (typeof nextLiveAt === 'number' && nextLiveAt > Date.now())
-        ? nextLiveAt
-        : (Date.now() + LIVE_REFRESH_MS);
+      const isLive = dateRange === 'live';
+      const target = isLive
+        ? ((typeof nextLiveAt === 'number' && nextLiveAt > Date.now()) ? nextLiveAt : (Date.now() + LIVE_REFRESH_MS))
+        : ((typeof nextRangeAt === 'number' && nextRangeAt > Date.now()) ? nextRangeAt : (Date.now() + RANGE_REFRESH_MS));
       const sec = Math.max(0, Math.ceil((target - Date.now()) / 1000));
-      el.textContent = sec + ' s';
+      if (sec >= 60) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        el.textContent = s > 0 ? m + ' m ' + s + ' s' : m + ' m';
+      } else {
+        el.textContent = sec + ' s';
+      }
     }
 
     function toMs(v) {
@@ -1589,7 +1597,7 @@
       if (tabsWrap) tabsWrap.style.display = showTabs ? 'inline-flex' : 'none';
       if (textEl) textEl.style.display = showTabs ? 'none' : 'inline';
       if (showTabs && tabsWrap) {
-        ['live', '1h', 'today'].forEach(function(r) {
+        ['today', '1h', 'live'].forEach(function(r) {
           const btn = document.getElementById('table-tab-' + (r === '1h' ? '1h' : r));
           if (btn) btn.setAttribute('aria-selected', dateRange === r ? 'true' : 'false');
         });
@@ -1798,7 +1806,8 @@
             sessionsTotal = typeof data.total === 'number' ? data.total : sessions.length;
           }
           lastSessionsFetchedAt = Date.now();
-          nextLiveAt = Date.now() + LIVE_REFRESH_MS;
+          if (isLive) nextLiveAt = Date.now() + LIVE_REFRESH_MS;
+          else if (dateRange === 'today' || dateRange === '1h') nextRangeAt = Date.now() + RANGE_REFRESH_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderTable();
@@ -2218,7 +2227,8 @@
             // Always refresh when entering Stats so main stats + BEST + WORST + VARIANTS load (no stuck "Loading...")
             refreshStats({ force: true });
           } else {
-            const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > LIVE_REFRESH_MS;
+            const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
+            const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
             const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
             if (staleSessions) fetchSessions();
             if (staleStats) fetchStatsData({ force: false });
@@ -2277,6 +2287,14 @@
       fetchSessions();
     }
 
+    function onRangeAutoRefreshTick() {
+      if (activeMainTab !== 'spy') return;
+      if (dateRange !== 'today' && dateRange !== '1h') return;
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() < nextRangeAt) return;
+      fetchSessions();
+    }
+
     function onStatsAutoRefreshTick() {
       if (activeMainTab !== 'stats') return;
       if (getStatsRange() !== 'today') return;
@@ -2284,8 +2302,9 @@
       refreshStats({ force: false });
     }
 
-    // Live updates: every 60s (Today only). Stats: every 15 minutes (Today only).
+    // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Stats: every 15 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
+    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (10 min interval)
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
     // Online count: when not on Live, refresh every 60s so Online always shows real people online
@@ -2313,7 +2332,8 @@
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
       } else {
-        const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > LIVE_REFRESH_MS;
+        const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
+        const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
         if (stale) fetchSessions();
       }
     });
