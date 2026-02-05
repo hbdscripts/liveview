@@ -136,14 +136,12 @@ function getLoginHtml(queryError) {
 <body>
   <div class="shell">
     <div class="brand">
-      <img class="logo" src="/assets/birdseye.png" alt="Birdseye" decoding="async" loading="eager" />
-      <div class="brand-title">Birdseye Tracker</div>
-      <div class="brand-subtitle">Sign in to view your dashboard.</div>
+      <img class="logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338&width=200" alt="Birdseye" decoding="async" loading="eager" />
+      <div class="brand-title">Birdseye</div>
     </div>
-    <div class="card">
+    <div style="margin:20px auto;max-width:300px;">
       ${errMsg}
       ${buttons}
-      <div class="fineprint">Private dashboard access. Only approved emails can sign in.</div>
     </div>
   </div>
 </body>
