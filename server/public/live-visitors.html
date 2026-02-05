@@ -386,7 +386,7 @@
 .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
 .sale-toast-host { position: relative; overflow: visible; }
 .sale-toast-host.toast-open { z-index: 10; }
-.sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
+.sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
 .sale-toast.active { opacity: 1; transform: translateY(0); }
 .sale-toast .sale-toast-flag { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 42px; height: 100%; object-fit: contain; border-radius: 6px; margin: 0; }
@@ -395,6 +395,11 @@
 .sale-toast .sale-toast-inline-flag-img { width: 14px; height: 10px; object-fit: cover; border-radius: 3px; display: block; flex-shrink: 0; }
 .sale-toast .sale-toast-product { font-size: 0.92rem; font-weight: 700; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sale-toast .sale-toast-amount { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #e7db75; letter-spacing: -0.2px; margin-right: 5px; }
+.sale-toast .sale-toast-close { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.12); color: #fff; border-radius: 8px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
+.sale-toast .sale-toast-close:hover { background: rgba(255, 255, 255, 0.18); }
+.sale-toast .sale-toast-close:active { transform: translateY(1px); }
+.sale-toast .sale-toast-close:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+.sale-toast .sale-toast-close svg { width: 16px; height: 16px; display: block; }
 .kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
 .kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
 .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
@@ -705,6 +710,11 @@
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
         <div class="live-kpi-value" id="live-kpi-sales">—</div>
         <div class="sale-toast" id="sale-toast" aria-hidden="true" style="display:none">
+          <button type="button" class="sale-toast-close" id="sale-toast-close" aria-label="Dismiss sale notification" title="Dismiss">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12"></path>
+            </svg>
+          </button>
           <div class="sale-toast-flag" id="sale-toast-flag"></div>
           <div class="sale-toast-mid">
             <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span>New Sale</div>
@@ -1215,6 +1225,7 @@
     let saleAudio = null;
     let saleMuted = false;
     let saleToastActive = false;
+    let saleToastToken = 0; // increments per toast trigger; prevents stale latest-sale fetch overwriting newer toasts
     let saleToastSessionId = null; // best-effort: session_id that opened the current toast (used to avoid double plays)
     let saleToastHideTimer = null;
     let saleToastPendingKpi = null; // { labelText, valueText }
@@ -2124,16 +2135,30 @@
       }, 260);
     }
 
+    (function initSaleToastCloseButton() {
+      const btn = document.getElementById('sale-toast-close');
+      if (!btn) return;
+      btn.addEventListener('click', function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        // Invalidate any in-flight /api/latest-sale update for the current toast.
+        saleToastToken += 1;
+        hideSaleToast();
+      });
+    })();
+
     let latestSaleFetchInFlight = null;
-    function fetchLatestSaleForToast() {
-      if (latestSaleFetchInFlight) return latestSaleFetchInFlight;
+    function fetchLatestSaleForToast(options = {}) {
+      const forceNew = !!(options && options.forceNew);
+      if (!forceNew && latestSaleFetchInFlight) return latestSaleFetchInFlight;
       const url = API + '/api/latest-sale?_=' + Date.now();
-      latestSaleFetchInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      const p = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(json) { return (json && json.ok && json.sale) ? json.sale : null; })
         .catch(function() { return null; })
-        .finally(function() { latestSaleFetchInFlight = null; });
-      return latestSaleFetchInFlight;
+        .finally(function() { if (latestSaleFetchInFlight === p) latestSaleFetchInFlight = null; });
+      latestSaleFetchInFlight = p;
+      return p;
     }
 
     function buildSalesKpiUpdateFromStats(data) {
@@ -2153,7 +2178,9 @@
       const session = opts.session || null;
       const kpiUpdate = opts.kpiUpdate || null;
       const playSound = opts.playSound !== false;
+      const toastToken = ++saleToastToken; // newest toast wins
       saleToastSessionId = session && session.session_id != null ? String(session.session_id) : null;
+      saleToastLastOrderId = null;
 
       // Freeze the Sales KPI until the toast fades away.
       if (kpiUpdate && typeof kpiUpdate.labelText === 'string' && typeof kpiUpdate.valueText === 'string') {
@@ -2183,14 +2210,15 @@
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
       saleToastHideTimer = setTimeout(hideSaleToast, 10000);
 
-      fetchLatestSaleForToast().then(function(sale) {
+      fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
         if (!sale) return;
+        if (toastToken !== saleToastToken) return; // stale fetch (a newer sale toast is showing)
+        if (!saleToastActive) return;
         const orderId = sale.orderId != null ? String(sale.orderId) : '';
         if (orderId) saleToastLastOrderId = orderId;
         const cc = sale.countryCode ? String(sale.countryCode).toUpperCase().slice(0, 2) : 'XX';
         const product = sale.productTitle && String(sale.productTitle).trim() ? String(sale.productTitle).trim() : '';
         const amount = sale.amountGbp != null ? Number(sale.amountGbp) : null;
-        if (!saleToastActive) return;
         setSaleToastContent({
           countryCode: cc || 'XX',
           productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '—'),
