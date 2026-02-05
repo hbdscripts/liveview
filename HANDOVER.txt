@@ -364,6 +364,7 @@ Backups durability:
 - UI: hide “Rows” label in mobile pagination to prevent line wrapping
 - UI: KPI neutral color set to #444 (red/green thresholds unchanged)
 - Mobile: replace the date range select with a compact “Date” button (calendar icon) that opens a small menu (Today/Yesterday/Choose dates…)
+- UI: Best-by-GEO first column no longer forces white backgrounds; row striping stays consistent
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
