@@ -689,6 +689,8 @@
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
     .source-icons { display: inline-flex; align-items: center; gap: 4px; }
     .source-icons img { width: 20px; height: 20px; }
+    .traffic-source-cell { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+    .traffic-source-label { font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
     @media (max-width: 1800px) {
       .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--table-gap); }
       .stats-card { min-width: 0; }
@@ -4934,7 +4936,11 @@
         const customIcon = trafficSourceIconUrlForKey(key);
         const src = customIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
         const extra = key === 'google_ads' ? 'source-googleads-img' : '';
-        return '<span class="source-icons">' + icon(src, resolvedLabel, resolvedLabel, extra) + '</span>';
+        // Traffic tab: show icon + label (Home table is icon-only).
+        return '<span class="traffic-source-cell">' +
+          '<span class="source-icons">' + icon(src, resolvedLabel, resolvedLabel, extra) + '</span>' +
+          '<span class="traffic-source-label">' + escapeHtml(resolvedLabel || label || key) + '</span>' +
+        '</span>';
       }
 
       function renderRows(bodyId, rows, emptyText) {
