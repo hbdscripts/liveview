@@ -111,6 +111,8 @@
     @media (max-width: 768px) {
       .th-label-long { display: none; }
       .th-label-short { display: inline-flex; }
+      .by-country-table th.th-sort-asc::after,
+      .by-country-table th.th-sort-desc::after { margin: -10px 0 0 0; }
     }
     /* First column layout: country tables need flex (flag + label); product tables manage their own layout. */
     .by-country-table:not(.best-sellers-table) tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }

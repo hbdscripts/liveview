@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (GEO product pill styling)
+Last updated: 2026-02-05 (mobile sort arrow spacing)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -356,6 +356,7 @@ Backups durability:
 - UI: tables use green outer borders with zebra striping (no inner borders)
 - UI: Breakdown AOV now renders as a card strip above the country/geo tables, and pagination only shows to balance table heights
 - UI: Best-by-GEO row pill styling added around product thumbs
+- UI: mobile icon headers shift sort arrows up for clearer alignment
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
