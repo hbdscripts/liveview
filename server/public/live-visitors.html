@@ -236,7 +236,7 @@
 .last-action-cell .landing-lines > * { min-width: 0; }
 .last-action-cell .landing-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 0.35rem; font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
 .last-action-cell .landing-line-text { min-width: 0; word-break: break-word; }
-    .last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em; font-weight: 700; line-height: 1; }
+    .last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: inline-block; }
     .last-action-cell .landing-dir-icon-entry { color: #0d9488; }
     .last-action-cell .landing-dir-icon-exit { color: #940d0d; }
 .last-action-cell .landing-line:hover { text-decoration: underline; }
@@ -1704,6 +1704,7 @@
       const p = path.trim();
       const pNorm = p.replace(/\/+$/, '') || '/';
       if (pNorm === '/pages/order-tracker') return 'Order Tracker';
+      if (pNorm === '/pages/contact') return 'Contact';
       if (pNorm === '/orders' || pNorm.startsWith('/orders/')) return 'Viewed Order';
       const collectionsMatch = p.match(/^\/collections\/([^/?#]+)/i);
       if (collectionsMatch) return titleCaseFromHandle(collectionsMatch[1]);
@@ -1838,8 +1839,10 @@
         function dirArrowSvg(kind) {
           var isExit = kind === 'exit';
           var cls = 'landing-dir-icon ' + (isExit ? 'landing-dir-icon-exit' : 'landing-dir-icon-entry');
-          var glyph = isExit ? '&gt;' : '&lt;';
-          return '<span class="' + cls + '" aria-hidden="true">' + glyph + '</span>';
+          var path = isExit
+            ? '<path d="M19 12H5M11 6l-6 6 6 6"></path>'
+            : '<path d="M5 12h14M13 6l6 6-6 6"></path>';
+          return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
         }
 
         function line(kind, meta) {
