@@ -82,6 +82,8 @@
     .traffic-type-child td:first-child::before { content: '›'; display: inline-block; margin-right: 6px; color: var(--muted); }
     /* Single thead row: title in first cell, column labels in rest; one line */
     .stats-card .by-country-table thead th { white-space: nowrap; margin: 0; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; text-align: left; background: var(--th-bg); border-bottom: var(--table-row-border); }
+    /* When a card already has a header bar, keep only that bar grey (table thead stays white). */
+    .stats-card .traffic-card-header + .country-table-wrap .by-country-table thead th { background: var(--card); }
     .stats-section { display: flex; flex-direction: column; gap: 1px; }
     .stats-main { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
     .stats-breakdown { font-size: 0.8125rem; color: var(--text); display: flex; flex-wrap: wrap; gap: 0.75rem; }
