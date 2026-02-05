@@ -378,6 +378,7 @@ Backups durability:
 - UI: widen Landing Page column + remove max-width clamp to prevent entry/exit layout spilling into adjacent columns
 - Mobile: Breakdown tables stack 100% width (override `.stats-row.breakdown-row` two-column grid on small screens)
 - Mobile: date button width tightened to 55px
+- UI: card pagination controls use a 30px tall segmented style (tighter padding/gaps)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
