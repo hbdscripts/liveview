@@ -343,7 +343,7 @@
 .main-tabs [role="tab"] .tab-text { display: inline; }
 @media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
 .main-tabs-center-logo { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; }
-.main-tabs-center-logo img { width: 25px; height: 25px; display: block; object-fit: contain; }
+.main-tabs-center-logo img { width: 30px; height: 30px; margin: 0 0 10px; display: block; object-fit: contain; }
 .main-tabs-spacer { flex: 1; min-width: 0; }
 .main-tabs-date-select { padding: 0.35rem 1.5rem 0.35rem 0.5rem; border: none; background: none; font-size: 0.875rem; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='%23666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.25rem center; background-size: 16px 16px; border-radius: var(--radius); margin-bottom: -1px; }
 .main-tabs-date-select:hover { color: var(--accent); }
@@ -824,11 +824,6 @@
   </style>
 </head>
 <body>
-  <div class="dashboard-top-bar">
-    <div class="mobile-brand-logo" aria-hidden="true">
-      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="80" alt="" decoding="async" loading="eager" fetchpriority="high" />
-    </div>
-  </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
     <button type="button" id="mobile-tabs-btn" class="mobile-tabs-btn" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
@@ -843,7 +838,7 @@
     </div>
 
     <div class="main-tabs-center-logo" aria-hidden="true">
-      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" decoding="async" />
+      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="30" height="30" alt="" decoding="async" />
     </div>
 
     <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
