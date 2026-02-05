@@ -372,6 +372,7 @@ Backups durability:
 - UI: breakdown table zebra striping applies cleanly across first column (flag/thumb) without white blocks
 - UI: Live table pagination is a single joined control (Prev / page / Next / Rows) without hover lift
 - UI: rows-per-page selector removed; Live sessions pagination defaults to 25 rows
+- UI: sessions table now expands to fill the card width (prevents blank white area to the right on wide screens)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
