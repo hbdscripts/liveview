@@ -1238,6 +1238,45 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
       }
     }
   }
+  // Custom range: r:YYYY-MM-DD:YYYY-MM-DD (inclusive, admin timezone)
+  if (typeof rangeKey === 'string' && rangeKey.startsWith('r:')) {
+    const m = rangeKey.match(/^r:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const sy = parseInt(m[1], 10);
+      const sm = parseInt(m[2], 10);
+      const sd = parseInt(m[3], 10);
+      const ey = parseInt(m[4], 10);
+      const em = parseInt(m[5], 10);
+      const ed = parseInt(m[6], 10);
+      if (
+        Number.isFinite(sy) && Number.isFinite(sm) && Number.isFinite(sd) && sm >= 1 && sm <= 12 && sd >= 1 && sd <= 31 &&
+        Number.isFinite(ey) && Number.isFinite(em) && Number.isFinite(ed) && em >= 1 && em <= 12 && ed >= 1 && ed <= 31
+      ) {
+        const aYmd = `${m[1]}-${m[2]}-${m[3]}`;
+        const bYmd = `${m[4]}-${m[5]}-${m[6]}`;
+        const useAForStart = aYmd <= bYmd;
+        const startY = useAForStart ? sy : ey;
+        const startM = useAForStart ? sm : em;
+        const startD = useAForStart ? sd : ed;
+        const endY = useAForStart ? ey : sy;
+        const endM = useAForStart ? em : sm;
+        const endD = useAForStart ? ed : sd;
+
+        const start = zonedTimeToUtcMs(startY, startM, startD, 0, 0, 0, timeZone);
+        const endNextParts = addDaysToParts({ year: endY, month: endM, day: endD }, 1);
+        const endFull = zonedTimeToUtcMs(endNextParts.year, endNextParts.month, endNextParts.day, 0, 0, 0, timeZone);
+        const endIsToday = endY === todayParts.year && endM === todayParts.month && endD === todayParts.day;
+        let end = endIsToday ? nowMs : endFull;
+
+        // Clamp future end.
+        if (end > nowMs) end = nowMs;
+
+        // Clamp future start.
+        if (start >= nowMs) return { start: nowMs, end: nowMs };
+        return { start, end: Math.max(start, end) };
+      }
+    }
+  }
   if (rangeKey === '1h') {
     return { start: nowMs - 60 * 60 * 1000, end: nowMs };
   }
@@ -1564,7 +1603,15 @@ function isDayLikeRangeKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim().toLowerCase();
   if (k === 'today' || k === 'yesterday' || k === '3d' || k === '7d' || k === 'month') return true;
-  return /^d:\d{4}-\d{2}-\d{2}$/.test(k);
+  if (/^d:\d{4}-\d{2}-\d{2}$/.test(k)) return true;
+  const m = k.match(/^r:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  // Shopify sessions snapshots are day-based; cap to avoid huge on-demand backfills.
+  const a = Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10), 12, 0, 0);
+  const b = Date.UTC(parseInt(m[4], 10), parseInt(m[5], 10) - 1, parseInt(m[6], 10), 12, 0, 0);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const days = Math.floor(Math.abs(b - a) / 86400000) + 1;
+  return days > 0 && days <= 90;
 }
 
 /** Total sales in range. Dedupe in query only; never delete rows. */
@@ -1988,9 +2035,10 @@ async function getStats(options = {}) {
       (typeof options.range === 'string' ? options.range : '');
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const allowedLegacy = new Set(['3d', '7d', 'month']);
   const rangeKeys = DEFAULT_RANGE_KEYS.slice();
-  if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || allowedLegacy.has(requestedRange))) {
+  if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || isRangeKey || allowedLegacy.has(requestedRange))) {
     rangeKeys.push(requestedRange);
   }
   const ranges = {};
@@ -2102,8 +2150,9 @@ async function getKpis(options = {}) {
       (typeof options.range === 'string' ? options.range : '');
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', 'month']);
-  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || allowedLegacy.has(requestedRange))
+  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || isRangeKey || allowedLegacy.has(requestedRange))
     ? requestedRange
     : 'today';
 

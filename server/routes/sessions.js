@@ -9,8 +9,9 @@ function list(req, res, next) {
   const range = req.query.range;
   const rangeAllowed = ['today', 'yesterday', '3d', '7d', '1h'];
   const isDayKey = (v) => typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
+  const isRangeKey = (v) => typeof v === 'string' && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(v);
   if (range != null && range !== '') {
-    if (!rangeAllowed.includes(range) && !isDayKey(range)) {
+    if (!rangeAllowed.includes(range) && !isDayKey(range) && !isRangeKey(range)) {
       return res.status(400).json({ error: 'Invalid range' });
     }
     const timezone = req.query.timezone || req.query.timeZone || '';

@@ -1,5 +1,5 @@
 /**
- * GET /api/kpis?range=today|yesterday|3d|7d|month|d:YYYY-MM-DD
+ * GET /api/kpis?range=today|yesterday|3d|7d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD
  * Lightweight KPIs for the top grid (polled frequently).
  */
 const store = require('../store');
@@ -11,7 +11,8 @@ function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';
   if (!r) return 'today';
   const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
-  if (ALLOWED_RANGE.has(r) || isDayKey) return r;
+  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
+  if (ALLOWED_RANGE.has(r) || isDayKey || isRangeKey) return r;
   return 'today';
 }
 

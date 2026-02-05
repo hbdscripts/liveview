@@ -23,7 +23,8 @@ async function getShopifyBestVariants(req, res) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
   const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey) range = 'today';
+  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
+  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();

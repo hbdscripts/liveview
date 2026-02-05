@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (ingest purchases backfill + traffic source mapping + landing thumb polish)
+Last updated: 2026-02-05 (date picker range UX + ingest purchases backfill + traffic source mapping)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -32,9 +32,11 @@ Main tabs (top row):
   - Channels table renders the same source icons used on the Home table (not text labels)
 
 Global date range picker (applies to Breakdown + Products + Traffic):
-- Today / Yesterday / Custom…
-  - Custom opens a calendar popup (last 30 days). Grey dates have no session data.
-  - Custom selection is represented internally as a day key: `d:YYYY-MM-DD` (admin timezone) and is supported across sessions/stats/products/traffic APIs.
+- Today / Yesterday / Choose dates…
+  - Choose dates opens a calendar popup (last 30 days). Grey dates have no session data.
+  - Range selection: click a start day then an end day, preview highlights, then press Apply (Clear resets).
+  - Custom ranges are represented as `r:YYYY-MM-DD:YYYY-MM-DD` (admin timezone). Legacy single-day keys `d:YYYY-MM-DD` are still accepted.
+  - After applying, the dropdown shows the chosen date label (not “Custom”).
 
 Traffic tab (new)
 - Layout:
@@ -304,6 +306,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
+- Date picker: redesign “Custom” into “Choose dates…” range picker (two-click range selection with highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` across stats/products/traffic APIs and the dropdown shows the chosen dates.
 - Ingest: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (so “Birdseye” diagnostics / pixel-derived reporting doesn’t show 0 orders).
 - Ops: one-off backfill script `scripts/backfill-purchases-from-evidence.js` to fill `purchases` from today’s `purchase_events` (safe to re-run; conflicts ignored).
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)

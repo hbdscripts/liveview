@@ -706,7 +706,20 @@
     .date-cal-day:hover { border-color: rgba(13, 148, 136, 0.6); color: var(--accent); }
     .date-cal-day[disabled], .date-cal-day.disabled { opacity: 0.35; cursor: not-allowed; }
     .date-cal-day.selected { background: rgba(13, 148, 136, 0.12); border-color: rgba(13, 148, 136, 0.6); color: var(--accent); }
+    .date-cal-day.in-range { background: rgba(13, 148, 136, 0.10); border-color: rgba(13, 148, 136, 0.25); }
+    .date-cal-day.range-start,
+    .date-cal-day.range-end { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .date-cal-day.range-start:hover,
+    .date-cal-day.range-end:hover { color: #fff; }
     .date-cal-day.today { box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.25); }
+    .date-cal-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    .date-cal-summary { font-size: 0.8125rem; color: var(--text); font-weight: 600; }
+    .date-cal-actions { display: inline-flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .date-cal-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.42rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; background: rgba(255, 255, 255, 0.9); box-shadow: var(--shadow); color: var(--text); cursor: pointer; font-size: 0.8125rem; font-weight: 650; }
+    .date-cal-btn:hover { color: var(--accent); border-color: rgba(13, 148, 136, 0.35); }
+    .date-cal-btn.primary { border-color: rgba(13, 148, 136, 0.55); color: var(--accent); background: rgba(13, 148, 136, 0.08); }
+    .date-cal-btn.primary:hover { border-color: rgba(13, 148, 136, 0.8); }
+    .date-cal-btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .config-row { font-size: 0.8125rem; color: var(--text); margin: 0.25rem 0; word-break: break-word; }
     .config-row.ok { color: #0f766e; }
     .config-row.missing { color: #b91c1c; }
@@ -845,7 +858,7 @@
       <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
-      <option value="custom" id="date-opt-custom">Custom…</option>
+      <option value="custom" id="date-opt-custom">Choose dates…</option>
     </select>
   </div>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
@@ -1276,13 +1289,20 @@
   </div>
 
   <div class="config-modal" id="date-custom-modal" aria-hidden="true">
-    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Custom date">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Choose dates">
       <div class="config-modal-header">
-        <h3 class="config-modal-title">Custom date</h3>
+        <h3 class="config-modal-title">Choose dates</h3>
         <button type="button" class="config-close" id="date-custom-close-btn" aria-label="Close">×</button>
       </div>
-      <div class="muted" style="margin-bottom: 0.5rem;">Select a day (last 30 days). Grey dates have no data.</div>
+      <div class="muted" style="margin-bottom: 0.5rem;">Click a start date, then an end date (last 30 days). Grey dates have no data.</div>
       <div id="date-custom-calendar" class="date-cal"></div>
+      <div class="date-cal-footer">
+        <div class="date-cal-summary" id="date-custom-summary">Select a start date.</div>
+        <div class="date-cal-actions">
+          <button type="button" class="date-cal-btn" id="date-custom-clear" disabled>Clear</button>
+          <button type="button" class="date-cal-btn primary" id="date-custom-apply" disabled>Apply</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1312,7 +1332,11 @@
     let trafficCache = null;
     let trafficTypeExpanded = {}; // device -> boolean (Traffic Type tree)
     let dateRange = 'live';
-    let customDayYmd = null; // YYYY-MM-DD for dateRange keys like d:YYYY-MM-DD
+    let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
+    let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
+    let pendingCustomRangeStartYmd = null; // modal-only pending selection
+    let pendingCustomRangeEndYmd = null; // modal-only pending selection
+    let customCalendarLastPayload = null; // last /api/available-days payload used for rendering
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
     function getKpiData() { return kpiCache || statsCache || {}; }
@@ -3598,9 +3622,34 @@
       return typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
     }
 
+    function isCustomRangeKey(v) {
+      return typeof v === 'string' && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(v);
+    }
+
     function ymdFromDayKey(dayKey) {
       if (!isCustomDayRangeKey(dayKey)) return null;
       return dayKey.slice(2);
+    }
+
+    function ymdRangeFromRangeKey(rangeKey) {
+      if (!isCustomRangeKey(rangeKey)) return null;
+      const parts = String(rangeKey).split(':');
+      if (parts.length !== 3) return null;
+      const a = String(parts[1] || '').trim();
+      const b = String(parts[2] || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return null;
+      const startYmd = a <= b ? a : b;
+      const endYmd = a <= b ? b : a;
+      return { startYmd, endYmd };
+    }
+
+    function appliedYmdRangeFromDateRange() {
+      if (isCustomRangeKey(dateRange)) return ymdRangeFromRangeKey(dateRange);
+      if (isCustomDayRangeKey(dateRange)) {
+        const ymd = ymdFromDayKey(dateRange);
+        return ymd ? { startYmd: ymd, endYmd: ymd } : null;
+      }
+      return null;
     }
 
     function formatYmdLabel(ymd) {
@@ -3617,14 +3666,19 @@
       }
     }
 
-    function setCustomSelectLabel(ymd) {
-      const opt = document.getElementById('date-opt-custom');
-      if (!opt) return;
-      if (ymd && /^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) {
-        opt.textContent = 'Custom · ' + formatYmdLabel(String(ymd));
-      } else {
-        opt.textContent = 'Custom…';
-      }
+    function formatYmdRangeLabel(startYmd, endYmd) {
+      if (!startYmd || !endYmd) return '';
+      if (startYmd === endYmd) return formatYmdLabel(startYmd);
+      return formatYmdLabel(startYmd) + ' – ' + formatYmdLabel(endYmd);
+    }
+
+    function makeRangeKeyFromYmds(startYmd, endYmd) {
+      const a = String(startYmd || '').trim();
+      const b = String(endYmd || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return null;
+      const s = a <= b ? a : b;
+      const e = a <= b ? b : a;
+      return 'r:' + s + ':' + e;
     }
 
     function updateLiveViewTitle() {
@@ -3641,13 +3695,14 @@
         });
       } else {
         let label = null;
-        if (isCustomDayRangeKey(dateRange)) {
-          label = formatYmdLabel(ymdFromDayKey(dateRange));
+        const applied = appliedYmdRangeFromDateRange();
+        if (applied && applied.startYmd && applied.endYmd) {
+          label = formatYmdRangeLabel(applied.startYmd, applied.endYmd);
         } else if (sel) {
           const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
-        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
+        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Choose dates' };
         if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
@@ -3662,22 +3717,44 @@
       if (!sel) return;
       const hasLive = sel.querySelector('option[value="live"]');
       if (hasLive) hasLive.remove();
+      // Keep the "Choose dates…" option stable, and create a dynamic option for the currently applied custom range.
+      const customOpt = document.getElementById('date-opt-custom') || sel.querySelector('option[value="custom"]');
+      if (customOpt) customOpt.textContent = 'Choose dates…';
+
+      // Remove previous dynamic custom-range option(s).
+      sel.querySelectorAll('option[data-custom-range="1"]').forEach(function(o) { try { o.remove(); } catch (_) {} });
+
+      // Normalize legacy single-day custom keys into the new range key.
       if (isCustomDayRangeKey(dateRange)) {
         const ymd = ymdFromDayKey(dateRange);
-        if (ymd) customDayYmd = ymd;
-        sel.value = 'custom';
+        const rk = ymd ? makeRangeKeyFromYmds(ymd, ymd) : null;
+        if (rk) dateRange = rk;
+      }
+
+      const applied = appliedYmdRangeFromDateRange();
+      if (applied && applied.startYmd && applied.endYmd) {
+        customRangeStartYmd = applied.startYmd;
+        customRangeEndYmd = applied.endYmd;
+        const label = formatYmdRangeLabel(applied.startYmd, applied.endYmd) || 'Selected dates';
+        const opt = document.createElement('option');
+        opt.value = String(dateRange);
+        opt.textContent = label;
+        opt.setAttribute('data-custom-range', '1');
+        if (customOpt && customOpt.parentNode === sel) sel.insertBefore(opt, customOpt);
+        else sel.appendChild(opt);
+        sel.value = String(dateRange);
       } else if (activeMainTab === 'spy') {
-        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Custom.
-        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
+        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Choose dates.
+        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       } else {
-        // Other tabs only use day ranges; if somehow on live/1h, treat as Today.
+        // Other tabs only use day/range ranges; if somehow on live, treat as Today.
         if (dateRange === 'live') {
           dateRange = 'today';
           sessionsTotal = null;
         }
-        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange;
+        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       }
-      setCustomSelectLabel(customDayYmd);
+
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
     }
@@ -3692,11 +3769,11 @@
         const o = opts[start + i];
         if (o) o.disabled = !available[key];
       });
-      if (dateRange !== 'live' && !isCustomDayRangeKey(dateRange) && available && available[dateRange] === false) {
+      if (dateRange !== 'live' && !isCustomDayRangeKey(dateRange) && !isCustomRangeKey(dateRange) && available && available[dateRange] === false) {
         dateRange = 'today';
-        sel.value = 'today';
-        customDayYmd = null;
-        setCustomSelectLabel(null);
+        customRangeStartYmd = null;
+        customRangeEndYmd = null;
+        syncDateSelectOptions();
       }
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
@@ -3782,7 +3859,13 @@
           return year + '-' + pad2(month);
         }
       };
-      const selectedYmd = customDayYmd || (isCustomDayRangeKey(dateRange) ? ymdFromDayKey(dateRange) : null);
+      let startSel = pendingCustomRangeStartYmd;
+      let endSel = pendingCustomRangeEndYmd;
+      if (startSel && endSel && startSel > endSel) {
+        const tmp = startSel;
+        startSel = endSel;
+        endSel = tmp;
+      }
       const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       container.innerHTML = months.map((mk) => {
         const y = parseInt(mk.slice(0, 4), 10);
@@ -3801,12 +3884,16 @@
             continue;
           }
           const has = !!availableByYmd.get(ymd);
-          const isSelected = selectedYmd && selectedYmd === ymd;
+          const isStart = startSel && ymd === startSel;
+          const isEnd = endSel && ymd === endSel;
+          const inRange = startSel && endSel && ymd > startSel && ymd < endSel;
           const isToday = list[0] && String(list[0].date) === ymd;
           const cls = [
             'date-cal-day',
             has ? '' : 'disabled',
-            isSelected ? 'selected' : '',
+            inRange ? 'in-range' : '',
+            isStart ? 'range-start' : '',
+            isEnd ? 'range-end' : '',
             isToday ? 'today' : '',
           ].filter(Boolean).join(' ');
           const disabledAttr = has ? '' : ' disabled';
@@ -3825,9 +3912,9 @@
       if (!modal) return;
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
-      const sel = document.getElementById('global-date-select');
-      if (sel) sel.value = isCustomDayRangeKey(dateRange) ? 'custom' : ((dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange);
-      setCustomSelectLabel(customDayYmd);
+      pendingCustomRangeStartYmd = null;
+      pendingCustomRangeEndYmd = null;
+      syncDateSelectOptions();
     }
 
     function applyDateRangeChange() {
@@ -3840,8 +3927,7 @@
       worstProductsPage = 1;
       worstVariantsPage = 1;
       currentPage = 1;
-      updateLiveViewTitle();
-      updateRowsPerPageVisibility();
+      syncDateSelectOptions();
       // Reset caches when range changes.
       bestSellersCache = null;
       bestVariantsCache = null;
@@ -3874,21 +3960,43 @@
       if (!modal || !cal) return;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
+      const applied = appliedYmdRangeFromDateRange();
+      pendingCustomRangeStartYmd = applied && applied.startYmd ? applied.startYmd : null;
+      pendingCustomRangeEndYmd = applied && applied.endYmd ? applied.endYmd : null;
+      customCalendarLastPayload = null;
+      updateCustomDateFooter();
       cal.innerHTML = '<div class="muted">Loading…</div>';
       fetchAvailableDays(30).then((payload) => {
+        customCalendarLastPayload = payload;
         renderCustomCalendar(cal, payload);
+        updateCustomDateFooter();
       });
     }
 
-    function selectCustomDay(ymd) {
-      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
-      customDayYmd = ymd;
-      dateRange = 'd:' + ymd;
-      const sel = document.getElementById('global-date-select');
-      if (sel) sel.value = 'custom';
-      setCustomSelectLabel(customDayYmd);
-      closeCustomDateModal();
-      applyDateRangeChange();
+    function updateCustomDateFooter() {
+      const summaryEl = document.getElementById('date-custom-summary');
+      const clearBtn = document.getElementById('date-custom-clear');
+      const applyBtn = document.getElementById('date-custom-apply');
+      if (!summaryEl) return;
+      const a = pendingCustomRangeStartYmd;
+      const b = pendingCustomRangeEndYmd;
+      if (!a) {
+        summaryEl.textContent = 'Select a start date.';
+        if (clearBtn) clearBtn.disabled = true;
+        if (applyBtn) applyBtn.disabled = true;
+        return;
+      }
+      if (!b) {
+        summaryEl.textContent = 'Start: ' + formatYmdLabel(a) + '. Select an end date.';
+        if (clearBtn) clearBtn.disabled = false;
+        if (applyBtn) applyBtn.disabled = true;
+        return;
+      }
+      const startYmd = a <= b ? a : b;
+      const endYmd = a <= b ? b : a;
+      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' – ' + endYmd));
+      if (clearBtn) clearBtn.disabled = false;
+      if (applyBtn) applyBtn.disabled = false;
     }
 
     let customDateModalInited = false;
@@ -3907,6 +4015,35 @@
         const key = e && (e.key || e.code) ? String(e.key || e.code) : '';
         if (key === 'Escape') closeCustomDateModal();
       });
+      const clearBtn = document.getElementById('date-custom-clear');
+      const applyBtn = document.getElementById('date-custom-apply');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          pendingCustomRangeStartYmd = null;
+          pendingCustomRangeEndYmd = null;
+          const cal = document.getElementById('date-custom-calendar');
+          if (cal) renderCustomCalendar(cal, customCalendarLastPayload || availableDaysMemo);
+          updateCustomDateFooter();
+        });
+      }
+      if (applyBtn) {
+        applyBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const a = pendingCustomRangeStartYmd;
+          const b = pendingCustomRangeEndYmd;
+          if (!a || !b) return;
+          const startYmd = a <= b ? a : b;
+          const endYmd = a <= b ? b : a;
+          const rk = makeRangeKeyFromYmds(startYmd, endYmd);
+          if (!rk) return;
+          customRangeStartYmd = startYmd;
+          customRangeEndYmd = endYmd;
+          dateRange = rk;
+          closeCustomDateModal();
+          applyDateRangeChange();
+        });
+      }
       const cal = document.getElementById('date-custom-calendar');
       if (cal) {
         cal.addEventListener('click', function(e) {
@@ -3917,7 +4054,14 @@
           if (btn.disabled) return;
           const ymd = btn.getAttribute('data-ymd') || '';
           if (!ymd) return;
-          selectCustomDay(ymd);
+          if (!pendingCustomRangeStartYmd || (pendingCustomRangeStartYmd && pendingCustomRangeEndYmd)) {
+            pendingCustomRangeStartYmd = ymd;
+            pendingCustomRangeEndYmd = null;
+          } else {
+            pendingCustomRangeEndYmd = ymd;
+          }
+          renderCustomCalendar(cal, customCalendarLastPayload || availableDaysMemo);
+          updateCustomDateFooter();
         });
       }
     }
@@ -5415,19 +5559,26 @@
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         syncDateSelectOptions();
-        // Dropdown has no Live option (Live is via table tabs); show today when live/1h
-        dateSelect.value = isCustomDayRangeKey(dateRange) ? 'custom' : ((dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange);
         updateLiveViewTitle();
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
           const next = String(this.value || '').trim().toLowerCase();
           if (next === 'custom') {
             openCustomDateModal();
+            // Revert the select so "Choose dates…" can be selected again.
+            syncDateSelectOptions();
             return;
           }
-          if (next !== 'today' && next !== 'yesterday') return;
-          dateRange = next;
-          applyDateRangeChange();
+          if (next === 'today' || next === 'yesterday') {
+            dateRange = next;
+            applyDateRangeChange();
+            return;
+          }
+          // Defensive: allow selecting an applied range key if present.
+          if (isCustomRangeKey(next)) {
+            dateRange = next;
+            applyDateRangeChange();
+          }
         });
         initCustomDateModal();
       }
