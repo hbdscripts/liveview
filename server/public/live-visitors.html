@@ -235,13 +235,15 @@
     z-index: 9;
 }
 
-.thumb-overlay img {
+.thumb-overlay img,
+.thumb-overlay svg {
     width: 25px;
     height: 25px;
     display: block;
     padding: 2px;
     position: relative;
 }
+.thumb-overlay svg { color: var(--accent); }
 .table-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: var(--badge-new-fg); }
@@ -1500,7 +1502,7 @@
           : '';
         var thumbsInner = entryImg + exitImg;
         var overlay = isPurchasedDual
-          ? '<span class="thumb-overlay" aria-hidden="true"><img src="' + BOUGHT_OVERLAY_IMG + '" alt=""></span>'
+          ? '<span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span>'
           : '';
         var thumbs = thumbsInner ? ('<span class="thumb-wrap thumb-stack">' + thumbsInner + overlay + '</span>') : '';
 
@@ -1561,7 +1563,7 @@
         var img = '';
         if (thumbSrc) {
           img = isPurchased
-            ? '<span class="thumb-wrap"><img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.parentNode && (this.parentNode.style.display=\\\'none\\\')"><span class="thumb-overlay" aria-hidden="true"><img src="' + BOUGHT_OVERLAY_IMG + '" alt=""></span></span>'
+            ? '<span class="thumb-wrap"><img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.parentNode && (this.parentNode.style.display=\\\'none\\\')"><span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span></span>'
             : '<img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">';
         }
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
@@ -1647,7 +1649,7 @@
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
     const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
-    const BOUGHT_OVERLAY_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/spyview_favicon.png?v=1770087896&width=100');
+    const BOUGHT_OVERLAY_SVG = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="currentColor"></circle><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"></path></svg>';
     const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
     const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');

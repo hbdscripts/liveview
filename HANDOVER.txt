@@ -293,6 +293,7 @@ Backups durability:
 - Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)
 - Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
+- Home table: conversion badge on the landing thumbnail uses a green SVG icon (replaces the dollar image).
 - UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
 - Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
 - Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
