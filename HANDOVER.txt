@@ -286,6 +286,7 @@ Backups durability:
 - KPIs: Returning revenue (Shopify truth) uses Shopify returning-customer signal (`orders_shopify.customer_orders_count >= 2`) rather than session “returning” heuristics
 - Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based click counts to best sellers/variants)
 - Products: product title column is responsive (more width + larger titles on desktop; clamped multi-line on smaller screens)
+- Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)
 - Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
 - UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
