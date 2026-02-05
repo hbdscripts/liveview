@@ -109,8 +109,9 @@
       .th-label-long { display: none; }
       .th-label-short { display: inline; }
     }
-    .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
-    .by-country-table tbody td:first-child > *:first-child { flex-shrink: 0; }
+    /* First column layout: country tables need flex (flag + label); product tables manage their own layout. */
+    .by-country-table:not(.best-sellers-table) tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+    .by-country-table:not(.best-sellers-table) tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* Best GEO Products: show product name under country in the same cell. */
     .geo-products-table tbody td:first-child .country-label { white-space: normal; text-overflow: clip; display: flex; flex-direction: column; gap: 0.15rem; }
@@ -140,7 +141,8 @@
     .stats-card .by-country-table.best-sellers-table td:not(:first-child) { min-width: 3.25rem; }
     .stats-card .by-country-table.best-sellers-table th:last-child,
     .stats-card .by-country-table.best-sellers-table td:last-child { min-width: 4rem; }
-    .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1; }
+    /* Product name visibility: keep a stable width so text never collapses to 0 on wide screens. */
+    .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; width: 100%; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
     /* Product thumbnails: shared styling (prevents "thin line" aspect ratios). */
     .bs-thumb, .landing-thumb { border-radius: 100%; object-fit: cover; object-position: center; flex-shrink: 0; display: block; }
