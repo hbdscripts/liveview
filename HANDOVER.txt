@@ -287,6 +287,7 @@ Backups durability:
 - Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based click counts to best sellers/variants)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)
 - Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
+- UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
