@@ -3010,6 +3010,7 @@
 
     const KPI_REFRESH_MS = 60000;
     const KPI_SPINNER_MIN_MS = 800;
+    let kpisSpinnerShownOnce = false;
 
     function fetchKpisData(options = {}) {
       const force = !!options.force;
@@ -3025,10 +3026,20 @@
     function refreshKpis(options = {}) {
       const force = !!options.force;
       if (kpisRefreshInFlight) return kpisRefreshInFlight;
-      setLiveKpisLoading();
-      kpisRefreshInFlight = Promise.all([fetchKpisData({ force }), delay(KPI_SPINNER_MIN_MS)])
-        .then(function(parts) {
-          const data = parts && parts[0] && typeof parts[0] === 'object' ? parts[0] : null;
+
+      // Only show the KPI mini spinners on the very first load (avoid visual noise on minute refreshes).
+      const showSpinner = !kpisSpinnerShownOnce;
+      if (showSpinner) {
+        kpisSpinnerShownOnce = true;
+        setLiveKpisLoading();
+      }
+
+      const fetchP = fetchKpisData({ force });
+      kpisRefreshInFlight = (showSpinner ? Promise.all([fetchP, delay(KPI_SPINNER_MIN_MS)]) : fetchP)
+        .then(function(partsOrData) {
+          const data = showSpinner
+            ? (partsOrData && partsOrData[0] && typeof partsOrData[0] === 'object' ? partsOrData[0] : null)
+            : (partsOrData && typeof partsOrData === 'object' ? partsOrData : null);
           lastKpisFetchedAt = Date.now();
           if (data) {
             kpiCache = data;
