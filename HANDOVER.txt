@@ -369,6 +369,7 @@ Backups durability:
 - UI: product name styling uses normal font-weight (400) and no clamp-based sizing/line-clamping
 - UI: pagination controls are now joined (segmented) and hover no longer lifts buttons
 - UI: AOV cards use neutral border + subtle shadow (matches table card styling)
+- UI: breakdown table zebra striping applies cleanly across first column (flag/thumb) without white blocks
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers

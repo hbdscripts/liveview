@@ -114,12 +114,13 @@
       .by-country-table th.th-sort-asc::after,
       .by-country-table th.th-sort-desc::after { margin: -10px 0 0 0; }
     }
-    /* First column layout: country tables need flex (flag + label); product tables manage their own layout. */
-    .by-country-table:not(.best-sellers-table) tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
-    .by-country-table:not(.best-sellers-table) tbody td:first-child > *:first-child { flex-shrink: 0; }
+    /* First column layout: keep td as table-cell (zebra striping), flex inside wrapper. */
+    .by-country-table:not(.best-sellers-table) tbody td:first-child { min-width: 0; }
+    .by-country-table:not(.best-sellers-table) tbody td:first-child .country-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+    .by-country-table:not(.best-sellers-table) tbody td:first-child .country-cell > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* Best GEO Products: flag + product thumb only. */
-    .geo-products-table tbody td:first-child .country-label { white-space: normal; text-overflow: clip; display: inline-flex; align-items: center; margin-left: -20px; border: 2px solid transparent; border-radius: 100px; background: transparent; }
+    .geo-products-table tbody td:first-child .country-label { flex: 0 0 auto; white-space: normal; text-overflow: clip; display: inline-flex; align-items: center; margin-left: 0; border: 2px solid transparent; border-radius: 100px; background: transparent; }
     .geo-products-table .geo-product-thumb { width: 32px; height: 32px; overflow: hidden; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; background: transparent; border-radius: 100px; }
     .geo-products-table .geo-product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 100px; }
     .geo-products-table .geo-product-thumb-placeholder { width: 100%; height: 100%; background: var(--border); display: block; }
@@ -3674,7 +3675,7 @@
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
-        return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+        return '<tr><td><span class="country-cell">' + flag + labelHtml + '</span></td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('country-table'), countryBy, countryDir);
       scheduleBreakdownSync();
@@ -3739,7 +3740,7 @@
           ? '<a class="geo-product-thumb" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</a>'
           : '<span class="geo-product-thumb" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</span>';
         const labelHtml = '<span class="country-label">' + thumb + '</span>';
-        return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+        return '<tr><td><span class="country-cell">' + flag + labelHtml + '</span></td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), geoBy, geoDir);
       scheduleBreakdownSync();
