@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (desktop revenue decimals styling)
+Last updated: 2026-02-05 (table border revert + converted edge)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -359,6 +359,7 @@ Backups durability:
 - UI: mobile icon headers shift sort arrows up for clearer alignment
 - UI: icon-mode tables round revenue values to whole pounds
 - UI: desktop tables render revenue decimals smaller than the whole-pound value
+- UI: table borders reverted to neutral; converted row accent sits on the table edge
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers

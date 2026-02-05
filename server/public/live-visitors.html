@@ -94,7 +94,7 @@
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin-bottom: 0.75rem; }
     /* Breakdown tables: same border, shadow, radius as Live table; same padding/th style */
-    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--accent); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
     .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: none; line-height: 1.4; }
     .by-country-table tr:last-child td { border-bottom: none; }
     .by-country-table tbody tr { box-shadow: none; }
@@ -205,7 +205,7 @@
     .aov-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .aov-card-value { font-size: 0.9rem; font-weight: 600; color: var(--text); white-space: nowrap; }
     .aov-card-empty { justify-content: center; color: var(--muted); }
-    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--accent); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: none; vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
     tr:last-child td { border-bottom: none; }
     th:not(:first-child), td:not(:first-child) { text-align: center; }
@@ -221,8 +221,9 @@
     tr.converted:hover { background: var(--converted-bg); }
     .rev-decimal { font-size: 0.75em; opacity: 0.7; vertical-align: top; }
     tr.converted td { font-weight: 500; }
-    /* Converted: show a bold left-side accent (overlay icon is hidden). */
-    #sessions-table tr.converted td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    /* Converted: show a bold left-side accent at the table edge. */
+    #sessions-table tr.converted { position: relative; }
+    #sessions-table tr.converted::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 3px; background: var(--accent); }
     tr.clickable { cursor: pointer; }
     .flag-cell { white-space: nowrap; }
     .arrived-cell, .last-seen-cell { font-size: var(--table-font-size); white-space: nowrap; }
@@ -472,7 +473,7 @@
 #audio-mute-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
 #audio-mute-btn svg { width: 20px; height: 20px; }
-.table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--accent); }
+.table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .table-scroll-wrap.tight-cols { --table-cell-padding-x: 0.6rem; }
 .table-scroll-wrap table { margin: 0; min-width: 800px; table-layout: auto; border: none; box-shadow: none; }
 .table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
