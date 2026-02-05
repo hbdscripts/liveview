@@ -3493,8 +3493,6 @@
           const expectedIngestUrl = (ingest && ingest.effectiveIngestUrl != null) ? String(ingest.effectiveIngestUrl) : '';
           const ingestUrlMatch = (pixelIngestUrl && expectedIngestUrl) ? (pixelIngestUrl === expectedIngestUrl) : null;
 
-          const syncTone = (typeof staleSec === 'number' && isFinite(staleSec)) ? (staleSec > 900 ? 'bad' : (staleSec > 300 ? 'warn' : 'ok')) : 'warn';
-
           function diffCell(text, cls) {
             const c = cls ? (' ' + cls) : '';
             return '<span class="' + c.trim() + '">' + escapeHtml(text) + '</span>';
@@ -3514,7 +3512,6 @@
           html +=         '<div class="diag-sub">Sessions + CR%</div>';
           html +=       '</div>';
           html +=     '</div>';
-          html +=     (staleSec != null ? ('<div>' + pill('Sync ' + String(staleSec) + 's', syncTone) + '</div>') : '');
           html +=   '</div>';
           html +=   '<div class="diag-metrics">';
           html +=     '<div class="diag-metric"><div class="diag-metric-label">Shopify Sessions</div><div class="diag-metric-value">' + fmtSessions(shopifySessionsToday) + '</div></div>';
@@ -3531,7 +3528,6 @@
           html +=         '<div class="diag-sub">Sessions + CR%</div>';
           html +=       '</div>';
           html +=     '</div>';
-          html +=     (truthOrders != null ? ('<div>' + pill(String(truthOrders) + ' orders', 'ok') + '</div>') : '');
           html +=   '</div>';
           html +=   '<div class="diag-metrics">';
           html +=     '<div class="diag-metric"><div class="diag-metric-label">Birdseye Sessions</div><div class="diag-metric-value">' + fmtSessions(birdseyeSessionsToday) + '</div></div>';
