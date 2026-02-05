@@ -50,7 +50,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     id: 'kpi_grid',
     page: 'Home',
     name: 'Top KPI grid',
-    ui: { elementIds: ['kpi-grid'] },
+    ui: { elementIds: ['live-kpi-grid'] },
     endpoint: { method: 'GET', path: '/api/kpis', params: ['range=...', 'force=1 (optional)'] },
     sources: [
       { kind: 'db', tables: ['sessions', 'purchases'], note: 'Sessions + pixel-derived purchases when ordersSource=pixel' },
