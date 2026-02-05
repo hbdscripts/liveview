@@ -219,6 +219,7 @@
     tr.converted { background: var(--converted-bg); }
     tr.converted td { background: var(--converted-bg); }
     tr.converted:hover { background: var(--converted-bg); }
+    .rev-decimal { font-size: 0.75em; opacity: 0.7; vertical-align: top; }
     tr.converted td { font-weight: 500; }
     /* Converted: show a bold left-side accent (overlay icon is hidden). */
     #sessions-table tr.converted td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
@@ -2694,10 +2695,13 @@
       }
     }
 
-    function formatRevenueTable(num) {
+    function formatRevenueTableHtml(num) {
       if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '—';
       if (isIconMode()) return '\u00A3' + Math.round(num);
-      return formatRevenue(num) || '—';
+      if (num % 1 === 0) return '\u00A3' + num;
+      const fixed = num.toFixed(2);
+      const parts = fixed.split('.');
+      return '\u00A3' + parts[0] + '<span class="rev-decimal">.' + parts[1] + '</span>';
     }
 
     function animateTickerText(el, nextText) {
@@ -3044,7 +3048,7 @@
         const sales = formatSessions(typeof p.converted === 'number' ? p.converted : 0);
         const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
         const revNum = p.revenue != null ? Number(p.revenue) : NaN;
-        const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? formatRevenueTable(revNum) : '\u2014';
+        const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? formatRevenueTableHtml(revNum) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
@@ -3169,7 +3173,7 @@
         const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
         const sales = formatSessions(ordersNum);
         const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenueTable(v.revenue);
+        const revenue = formatRevenueTableHtml(v.revenue);
         const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
         const crVal = totalOrders > 0 ? (Math.round((ordersNum / totalOrders) * 1000) / 10) : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
@@ -3239,7 +3243,7 @@
         const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
         const sales = formatSessions(ordersNum);
         const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenueTable(v.revenue);
+        const revenue = formatRevenueTableHtml(v.revenue);
         const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
         const crVal = totalOrders > 0 ? (Math.round((ordersNum / totalOrders) * 1000) / 10) : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
@@ -3290,7 +3294,7 @@
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
-        const revenue = formatRevenueTable(p.revenue);
+        const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
@@ -3571,7 +3575,7 @@
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + code + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + flag + '<span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
-          '<div class="aov-card-value">' + formatRevenue(r.aov) + '</div>' +
+          '<div class="aov-card-value">' + formatRevenueTableHtml(r.aov) + '</div>' +
         '</div>';
       }).join('');
     }
@@ -3615,7 +3619,7 @@
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
-        const revenue = formatRevenueTable(r.revenue);
+        const revenue = formatRevenueTableHtml(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
@@ -3674,7 +3678,7 @@
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
-        const revenue = formatRevenueTable(r.revenue);
+        const revenue = formatRevenueTableHtml(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const thumbImg = productThumb
           ? '<img src="' + escapeHtml(productThumb) + '" alt="' + escapeHtml(productTitle) + '" loading="lazy">'
@@ -4597,13 +4601,13 @@
           const cr = (r && typeof r.conversionPct === 'number') ? pct(r.conversionPct) : '—';
           const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '—';
           const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '—';
-          const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenueTable(r.revenueGbp) : '—';
+          const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenueTableHtml(r.revenueGbp) : '—';
           html += '<tr>' +
             '<td>' + labelCell + '</td>' +
             '<td>' + escapeHtml(cr || '—') + '</td>' +
             '<td>' + escapeHtml(orders || '—') + '</td>' +
             '<td>' + escapeHtml(sessions || '—') + '</td>' +
-            '<td>' + escapeHtml(rev || '—') + '</td>' +
+            '<td>' + (rev || '—') + '</td>' +
             '</tr>';
         });
         body.innerHTML = html;
@@ -4647,7 +4651,7 @@
           const cr = (g && typeof g.conversionPct === 'number') ? pct(g.conversionPct) : '—';
           const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
           const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
-          const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenueTable(g.revenueGbp) : '—';
+          const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenueTableHtml(g.revenueGbp) : '—';
           html += '<tr class="traffic-type-parent" data-device="' + escapeHtml(device) + '">' +
             '<td>' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -4658,7 +4662,7 @@
             '<td>' + escapeHtml(cr || '—') + '</td>' +
             '<td>' + escapeHtml(orders || '—') + '</td>' +
             '<td>' + escapeHtml(sessions || '—') + '</td>' +
-            '<td>' + escapeHtml(rev || '—') + '</td>' +
+            '<td>' + (rev || '—') + '</td>' +
           '</tr>';
 
           const kids = (g && Array.isArray(g.children)) ? g.children.slice() : [];
@@ -4680,13 +4684,13 @@
             const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
             const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
             const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
-            const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTable(c.revenueGbp) : '—';
+            const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTableHtml(c.revenueGbp) : '—';
             html += '<tr class="traffic-type-child" data-parent="' + escapeHtml(device) + '"' + (open ? '' : ' style="display:none"') + '>' +
               '<td>' + clabel + '</td>' +
               '<td>' + escapeHtml(ccr || '—') + '</td>' +
               '<td>' + escapeHtml(corders || '—') + '</td>' +
               '<td>' + escapeHtml(csessions || '—') + '</td>' +
-              '<td>' + escapeHtml(crev || '—') + '</td>' +
+              '<td>' + (crev || '—') + '</td>' +
             '</tr>';
           });
         });
