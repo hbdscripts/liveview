@@ -137,7 +137,7 @@ async function getWorstProducts(req, res) {
                 pe.linked_order_id AS order_id
               FROM purchase_events pe
               WHERE pe.shop = ?
-                AND pe.event_type = 'checkout_completed'
+                AND pe.event_type IN ('checkout_completed', 'checkout_started')
                 AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
             ) x
             INNER JOIN orders_shopify_line_items li ON li.shop = x.shop AND li.order_id = x.order_id

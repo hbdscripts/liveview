@@ -395,7 +395,16 @@ register(({ analytics, init, browser, settings }) => {
   analytics.subscribe('checkout_started', (event) => {
     try {
       lastPath = pathFromContext(event?.context) || lastPath;
-      send(payload('checkout_started', { checkout_started: true }));
+      const checkout = event?.data?.checkout;
+      const checkoutToken = (function () {
+        const raw = checkout?.token;
+        if (raw == null) return null;
+        if (typeof raw !== 'string') return null;
+        const s = raw.trim();
+        if (!s) return null;
+        return s;
+      })();
+      send(payload('checkout_started', { checkout_started: true, checkout_token: checkoutToken }));
     } catch (_) {}
   });
 

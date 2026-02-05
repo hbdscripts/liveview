@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers; Sale toast title/time layout)
+Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Truth attribution: checkout_started token fallback; Traffic: mapping UX + direct self-referrers; Sale toast title/time layout)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -324,6 +324,7 @@ Backups durability:
 - UI: sale toast forces Home table refresh for Today/Last Hour/Live and updates footer “Last sale” from toast payload.
 - Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
 - Ingest/Sales evidence: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (pixel-derived “Birdseye” drift/debug).
+- Ingest/Sales evidence: also capture checkout_started `checkout_token` into purchase_events so truth orders can still be linked/attributed when checkout_completed evidence is missing (reduces Shopify vs Birdseye order gaps without deleting data).
 - Fix: harden purchase dedupe keys to **ignore non-string checkout_token / order_id** (avoid `"[object Object]"` collapsing all purchases into one) and normalize order_id to stable numeric ids when possible.
 - Ops: added migration `028_backfill_purchases_from_evidence` (one-time, idempotent) to backfill `purchases` from recent `purchase_events` using the original occurred_at timestamps (backdated). This is debug-only unless reporting source is switched to `pixel`.
 - Edge: Worker ingest matcher now normalizes trailing slashes so `/api/ingest/` is treated as ingest (enrichment/bot handling applies consistently).

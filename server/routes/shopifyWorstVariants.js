@@ -167,7 +167,7 @@ async function getShopifyWorstVariants(req, res) {
                 INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
                 WHERE s.started_at >= ? AND s.started_at < ?
                   AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-                  AND pe.event_type = 'checkout_completed'
+                  AND pe.event_type IN ('checkout_completed', 'checkout_started')
                   AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
               ),
               sales AS (

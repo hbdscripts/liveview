@@ -94,7 +94,7 @@ async function getLatestSale(req, res) {
         INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
         LEFT JOIN sessions s ON s.session_id = pe.session_id
         WHERE pe.shop = ?
-          AND pe.event_type = 'checkout_completed'
+          AND pe.event_type IN ('checkout_completed', 'checkout_started')
           AND o.created_at >= ? AND o.created_at < ?
           AND (o.test IS NULL OR o.test = 0)
           AND o.cancelled_at IS NULL

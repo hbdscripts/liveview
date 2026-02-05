@@ -197,16 +197,28 @@ function ingestRouter(req, res, next) {
   store.upsertVisitor(payload)
     .then(({ isReturning } = {}) => store.upsertSession(payload, isReturning, cfContext))
     .then(() => {
-      // On checkout_completed we must write BOTH:
-      // - purchase_events (append-only evidence)
-      // - purchases (order-level dedupe used by diagnostics/reporting when pixel-derived)
+      // On checkout_* events we write purchase_events (append-only evidence) so Shopify truth orders
+      // can be attributed to sessions even when checkout_completed is missed.
+      //
+      // On checkout_completed we ALSO write purchases (order-level dedupe used when ordersSource=pixel).
       const isCheckoutCompleted =
         payload &&
         (payload.event_type === 'checkout_completed' ||
           payload.checkout_completed === true ||
           payload.checkout_completed === 1 ||
           payload.checkout_completed === '1');
-      if (!isCheckoutCompleted) return null;
+      const isCheckoutStarted =
+        payload &&
+        (payload.event_type === 'checkout_started' ||
+          payload.checkout_started === true ||
+          payload.checkout_started === 1 ||
+          payload.checkout_started === '1');
+      const hasPurchaseLinkKey = !!(payload && (payload.checkout_token || payload.order_id));
+      if (!hasPurchaseLinkKey || (!isCheckoutCompleted && !isCheckoutStarted)) return null;
+
+      if (!isCheckoutCompleted) {
+        return salesEvidence.insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext });
+      }
       return salesEvidence
         .insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext })
         .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'));

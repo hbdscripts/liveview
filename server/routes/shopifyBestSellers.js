@@ -91,7 +91,7 @@ async function getShopifyBestSellers(req, res) {
             WHERE s.started_at >= ? AND s.started_at < ?
               ${botFilterSql}
               AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-              AND pe.event_type = 'checkout_completed'
+              AND pe.event_type IN ('checkout_completed', 'checkout_started')
               AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
               AND o.created_at >= ? AND o.created_at < ?
               AND (o.test IS NULL OR o.test = 0)
@@ -169,7 +169,7 @@ async function getShopifyBestSellers(req, res) {
               WHERE s.started_at >= ? AND s.started_at < ?
                 ${botFilterSql}
                 AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-                AND pe.event_type = 'checkout_completed'
+                AND pe.event_type IN ('checkout_completed', 'checkout_started')
                 AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
             ),
             orders_by_handle AS (

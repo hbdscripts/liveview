@@ -1892,7 +1892,7 @@ async function getCountryStats(start, end, options = {}) {
             INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
             INNER JOIN sessions s ON s.session_id = pe.session_id
             WHERE pe.shop = ?
-              AND pe.event_type = 'checkout_completed'
+              AND pe.event_type IN ('checkout_completed', 'checkout_started')
               AND o.created_at >= ? AND o.created_at < ?
               AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
               ${filter.sql.replace(/sessions\./g, 's.')}
@@ -1984,7 +1984,7 @@ async function getBestGeoProducts(start, end, options = {}) {
       FROM purchase_events pe
       INNER JOIN sessions s ON s.session_id = pe.session_id
       WHERE pe.shop = ?
-        AND pe.event_type = 'checkout_completed'
+        AND pe.event_type IN ('checkout_completed', 'checkout_started')
         AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
         AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
         ${filterAlias}
@@ -2190,7 +2190,7 @@ async function getConvertedSessionCount(start, end, options = {}) {
             INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
             WHERE s.started_at >= $2 AND s.started_at < $3
               ${filterAlias}
-              AND pe.event_type = 'checkout_completed'
+              AND pe.event_type IN ('checkout_completed', 'checkout_started')
               AND pe.occurred_at >= $4 AND pe.occurred_at < $5
               AND o.created_at >= $4 AND o.created_at < $5
               AND (o.test IS NULL OR o.test = 0)
@@ -2209,7 +2209,7 @@ async function getConvertedSessionCount(start, end, options = {}) {
             INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
             WHERE s.started_at >= ? AND s.started_at < ?
               ${filterAlias}
-              AND pe.event_type = 'checkout_completed'
+              AND pe.event_type IN ('checkout_completed', 'checkout_started')
               AND pe.occurred_at >= ? AND pe.occurred_at < ?
               AND o.created_at >= ? AND o.created_at < ?
               AND (o.test IS NULL OR o.test = 0)
