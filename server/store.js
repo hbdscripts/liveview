@@ -115,6 +115,12 @@ function internalHostSet() {
   addHost(config.shopDomain);
   addHost(config.allowedShopDomain);
   addHostFromUrl(config.storeMainDomain);
+  // Brand/store self-referral domains: treat as internal so they map to Direct (not Other).
+  // These appear as referrers during redirects / multi-domain setups.
+  set.add('heybigday.com');
+  set.add('www.heybigday.com');
+  set.add('hbdjewellery.com');
+  set.add('www.hbdjewellery.com');
   // Shopify checkout/self-referral sources
   set.add('checkout.shopify.com');
   set.add('shopify.com');

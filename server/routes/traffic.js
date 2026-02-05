@@ -217,6 +217,14 @@ async function getTraffic(req, res) {
         const meta = sourceMetaByKey.get(k);
         return meta && meta.iconUrl != null ? meta.iconUrl : null;
       }
+      const DIRECT_REFERRER_HOSTS = ['heybigday.com', 'hbdjewellery.com'];
+      function effectiveSourceKeySql(alias = '') {
+        const a = alias ? alias + '.' : '';
+        const ref = `LOWER(COALESCE(${a}referrer, ''))`;
+        const refMatch = DIRECT_REFERRER_HOSTS.map((h) => `${ref} LIKE '%${h}%'`).join(' OR ');
+        const keyNorm = `LOWER(TRIM(COALESCE(${a}traffic_source_key, '')))`;
+        return `CASE WHEN ${keyNorm} = 'other' AND (${refMatch}) THEN 'direct' ELSE ${keyNorm} END`;
+      }
       let msAvailSources = 0;
       let msSessionsBySource = 0;
       let msSalesBySource = 0;
@@ -228,14 +236,15 @@ async function getTraffic(req, res) {
       // --- Available Sources (last 30d) ---
       const since30d = now - 30 * 24 * 60 * 60 * 1000;
       const tAvail0 = Date.now();
+      const sourceKeyExpr = effectiveSourceKeySql('sessions');
       const availableSources = await db.all(
         `
-          SELECT traffic_source_key AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
+          SELECT ${sourceKeyExpr} AS key, COUNT(*) AS sessions, MAX(last_seen) AS last_seen
           FROM sessions
           WHERE last_seen >= ?
             AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
             ${humanOnlyClause('sessions')}
-          GROUP BY traffic_source_key
+          GROUP BY ${sourceKeyExpr}
           ORDER BY sessions DESC
         `,
         [since30d]
@@ -272,14 +281,15 @@ async function getTraffic(req, res) {
 
       // --- Source breakdown (range) ---
       const tSessionsBySource0 = Date.now();
+      const rangeSourceKeyExpr = effectiveSourceKeySql('sessions');
       const sessionsBySourceRows = await db.all(
         `
-          SELECT traffic_source_key AS key, COUNT(*) AS sessions
+          SELECT ${rangeSourceKeyExpr} AS key, COUNT(*) AS sessions
           FROM sessions
           WHERE started_at >= ? AND started_at < ?
             AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
             ${humanOnlyClause('sessions')}
-          GROUP BY traffic_source_key
+          GROUP BY ${rangeSourceKeyExpr}
         `,
         [bounds.start, bounds.end]
       );
@@ -294,12 +304,13 @@ async function getTraffic(req, res) {
       const tSalesBySource0 = Date.now();
       let salesBySource = new Map();
       if (reporting.ordersSource === 'pixel') {
+        const salesSourceKeyExpr = effectiveSourceKeySql('s');
         const salesRows = await db.all(
           `
             SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
             FROM (
               SELECT
-                s.traffic_source_key AS traffic_source_key,
+                ${salesSourceKeyExpr} AS traffic_source_key,
                 COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
                 p.order_total AS revenue
               FROM purchases p
@@ -315,12 +326,13 @@ async function getTraffic(req, res) {
         );
         salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
       } else if (shop) {
+        const salesSourceKeyExpr = effectiveSourceKeySql('s');
         const salesRows = await db.all(
           `
             SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
             FROM (
               SELECT DISTINCT
-                s.traffic_source_key AS traffic_source_key,
+                ${salesSourceKeyExpr} AS traffic_source_key,
                 COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
                 o.order_id AS order_id,
                 o.total_price AS revenue

@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Diagnostics: icons + “Copy AI debug” payload)
+Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -320,6 +320,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
+- UI: sale toast uses product thumb (width=100), shows vertical HH:MM time, removes dismiss button; debug replay via `?toast=true` using `/api/latest-sale` (now returns product thumb metadata when available).
 - Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
 - Ingest/Sales evidence: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (pixel-derived “Birdseye” drift/debug).
 - Fix: harden purchase dedupe keys to **ignore non-string checkout_token / order_id** (avoid `"[object Object]"` collapsing all purchases into one) and normalize order_id to stable numeric ids when possible.
@@ -356,6 +357,10 @@ Backups durability:
 - Diagnostics: add checkout-token truth order/revenue breakdown (proxy for online-store checkouts); CR% uses **sessions that completed checkout** (distinct `checkout_completed` sessions) / Sessions (Shopify definition), so it stays correct even when orders > sessions
 - Diagnostics: flatten to a single top tab bar (no nested tabs) and rebuild the modal content with inline styling + clearer “CR% (sessions)” vs “Orders/session%” so the definition change is obvious
 - Diagnostics: add Shopify/Birdseye icons + a “Copy AI debug” button that copies a detailed structured diagnostics payload (raw `/api/config-status` + computed CR math) for pasting into AI chats when diagnosing inconsistencies
+- Diagnostics: add Sales drift “AI notes” + missing-evidence sample (truth orders missing checkout_completed evidence) and include AI notes in the copy payload so big Shopify vs Birdseye sales gaps are diagnosable
+- Diagnostics: standardise all border radii inside the Diagnostics modal to 3px
+- Traffic: treat store self-referrers (`heybigday.com`, `hbdjewellery.com`) as internal → Direct (prevents these referrers appearing under Other in Traffic + Source icons)
+- Traffic: Source mapping panel UX: widen source dropdown and add an inline mapped-token icon jump row (click icon → scroll to token row)
 - Diagnostics: Definitions tab is powered by `server/trackerDefinitions.js` and includes runtime checks (DB tables present, token stored, UI ids present).
 - KPIs/Stats: conversion rate is session-based (sessions-with-purchase / sessions), not raw order-count / sessions (matches Shopify analytics definition)
 - UI: make all dashboard table headers sortable on click (Home sessions + Breakdown/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
@@ -430,4 +435,4 @@ Backups durability:
 - Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
 - Dashboard: replace Home tab SVG icon with birdseye PNG (25x25)
 - Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
-- Dashboard: sale toast overlays Sales+Sessions KPIs (flag + top product + order £) for 10s; Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`)
+- Dashboard: sale toast overlays Sales+Sessions KPIs with product thumb + vertical HH:MM time + inline flag + order £ for ~10s (no manual dismiss); Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`, debug replay `?toast=true`)

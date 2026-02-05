@@ -466,20 +466,33 @@
     .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
     .sale-toast-host { position: relative; overflow: visible; }
     .sale-toast-host.toast-open { z-index: 10; }
-    .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 3px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
+    .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 3px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
     .sale-toast.active { opacity: 1; transform: translateY(0); }
-    .sale-toast .sale-toast-flag { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 30px; height: 100%; object-fit: contain; border-radius: 6px; display: block; margin: 0 0 5px; }
+    .sale-toast .sale-toast-time {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 255, 255, 0.8);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
+    .sale-toast .sale-toast-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sale-toast .sale-toast-thumb-placeholder { width: 100%; height: 100%; display: block; background: rgba(255,255,255,0.2); border-radius: inherit; }
     .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
     .sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 0 0; flex-shrink: 0; }
         .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
         .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; background: #088378; padding: 0 15px 0 0; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; }
         .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
-    .sale-toast .sale-toast-close { position: absolute; top: -5px; right: -5px; width: 25px; height: 25px; border: 2px solid #0d9488; background: #0d9488; color: #fff; border-radius: 100px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; z-index: 3; }
-    .sale-toast .sale-toast-close:active { transform: translateY(1px); }
-    .sale-toast .sale-toast-close:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
-    .sale-toast .sale-toast-close svg { width: 16px; height: 16px; display: block; }
     .kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
     .kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
     .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }

@@ -108,6 +108,14 @@ async function configStatus(req, res, next) {
     return Number.isFinite(n) ? n : null;
   }
 
+  function safeHost(url) {
+    const raw = url != null ? String(url).trim() : '';
+    if (!raw) return '';
+    try { return new URL(raw).hostname.toLowerCase(); } catch (_) {}
+    try { return new URL('https://' + raw).hostname.toLowerCase(); } catch (_) {}
+    return '';
+  }
+
   const shop = salesTruth.resolveShopForSales(req.query.shop || '');
   const serverScopes = (config.shopify.scopes || '').split(',').map((s) => s.trim()).filter(Boolean).join(', ');
 
@@ -331,6 +339,83 @@ async function configStatus(req, res, next) {
     } catch (_) {}
   }
 
+  // --- Missing evidence diagnostics (truth orders that don't have checkout_completed evidence linked) ---
+  const missingEvidence = {
+    today: {
+      missingOrderCount: null,
+      missingOrdersSample: [],
+      note:
+        'If missing > 0, pixel checkout_completed evidence did not arrive for those paid orders (adblock/consent/checkout surface). Truth orders remain authoritative.',
+    },
+  };
+  if (shop && tables.orders_shopify && tables.purchase_events) {
+    try {
+      const countRow = await db.get(
+        `
+          SELECT COUNT(*) AS n
+          FROM orders_shopify o
+          LEFT JOIN purchase_events pe
+            ON pe.shop = o.shop
+           AND pe.event_type = 'checkout_completed'
+           AND pe.linked_order_id = o.order_id
+          WHERE o.shop = ?
+            AND o.created_at >= ? AND o.created_at < ?
+            AND (o.test IS NULL OR o.test = 0)
+            AND o.cancelled_at IS NULL
+            AND o.financial_status = 'paid'
+            AND pe.id IS NULL
+        `,
+        [shop, todayBounds.start, todayBounds.end]
+      );
+      missingEvidence.today.missingOrderCount = countRow?.n != null ? Number(countRow.n) || 0 : 0;
+    } catch (_) {}
+
+    try {
+      const rows = await db.all(
+        `
+          SELECT o.order_id, o.order_name, o.created_at, o.total_price, o.currency, o.checkout_token, o.raw_json
+          FROM orders_shopify o
+          LEFT JOIN purchase_events pe
+            ON pe.shop = o.shop
+           AND pe.event_type = 'checkout_completed'
+           AND pe.linked_order_id = o.order_id
+          WHERE o.shop = ?
+            AND o.created_at >= ? AND o.created_at < ?
+            AND (o.test IS NULL OR o.test = 0)
+            AND o.cancelled_at IS NULL
+            AND o.financial_status = 'paid'
+            AND pe.id IS NULL
+          ORDER BY o.created_at DESC
+          LIMIT 25
+        `,
+        [shop, todayBounds.start, todayBounds.end]
+      );
+      const out = [];
+      for (const r of rows || []) {
+        const raw = safeJsonParse(r && r.raw_json != null ? String(r.raw_json) : '') || null;
+        const sourceName = raw && raw.source_name != null ? String(raw.source_name) : (raw && raw.sourceName != null ? String(raw.sourceName) : '');
+        const referringSite = raw && raw.referring_site != null ? String(raw.referring_site) : (raw && raw.referringSite != null ? String(raw.referringSite) : '');
+        const landingSite = raw && raw.landing_site != null ? String(raw.landing_site) : (raw && raw.landingSite != null ? String(raw.landingSite) : '');
+        const gateway = raw && raw.gateway != null ? String(raw.gateway) : '';
+        const paymentGateways = raw && Array.isArray(raw.payment_gateway_names) ? raw.payment_gateway_names.map((v) => String(v)) : null;
+        out.push({
+          order_id: r && r.order_id != null ? String(r.order_id) : '',
+          order_name: r && r.order_name != null ? String(r.order_name) : '',
+          created_at: r && r.created_at != null ? Number(r.created_at) : null,
+          total_price: r && r.total_price != null ? Number(r.total_price) : null,
+          currency: r && r.currency != null ? String(r.currency) : null,
+          checkout_token_present: !!(r && r.checkout_token != null && String(r.checkout_token).trim() !== ''),
+          source_name: sourceName || null,
+          referring_site_host: referringSite ? (safeHost(referringSite) || null) : null,
+          landing_site_host: landingSite ? (safeHost(landingSite) || null) : null,
+          gateway: gateway || null,
+          payment_gateway_names: paymentGateways && paymentGateways.length ? paymentGateways.slice(0, 5) : null,
+        });
+      }
+      missingEvidence.today.missingOrdersSample = out;
+    } catch (_) {}
+  }
+
   // --- Pixel diagnostics (Shopify web pixel settings for this app) ---
   let pixel = { ok: false, installed: null, ingestUrl: null, message: '' };
   if (shop && token) {
@@ -464,6 +549,7 @@ async function configStatus(req, res, next) {
       boundsToday: todayBounds,
       truth,
       evidence,
+      missingEvidence,
       pixel: pixelDerived,
       drift: {
         orders: (typeof evidence.today.checkoutCompleted === 'number' && typeof truth.today.orderCount === 'number')

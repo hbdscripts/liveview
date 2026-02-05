@@ -9,6 +9,7 @@
 const store = require('../store');
 const fx = require('../fx');
 const salesTruth = require('../salesTruth');
+const productMetaCache = require('../shopifyProductMetaCache');
 const { getDb } = require('../db');
 
 function safeStr(v, maxLen = 512) {
@@ -32,8 +33,8 @@ function normalizeCountry(v) {
   return code;
 }
 
-function parseTopProductTitle(rawJson) {
-  if (!rawJson || typeof rawJson !== 'string') return '';
+function parseTopProduct(rawJson) {
+  if (!rawJson || typeof rawJson !== 'string') return { title: '', productId: null };
   let order = null;
   try {
     order = JSON.parse(rawJson);
@@ -59,10 +60,12 @@ function parseTopProductTitle(rawJson) {
     const lineTotal = unit * qty;
     if (!Number.isFinite(lineTotal)) continue;
     if (!best || lineTotal > best.lineTotal || (lineTotal === best.lineTotal && unit > best.unit)) {
-      best = { title, unit, qty, lineTotal };
+      const productIdRaw = (li && li.product_id != null ? li.product_id : null) ?? li?.productId ?? null;
+      const productId = productIdRaw != null ? safeStr(productIdRaw, 64) : '';
+      best = { title, unit, qty, lineTotal, productId: productId || null };
     }
   }
-  return best ? best.title : '';
+  return best ? { title: best.title, productId: best.productId || null } : { title: '', productId: null };
 }
 
 async function getLatestSale(req, res) {
@@ -164,6 +167,7 @@ async function getLatestSale(req, res) {
     const ratesToGbp = await fx.getRatesToGbp();
     const gbp = total == null ? null : fx.convertToGbp(total, currency, ratesToGbp);
 
+    const topProduct = parseTopProduct(row.raw_json);
     const sale = {
       source: source || null,
       orderId: safeStr(row.order_id, 64) || null,
@@ -171,8 +175,27 @@ async function getLatestSale(req, res) {
       createdAt: row.created_at != null ? Number(row.created_at) : null,
       countryCode: normalizeCountry(row.country_code),
       amountGbp: gbp != null && Number.isFinite(gbp) ? Math.round(gbp * 100) / 100 : null,
-      productTitle: parseTopProductTitle(row.raw_json),
+      productTitle: topProduct && topProduct.title ? topProduct.title : '',
     };
+
+    const productId = topProduct && topProduct.productId ? safeStr(topProduct.productId, 64) : '';
+    if (shop && productId) {
+      try {
+        const tokenRow = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+        const token = tokenRow && tokenRow.access_token ? String(tokenRow.access_token).trim() : '';
+        if (token) {
+          const meta = await productMetaCache.getProductMeta(shop, token, productId);
+          if (meta && meta.ok) {
+            const handle = safeStr(meta.handle, 128) || null;
+            const thumbUrl = safeStr(meta.thumb_url, 1024) || null;
+            if (handle) sale.productHandle = handle;
+            if (thumbUrl) sale.productThumbUrl = thumbUrl;
+          }
+        }
+      } catch (_) {
+        // best-effort: skip meta when unavailable
+      }
+    }
 
     res.json({ ok: true, sale, shop, range: { key: 'today', start: bounds.start, end: bounds.end, timeZone: tz } });
   } catch (err) {

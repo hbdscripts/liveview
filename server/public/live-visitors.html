@@ -797,7 +797,7 @@
     .config-row.missing { color: #b91c1c; }
 
     /* Diagnostics (config status) redesign */
-    #config-modal .config-modal-card { width: 940px; max-width: calc(100vw - 2rem); max-height: 86vh; }
+    #config-modal .config-modal-card { width: 940px; max-width: calc(100vw - 2rem); max-height: 86vh; border-radius: 3px; }
     #config-modal .config-modal-header { margin-bottom: 0.5rem; }
 
     .diag { display: flex; flex-direction: column; gap: 0.85rem; }
@@ -913,11 +913,17 @@
     .tsm-token-table th:nth-child(2), .tsm-token-table td:nth-child(2) { width: 25%; }
     .tsm-token-table th:nth-child(3), .tsm-token-table td:nth-child(3) { width: 50%; }
     .tsm-token-map-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
-    .tsm-token-map-row .tsm-select { width: 100px; flex: 0 0 100px; }
+    .tsm-token-map-row .tsm-select { width: 160px; flex: 0 0 160px; }
     .tsm-token-other { flex: 1 1 180px; min-width: 160px; }
     .tsm-token-icon { flex: 2 1 240px; min-width: 200px; }
     .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
     .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
+    .tsm-jump-row { display: flex; gap: 8px; align-items: center; overflow: auto; padding: 6px 2px 8px; margin: 0 0 8px; }
+    .tsm-jump-btn { border: none; background: none; padding: 0; cursor: pointer; line-height: 0; opacity: 0.9; }
+    .tsm-jump-btn:hover { opacity: 1; }
+    .tsm-jump-btn img { width: 20px; height: 20px; object-fit: contain; display: block; }
+    .tsm-token-row.tsm-flash { animation: tsmFlash 1200ms ease; }
+    @keyframes tsmFlash { 0% { background: rgba(13, 148, 136, 0.14); } 100% { background: transparent; } }
   </script>
 </head>
 <body class="page-dashboard">
@@ -975,12 +981,8 @@
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
         <div class="live-kpi-value" id="live-kpi-sales">—</div>
         <div class="sale-toast is-hidden" id="sale-toast" aria-hidden="true">
-          <button type="button" class="sale-toast-close" id="sale-toast-close" aria-label="Dismiss sale notification" title="Dismiss">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 6L6 18M6 6l12 12"></path>
-            </svg>
-          </button>
-          <div class="sale-toast-flag" id="sale-toast-flag"></div>
+          <div class="sale-toast-time" id="sale-toast-time">—</div>
+          <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
           <div class="sale-toast-mid">
             <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span>New Sale</div>
             <div class="sale-toast-product" id="sale-toast-product">—</div>
@@ -1498,6 +1500,7 @@
     let saleToastHideTimer = null;
     let saleToastPendingKpi = null; // { labelText, valueText }
     let saleToastLastOrderId = null;
+    let saleToastLastPayload = null;
     let saleToastLastShownAt = 0;
     let currentPage = 1;
     let sortBy = 'last_seen';
@@ -1584,6 +1587,18 @@
       if (s < 60) return s + 's ago';
       if (s < 3600) return Math.floor(s / 60) + 'm ago';
       return Math.floor(s / 3600) + 'h ago';
+    }
+
+    function formatSaleTime(ms) {
+      const n = toMs(ms);
+      if (n == null) return '\u2014';
+      const d = new Date(n);
+      if (Number.isNaN(d.getTime())) return '\u2014';
+      try {
+        return d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+      } catch (_) {
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      }
     }
 
     function ymdNowInTz() {
@@ -1745,8 +1760,6 @@
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
-    var NEW_SALE_BIRD_URL = hotImgSquare('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/newsalebird.webp?v=1770255597');
-    var SALE_TOAST_ICON_SVG = '<svg class="sale-toast-bird-icon" viewBox="-0.5 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" aria-hidden="true"><path d="M9.5474 3.5C8.82737 3.5 8.21601 4.02747 8.11049 4.73972L7.77563 7H10V10H7.33119L6.92345 12.7522C6.85846 13.1909 6.73748 13.6091 6.56841 14H14V17H2V14C2.98006 14 3.81221 13.282 3.95584 12.3126L4.29844 10H2V7H4.74289L5.14288 4.30008C5.46632 2.11683 7.34032 0.5 9.5474 0.5C12.0065 0.5 14 2.4935 14 4.9526V5H11V4.9526C11 4.15035 10.3496 3.5 9.5474 3.5Z" fill="#fff"/></svg>';
     var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
 
     function titleCaseFromHandle(handle) {
@@ -2400,6 +2413,15 @@
       });
 
       function fmtTs(ms) { return (typeof ms === 'number' && isFinite(ms)) ? formatTs(ms) : '—'; }
+      function tokenJumpId(p, v) {
+        const s = String(p || '') + '\u0000' + String(v || '');
+        let h = 2166136261;
+        for (let i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return 'tsm-token-' + (h >>> 0).toString(16);
+      }
 
       let html = '';
       html += '<div class="tsm-actions">';
@@ -2415,6 +2437,25 @@
       if (!sources.length) {
         html += '<div class="diag-note">No sources yet.</div>';
       } else {
+        // Quick-jump row for source meta (icons → scroll to source row)
+        try {
+          html += '<div class="tsm-jump-row" aria-label="Source shortcuts">';
+          sources.forEach(function(s) {
+            const key = s && s.source_key != null ? String(s.source_key).trim().toLowerCase() : '';
+            if (!key) return;
+            const label = s && s.label != null ? String(s.label) : key;
+            const iconUrl = s && s.icon_url != null ? String(s.icon_url) : '';
+            const builtIn = trafficSourceBuiltInIconSrc(key);
+            const previewSrc = (iconUrl && iconUrl.trim())
+              ? iconUrl.trim()
+              : ((builtIn && builtIn !== SOURCE_UNKNOWN_IMG) ? builtIn : SOURCE_UNKNOWN_IMG);
+            const targetId = 'tsm-source-' + key;
+            html += '<button type="button" class="tsm-jump-btn" data-tsm-jump-source="' + escapeHtml(targetId) + '" title="' + escapeHtml(label) + '">' +
+              '<img src="' + escapeHtml(hotImg(previewSrc) || previewSrc) + '" alt="" />' +
+            '</button>';
+          });
+          html += '</div>';
+        } catch (_) {}
         html += '<div class="tsm-table-scroll">';
         html +=   '<div class="grid-table tsm-table tsm-sources-grid" role="table" aria-label="Mapped sources">';
         html +=     '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
@@ -2436,7 +2477,7 @@
           const preview = previewSrc
             ? ('<img class="tsm-icon-preview" src="' + escapeHtml(previewSrc) + '" alt="" onerror="this.classList.add(\'is-hidden\')">')
             : '<span class="tsm-icon-spacer" aria-hidden="true"></span>';
-          html += '<div class="grid-row tsm-source-row" role="row" data-source-key="' + escapeHtml(key) + '">' +
+          html += '<div class="grid-row tsm-source-row" role="row" id="tsm-source-' + escapeHtml(key) + '" data-source-key="' + escapeHtml(key) + '">' +
             '<div class="grid-cell" role="cell"><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></div>' +
             '<div class="grid-cell" role="cell"><code>' + escapeHtml(key) + '</code></div>' +
             '<div class="grid-cell" role="cell"><div class="tsm-icon-input-row">' +
@@ -2450,6 +2491,44 @@
       }
 
       html += '<div class="diag-section-title u-mt-md">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Tokens (mapped + unmapped)' : 'Unmapped tokens') + '</span>' + '</div>';
+      // Quick-jump row: show mapped token icons inline for fast navigation.
+      try {
+        const MAX_JUMPS = 120;
+        const mappedTokens = [];
+        tokens.forEach(function(t) {
+          const p = t && t.utm_param != null ? String(t.utm_param).trim().toLowerCase() : '';
+          const v = t && t.utm_value != null ? String(t.utm_value).trim().toLowerCase() : '';
+          if (!p || !v) return;
+          const mapped = (t && Array.isArray(t.mapped)) ? t.mapped : [];
+          const currentKey = (mapped && mapped[0] && mapped[0].source_key != null) ? String(mapped[0].source_key).trim().toLowerCase() : '';
+          if (!currentKey) return;
+          const label = (mapped && mapped[0] && mapped[0].label != null) ? String(mapped[0].label) : currentKey;
+          const mu = (mapped && mapped[0] && mapped[0].icon_url != null) ? String(mapped[0].icon_url) : '';
+          let src = (mu && mu.trim()) ? mu.trim() : '';
+          if (!src) {
+            const bi = trafficSourceBuiltInIconSrc(currentKey);
+            if (bi) src = bi;
+          }
+          if (!src) src = SOURCE_UNKNOWN_IMG;
+          mappedTokens.push({
+            jumpId: tokenJumpId(p, v),
+            iconSrc: src,
+            title: p + '=' + v + ' → ' + label,
+          });
+        });
+        if (mappedTokens.length) {
+          html += '<div class="tsm-jump-row" aria-label="Mapped token shortcuts">';
+          mappedTokens.slice(0, MAX_JUMPS).forEach(function(it) {
+            html += '<button type="button" class="tsm-jump-btn" data-tsm-jump="' + escapeHtml(it.jumpId) + '" title="' + escapeHtml(it.title) + '">' +
+              '<img src="' + escapeHtml(hotImg(it.iconSrc) || it.iconSrc) + '" alt="" />' +
+            '</button>';
+          });
+          if (mappedTokens.length > MAX_JUMPS) {
+            html += '<span class="tsm-save-msg">+' + escapeHtml(String(mappedTokens.length - MAX_JUMPS)) + ' more</span>';
+          }
+          html += '</div>';
+        }
+      } catch (_) {}
       if (!tokens.length) {
         html += '<div class="diag-note">No tokens captured yet. Click <strong>Scan last 30d</strong> (or wait for new sessions) and they will appear here.</div>';
       } else {
@@ -2465,6 +2544,7 @@
           const p = t && t.utm_param != null ? String(t.utm_param).trim().toLowerCase() : '';
           const v = t && t.utm_value != null ? String(t.utm_value).trim().toLowerCase() : '';
           if (!p || !v) return;
+          const jumpId = tokenJumpId(p, v);
           const seenCount = t && typeof t.seen_count === 'number' ? t.seen_count : 0;
           const lastSeen = t && typeof t.last_seen_at === 'number' ? t.last_seen_at : null;
           const mapped = (t && Array.isArray(t.mapped)) ? t.mapped : [];
@@ -2478,7 +2558,7 @@
           });
           opts += '<option value="__other__">Other…</option>';
 
-          html += '<div class="grid-row tsm-token-row" role="row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
+          html += '<div class="grid-row tsm-token-row" role="row" id="' + escapeHtml(jumpId) + '" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
             '<div class="grid-cell" role="cell"><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note tsm-seen-subnote">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></div>' +
             '<div class="grid-cell" role="cell">' +
@@ -2635,6 +2715,23 @@
       };
 
       root.onclick = function(e) {
+        const jump = e && e.target ? e.target.closest('[data-tsm-jump],[data-tsm-jump-source]') : null;
+        if (jump) {
+          const id = (jump.getAttribute('data-tsm-jump') || jump.getAttribute('data-tsm-jump-source') || '').trim();
+          if (!id) return;
+          const row = document.getElementById(id);
+          if (row) {
+            try { row.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) { try { row.scrollIntoView(true); } catch (_) {} }
+            try {
+              row.classList.remove('tsm-flash');
+              // restart animation
+              void row.offsetWidth;
+              row.classList.add('tsm-flash');
+              setTimeout(function() { try { row.classList.remove('tsm-flash'); } catch (_) {} }, 1400);
+            } catch (_) {}
+          }
+          return;
+        }
         const btn = e && e.target ? e.target.closest('button[data-tsm-action]') : null;
         if (!btn) return;
         const action = (btn.getAttribute('data-tsm-action') || '').trim();
@@ -2859,7 +2956,13 @@
 
       if (!keys.length) {
         // Fallback: use stored source_key (so icon/meta changes go live even when no UTM-token mapping exists).
-        addKey(s && (s.traffic_source_key ?? s.trafficSourceKey ?? s.source_key ?? s.sourceKey));
+        let k = s && (s.traffic_source_key ?? s.trafficSourceKey ?? s.source_key ?? s.sourceKey);
+        const kk = k != null ? String(k).trim().toLowerCase() : '';
+        if (kk === 'other') {
+          const ref = s && s.referrer != null ? String(s.referrer).toLowerCase() : '';
+          if (ref.includes('heybigday.com') || ref.includes('hbdjewellery.com')) k = 'direct';
+        }
+        addKey(k);
       }
 
       if (!keys.length) return '';
@@ -3125,19 +3228,65 @@
       }, 460);
     }
 
+    function productUrlFromHandle(handle) {
+      const h = handle != null ? String(handle).trim() : '';
+      if (!h) return '';
+      const base = getMainBaseUrl();
+      if (!base) return '';
+      return base + '/products/' + encodeURIComponent(h.replace(/^\/+/, ''));
+    }
+
+    function resolveSaleToastThumbSrc(data) {
+      if (!data) return '';
+      const rawThumb = data.productThumbUrl != null ? String(data.productThumbUrl).trim() : '';
+      if (rawThumb) return hotImgSquare(rawThumb) || rawThumb;
+      const directUrl = data.productUrl != null ? String(data.productUrl).trim() : '';
+      const handleUrl = data.productHandle ? productUrlFromHandle(data.productHandle) : '';
+      const finalUrl = directUrl || handleUrl;
+      if (!finalUrl) return '';
+      return (API || '') + '/api/og-thumb?url=' + encodeURIComponent(finalUrl) + '&width=100';
+    }
+
     function setSaleToastContent(patch) {
       patch = patch && typeof patch === 'object' ? patch : {};
-      const cc = (patch.countryCode || 'XX').toString().trim().toUpperCase().slice(0, 2) || 'XX';
-      const product = patch.productTitle != null ? String(patch.productTitle) : '';
-      const amountGbp = patch.amountGbp != null ? Number(patch.amountGbp) : null;
-      const flagEl = document.getElementById('sale-toast-flag');
+      const data = { ...(saleToastLastPayload || {}) };
+      const hasOwn = Object.prototype.hasOwnProperty;
+      if (hasOwn.call(patch, 'countryCode')) data.countryCode = patch.countryCode;
+      if (hasOwn.call(patch, 'productTitle')) data.productTitle = patch.productTitle;
+      if (hasOwn.call(patch, 'amountGbp')) data.amountGbp = patch.amountGbp;
+      if (hasOwn.call(patch, 'productHandle')) data.productHandle = patch.productHandle;
+      if (hasOwn.call(patch, 'productUrl')) data.productUrl = patch.productUrl;
+      if (hasOwn.call(patch, 'productThumbUrl')) data.productThumbUrl = patch.productThumbUrl;
+      if (hasOwn.call(patch, 'createdAt')) data.createdAt = patch.createdAt;
+
+      const cc = (data.countryCode || 'XX').toString().trim().toUpperCase().slice(0, 2) || 'XX';
+      const product = data.productTitle != null ? String(data.productTitle) : '';
+      const amountRaw = data.amountGbp != null ? Number(data.amountGbp) : null;
+      const amountGbp = (amountRaw != null && Number.isFinite(amountRaw)) ? amountRaw : null;
+      const thumbSrc = resolveSaleToastThumbSrc(data);
+      const timeText = formatSaleTime(data.createdAt);
+
+      saleToastLastPayload = {
+        ...data,
+        countryCode: cc,
+        productTitle: product,
+        amountGbp: amountGbp,
+      };
+
       const inlineFlagEl = document.getElementById('sale-toast-inline-flag');
       const productEl = document.getElementById('sale-toast-product');
       const amountEl = document.getElementById('sale-toast-amount');
-      if (flagEl) flagEl.innerHTML = SALE_TOAST_ICON_SVG;
+      const thumbEl = document.getElementById('sale-toast-thumb');
+      const timeEl = document.getElementById('sale-toast-time');
       if (inlineFlagEl) inlineFlagEl.innerHTML = flagImgSmall(cc);
       if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
-      if (amountEl) amountEl.textContent = (amountGbp != null && Number.isFinite(amountGbp)) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
+      if (amountEl) amountEl.textContent = (amountGbp != null) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
+      if (thumbEl) {
+        thumbEl.innerHTML = thumbSrc
+          ? '<img src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
+          : '<span class="sale-toast-thumb-placeholder" aria-hidden="true"></span>';
+      }
+      if (timeEl) timeEl.textContent = timeText;
     }
 
     function showSaleToast() {
@@ -3188,18 +3337,6 @@
       }, 260);
     }
 
-    (function initSaleToastCloseButton() {
-      const btn = document.getElementById('sale-toast-close');
-      if (!btn) return;
-      btn.addEventListener('click', function(e) {
-        if (e && typeof e.preventDefault === 'function') e.preventDefault();
-        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-        // Invalidate any in-flight /api/latest-sale update for the current toast.
-        saleToastToken += 1;
-        hideSaleToast();
-      });
-    })();
-
     let latestSaleFetchInFlight = null;
     function fetchLatestSaleForToast(options = {}) {
       const forceNew = !!(options && options.forceNew);
@@ -3231,7 +3368,10 @@
       const session = opts.session || null;
       const kpiUpdate = opts.kpiUpdate || null;
       const playSound = opts.playSound !== false;
+      const payload = opts.payload || null;
+      const skipLatest = !!opts.skipLatest;
       const toastToken = ++saleToastToken; // newest toast wins
+      saleToastLastPayload = null;
       saleToastSessionId = session && session.session_id != null ? String(session.session_id) : null;
       saleToastLastOrderId = null;
 
@@ -3242,18 +3382,38 @@
 
       showSaleToast();
 
-      // Fast, best-effort content from the session update (then refined by truth).
-      try {
-        const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
-        let productTitle = '';
-        if (session && session.last_product_handle) productTitle = titleCaseFromHandle(String(session.last_product_handle));
-        let amountGbp = null;
-        if (session && session.order_total != null) {
-          const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
-          if (Number.isFinite(n)) amountGbp = n;
-        }
-        setSaleToastContent({ countryCode: cc, productTitle: productTitle || 'Processing\u2026', amountGbp });
-      } catch (_) {}
+      if (payload) {
+        setSaleToastContent(payload);
+      } else {
+        // Fast, best-effort content from the session update (then refined by truth).
+        try {
+          const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
+          let productTitle = '';
+          let productHandle = '';
+          if (session && session.last_product_handle) productHandle = String(session.last_product_handle).trim();
+          if (!productHandle && session && session.first_product_handle) productHandle = String(session.first_product_handle).trim();
+          if (productHandle) productTitle = titleCaseFromHandle(String(productHandle));
+          let amountGbp = null;
+          if (session && session.order_total != null) {
+            const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
+            if (Number.isFinite(n)) amountGbp = n;
+          }
+          const createdAt = (session && session.purchased_at != null)
+            ? session.purchased_at
+            : (session && session.last_seen != null)
+              ? session.last_seen
+              : (session && session.started_at != null)
+                ? session.started_at
+                : Date.now();
+          setSaleToastContent({
+            countryCode: cc,
+            productTitle: productTitle || 'Processing\u2026',
+            amountGbp,
+            productHandle: productHandle || '',
+            createdAt,
+          });
+        } catch (_) {}
+      }
 
       if (playSound && !saleMuted && saleAudio) {
         saleAudio.currentTime = 0;
@@ -3263,6 +3423,7 @@
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
       saleToastHideTimer = setTimeout(hideSaleToast, 10000);
 
+      if (skipLatest) return;
       fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
         if (!sale) return;
         if (toastToken !== saleToastToken) return; // stale fetch (a newer sale toast is showing)
@@ -3272,13 +3433,56 @@
         const cc = sale.countryCode ? String(sale.countryCode).toUpperCase().slice(0, 2) : 'XX';
         const product = sale.productTitle && String(sale.productTitle).trim() ? String(sale.productTitle).trim() : '';
         const amount = sale.amountGbp != null ? Number(sale.amountGbp) : null;
+        const productHandle = sale.productHandle != null ? String(sale.productHandle).trim() : '';
+        const productThumbUrl = sale.productThumbUrl != null ? String(sale.productThumbUrl).trim() : '';
+        const createdAt = sale.createdAt != null ? sale.createdAt : null;
         setSaleToastContent({
           countryCode: cc || 'XX',
           productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '—'),
           amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
+          productHandle: productHandle || '',
+          productThumbUrl: productThumbUrl || '',
+          createdAt,
         });
       });
     }
+
+    function buildSaleToastPayloadFromSale(sale) {
+      if (!sale) return null;
+      const cc = sale.countryCode ? String(sale.countryCode).toUpperCase().slice(0, 2) : 'XX';
+      const productTitle = sale.productTitle && String(sale.productTitle).trim() ? String(sale.productTitle).trim() : '';
+      const amount = sale.amountGbp != null ? Number(sale.amountGbp) : null;
+      return {
+        countryCode: cc || 'XX',
+        productTitle,
+        amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
+        productHandle: sale.productHandle != null ? String(sale.productHandle).trim() : '',
+        productThumbUrl: sale.productThumbUrl != null ? String(sale.productThumbUrl).trim() : '',
+        createdAt: sale.createdAt != null ? sale.createdAt : null,
+      };
+    }
+
+    function triggerManualSaleToast() {
+      const cached = saleToastLastPayload;
+      if (cached && (cached.productTitle || cached.amountGbp != null || cached.productHandle || cached.productThumbUrl)) {
+        triggerSaleToast({ origin: 'manual', payload: cached, playSound: false, skipLatest: true });
+        return;
+      }
+      fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
+        const payload = buildSaleToastPayloadFromSale(sale);
+        if (!payload) return;
+        triggerSaleToast({ origin: 'manual', payload: payload, playSound: false, skipLatest: true });
+      });
+    }
+
+    (function initManualSaleToast() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('toast');
+      const v = raw != null ? String(raw).trim().toLowerCase() : '';
+      if (v === '1' || v === 'true' || v === 'yes') {
+        setTimeout(triggerManualSaleToast, 0);
+      }
+    })();
 
     function getShopParam() {
       var p = new URLSearchParams(window.location.search);
@@ -4544,6 +4748,10 @@
         } else {
           triggerSaleToast({ origin: 'stats', kpiUpdate: kpiUpdate, playSound: true });
         }
+        // Keep Home tables in sync when a toast fires outside SSE (Today/Last Hour/Live).
+        if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === '1h' || dateRange === 'live')) {
+          try { fetchSessions(); } catch (_) {}
+        }
         // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
         try { refreshConfigStatus(); } catch (_) {}
       }
@@ -5533,6 +5741,16 @@
           const pixelDerivedRevenue = (typeof pixelDerivedToday.revenueGbp === 'number') ? pixelDerivedToday.revenueGbp : null;
           const driftPixelOrders = sales && sales.drift && typeof sales.drift.pixelVsTruthOrders === 'number' ? sales.drift.pixelVsTruthOrders : null;
           const driftPixelRevenue = sales && sales.drift && typeof sales.drift.pixelVsTruthRevenueGbp === 'number' ? sales.drift.pixelVsTruthRevenueGbp : null;
+          const missingEvidenceToday = sales && sales.missingEvidence && sales.missingEvidence.today ? sales.missingEvidence.today : {};
+          const missingEvidenceCount = (missingEvidenceToday && typeof missingEvidenceToday.missingOrderCount === 'number')
+            ? missingEvidenceToday.missingOrderCount
+            : null;
+          const missingEvidenceSample = (missingEvidenceToday && Array.isArray(missingEvidenceToday.missingOrdersSample))
+            ? missingEvidenceToday.missingOrdersSample
+            : [];
+          const missingEvidenceNote = (missingEvidenceToday && typeof missingEvidenceToday.note === 'string')
+            ? missingEvidenceToday.note
+            : '';
           const pixel = c && c.pixel ? c.pixel : {};
           const appSettings = c && c.settings ? c.settings : {};
           const trackerDefinitions = c && c.trackerDefinitions ? c.trackerDefinitions : null;
@@ -5599,13 +5817,13 @@
 
             function pill2(text, tone) {
               const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
-              const base = 'display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:850;white-space:nowrap;border:1px solid ';
+              const base = 'display:inline-flex;align-items:center;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:850;white-space:nowrap;border:1px solid ';
               if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
               if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
               return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
             }
             function code2(value) {
-              return '<code style="font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+              return '<code style="font-size:12px;padding:2px 8px;border-radius:3px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
             }
             function line2(label, valueHtml) {
               return (
@@ -5694,7 +5912,7 @@
                 if (missingTables.length) chips.push(pill2('DB missing', 'bad'));
                 if (d && d.requires && d.requires.shopifyToken) chips.push(tokenOk ? pill2('Token OK', 'ok') : pill2('Token missing', 'bad'));
 
-                out += '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.06);border-radius:12px;background:rgba(255,255,255,0.78);padding:10px;">';
+                out += '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.06);border-radius:3px;background:rgba(255,255,255,0.78);padding:10px;">';
                 out +=   '<summary style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;list-style:none;">';
                 out +=     '<div style="min-width:0;">';
                 out +=       '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(name) + '</div>';
@@ -5809,13 +6027,13 @@
 
           function pillInline(text, tone) {
             const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
-            const base = 'display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:0.01em;white-space:nowrap;border:1px solid ';
+            const base = 'display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:800;letter-spacing:0.01em;white-space:nowrap;border:1px solid ';
             if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
             if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
             return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
           }
           function codeInline(value) {
-            return '<code style="font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+            return '<code style="font-size:12px;padding:2px 8px;border-radius:3px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
           }
           function card(title, bodyHtml) {
             const h = title
@@ -5825,7 +6043,7 @@
                   '</div>'
                 )
               : '';
-            return '<div style="border:1px solid rgba(0,0,0,0.08);border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 10px 30px rgba(0,0,0,0.06);padding:14px;">' + h + (bodyHtml || '') + '</div>';
+            return '<div style="border:1px solid rgba(0,0,0,0.08);border-radius:3px;background:linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 10px 30px rgba(0,0,0,0.06);padding:14px;">' + h + (bodyHtml || '') + '</div>';
           }
           function brandHeader(name, iconUrl, subtitle, accentRgb) {
             const rgb = accentRgb || '0,0,0';
@@ -5835,7 +6053,7 @@
             return (
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
                 '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
-                  '<span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
+                  '<span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
                     '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:18px;height:18px;object-fit:contain;display:block;" />' +
                   '</span>' +
                   '<div style="display:flex;flex-direction:column;min-width:0;line-height:1.1;">' +
@@ -5849,7 +6067,7 @@
           function brandIconTiny(name, iconUrl, accentRgb) {
             const rgb = accentRgb || '0,0,0';
             return (
-              '<span style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
+              '<span style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
                 '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:12px;height:12px;object-fit:contain;display:block;" />' +
               '</span>'
             );
@@ -5888,7 +6106,7 @@
               'align-items:center',
               'gap:8px',
               'padding:7px 12px',
-              'border-radius:999px',
+              'border-radius:3px',
               'border:1px solid ' + (isActive ? 'rgba(13,148,136,0.55)' : 'var(--border)'),
               'background:' + (isActive ? 'rgba(13,148,136,0.10)' : 'rgba(255,255,255,0.75)'),
               'color:' + (isActive ? 'var(--accent)' : 'var(--text)'),
@@ -5925,6 +6143,12 @@
                 userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '',
                 language: (typeof navigator !== 'undefined' && navigator.language) ? navigator.language : '',
               },
+              aiNotes: [
+                'Truth = Shopify Orders API cache (orders_shopify). This is authoritative.',
+                'Evidence = Web Pixel checkout_completed events (purchase_events). Evidence < Truth usually means missing pixel events (consent/adblock/checkout surface) or non-storefront orders.',
+                'Birdseye derived = purchases built from evidence; if derived matches evidence, drift is upstream of purchases.',
+                'Inspect rawConfigStatus.sales.missingEvidence.today.missingOrdersSample for a sample of truth orders missing evidence.',
+              ],
               computed: {
                 sessions: {
                   shopifyToday: shopifySessionsToday,
@@ -5965,6 +6189,11 @@
                   pixelVsTruthRevenueGbp: driftPixelRevenue,
                   evidenceVsCheckoutTokenOrders: driftEvidenceCheckoutOrders,
                 },
+                salesEvidence: {
+                  evidenceCoveragePct: (truthCheckoutOrders != null && truthCheckoutOrders > 0 && evTotal != null) ? ((evTotal / truthCheckoutOrders) * 100) : null,
+                  missingEvidenceOrderCount: missingEvidenceCount,
+                  missingEvidenceSample: (missingEvidenceSample && missingEvidenceSample.length) ? missingEvidenceSample.slice(0, 25) : [],
+                },
                 pixel: {
                   shopifyWebPixelOk: (pixel && typeof pixel.ok === 'boolean') ? pixel.ok : null,
                   shopifyWebPixelInstalled: (pixel && typeof pixel.installed === 'boolean') ? pixel.installed : null,
@@ -5998,7 +6227,7 @@
             'align-items:center',
             'gap:8px',
             'padding:7px 12px',
-            'border-radius:999px',
+            'border-radius:3px',
             'border:1px solid rgba(0,0,0,0.10)',
             'background:linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78))',
             'box-shadow:0 1px 0 rgba(0,0,0,0.03)',
@@ -6063,7 +6292,7 @@
           // Compare
           let compare = '';
           compare += card('Comparison (today)', (
-            '<div style="overflow:auto;border-radius:12px;border:1px solid rgba(0,0,0,0.06);">' +
+            '<div style="overflow:auto;border-radius:3px;border:1px solid rgba(0,0,0,0.06);">' +
               '<div role="table" aria-label="Comparison" style="min-width:760px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;">' +
                 '<div role="row" style="display:contents;">' +
                   '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Item</div>' +
@@ -6127,6 +6356,73 @@
             rowKV('Returning revenue', truthReturningRevenue != null ? codeInline(formatRevenue(truthReturningRevenue)) : '\u2014')
           ));
           salesPanel += '</div>';
+
+          // AI + future-agent guidance: interpret truth vs evidence drift
+          try {
+            const denomForCoverage = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
+            const missingOrders = (typeof missingEvidenceCount === 'number')
+              ? missingEvidenceCount
+              : ((denomForCoverage != null && evTotal != null) ? Math.max(0, denomForCoverage - evTotal) : null);
+            const coveragePct = (denomForCoverage != null && denomForCoverage > 0 && evTotal != null)
+              ? (evTotal / denomForCoverage) * 100
+              : null;
+            const cov = (coveragePct != null) ? (Math.round(coveragePct * 10) / 10) : null;
+            const covTone = (cov == null) ? 'warn' : (cov >= 95 ? 'ok' : (cov >= 80 ? 'warn' : 'bad'));
+
+            function missingLine(o) {
+              if (!o || typeof o !== 'object') return '';
+              const bits = [];
+              const on = o.order_name != null ? String(o.order_name).trim() : '';
+              const oid = o.order_id != null ? String(o.order_id).trim() : '';
+              const ca = (o.created_at != null && isFinite(Number(o.created_at))) ? Number(o.created_at) : null;
+              const src = o.source_name != null ? String(o.source_name).trim() : '';
+              const refh = o.referring_site_host != null ? String(o.referring_site_host).trim() : '';
+              const landh = o.landing_site_host != null ? String(o.landing_site_host).trim() : '';
+              const gw = o.gateway != null ? String(o.gateway).trim() : '';
+              if (on) bits.push(escapeHtml(on));
+              if (oid) bits.push('id ' + escapeHtml(oid));
+              if (ca != null) bits.push(escapeHtml(formatTs(ca)));
+              if (src) bits.push('source=' + escapeHtml(src));
+              if (landh) bits.push('landing=' + escapeHtml(landh));
+              if (refh) bits.push('ref=' + escapeHtml(refh));
+              if (gw) bits.push('gateway=' + escapeHtml(gw));
+              if (!bits.length) return '';
+              return '<div style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:12.5px;color:var(--text);font-weight:750;word-break:break-word;">' + bits.join(' · ') + '</div>';
+            }
+
+            let missingSampleHtml = '';
+            if (missingEvidenceSample && missingEvidenceSample.length) {
+              const lines = missingEvidenceSample.slice(0, 25).map(missingLine).filter(Boolean).join('');
+              missingSampleHtml =
+                '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.08);border-radius:3px;background:rgba(255,255,255,0.78);padding:10px;">' +
+                  '<summary style="cursor:pointer;font-size:12px;font-weight:900;color:var(--text);">Missing evidence orders (sample ' + escapeHtml(String(missingEvidenceSample.length)) + ')</summary>' +
+                  '<div style="margin-top:10px;">' + (lines || '<div style="font-size:12px;color:var(--muted);">No sample rows.</div>') + '</div>' +
+                  '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">If these are mostly <code>source=web</code> but still missing evidence, it’s usually adblock/consent or pixel not running on the completion surface. If they’re <code>source=pos</code> / manual / subscription renewals, pixel evidence won’t exist.</div>' +
+                '</details>';
+            }
+
+            const guide =
+              '<div style="font-size:12px;color:var(--muted);line-height:1.45;">' +
+                '<div style="font-weight:950;color:var(--text);margin-bottom:6px;">How to debug sales drift (Truth vs Birdseye)</div>' +
+                '<ul style="margin:0;padding-left:18px;">' +
+                  '<li><strong>Truth</strong> = Shopify Orders API cache (`orders_shopify`, paid, not cancelled). This is the authoritative number.</li>' +
+                  '<li><strong>Evidence</strong> = Web Pixel <code>checkout_completed</code> events (`purchase_events`). If Evidence &lt; Truth, events are missing (capture issue), not a truth sync issue.</li>' +
+                  '<li><strong>Birdseye derived</strong> = `purchases` (built from evidence). If it matches Evidence (as it does when linked/unlinked looks healthy), drift is upstream of purchases.</li>' +
+                  '<li>First check: pixel installed + ingestUrl match, and Evidence linked/unlinked (linking health). Then inspect the Missing Evidence sample below.</li>' +
+                '</ul>' +
+              '</div>';
+
+            salesPanel += '<div style="margin-top:12px;">' + card('Sales drift (AI notes)', (
+              rowKV('Coverage (evidence / truth)', (evTotal != null && denomForCoverage != null)
+                ? (codeInline(String(evTotal)) + ' / ' + codeInline(String(denomForCoverage)) + ' ' + pillInline((cov != null ? (cov + '%') : '—') + ' evidence', covTone))
+                : '\u2014'
+              ) +
+              rowKV('Missing evidence (count)', missingOrders == null ? '\u2014' : pillInline(String(missingOrders), missingOrders === 0 ? 'ok' : (missingOrders <= 3 ? 'warn' : 'bad'))) +
+              (missingEvidenceNote ? ('<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml(missingEvidenceNote) + '</div>') : '') +
+              guide +
+              (missingSampleHtml || '')
+            )) + '</div>';
+          } catch (_) {}
 
           // Traffic
           let trafficPanel = '';
@@ -6396,7 +6692,7 @@
           if (configStatusEl) {
             configStatusEl.innerHTML =
               '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);padding:10px 0;">' +
-                '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">Error</span>' +
+                '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:900;border:1px solid rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">Error</span>' +
                 '<span>Could not load diagnostics.</span>' +
               '</div>';
           }
