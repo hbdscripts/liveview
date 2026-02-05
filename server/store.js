@@ -141,6 +141,416 @@ function isPaidMedium(m) {
   return false;
 }
 
+// --- Traffic source mapping (custom sources + icons) ---
+const TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_term',
+  'utm_content',
+  'utm_id',
+  'utm_source_platform',
+  'utm_creative_format',
+  'utm_marketing_tactic',
+  'utm_name',
+  'utm_cid',
+  'utm_referrer',
+  'utm_reader',
+];
+const TRAFFIC_SOURCE_MAP_ALLOWED_PARAM_SET = new Set(TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS);
+
+function normalizeTrafficUtmParam(v) {
+  const s = trimLower(v, 64) || '';
+  if (!s) return null;
+  if (!TRAFFIC_SOURCE_MAP_ALLOWED_PARAM_SET.has(s)) return null;
+  return s;
+}
+
+function normalizeTrafficUtmValue(v) {
+  if (typeof v !== 'string') return null;
+  const raw = v.trim();
+  if (!raw) return null;
+  const clipped = raw.length > 256 ? raw.slice(0, 256) : raw;
+  return clipped.toLowerCase();
+}
+
+function normalizeTrafficSourceKey(v) {
+  const raw = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (!raw) return null;
+  let k = raw.replace(/[^a-z0-9:_\-]+/g, '_');
+  k = k.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  if (!k) return null;
+  if (k.length > 80) k = k.slice(0, 80);
+  return k;
+}
+
+function makeCustomTrafficSourceKeyFromLabel(label) {
+  const base = normalizeTrafficSourceKey(label);
+  if (!base) return null;
+  // Avoid accidental collisions with built-in keys.
+  return base.startsWith('custom_') ? base : ('custom_' + base);
+}
+
+function extractTrafficUtmTokens({ entryUrl, utmSource, utmMedium, utmCampaign, utmContent } = {}) {
+  const out = [];
+  const params = safeUrlParams(entryUrl || '');
+  function add(param, value) {
+    const p = normalizeTrafficUtmParam(param);
+    const v = normalizeTrafficUtmValue(value);
+    if (!p || !v) return;
+    out.push({ param: p, value: v });
+  }
+
+  // Prefer values from entry_url query params.
+  if (params) {
+    for (const p of TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS) {
+      const v = params.get(p);
+      if (v != null && String(v).trim() !== '') add(p, v);
+    }
+  }
+
+  // Fallback to stored Shopify pixel UTMs (if entry_url didn't include them).
+  add('utm_source', utmSource);
+  add('utm_medium', utmMedium);
+  add('utm_campaign', utmCampaign);
+  add('utm_content', utmContent);
+
+  // Dedupe (preserve order).
+  const seen = new Set();
+  const deduped = [];
+  for (const t of out) {
+    const k = t.param + '\0' + t.value;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    deduped.push(t);
+  }
+  return deduped;
+}
+
+function hasAnyUtmInParams(params) {
+  if (!params) return false;
+  try {
+    for (const [k, v] of params.entries()) {
+      const kk = String(k || '').trim().toLowerCase();
+      if (!kk.startsWith('utm_')) continue;
+      if (v != null && String(v).trim() !== '') return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+let _trafficSourceMapCache = {
+  loadedAt: 0,
+  ttlMs: 30 * 1000,
+  rulesByParamValue: new Map(), // param -> value -> [source_key]
+  metaByKey: new Map(), // source_key -> { label, iconUrl, updatedAt }
+  rulesRows: [],
+  metaRows: [],
+};
+let _trafficSourceMapInFlight = null;
+
+function invalidateTrafficSourceMapCache() {
+  _trafficSourceMapCache.loadedAt = 0;
+  _trafficSourceMapCache.rulesByParamValue = new Map();
+  _trafficSourceMapCache.metaByKey = new Map();
+  _trafficSourceMapCache.rulesRows = [];
+  _trafficSourceMapCache.metaRows = [];
+}
+
+async function loadTrafficSourceMapFromDb() {
+  const db = getDb();
+  try {
+    const metaRows = await db.all(
+      'SELECT source_key, label, icon_url, updated_at FROM traffic_source_meta ORDER BY updated_at DESC'
+    );
+    const rulesRows = await db.all(
+      'SELECT id, utm_param, utm_value, source_key, created_at FROM traffic_source_rules ORDER BY id ASC'
+    );
+    const metaByKey = new Map();
+    for (const r of metaRows || []) {
+      const key = normalizeTrafficSourceKey(r && r.source_key != null ? String(r.source_key) : '') || '';
+      if (!key) continue;
+      metaByKey.set(key, {
+        key,
+        label: (r && r.label != null) ? String(r.label) : key,
+        iconUrl: (r && r.icon_url != null && String(r.icon_url).trim() !== '') ? String(r.icon_url).trim().slice(0, 2048) : null,
+        updatedAt: (r && r.updated_at != null) ? Number(r.updated_at) : null,
+      });
+    }
+    const rulesByParamValue = new Map();
+    const cleanedRulesRows = [];
+    for (const r of rulesRows || []) {
+      const p = normalizeTrafficUtmParam(r && r.utm_param != null ? String(r.utm_param) : '');
+      const v = normalizeTrafficUtmValue(r && r.utm_value != null ? String(r.utm_value) : '');
+      const k = normalizeTrafficSourceKey(r && r.source_key != null ? String(r.source_key) : '');
+      if (!p || !v || !k) continue;
+      if (!rulesByParamValue.has(p)) rulesByParamValue.set(p, new Map());
+      const byVal = rulesByParamValue.get(p);
+      if (!byVal.has(v)) byVal.set(v, []);
+      byVal.get(v).push(k);
+      cleanedRulesRows.push({
+        id: r && r.id != null ? Number(r.id) : null,
+        utm_param: p,
+        utm_value: v,
+        source_key: k,
+        created_at: r && r.created_at != null ? Number(r.created_at) : null,
+      });
+    }
+    return { metaRows: metaRows || [], rulesRows: cleanedRulesRows, metaByKey, rulesByParamValue };
+  } catch (err) {
+    // Fail-open when tables are not present yet (during upgrade) or query fails.
+    return { metaRows: [], rulesRows: [], metaByKey: new Map(), rulesByParamValue: new Map(), error: err };
+  }
+}
+
+async function getTrafficSourceMapConfigCached(options = {}) {
+  const force = !!options.force;
+  const now = Date.now();
+  if (!force && _trafficSourceMapCache.loadedAt && (now - _trafficSourceMapCache.loadedAt) < _trafficSourceMapCache.ttlMs) {
+    return _trafficSourceMapCache;
+  }
+  if (_trafficSourceMapInFlight) return _trafficSourceMapInFlight;
+  _trafficSourceMapInFlight = loadTrafficSourceMapFromDb()
+    .then((data) => {
+      _trafficSourceMapCache.loadedAt = Date.now();
+      _trafficSourceMapCache.metaByKey = data.metaByKey || new Map();
+      _trafficSourceMapCache.rulesByParamValue = data.rulesByParamValue || new Map();
+      _trafficSourceMapCache.rulesRows = data.rulesRows || [];
+      _trafficSourceMapCache.metaRows = data.metaRows || [];
+      return _trafficSourceMapCache;
+    })
+    .finally(() => {
+      _trafficSourceMapInFlight = null;
+    });
+  return _trafficSourceMapInFlight;
+}
+
+function resolveMappedSourceKeys(tokens, mapConfig) {
+  const rulesByParamValue = mapConfig && mapConfig.rulesByParamValue ? mapConfig.rulesByParamValue : new Map();
+  const out = [];
+  const seen = new Set();
+  for (const t of Array.isArray(tokens) ? tokens : []) {
+    const p = t && t.param ? String(t.param) : '';
+    const v = t && t.value ? String(t.value) : '';
+    const byVal = rulesByParamValue.get(p);
+    if (!byVal) continue;
+    const keys = byVal.get(v);
+    if (!Array.isArray(keys) || !keys.length) continue;
+    for (const k of keys) {
+      const kk = normalizeTrafficSourceKey(k);
+      if (!kk) continue;
+      if (seen.has(kk)) continue;
+      seen.add(kk);
+      out.push(kk);
+    }
+  }
+  return out;
+}
+
+async function upsertTrafficSourceTokens(tokens, tsMs) {
+  const list = Array.isArray(tokens) ? tokens : [];
+  if (!list.length) return { ok: true, insertedOrUpdated: 0 };
+  const db = getDb();
+  const ts = typeof tsMs === 'number' ? tsMs : Date.now();
+  let n = 0;
+  for (const t of list) {
+    const p = normalizeTrafficUtmParam(t && t.param);
+    const v = normalizeTrafficUtmValue(t && t.value);
+    if (!p || !v) continue;
+    try {
+      await db.run(
+        `
+          INSERT INTO traffic_source_tokens (utm_param, utm_value, first_seen_at, last_seen_at, seen_count)
+          VALUES (?, ?, ?, ?, 1)
+          ON CONFLICT (utm_param, utm_value) DO UPDATE SET
+            last_seen_at = CASE
+              WHEN excluded.last_seen_at > traffic_source_tokens.last_seen_at THEN excluded.last_seen_at
+              ELSE traffic_source_tokens.last_seen_at
+            END,
+            seen_count = traffic_source_tokens.seen_count + 1
+        `,
+        [p, v, ts, ts]
+      );
+      n++;
+    } catch (_) {
+      // Fail-open (e.g. tables not present yet).
+      return { ok: false, insertedOrUpdated: n };
+    }
+  }
+  return { ok: true, insertedOrUpdated: n };
+}
+
+async function upsertTrafficSourceMeta({ sourceKey, label, iconUrl } = {}) {
+  const key = normalizeTrafficSourceKey(sourceKey);
+  const lbl = typeof label === 'string' && label.trim() ? label.trim().slice(0, 120) : null;
+  const icon = typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl.trim().slice(0, 2048) : null;
+  if (!key || !lbl) return { ok: false, error: 'Missing sourceKey or label' };
+  const db = getDb();
+  const now = Date.now();
+  try {
+    await db.run(
+      `
+        INSERT INTO traffic_source_meta (source_key, label, icon_url, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (source_key) DO UPDATE SET
+          label = excluded.label,
+          icon_url = excluded.icon_url,
+          updated_at = excluded.updated_at
+      `,
+      [key, lbl, icon, now]
+    );
+    return { ok: true, sourceKey: key, label: lbl, iconUrl: icon, updatedAt: now };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? String(err.message) : 'Failed to upsert meta' };
+  }
+}
+
+async function addTrafficSourceRule({ utmParam, utmValue, sourceKey } = {}) {
+  const p = normalizeTrafficUtmParam(utmParam);
+  const v = normalizeTrafficUtmValue(utmValue);
+  const k = normalizeTrafficSourceKey(sourceKey);
+  if (!p || !v || !k) return { ok: false, error: 'Missing utmParam, utmValue, or sourceKey' };
+  const db = getDb();
+  const now = Date.now();
+  try {
+    await db.run(
+      `
+        INSERT INTO traffic_source_rules (utm_param, utm_value, source_key, created_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (utm_param, utm_value, source_key) DO NOTHING
+      `,
+      [p, v, k, now]
+    );
+    return { ok: true, utmParam: p, utmValue: v, sourceKey: k, createdAt: now };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? String(err.message) : 'Failed to insert rule' };
+  }
+}
+
+async function getTrafficSourceMapVersion() {
+  const db = getDb();
+  try {
+    const meta = await db.get('SELECT MAX(updated_at) AS max_updated_at FROM traffic_source_meta');
+    const rules = await db.get('SELECT MAX(created_at) AS max_created_at FROM traffic_source_rules');
+    return {
+      metaUpdatedAtMax: meta && meta.max_updated_at != null ? Number(meta.max_updated_at) : 0,
+      rulesCreatedAtMax: rules && rules.max_created_at != null ? Number(rules.max_created_at) : 0,
+    };
+  } catch (_) {
+    return { metaUpdatedAtMax: 0, rulesCreatedAtMax: 0 };
+  }
+}
+
+async function deriveTrafficSourceKeyWithMaps({ utmSource, utmMedium, utmCampaign, utmContent, referrer, entryUrl } = {}) {
+  const tokens = extractTrafficUtmTokens({ entryUrl, utmSource, utmMedium, utmCampaign, utmContent });
+  const mapConfig = await getTrafficSourceMapConfigCached();
+  const mappedKeys = resolveMappedSourceKeys(tokens, mapConfig);
+  const mappedPrimary = mappedKeys.length ? mappedKeys[0] : null;
+  const baseKey = deriveTrafficSourceKey({ utmSource, utmMedium, utmCampaign, utmContent, referrer, entryUrl });
+  return { trafficSourceKey: mappedPrimary || baseKey || 'direct', mappedKeys };
+}
+
+async function backfillTrafficSourceTokensFromSessions({ sinceMs, limitSessions } = {}) {
+  const db = getDb();
+  const since = typeof sinceMs === 'number' ? sinceMs : (Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const limit = typeof limitSessions === 'number' && Number.isFinite(limitSessions) ? Math.max(1, Math.min(200000, Math.floor(limitSessions))) : 20000;
+  let scanned = 0;
+  let tokensUpserted = 0;
+  try {
+    const rows = await db.all(
+      `
+        SELECT entry_url, utm_source, utm_medium, utm_campaign, utm_content, last_seen
+        FROM sessions
+        WHERE last_seen >= ?
+        ORDER BY last_seen DESC
+        LIMIT ?
+      `,
+      [since, limit]
+    );
+    for (const r of rows || []) {
+      scanned++;
+      const ts = r && r.last_seen != null ? Number(r.last_seen) : Date.now();
+      const tokens = extractTrafficUtmTokens({
+        entryUrl: r && r.entry_url != null ? String(r.entry_url) : null,
+        utmSource: r && r.utm_source != null ? String(r.utm_source) : null,
+        utmMedium: r && r.utm_medium != null ? String(r.utm_medium) : null,
+        utmCampaign: r && r.utm_campaign != null ? String(r.utm_campaign) : null,
+        utmContent: r && r.utm_content != null ? String(r.utm_content) : null,
+      });
+      if (!tokens.length) continue;
+      const res = await upsertTrafficSourceTokens(tokens, ts);
+      tokensUpserted += res && typeof res.insertedOrUpdated === 'number' ? res.insertedOrUpdated : 0;
+    }
+    return { ok: true, scannedSessions: scanned, tokenUpserts: tokensUpserted, sinceMs: since, limitSessions: limit };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? String(err.message) : 'Backfill failed', scannedSessions: scanned, tokenUpserts: tokensUpserted };
+  }
+}
+
+async function backfillTrafficSourceKeysForRule({ utmParam, utmValue, sinceMs, limitSessions } = {}) {
+  const p = normalizeTrafficUtmParam(utmParam);
+  const v = normalizeTrafficUtmValue(utmValue);
+  if (!p || !v) return { ok: false, error: 'Invalid utmParam or utmValue' };
+  const db = getDb();
+  const since = typeof sinceMs === 'number' ? sinceMs : (Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const limit = typeof limitSessions === 'number' && Number.isFinite(limitSessions) ? Math.max(1, Math.min(200000, Math.floor(limitSessions))) : 50000;
+
+  // Fetch candidate sessions (best-effort narrowing).
+  let where = 'last_seen >= ?';
+  const params = [since];
+  if (p === 'utm_source' || p === 'utm_medium' || p === 'utm_campaign' || p === 'utm_content') {
+    where += ` AND LOWER(TRIM(${p})) = ?`;
+    params.push(v);
+  } else {
+    where += ' AND entry_url IS NOT NULL AND LOWER(entry_url) LIKE ?';
+    params.push('%' + p + '=%');
+  }
+  where += ` ORDER BY last_seen DESC LIMIT ?`;
+  params.push(limit);
+
+  let scanned = 0;
+  let updated = 0;
+  const mapConfig = await getTrafficSourceMapConfigCached({ force: true });
+  const rows = await db.all(
+    `
+      SELECT session_id, utm_source, utm_medium, utm_campaign, utm_content, referrer, entry_url, traffic_source_key
+      FROM sessions
+      WHERE ${where}
+    `,
+    params
+  );
+  for (const r of rows || []) {
+    scanned++;
+    const entryUrl = r && r.entry_url != null ? String(r.entry_url) : null;
+    const tokens = extractTrafficUtmTokens({
+      entryUrl,
+      utmSource: r && r.utm_source != null ? String(r.utm_source) : null,
+      utmMedium: r && r.utm_medium != null ? String(r.utm_medium) : null,
+      utmCampaign: r && r.utm_campaign != null ? String(r.utm_campaign) : null,
+      utmContent: r && r.utm_content != null ? String(r.utm_content) : null,
+    });
+    // Confirm token is truly present for this session (avoid false positives from LIKE).
+    const hasToken = tokens.some((t) => t.param === p && t.value === v);
+    if (!hasToken) continue;
+    const mappedKeys = resolveMappedSourceKeys(tokens, mapConfig);
+    const mappedPrimary = mappedKeys.length ? mappedKeys[0] : null;
+    const baseKey = deriveTrafficSourceKey({
+      utmSource: r && r.utm_source != null ? String(r.utm_source) : null,
+      utmMedium: r && r.utm_medium != null ? String(r.utm_medium) : null,
+      utmCampaign: r && r.utm_campaign != null ? String(r.utm_campaign) : null,
+      utmContent: r && r.utm_content != null ? String(r.utm_content) : null,
+      referrer: r && r.referrer != null ? String(r.referrer) : null,
+      entryUrl,
+    });
+    const nextKey = mappedPrimary || baseKey || 'direct';
+    const curKey = r && r.traffic_source_key != null ? String(r.traffic_source_key).trim().toLowerCase() : '';
+    if (curKey === nextKey) continue;
+    await db.run('UPDATE sessions SET traffic_source_key = ? WHERE session_id = ?', [nextKey, r.session_id]);
+    updated++;
+  }
+  return { ok: true, scannedSessions: scanned, updatedSessions: updated, sinceMs: since, limitSessions: limit, utmParam: p, utmValue: v };
+}
+
 /**
  * Derive a stable source key using:
  * - Shopify pixel UTMs (utm_source/utm_medium/etc)
@@ -194,13 +604,14 @@ function deriveTrafficSourceKey({ utmSource, utmMedium, utmCampaign, utmContent,
     ) {
       return 'facebook_organic';
     }
+    return 'other';
   }
 
   // 4) Direct / internal
-  const hasAnyUtm = !!(us || um || uc || ucon);
+  const hasAnyUtm = !!(us || um || uc || ucon) || hasAnyUtmInParams(entryParams);
   if (!hasAnyUtm && (!refHost || isInternalHost(refHost))) return 'direct';
-
-  return null;
+  if (hasAnyUtm) return 'other';
+  return 'direct';
 }
 
 function normalizeUaDeviceType(v) {
@@ -404,7 +815,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const hasExistingEntryUrl = existing?.entry_url != null && String(existing.entry_url).trim() !== '';
   const updateEntryUrl = hasExistingEntryUrl ? null : (trimUrl(payload.entry_url) ?? null);
 
-  const trafficSourceKey = deriveTrafficSourceKey({
+  // Capture UTM tokens once per session (when we first record entry_url) so the admin UI can surface "unmapped" sources.
+  if (updateEntryUrl) {
+    const tokens = extractTrafficUtmTokens({ entryUrl: updateEntryUrl, utmSource, utmMedium, utmCampaign, utmContent });
+    await upsertTrafficSourceTokens(tokens, now);
+  }
+
+  const derivedSource = await deriveTrafficSourceKeyWithMaps({
     utmSource,
     utmMedium,
     utmCampaign,
@@ -412,6 +829,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     referrer,
     entryUrl,
   });
+  const trafficSourceKey = derivedSource && derivedSource.trafficSourceKey ? derivedSource.trafficSourceKey : null;
   const uaDeviceType = normalizeUaDeviceType(payload.ua_device_type);
   const uaPlatform = normalizeUaPlatform(payload.ua_platform);
   const uaModel = normalizeUaModel(payload.ua_model);
@@ -1779,6 +2197,16 @@ module.exports = {
   listSessionsByRange,
   getActiveSessionCount,
   getSessionEvents,
+  // Traffic source mapping (custom sources)
+  TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS,
+  getTrafficSourceMapConfigCached,
+  invalidateTrafficSourceMapCache,
+  getTrafficSourceMapVersion,
+  upsertTrafficSourceMeta,
+  addTrafficSourceRule,
+  makeCustomTrafficSourceKeyFromLabel,
+  backfillTrafficSourceTokensFromSessions,
+  backfillTrafficSourceKeysForRule,
   // Reporting helpers (pixel vs truth)
   getPixelSalesSummary,
   getPixelSalesTotalGbp,

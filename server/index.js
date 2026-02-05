@@ -21,6 +21,7 @@ const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
 const kpisRouter = require('./routes/kpis');
 const trafficRouter = require('./routes/traffic');
+const trafficSourceMaps = require('./routes/trafficSourceMaps');
 const pixelRouter = require('./routes/pixel');
 const shopifySales = require('./routes/shopifySales');
 const salesDiagnostics = require('./routes/salesDiagnostics');
@@ -77,6 +78,11 @@ app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);
 app.get('/api/traffic', trafficRouter.getTraffic);
 app.post('/api/traffic-prefs', trafficRouter.setTrafficPrefs);
+app.get('/api/traffic-source-meta', trafficSourceMaps.getTrafficSourceMeta);
+app.get('/api/traffic-source-maps', trafficSourceMaps.getTrafficSourceMaps);
+app.post('/api/traffic-source-maps/map', trafficSourceMaps.mapTokenToSource);
+app.post('/api/traffic-source-maps/meta', trafficSourceMaps.upsertSourceMeta);
+app.post('/api/traffic-source-maps/backfill', trafficSourceMaps.backfillTokens);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
 app.get('/api/reconcile-sales', reconcileSales.reconcileSales);
 app.post('/api/reconcile-sales', reconcileSales.reconcileSales);
@@ -209,6 +215,7 @@ const { up: up023 } = require('./migrations/023_reconcile_snapshots');
 const { up: up024 } = require('./migrations/024_shopify_sessions_snapshots');
 const { up: up025 } = require('./migrations/025_orders_shopify_line_items');
 const { up: up026 } = require('./migrations/026_report_cache');
+const { up: up027 } = require('./migrations/027_traffic_source_maps');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 
@@ -245,6 +252,7 @@ async function migrateAndStart() {
   await up024();
   await up025();
   await up026();
+  await up027();
 
   if (preBackup) {
     await writeAudit('system', 'backup', {

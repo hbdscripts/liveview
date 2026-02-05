@@ -786,6 +786,7 @@
     #diag-tab-shopify:checked ~ .diag-panels .diag-panel-shopify { display: block; }
     #diag-tab-pixel:checked ~ .diag-panels .diag-panel-pixel { display: block; }
     #diag-tab-traffic:checked ~ .diag-panels .diag-panel-traffic { display: block; }
+    #diag-tab-sources:checked ~ .diag-panels .diag-panel-sources { display: block; }
     #diag-tab-system:checked ~ .diag-panels .diag-panel-system { display: block; }
 
     .diag-panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -804,6 +805,22 @@
       .diag-card-bots { grid-column: auto; }
       .diag-panel-grid { grid-template-columns: 1fr; }
     }
+
+    /* Traffic source mapping UI (config modal) */
+    .tsm-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin: 0 0 0.6rem; }
+    .tsm-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.65rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); cursor: pointer; font-size: 0.8rem; color: var(--text); }
+    .tsm-btn svg { width: 14px; height: 14px; }
+    .tsm-btn.primary { border-color: rgba(13, 148, 136, 0.55); color: var(--accent); background: rgba(13, 148, 136, 0.08); }
+    .tsm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .tsm-table-scroll { overflow: auto; border-radius: var(--radius); border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.65); }
+    .tsm-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .tsm-table th, .tsm-table td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; border-bottom: 1px dashed rgba(0,0,0,0.08); vertical-align: top; }
+    .tsm-table th { text-align: left; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; }
+    .tsm-table tr:last-child td { border-bottom: none; }
+    .tsm-input { width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border); border-radius: 0.6rem; background: rgba(255,255,255,0.9); color: var(--text); font-size: 0.82rem; }
+    .tsm-input::placeholder { color: rgba(0,0,0,0.4); }
+    .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
+    .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
   </style>
 </head>
 <body>
@@ -1248,6 +1265,18 @@
       </div>
       <div class="muted" style="margin-bottom: 0.5rem;">Tick sources to show in the Traffic table. New sources appear here as they’re detected.</div>
       <div id="traffic-sources-picker" class="traffic-picker-list"></div>
+      <details class="diag-tech" id="traffic-source-mapping-details" style="margin-top: 0.85rem;">
+        <summary>
+          <div class="diag-tech-head">
+            <strong>Source mapping</strong>
+            <span>Map URL UTMs into custom sources + icons</span>
+          </div>
+          <svg class="diag-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div style="border-top: 1px solid var(--border); padding: 0.75rem 0.9rem 0.9rem;">
+          <div id="traffic-source-mapping-mini"><div class="muted">Loading…</div></div>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -1928,6 +1957,13 @@
     }
 
     function sourceSortKey(s) {
+      try {
+        const mapped = getMappedSourceKeysForSession(s);
+        if (mapped && mapped.length) {
+          const key0 = String(mapped[0] || '').trim().toLowerCase();
+          if (key0) return trafficSourceLabelForKey(key0, key0) || key0;
+        }
+      } catch (_) {}
       if (isGoogleAdsSource(s)) return 'Google Ads';
       const friendly = sourceFriendlyLabel(s);
       if (friendly === 'Google') return 'Google';
@@ -1945,6 +1981,436 @@
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
     const SOURCE_LIVEVIEW_SOURCE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/liveview-source-logo.png?v=1770141081');
 
+    // Traffic source mapping (server-configurable)
+    const TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS = [
+      'utm_source',
+      'utm_medium',
+      'utm_campaign',
+      'utm_term',
+      'utm_content',
+      'utm_id',
+      'utm_source_platform',
+      'utm_creative_format',
+      'utm_marketing_tactic',
+      'utm_name',
+      'utm_cid',
+      'utm_referrer',
+      'utm_reader',
+    ];
+    const TRAFFIC_SOURCE_MAP_ALLOWED_PARAM_SET = new Set(TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS);
+
+    let trafficSourceMetaByKey = new Map(); // key -> { label, iconUrl, updatedAt }
+    let trafficSourceRulesIndex = new Map(); // param -> value -> [source_key]
+    let trafficSourceMetaLoadedAt = 0;
+    let trafficSourceMetaInFlight = null;
+
+    function safeUrlParams(url) {
+      const raw = url != null ? String(url).trim() : '';
+      if (!raw) return null;
+      try { return new URL(raw).searchParams; } catch (_) {}
+      try { return new URL('https://' + raw).searchParams; } catch (_) {}
+      return null;
+    }
+
+    function normalizeUtmParam(v) {
+      const s = v != null ? String(v).trim().toLowerCase() : '';
+      if (!s) return '';
+      return TRAFFIC_SOURCE_MAP_ALLOWED_PARAM_SET.has(s) ? s : '';
+    }
+
+    function normalizeUtmValue(v) {
+      const s = v != null ? String(v).trim() : '';
+      if (!s) return '';
+      return (s.length > 256 ? s.slice(0, 256) : s).toLowerCase();
+    }
+
+    function buildTrafficSourceRulesIndex(rules) {
+      const idx = new Map();
+      (Array.isArray(rules) ? rules : []).forEach(function(r) {
+        const p = normalizeUtmParam(r && r.utm_param);
+        const v = normalizeUtmValue(r && r.utm_value);
+        const k = (r && r.source_key != null) ? String(r.source_key).trim().toLowerCase() : '';
+        if (!p || !v || !k) return;
+        if (!idx.has(p)) idx.set(p, new Map());
+        const byVal = idx.get(p);
+        if (!byVal.has(v)) byVal.set(v, []);
+        byVal.get(v).push(k);
+      });
+      return idx;
+    }
+
+    function refreshTrafficSourceMeta(options = {}) {
+      const force = !!options.force;
+      const now = Date.now();
+      if (!force && trafficSourceMetaLoadedAt && (now - trafficSourceMetaLoadedAt) < 60 * 1000) {
+        return Promise.resolve({ ok: true, cached: true });
+      }
+      if (trafficSourceMetaInFlight) return trafficSourceMetaInFlight;
+      trafficSourceMetaInFlight = fetchWithTimeout(API + '/api/traffic-source-meta' + (force ? ('?_=' + now) : ''), { credentials: 'same-origin', cache: 'no-store' }, 20000)
+        .then(function(r) { if (!r.ok) throw new Error('Meta HTTP ' + r.status); return r.json(); })
+        .then(function(json) {
+          const meta = (json && json.meta && typeof json.meta === 'object') ? json.meta : {};
+          const m = new Map();
+          Object.keys(meta).forEach(function(k) {
+            const kk = String(k || '').trim().toLowerCase();
+            if (!kk) return;
+            const v = meta[k] || {};
+            m.set(kk, {
+              label: v && v.label != null ? String(v.label) : kk,
+              iconUrl: v && v.iconUrl != null ? String(v.iconUrl) : (v && v.icon_url != null ? String(v.icon_url) : null),
+              updatedAt: v && v.updatedAt != null ? Number(v.updatedAt) : (v && v.updated_at != null ? Number(v.updated_at) : null),
+            });
+          });
+          const rules = (json && Array.isArray(json.rules)) ? json.rules : [];
+          trafficSourceMetaByKey = m;
+          trafficSourceRulesIndex = buildTrafficSourceRulesIndex(rules);
+          trafficSourceMetaLoadedAt = Date.now();
+          try { if (trafficCache) renderTraffic(trafficCache); } catch (_) {}
+          try { if (sessions && sessions.length) renderTable(); } catch (_) {}
+          return { ok: true, metaCount: m.size, ruleCount: rules.length };
+        })
+        .catch(function(err) {
+          console.error(err);
+          return { ok: false, error: err && err.message ? String(err.message) : 'Failed' };
+        })
+        .finally(function() { trafficSourceMetaInFlight = null; });
+      return trafficSourceMetaInFlight;
+    }
+
+    function trafficSourceLabelForKey(key, fallbackLabel) {
+      const k = key != null ? String(key).trim().toLowerCase() : '';
+      if (!k) return fallbackLabel != null ? String(fallbackLabel) : '';
+      const meta = trafficSourceMetaByKey.get(k);
+      if (meta && meta.label != null && String(meta.label).trim() !== '') return String(meta.label);
+      return fallbackLabel != null ? String(fallbackLabel) : k;
+    }
+
+    function trafficSourceIconUrlForKey(key) {
+      const k = key != null ? String(key).trim().toLowerCase() : '';
+      if (!k) return '';
+      const meta = trafficSourceMetaByKey.get(k);
+      return meta && meta.iconUrl != null && String(meta.iconUrl).trim() !== '' ? String(meta.iconUrl).trim() : '';
+    }
+
+    function extractMappedUtmTokensFromSession(s) {
+      const out = [];
+      function add(param, value) {
+        const p = normalizeUtmParam(param);
+        const v = normalizeUtmValue(value);
+        if (!p || !v) return;
+        out.push({ param: p, value: v });
+      }
+      const params = safeUrlParams(s && s.entry_url ? String(s.entry_url) : '');
+      if (params) {
+        TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS.forEach(function(p) {
+          const v = params.get(p);
+          if (v != null && String(v).trim() !== '') add(p, v);
+        });
+      }
+      add('utm_source', s && s.utm_source != null ? String(s.utm_source) : '');
+      add('utm_medium', s && s.utm_medium != null ? String(s.utm_medium) : '');
+      add('utm_campaign', s && s.utm_campaign != null ? String(s.utm_campaign) : '');
+      add('utm_content', s && s.utm_content != null ? String(s.utm_content) : '');
+
+      const seen = new Set();
+      const deduped = [];
+      out.forEach(function(t) {
+        const k = t.param + '\0' + t.value;
+        if (seen.has(k)) return;
+        seen.add(k);
+        deduped.push(t);
+      });
+      return deduped;
+    }
+
+    function getMappedSourceKeysForSession(s) {
+      const tokens = extractMappedUtmTokensFromSession(s);
+      if (!tokens.length) return [];
+      const out = [];
+      const seen = new Set();
+      tokens.forEach(function(t) {
+        const byVal = trafficSourceRulesIndex.get(t.param);
+        if (!byVal) return;
+        const keys = byVal.get(t.value);
+        if (!Array.isArray(keys) || !keys.length) return;
+        keys.forEach(function(k) {
+          const kk = String(k || '').trim().toLowerCase();
+          if (!kk || seen.has(kk)) return;
+          seen.add(kk);
+          out.push(kk);
+        });
+      });
+      return out;
+    }
+
+    function trafficSourceBuiltInIconSrc(key) {
+      const k = key != null ? String(key).trim().toLowerCase() : '';
+      if (!k) return '';
+      if (k === 'google_ads') return getAssetsBase() + '/adwords.png?width=100';
+      if (k === 'google_organic') return SOURCE_GOOGLE_IMG;
+      if (k === 'bing_ads' || k === 'bing_organic') return SOURCE_BING_IMG;
+      if (k === 'omnisend') return SOURCE_OMNISEND_IMG;
+      if (k === 'direct') return SOURCE_DIRECT_IMG;
+      return SOURCE_UNKNOWN_IMG;
+    }
+
+    // Config modal: source mapping UI
+    let trafficSourceMapsShowMappedTokens = false;
+    let trafficSourceMapsUiInFlight = null;
+
+    function fetchTrafficSourceMaps(options = {}) {
+      const sinceDays = (options && typeof options.sinceDays === 'number') ? options.sinceDays : 30;
+      const limitTokens = (options && typeof options.limitTokens === 'number') ? options.limitTokens : 250;
+      const unmappedOnly = options && options.unmappedOnly != null ? !!options.unmappedOnly : !trafficSourceMapsShowMappedTokens;
+      let url = API + '/api/traffic-source-maps?sinceDays=' + encodeURIComponent(String(sinceDays)) +
+        '&limitTokens=' + encodeURIComponent(String(limitTokens)) +
+        '&unmappedOnly=' + encodeURIComponent(unmappedOnly ? '1' : '0');
+      url += '&_=' + Date.now();
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
+        .then(function(r) { if (!r.ok) throw new Error('Maps HTTP ' + r.status); return r.json(); });
+    }
+
+    function postTrafficSourceMap(payload) {
+      return fetchWithTimeout(API + '/api/traffic-source-maps/map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(payload || {}),
+      }, 45000).then(function(r) { return r.ok ? r.json() : r.json().catch(function() { return null; }).then(function(j) { throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status)); }); });
+    }
+
+    function postTrafficSourceMeta(payload) {
+      return fetchWithTimeout(API + '/api/traffic-source-maps/meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(payload || {}),
+      }, 25000).then(function(r) { return r.ok ? r.json() : r.json().catch(function() { return null; }).then(function(j) { throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status)); }); });
+    }
+
+    function postTrafficSourceBackfill(payload) {
+      return fetchWithTimeout(API + '/api/traffic-source-maps/backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(payload || {}),
+      }, 60000).then(function(r) { return r.ok ? r.json() : null; });
+    }
+
+    function renderTrafficSourceMappingPanel(state) {
+      const sources = (state && Array.isArray(state.sources)) ? state.sources.slice() : [];
+      const tokens = (state && Array.isArray(state.tokens)) ? state.tokens.slice() : [];
+      sources.sort(function(a, b) {
+        const al = (a && a.label != null) ? String(a.label) : '';
+        const bl = (b && b.label != null) ? String(b.label) : '';
+        return al.localeCompare(bl);
+      });
+
+      function fmtTs(ms) { return (typeof ms === 'number' && isFinite(ms)) ? formatTs(ms) : '—'; }
+
+      let html = '';
+      html += '<div class="tsm-actions">';
+      html +=   '<button type="button" class="tsm-btn primary" data-tsm-action="refresh">' + '<span>Refresh</span>' + '</button>';
+      html +=   '<button type="button" class="tsm-btn" data-tsm-action="scan">' + '<span>Scan last 30d</span>' + '</button>';
+      html +=   '<button type="button" class="tsm-btn" data-tsm-action="toggle-mapped">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Hide mapped tokens' : 'Show mapped tokens') + '</span>' + '</button>';
+      html += '</div>';
+      html += '<div class="diag-note">Unmapped tokens appear here first. Map a token to a Source name (creates a new key like <code>custom_...</code>) and optionally paste an icon URL. Mapped sources will start showing in the Traffic picker + tables.</div>';
+
+      html += '<div class="diag-section-title">' + '<span>Mapped sources</span>' + '</div>';
+      if (!sources.length) {
+        html += '<div class="diag-note">No custom sources yet.</div>';
+      } else {
+        html += '<div class="tsm-table-scroll"><table class="tsm-table"><thead><tr>' +
+          '<th>Source</th><th>Key</th><th>Icon URL</th><th></th>' +
+          '</tr></thead><tbody>';
+        sources.forEach(function(s) {
+          const key = s && s.source_key != null ? String(s.source_key).trim().toLowerCase() : '';
+          if (!key) return;
+          const label = s && s.label != null ? String(s.label) : key;
+          const iconUrl = s && s.icon_url != null ? String(s.icon_url) : '';
+          const preview = iconUrl && iconUrl.trim()
+            ? ('<img class="tsm-icon-preview" src="' + escapeHtml(iconUrl.trim()) + '" alt="" onerror="this.style.display=\\\'none\\\'">')
+            : '<span style="display:inline-block;width:18px;height:18px"></span>';
+          html += '<tr class="tsm-source-row" data-source-key="' + escapeHtml(key) + '">' +
+            '<td><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></td>' +
+            '<td><code>' + escapeHtml(key) + '</code></td>' +
+            '<td><div style="display:flex;gap:0.45rem;align-items:center">' +
+              preview +
+              '<input class="tsm-input" data-field="icon_url" placeholder="https://.../icon.png" value="' + escapeHtml(iconUrl || '') + '" />' +
+            '</div></td>' +
+            '<td><button type="button" class="tsm-btn primary" data-tsm-action="save-meta">Save</button></td>' +
+          '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      html += '<div class="diag-section-title" style="margin-top:0.85rem">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Tokens (mapped + unmapped)' : 'Unmapped tokens') + '</span>' + '</div>';
+      if (!tokens.length) {
+        html += '<div class="diag-note">No tokens captured yet. Click <strong>Scan last 30d</strong> (or wait for new sessions) and they will appear here.</div>';
+      } else {
+        html += '<div class="tsm-table-scroll"><table class="tsm-table"><thead><tr>' +
+          '<th>Token</th><th>Seen</th><th>Map / existing</th>' +
+          '</tr></thead><tbody>';
+        tokens.forEach(function(t) {
+          const p = t && t.utm_param != null ? String(t.utm_param).trim().toLowerCase() : '';
+          const v = t && t.utm_value != null ? String(t.utm_value).trim().toLowerCase() : '';
+          if (!p || !v) return;
+          const seenCount = t && typeof t.seen_count === 'number' ? t.seen_count : 0;
+          const lastSeen = t && typeof t.last_seen_at === 'number' ? t.last_seen_at : null;
+          const mapped = (t && Array.isArray(t.mapped)) ? t.mapped : [];
+          html += '<tr class="tsm-token-row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '">' +
+            '<td><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></td>' +
+            '<td>' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note" style="margin:0.15rem 0 0">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></td>' +
+            '<td>' +
+              '<div style="display:grid;grid-template-columns: 1fr 1fr auto; gap:0.45rem; align-items:center">' +
+                '<input class="tsm-input" data-field="source_label" placeholder="Source name (e.g. TikTok Influencers)" />' +
+                '<input class="tsm-input" data-field="icon_url" placeholder="Icon URL (optional)" />' +
+                '<button type="button" class="tsm-btn primary" data-tsm-action="map-token">Map</button>' +
+              '</div>' +
+              (mapped.length ? ('<div style="margin-top:0.35rem">' + mapped.map(function(m) {
+                const ml = m && m.label != null ? String(m.label) : (m && m.source_key ? String(m.source_key) : '');
+                const mu = m && m.icon_url != null ? String(m.icon_url) : '';
+                const prev = (mu && mu.trim()) ? ('<img class="tsm-icon-preview" src="' + escapeHtml(mu.trim()) + '" alt="" onerror="this.style.display=\\\'none\\\'">') : '';
+                return '<span class="tsm-mapped-pill">' + prev + escapeHtml(ml) + '</span>';
+              }).join('') + '</div>') : '') +
+            '</td>' +
+          '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      return html;
+    }
+
+    let trafficSourceMapsLastState = null;
+    let trafficSourceMapsLastLoadedAt = 0;
+
+    function refreshTrafficSourceMappingPanel(options = {}) {
+      const rootId = options && options.rootId ? String(options.rootId) : 'traffic-source-mapping-root';
+      const root = document.getElementById(rootId);
+      if (!root) return Promise.resolve(null);
+      const force = !!options.force;
+      const now = Date.now();
+      const fresh = !!(trafficSourceMapsLastState && trafficSourceMapsLastLoadedAt && (now - trafficSourceMapsLastLoadedAt) < 30 * 1000);
+      if (!force && fresh) {
+        root.innerHTML = renderTrafficSourceMappingPanel(trafficSourceMapsLastState);
+        return Promise.resolve(trafficSourceMapsLastState);
+      }
+
+      root.innerHTML = '<div class="diag-loading">Loading\u2026</div>';
+
+      if (trafficSourceMapsUiInFlight) {
+        return trafficSourceMapsUiInFlight
+          .then(function(state) {
+            if (state && state.ok === true) root.innerHTML = renderTrafficSourceMappingPanel(state);
+            else root.innerHTML = '<div class="diag-note">Failed to load source mapping.</div>';
+            return state;
+          })
+          .catch(function(err) {
+            console.error(err);
+            root.innerHTML = '<div class="diag-note">Failed to load source mapping. ' + escapeHtml(err && err.message ? String(err.message) : '') + '</div>';
+            return null;
+          });
+      }
+
+      trafficSourceMapsUiInFlight = fetchTrafficSourceMaps({ force: true, unmappedOnly: !trafficSourceMapsShowMappedTokens })
+        .then(function(json) {
+          if (!json || json.ok !== true) throw new Error('Bad response');
+          trafficSourceMapsLastState = json;
+          trafficSourceMapsLastLoadedAt = Date.now();
+          return json;
+        })
+        .catch(function(err) {
+          console.error(err);
+          return null;
+        })
+        .finally(function() { trafficSourceMapsUiInFlight = null; });
+
+      return trafficSourceMapsUiInFlight.then(function(state) {
+        if (state && state.ok === true) root.innerHTML = renderTrafficSourceMappingPanel(state);
+        else root.innerHTML = '<div class="diag-note">Failed to load source mapping.</div>';
+        return state;
+      });
+    }
+
+    function initTrafficSourceMappingPanel(options = {}) {
+      const rootId = options && options.rootId ? String(options.rootId) : 'traffic-source-mapping-root';
+      const root = document.getElementById(rootId);
+      if (!root) return;
+      root.onclick = function(e) {
+        const btn = e && e.target ? e.target.closest('button[data-tsm-action]') : null;
+        if (!btn) return;
+        const action = (btn.getAttribute('data-tsm-action') || '').trim();
+        if (action === 'refresh') {
+          refreshTrafficSourceMappingPanel({ force: true, rootId: rootId });
+          return;
+        }
+        if (action === 'toggle-mapped') {
+          trafficSourceMapsShowMappedTokens = !trafficSourceMapsShowMappedTokens;
+          refreshTrafficSourceMappingPanel({ force: true, rootId: rootId });
+          return;
+        }
+        if (action === 'scan') {
+          btn.disabled = true;
+          postTrafficSourceBackfill({ since_days: 30, limit_sessions: 20000 })
+            .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
+            .finally(function() { btn.disabled = false; });
+          return;
+        }
+        if (action === 'map-token') {
+          const row = btn.closest('.tsm-token-row');
+          if (!row) return;
+          const utmParam = (row.getAttribute('data-utm-param') || '').trim();
+          const utmValue = (row.getAttribute('data-utm-value') || '').trim();
+          const labelEl = row.querySelector('input[data-field="source_label"]');
+          const iconEl = row.querySelector('input[data-field="icon_url"]');
+          const sourceLabel = labelEl ? String(labelEl.value || '').trim() : '';
+          const iconUrl = iconEl ? String(iconEl.value || '').trim() : '';
+          if (!utmParam || !utmValue || !sourceLabel) {
+            alert('Please enter a Source name.');
+            return;
+          }
+          btn.disabled = true;
+          postTrafficSourceMap({ utm_param: utmParam, utm_value: utmValue, source_label: sourceLabel, icon_url: iconUrl || null, since_days: 30, limit_sessions: 50000 })
+            .then(function() { return refreshTrafficSourceMeta({ force: true }); })
+            .then(function() { try { refreshTraffic({ force: true }); } catch (_) {} })
+            .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
+            .finally(function() { btn.disabled = false; });
+          return;
+        }
+        if (action === 'save-meta') {
+          const row = btn.closest('.tsm-source-row');
+          if (!row) return;
+          const sourceKey = (row.getAttribute('data-source-key') || '').trim();
+          const labelEl = row.querySelector('input[data-field="label"]');
+          const iconEl = row.querySelector('input[data-field="icon_url"]');
+          const label = labelEl ? String(labelEl.value || '').trim() : '';
+          const iconUrl = iconEl ? String(iconEl.value || '').trim() : '';
+          if (!sourceKey || !label) {
+            alert('Source label is required.');
+            return;
+          }
+          btn.disabled = true;
+          postTrafficSourceMeta({ source_key: sourceKey, label: label, icon_url: iconUrl || null })
+            .then(function() { return refreshTrafficSourceMeta({ force: true }); })
+            .then(function() { try { renderTable(); } catch (_) {} })
+            .then(function() { try { refreshTraffic({ force: true }); } catch (_) {} })
+            .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
+            .finally(function() { btn.disabled = false; });
+          return;
+        }
+      };
+
+      // Initial load (best-effort).
+      if (!root.getAttribute('data-tsm-loaded')) {
+        root.setAttribute('data-tsm-loaded', '1');
+        refreshTrafficSourceMappingPanel({ force: true, rootId: rootId });
+      }
+    }
+
     function sourceCell(s) {
       function icon(src, alt, title, extraClass) {
         const cls = (extraClass ? (extraClass + ' ') : '') + 'source-icon-img';
@@ -1953,6 +2419,21 @@
       }
 
       const out = [];
+
+      // 0) Custom mapping icons (if any) take precedence.
+      try {
+        const mapped = getMappedSourceKeysForSession(s);
+        if (mapped && mapped.length) {
+          mapped.forEach(function(key) {
+            const label = trafficSourceLabelForKey(key, key);
+            const metaIcon = trafficSourceIconUrlForKey(key);
+            const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
+            const extra = key === 'google_ads' ? 'source-googleads-img' : '';
+            out.push(icon(src, label, label, extra));
+          });
+          return '<span class="source-icons">' + out.join('') + '</span>';
+        }
+      } catch (_) {}
 
       // 1) UTM-derived source icon (campaign/source)
       const utmStr = sourceUtmString(s);
@@ -3809,12 +4290,11 @@
         const key = keyRaw != null ? String(keyRaw).trim().toLowerCase() : '';
         const label = labelRaw != null ? String(labelRaw).trim() : '';
         if (!key) return escapeHtml(label || '—');
-        if (key === 'google_ads') return '<span class="source-icons">' + icon(getAssetsBase() + '/adwords.png?width=100', 'Google Ads', label || 'Google Ads', 'source-googleads-img') + '</span>';
-        if (key === 'google_organic') return '<span class="source-icons">' + icon(SOURCE_GOOGLE_IMG, 'Google', label || 'Google') + '</span>';
-        if (key === 'bing_ads' || key === 'bing_organic') return '<span class="source-icons">' + icon(SOURCE_BING_IMG, 'Bing', label || 'Bing') + '</span>';
-        if (key === 'omnisend') return '<span class="source-icons">' + icon(SOURCE_OMNISEND_IMG, 'Omnisend', label || 'Omnisend') + '</span>';
-        if (key === 'direct') return '<span class="source-icons">' + icon(SOURCE_DIRECT_IMG, 'Direct', label || 'Direct') + '</span>';
-        return '<span class="source-icons">' + icon(SOURCE_UNKNOWN_IMG, label || key, label || key) + '</span>';
+        const resolvedLabel = trafficSourceLabelForKey(key, label || key);
+        const customIcon = trafficSourceIconUrlForKey(key);
+        const src = customIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
+        const extra = key === 'google_ads' ? 'source-googleads-img' : '';
+        return '<span class="source-icons">' + icon(src, resolvedLabel, resolvedLabel, extra) + '</span>';
       }
 
       function renderRows(bodyId, rows, emptyText) {
@@ -4634,6 +5114,8 @@
           html +=       '<label class="diag-tab-label" for="diag-tab-pixel">' + icon('activity', '') + 'Pixel</label>';
           html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-traffic" />';
           html +=       '<label class="diag-tab-label" for="diag-tab-traffic">' + icon('bar', '') + 'Traffic</label>';
+          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-sources" />';
+          html +=       '<label class="diag-tab-label" for="diag-tab-sources">' + icon('link', '') + 'Sources</label>';
           html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-system" />';
           html +=       '<label class="diag-tab-label" for="diag-tab-system">' + icon('server', '') + 'System</label>';
           html +=     '<div class="diag-panels">';
@@ -4764,6 +5246,16 @@
           html +=         '</div>';
           html +=       '</div>';
 
+          // Sources panel (mapping + icons)
+          html +=       '<div class="diag-panel diag-panel-sources">';
+          html +=         '<div class="diag-panel-grid">';
+          html +=           '<div class="diag-panel-card" style="grid-column: 1 / -1;">';
+          html +=             '<div class="diag-panel-card-title">' + icon('link', '') + 'Source mapping</div>';
+          html +=             '<div id="traffic-source-mapping-root"><div class="diag-note">Loading\u2026</div></div>';
+          html +=           '</div>';
+          html +=         '</div>';
+          html +=       '</div>';
+
           // System panel
           html +=       '<div class="diag-panel diag-panel-system">';
           html +=         '<div class="diag-panel-grid">';
@@ -4808,6 +5300,7 @@
 
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
+          try { initTrafficSourceMappingPanel(); } catch (_) {}
 
           // Footer: keep "Last sale" accurate. Prefer Shopify truth order.created_at, else evidence last checkout_completed.
           if (truthToday && typeof truthToday.lastOrderCreatedAt === 'number') {
@@ -4858,6 +5351,9 @@
         try { refreshTraffic({ force: true }); } catch (_) {}
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
+        try {
+          if (modal === sourcesModal) initTrafficSourceMappingPanel({ rootId: 'traffic-source-mapping-mini' });
+        } catch (_) {}
       }
       function close(modal) {
         modal.classList.remove('open');
@@ -5126,6 +5622,9 @@
       onScroll('best-variants-wrap', 'stats-best-variants');
       onScroll('worst-variants-wrap', 'stats-worst-variants');
     })();
+
+    // Load traffic source mapping + custom icons (best-effort).
+    try { refreshTrafficSourceMeta({ force: false }); } catch (_) {}
 
     function onLiveAutoRefreshTick() {
       if (activeMainTab !== 'spy') return;

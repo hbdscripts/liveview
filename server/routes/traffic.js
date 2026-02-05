@@ -22,6 +22,7 @@ const SOURCE_LABELS = {
   facebook_ads: 'Facebook Ads',
   omnisend: 'Omnisend',
   direct: 'Direct visitor',
+  other: 'Other',
 };
 
 const TYPE_LABELS = {
@@ -185,6 +186,7 @@ async function getTraffic(req, res) {
   const prefs = await getPrefs();
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   const shop = salesTruth.resolveShopForSales('');
+  const sourceMapVersion = await store.getTrafficSourceMapVersion().catch(() => ({ metaUpdatedAtMax: 0, rulesCreatedAtMax: 0 }));
 
   const cached = await reportCache.getOrComputeJson(
     {
@@ -193,12 +195,27 @@ async function getTraffic(req, res) {
       rangeKey,
       rangeStartTs: bounds.start,
       rangeEndTs: bounds.end,
-      params: { prefs, reporting },
+      params: { prefs, reporting, sourceMapVersion },
       ttlMs: 5 * 60 * 1000,
       force,
     },
     async () => {
       const t0 = Date.now();
+      const sourceMapCfg = await store.getTrafficSourceMapConfigCached().catch(() => null);
+      const sourceMetaByKey = sourceMapCfg && sourceMapCfg.metaByKey ? sourceMapCfg.metaByKey : new Map();
+      function labelForKey(key) {
+        const k = String(key || '').trim().toLowerCase();
+        if (!k) return '—';
+        const meta = sourceMetaByKey.get(k);
+        if (meta && meta.label != null && String(meta.label).trim() !== '') return String(meta.label);
+        return labelForSourceKey(k);
+      }
+      function iconUrlForKey(key) {
+        const k = String(key || '').trim().toLowerCase();
+        if (!k) return null;
+        const meta = sourceMetaByKey.get(k);
+        return meta && meta.iconUrl != null ? meta.iconUrl : null;
+      }
       let msAvailSources = 0;
       let msSessionsBySource = 0;
       let msSalesBySource = 0;
@@ -224,6 +241,34 @@ async function getTraffic(req, res) {
       );
       msAvailSources = Date.now() - tAvail0;
 
+      // Ensure enabled sources always appear in the picker (even if 0 sessions in last 30d).
+      const availableSourceMap = new Map();
+      for (const r of availableSources || []) {
+        const key = String(r && r.key != null ? r.key : '').trim().toLowerCase();
+        if (!key) continue;
+        availableSourceMap.set(key, {
+          key,
+          label: labelForKey(key),
+          icon_url: iconUrlForKey(key),
+          sessions: Number(r.sessions) || 0,
+          last_seen: toNum(r.last_seen),
+        });
+      }
+      for (const k of prefs.sourcesEnabled || []) {
+        const key = String(k || '').trim().toLowerCase();
+        if (!key) continue;
+        if (availableSourceMap.has(key)) continue;
+        availableSourceMap.set(key, {
+          key,
+          label: labelForKey(key),
+          icon_url: iconUrlForKey(key),
+          sessions: 0,
+          last_seen: null,
+        });
+      }
+      const availableSourcesMerged = Array.from(availableSourceMap.values())
+        .sort((a, b) => (Number(b.sessions) - Number(a.sessions)) || ((Number(b.last_seen) || 0) - (Number(a.last_seen) || 0)) || String(a.label).localeCompare(String(b.label)));
+
       // --- Source breakdown (range) ---
       const tSessionsBySource0 = Date.now();
       const sessionsBySourceRows = await db.all(
@@ -239,7 +284,7 @@ async function getTraffic(req, res) {
       );
       const sessionsBySource = new Map();
       for (const r of sessionsBySourceRows || []) {
-        const k = r && r.key != null ? String(r.key).trim() : '';
+        const k = r && r.key != null ? String(r.key).trim().toLowerCase() : '';
         if (!k) continue;
         sessionsBySource.set(k, Number(r.sessions) || 0);
       }
@@ -296,6 +341,16 @@ async function getTraffic(req, res) {
         );
         salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
       }
+      // Normalize keys to lower-case for consistent lookups.
+      if (salesBySource && typeof salesBySource.entries === 'function') {
+        const next = new Map();
+        for (const [k, v] of salesBySource.entries()) {
+          const kk = String(k || '').trim().toLowerCase();
+          if (!kk) continue;
+          next.set(kk, v);
+        }
+        salesBySource = next;
+      }
       msSalesBySource = Date.now() - tSalesBySource0;
 
       const sourceRows = (prefs.sourcesEnabled || []).map((key) => {
@@ -305,7 +360,8 @@ async function getTraffic(req, res) {
         const revenueGbp = Number(sales.revenueGbp) || 0;
         return {
           key,
-          label: labelForSourceKey(key),
+          label: labelForKey(key),
+          icon_url: iconUrlForKey(key),
           sessions,
           orders,
           revenueGbp,
@@ -512,12 +568,7 @@ async function getTraffic(req, res) {
         prefs,
         sources: {
           enabled: prefs.sourcesEnabled,
-          available: (availableSources || []).map((r) => ({
-            key: String(r.key || '').trim().toLowerCase(),
-            label: labelForSourceKey(r.key),
-            sessions: Number(r.sessions) || 0,
-            last_seen: toNum(r.last_seen),
-          })),
+          available: availableSourcesMerged,
           rows: sourceRows,
         },
         types: {
