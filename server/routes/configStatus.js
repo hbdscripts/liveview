@@ -381,6 +381,19 @@ async function configStatus(req, res, next) {
     const requires = def && def.requires ? def.requires : {};
     const requiredTables = Array.isArray(requires.dbTables) ? requires.dbTables : [];
     const missingTables = requiredTables.filter((t) => !tables[String(t)]);
+    const byReporting = def && def.requiresByReporting ? def.requiresByReporting : {};
+    const activeTables = [];
+    for (const t of requiredTables) activeTables.push(String(t));
+    if (byReporting && byReporting.ordersSource && reporting && typeof reporting.ordersSource === 'string') {
+      const extra = byReporting.ordersSource[reporting.ordersSource];
+      if (Array.isArray(extra)) for (const t of extra) activeTables.push(String(t));
+    }
+    if (byReporting && byReporting.sessionsSource && reporting && typeof reporting.sessionsSource === 'string') {
+      const extra = byReporting.sessionsSource[reporting.sessionsSource];
+      if (Array.isArray(extra)) for (const t of extra) activeTables.push(String(t));
+    }
+    const activeTablesUniq = Array.from(new Set(activeTables.filter(Boolean)));
+    const activeMissingTables = activeTablesUniq.filter((t) => !tables[String(t)]);
     const needsToken = !!requires.shopifyToken;
     const tokenOk = !needsToken || !!token;
     return {
@@ -388,6 +401,9 @@ async function configStatus(req, res, next) {
       checks: {
         dbTablesOk: missingTables.length === 0,
         dbTablesMissing: missingTables,
+        activeDbTablesOk: activeMissingTables.length === 0,
+        activeDbTablesMissing: activeMissingTables,
+        activeDbTables: activeTablesUniq,
         shopifyTokenOk: tokenOk,
       },
     };

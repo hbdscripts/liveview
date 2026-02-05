@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (traffic source mapping bulk save + dropdown)
+Last updated: 2026-02-05 (diagnostics tabs + metric definitions manifest)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -30,7 +30,8 @@ Main tabs (top row):
 - Breakdown: Countries + Best GEO Products + Average Order Value tables for selected date range
 - Products: Best / Worst / Variants tables for selected date range
   - Best sellers: Sales / Landings / Rev / Order share%
-  - Worst products + Variants tables: Sales / Clicks / Rev / CR
+  - Worst products: Sales / Landings / Rev / CR%
+  - Best variants + Worst variants: Sales / Landings / Rev / Order share%
 - Traffic: two tables (Source + Traffic Type)
   - Channels table renders source icons (not text labels)
   - Home table “Source” column shows only Source-mapped icons (Traffic · Sources → Source mapping); unmapped sessions show no icon
@@ -224,6 +225,7 @@ DB persistence:
 
 - Do not delete rows from app tables (especially `purchases`). Handle over-reporting via dedupe in stats queries.
 - Never delete or truncate `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to “fix” mismatches vs Shopify. Fix mismatches by changing reporting sources, improving reconciliation, or using snapshots/backups.
+- When adding/changing dashboard tables or metric math, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate (and can surface drift/missing dependencies).
 - When making code/config changes: commit + push (deploys are push-driven).
 - “Sentry” checks should be done via the `user-sentry` MCP tools (project: Node, org: lee-cooper, region: de).
 
@@ -339,7 +341,7 @@ Backups durability:
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: table headers use icon abbreviations (Geo text) to avoid overlaps
 - KPIs: Returning revenue (Shopify truth) uses Shopify returning-customer signal (`orders_shopify.customer_orders_count >= 2`) rather than session “returning” heuristics
-- Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based landing counts to best sellers/variants)
+- Products: align Best/Worst/Variants tables to Sales / Landings / Rev / % (CR% for worst products; Order share% for best/variants), and add handle-based landing counts to best sellers/variants
 - Products: Best sellers table labels clarified (Clicks → Landings, CR% → Order share%) to match backend definitions
 - Products: product title column is responsive (more width + larger titles on desktop; clamped multi-line on smaller screens)
 - Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
@@ -350,6 +352,7 @@ Backups durability:
 - Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
 - Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
 - Diagnostics: add checkout-token truth order/revenue breakdown (proxy for online-store checkouts); CR% uses checkout-token orders so Shopify sessions comparisons aren’t inflated by non-checkout channels
+- Diagnostics: add top-level tabs (Comparison / Technical details / Definitions). Definitions are powered by `server/trackerDefinitions.js` and include runtime checks (DB tables present, token stored, UI ids present).
 - UI: make all dashboard table headers sortable on click (Home sessions + Breakdown/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
 - UI: prevent duplicate “cha-ching” for a single sale (avoid double-trigger when order totals arrive later / KPI refresh drift)
 - UI: sale toast: newest sale wins (no stale latest-sale overwrite) + add dismiss (×) button for faster clear

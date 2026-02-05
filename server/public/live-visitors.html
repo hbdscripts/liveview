@@ -226,9 +226,9 @@
 .last-action-cell.dual { align-items: flex-start; }
 .last-action-cell .landing-lines { display: flex; flex-direction: column; /* gap: 0.15rem; */ min-width: 0; margin: 15px 0 0; }
 .last-action-cell .landing-lines > * { min-width: 0; }
-.last-action-cell .landing-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 0.35rem; font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
+.last-action-cell .landing-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 0.35rem 0; font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
 .last-action-cell .landing-line-text { min-width: 0; word-break: break-word; }
-    .last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: inline-block; }
+    .last-action-cell .landing-dir-icon { width: 14px; height: 14px; flex-shrink: 0; margin-right: 0.35rem; display: inline-block; }
     .last-action-cell .landing-dir-icon-entry { color: #0d9488; }
     .last-action-cell .landing-dir-icon-exit { color: #940d0d; }
 .last-action-cell .landing-line:hover { text-decoration: underline; }
@@ -407,7 +407,7 @@
 .report-building .stats-row,
 .report-building .traffic-grid { visibility: hidden; }
 .sessions-table-wrap { position: relative; }
-.live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--kpi-gap); }
+.live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: var(--kpi-gap); }
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
     .live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
     .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #444; line-height: 1.3; }
@@ -436,7 +436,8 @@
 .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
 .kpi-ticker.run .kpi-ticker-stack { transform: translateY(-100%); }
 .shared-kpi-wrap { margin-bottom: 1.25rem; }
-    .kpi-mobile-pager { position: relative; }
+    .kpi-mobile-pager { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+    .kpi-mobile-pager::-webkit-scrollbar { display: none; }
     .kpi-mobile-pager.kpi-pager-active { padding-right: 44px; }
     .kpi-mobile-next {
       display: none;
@@ -727,6 +728,7 @@
       .side-panel-close { min-width: 44px; min-height: 44px; }
       .last-action-cell a { display: none; }
       .last-action-cell .landing-lines a { display: grid; }
+      .last-action-cell .landing-lines { margin-top: 0.35rem; }
       .landing-thumb { width: 32px; height: 32px; }
       .thumb-wrap.thumb-stack .landing-thumb-exit { width: 24px; height: 24px; min-width: 24px; min-height: 24px; }
     }
@@ -984,7 +986,7 @@
       <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div></div>
-      <div class="live-kpi-cell"><div class="live-kpi-label">Bounce rate</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
     </div>
     <button type="button" class="kpi-mobile-next" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
@@ -4649,7 +4651,6 @@
     }
 
     // KPI pager: swipe on mobile, page on desktop when labels wrap.
-    let kpiPagerPage = 0;
     let kpiPagerRaf = null;
     function scheduleKpiPagerUpdate() {
       if (typeof requestAnimationFrame !== 'function') {
@@ -4686,40 +4687,24 @@
         if (wrap) wrap.classList.remove('kpi-pager-active');
         return;
       }
-      const labels = Array.from(grid.querySelectorAll('.live-kpi-label'));
-      const needsPager = labels.some(kpiLabelWraps);
-      if (!needsPager) {
-        cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
-        btn.style.display = 'none';
-        btn.disabled = true;
-        if (wrap) wrap.classList.remove('kpi-pager-active');
-        return;
-      }
-      const perPage = Math.max(1, Math.min(4, cells.length));
-      const totalPages = Math.max(1, Math.ceil(cells.length / perPage));
-      if (kpiPagerPage >= totalPages) kpiPagerPage = 0;
-      const start = kpiPagerPage * perPage;
-      const end = start + perPage;
-      cells.forEach(function(c, idx) {
-        const show = idx >= start && idx < end;
-        c.style.display = show ? '' : 'none';
-        c.setAttribute('aria-hidden', show ? 'false' : 'true');
-      });
-      const showBtn = totalPages > 1;
-      btn.style.display = showBtn ? 'inline-flex' : 'none';
-      btn.disabled = !showBtn;
-      btn.setAttribute('aria-label', showBtn ? ('Next KPIs (page ' + (kpiPagerPage + 1) + ' of ' + totalPages + ')') : 'KPIs');
+      cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
+      const hasOverflow = wrap && wrap.scrollWidth > wrap.clientWidth;
+      btn.style.display = hasOverflow ? 'inline-flex' : 'none';
+      btn.disabled = !hasOverflow;
+      btn.setAttribute('aria-label', hasOverflow ? 'Scroll KPIs right' : 'KPIs');
       if (wrap) {
-        if (showBtn) wrap.classList.add('kpi-pager-active');
+        if (hasOverflow) wrap.classList.add('kpi-pager-active');
         else wrap.classList.remove('kpi-pager-active');
       }
     }
     (function initKpiPager() {
       const btn = document.getElementById('kpi-mobile-next');
-      if (btn) {
+      const wrap = document.querySelector('.kpi-mobile-pager');
+      if (btn && wrap) {
         btn.addEventListener('click', function() {
-          kpiPagerPage = kpiPagerPage + 1;
-          applyKpiPager();
+          if (wrap.scrollWidth > wrap.clientWidth) {
+            wrap.scrollLeft += Math.min(wrap.clientWidth * 0.75, wrap.scrollWidth - wrap.scrollLeft - wrap.clientWidth);
+          }
         });
       }
       scheduleKpiPagerUpdate();
@@ -5535,6 +5520,7 @@
           const driftPixelRevenue = sales && sales.drift && typeof sales.drift.pixelVsTruthRevenueGbp === 'number' ? sales.drift.pixelVsTruthRevenueGbp : null;
           const pixel = c && c.pixel ? c.pixel : {};
           const appSettings = c && c.settings ? c.settings : {};
+          const trackerDefinitions = c && c.trackerDefinitions ? c.trackerDefinitions : null;
           const pixelSessionMode = (appSettings && appSettings.pixelSessionMode != null)
             ? String(appSettings.pixelSessionMode).trim().toLowerCase()
             : 'legacy';
@@ -5589,6 +5575,187 @@
             return '<span class="' + c.trim() + '">' + escapeHtml(text) + '</span>';
           }
 
+          function renderTrackerDefinitions(defs) {
+            if (!defs || !Array.isArray(defs.tables)) {
+              return '<div class="diag-note">No tracker definitions available from server.</div>';
+            }
+
+            const ver = (defs.version != null) ? String(defs.version) : '';
+            const last = (defs.lastUpdated != null) ? String(defs.lastUpdated) : '';
+            const note = defs.note ? String(defs.note) : '';
+            const defsTables = Array.isArray(defs.tables) ? defs.tables : [];
+
+            const byPage = {};
+            for (const d of defsTables) {
+              const p = (d && d.page) ? String(d.page) : 'Other';
+              if (!byPage[p]) byPage[p] = [];
+              byPage[p].push(d);
+            }
+
+            const preferredOrder = ['Home', 'Breakdown', 'Products', 'Traffic', 'Diagnostics', 'Other'];
+            const pages = Object.keys(byPage || {});
+            pages.sort(function(a, b) {
+              const ia = preferredOrder.indexOf(a);
+              const ib = preferredOrder.indexOf(b);
+              if (ia === -1 && ib === -1) return String(a).localeCompare(String(b));
+              if (ia === -1) return 1;
+              if (ib === -1) return -1;
+              return ia - ib;
+            });
+
+            let out = '';
+            out += '<div class="diag-section-title">' + icon('list', '') + 'Tables + metric definitions</div>';
+            const metaBits = [];
+            if (ver) metaBits.push('v' + ver);
+            if (last) metaBits.push('Last updated ' + last);
+            if (metaBits.length) out += '<div class="diag-note">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+            if (note) out += '<div class="diag-note">' + escapeHtml(note) + '</div>';
+
+            if (!pages.length) {
+              out += '<div class="diag-note">No definitions found.</div>';
+              return out;
+            }
+
+            for (const page of pages) {
+              const list = Array.isArray(byPage[page]) ? byPage[page].slice() : [];
+              list.sort(function(a, b) { return String((a && a.name) || '').localeCompare(String((b && b.name) || '')); });
+
+              out += '<div style="margin-top:0.85rem;">';
+              out +=   '<div class="diag-section-title">' + escapeHtml(page) + '</div>';
+
+              for (const d of list) {
+                const id = (d && d.id) ? String(d.id) : '';
+                const name = (d && d.name) ? String(d.name) : (id || 'Unnamed table');
+                const endpoint = (d && d.endpoint) ? d.endpoint : {};
+                const method = endpoint && endpoint.method ? String(endpoint.method) : '';
+                const path = endpoint && endpoint.path ? String(endpoint.path) : '';
+                const params = (endpoint && Array.isArray(endpoint.params)) ? endpoint.params : [];
+                const uiIds = (d && d.ui && Array.isArray(d.ui.elementIds)) ? d.ui.elementIds : [];
+                const uiMissing = uiIds.filter(function(x) { return x && !document.getElementById(String(x)); });
+
+                const checks = (d && d.checks) ? d.checks : {};
+                const activeTables = (checks && Array.isArray(checks.activeDbTables)) ? checks.activeDbTables : [];
+                const activeMissingTables = (checks && Array.isArray(checks.activeDbTablesMissing)) ? checks.activeDbTablesMissing : null;
+                const missingTables = activeMissingTables != null
+                  ? activeMissingTables
+                  : ((checks && Array.isArray(checks.dbTablesMissing)) ? checks.dbTablesMissing : []);
+                const dbOk = (missingTables.length === 0);
+                const tokenOk = (checks && checks.shopifyTokenOk === true) || !(d && d.requires && d.requires.shopifyToken);
+                const uiOk = (uiMissing.length === 0);
+                const overallOk = dbOk && tokenOk && uiOk;
+
+                const summaryBits = [];
+                if (method && path) summaryBits.push(method + ' ' + path);
+                if (!summaryBits.length && id) summaryBits.push(id);
+
+                const pillBits = [];
+                pillBits.push(overallOk ? pill('OK', 'ok') : pill('Check', (missingTables.length ? 'bad' : 'warn')));
+                if (uiIds.length) pillBits.push(uiOk ? pill('UI ok', 'ok') : pill('UI missing', 'warn'));
+                if (missingTables.length) pillBits.push(pill('DB missing', 'bad'));
+                if (d && d.requires && d.requires.shopifyToken) pillBits.push(tokenOk ? pill('Token ok', 'ok') : pill('Token missing', 'bad'));
+
+                out += '<details class="diag-tech" style="margin-top:0.65rem;">';
+                out +=   '<summary>';
+                out +=     '<div class="diag-tech-head">';
+                out +=       '<strong>' + escapeHtml(name) + '</strong>';
+                out +=       '<span>' + escapeHtml(summaryBits.join(' · ')) + '</span>';
+                out +=     '</div>';
+                out +=     '<div style="display:flex;align-items:center;gap:0.45rem;flex-shrink:0">';
+                out +=       pillBits.join(' ');
+                out +=       icon('chev', 'diag-chevron');
+                out +=     '</div>';
+                out +=   '</summary>';
+
+                out +=   '<div style="border-top: 1px solid var(--border); padding: 0.75rem 0.9rem 0.9rem;">';
+                out +=     kv('Table id', id ? code(id) : '\u2014');
+                if (uiIds.length) {
+                  out += kv('UI elementIds', code(uiIds.join(', ')));
+                  if (uiMissing.length) out += kv('UI missing', code(uiMissing.join(', ')));
+                }
+                if (activeTables.length) out += kv('Active DB tables', code(activeTables.join(', ')));
+                if (method || path) out += kv('Endpoint', code((method ? (method + ' ') : '') + path));
+                if (params.length) out += kv('Params', code(params.join(' · ')));
+
+                const respects = (d && d.respectsReporting) ? d.respectsReporting : {};
+                const rOrders = !!(respects && respects.ordersSource);
+                const rSessions = !!(respects && respects.sessionsSource);
+                const respectsBits = [];
+                respectsBits.push('ordersSource ' + (rOrders ? 'YES' : 'NO'));
+                respectsBits.push('sessionsSource ' + (rSessions ? 'YES' : 'NO'));
+                const nowBits = [];
+                if (rOrders && reporting && reporting.ordersSource) nowBits.push('ordersSource=' + reporting.ordersSource);
+                if (rSessions && reporting && reporting.sessionsSource) nowBits.push('sessionsSource=' + reporting.sessionsSource);
+                out += kv('Respects reporting', code(respectsBits.join(' · ') + (nowBits.length ? (' · now ' + nowBits.join(', ')) : '')));
+
+                if (missingTables.length) {
+                  out += kv('DB tables', pill('Missing', 'bad') + ' ' + code(missingTables.join(', ')));
+                } else if (d && d.requires && Array.isArray(d.requires.dbTables) && d.requires.dbTables.length) {
+                  out += kv('DB tables', pill('OK', 'ok'));
+                }
+                if (d && d.requires && d.requires.shopifyToken) {
+                  out += kv('Shopify token', tokenOk ? pill('OK', 'ok') : pill('Missing', 'bad'));
+                }
+
+                const sources = (d && Array.isArray(d.sources)) ? d.sources : [];
+                if (sources.length) {
+                  out += '<div style="margin-top:0.65rem;">';
+                  out +=   '<div class="diag-section-title">' + icon('link', '') + 'Sources</div>';
+                  out +=   '<ul class="diag-def-list">';
+                  for (const s of sources) {
+                    const kind = (s && s.kind) ? String(s.kind) : 'source';
+                    const st = (s && Array.isArray(s.tables)) ? s.tables : [];
+                    const note2 = (s && s.note) ? String(s.note) : '';
+                    let line = '<strong>' + escapeHtml(kind) + '</strong>';
+                    if (st.length) line += ' · ' + escapeHtml(st.join(', '));
+                    if (note2) line += ' — ' + escapeHtml(note2);
+                    out += '<li>' + line + '</li>';
+                  }
+                  out +=   '</ul>';
+                  out += '</div>';
+                }
+
+                const columns = (d && Array.isArray(d.columns)) ? d.columns : [];
+                if (columns.length) {
+                  out += '<div style="margin-top:0.65rem;">';
+                  out +=   '<div class="diag-section-title">' + icon('columns', '') + 'Columns + math</div>';
+                  out +=   '<ul class="diag-def-list">';
+                  for (const col of columns) {
+                    const cn = (col && col.name) ? String(col.name) : 'Column';
+                    const cv = (col && col.value != null) ? String(col.value) : '';
+                    const cf = (col && col.formula != null) ? String(col.formula) : '';
+                    let line = '<strong>' + escapeHtml(cn) + '</strong>';
+                    if (cv) line += ' · ' + escapeHtml(cv);
+                    if (cf) line += ' · <span style="color:var(--muted);font-weight:650">' + escapeHtml(cf) + '</span>';
+                    out += '<li>' + line + '</li>';
+                  }
+                  out +=   '</ul>';
+                  out += '</div>';
+                }
+
+                const math = (d && Array.isArray(d.math)) ? d.math : [];
+                if (math.length) {
+                  out += '<div style="margin-top:0.65rem;">';
+                  out +=   '<div class="diag-section-title">' + icon('bar', '') + 'Notes</div>';
+                  out +=   '<ul class="diag-def-list">';
+                  for (const m of math) {
+                    const mn = (m && m.name) ? String(m.name) : 'Note';
+                    const mv = (m && m.value != null) ? String(m.value) : '';
+                    out += '<li><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
+                  }
+                  out +=   '</ul>';
+                  out += '</div>';
+                }
+
+                out +=   '</div>';
+                out += '</details>';
+              }
+
+              out += '</div>';
+            }
+
+            return out;
+          }
+
           let html = '';
           html += '<div class="diag">';
 
@@ -5641,104 +5808,115 @@
           html += '</div>';
           html += '</div>';
 
-          // Side-by-side comparison table (diffable elements)
-          html += '<div>';
-          html +=   '<div class="diag-section-title">' + icon('columns', '') + 'Diffable comparison</div>';
-          html +=   '<div class="diag-table-scroll">';
-          html +=     '<table class="diag-compare-table">';
-          html +=       '<thead><tr><th>Item</th><th>Shopify</th><th>Birdseye</th><th>Diff / status</th></tr></thead>';
-          html +=       '<tbody>';
+          // Main diagnostics tabs
+          html += '<div class="diag-card">';
+          html +=   '<div class="diag-tab-nav">';
+          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-compare" checked />';
+          html +=     '<label class="diag-tab-label" for="diag-main-tab-compare">' + icon('columns', '') + 'Comparison</label>';
+          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-tech" />';
+          html +=     '<label class="diag-tab-label" for="diag-main-tab-tech">' + icon('server', '') + 'Technical details</label>';
+          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-defs" />';
+          html +=     '<label class="diag-tab-label" for="diag-main-tab-defs">' + icon('list', '') + 'Definitions</label>';
+          html +=     '<div class="diag-panels diag-main-panels">';
+
+          // Comparison panel (diffable elements)
+          html +=       '<div class="diag-panel diag-panel-main-compare">';
+          html +=         '<div class="diag-section-title">' + icon('columns', '') + 'Diffable comparison</div>';
+          html +=         '<div class="diag-table-scroll">';
+          html +=           '<table class="diag-compare-table">';
+          html +=             '<thead><tr><th>Item</th><th>Shopify</th><th>Birdseye</th><th>Diff / status</th></tr></thead>';
+          html +=             '<tbody>';
 
           // Traffic
-          html +=       '<tr><td><strong>Traffic</strong></td><td></td><td></td><td></td></tr>';
-          html +=       '<tr>' +
-                        '<td>Sessions (today)</td>' +
-                        '<td>' + fmtSessions(shopifySessionsToday) + '</td>' +
-                        '<td>' + fmtSessions(birdseyeSessionsToday) + '</td>' +
-                        '<td>' + (sessionsDiff == null ? '\u2014' : ('<span class="' + (sessionsDiff === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(sessionsDiff, function(a){ return formatSessions(a); }, '') + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>CR% (today)</td>' +
-                        '<td>' + fmtPct(shopifyCr) + '</td>' +
-                        '<td>' + fmtPct(birdseyeCr) + '</td>' +
-                        '<td>' + (crDiff == null ? '\u2014' : ('<span class="' + (Math.abs(crDiff) < 0.0001 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp') + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Bots blocked (today)</td>' +
-                        '<td>\u2014</td>' +
-                        '<td>' + fmtSessions(botsBlockedToday) + '</td>' +
-                        '<td>' + (botsBlockedToday != null ? pill('Tracked', 'ok') : '\u2014') + '</td>' +
-                        '</tr>';
+          html +=             '<tr><td><strong>Traffic</strong></td><td></td><td></td><td></td></tr>';
+          html +=             '<tr>' +
+                              '<td>Sessions (today)</td>' +
+                              '<td>' + fmtSessions(shopifySessionsToday) + '</td>' +
+                              '<td>' + fmtSessions(birdseyeSessionsToday) + '</td>' +
+                              '<td>' + (sessionsDiff == null ? '\u2014' : ('<span class="' + (sessionsDiff === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(sessionsDiff, function(a){ return formatSessions(a); }, '') + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>CR% (today)</td>' +
+                              '<td>' + fmtPct(shopifyCr) + '</td>' +
+                              '<td>' + fmtPct(birdseyeCr) + '</td>' +
+                              '<td>' + (crDiff == null ? '\u2014' : ('<span class="' + (Math.abs(crDiff) < 0.0001 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp') + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Bots blocked (today)</td>' +
+                              '<td>\u2014</td>' +
+                              '<td>' + fmtSessions(botsBlockedToday) + '</td>' +
+                              '<td>' + (botsBlockedToday != null ? pill('Tracked', 'ok') : '\u2014') + '</td>' +
+                              '</tr>';
 
           // Sales / drift
-          html +=       '<tr><td><strong>Sales</strong></td><td></td><td></td><td></td></tr>';
-          html +=       '<tr>' +
-                        '<td>Orders (today, paid)</td>' +
-                        '<td>' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</td>' +
-                        '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
-                        '<td>' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Revenue (today, paid)</td>' +
-                        '<td>' + fmtRevenue(truthRevenue) + '</td>' +
-                        '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
-                        '<td>' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Orders (today, checkout-token)</td>' +
-                        '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</td>' +
-                        '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
-                        '<td>' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Revenue (today, checkout-token)</td>' +
-                        '<td>' + fmtRevenue(truthCheckoutRevenue) + '</td>' +
-                        '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
-                        '<td>' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Checkout events (today)</td>' +
-                        '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</td>' +
-                        '<td>' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</td>' +
-                        '<td>' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                        '</tr>';
+          html +=             '<tr><td><strong>Sales</strong></td><td></td><td></td><td></td></tr>';
+          html +=             '<tr>' +
+                              '<td>Orders (today, paid)</td>' +
+                              '<td>' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</td>' +
+                              '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
+                              '<td>' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Revenue (today, paid)</td>' +
+                              '<td>' + fmtRevenue(truthRevenue) + '</td>' +
+                              '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
+                              '<td>' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Orders (today, checkout-token)</td>' +
+                              '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</td>' +
+                              '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
+                              '<td>' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Revenue (today, checkout-token)</td>' +
+                              '<td>' + fmtRevenue(truthCheckoutRevenue) + '</td>' +
+                              '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
+                              '<td>' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Checkout events (today)</td>' +
+                              '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</td>' +
+                              '<td>' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</td>' +
+                              '<td>' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
+                              '</tr>';
 
           // Config checks
-          html +=       '<tr><td><strong>Config checks</strong></td><td></td><td></td><td></td></tr>';
-          html +=       '<tr>' +
-                        '<td>OAuth token</td>' +
-                        '<td>' + (shopify.hasToken ? pill('Stored', 'ok') : pill('Missing', 'bad')) + '</td>' +
-                        '<td>' + pill('Required', 'warn') + '</td>' +
-                        '<td>' + (shopify.hasToken ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Scopes</td>' +
-                        '<td>' + (storedScopes.length ? escapeHtml(String(storedScopes.length) + ' granted') : '\u2014') + '</td>' +
-                        '<td>' + (serverScopes.length ? escapeHtml(String(serverScopes.length) + ' required') : '\u2014') + '</td>' +
-                        '<td>' + (missingScopes.length ? (pill('Missing', 'bad') + ' ' + code(missingScopes.join(', '))) : pill('All scopes OK', 'ok')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Pixel installed</td>' +
-                        '<td>' + (pixel && pixel.installed === true ? pill('Yes', 'ok') : (pixel && pixel.installed === false ? pill('No', 'bad') : '\u2014')) + '</td>' +
-                        '<td>' + pill('Required', 'warn') + '</td>' +
-                        '<td>' + (pixel && pixel.installed === true ? pill('OK', 'ok') : (pixel && pixel.installed === false ? pill('Fix', 'bad') : '\u2014')) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Pixel ingestUrl</td>' +
-                        '<td>' + (pixelIngestUrl ? code(pixelIngestUrl) : '\u2014') + '</td>' +
-                        '<td>' + (expectedIngestUrl ? code(expectedIngestUrl) : '\u2014') + '</td>' +
-                        '<td>' + (ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? pill('Match', 'ok') : pill('Mismatch', 'bad'))) + '</td>' +
-                        '</tr>';
-          html +=       '<tr>' +
-                        '<td>Ingest secret</td>' +
-                        '<td>\u2014</td>' +
-                        '<td>' + (ingest.ingestSecretConfigured ? pill('Set', 'ok') : pill('Missing', 'bad')) + '</td>' +
-                        '<td>' + (ingest.ingestSecretConfigured ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
-                        '</tr>';
+          html +=             '<tr><td><strong>Config checks</strong></td><td></td><td></td><td></td></tr>';
+          html +=             '<tr>' +
+                              '<td>OAuth token</td>' +
+                              '<td>' + (shopify.hasToken ? pill('Stored', 'ok') : pill('Missing', 'bad')) + '</td>' +
+                              '<td>' + pill('Required', 'warn') + '</td>' +
+                              '<td>' + (shopify.hasToken ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Scopes</td>' +
+                              '<td>' + (storedScopes.length ? escapeHtml(String(storedScopes.length) + ' granted') : '\u2014') + '</td>' +
+                              '<td>' + (serverScopes.length ? escapeHtml(String(serverScopes.length) + ' required') : '\u2014') + '</td>' +
+                              '<td>' + (missingScopes.length ? (pill('Missing', 'bad') + ' ' + code(missingScopes.join(', '))) : pill('All scopes OK', 'ok')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Pixel installed</td>' +
+                              '<td>' + (pixel && pixel.installed === true ? pill('Yes', 'ok') : (pixel && pixel.installed === false ? pill('No', 'bad') : '\u2014')) + '</td>' +
+                              '<td>' + pill('Required', 'warn') + '</td>' +
+                              '<td>' + (pixel && pixel.installed === true ? pill('OK', 'ok') : (pixel && pixel.installed === false ? pill('Fix', 'bad') : '\u2014')) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Pixel ingestUrl</td>' +
+                              '<td>' + (pixelIngestUrl ? code(pixelIngestUrl) : '\u2014') + '</td>' +
+                              '<td>' + (expectedIngestUrl ? code(expectedIngestUrl) : '\u2014') + '</td>' +
+                              '<td>' + (ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? pill('Match', 'ok') : pill('Mismatch', 'bad'))) + '</td>' +
+                              '</tr>';
+          html +=             '<tr>' +
+                              '<td>Ingest secret</td>' +
+                              '<td>\u2014</td>' +
+                              '<td>' + (ingest.ingestSecretConfigured ? pill('Set', 'ok') : pill('Missing', 'bad')) + '</td>' +
+                              '<td>' + (ingest.ingestSecretConfigured ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
+                              '</tr>';
 
-          html +=       '</tbody>';
-          html +=     '</table>';
-          html +=   '</div>';
+          html +=             '</tbody>';
+          html +=           '</table>';
+          html +=         '</div>';
           if (missingScopes.length) {
             html += '<div class="diag-note">Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.</div>';
           }
@@ -5746,19 +5924,12 @@
           if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
             html += '<div class="diag-note">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
           }
-          html += '</div>';
+          html +=       '</div>'; // compare panel
 
-          // Technical details (collapsed by default)
-          html += '<details class="diag-tech">';
-          html +=   '<summary>';
-          html +=     '<div class="diag-tech-head">';
-          html +=       '<strong>Technical details</strong>';
-          html +=       '<span>Scopes, pixel config, truth sync, ingest, DB</span>';
-          html +=     '</div>';
-          html +=     icon('chev', 'diag-chevron');
-          html +=   '</summary>';
-          html +=   '<div class="diag-tabs">';
-          html +=     '<div class="diag-tab-nav">';
+          // Technical details panel
+          html +=       '<div class="diag-panel diag-panel-main-tech">';
+          html +=         '<div class="diag-tabs">';
+          html +=           '<div class="diag-tab-nav">';
           html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-shopify" checked />';
           html +=       '<label class="diag-tab-label" for="diag-tab-shopify">' + icon('bag', '') + 'Shopify</label>';
           html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-pixel" />';
@@ -5955,13 +6126,21 @@
             const t = db.tables;
             const bits = [];
             function add(name, ok) { bits.push(name + (ok ? ' ✓' : ' ✗')); }
+            add('settings', !!t.settings);
+            add('shop_sessions', !!t.shop_sessions);
+            add('visitors', !!t.visitors);
             add('sessions', !!t.sessions);
             add('events', !!t.events);
+            add('purchases', !!t.purchases);
             add('orders_shopify', !!t.orders_shopify);
+            add('orders_shopify_line_items', !!t.orders_shopify_line_items);
             add('customer_order_facts', !!t.customer_order_facts);
             add('purchase_events', !!t.purchase_events);
             add('reconcile_state', !!t.reconcile_state);
+            add('reconcile_snapshots', !!t.reconcile_snapshots);
+            add('shopify_sessions_snapshots', !!t.shopify_sessions_snapshots);
             add('audit_log', !!t.audit_log);
+            add('bot_block_counts', !!t.bot_block_counts);
             html += kv('Tables', code(bits.join(' · ')));
           }
           if (app && typeof app.sentryConfigured === 'boolean') html += kv('Sentry', app.sentryConfigured ? pill('ON', 'ok') : pill('OFF', 'bad'));
@@ -5969,10 +6148,19 @@
           html +=         '</div>';
           html +=       '</div>';
 
-          html +=     '</div>'; // panels
-          html +=   '</div>'; // diag-tab-nav
-          html +=   '</div>'; // diag-tabs
-          html += '</details>';
+          html +=           '</div>'; // panels
+          html +=         '</div>'; // diag-tab-nav
+          html +=         '</div>'; // diag-tabs
+          html +=       '</div>'; // tech panel
+
+          // Definitions panel
+          html +=       '<div class="diag-panel diag-panel-main-defs">';
+          html +=         renderTrackerDefinitions(trackerDefinitions);
+          html +=       '</div>';
+
+          html +=     '</div>'; // main panels
+          html +=   '</div>'; // main tab nav
+          html += '</div>'; // diag-card
 
           html += '</div>'; // diag
 

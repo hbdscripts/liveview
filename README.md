@@ -69,9 +69,13 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
 
 These rules prevent the stats from drifting or looking wrong over time:
 
-- **Sales totals** use `sessions.purchased_at` (set on `checkout_completed`) rather than `last_seen`; if `purchased_at` is null (e.g. pre-migration), `last_seen` is used for the time window so revenue still counts.
-- **Revenue source**: Dashboard revenue comes only from the pixel’s `checkout_completed` event (fired on the thank-you page). If revenue stays at £0, confirm the pixel runs there and that the event includes a price (we use `totalPrice` or `subtotalPrice`).
-- **Conversion rate** is `(sessions started in range that purchased) / (sessions started in range)`, not based on `last_seen`.
+- **Reporting sources (configurable)**: Most dashboard reporting respects settings in the DB:
+  - Orders source: `reporting_orders_source = orders_shopify | pixel`
+  - Sessions source: `reporting_sessions_source = sessions | shopify_sessions`
+  Use **Diagnostics → Definitions** to see which tables respect which settings.
+- **Orders + revenue source**: When `ordersSource=orders_shopify`, metrics come from Shopify truth (`orders_shopify`, paid). When `ordersSource=pixel`, metrics come from pixel-derived purchases (`purchases`, derived from `checkout_completed`).
+- **Conversion rate** uses the selected sources: \(CR\% = \frac{\text{convertedCount}}{\text{sessionsCount}} \times 100\). Numerator respects `ordersSource`; denominator respects `sessionsSource` where supported.
+- **Pixel-mode time basis**: Pixel-derived sales totals use `sessions.purchased_at` (set on `checkout_completed`) rather than `last_seen`; if `purchased_at` is null (e.g. pre-migration), `last_seen` is used so revenue still counts.
 - **"Today"** means since midnight in `ADMIN_TIMEZONE` (defaults to `Europe/London`).
 - **Dropdown ranges**: Today, Yesterday, 3 days, 7 days. The 3d/7d ranges start at midnight N-2 / N-6 and include today.
 - **Country stats** use `sessions.country_code` captured at event time, not `visitors.last_country` (which changes later and can skew historical reports).
@@ -102,6 +106,7 @@ The project runs **Shopify CLI directly** from scripts (like theme check in anot
 
 - `server/` – Config, DB, migrations, ingest, SSE, cleanup, API routes, static admin UI.
 - `server/public/live-visitors.html` – Dashboard (table, tabs, side panel, KPIs, config status).
+- `server/trackerDefinitions.js` – Metric/table definitions manifest for Diagnostics → Definitions (update when adding/changing dashboard tables or metric math).
 - `extensions/live-visitors-pixel/` – Web Pixel extension (`shopify.extension.toml` + `src/index.js`).
 - `.env.example` – All env vars with short descriptions.
 - `config/APP_CONFIG.md` – Where to get credentials, URLs, ingest secret, common mistakes.

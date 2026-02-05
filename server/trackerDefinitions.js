@@ -70,6 +70,15 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Time basis', value: 'range bounds are admin timezone day/range (see getRangeBounds)' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: true },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['orders_shopify', 'reconcile_state'],
+      },
+      sessionsSource: {
+        shopify_sessions: ['shopify_sessions_snapshots'],
+      },
+    },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -96,6 +105,40 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Attribution (truth)', value: 'Only orders with linked purchase_events are attributable (coverage can be < 100%)' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify'],
+      },
+    },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'breakdown_aov_cards',
+    page: 'Breakdown',
+    name: 'Average Order Value (AOV) cards (by country)',
+    ui: { elementIds: ['aov-cards-grid'] },
+    endpoint: { method: 'GET', path: '/api/stats', params: ['range=... (same picker as dashboard)'] },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Country sessions (human-only) + attributed orders for that country' },
+      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: revenue/orders derived from purchases table (deduped)' },
+      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: revenue/orders via evidence-linked truth orders' },
+      { kind: 'fx', note: 'Revenue converted to GBP' },
+    ],
+    columns: [
+      { name: 'Country', value: 'country_code' },
+      { name: 'AOV', value: 'aov (GBP)', formula: 'Revenue / Orders' },
+    ],
+    math: [
+      { name: 'Important', value: 'This is derived from the same country rows as the Country table (uses the country.aov field returned by /api/stats).' },
+    ],
+    respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify'],
+      },
+    },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -168,6 +211,12 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Minimum traffic', value: 'Only includes products with >= 3 landings (MIN_CLICKS)' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify_line_items'],
+      },
+    },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -238,6 +287,12 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Attribution', value: 'Truth mode requires linked evidence; unmapped sources or missing evidence reduce coverage.' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify'],
+      },
+    },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -260,6 +315,12 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [],
     respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify'],
+      },
+    },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
