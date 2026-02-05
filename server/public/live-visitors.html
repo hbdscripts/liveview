@@ -89,6 +89,13 @@
     .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; min-width: 4rem; white-space: nowrap; }
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
     .by-country-table th { font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--th-bg); }
+    /* Table header abbreviations on small screens (avoid overlapping labels). */
+    .th-label-long { display: inline; }
+    .th-label-short { display: none; }
+    @media (max-width: 768px) {
+      .th-label-long { display: none; }
+      .th-label-short { display: inline; }
+    }
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
     .by-country-table tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -555,15 +562,15 @@
   <table id="sessions-table">
     <thead>
       <tr>
-        <th>Landing Page</th>
-        <th class="sortable" data-sort="from" aria-sort="none" tabindex="0">GEO</th>
-        <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0">Source</th>
-        <th>Device</th>
-        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0">Cart</th>
-        <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0">Arrived</th>
-        <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0">Seen</th>
-        <th>History</th>
-        <th class="consent-col" style="display:none">Consent (debug)</th>
+        <th aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></th>
+        <th class="sortable" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></th>
+        <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
+        <th aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></th>
+        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></th>
+        <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></th>
+        <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></th>
+        <th aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></th>
+        <th class="consent-col" style="display:none" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></th>
       </tr>
     </thead>
     <tbody id="table-body"></tbody>
@@ -600,11 +607,11 @@
         <table id="country-table" class="by-country-table">
           <thead>
             <tr>
-              <th>Country</th>
-              <th>CR</th>
-              <th>Sales</th>
-              <th>Clicks</th>
-              <th>Rev</th>
+              <th aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
+              <th aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
+              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="by-country-body">
@@ -623,7 +630,7 @@
         <table id="aov-table" class="by-country-table aov-table">
           <thead>
             <tr>
-              <th>Average Order Value</th>
+              <th aria-label="Average Order Value"><span class="th-label-long">Average Order Value</span><span class="th-label-short">AOV</span></th>
               <th></th>
             </tr>
           </thead>
@@ -657,11 +664,11 @@
         <table id="best-sellers-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col">Best</th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0">Sales</th>
-              <th>Clicks</th>
-              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0">Rev</th>
-              <th>CR%</th>
+              <th class="bs-product-col" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="best-sellers-body">
@@ -680,11 +687,11 @@
         <table id="worst-products-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col">Worst</th>
-              <th>Sales</th>
-              <th>Clicks</th>
-              <th>Rev</th>
-              <th>CR%</th>
+              <th class="bs-product-col" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
+              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="worst-products-body">
@@ -703,11 +710,11 @@
         <table id="best-variants-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col">Variants</th>
-              <th>Sales</th>
-              <th>Clicks</th>
-              <th>Rev</th>
-              <th>CR%</th>
+              <th class="bs-product-col" aria-label="Variants"><span class="th-label-long">Variants</span><span class="th-label-short">Var</span></th>
+              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="best-variants-body">
@@ -746,11 +753,11 @@
         <table id="traffic-sources-table" class="by-country-table">
           <thead>
             <tr>
-              <th>Source</th>
-              <th>CR%</th>
-              <th>Orders</th>
-              <th>Sessions</th>
-              <th>Rev</th>
+              <th aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
+              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
+              <th aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="traffic-sources-body">
@@ -770,11 +777,11 @@
         <table id="traffic-types-table" class="by-country-table">
           <thead>
             <tr>
-              <th>Type</th>
-              <th>CR%</th>
-              <th>Orders</th>
-              <th>Sessions</th>
-              <th>Rev</th>
+              <th aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></th>
+              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
+              <th aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="traffic-types-body">
