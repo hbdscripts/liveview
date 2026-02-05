@@ -161,8 +161,8 @@
       white-space: nowrap;
       text-overflow: ellipsis;
       line-height: 1.2;
-      font-weight: 600;
-      font-size: clamp(12px, 0.25vw + 11px, 14px);
+      font-weight: 400;
+      font-size: var(--table-font-size);
     }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
@@ -172,7 +172,7 @@
     .by-country-table th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
     .by-country-table th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
 
-    /* Medium screens: allow 2 lines for product names. */
+    /* Medium screens */
     @media (max-width: 1200px) {
       .aov-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .stats-card #stats-best-sellers .by-country-table th:first-child,
@@ -188,13 +188,6 @@
       .stats-card .by-country-table.best-sellers-table td:not(:first-child) { min-width: 3rem; }
       .stats-card .by-country-table.best-sellers-table th:last-child,
       .stats-card .by-country-table.best-sellers-table td:last-child { min-width: 3.6rem; }
-
-      .best-sellers-table .product-cell .bs-name {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-        white-space: normal;
-      }
     }
     .aov-cards-wrap { margin-bottom: 1rem; }
     .aov-cards-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
@@ -706,13 +699,6 @@
       .stats-card #stats-best-variants .by-country-table td:first-child,
       .stats-card #stats-worst-variants .by-country-table th:first-child,
       .stats-card #stats-worst-variants .by-country-table td:first-child { width: 55%; min-width: 140px; }
-      /* Mobile: keep product names clean (single-line + ellipsis). */
-      .best-sellers-table .product-cell .bs-name {
-        display: block;
-        white-space: nowrap;
-        -webkit-line-clamp: unset;
-        -webkit-box-orient: initial;
-      }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: var(--table-header-font-size); }

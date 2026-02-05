@@ -366,6 +366,7 @@ Backups durability:
 - Mobile: replace the date range select with a compact “Date” button (calendar icon) that opens a small menu (Today/Yesterday/Choose dates…)
 - UI: Best-by-GEO first column no longer forces white backgrounds; row striping stays consistent
 - Mobile: product names in product tables truncate to a single line with ellipsis (no 3-line wraps)
+- UI: product name styling uses normal font-weight (400) and no clamp-based sizing/line-clamping
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
