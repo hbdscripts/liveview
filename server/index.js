@@ -221,6 +221,7 @@ const { up: up026 } = require('./migrations/026_report_cache');
 const { up: up027 } = require('./migrations/027_traffic_source_maps');
 const { up: up028 } = require('./migrations/028_backfill_purchases_from_evidence');
 const { up: up029 } = require('./migrations/029_dedupe_traffic_source_meta_labels');
+const { up: up030 } = require('./migrations/030_canonicalize_built_in_traffic_sources');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 
@@ -260,6 +261,7 @@ async function migrateAndStart() {
   await up027();
   await up028();
   await up029();
+  await up030();
 
   if (preBackup) {
     await writeAudit('system', 'backup', {

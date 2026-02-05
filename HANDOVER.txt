@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (traffic source icons + direct)
+Last updated: 2026-02-05 (traffic sources canonicalized)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -402,6 +402,7 @@ Backups durability:
 - Traffic: Source mapping panel opens full-screen from the Traffic · Sources modal and uses larger input boxes for faster mapping
 - Traffic: Source mapping token editor now supports an existing-source dropdown + bulk “Save mappings” (preserves in-progress edits across refresh)
 - Traffic: source labels are now unique (case/spacing/punctuation-insensitive). Startup migration `029_dedupe_traffic_source_meta_labels` merges duplicate labels by repointing `sessions.traffic_source_key` + `traffic_source_rules.source_key`, backs up deleted rows, and adds a unique `label_norm` constraint to prevent duplicates reappearing
+- Traffic: built-in channels are canonicalized. Startup migration `030_canonicalize_built_in_traffic_sources` merges any custom key whose label matches a built-in (e.g. Bing Ads) into the built-in key (so click-id derived sessions and mapped sessions group together)
 - Traffic: mapping now prefers built-in keys/icons (e.g. Google/Bing) and remapping a token overrides older rules (newest wins)
 
 2026-02-04
