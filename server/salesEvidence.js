@@ -31,7 +31,18 @@ function resolveShopForEvent(payload) {
 
 function computeEventGroupKey(payload, occurredAtMs) {
   const token = trimStr(payload?.checkout_token, 128);
-  const orderId = salesTruth.extractNumericId(payload?.order_id);
+  const orderId = (function normalizeOrderId(v) {
+    // Avoid String(object) => "[object Object]" poisoning our grouping key.
+    if (v == null) return null;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number') return null;
+    const extracted = salesTruth.extractNumericId(v);
+    const s = extracted != null ? String(extracted).trim() : '';
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s;
+  })(payload?.order_id);
   if (token) return 'token:' + token;
   if (orderId) return 'order:' + orderId;
   const ts = typeof occurredAtMs === 'number' && Number.isFinite(occurredAtMs) ? occurredAtMs : Date.now();
@@ -72,7 +83,17 @@ async function insertPurchaseEvent(payload, { receivedAtMs = Date.now(), cfConte
   const referrer = trimStr(payload?.referrer, 2048);
 
   const checkoutToken = trimStr(payload?.checkout_token, 128);
-  const orderId = salesTruth.extractNumericId(payload?.order_id);
+  const orderId = (function normalizeOrderId(v) {
+    if (v == null) return null;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number') return null;
+    const extracted = salesTruth.extractNumericId(v);
+    const s = extracted != null ? String(extracted).trim() : '';
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s;
+  })(payload?.order_id);
   const currency = trimStr(payload?.order_currency, 16);
   const totalPrice = numOrNull(payload?.order_total);
 

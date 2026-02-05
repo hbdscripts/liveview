@@ -337,8 +337,9 @@ function resolveMappedSourceKeys(tokens, mapConfig) {
     if (!byVal) continue;
     const keys = byVal.get(v);
     if (!Array.isArray(keys) || !keys.length) continue;
-    for (const k of keys) {
-      const kk = normalizeTrafficSourceKey(k);
+    // Newest mapping wins (rules are appended; DB load preserves id ASC order).
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const kk = normalizeTrafficSourceKey(keys[i]);
       if (!kk) continue;
       if (seen.has(kk)) continue;
       seen.add(kk);
@@ -998,16 +999,39 @@ async function insertEvent(sessionId, payload) {
 }
 
 function computePurchaseKey(payload, sessionId) {
-  const orderId = payload.order_id != null && String(payload.order_id).trim() !== '' ? String(payload.order_id).trim() : null;
-  const token = payload.checkout_token != null && String(payload.checkout_token).trim() !== '' ? String(payload.checkout_token).trim() : null;
+  function normalizeCheckoutToken(v) {
+    // IMPORTANT: do NOT String() non-strings (can become "[object Object]" and collapse dedupe).
+    if (typeof v !== 'string') return null;
+    const s = v.trim();
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s.length > 128 ? s.slice(0, 128) : s;
+  }
+  function normalizeOrderId(v) {
+    // Prefer numeric Shopify order id. Ignore objects (String(obj) => "[object Object]").
+    if (v == null) return null;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number') return null;
+    const extracted = salesTruth.extractNumericId(v);
+    const s = extracted != null ? String(extracted).trim() : '';
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s.length > 64 ? s.slice(0, 64) : s;
+  }
+
+  const orderId = normalizeOrderId(payload.order_id);
+  const token = normalizeCheckoutToken(payload.checkout_token);
   // Prefer checkout_token because Shopify can emit checkout_completed once before order_id exists,
   // and again after the order is created. Both events share the same checkout_token.
   if (token) return 'token:' + token;
   if (orderId) return 'order:' + orderId;
   // 15-min bucket so multiple checkout_completed events for same order (e.g. thank-you reload) dedupe
-  const ts = payload.ts || Date.now();
+  const tsNum = payload.ts != null ? Number(payload.ts) : NaN;
+  const ts = Number.isFinite(tsNum) ? tsNum : Date.now();
   const round15Min = Math.floor(ts / (15 * 60000));
-  const cur = (payload.order_currency || '').toString();
+  const cur = typeof payload.order_currency === 'string' ? payload.order_currency.trim() : '';
   const tot = payload.order_total != null ? String(payload.order_total) : '';
   const hash = crypto.createHash('sha256').update(cur + '|' + tot + '|' + round15Min + '|' + sessionId).digest('hex').slice(0, 32);
   return 'h:' + hash;
@@ -1016,12 +1040,31 @@ function computePurchaseKey(payload, sessionId) {
 async function insertPurchase(payload, sessionId, countryCode) {
   if (!isCheckoutCompletedPayload(payload)) return;
   const db = getDb();
-  const now = payload.ts || Date.now();
+  const tsNum = payload.ts != null ? Number(payload.ts) : NaN;
+  const now = Number.isFinite(tsNum) ? tsNum : Date.now();
   const purchaseKey = computePurchaseKey(payload, sessionId);
   const orderTotal = payload.order_total != null ? (typeof payload.order_total === 'number' ? payload.order_total : parseFloat(payload.order_total)) : null;
   const orderCurrency = typeof payload.order_currency === 'string' && payload.order_currency.trim() ? payload.order_currency.trim() : null;
-  const orderId = payload.order_id != null && String(payload.order_id).trim() !== '' ? String(payload.order_id).trim() : null;
-  const checkoutToken = payload.checkout_token != null && String(payload.checkout_token).trim() !== '' ? String(payload.checkout_token).trim() : null;
+  // Keep stored fields consistent with computePurchaseKey (avoid "[object Object]" junk).
+  const orderId = (function () {
+    if (payload.order_id == null) return null;
+    const t = typeof payload.order_id;
+    if (t !== 'string' && t !== 'number') return null;
+    const extracted = salesTruth.extractNumericId(payload.order_id);
+    const s = extracted != null ? String(extracted).trim() : '';
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s.length > 64 ? s.slice(0, 64) : s;
+  })();
+  const checkoutToken = (function () {
+    if (typeof payload.checkout_token !== 'string') return null;
+    const s = payload.checkout_token.trim();
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    return s.length > 128 ? s.slice(0, 128) : s;
+  })();
   const country = normalizeCountry(countryCode) || null;
 
   if (config.dbUrl) {

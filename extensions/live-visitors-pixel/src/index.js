@@ -331,8 +331,23 @@ register(({ analytics, init, browser, settings }) => {
         if (sum > 0) orderTotal = sum;
       }
       const orderCurrency = checkout?.currencyCode ?? totalPrice?.currencyCode ?? null;
-      const orderId = checkout?.order?.id != null ? String(checkout.order.id) : null;
-      const checkoutToken = checkout?.token != null ? String(checkout.token) : null;
+      // IMPORTANT: only send string-ish identifiers. Avoid String(object) => "[object Object]" which
+      // can collapse server-side dedupe into a single purchase.
+      const orderId = (function () {
+        const raw = checkout?.order?.id;
+        if (raw == null) return null;
+        if (typeof raw === 'string') return raw.trim() || null;
+        if (typeof raw === 'number' && isFinite(raw)) return String(raw);
+        return null;
+      })();
+      const checkoutToken = (function () {
+        const raw = checkout?.token;
+        if (raw == null) return null;
+        if (typeof raw !== 'string') return null;
+        const s = raw.trim();
+        if (!s) return null;
+        return s;
+      })();
       send(payload('checkout_completed', {
         checkout_completed: true,
         order_total: orderTotal,

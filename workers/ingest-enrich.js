@@ -29,7 +29,8 @@ export default {
     if (!originUrl) return new Response('ORIGIN_URL not configured', { status: 500 });
 
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Normalize trailing slashes so /api/ingest/ is treated the same as /api/ingest
+    const path = (url.pathname || '/').replace(/\/+$/, '') || '/';
     const ingestPath = '/api/ingest';
     const isIngest = path === ingestPath || path.endsWith(ingestPath);
 
