@@ -18,7 +18,7 @@ Dashboard URL:
 Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
-  - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
+  - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker, plus a larger green logo above the dashboard)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
   - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
@@ -281,7 +281,7 @@ Backups durability:
 
 2026-02-05
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
-- Mobile: centered birdseye logo in main tabs bar; hide “Last Hour”; “Next update” label hidden (icon only)
+- Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based click counts to best sellers/variants)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)
 - Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)

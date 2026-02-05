@@ -221,6 +221,8 @@
     .empty { padding: 1.5rem 1rem; color: var(--muted); font-size: var(--table-font-size); }
     .consent-debug { font-size: 0.75rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px 0; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.mobile-brand-logo { display: none; width: 100%; justify-content: center; pointer-events: none; }
+.mobile-brand-logo img { width: 80px; height: auto; display: block; }
 .next-update-timer { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
 .next-update-timer .next-update-circle { display: block; }
 .next-update-timer .next-update-circle-bg { opacity: 0.2; }
@@ -396,6 +398,7 @@
     }
     @media (max-width: 768px) {
       .dashboard-top-bar { padding-left: 20px; padding-right: 20px; }
+      .mobile-brand-logo { display: flex; }
       .main { padding: 20px; }
       .stats-row { grid-template-columns: 1fr; gap: var(--table-gap); margin-bottom: 1.25rem; }
       .stats-card { min-width: 100%; padding: 0; }
@@ -463,6 +466,9 @@
 </head>
 <body>
   <div class="dashboard-top-bar">
+    <div class="mobile-brand-logo" aria-hidden="true">
+      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="80" alt="" decoding="async" loading="eager" fetchpriority="high" />
+    </div>
   </div>
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
