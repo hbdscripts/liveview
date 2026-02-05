@@ -8,6 +8,7 @@ const { getDb } = require('./db');
 const config = require('./config');
 const fx = require('./fx');
 const salesTruth = require('./salesTruth');
+const productMetaCache = require('./shopifyProductMetaCache');
 const shopifyQl = require('./shopifyQl');
 
 const ALLOWED_EVENT_TYPES = new Set([
@@ -1852,7 +1853,8 @@ async function getCountryStats(start, end, options = {}) {
  * - Revenue comes from orders_shopify_line_items (no orders_shopify.raw_json parsing).
  *
  * Output rows:
- * - country_code, product_title, conversion (pct), converted (orders), total (sessions), revenue (GBP)
+ * - country_code, product_id, product_title, product_handle, product_thumb_url,
+ *   conversion (pct), converted (orders), total (sessions), revenue (GBP)
  */
 async function getBestGeoProducts(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
@@ -1861,6 +1863,7 @@ async function getBestGeoProducts(start, end, options = {}) {
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return [];
+  const token = await salesTruth.getAccessToken(shop);
 
   const sql = `
     WITH sessions_by_country AS (
@@ -1932,10 +1935,29 @@ async function getBestGeoProducts(start, end, options = {}) {
   const rows = await db.all(sql, params);
 
   const ratesToGbp = await fx.getRatesToGbp();
+  const metaByProduct = new Map();
+  if (token) {
+    const uniqIds = Array.from(new Set((rows || []).map((row) => (row && row.product_id != null ? String(row.product_id).trim() : '')).filter(Boolean)));
+    await Promise.all(
+      uniqIds.map(async (pid) => {
+        try {
+          const meta = await productMetaCache.getProductMeta(shop, token, pid);
+          if (meta && meta.ok) metaByProduct.set(pid, meta);
+        } catch (_) {
+          // Ignore per-item failures.
+        }
+      })
+    );
+  }
+
   const out = [];
   for (const row of rows || []) {
     const code = normalizeCountry(row && row.country_code);
     if (!code) continue;
+    const pid = row && row.product_id != null ? String(row.product_id).trim() : '';
+    const meta = pid && metaByProduct.has(pid) ? metaByProduct.get(pid) : null;
+    const handle = meta && meta.handle ? String(meta.handle).trim() : '';
+    const thumbUrl = meta && meta.thumb_url ? String(meta.thumb_url).trim() : '';
     const clicks = row && row.clicks != null ? Number(row.clicks) || 0 : 0;
     const converted = row && row.sales != null ? Number(row.sales) || 0 : 0;
     const revenueRaw = row && row.revenue != null ? Number(row.revenue) : 0;
@@ -1947,7 +1969,10 @@ async function getBestGeoProducts(start, end, options = {}) {
     const conversion = clicks > 0 ? Math.round((converted / clicks) * 1000) / 10 : null;
     out.push({
       country_code: code,
+      product_id: pid || null,
       product_title: productTitle || null,
+      product_handle: handle || null,
+      product_thumb_url: thumbUrl || null,
       conversion,
       total: clicks,
       converted,
@@ -2191,6 +2216,52 @@ async function getKpis(options = {}) {
     (salesShop ? salesTruth.getTruthHealth(salesShop || '', 'today') : Promise.resolve(null)),
   ]);
 
+  let compare = null;
+  if (rangeKey === 'today') {
+    const nowParts = getTimeZoneParts(new Date(now), timeZone);
+    const yesterdayParts = addDaysToParts(nowParts, -1);
+    const compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
+    const compareEnd = zonedTimeToUtcMs(
+      yesterdayParts.year,
+      yesterdayParts.month,
+      yesterdayParts.day,
+      nowParts.hour,
+      nowParts.minute,
+      nowParts.second,
+      timeZone
+    );
+    const todayStart = startOfDayUtcMs(nowParts, timeZone);
+    const compareEndClamped = Math.max(compareStart, Math.min(compareEnd, todayStart));
+    if (compareEndClamped > compareStart) {
+      const compareOpts = { ...opts, rangeKey: 'yesterday' };
+      const [
+        compareSales,
+        compareReturning,
+        compareConversion,
+        compareConvertedCount,
+        compareBreakdown,
+        compareBounce,
+      ] = await Promise.all([
+        getSalesTotal(compareStart, compareEndClamped, compareOpts),
+        getReturningRevenue(compareStart, compareEndClamped, compareOpts),
+        getConversionRate(compareStart, compareEndClamped, compareOpts),
+        getConvertedCount(compareStart, compareEndClamped, compareOpts),
+        getSessionCounts(compareStart, compareEndClamped, compareOpts),
+        getBounceRate(compareStart, compareEndClamped, compareOpts),
+      ]);
+      compare = {
+        sales: compareSales,
+        returningRevenue: compareReturning,
+        conversion: compareConversion,
+        aov: aovFromSalesAndCount(compareSales, compareConvertedCount),
+        bounce: compareBounce,
+        convertedCount: compareConvertedCount,
+        trafficBreakdown: compareBreakdown,
+        range: { start: compareStart, end: compareEndClamped },
+      };
+    }
+  }
+
   const aovVal = aovFromSalesAndCount(salesVal, convertedCountVal);
   const rangeAvailable = {
     today: true,
@@ -2204,6 +2275,7 @@ async function getKpis(options = {}) {
     aov: { [rangeKey]: aovVal },
     bounce: { [rangeKey]: bounceVal },
     convertedCount: { [rangeKey]: convertedCountVal },
+    compare,
     trafficMode,
     trafficBreakdown: { [rangeKey]: trafficBreakdownVal },
     reporting,

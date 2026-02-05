@@ -104,21 +104,23 @@
     .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; min-width: 4rem; white-space: nowrap; }
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
     .by-country-table th { font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--th-bg); }
-    /* Table header abbreviations on small screens (avoid overlapping labels). */
+    /* Table header abbreviations/icons on small screens (avoid overlaps). */
     .th-label-long { display: inline; }
-    .th-label-short { display: none; }
+    .th-label-short { display: none; align-items: center; justify-content: center; gap: 0.25rem; line-height: 1; }
+    .th-label-short svg { width: 16px; height: 16px; display: block; }
     @media (max-width: 768px) {
       .th-label-long { display: none; }
-      .th-label-short { display: inline; }
+      .th-label-short { display: inline-flex; }
     }
     /* First column layout: country tables need flex (flag + label); product tables manage their own layout. */
     .by-country-table:not(.best-sellers-table) tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
     .by-country-table:not(.best-sellers-table) tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    /* Best GEO Products: show product name under country in the same cell. */
-    .geo-products-table tbody td:first-child .country-label { white-space: normal; text-overflow: clip; display: flex; flex-direction: column; gap: 0.15rem; }
-    .geo-products-table .country-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .geo-products-table .geo-product-name { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 600; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Best GEO Products: flag + product thumb only. */
+    .geo-products-table tbody td:first-child .country-label { white-space: normal; text-overflow: clip; display: inline-flex; align-items: center; }
+    .geo-products-table .geo-product-thumb { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; background: #fff; }
+    .geo-products-table .geo-product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .geo-products-table .geo-product-thumb-placeholder { width: 100%; height: 100%; background: var(--border); display: block; }
     .by-country-table.aov-table .country-label { overflow: visible; text-overflow: clip; white-space: normal; word-break: break-word; }
     .by-country-table.aov-table { table-layout: fixed; }
     .stats-card .by-country-table.aov-table th:first-child,
@@ -164,7 +166,7 @@
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
     .by-country-table th.sortable:hover { color: var(--accent); }
     .by-country-table th.th-sort-asc::after,
-    .by-country-table th.th-sort-desc::after { content: ''; display: inline-block; width: 16px; height: 16px; margin-left: 6px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+    .by-country-table th.th-sort-desc::after { content: ''; display: inline-block; width: 16px; height: 16px; margin-left: 1px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
     .by-country-table th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
     .by-country-table th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
 
@@ -195,7 +197,7 @@
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
     table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: var(--table-row-border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; font-weight: 500; }
+    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: var(--table-row-border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
     tr:last-child td { border-bottom: none; }
     th:not(:first-child), td:not(:first-child) { text-align: center; }
     th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -204,6 +206,7 @@
     tr.returning { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
     tr.converted:hover { background: var(--converted-bg); }
+    tr.converted td { font-weight: 500; }
     /* Converted: show a bold left-side accent (overlay icon is hidden). */
     #sessions-table tr.converted td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
     tr.clickable { cursor: pointer; }
@@ -211,15 +214,16 @@
     .arrived-cell, .last-seen-cell { font-size: var(--table-font-size); white-space: nowrap; }
     .flag-img { width: 26px; height: 20px; object-fit: cover; border-radius: 4px; margin-right: 0.35rem; vertical-align: middle; display: inline-block; }
     .last-action-cell { display: flex; align-items: center; gap: 0.5rem; }
-.last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: var(--table-font-size); font-weight: 500; }
+    .last-action-cell a { color: var(--link-fg); text-decoration: none; font-size: var(--table-font-size); font-weight: 400; }
 .last-action-cell a:hover { text-decoration: underline; }
 .last-action-cell.dual { align-items: flex-start; }
 .last-action-cell .landing-lines { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; margin: 10px 0; }
 .last-action-cell .landing-lines > * { min-width: 0; }
 .last-action-cell .landing-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 0.35rem; font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
 .last-action-cell .landing-line-text { min-width: 0; word-break: break-word; }
-.last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: block; color: inherit; }
-.last-action-cell .landing-dir-icon-exit { transform: rotate(180deg); transform-origin: 50% 50%; }
+    .last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em; font-weight: 700; line-height: 1; }
+    .last-action-cell .landing-dir-icon-entry { color: #0d9488; }
+    .last-action-cell .landing-dir-icon-exit { color: #940d0d; }
 .last-action-cell .landing-line:hover { text-decoration: underline; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
@@ -372,8 +376,8 @@
 .sessions-table-wrap { position: relative; }
 .live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--kpi-gap); }
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
-.live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
-.live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #0d9488; line-height: 1.3; }
+    .live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
+    .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #888; line-height: 1.3; }
 .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
 .sale-toast-host { position: relative; overflow: visible; }
 .sale-toast-host.toast-open { z-index: 10; }
@@ -382,10 +386,11 @@
 .sale-toast .sale-toast-flag { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 42px; height: 100%; object-fit: contain; border-radius: 6px; margin: 0; }
 .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
-.sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 700; line-height: 1.1; }
+    .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
 .sale-toast .sale-toast-inline-flag-img { width: 14px; height: 10px; object-fit: cover; border-radius: 3px; display: block; flex-shrink: 0; }
-.sale-toast .sale-toast-product { font-size: 0.92rem; font-weight: 700; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sale-toast .sale-toast-amount { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #e7db75; letter-spacing: -0.2px; margin-right: 5px; }
+    .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; background: #06655d; padding: 0 10px; border-radius: 0 4px 4px 0; }
+    .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
 .sale-toast .sale-toast-close { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.12); color: #fff; border-radius: 8px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
 .sale-toast .sale-toast-close:hover { background: rgba(255, 255, 255, 0.18); }
 .sale-toast .sale-toast-close:active { transform: translateY(1px); }
@@ -396,33 +401,33 @@
 .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
 .kpi-ticker.run .kpi-ticker-stack { transform: translateY(-100%); }
 .shared-kpi-wrap { margin-bottom: 1.25rem; }
-.kpi-mobile-pager { position: relative; }
-.kpi-mobile-next { display: none; }
+    .kpi-mobile-pager { position: relative; }
+    .kpi-mobile-pager.kpi-pager-active { padding-right: 44px; }
+    .kpi-mobile-next {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .kpi-mobile-next:hover { color: var(--accent); border-color: rgba(13, 148, 136, 0.55); }
+    .kpi-mobile-next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .kpi-mobile-next svg { width: 18px; height: 18px; display: block; }
 @media (max-width: 768px) {
-  .live-kpi-grid { --kpi-gap: 0.5rem; grid-template-columns: repeat(2, 1fr); gap: var(--kpi-gap); }
+  .kpi-mobile-pager { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .live-kpi-grid { --kpi-gap: 0.5rem; display: flex; gap: var(--kpi-gap); }
+  .live-kpi-cell { min-width: 150px; flex: 0 0 auto; }
   .live-kpi-cell .live-kpi-value { font-size: 1rem; }
-  /* Mobile KPI pager: only 2 cells visible at a time, with a right chevron to page. */
-  .kpi-mobile-pager { padding-right: 44px; }
-  .kpi-mobile-next {
-    display: inline-flex;
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--card);
-    color: var(--text);
-    cursor: pointer;
-    box-shadow: var(--shadow);
-  }
-  .kpi-mobile-next:hover { color: var(--accent); border-color: rgba(13, 148, 136, 0.55); }
-  .kpi-mobile-next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .kpi-mobile-next svg { width: 18px; height: 18px; display: block; }
 }
 .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
 .live-view-header .table-title { margin: 0; font-size: var(--table-header-font-size); font-weight: 500; color: var(--text); flex-shrink: 0; display: flex; align-items: center; gap: 0.35rem; letter-spacing: -0.1px; }
@@ -669,7 +674,7 @@
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel-close { min-width: 44px; min-height: 44px; }
       .last-action-cell a { display: none; }
-      .last-action-cell .landing-lines { display: none; }
+      .last-action-cell .landing-lines a { display: grid; }
       .landing-thumb { width: 32px; height: 32px; }
       .thumb-wrap.thumb-stack .landing-thumb-exit { width: 24px; height: 24px; min-width: 24px; min-height: 24px; }
     }
@@ -878,7 +883,7 @@
             <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span>New Sale</div>
             <div class="sale-toast-product" id="sale-toast-product">—</div>
           </div>
-          <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+          <div class="sale-toast-amount-wrap"><div class="sale-toast-amount" id="sale-toast-amount">£—</div></div>
         </div>
       </div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
@@ -969,11 +974,11 @@
         <table id="country-table" class="by-country-table">
           <thead>
             <tr>
-              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="by-country-body">
@@ -989,17 +994,17 @@
     </div>
     <div class="stats-card" id="stats-best-geo-products">
       <div class="traffic-card-header">
-        <h3 class="traffic-card-title">Best GEO Products</h3>
+        <h3 class="traffic-card-title">Best by GEO</h3>
       </div>
       <div class="country-table-wrap" id="best-geo-products-wrap">
         <table id="best-geo-products-table" class="by-country-table geo-products-table">
           <thead>
             <tr>
-              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="best-geo-products-body">
@@ -1053,10 +1058,10 @@
           <thead>
             <tr>
               <th class="bs-product-col sortable" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="best-sellers-body">
@@ -1076,10 +1081,10 @@
           <thead>
             <tr>
               <th class="bs-product-col sortable" data-sort="product" aria-sort="none" tabindex="0" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="worst-products-body">
@@ -1099,10 +1104,10 @@
           <thead>
             <tr>
               <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="best-variants-body">
@@ -1122,10 +1127,10 @@
           <thead>
             <tr>
               <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="worst-variants-body">
@@ -1165,10 +1170,10 @@
           <thead>
             <tr>
               <th class="sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
-              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="traffic-sources-body">
@@ -1189,10 +1194,10 @@
           <thead>
             <tr>
               <th class="sortable" data-sort="type" aria-sort="none" tabindex="0" aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
-              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="traffic-types-body">
@@ -1694,6 +1699,9 @@
     function friendlyLabelFromPath(path) {
       if (typeof path !== 'string') return null;
       const p = path.trim();
+      const pNorm = p.replace(/\/+$/, '') || '/';
+      if (pNorm === '/pages/order-tracker') return 'Order Tracker';
+      if (pNorm === '/orders' || pNorm.startsWith('/orders/')) return 'Viewed Order';
       const collectionsMatch = p.match(/^\/collections\/([^/?#]+)/i);
       if (collectionsMatch) return titleCaseFromHandle(collectionsMatch[1]);
       const productsMatch = p.match(/^\/products\/([^/?#]+)/i);
@@ -1728,7 +1736,8 @@
       var path = normalizeToPath(s && s.first_path, s && s.first_product_handle);
       var key = collapseKey(path);
       if (!key) return '';
-      if (key === '/' || key === '/orders') return key === '/' ? 'Home' : key;
+      if (key === '/') return 'Home';
+      if (key === '/orders') return 'Viewed Order';
       if (key === '/cart' || key === '/checkouts') return 'Cart';
       return friendlyLabelFromPath(key) || key;
     }
@@ -1783,7 +1792,7 @@
           var labelText = '\u2014';
           var thumbSrc = '';
           if (isHomeOrOrders) {
-            labelText = path === '/' ? 'Home' : path;
+            labelText = path === '/' ? 'Home' : 'Viewed Order';
             thumbSrc = HICON_URL;
           } else if (isCart) {
             labelText = 'Cart';
@@ -1825,8 +1834,9 @@
 
         function dirArrowSvg(kind) {
           var isExit = kind === 'exit';
-          var cls = 'landing-dir-icon' + (isExit ? ' landing-dir-icon-exit' : '');
-          return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12H3M6 9l-3 3 3 3"/></svg>';
+          var cls = 'landing-dir-icon ' + (isExit ? 'landing-dir-icon-exit' : 'landing-dir-icon-entry');
+          var glyph = isExit ? '&gt;' : '&lt;';
+          return '<span class="' + cls + '" aria-hidden="true">' + glyph + '</span>';
         }
 
         function line(kind, meta) {
@@ -1862,7 +1872,7 @@
       var isPurchased = !!(s && s.has_purchased);
       // Keep the Landing Page thumbnail stable even after purchase; do not swap to a "sale" icon.
       if (isHomeOrOrders) {
-        label = path === '/' ? 'Home' : escapeHtml(path);
+        label = path === '/' ? 'Home' : 'Viewed Order';
         thumbSrc = HICON_URL;
       } else if (isCart) {
         label = 'Cart';
@@ -3604,15 +3614,22 @@
         const ccode = iso.toLowerCase();
         const label = countryLabel(iso);
         const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
+        const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
+        const productThumb = (r && r.product_thumb_url != null) ? String(r.product_thumb_url).trim() : '';
+        const mainBase = getMainBaseUrl();
+        const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenue(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
-        const labelHtml = '<span class="country-label">' +
-          '<span class="country-name">' + escapeHtml(label) + '</span>' +
-          '<span class="geo-product-name" title="' + escapeHtml(productTitle) + '">' + escapeHtml(productTitle) + '</span>' +
-        '</span>';
+        const thumbImg = productThumb
+          ? '<img src="' + escapeHtml(productThumb) + '" alt="' + escapeHtml(productTitle) + '" loading="lazy">'
+          : '<span class="geo-product-thumb-placeholder" aria-hidden="true"></span>';
+        const thumb = productUrl
+          ? '<a class="geo-product-thumb" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</a>'
+          : '<span class="geo-product-thumb" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</span>';
+        const labelHtml = '<span class="country-label">' + thumb + '</span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), geoBy, geoDir);
@@ -4123,6 +4140,23 @@
       renderLiveKpis(getKpiData());
     }
 
+    function kpiDelta(current, baseline, invert) {
+      const cur = typeof current === 'number' ? current : NaN;
+      const base = typeof baseline === 'number' ? baseline : NaN;
+      if (!Number.isFinite(cur) || !Number.isFinite(base) || base <= 0) return null;
+      const diff = invert ? (base - cur) : (cur - base);
+      return diff / base;
+    }
+
+    function applyKpiDeltaColor(el, current, baseline, invert) {
+      if (!el) return;
+      el.style.color = '#888';
+      const delta = kpiDelta(current, baseline, invert);
+      if (delta == null) return;
+      if (delta >= 0.1) el.style.color = '#0d9488';
+      else if (delta <= -0.1) el.style.color = '#940d0d';
+    }
+
     // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
     // numbers were over- or under-reporting. To restore real values: in renderLiveKpis below, remove the
     // "N/A" block and uncomment the "Real values (when fixed)" block so KPIs use data again.
@@ -4150,6 +4184,14 @@
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
+      const compare = data && data.compare ? data.compare : null;
+      const compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
+      const compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
+      const compareSalesVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
+      const compareReturningVal = compare && typeof compare.returningRevenue === 'number' ? compare.returningRevenue : null;
+      const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
+      const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
+      const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
       const freezeSales = !!saleToastActive;
       if (salesLabelEl && !freezeSales) {
@@ -4162,51 +4204,92 @@
       if (returningEl) returningEl.textContent = returningVal != null ? formatRevenue(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+
+      if (!freezeSales) applyKpiDeltaColor(salesEl, salesVal, compareSalesVal, false);
+      applyKpiDeltaColor(sessionsEl, sessionsVal, compareSessionsVal, false);
+      applyKpiDeltaColor(convEl, convVal, compareConvVal, false);
+      applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
+      applyKpiDeltaColor(aovEl, aovVal, compareAovVal, false);
+      applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
+      scheduleKpiPagerUpdate();
     }
 
-    // Mobile KPI pager: show 2 KPI cells at a time + right chevron to cycle.
-    let kpiMobilePage = 0;
-    function applyMobileKpiPager() {
+    // KPI pager: swipe on mobile, page on desktop when labels wrap.
+    let kpiPagerPage = 0;
+    let kpiPagerRaf = null;
+    function scheduleKpiPagerUpdate() {
+      if (typeof requestAnimationFrame !== 'function') {
+        applyKpiPager();
+        return;
+      }
+      if (kpiPagerRaf) cancelAnimationFrame(kpiPagerRaf);
+      kpiPagerRaf = requestAnimationFrame(function() {
+        kpiPagerRaf = null;
+        applyKpiPager();
+      });
+    }
+    function kpiLabelWraps(el) {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      const lh = style ? parseFloat(style.lineHeight) : 0;
+      const fs = style ? parseFloat(style.fontSize) : 0;
+      const lineHeight = (Number.isFinite(lh) && lh > 0) ? lh : (Number.isFinite(fs) && fs > 0 ? fs * 1.2 : 0);
+      if (!lineHeight) return false;
+      return rect.height > lineHeight * 1.4;
+    }
+    function applyKpiPager() {
       const grid = document.getElementById('live-kpi-grid');
       const btn = document.getElementById('kpi-mobile-next');
+      const wrap = document.querySelector('.kpi-mobile-pager');
       if (!grid || !btn) return;
       const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
       const cells = Array.from(grid.querySelectorAll('.live-kpi-cell'));
-      const perPage = 2;
-      if (!isMobile) {
+      if (isMobile) {
         cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
         btn.style.display = 'none';
         btn.disabled = true;
+        if (wrap) wrap.classList.remove('kpi-pager-active');
         return;
       }
+      const labels = Array.from(grid.querySelectorAll('.live-kpi-label'));
+      const needsPager = labels.some(kpiLabelWraps);
+      if (!needsPager) {
+        cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
+        btn.style.display = 'none';
+        btn.disabled = true;
+        if (wrap) wrap.classList.remove('kpi-pager-active');
+        return;
+      }
+      const perPage = Math.max(1, Math.min(4, cells.length));
       const totalPages = Math.max(1, Math.ceil(cells.length / perPage));
-      if (kpiMobilePage >= totalPages) kpiMobilePage = 0;
-      const start = kpiMobilePage * perPage;
+      if (kpiPagerPage >= totalPages) kpiPagerPage = 0;
+      const start = kpiPagerPage * perPage;
       const end = start + perPage;
       cells.forEach(function(c, idx) {
         const show = idx >= start && idx < end;
         c.style.display = show ? '' : 'none';
         c.setAttribute('aria-hidden', show ? 'false' : 'true');
       });
-      const showBtn = cells.length > perPage;
+      const showBtn = totalPages > 1;
       btn.style.display = showBtn ? 'inline-flex' : 'none';
       btn.disabled = !showBtn;
-      btn.setAttribute('aria-label', showBtn ? ('Next KPIs (page ' + (kpiMobilePage + 1) + ' of ' + totalPages + ')') : 'KPIs');
+      btn.setAttribute('aria-label', showBtn ? ('Next KPIs (page ' + (kpiPagerPage + 1) + ' of ' + totalPages + ')') : 'KPIs');
+      if (wrap) {
+        if (showBtn) wrap.classList.add('kpi-pager-active');
+        else wrap.classList.remove('kpi-pager-active');
+      }
     }
-    (function initMobileKpiPager() {
+    (function initKpiPager() {
       const btn = document.getElementById('kpi-mobile-next');
       if (btn) {
         btn.addEventListener('click', function() {
-          const grid = document.getElementById('live-kpi-grid');
-          const cells = grid ? Array.from(grid.querySelectorAll('.live-kpi-cell')) : [];
-          const totalPages = Math.max(1, Math.ceil(cells.length / 2));
-          kpiMobilePage = (kpiMobilePage + 1) % totalPages;
-          applyMobileKpiPager();
+          kpiPagerPage = kpiPagerPage + 1;
+          applyKpiPager();
         });
       }
-      // Apply at startup + on resize/orientation changes.
-      applyMobileKpiPager();
-      window.addEventListener('resize', function() { applyMobileKpiPager(); });
+      scheduleKpiPagerUpdate();
+      window.addEventListener('resize', function() { scheduleKpiPagerUpdate(); });
     })();
 
     function delay(ms) {
