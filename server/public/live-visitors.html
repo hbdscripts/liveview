@@ -370,14 +370,15 @@
 .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
 .sale-toast-host { position: relative; overflow: visible; }
 .sale-toast-host.toast-open { z-index: 10; }
-.sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid var(--border); background: rgba(255, 255, 255, 0.98); box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; }
+.sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
 .sale-toast.active { opacity: 1; transform: translateY(0); }
-.sale-toast .sale-toast-flag { display: flex; align-items: stretch; }
-.sale-toast .sale-toast-flag .flag-img { width: 42px; height: 100%; object-fit: cover; border-radius: 6px; margin: 0; }
+.sale-toast .sale-toast-flag { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 42px; height: 100%; object-fit: contain; border-radius: 6px; margin: 0; }
 .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
-.sale-toast .sale-toast-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; line-height: 1.1; }
-.sale-toast .sale-toast-product { font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sale-toast .sale-toast-amount { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: var(--accent); letter-spacing: -0.2px; }
+.sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 700; line-height: 1.1; }
+.sale-toast .sale-toast-inline-flag-img { width: 14px; height: 10px; object-fit: cover; border-radius: 3px; display: block; flex-shrink: 0; }
+.sale-toast .sale-toast-product { font-size: 0.92rem; font-weight: 700; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sale-toast .sale-toast-amount { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #e7db75; letter-spacing: -0.2px; margin-right: 5px; }
 .kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
 .kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
 .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
@@ -687,7 +688,7 @@
         <div class="sale-toast" id="sale-toast" aria-hidden="true" style="display:none">
           <div class="sale-toast-flag" id="sale-toast-flag"></div>
           <div class="sale-toast-mid">
-            <div class="sale-toast-title">New Order</div>
+            <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span>New Sale</div>
             <div class="sale-toast-product" id="sale-toast-product">—</div>
           </div>
           <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
@@ -1329,6 +1330,13 @@
       return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + escapeHtml(c) + '.png') + '" alt="' + escapeHtml(code) + '" loading="lazy">';
     }
 
+    function flagImgSmall(code) {
+      const src = (!code || code === 'XX')
+        ? hotImg('https://flagcdn.com/w40/xx.png')
+        : hotImg('https://flagcdn.com/w40/' + escapeHtml((code || 'xx').toLowerCase().slice(0, 2)) + '.png');
+      return '<img class="sale-toast-inline-flag-img" src="' + src + '" alt="" aria-hidden="true" loading="lazy">';
+    }
+
     function arrivedAgo(startedAt) {
       var n = toMs(startedAt);
       if (n == null) return '\u2014';
@@ -1391,6 +1399,7 @@
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
+    var NEW_SALE_BIRD_URL = hotImgSquare('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/newsalebird.webp?v=1770255597');
     var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
 
     function titleCaseFromHandle(handle) {
@@ -1907,9 +1916,11 @@
       const product = patch.productTitle != null ? String(patch.productTitle) : '';
       const amountGbp = patch.amountGbp != null ? Number(patch.amountGbp) : null;
       const flagEl = document.getElementById('sale-toast-flag');
+      const inlineFlagEl = document.getElementById('sale-toast-inline-flag');
       const productEl = document.getElementById('sale-toast-product');
       const amountEl = document.getElementById('sale-toast-amount');
-      if (flagEl) flagEl.innerHTML = flagImg(cc);
+      if (flagEl) flagEl.innerHTML = '<img class="sale-toast-bird-icon" src="' + escapeHtml(NEW_SALE_BIRD_URL) + '" alt="" aria-hidden="true" decoding="async" loading="eager">';
+      if (inlineFlagEl) inlineFlagEl.innerHTML = flagImgSmall(cc);
       if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
       if (amountEl) amountEl.textContent = (amountGbp != null && Number.isFinite(amountGbp)) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
     }
@@ -4492,6 +4503,23 @@
         if (stale) fetchSessions();
       }
     });
+
+    // Debug: force the "new sale" toast for UI review.
+    (function maybeTriggerDebugSaleToast() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('birdseye_sale') !== '1') return;
+        setTimeout(function() {
+          try {
+            triggerSaleToast({
+              origin: 'debug',
+              session: { country_code: 'GB', last_product_handle: 'debug-product', order_total: 53, has_purchased: 1, purchased_at: Date.now(), last_seen: Date.now(), started_at: Date.now() - 60000 },
+              playSound: false,
+            });
+          } catch (_) {}
+        }, 250);
+      } catch (_) {}
+    })();
 
     const es = new EventSource(API + '/api/stream');
     es.onmessage = (e) => {
