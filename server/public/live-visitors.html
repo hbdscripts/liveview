@@ -45,6 +45,15 @@
     }
     * { box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
+    /* SVG icons: keep a consistent icon colour (match footer icons). */
+    svg { color: var(--text); }
+    /* Let interactive elements tint icons via their own `color` (hover/active/focus). */
+    button:hover svg,
+    button:focus-visible svg,
+    a:hover svg,
+    a:focus-visible svg,
+    [role="tab"]:hover svg,
+    [role="tab"][aria-selected="true"] svg { color: inherit; }
     .main { padding: 24px; margin: 0 auto; max-width: 1600px; }
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
     /* Products tab has 4 cards; keep a balanced 2x2 grid on wide screens. */
@@ -711,7 +720,7 @@
       <span class="next-update-live-indicator" id="next-update-live-indicator" aria-hidden="true"><span class="live-pulse-dot"></span> Live</span>
     </span>
     <div class="live-view-online">
-      <svg class="online-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <svg class="online-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg>
       Online:
       <span class="online-count-wrap">
         <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
@@ -1065,10 +1074,10 @@
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
-    const RANGE_REFRESH_MS = 10 * 60 * 1000; // Today and Last Hour refresh every 10 min
+    const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Last Hour refresh every 5 min
     const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
-    const STATS_REFRESH_MS = 15 * 60 * 1000;
+    const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
     const ROWS_PER_PAGE_KEY = 'livevisitors-rows-per-page';
@@ -1094,7 +1103,7 @@
     function getKpiData() { return kpiCache || statsCache || {}; }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
-    let nextRangeAt = 0; // next refresh for Today/Last Hour (10 min)
+    let nextRangeAt = 0; // next refresh for Today/Last Hour (5 min)
     let lastSessionsFetchedAt = 0;
     let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
@@ -4436,9 +4445,9 @@
       refreshTraffic({ force: false });
     }
 
-    // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Breakdown/Products/Traffic: every 15 min (Today only).
+    // Live: refresh every 60s. Today/Last Hour: refresh every 5 min. Breakdown/Products/Traffic: every 5 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
-    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (10 min interval)
+    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (5 min interval)
     setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);

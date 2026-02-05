@@ -280,8 +280,10 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
-- Ingest: on checkout_completed now also call store.insertPurchase so Birdseye (pixel-derived) orders/revenue appear in diagnostics; previously only purchase_events (evidence) was written, so “Purchases (derived)” showed 0.
+- Ingest: on checkout_completed append purchase_events evidence (append-only) and link to Shopify orders when possible (order_id / checkout_token).
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
+- Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Breakdown/Products/Traffic); Live remains 60s.
+- UI: update Online user icon + standardise SVG icon colouring (match footer icons).
 - KPI grid (mobile): show 2 KPIs at a time with a right chevron to page through (order: Sales, Conversion Rate, Sessions, …). KPI mini-spinners only show on first load (silent refreshes after).
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: abbreviate table headers (TH labels) on small screens to avoid overlapping text
