@@ -1745,6 +1745,7 @@
       const pNorm = p.replace(/\/+$/, '') || '/';
       if (pNorm === '/pages/order-tracker') return 'Order Tracker';
       if (pNorm === '/pages/contact') return 'Contact';
+      if (pNorm === '/account/login' || pNorm.startsWith('/account/login/')) return 'Login';
       if (pNorm === '/orders' || pNorm.startsWith('/orders/')) return 'Viewed Order';
       const collectionsMatch = p.match(/^\/collections\/([^/?#]+)/i);
       if (collectionsMatch) return titleCaseFromHandle(collectionsMatch[1]);
