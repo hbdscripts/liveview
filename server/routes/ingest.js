@@ -197,7 +197,9 @@ function ingestRouter(req, res, next) {
   store.upsertVisitor(payload)
     .then(({ isReturning } = {}) => store.upsertSession(payload, isReturning, cfContext))
     .then(() => {
-      // Evidence only: always append purchase_events for checkout_completed.
+      // On checkout_completed we must write BOTH:
+      // - purchase_events (append-only evidence)
+      // - purchases (order-level dedupe used by diagnostics/reporting when pixel-derived)
       const isCheckoutCompleted =
         payload &&
         (payload.event_type === 'checkout_completed' ||
@@ -205,7 +207,9 @@ function ingestRouter(req, res, next) {
           payload.checkout_completed === 1 ||
           payload.checkout_completed === '1');
       if (!isCheckoutCompleted) return null;
-      return salesEvidence.insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext });
+      return salesEvidence
+        .insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext })
+        .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'));
     })
     .then(() => store.insertEvent(sessionId, payload))
     .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
