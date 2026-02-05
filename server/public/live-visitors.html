@@ -2686,6 +2686,20 @@
       return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
     }
 
+    function isIconMode() {
+      try {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function formatRevenueTable(num) {
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '—';
+      if (isIconMode()) return '\u00A3' + Math.round(num);
+      return formatRevenue(num) || '—';
+    }
+
     function animateTickerText(el, nextText) {
       if (!el) return;
       const prev = el.textContent != null ? String(el.textContent) : '';
@@ -3030,7 +3044,7 @@
         const sales = formatSessions(typeof p.converted === 'number' ? p.converted : 0);
         const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
         const revNum = p.revenue != null ? Number(p.revenue) : NaN;
-        const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? (formatRevenue(revNum) || '\u2014') : '\u2014';
+        const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? formatRevenueTable(revNum) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
@@ -3155,7 +3169,7 @@
         const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
         const sales = formatSessions(ordersNum);
         const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenue(v.revenue);
+        const revenue = formatRevenueTable(v.revenue);
         const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
         const crVal = totalOrders > 0 ? (Math.round((ordersNum / totalOrders) * 1000) / 10) : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
@@ -3225,7 +3239,7 @@
         const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
         const sales = formatSessions(ordersNum);
         const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenue(v.revenue);
+        const revenue = formatRevenueTable(v.revenue);
         const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
         const crVal = totalOrders > 0 ? (Math.round((ordersNum / totalOrders) * 1000) / 10) : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
@@ -3276,7 +3290,7 @@
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
-        const revenue = formatRevenue(p.revenue);
+        const revenue = formatRevenueTable(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
@@ -3601,7 +3615,7 @@
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
-        const revenue = formatRevenue(r.revenue);
+        const revenue = formatRevenueTable(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
@@ -3660,7 +3674,7 @@
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
-        const revenue = formatRevenue(r.revenue);
+        const revenue = formatRevenueTable(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const thumbImg = productThumb
           ? '<img src="' + escapeHtml(productThumb) + '" alt="' + escapeHtml(productTitle) + '" loading="lazy">'
@@ -4583,7 +4597,7 @@
           const cr = (r && typeof r.conversionPct === 'number') ? pct(r.conversionPct) : '—';
           const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '—';
           const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '—';
-          const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenue(r.revenueGbp) : '—';
+          const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenueTable(r.revenueGbp) : '—';
           html += '<tr>' +
             '<td>' + labelCell + '</td>' +
             '<td>' + escapeHtml(cr || '—') + '</td>' +
@@ -4633,7 +4647,7 @@
           const cr = (g && typeof g.conversionPct === 'number') ? pct(g.conversionPct) : '—';
           const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
           const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
-          const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenue(g.revenueGbp) : '—';
+          const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenueTable(g.revenueGbp) : '—';
           html += '<tr class="traffic-type-parent" data-device="' + escapeHtml(device) + '">' +
             '<td>' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -4666,7 +4680,7 @@
             const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
             const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
             const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
-            const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenue(c.revenueGbp) : '—';
+            const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTable(c.revenueGbp) : '—';
             html += '<tr class="traffic-type-child" data-parent="' + escapeHtml(device) + '"' + (open ? '' : ' style="display:none"') + '>' +
               '<td>' + clabel + '</td>' +
               '<td>' + escapeHtml(ccr || '—') + '</td>' +
