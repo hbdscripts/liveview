@@ -5453,7 +5453,7 @@
 
     function refreshConfigStatus() {
       const configStatusEl = document.getElementById('config-status');
-      if (configStatusEl) configStatusEl.innerHTML = '<div class="diag"><div class="diag-loading">Loading…</div></div>';
+      if (configStatusEl) configStatusEl.innerHTML = '<div style="font-size:0.9rem;color:var(--muted);padding:0.5rem 0;">Loading…</div>';
 
       return fetch(getConfigStatusUrl(), { credentials: 'same-origin', cache: 'no-store' })
         .then(r => r.json())
@@ -5594,7 +5594,29 @@
 
           function renderTrackerDefinitions(defs) {
             if (!defs || !Array.isArray(defs.tables)) {
-              return '<div class="diag-note">No tracker definitions available from server.</div>';
+              return '<div style="font-size:12px;color:var(--muted);line-height:1.35;">No tracker definitions available from server.</div>';
+            }
+
+            function pill2(text, tone) {
+              const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
+              const base = 'display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:850;white-space:nowrap;border:1px solid ';
+              if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
+              if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
+              return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
+            }
+            function code2(value) {
+              return '<code style="font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+            }
+            function line2(label, valueHtml) {
+              return (
+                '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:13px;">' +
+                  '<div style="color:var(--muted);font-weight:750;">' + escapeHtml(label) + '</div>' +
+                  '<div style="color:var(--text);font-weight:750;text-align:right;min-width:0;word-break:break-word;">' + (valueHtml || '\u2014') + '</div>' +
+                '</div>'
+              );
+            }
+            function sectionTitle2(text) {
+              return '<div style="margin-top:10px;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">' + escapeHtml(text) + '</div>';
             }
 
             const ver = (defs.version != null) ? String(defs.version) : '';
@@ -5621,15 +5643,16 @@
             });
 
             let out = '';
-            out += '<div class="diag-section-title">' + icon('list', '') + 'Tables + metric definitions</div>';
+            out += '<div style="display:flex;flex-direction:column;gap:10px;">';
             const metaBits = [];
             if (ver) metaBits.push('v' + ver);
             if (last) metaBits.push('Last updated ' + last);
-            if (metaBits.length) out += '<div class="diag-note">' + escapeHtml(metaBits.join(' · ')) + '</div>';
-            if (note) out += '<div class="diag-note">' + escapeHtml(note) + '</div>';
+            if (metaBits.length) out += '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+            if (note) out += '<div style="font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml(note) + '</div>';
 
             if (!pages.length) {
-              out += '<div class="diag-note">No definitions found.</div>';
+              out += '<div style="font-size:12px;color:var(--muted);">No definitions found.</div>';
+              out += '</div>';
               return out;
             }
 
@@ -5637,12 +5660,12 @@
               const list = Array.isArray(byPage[page]) ? byPage[page].slice() : [];
               list.sort(function(a, b) { return String((a && a.name) || '').localeCompare(String((b && b.name) || '')); });
 
-              out += '<div class="u-mt-md">';
-              out +=   '<div class="diag-section-title">' + escapeHtml(page) + '</div>';
+              out += '<div style="border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.75);padding:12px;">';
+              out +=   '<div style="font-size:14px;font-weight:950;color:var(--text);margin-bottom:6px;">' + escapeHtml(page) + '</div>';
 
               for (const d of list) {
                 const id = (d && d.id) ? String(d.id) : '';
-                const name = (d && d.name) ? String(d.name) : (id || 'Unnamed table');
+                const name = (d && d.name) ? String(d.name) : (id || 'Unnamed');
                 const endpoint = (d && d.endpoint) ? d.endpoint : {};
                 const method = endpoint && endpoint.method ? String(endpoint.method) : '';
                 const path = endpoint && endpoint.path ? String(endpoint.path) : '';
@@ -5651,7 +5674,6 @@
                 const uiMissing = uiIds.filter(function(x) { return x && !document.getElementById(String(x)); });
 
                 const checks = (d && d.checks) ? d.checks : {};
-                const activeTables = (checks && Array.isArray(checks.activeDbTables)) ? checks.activeDbTables : [];
                 const activeMissingTables = (checks && Array.isArray(checks.activeDbTablesMissing)) ? checks.activeDbTablesMissing : null;
                 const missingTables = activeMissingTables != null
                   ? activeMissingTables
@@ -5663,35 +5685,32 @@
 
                 const summaryBits = [];
                 if (method && path) summaryBits.push(method + ' ' + path);
+                if (params.length) summaryBits.push('params: ' + params.join(', '));
                 if (!summaryBits.length && id) summaryBits.push(id);
 
-                const pillBits = [];
-                pillBits.push(overallOk ? pill('OK', 'ok') : pill('Check', (missingTables.length ? 'bad' : 'warn')));
-                if (uiIds.length) pillBits.push(uiOk ? pill('UI ok', 'ok') : pill('UI missing', 'warn'));
-                if (missingTables.length) pillBits.push(pill('DB missing', 'bad'));
-                if (d && d.requires && d.requires.shopifyToken) pillBits.push(tokenOk ? pill('Token ok', 'ok') : pill('Token missing', 'bad'));
+                const chips = [];
+                chips.push(overallOk ? pill2('OK', 'ok') : pill2('Check', (missingTables.length ? 'bad' : 'warn')));
+                if (uiIds.length) chips.push(uiOk ? pill2('UI OK', 'ok') : pill2('UI missing', 'warn'));
+                if (missingTables.length) chips.push(pill2('DB missing', 'bad'));
+                if (d && d.requires && d.requires.shopifyToken) chips.push(tokenOk ? pill2('Token OK', 'ok') : pill2('Token missing', 'bad'));
 
-                out += '<details class="diag-tech u-mt-sm">';
-                out +=   '<summary>';
-                out +=     '<div class="diag-tech-head">';
-                out +=       '<strong>' + escapeHtml(name) + '</strong>';
-                out +=       '<span>' + escapeHtml(summaryBits.join(' · ')) + '</span>';
+                out += '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.06);border-radius:12px;background:rgba(255,255,255,0.78);padding:10px;">';
+                out +=   '<summary style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;list-style:none;">';
+                out +=     '<div style="min-width:0;">';
+                out +=       '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(name) + '</div>';
+                out +=       '<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(summaryBits.join(' · ')) + '</div>';
                 out +=     '</div>';
-                out +=     '<div class="diag-tech-meta">';
-                out +=       pillBits.join(' ');
-                out +=       icon('chev', 'diag-chevron');
-                out +=     '</div>';
+                out +=     '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' + chips.join('') + '<span style="color:var(--muted);font-weight:900;padding:2px 6px;">▾</span></div>';
                 out +=   '</summary>';
 
-                out +=   '<div class="diag-details-body">';
-                out +=     kv('Table id', id ? code(id) : '\u2014');
-                if (uiIds.length) {
-                  out += kv('UI elementIds', code(uiIds.join(', ')));
-                  if (uiMissing.length) out += kv('UI missing', code(uiMissing.join(', ')));
-                }
-                if (activeTables.length) out += kv('Active DB tables', code(activeTables.join(', ')));
-                if (method || path) out += kv('Endpoint', code((method ? (method + ' ') : '') + path));
-                if (params.length) out += kv('Params', code(params.join(' · ')));
+                out +=   '<div style="margin-top:10px;">';
+                if (id) out += line2('Id', code2(id));
+                if (method && path) out += line2('Endpoint', code2(method + ' ' + path));
+                if (params.length) out += line2('Params', code2(params.join(', ')));
+                if (uiIds.length) out += line2('UI elementIds', code2(uiIds.join(', ')));
+                if (uiMissing.length) out += line2('UI missing', code2(uiMissing.join(', ')));
+                if (missingTables.length) out += line2('DB tables missing', code2(missingTables.join(', ')));
+                if (d && d.requires && d.requires.shopifyToken) out += line2('Shopify token', tokenOk ? pill2('OK', 'ok') : pill2('Missing', 'bad'));
 
                 const respects = (d && d.respectsReporting) ? d.respectsReporting : {};
                 const rOrders = !!(respects && respects.ordersSource);
@@ -5702,22 +5721,12 @@
                 const nowBits = [];
                 if (rOrders && reporting && reporting.ordersSource) nowBits.push('ordersSource=' + reporting.ordersSource);
                 if (rSessions && reporting && reporting.sessionsSource) nowBits.push('sessionsSource=' + reporting.sessionsSource);
-                out += kv('Respects reporting', code(respectsBits.join(' · ') + (nowBits.length ? (' · now ' + nowBits.join(', ')) : '')));
-
-                if (missingTables.length) {
-                  out += kv('DB tables', pill('Missing', 'bad') + ' ' + code(missingTables.join(', ')));
-                } else if (d && d.requires && Array.isArray(d.requires.dbTables) && d.requires.dbTables.length) {
-                  out += kv('DB tables', pill('OK', 'ok'));
-                }
-                if (d && d.requires && d.requires.shopifyToken) {
-                  out += kv('Shopify token', tokenOk ? pill('OK', 'ok') : pill('Missing', 'bad'));
-                }
+                out += line2('Respects reporting', code2(respectsBits.join(' · ') + (nowBits.length ? (' · now ' + nowBits.join(', ')) : '')));
 
                 const sources = (d && Array.isArray(d.sources)) ? d.sources : [];
                 if (sources.length) {
-                  out += '<div class="u-mt-sm">';
-                  out +=   '<div class="diag-section-title">' + icon('link', '') + 'Sources</div>';
-                  out +=   '<ul class="diag-def-list">';
+                  out += sectionTitle2('Sources');
+                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
                   for (const s of sources) {
                     const kind = (s && s.kind) ? String(s.kind) : 'source';
                     const st = (s && Array.isArray(s.tables)) ? s.tables : [];
@@ -5725,42 +5734,37 @@
                     let line = '<strong>' + escapeHtml(kind) + '</strong>';
                     if (st.length) line += ' · ' + escapeHtml(st.join(', '));
                     if (note2) line += ' — ' + escapeHtml(note2);
-                    out += '<li>' + line + '</li>';
+                    out += '<li style="margin:2px 0;">' + line + '</li>';
                   }
-                  out +=   '</ul>';
-                  out += '</div>';
+                  out += '</ul>';
                 }
 
                 const columns = (d && Array.isArray(d.columns)) ? d.columns : [];
                 if (columns.length) {
-                  out += '<div class="u-mt-sm">';
-                  out +=   '<div class="diag-section-title">' + icon('columns', '') + 'Columns + math</div>';
-                  out +=   '<ul class="diag-def-list">';
+                  out += sectionTitle2('Columns + math');
+                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
                   for (const col of columns) {
                     const cn = (col && col.name) ? String(col.name) : 'Column';
                     const cv = (col && col.value != null) ? String(col.value) : '';
                     const cf = (col && col.formula != null) ? String(col.formula) : '';
                     let line = '<strong>' + escapeHtml(cn) + '</strong>';
                     if (cv) line += ' · ' + escapeHtml(cv);
-                    if (cf) line += ' · <span class="diag-formula">' + escapeHtml(cf) + '</span>';
-                    out += '<li>' + line + '</li>';
+                    if (cf) line += ' · <span style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;font-size:12px;">' + escapeHtml(cf) + '</span>';
+                    out += '<li style="margin:2px 0;">' + line + '</li>';
                   }
-                  out +=   '</ul>';
-                  out += '</div>';
+                  out += '</ul>';
                 }
 
                 const math = (d && Array.isArray(d.math)) ? d.math : [];
                 if (math.length) {
-                  out += '<div class="u-mt-sm">';
-                  out +=   '<div class="diag-section-title">' + icon('bar', '') + 'Notes</div>';
-                  out +=   '<ul class="diag-def-list">';
+                  out += sectionTitle2('Notes');
+                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
                   for (const m of math) {
                     const mn = (m && m.name) ? String(m.name) : 'Note';
                     const mv = (m && m.value != null) ? String(m.value) : '';
-                    out += '<li><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
+                    out += '<li style="margin:2px 0;"><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
                   }
-                  out +=   '</ul>';
-                  out += '</div>';
+                  out += '</ul>';
                 }
 
                 out +=   '</div>';
@@ -5770,396 +5774,305 @@
               out += '</div>';
             }
 
+            out += '</div>';
             return out;
           }
 
-          let html = '';
-          html += '<div class="diag">';
+          // --- New flattened, top-tab Diagnostics UI (inline-styled) ---
+          const shopifyOrderRate = (truthOrders != null && shopifySessionsToday != null && shopifySessionsToday > 0)
+            ? (truthOrders / shopifySessionsToday) * 100
+            : null;
+          const birdseyeOrderRate = (pixelDerivedOrders != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0)
+            ? (pixelDerivedOrders / birdseyeSessionsToday) * 100
+            : null;
+          const orderRateDiff = (shopifyOrderRate != null && birdseyeOrderRate != null) ? (shopifyOrderRate - birdseyeOrderRate) : null;
 
-          // Top KPI grid (Shopify vs Birdseye)
-          html += '<div class="diag-top-grid">';
-          html += '<div class="diag-card">';
-          html +=   '<div class="diag-card-header">';
-          html +=     '<div class="diag-brand">';
-          html +=       '<img class="diag-logo" src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" alt="Shopify" decoding="async" loading="eager" fetchpriority="high" />';
-          html +=       '<div class="u-minw-0">';
-          html +=         '<div class="diag-title">Shopify</div>';
-          html +=         '<div class="diag-sub">Sessions + CR%</div>';
-          html +=       '</div>';
-          html +=     '</div>';
-          html +=   '</div>';
-          html +=   '<div class="diag-metrics">';
-          html +=     '<div class="diag-metric"><div class="diag-metric-label">Shopify Sessions</div><div class="diag-metric-value">' + fmtSessions(shopifySessionsToday) + '</div></div>';
-          html +=     '<div class="diag-metric"><div class="diag-metric-label">Shopify CR%</div><div class="diag-metric-value">' + fmtPct(shopifyCr) + '</div></div>';
-          html +=   '</div>';
-          html += '</div>';
-
-          html += '<div class="diag-card">';
-          html +=   '<div class="diag-card-header">';
-          html +=     '<div class="diag-brand">';
-          html +=       '<img class="diag-logo" src="' + escapeHtml(BIRDSEYE_LOGO_URL) + '" alt="Birdseye" decoding="async" loading="eager" fetchpriority="high" />';
-          html +=       '<div class="u-minw-0">';
-          html +=         '<div class="diag-title">Birdseye</div>';
-          html +=         '<div class="diag-sub">Sessions + CR%</div>';
-          html +=       '</div>';
-          html +=     '</div>';
-          html +=   '</div>';
-          html +=   '<div class="diag-metrics">';
-          html +=     '<div class="diag-metric"><div class="diag-metric-label">Birdseye Sessions</div><div class="diag-metric-value">' + fmtSessions(birdseyeSessionsToday) + '</div></div>';
-          html +=     '<div class="diag-metric"><div class="diag-metric-label">Birdseye CR%</div><div class="diag-metric-value">' + fmtPct(birdseyeCr) + '</div></div>';
-          html +=   '</div>';
-          html += '</div>';
-
-          html += '<div class="diag-card diag-card-bots">';
-          html +=   '<div class="diag-bots-left">';
-          html +=     icon('shield', 'diag-icon');
-          html +=     '<div class="u-minw-0">';
-          html +=       '<div class="diag-title">Bots Blocked</div>';
-          html +=       '<div class="diag-sub">Edge (today)</div>';
-          html +=     '</div>';
-          html +=   '</div>';
-          html +=   '<div class="u-text-right">';
-          html +=     '<div class="diag-metric-value small">' + fmtSessions(botsBlockedToday) + '</div>';
-          html +=     (botsBlockedUpdatedAt ? ('<div class="diag-bots-meta">last ' + fmtTsMaybe(botsBlockedUpdatedAt) + '</div>') : '');
-          html +=   '</div>';
-          html += '</div>';
-          html += '</div>';
-
-          // Main diagnostics tabs
-          html += '<div class="diag-card">';
-          html +=   '<div class="diag-tab-nav">';
-          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-compare" checked />';
-          html +=     '<label class="diag-tab-label" for="diag-main-tab-compare">' + icon('columns', '') + 'Comparison</label>';
-          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-tech" />';
-          html +=     '<label class="diag-tab-label" for="diag-main-tab-tech">' + icon('server', '') + 'Technical details</label>';
-          html +=     '<input class="diag-tab" type="radio" name="diag-main-tab" id="diag-main-tab-defs" />';
-          html +=     '<label class="diag-tab-label" for="diag-main-tab-defs">' + icon('list', '') + 'Definitions</label>';
-          html +=     '<div class="diag-panels diag-main-panels">';
-
-          // Comparison panel (diffable elements)
-          html +=       '<div class="diag-panel diag-panel-main-compare">';
-          html +=         '<div class="diag-section-title">' + icon('columns', '') + 'Diffable comparison</div>';
-          html +=         '<div class="diag-table-scroll">';
-          html +=           '<div class="grid-table diag-compare-table" role="table" aria-label="Diffable comparison">';
-          html +=             '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
-                                '<div class="grid-cell" role="columnheader">Item</div>' +
-                                '<div class="grid-cell" role="columnheader">Shopify</div>' +
-                                '<div class="grid-cell" role="columnheader">Birdseye</div>' +
-                                '<div class="grid-cell" role="columnheader">Diff / status</div>' +
-                              '</div></div></div>';
-          html +=             '<div class="grid-body" role="rowgroup">';
-
-          // Traffic
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Traffic</strong></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Sessions (today)</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtSessions(shopifySessionsToday) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (sessionsDiff == null ? '\u2014' : ('<span class="' + (sessionsDiff === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(sessionsDiff, function(a){ return formatSessions(a); }, '') + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">CR% (today)</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtPct(shopifyCr) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtPct(birdseyeCr) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (crDiff == null ? '\u2014' : ('<span class="' + (Math.abs(crDiff) < 0.0001 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp') + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Bots blocked (today)</div>' +
-                                '<div class="grid-cell" role="cell">\u2014</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtSessions(botsBlockedToday) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (botsBlockedToday != null ? pill('Tracked', 'ok') : '\u2014') + '</div>' +
-                              '</div>';
-
-          // Sales / drift
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Sales</strong></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Orders (today, paid)</div>' +
-                                '<div class="grid-cell" role="cell">' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Revenue (today, paid)</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtRevenue(truthRevenue) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtRevenue(pixelDerivedRevenue) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Orders (today, checkout-token)</div>' +
-                                '<div class="grid-cell" role="cell">' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Revenue (today, checkout-token)</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtRevenue(truthCheckoutRevenue) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + fmtRevenue(pixelDerivedRevenue) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Checkout events (today)</div>' +
-                                '<div class="grid-cell" role="cell">' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
-                              '</div>';
-
-          // Config checks
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Config checks</strong></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">OAuth token</div>' +
-                                '<div class="grid-cell" role="cell">' + (shopify.hasToken ? pill('Stored', 'ok') : pill('Missing', 'bad')) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + pill('Required', 'warn') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (shopify.hasToken ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Scopes</div>' +
-                                '<div class="grid-cell" role="cell">' + (storedScopes.length ? escapeHtml(String(storedScopes.length) + ' granted') : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (serverScopes.length ? escapeHtml(String(serverScopes.length) + ' required') : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (missingScopes.length ? (pill('Missing', 'bad') + ' ' + code(missingScopes.join(', '))) : pill('All scopes OK', 'ok')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Pixel installed</div>' +
-                                '<div class="grid-cell" role="cell">' + (pixel && pixel.installed === true ? pill('Yes', 'ok') : (pixel && pixel.installed === false ? pill('No', 'bad') : '\u2014')) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + pill('Required', 'warn') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (pixel && pixel.installed === true ? pill('OK', 'ok') : (pixel && pixel.installed === false ? pill('Fix', 'bad') : '\u2014')) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Pixel ingestUrl</div>' +
-                                '<div class="grid-cell" role="cell">' + (pixelIngestUrl ? code(pixelIngestUrl) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (expectedIngestUrl ? code(expectedIngestUrl) : '\u2014') + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? pill('Match', 'ok') : pill('Mismatch', 'bad'))) + '</div>' +
-                              '</div>';
-          html +=             '<div class="grid-row" role="row">' +
-                                '<div class="grid-cell" role="cell">Ingest secret</div>' +
-                                '<div class="grid-cell" role="cell">\u2014</div>' +
-                                '<div class="grid-cell" role="cell">' + (ingest.ingestSecretConfigured ? pill('Set', 'ok') : pill('Missing', 'bad')) + '</div>' +
-                                '<div class="grid-cell" role="cell">' + (ingest.ingestSecretConfigured ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</div>' +
-                              '</div>';
-
-          html +=             '</div>';
-          html +=           '</div>';
-          html +=         '</div>';
-          if (missingScopes.length) {
-            html += '<div class="diag-note">Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.</div>';
-          }
           const evidenceExpected = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
-          if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
-            html += '<div class="diag-note">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
+
+          const TAB_KEY = 'birdseye_diag_tab';
+          const allTabs = [
+            { id: 'overview', label: 'Overview' },
+            { id: 'compare', label: 'Compare' },
+            { id: 'sales', label: 'Sales' },
+            { id: 'traffic', label: 'Traffic' },
+            { id: 'pixel', label: 'Pixel' },
+            { id: 'shopify', label: 'Shopify' },
+            { id: 'sources', label: 'Sources' },
+            { id: 'system', label: 'System' },
+            { id: 'defs', label: 'Definitions' },
+          ];
+          let activeTab = 'overview';
+          try {
+            const saved = localStorage.getItem(TAB_KEY);
+            if (saved && allTabs.some(t => t.id === saved)) activeTab = saved;
+          } catch (_) {}
+
+          function pillInline(text, tone) {
+            const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
+            const base = 'display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:0.01em;white-space:nowrap;border:1px solid ';
+            if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
+            if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
+            return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
           }
-          html +=       '</div>'; // compare panel
-
-          // Technical details panel
-          html +=       '<div class="diag-panel diag-panel-main-tech">';
-          html +=         '<div class="diag-tabs">';
-          html +=           '<div class="diag-tab-nav">';
-          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-shopify" checked />';
-          html +=       '<label class="diag-tab-label" for="diag-tab-shopify">' + icon('bag', '') + 'Shopify</label>';
-          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-pixel" />';
-          html +=       '<label class="diag-tab-label" for="diag-tab-pixel">' + icon('activity', '') + 'Pixel</label>';
-          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-traffic" />';
-          html +=       '<label class="diag-tab-label" for="diag-tab-traffic">' + icon('bar', '') + 'Traffic</label>';
-          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-sources" />';
-          html +=       '<label class="diag-tab-label" for="diag-tab-sources">' + icon('link', '') + 'Sources</label>';
-          html +=       '<input class="diag-tab" type="radio" name="diag-tech-tab" id="diag-tab-system" />';
-          html +=       '<label class="diag-tab-label" for="diag-tab-system">' + icon('server', '') + 'System</label>';
-          html +=     '<div class="diag-panels">';
-
-          // Shopify panel
-          html +=       '<div class="diag-panel diag-panel-shopify">';
-          html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('key', '') + 'Auth + scopes</div>';
-          html +=             kv('Shop', shopify.shop ? code(shopify.shop) : pill('MISSING', 'bad'));
-          html +=             kv('Token stored', shopify.hasToken ? pill('YES', 'ok') : pill('NO', 'bad'));
-          if (storedScopesStr) html += kv('Stored scopes', code(storedScopesStr));
-          if (serverScopesStr) html += kv('Server scopes', code(serverScopesStr));
-          if (missingScopes.length) html += kv('Missing scopes', code(missingScopes.join(', ')));
-          html +=           '</div>';
-
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('bag', '') + 'Truth (orders)</div>';
-          html +=             kv('Today', (truthOrders != null ? (code(truthOrders) + ' orders') : '\u2014') + (truthRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthRevenue))) : ''));
-          if (truthCheckoutOrders != null || truthCheckoutRevenue != null) {
-            html += kv(
-              'Checkout-token (today)',
-              (truthCheckoutOrders != null ? (code(truthCheckoutOrders) + ' orders') : '\u2014') +
-                (truthCheckoutRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthCheckoutRevenue))) : '')
+          function codeInline(value) {
+            return '<code style="font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+          }
+          function card(title, bodyHtml) {
+            const h = title ? ('<div style="font-size:12px;font-weight:850;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">' + escapeHtml(title) + '</div>') : '';
+            return '<div style="border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.82);padding:14px;">' + h + (bodyHtml || '') + '</div>';
+          }
+          function metric(label, valueHtml) {
+            return (
+              '<div style="display:flex;flex-direction:column;gap:4px;min-width:0;">' +
+                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(label) + '</div>' +
+                '<div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (valueHtml || '\u2014') + '</div>' +
+              '</div>'
             );
           }
-          if (truthReturningCustomers != null || truthReturningRevenue != null) {
-            html += kv('Returning (today)', (truthReturningCustomers != null ? (code(truthReturningCustomers) + ' customers') : '\u2014') + (truthReturningRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthReturningRevenue))) : ''));
+          function rowKV(label, valueHtml, noteHtml) {
+            return (
+              '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:13px;">' +
+                '<div style="color:var(--muted);font-weight:750;flex:0 0 auto;">' + escapeHtml(label) + '</div>' +
+                '<div style="color:var(--text);font-weight:750;text-align:right;min-width:0;word-break:break-word;">' + (valueHtml || '\u2014') + '</div>' +
+              '</div>' +
+              (noteHtml ? ('<div style="margin-top:6px;font-size:12px;color:var(--muted);line-height:1.35;">' + noteHtml + '</div>') : '')
+            );
           }
-          if (typeof truthToday.lastOrderCreatedAt === 'number') html += kv('Last order', code(formatTs(truthToday.lastOrderCreatedAt)));
-          html +=           '</div>';
-
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('activity', '') + 'Sync health</div>';
-          html +=             kv('Sync age', staleSec != null ? code(staleSec + 's') : '\u2014');
-          if (health && health.lastSuccessAt) html += kv('Last sync', code(formatTs(health.lastSuccessAt)));
-          if (health && health.lastError) html += kv('Last error', code(String(health.lastError).slice(0, 220)));
-          if (truth && truth.lastVerify && truth.lastVerify.ts) {
-            html += kv('Last verify', (truth.lastVerify.ok ? pill('OK', 'ok') : pill('CHECK', 'bad')) + ' \u00b7 ' + code(formatTs(truth.lastVerify.ts)));
-            const vd = truth.lastVerify.todayDiff || null;
-            if (vd && (
-              (typeof vd.orderCount === 'number' && vd.orderCount !== 0) ||
-              (typeof vd.revenueGbp === 'number' && vd.revenueGbp !== 0) ||
-              (typeof vd.returningCustomerCount === 'number' && vd.returningCustomerCount !== 0) ||
-              (typeof vd.returningRevenueGbp === 'number' && vd.returningRevenueGbp !== 0)
-            )) {
-              html += kv('Verify diff (today)', code(JSON.stringify(vd)));
-            }
+          function diffSpan(n, fmtAbsFn, unitSuffix) {
+            if (typeof n !== 'number' || !isFinite(n)) return '\u2014';
+            const abs = Math.abs(n);
+            const sign = n > 0 ? '+' : (n < 0 ? '-' : '');
+            const core = fmtAbsFn ? fmtAbsFn(abs) : String(abs);
+            const tone = Math.abs(n) < 0.0001 ? 'ok' : 'warn';
+            const text = sign + core + (unitSuffix || '');
+            return pillInline(text, tone);
           }
-          html +=           '</div>';
-          html +=         '</div>';
-          html +=       '</div>';
 
-          // Pixel panel
-          html +=       '<div class="diag-panel diag-panel-pixel">';
-          html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('activity', '') + 'Evidence (checkout_completed)</div>';
-          if (evTotal != null) {
-            let evLine = code(evTotal) + ' events';
-            if (evSessions != null) evLine += ' \u00b7 ' + code(evSessions) + ' sessions';
-            if (evLinked != null && evUnlinked != null) evLine += ' \u00b7 linked ' + code(evLinked) + ' \u00b7 unlinked ' + code(evUnlinked);
-            const driftEvidence = (driftEvidenceCheckoutOrders != null ? driftEvidenceCheckoutOrders : driftOrders);
-            if (driftEvidence != null) {
-              evLine += ' \u00b7 drift vs ' + (truthCheckoutOrders != null ? 'checkout-token' : 'truth') + ' ' + code((driftEvidence >= 0 ? '+' + driftEvidence : String(driftEvidence)));
-            }
-            html += kv('Today', evLine);
-          } else {
-            html += kv('Today', '\u2014');
+          function tabButton(t) {
+            const isActive = t.id === activeTab;
+            const s = [
+              'display:inline-flex',
+              'align-items:center',
+              'gap:8px',
+              'padding:7px 12px',
+              'border-radius:999px',
+              'border:1px solid ' + (isActive ? 'rgba(13,148,136,0.55)' : 'var(--border)'),
+              'background:' + (isActive ? 'rgba(13,148,136,0.10)' : 'rgba(255,255,255,0.75)'),
+              'color:' + (isActive ? 'var(--accent)' : 'var(--text)'),
+              'font-size:12.5px',
+              'font-weight:850',
+              'cursor:pointer',
+              'white-space:nowrap',
+            ].join(';');
+            return '<button type="button" data-be-tab="' + escapeHtml(t.id) + '" aria-selected="' + (isActive ? 'true' : 'false') + '" style="' + s + '">' + escapeHtml(t.label) + '</button>';
           }
-          if (typeof evidenceToday.lastOccurredAt === 'number') html += kv('Last event', code(formatTs(evidenceToday.lastOccurredAt)));
-          html +=           '</div>';
 
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('bag', '') + 'Purchases (derived)</div>';
-          if (pixelDerivedOrders != null || pixelDerivedRevenue != null) {
-            let line = (pixelDerivedOrders != null ? (code(pixelDerivedOrders) + ' orders') : '\u2014');
-            if (pixelDerivedRevenue != null) line += ' \u00b7 ' + code(formatRevenue(pixelDerivedRevenue));
-            const driftOrdersShown = (driftPixelCheckoutOrders != null ? driftPixelCheckoutOrders : driftPixelOrders);
-            if (driftOrdersShown != null) {
-              line += ' \u00b7 drift vs ' + (truthCheckoutOrders != null ? 'checkout-token' : 'truth') + ' ' + code((driftOrdersShown >= 0 ? '+' + driftOrdersShown : String(driftOrdersShown)));
-            }
-            const driftRevenueShown = (driftPixelCheckoutRevenue != null ? driftPixelCheckoutRevenue : driftPixelRevenue);
-            if (driftRevenueShown != null) {
-              line += ' \u00b7 \u00a3 drift ' + code(String(driftRevenueShown >= 0 ? ('+' + driftRevenueShown) : driftRevenueShown));
-            }
-            html += kv('Today', line);
-          } else {
-            html += kv('Today', '\u2014');
+          function panelWrap(id, innerHtml) {
+            return '<div data-be-panel="' + escapeHtml(id) + '" style="display:' + (id === activeTab ? 'block' : 'none') + ';">' + (innerHtml || '') + '</div>';
           }
-          html +=           '</div>';
 
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('link', '') + 'Pixel settings (Shopify)</div>';
-          if (pixel && pixel.installed === false) {
-            html += kv('Pixel', pill('Not installed', 'bad'));
-          } else if (pixel && pixel.installed === true) {
-            html += kv('Pixel', pill('Installed', 'ok'));
-          } else if (pixel && pixel.message) {
-            html += kv('Pixel', code(pixel.message));
-          } else {
-            html += kv('Pixel', '\u2014');
+          const headerMetaBits = [];
+          if (shopify && shopify.shop) headerMetaBits.push('Shop ' + codeInline(shopify.shop));
+          if (c && c.timeZone) headerMetaBits.push('TZ ' + codeInline(String(c.timeZone)));
+          headerMetaBits.push('Updated ' + codeInline(formatTs(c && c.now ? c.now : Date.now())));
+
+          let html = '';
+          html += '<div id="be-diag-root" style="display:flex;flex-direction:column;gap:12px;">';
+
+          // Sticky top tabs (single level)
+          html += '<div style="position:sticky;top:0;z-index:3;background:var(--card);padding:10px 0 10px;border-bottom:1px solid rgba(0,0,0,0.06);backdrop-filter:saturate(140%) blur(8px);">';
+          html +=   '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+          html +=     '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + headerMetaBits.join(' · ') + '</div>';
+          html +=     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
+                        (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
+                      '</div>';
+          html +=   '</div>';
+          html +=   '<div style="margin-top:10px;display:flex;gap:8px;overflow:auto;padding-bottom:2px;">' + allTabs.map(tabButton).join('') + '</div>';
+          html += '</div>';
+
+          // Overview
+          let overview = '';
+          overview += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          overview += card('Shopify', (
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
+              metric('CR% (sessions)', fmtPct(shopifyCr)) +
+              metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
+              metric('Orders / session%', fmtPct(shopifyOrderRate)) +
+            '</div>' +
+            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">CR% (sessions) = sessions that completed checkout / sessions (Shopify definition). Orders/session% counts orders, so it can be higher when multiple orders happen in one session.</div>'
+          ));
+          overview += card('Birdseye', (
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
+              metric('CR% (sessions)', fmtPct(birdseyeCr)) +
+              metric('Orders (derived)', pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') +
+              metric('Orders / session%', fmtPct(birdseyeOrderRate)) +
+            '</div>' +
+            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">Birdseye “Orders (derived)” comes from our pixel-derived `purchases` table (deduped). CR% (sessions) uses distinct checkout-completed sessions, so it will drop vs orders/session% when repeat purchases happen in one session.</div>'
+          ));
+          overview += '</div>';
+          overview += '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          overview += card('Bots blocked (edge, today)', (
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">' +
+              '<div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.1;">' + fmtSessions(botsBlockedToday) + '</div>' +
+              '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + (botsBlockedUpdatedAt ? ('last ' + escapeHtml(formatTs(botsBlockedUpdatedAt))) : '\u2014') + '</div>' +
+            '</div>'
+          ));
+          overview += card('Quick drift', (
+            rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
+            rowKV('Pixel vs truth revenue', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue))) +
+            rowKV('Evidence vs checkout-token', driftEvidenceCheckoutOrders == null ? '\u2014' : codeInline((driftEvidenceCheckoutOrders >= 0 ? '+' : '') + String(driftEvidenceCheckoutOrders)))
+          ));
+          overview += '</div>';
+
+          // Compare
+          let compare = '';
+          compare += card('Comparison (today)', (
+            '<div style="overflow:auto;border-radius:12px;border:1px solid rgba(0,0,0,0.06);">' +
+              '<div role="table" aria-label="Comparison" style="min-width:760px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;">' +
+                '<div role="row" style="display:contents;">' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Item</div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Shopify</div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Birdseye</div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Diff</div>' +
+                '</div>' +
+                '<div role="row" style="display:contents;">' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">Sessions</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtSessions(shopifySessionsToday) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
+                '</div>' +
+                '<div role="row" style="display:contents;">' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">CR% (sessions converted)</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(shopifyCr) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(birdseyeCr) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
+                '</div>' +
+                '<div role="row" style="display:contents;">' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);">Orders / session%</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);">' + fmtPct(shopifyOrderRate) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);">' + fmtPct(birdseyeOrderRate) + '</div>' +
+                  '<div role="cell" style="padding:10px 12px;">' + (orderRateDiff == null ? '\u2014' : diffSpan(orderRateDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          ));
+          if (missingScopes.length) {
+            compare += '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml('Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.') + '</div>';
           }
-          if (pixelIngestUrl) html += kv('Pixel ingestUrl', code(pixelIngestUrl));
-          if (expectedIngestUrl) html += kv('Expected ingestUrl', code(expectedIngestUrl));
-          if (ingestUrlMatch === false) html += '<div class="diag-note">Pixel ingestUrl does not match expected ingest URL. Run Pixel Ensure to update settings.</div>';
-          html +=           '</div>';
-
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('activity', '') + 'Session mode (beta)</div>';
-          html +=             '<label class="diag-toggle-row">' +
-                                '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
-                                '<span>Share session across tabs (30m inactivity)</span>' +
-                              '</label>';
-          html +=             '<div class="diag-note">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>';
-          html +=             '<div id="pixel-session-mode-msg" class="diag-note"></div>';
-          html +=           '</div>';
-
-          html +=         '</div>';
-          html +=       '</div>';
-
-          // Traffic panel
-          html +=       '<div class="diag-panel diag-panel-traffic">';
-          html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('bar', '') + 'Sessions</div>';
-          if (traffic && traffic.today) {
-            if (typeof traffic.today.sessionsReachedApp === 'number') html += kv('Reached app (today)', code(formatSessions(traffic.today.sessionsReachedApp)));
-            if (typeof traffic.today.humanSessions === 'number') html += kv('Human sessions (today)', code(formatSessions(traffic.today.humanSessions)));
-            if (typeof traffic.today.botSessionsTagged === 'number') html += kv('Bot sessions tagged (today)', code(formatSessions(traffic.today.botSessionsTagged)));
-            if (typeof traffic.today.totalTrafficEst === 'number') {
-              html += kv('Total traffic est. (today)', code(formatSessions(traffic.today.totalTrafficEst)));
-              html += '<div class="diag-note">Total traffic est. = sessions reached app + bots blocked at edge.</div>';
-            }
+          if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
+            compare += '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
           }
+
+          // Sales
+          let salesPanel = '';
+          salesPanel += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          salesPanel += card('Truth (paid)', (
+            rowKV('Orders', truthOrders != null ? codeInline(String(truthOrders)) : '\u2014') +
+            rowKV('Revenue', truthRevenue != null ? codeInline(formatRevenue(truthRevenue)) : '\u2014') +
+            rowKV('Checkout-token orders', truthCheckoutOrders != null ? codeInline(String(truthCheckoutOrders)) : '\u2014') +
+            rowKV('Checkout-token revenue', truthCheckoutRevenue != null ? codeInline(formatRevenue(truthCheckoutRevenue)) : '\u2014')
+          ));
+          salesPanel += card('Birdseye (derived)', (
+            rowKV('Derived orders', pixelDerivedOrders != null ? codeInline(String(pixelDerivedOrders)) : '\u2014') +
+            rowKV('Derived revenue', pixelDerivedRevenue != null ? codeInline(formatRevenue(pixelDerivedRevenue)) : '\u2014') +
+            rowKV('Drift vs truth (orders)', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
+            rowKV('Drift vs truth (revenue)', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)))
+          ));
+          salesPanel += '</div>';
+          salesPanel += '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          salesPanel += card('Evidence (checkout_completed)', (
+            rowKV('Events (today)', evTotal != null ? codeInline(String(evTotal)) : '\u2014') +
+            rowKV('Converted sessions (today)', evSessions != null ? codeInline(String(evSessions)) : '\u2014') +
+            rowKV('Linked / unlinked', (evLinked != null && evUnlinked != null) ? (codeInline(String(evLinked)) + ' linked · ' + codeInline(String(evUnlinked)) + ' unlinked') : '\u2014') +
+            (typeof evidenceToday.lastOccurredAt === 'number' ? rowKV('Last event', codeInline(formatTs(evidenceToday.lastOccurredAt))) : '')
+          ));
+          salesPanel += card('Returning', (
+            rowKV('Returning customers', truthReturningCustomers != null ? codeInline(String(truthReturningCustomers)) : '\u2014') +
+            rowKV('Returning revenue', truthReturningRevenue != null ? codeInline(formatRevenue(truthReturningRevenue)) : '\u2014')
+          ));
+          salesPanel += '</div>';
+
+          // Traffic
+          let trafficPanel = '';
+          trafficPanel += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          trafficPanel += card('Sessions', (
+            (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number' ? rowKV('Reached app (today)', codeInline(formatSessions(traffic.today.sessionsReachedApp))) : '') +
+            (traffic && traffic.today && typeof traffic.today.humanSessions === 'number' ? rowKV('Human sessions (today)', codeInline(formatSessions(traffic.today.humanSessions))) : '') +
+            (traffic && traffic.today && typeof traffic.today.botSessionsTagged === 'number' ? rowKV('Bot sessions tagged (today)', codeInline(formatSessions(traffic.today.botSessionsTagged))) : '') +
+            (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number' ? rowKV('Total traffic est. (today)', codeInline(formatSessions(traffic.today.totalTrafficEst)), 'Total traffic est. = sessions reached app + bots blocked at edge.') : '')
+          ));
+          let shopifySessionsNote = '';
           if (typeof traffic.shopifySessionsToday === 'number') {
-            html += kv('Shopify sessions (today)', code(formatSessions(traffic.shopifySessionsToday)));
+            shopifySessionsNote += rowKV('Shopify sessions (today)', codeInline(formatSessions(traffic.shopifySessionsToday)));
             if (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') {
-              html += kv('Shopify \u2212 ours (human)', code(formatSessions(traffic.shopifySessionsToday - traffic.today.humanSessions)));
+              shopifySessionsNote += rowKV('Shopify − ours (human)', codeInline(formatSessions(traffic.shopifySessionsToday - traffic.today.humanSessions)));
             }
           } else if (traffic.shopifySessionsTodayNote) {
-            html += kv('Shopify sessions (today)', '\u2014');
-            html += '<div class="diag-note">' + escapeHtml(traffic.shopifySessionsTodayNote) + '</div>';
+            shopifySessionsNote += rowKV('Shopify sessions (today)', '\u2014', escapeHtml(traffic.shopifySessionsTodayNote));
           }
-          html +=           '</div>';
+          trafficPanel += card('Shopify vs ours', shopifySessionsNote || rowKV('Shopify sessions (today)', '\u2014'));
+          trafficPanel += '</div>';
 
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('shield', '') + 'Edge + ingest</div>';
-          html +=             kv('Ingest secret', ingest.ingestSecretConfigured ? pill('SET', 'ok') : pill('MISSING', 'bad'));
-          if (botsBlockedToday != null) {
-            let line = code(formatSessions(botsBlockedToday));
-            if (botsBlockedUpdatedAt) line += ' \u00b7 last ' + code(formatTs(botsBlockedUpdatedAt));
-            html += kv('Bots blocked (today)', line);
-          }
-          html +=           '</div>';
-          html +=         '</div>';
-          html +=       '</div>';
+          // Pixel
+          let pixelPanel = '';
+          pixelPanel += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          pixelPanel += card('Pixel (Shopify)', (
+            rowKV('Installed', pixel && pixel.installed === true ? pillInline('Yes', 'ok') : (pixel && pixel.installed === false ? pillInline('No', 'bad') : '\u2014')) +
+            (pixel && pixel.message ? rowKV('Status', codeInline(pixel.message)) : '') +
+            (pixelIngestUrl ? rowKV('Pixel ingestUrl', codeInline(pixelIngestUrl)) : '') +
+            (expectedIngestUrl ? rowKV('Expected ingestUrl', codeInline(expectedIngestUrl)) : '') +
+            (ingestUrlMatch == null ? '' : rowKV('IngestUrl match', ingestUrlMatch ? pillInline('Match', 'ok') : pillInline('Mismatch', 'bad')))
+          ));
+          pixelPanel += card('Session mode (beta)', (
+            '<label style="display:flex;align-items:center;gap:10px;margin-top:2px;font-size:13px;color:var(--text);font-weight:800;">' +
+              '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);" />' +
+              '<span style="flex:1;min-width:0;">Share session across tabs (30m inactivity)</span>' +
+            '</label>' +
+            '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>' +
+            '<div id="pixel-session-mode-msg" style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;"></div>'
+          ));
+          pixelPanel += '</div>';
 
-          // Sources panel (mapping + icons)
-          html +=       '<div class="diag-panel diag-panel-sources">';
-          html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card diag-panel-card--full">';
-          html +=             '<div class="diag-panel-card-title">' + icon('link', '') + 'Source mapping</div>';
-          html +=             '<div id="traffic-source-mapping-root"><div class="diag-note">Loading\u2026</div></div>';
-          html +=           '</div>';
-          html +=         '</div>';
-          html +=       '</div>';
+          // Shopify
+          let shopifyPanel = '';
+          shopifyPanel += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          shopifyPanel += card('Auth + scopes', (
+            rowKV('Shop', shopify.shop ? codeInline(shopify.shop) : pillInline('Missing', 'bad')) +
+            rowKV('Token stored', shopify.hasToken ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
+            (storedScopesStr ? rowKV('Stored scopes', codeInline(storedScopesStr)) : '') +
+            (serverScopesStr ? rowKV('Required scopes', codeInline(serverScopesStr)) : '') +
+            (missingScopes.length ? rowKV('Missing scopes', codeInline(missingScopes.join(', '))) : rowKV('Missing scopes', pillInline('None', 'ok')))
+          ));
+          shopifyPanel += card('Truth sync health', (
+            rowKV('Sync age', staleSec != null ? codeInline(staleSec + 's') : '\u2014') +
+            (health && health.lastSuccessAt ? rowKV('Last sync', codeInline(formatTs(health.lastSuccessAt))) : '') +
+            (health && health.lastError ? rowKV('Last error', codeInline(String(health.lastError).slice(0, 220))) : '') +
+            (typeof truthToday.lastOrderCreatedAt === 'number' ? rowKV('Last order', codeInline(formatTs(truthToday.lastOrderCreatedAt))) : '')
+          ));
+          shopifyPanel += '</div>';
 
-          // System panel
-          html +=       '<div class="diag-panel diag-panel-system">';
-          html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('server', '') + 'Reporting</div>';
-          if (reporting && (reporting.ordersSource || reporting.sessionsSource)) {
-            if (reporting.ordersSource) html += kv('Orders source', code(reporting.ordersSource));
-            if (reporting.sessionsSource) html += kv('Sessions source', code(reporting.sessionsSource));
-          } else {
-            html += kv('Sources', '\u2014');
-          }
-          html +=           '</div>';
+          // Sources
+          let sourcesPanel = '';
+          sourcesPanel += card('Traffic source mapping', (
+            '<div style="font-size:12px;color:var(--muted);line-height:1.35;margin-bottom:10px;">Map URL UTMs into custom sources + icons (affects Traffic + Home source icons). Unmapped tokens appear first.</div>' +
+            '<div id="traffic-source-mapping-root"><div style="font-size:12px;color:var(--muted);">Loading…</div></div>'
+          ));
 
-          html +=           '<div class="diag-panel-card">';
-          html +=             '<div class="diag-panel-card-title">' + icon('server', '') + 'Runtime</div>';
-          if (app && app.version) html += kv('App version', code(app.version));
-          if (db && db.engine) html += kv('DB', code(db.engine + (db.configured ? '' : ' (DB_URL not set)')));
+          // System
+          let systemPanel = '';
+          systemPanel += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+          systemPanel += card('Reporting', (
+            (reporting && (reporting.ordersSource || reporting.sessionsSource))
+              ? (
+                (reporting.ordersSource ? rowKV('Orders source', codeInline(reporting.ordersSource)) : '') +
+                (reporting.sessionsSource ? rowKV('Sessions source', codeInline(reporting.sessionsSource)) : '')
+              )
+              : rowKV('Sources', '\u2014')
+          ));
+          let tablesLine = '';
           if (db && db.tables) {
             const t = db.tables;
             const bits = [];
@@ -6179,31 +6092,65 @@
             add('shopify_sessions_snapshots', !!t.shopify_sessions_snapshots);
             add('audit_log', !!t.audit_log);
             add('bot_block_counts', !!t.bot_block_counts);
-            html += kv('Tables', code(bits.join(' · ')));
+            tablesLine = codeInline(bits.join(' · '));
           }
-          if (app && typeof app.sentryConfigured === 'boolean') html += kv('Sentry', app.sentryConfigured ? pill('ON', 'ok') : pill('OFF', 'bad'));
-          html +=           '</div>';
-          html +=         '</div>';
-          html +=       '</div>';
+          systemPanel += card('Runtime', (
+            (app && app.version ? rowKV('App version', codeInline(app.version)) : '') +
+            (db && db.engine ? rowKV('DB', codeInline(db.engine + (db.configured ? '' : ' (DB_URL not set)'))) : '') +
+            (tablesLine ? rowKV('Tables', tablesLine) : '') +
+            (app && typeof app.sentryConfigured === 'boolean' ? rowKV('Sentry', app.sentryConfigured ? pillInline('ON', 'ok') : pillInline('OFF', 'bad')) : '')
+          ));
+          systemPanel += '</div>';
 
-          html +=           '</div>'; // panels
-          html +=         '</div>'; // diag-tab-nav
-          html +=         '</div>'; // diag-tabs
-          html +=       '</div>'; // tech panel
+          // Definitions (reuse existing renderer for content, but in its own top-level tab)
+          let defsPanel = '';
+          defsPanel += card('Metric + table definitions', renderTrackerDefinitions(trackerDefinitions));
 
-          // Definitions panel
-          html +=       '<div class="diag-panel diag-panel-main-defs">';
-          html +=         renderTrackerDefinitions(trackerDefinitions);
-          html +=       '</div>';
+          html += panelWrap('overview', overview);
+          html += panelWrap('compare', compare);
+          html += panelWrap('sales', salesPanel);
+          html += panelWrap('traffic', trafficPanel);
+          html += panelWrap('pixel', pixelPanel);
+          html += panelWrap('shopify', shopifyPanel);
+          html += panelWrap('sources', sourcesPanel);
+          html += panelWrap('system', systemPanel);
+          html += panelWrap('defs', defsPanel);
 
-          html +=     '</div>'; // main panels
-          html +=   '</div>'; // main tab nav
-          html += '</div>'; // diag-card
-
-          html += '</div>'; // diag
+          html += '</div>'; // be-diag-root
 
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
+          try {
+            const root = document.getElementById('be-diag-root');
+            if (root) {
+              const buttons = Array.from(root.querySelectorAll('button[data-be-tab]'));
+              const panels = Array.from(root.querySelectorAll('[data-be-panel]'));
+              function styleTabBtn(btn, isActive) {
+                if (!btn) return;
+                btn.style.borderColor = isActive ? 'rgba(13,148,136,0.55)' : 'var(--border)';
+                btn.style.background = isActive ? 'rgba(13,148,136,0.10)' : 'rgba(255,255,255,0.75)';
+                btn.style.color = isActive ? 'var(--accent)' : 'var(--text)';
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+              }
+              function setActiveTab(tabId) {
+                const id = tabId && panels.some(p => p.getAttribute('data-be-panel') === tabId) ? tabId : 'overview';
+                panels.forEach(function(p) {
+                  const pid = p.getAttribute('data-be-panel');
+                  p.style.display = (pid === id) ? 'block' : 'none';
+                });
+                buttons.forEach(function(b) {
+                  const bid = b.getAttribute('data-be-tab');
+                  styleTabBtn(b, bid === id);
+                });
+                try { localStorage.setItem(TAB_KEY, id); } catch (_) {}
+              }
+              buttons.forEach(function(b) {
+                b.onclick = function() { setActiveTab(b.getAttribute('data-be-tab')); };
+              });
+              // Ensure correct state (in case HTML was built with an unknown tab id).
+              setActiveTab(activeTab);
+            }
+          } catch (_) {}
           try { initTrafficSourceMappingPanel(); } catch (_) {}
           try {
             const toggle = document.getElementById('pixel-session-mode-toggle');
@@ -6263,7 +6210,13 @@
         })
         .catch(() => {
           const configStatusEl = document.getElementById('config-status');
-          if (configStatusEl) configStatusEl.innerHTML = '<div class="diag"><div class="diag-loading">' + '<span class="diag-pill bad">Error</span> Could not load diagnostics.' + '</div></div>';
+          if (configStatusEl) {
+            configStatusEl.innerHTML =
+              '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);padding:10px 0;">' +
+                '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">Error</span>' +
+                '<span>Could not load diagnostics.</span>' +
+              '</div>';
+          }
         });
     }
 

@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Conversion rate aligned to Shopify session-based definition)
+Last updated: 2026-02-05 (Diagnostics modal: flattened top tabs + inline redesign)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -354,7 +354,8 @@ Backups durability:
 - Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
 - Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
 - Diagnostics: add checkout-token truth order/revenue breakdown (proxy for online-store checkouts); CR% uses **sessions that completed checkout** (distinct `checkout_completed` sessions) / Sessions (Shopify definition), so it stays correct even when orders > sessions
-- Diagnostics: add top-level tabs (Comparison / Technical details / Definitions). Definitions are powered by `server/trackerDefinitions.js` and include runtime checks (DB tables present, token stored, UI ids present).
+- Diagnostics: flatten to a single top tab bar (no nested tabs) and rebuild the modal content with inline styling + clearer “CR% (sessions)” vs “Orders/session%” so the definition change is obvious
+- Diagnostics: Definitions tab is powered by `server/trackerDefinitions.js` and includes runtime checks (DB tables present, token stored, UI ids present).
 - KPIs/Stats: conversion rate is session-based (sessions-with-purchase / sessions), not raw order-count / sessions (matches Shopify analytics definition)
 - UI: make all dashboard table headers sortable on click (Home sessions + Breakdown/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
 - UI: prevent duplicate “cha-ching” for a single sale (avoid double-trigger when order totals arrive later / KPI refresh drift)
