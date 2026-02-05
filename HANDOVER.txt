@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Truth attribution: checkout_started token fallback; Traffic: mapping UX + direct self-referrers; Sale toast mobile overlay + odometer)
+Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Truth attribution: checkout_started token fallback; Traffic: mapping UX + direct self-referrers; Sale toast clock icon + yellow)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -320,7 +320,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
-- UI: sale toast title now shows full country name; time moved under amount (12px, #f6f3da) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
+- UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
 - UI: mobile sale toast overlays full viewport width (fixed top slide-down/up) with squared corners (except product image).
 - KPI: Sales value uses an odometer-style digit roll on toast-triggered updates.
 - UI: sale toast forces Home table refresh for Today/Last Hour/Live and updates footer “Last sale” from toast payload.

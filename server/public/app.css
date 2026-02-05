@@ -477,8 +477,8 @@
         .sale-toast .sale-toast-product { font-size: 11px; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
         .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0 14px; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; text-align: center; }
         .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
-        .sale-toast .sale-toast-time { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: #f6f3da; text-transform: uppercase; }
-        .sale-toast .sale-toast-time-icon { width: 12px; height: 12px; display: block; }
+        .sale-toast .sale-toast-time { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: #e7db75; text-transform: uppercase; }
+        .sale-toast .sale-toast-time-icon { width: 12px; height: 12px; display: block; fill: currentColor; }
     .kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
     .kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
     .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
