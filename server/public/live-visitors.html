@@ -410,6 +410,9 @@
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
     .live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
     .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #444; line-height: 1.3; }
+.live-kpi-cell .kpi-delta-icon { display: inline-flex; align-items: center; margin-left: 3px; width: 1em; height: 1em; vertical-align: middle; }
+.live-kpi-cell .kpi-delta-icon svg { width: 100%; height: 100%; display: block; }
+.live-kpi-cell .kpi-delta-icon.kpi-delta-icon-down { transform: rotate(90deg); }
 .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
 .sale-toast-host { position: relative; overflow: visible; }
 .sale-toast-host.toast-open { z-index: 10; }
@@ -4252,13 +4255,29 @@
       return diff / base;
     }
 
+    var KPI_DELTA_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     function applyKpiDeltaColor(el, current, baseline, invert) {
       if (!el) return;
+      var icon = el.querySelector && el.querySelector('.kpi-delta-icon');
+      if (icon) icon.remove();
       el.style.color = '#444';
       const delta = kpiDelta(current, baseline, invert);
       if (delta == null) return;
-      if (delta >= 0.1) el.style.color = '#0d9488';
-      else if (delta <= -0.1) el.style.color = '#940d0d';
+      if (delta >= 0.1) {
+        el.style.color = '#0d9488';
+        var span = document.createElement('span');
+        span.className = 'kpi-delta-icon';
+        span.setAttribute('aria-hidden', 'true');
+        span.innerHTML = KPI_DELTA_SVG;
+        el.appendChild(span);
+      } else if (delta <= -0.1) {
+        el.style.color = '#940d0d';
+        var spanDown = document.createElement('span');
+        spanDown.className = 'kpi-delta-icon kpi-delta-icon-down';
+        spanDown.setAttribute('aria-hidden', 'true');
+        spanDown.innerHTML = KPI_DELTA_SVG;
+        el.appendChild(spanDown);
+      }
     }
 
     // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;

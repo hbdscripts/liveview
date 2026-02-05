@@ -380,6 +380,7 @@ Backups durability:
 - Mobile: date button width tightened to 55px
 - UI: card pagination controls use a 30px tall segmented style (tighter padding/gaps)
 - UI: removed the converted-row left accent pseudo-element (`::before`) in the sessions table
+- UI: KPI grid shows green up-arrow / red down-arrow SVG at end of value when better/worse vs yesterday
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
