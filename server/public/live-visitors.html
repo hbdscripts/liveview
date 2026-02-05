@@ -5553,8 +5553,8 @@
           const evUnlinked = (typeof evidenceToday.unlinked === 'number') ? evidenceToday.unlinked : null;
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
 
-          const SHOPIFY_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770253742';
-          const BIRDSEYE_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895';
+          const SHOPIFY_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770259752';
+          const BIRDSEYE_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338';
 
           const shopifySessionsToday = (traffic && typeof traffic.shopifySessionsToday === 'number') ? traffic.shopifySessionsToday : null;
           const birdseyeSessionsToday = (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') ? traffic.today.humanSessions :
@@ -5818,8 +5818,41 @@
             return '<code style="font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
           }
           function card(title, bodyHtml) {
-            const h = title ? ('<div style="font-size:12px;font-weight:850;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">' + escapeHtml(title) + '</div>') : '';
-            return '<div style="border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.82);padding:14px;">' + h + (bodyHtml || '') + '</div>';
+            const h = title
+              ? (
+                  '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">' +
+                    '<div style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">' + escapeHtml(title) + '</div>' +
+                  '</div>'
+                )
+              : '';
+            return '<div style="border:1px solid rgba(0,0,0,0.08);border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 10px 30px rgba(0,0,0,0.06);padding:14px;">' + h + (bodyHtml || '') + '</div>';
+          }
+          function brandHeader(name, iconUrl, subtitle, accentRgb) {
+            const rgb = accentRgb || '0,0,0';
+            const sub = subtitle
+              ? ('<div style="font-size:11px;color:var(--muted);font-weight:750;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(subtitle) + '</div>')
+              : '';
+            return (
+              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
+                '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+                  '<span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
+                    '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:18px;height:18px;object-fit:contain;display:block;" />' +
+                  '</span>' +
+                  '<div style="display:flex;flex-direction:column;min-width:0;line-height:1.1;">' +
+                    '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(name || '')) + '</div>' +
+                    sub +
+                  '</div>' +
+                '</div>' +
+              '</div>'
+            );
+          }
+          function brandIconTiny(name, iconUrl, accentRgb) {
+            const rgb = accentRgb || '0,0,0';
+            return (
+              '<span style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
+                '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:12px;height:12px;object-fit:contain;display:block;" />' +
+              '</span>'
+            );
           }
           function metric(label, valueHtml) {
             return (
@@ -5876,14 +5909,112 @@
           if (c && c.timeZone) headerMetaBits.push('TZ ' + codeInline(String(c.timeZone)));
           headerMetaBits.push('Updated ' + codeInline(formatTs(c && c.now ? c.now : Date.now())));
 
+          const aiCopyGeneratedAt = new Date().toISOString();
+          let aiCopyText = '';
+          try {
+            const convertedSessionsSource = (evSessions != null)
+              ? 'sales.evidence.today.checkoutCompletedSessions'
+              : (truthCheckoutOrders != null ? 'sales.truth.today.checkoutOrderCount (fallback)' : (truthOrders != null ? 'sales.truth.today.orderCount (fallback)' : 'unknown'));
+            const aiPayload = {
+              kind: 'birdseye_diagnostics_v1',
+              generatedAt: aiCopyGeneratedAt,
+              page: {
+                href: (typeof window !== 'undefined' && window.location) ? window.location.href : '',
+              },
+              browser: {
+                userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '',
+                language: (typeof navigator !== 'undefined' && navigator.language) ? navigator.language : '',
+              },
+              computed: {
+                sessions: {
+                  shopifyToday: shopifySessionsToday,
+                  birdseyeHumanToday: birdseyeSessionsToday,
+                  diff: sessionsDiff,
+                },
+                conversions: {
+                  definition: 'sessions_converted / sessions * 100',
+                  convertedSessionsForCr,
+                  convertedSessionsSource,
+                  shopifyCrPct: shopifyCr,
+                  birdseyeCrPct: birdseyeCr,
+                  crDiffPctPoints: crDiff,
+                  ordersPerSessionPct: {
+                    shopify: shopifyOrderRate,
+                    birdseye: birdseyeOrderRate,
+                    diffPctPoints: orderRateDiff,
+                  },
+                },
+                truth: {
+                  ordersPaidToday: truthOrders,
+                  revenueGbpToday: truthRevenue,
+                  checkoutTokenOrdersPaidToday: truthCheckoutOrders,
+                  checkoutTokenRevenueGbpToday: truthCheckoutRevenue,
+                },
+                pixelDerived: {
+                  ordersToday: pixelDerivedOrders,
+                  revenueGbpToday: pixelDerivedRevenue,
+                },
+                evidence: {
+                  checkoutCompletedEventsToday: evTotal,
+                  checkoutCompletedSessionsToday: evSessions,
+                  linkedEventsToday: evLinked,
+                  unlinkedEventsToday: evUnlinked,
+                },
+                drift: {
+                  pixelVsTruthOrders: driftPixelOrders,
+                  pixelVsTruthRevenueGbp: driftPixelRevenue,
+                  evidenceVsCheckoutTokenOrders: driftEvidenceCheckoutOrders,
+                },
+                pixel: {
+                  shopifyWebPixelOk: (pixel && typeof pixel.ok === 'boolean') ? pixel.ok : null,
+                  shopifyWebPixelInstalled: (pixel && typeof pixel.installed === 'boolean') ? pixel.installed : null,
+                  pixelIngestUrl,
+                  expectedIngestUrl,
+                  ingestUrlMatch,
+                },
+                settings: {
+                  pixelSessionMode,
+                  sharedSessionFixEnabled,
+                },
+              },
+              rawConfigStatus: c,
+            };
+            aiCopyText =
+              'Birdseye diagnostics (paste this for AI)\n' +
+              'Generated: ' + aiCopyGeneratedAt + '\n' +
+              (shopify && shopify.shop ? ('Shop: ' + shopify.shop + '\n') : '') +
+              '\n```json\n' + JSON.stringify(aiPayload, null, 2) + '\n```\n';
+          } catch (err) {
+            aiCopyText = 'Birdseye diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
+          }
+
           let html = '';
           html += '<div id="be-diag-root" style="display:flex;flex-direction:column;gap:12px;">';
 
           // Sticky top tabs (single level)
           html += '<div style="position:sticky;top:0;z-index:3;background:var(--card);padding:10px 0 10px;border-bottom:1px solid rgba(0,0,0,0.06);backdrop-filter:saturate(140%) blur(8px);">';
+          const copyBtnStyle = [
+            'display:inline-flex',
+            'align-items:center',
+            'gap:8px',
+            'padding:7px 12px',
+            'border-radius:999px',
+            'border:1px solid rgba(0,0,0,0.10)',
+            'background:linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78))',
+            'box-shadow:0 1px 0 rgba(0,0,0,0.03)',
+            'color:var(--text)',
+            'font-size:12.5px',
+            'font-weight:900',
+            'cursor:pointer',
+            'white-space:nowrap',
+          ].join(';');
+          const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;opacity:0.9;"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+
           html +=   '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
           html +=     '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + headerMetaBits.join(' · ') + '</div>';
           html +=     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                        '<button type="button" id="be-copy-ai-btn" title="Copy a detailed diagnostics payload for AI" style="' + copyBtnStyle + '">' + copyIcon + '<span>Copy AI debug</span></button>' +
+                        '<span id="be-copy-ai-msg" style="font-size:12px;color:var(--muted);font-weight:750;"></span>' +
                         (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                         (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
                       '</div>';
@@ -5894,7 +6025,8 @@
           // Overview
           let overview = '';
           overview += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
-          overview += card('Shopify', (
+          overview += card('', (
+            brandHeader('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · truth orders', '149,191,71') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
               metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
               metric('CR% (sessions)', fmtPct(shopifyCr)) +
@@ -5903,7 +6035,8 @@
             '</div>' +
             '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">CR% (sessions) = sessions that completed checkout / sessions (Shopify definition). Orders/session% counts orders, so it can be higher when multiple orders happen in one session.</div>'
           ));
-          overview += card('Birdseye', (
+          overview += card('', (
+            brandHeader('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · pixel-derived purchases', '13,148,136') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
               metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
               metric('CR% (sessions)', fmtPct(birdseyeCr)) +
@@ -5934,8 +6067,8 @@
               '<div role="table" aria-label="Comparison" style="min-width:760px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;">' +
                 '<div role="row" style="display:contents;">' +
                   '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Item</div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Shopify</div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Birdseye</div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:8px;">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:8px;">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + '<span>Birdseye</span></span></div>' +
                   '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Diff</div>' +
                 '</div>' +
                 '<div role="row" style="display:contents;">' +
@@ -6149,6 +6282,56 @@
               });
               // Ensure correct state (in case HTML was built with an unknown tab id).
               setActiveTab(activeTab);
+            }
+          } catch (_) {}
+          try {
+            const btn = document.getElementById('be-copy-ai-btn');
+            const msg = document.getElementById('be-copy-ai-msg');
+            if (btn) {
+              btn.onclick = function() {
+                const text = aiCopyText || '';
+                function setMsg(t, ok) {
+                  if (!msg) return;
+                  msg.textContent = t || '';
+                  msg.style.color = ok ? '#0f766e' : '#b91c1c';
+                }
+                function fallbackCopy(t) {
+                  const ta = document.createElement('textarea');
+                  ta.value = t;
+                  ta.setAttribute('readonly', 'readonly');
+                  ta.style.position = 'fixed';
+                  ta.style.top = '-9999px';
+                  ta.style.left = '-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  ta.setSelectionRange(0, ta.value.length);
+                  const ok = document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  return ok;
+                }
+                try {
+                  if (!text) {
+                    setMsg('Nothing to copy', false);
+                    return;
+                  }
+                  setMsg('Copying…', true);
+                  if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(text)
+                      .then(function() { setMsg('Copied (' + text.length + ' chars)', true); })
+                      .catch(function(err) {
+                        const ok = fallbackCopy(text);
+                        if (ok) setMsg('Copied (' + text.length + ' chars)', true);
+                        else setMsg('Copy failed: ' + (err && err.message ? String(err.message) : 'error'), false);
+                      });
+                  } else {
+                    const ok = fallbackCopy(text);
+                    if (ok) setMsg('Copied (' + text.length + ' chars)', true);
+                    else setMsg('Copy failed', false);
+                  }
+                } catch (err) {
+                  setMsg('Copy failed: ' + (err && err.message ? String(err.message) : 'error'), false);
+                }
+              };
             }
           } catch (_) {}
           try { initTrafficSourceMappingPanel(); } catch (_) {}
