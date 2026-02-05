@@ -3287,6 +3287,9 @@
           : '<span class="sale-toast-thumb-placeholder" aria-hidden="true"></span>';
       }
       if (timeEl) timeEl.textContent = timeText;
+      if (data.createdAt != null) {
+        try { setLastSaleAt(data.createdAt); } catch (_) {}
+      }
     }
 
     function showSaleToast() {
