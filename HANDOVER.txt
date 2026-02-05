@@ -288,6 +288,7 @@ Backups durability:
 - UI: dashboard + login favicon now uses `/assets/favicon.png` (local).
 - UI: Home tab icon swaps to green image when active.
 - UI: add vertical margin to Landing Page entry/exit lines block.
+- UI: Entry/Exit labels replaced with arrow SVG icons in the Landing Page details.
 - KPI grid (mobile): show 2 KPIs at a time with a right chevron to page through (order: Sales, Conversion Rate, Sessions, …). KPI mini-spinners only show on first load (silent refreshes after).
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: abbreviate table headers (TH labels) on small screens to avoid overlapping text

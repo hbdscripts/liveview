@@ -206,8 +206,12 @@
 .last-action-cell.dual { align-items: flex-start; }
 .last-action-cell .landing-lines { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; margin: 10px 0; }
 .last-action-cell .landing-lines > * { min-width: 0; }
-.last-action-cell .landing-line { font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
+.last-action-cell .landing-line { display: grid; grid-template-columns: 14px minmax(0, 1fr); align-items: center; gap: 0.35rem; font-size: var(--table-font-size); font-weight: 500; line-height: 1.15; color: var(--link-fg); }
+.last-action-cell .landing-line-text { min-width: 0; word-break: break-word; }
+.last-action-cell .landing-dir-icon { width: 14px; height: 14px; display: block; color: inherit; }
+.last-action-cell .landing-dir-icon-exit { transform: rotate(180deg); transform-origin: 50% 50%; }
 .last-action-cell .landing-line:hover { text-decoration: underline; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .landing-fallback-hint { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
     .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
     .table-scroll-wrap .last-action-cell .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
@@ -1524,15 +1528,25 @@
           : '';
         var thumbs = thumbsInner ? ('<span class="thumb-wrap thumb-stack">' + thumbsInner + overlay + '</span>') : '';
 
-        function line(prefix, meta) {
-          var txt = prefix + ': ' + (meta && meta.labelText ? String(meta.labelText) : '\u2014');
-          if (meta && meta.fullUrl) {
-            return '<a class="landing-line" href="' + escapeHtml(meta.fullUrl) + '" target="_blank" rel="noopener">' + escapeHtml(txt) + '</a>';
-          }
-          return '<span class="landing-line">' + escapeHtml(txt) + '</span>';
+        function dirArrowSvg(kind) {
+          var isExit = kind === 'exit';
+          var cls = 'landing-dir-icon' + (isExit ? ' landing-dir-icon-exit' : '');
+          return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12H3M6 9l-3 3 3 3"/></svg>';
         }
 
-        var lines = '<div class="landing-lines">' + line('Entry', entryMeta) + line('Exit', exitMeta) + '</div>';
+        function line(kind, meta) {
+          var isExit = kind === 'exit';
+          var prefix = isExit ? 'Exit' : 'Entry';
+          var label = meta && meta.labelText ? String(meta.labelText) : '\u2014';
+          var inner = dirArrowSvg(kind) +
+            '<span class="landing-line-text"><span class="sr-only">' + prefix + ': </span>' + escapeHtml(label) + '</span>';
+          if (meta && meta.fullUrl) {
+            return '<a class="landing-line" href="' + escapeHtml(meta.fullUrl) + '" target="_blank" rel="noopener">' + inner + '</a>';
+          }
+          return '<span class="landing-line">' + inner + '</span>';
+        }
+
+        var lines = '<div class="landing-lines">' + line('entry', entryMeta) + line('exit', exitMeta) + '</div>';
         return '<div class="last-action-cell dual">' + thumbs + ' ' + lines + '</div>';
       }
 
