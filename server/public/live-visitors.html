@@ -2528,56 +2528,21 @@
         return '<img src="' + escapeHtml(hotImg(src) || src || '') + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
       }
 
-      const out = [];
-
-      // 0) Custom mapping icons (if any) take precedence.
+      // Mapped icons only (Traffic tab → Source mapping).
+      // This avoids showing legacy hard-coded UTM/referrer icons and prevents duplicate icons in the main table.
       try {
         const mapped = getMappedSourceKeysForSession(s);
         if (mapped && mapped.length) {
-          mapped.forEach(function(key) {
-            const label = trafficSourceLabelForKey(key, key);
-            const metaIcon = trafficSourceIconUrlForKey(key);
-            const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
-            const extra = key === 'google_ads' ? 'source-googleads-img' : '';
-            out.push(icon(src, label, label, extra));
-          });
-          return '<span class="source-icons">' + out.join('') + '</span>';
+          const key = String(mapped[0] || '').trim().toLowerCase();
+          if (!key) return '';
+          const label = trafficSourceLabelForKey(key, key);
+          const metaIcon = trafficSourceIconUrlForKey(key);
+          const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
+          const extra = key === 'google_ads' ? 'source-googleads-img' : '';
+          return '<span class="source-icons">' + icon(src, label, label, extra) + '</span>';
         }
       } catch (_) {}
-
-      // 1) UTM-derived source icon (campaign/source)
-      const utmStr = sourceUtmString(s);
-      let utmLabel = '';
-      const hasGoogleAds = isGoogleAdsSource(s);
-      if (hasGoogleAds) {
-        utmLabel = 'Google Ads';
-        out.push(icon(getAssetsBase() + '/adwords.png?width=100', utmLabel, utmLabel, 'source-googleads-img'));
-      } else if (utmStr) {
-        const friendly = sourceFriendlyLabel(s);
-        utmLabel = friendly || 'Other (UTM)';
-        if (friendly === 'Google') out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (UTM)'));
-        else if (friendly === 'Bing') out.push(icon(SOURCE_BING_IMG, 'Bing', 'Bing (UTM)'));
-        else if (friendly === 'Omnisend') out.push(icon(SOURCE_OMNISEND_IMG, 'Omnisend', 'Omnisend (UTM)'));
-        else out.push(icon(SOURCE_UNKNOWN_IMG, utmLabel, utmLabel));
-      }
-
-      // 2) Referrer-derived source icon (organic/social)
-      const refLabel = sourceReferrerFriendlyLabel(s);
-      if (refLabel && refLabel !== 'Store' && refLabel !== utmLabel) {
-        if (refLabel === 'Google') {
-          // Don't show a generic Google icon when Google Ads is present.
-          if (!hasGoogleAds) out.push(icon(SOURCE_GOOGLE_IMG, 'Google', 'Google (Referrer)'));
-        }
-        else if (refLabel === 'Bing') out.push(icon(SOURCE_BING_IMG, 'Bing', 'Bing (Referrer)'));
-        else if (refLabel === 'Omnisend') out.push(icon(SOURCE_OMNISEND_IMG, 'Omnisend', 'Omnisend (Referrer)'));
-        else if (refLabel === 'HeyBigDay Account' || refLabel === 'HBD Account') out.push(icon(SOURCE_LIVEVIEW_SOURCE_IMG, refLabel, String(refLabel)));
-        else out.push(icon(SOURCE_UNKNOWN_IMG, refLabel, String(refLabel)));
-      }
-
-      // 3) Direct fallback
-      if (out.length === 0) out.push(icon(SOURCE_DIRECT_IMG, 'Direct', 'Direct'));
-
-      return '<span class="source-icons">' + out.join('') + '</span>';
+      return '';
     }
 
     function sourceDetailForPanel(s) {

@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (pixel session mode toggle)
+Last updated: 2026-02-05 (pixel session mode toggle + mapped source icons only)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -30,7 +30,8 @@ Main tabs (top row):
 - Breakdown: Countries + Best GEO Products + Average Order Value tables for selected date range
 - Products: Best / Worst / Variants tables for selected date range (all tables show Sales / Clicks / Rev / CR)
 - Traffic: two tables (Source + Traffic Type)
-  - Channels table renders the same source icons used on the Home table (not text labels)
+  - Channels table renders source icons (not text labels)
+  - Home table “Source” column shows only Source-mapped icons (Traffic · Sources → Source mapping); unmapped sessions show no icon
 
 Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / Choose dates…
@@ -350,6 +351,7 @@ Backups durability:
 - UI: modernise pagination styling across all tables (pill buttons, chevrons, better disabled/hover, compact rows selector)
 - UI: if a card has its own header bar (e.g. Traffic), only that bar is grey; table header row is white
 - Traffic: add Direct + Other handling and a configurable “Source mapping” UI (map UTM tokens → custom sources + icon URLs); mapping affects Traffic picker, Traffic channels icons, and Home table source icons
+  - Home table “Source” column uses mapped icons only (no legacy UTM/referrer icon stacking) to prevent duplicate icons
 - UI: remove duplicate mobile top-bar logo and update the centered tabs logo to the green Birdseye mark
 - UI: landing thumbnails framed + stacked overlap tweak; hide purchase overlay and instead show a 3px green left bar on converted rows; update link colour (`--link-fg`)
 - UI: update the Home tab active icon to use the latest green Birdseye asset
