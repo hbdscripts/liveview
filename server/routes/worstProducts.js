@@ -5,8 +5,8 @@
  *
  * Implementation notes:
  * - We only *include* products with at least MIN_LANDINGS product landings (avoids noise).
- * - The Sessions column is the total human sessions in the time range (same for every row).
- * - Conversion rate is Orders / Sessions × 100 (matches Breakdown tables).
+ * - The Sessions column is product landings (sessions that started on that product).
+ * - Conversion rate is Orders / Sessions × 100 (product landing conversion).
  * - Sort: worst conversion first, then most landings (so high-traffic poor converters appear first).
  */
 
@@ -83,20 +83,6 @@ async function getWorstProducts(req, res) {
         try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
         msReconcile = Date.now() - tReconcile0;
       }
-
-      // Sessions in range (human-only). Used for conversion rate denominator.
-      const tSessions0 = Date.now();
-      const sessionsRow = await db.get(
-        `
-          SELECT COUNT(*) AS n
-          FROM sessions s
-          WHERE s.started_at >= ? AND s.started_at < ?
-            ${botFilterSql}
-        `,
-        [start, end]
-      );
-      msSessions = Date.now() - tSessions0;
-      const totalSessions = sessionsRow && sessionsRow.n != null ? Number(sessionsRow.n) || 0 : 0;
 
       // Session landings, with optional linked truth orders for attribution (sum(revenue) <= truth total).
       const tRows0 = Date.now();
@@ -215,11 +201,11 @@ async function getWorstProducts(req, res) {
       const list = Array.from(map.values())
         .filter((e) => e.landings >= MIN_LANDINGS)
         .map((e) => {
-          const cr = totalSessions > 0 ? Math.round((e.converted / totalSessions) * 1000) / 10 : null;
+          const cr = e.landings > 0 ? Math.round((e.converted / e.landings) * 1000) / 10 : null;
           return {
             handle: e.handle,
             landings: e.landings,
-            clicks: totalSessions, // UI expects "clicks" column; now used as total Sessions
+            clicks: e.landings, // UI expects "clicks" column; use product landing sessions
             converted: e.converted,
             conversion: cr,
             revenue: Math.round(e.revenue * 100) / 100,
@@ -264,7 +250,6 @@ async function getWorstProducts(req, res) {
         range,
         trafficMode,
         reporting,
-        totalSessions,
         page,
         pageSize,
         totalCount,
@@ -280,7 +265,6 @@ async function getWorstProducts(req, res) {
     range,
     trafficMode,
     reporting,
-    totalSessions: 0,
     page: 1,
     pageSize,
     totalCount: 0,

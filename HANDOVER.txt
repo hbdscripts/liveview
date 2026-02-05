@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (traffic sources canonicalized)
+Last updated: 2026-02-05 (Products tables: per-product Sessions + CR%)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -32,6 +32,7 @@ Main tabs (top row):
   - Best sellers: Orders / Sessions / Rev / CR%
   - Worst products: Orders / Sessions / Rev / CR%
   - Best variants + Worst variants: Orders / Sessions / Rev / CR%
+  - Sessions is per-row product landings (variants use parent product landings as the Sessions denominator)
 - Traffic: two tables (Source + Traffic Type)
   - Channels table renders source icons (not text labels)
   - Home table “Source” column shows icons from `sessions.traffic_source_key` and shows multiple icons when multiple mapping rules match (Traffic · Sources → Source mapping)
@@ -343,7 +344,7 @@ Backups durability:
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: table headers use icon abbreviations (Geo text) to avoid overlaps
 - KPIs: Returning revenue (Shopify truth) uses Shopify returning-customer signal (`orders_shopify.customer_orders_count >= 2`) rather than session “returning” heuristics
-- Products: align Best/Worst/Variants tables to Orders / Sessions / Rev / CR% (conversion rate = orders ÷ sessions), removing order-share % and product-landings denominators
+- Products: CR% is per-row (orders ÷ product landing sessions). Orders/Rev are attributed to the same landing-session cohort where possible so denominators aren’t global site sessions.
 - Products: product title column is responsive (more width + larger titles on desktop; clamped multi-line on smaller screens)
 - Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)

@@ -3659,10 +3659,12 @@
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
-        const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
-        const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && p.handle) ? mainBase + '/products/' + escapeHtml(p.handle) : '';
+        const productUrl = (mainBase && p.handle) ? (mainBase + '/products/' + encodeURIComponent(String(p.handle))) : '';
+        const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
+        const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
+        const thumbSrc = thumbUrl || ogThumb || '';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\'">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);

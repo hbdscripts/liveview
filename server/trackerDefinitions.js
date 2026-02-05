@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 2;
+const DEFINITIONS_VERSION = 3;
 const LAST_UPDATED = '2026-02-05';
 
 /**
@@ -173,21 +173,27 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['best-sellers-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize/sort/dir'] },
     sources: [
-      { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + line item revenue (paid only)' },
-      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
-      { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only)' },
+      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions via session_id' },
+      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: evidence-linked Shopify orders (paid only) attributed to sessions' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this product (paid orders)' },
-      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) (native currency in DB; rendered as GBP in endpoint)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) attributed to those landing sessions (pixel or truth evidence)' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) that landed on this product (human-only)' },
+      { name: 'Rev', value: 'revenue', formula: 'Attributed revenue from those orders' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
+      { name: 'Attribution', value: 'Orders/Rev are attributed to sessions that landed on the product (same cohort as Sessions), matching Breakdown-style cohort math.' },
     ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },
+    respectsReporting: { ordersSource: true, sessionsSource: false },
+    requiresByReporting: {
+      ordersSource: {
+        pixel: ['purchases'],
+        orders_shopify: ['purchase_events', 'orders_shopify'],
+      },
+    },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
     id: 'products_worst_products',
@@ -196,7 +202,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['worst-products-table'] },
     endpoint: { method: 'GET', path: '/api/worst-products', params: ['range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Landings: product-entry sessions used for inclusion filter (MIN_LANDINGS); Sessions column uses total human sessions in range' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only). Used for Sessions column + MIN_LANDINGS filter.' },
       { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions' },
       { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'ordersSource=orders_shopify: evidence-linked truth revenue per session/order' },
       { kind: 'fx', note: 'Revenue converted to GBP for display' },
@@ -209,7 +215,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Minimum traffic', value: 'Only includes products with >= 3 product landings (MIN_LANDINGS) to avoid noise' },
-      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row).' },
+      { name: 'Note', value: 'Sessions is product landings (per row). CR% is landing conversion (orders attributed to those landings).' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
     requiresByReporting: {
@@ -227,21 +233,21 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['best-variants-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-best-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + variant line item revenue' },
-      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
+      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'Evidence-linked truth variant orders/revenue attributed to those landing sessions' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
-      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the variant' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (evidence-linked to landing sessions)' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
+      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant within those orders' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
+      { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },
+    requires: { dbTables: ['sessions', 'purchase_events', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'products_worst_variants',
@@ -250,21 +256,21 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['worst-variants-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-worst-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + variant line item revenue' },
-      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
+      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'Evidence-linked truth variant orders/revenue attributed to those landing sessions' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
-      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the variant' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (evidence-linked to landing sessions)' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
+      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant within those orders' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
+      { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },
+    requires: { dbTables: ['sessions', 'purchase_events', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'traffic_channels',
