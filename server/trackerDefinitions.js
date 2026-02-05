@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 3;
+const DEFINITIONS_VERSION = 4;
 const LAST_UPDATED = '2026-02-05';
 
 /**
@@ -60,7 +60,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     columns: [
       { name: 'Revenue', value: 'sales[range] (GBP)', formula: 'ordersSource=pixel → SUM(purchases.order_total); else → SUM(orders_shopify.total_price)' },
-      { name: 'Conversion', value: 'conversion[range] (%)', formula: 'convertedCount / sessionsCount × 100' },
+      { name: 'Conversion', value: 'conversion[range] (%)', formula: 'convertedSessions / sessionsCount × 100 (Shopify: sessions that completed checkout)' },
       { name: 'AOV', value: 'aov[range] (GBP)', formula: 'Revenue / convertedCount' },
       { name: 'Sessions', value: 'trafficBreakdown[range].human_sessions', formula: 'sessionsSource=sessions → COUNT(sessions.started_at); sessionsSource=shopify_sessions → ShopifyQL snapshot count (day-like ranges only)' },
       { name: 'Bounce', value: 'bounce[range] (%)', formula: 'single-page sessions / sessions × 100 (human-only)' },
@@ -102,7 +102,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Deduping (pixel)', value: 'Exclude duplicate h: rows when token/order rows exist (purchaseFilterExcludeDuplicateH)' },
-      { name: 'Attribution (truth)', value: 'Only orders with linked purchase_events are attributable (coverage can be < 100%)' },
+      { name: 'Attribution (truth)', value: 'Paid orders are attributed via linked purchase_events (checkout_completed and checkout_started token fallback). Coverage can still be < 100% if checkout events are blocked.' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
     requiresByReporting: {
