@@ -185,6 +185,23 @@ function normalizeTrafficSourceKey(v) {
   return k;
 }
 
+function normalizeTrafficSourceLabelNorm(v) {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (!s) return null;
+  const flat = s.replace(/[^a-z0-9]+/g, '');
+  if (!flat) return null;
+  return flat.slice(0, 128);
+}
+
+function trafficSourceLabelNormFromLabelAndKey(label, sourceKey) {
+  const lbl = normalizeTrafficSourceLabelNorm(label);
+  if (lbl) return lbl;
+  const key = normalizeTrafficSourceKey(sourceKey) || '';
+  const kflat = key ? key.replace(/[^a-z0-9]+/g, '').slice(0, 126) : '';
+  if (!kflat) return null;
+  return ('k' + kflat).slice(0, 128);
+}
+
 function makeCustomTrafficSourceKeyFromLabel(label) {
   const base = normalizeTrafficSourceKey(label);
   if (!base) return null;
@@ -386,24 +403,63 @@ async function upsertTrafficSourceMeta({ sourceKey, label, iconUrl } = {}) {
   const key = normalizeTrafficSourceKey(sourceKey);
   const lbl = typeof label === 'string' && label.trim() ? label.trim().slice(0, 120) : null;
   const icon = typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl.trim().slice(0, 2048) : null;
-  if (!key || !lbl) return { ok: false, error: 'Missing sourceKey or label' };
+  const labelNorm = (key && lbl) ? trafficSourceLabelNormFromLabelAndKey(lbl, key) : null;
+  if (!key || !lbl || !labelNorm) return { ok: false, error: 'Missing sourceKey or label' };
   const db = getDb();
   const now = Date.now();
   try {
+    // Prevent duplicate source labels (case/spacing/punctuation-insensitive).
+    // This keeps identical names grouped into a single Source key.
+    try {
+      const existing = await db.get(
+        'SELECT source_key FROM traffic_source_meta WHERE label_norm = ? AND source_key != ? LIMIT 1',
+        [labelNorm, key]
+      );
+      if (existing && existing.source_key) {
+        return {
+          ok: false,
+          error: `Source label already exists (use ${String(existing.source_key).trim().toLowerCase()})`,
+        };
+      }
+    } catch (_) {
+      // Fail open if label_norm column doesn't exist yet (during upgrade).
+    }
+
     await db.run(
       `
-        INSERT INTO traffic_source_meta (source_key, label, icon_url, updated_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO traffic_source_meta (source_key, label, label_norm, icon_url, updated_at)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (source_key) DO UPDATE SET
           label = excluded.label,
+          label_norm = excluded.label_norm,
           icon_url = excluded.icon_url,
           updated_at = excluded.updated_at
       `,
-      [key, lbl, icon, now]
+      [key, lbl, labelNorm, icon, now]
     );
     return { ok: true, sourceKey: key, label: lbl, iconUrl: icon, updatedAt: now };
   } catch (err) {
-    return { ok: false, error: err && err.message ? String(err.message) : 'Failed to upsert meta' };
+    const msg = err && err.message ? String(err.message) : 'Failed to upsert meta';
+    // Fail open if the schema hasn't been upgraded yet (missing label_norm).
+    if (/label_norm/i.test(msg) && (/no such column/i.test(msg) || /does not exist/i.test(msg))) {
+      try {
+        await db.run(
+          `
+            INSERT INTO traffic_source_meta (source_key, label, icon_url, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (source_key) DO UPDATE SET
+              label = excluded.label,
+              icon_url = excluded.icon_url,
+              updated_at = excluded.updated_at
+          `,
+          [key, lbl, icon, now]
+        );
+        return { ok: true, sourceKey: key, label: lbl, iconUrl: icon, updatedAt: now };
+      } catch (e2) {
+        return { ok: false, error: e2 && e2.message ? String(e2.message) : msg };
+      }
+    }
+    return { ok: false, error: msg };
   }
 }
 
