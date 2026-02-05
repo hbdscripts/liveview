@@ -31,3 +31,8 @@ type = "single_line_text_field"
 name = "Ingest Secret"
 description = "Secret for X-Ingest-Secret header (same as INGEST_SECRET in .env)"
 type = "single_line_text_field"
+
+[extensions.settings.fields.sessionMode]
+name = "Session Mode"
+description = "legacy (per-tab) or shared_ttl (share across tabs, 30m inactivity). Typically set by the app dashboard toggle."
+type = "single_line_text_field"

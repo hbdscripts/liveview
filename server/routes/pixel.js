@@ -6,8 +6,15 @@
 
 const config = require('../config');
 const { getDb, isPostgres } = require('../db');
+const store = require('../store');
 
 const API_VERSION = '2024-01';
+
+function normalizePixelSessionMode(v) {
+  const s = v == null ? '' : String(v).trim().toLowerCase();
+  if (s === 'shared_ttl' || s === 'shared' || s === 'sharedttl') return 'shared_ttl';
+  return 'legacy';
+}
 
 async function shopifyGraphql(shop, accessToken, query, variables) {
   const graphqlUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
@@ -110,7 +117,11 @@ async function ensurePixel(req, res) {
     ingestUrl = `${ingestBase}/api/ingest`;
     console.log('[pixel] ensure sending ingestUrl:', ingestUrl, '(INGEST_PUBLIC_URL:', !!config.ingestPublicUrl, ')');
   }
-  const settingsObj = { ingestUrl, ingestSecret };
+  let sessionMode = 'legacy';
+  try {
+    sessionMode = normalizePixelSessionMode(await store.getSetting('pixel_session_mode'));
+  } catch (_) {}
+  const settingsObj = { ingestUrl, ingestSecret, sessionMode };
   console.log('[pixel] ensure pushing settings.ingestUrl:', ingestUrl);
 
   const listQuery = `query { webPixels(first: 50) { edges { node { id settings } } } }`;

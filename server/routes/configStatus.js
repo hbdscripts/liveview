@@ -123,6 +123,12 @@ async function configStatus(req, res, next) {
 
   let reporting = { ordersSource: 'orders_shopify', sessionsSource: 'sessions' };
   try { reporting = await store.getReportingConfig(); } catch (_) {}
+  let pixelSessionMode = 'legacy';
+  try {
+    const raw = await store.getSetting('pixel_session_mode');
+    const s = raw == null ? '' : String(raw).trim().toLowerCase();
+    if (s === 'shared_ttl' || s === 'shared' || s === 'sharedttl') pixelSessionMode = 'shared_ttl';
+  } catch (_) {}
 
   // --- Shopify token / scopes ---
   let token = '';
@@ -376,6 +382,9 @@ async function configStatus(req, res, next) {
       tables,
     },
     reporting,
+    settings: {
+      pixelSessionMode,
+    },
     ingest: {
       effectiveIngestUrl,
       ingestPublicUrl: config.ingestPublicUrl || '',

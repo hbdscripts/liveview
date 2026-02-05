@@ -862,6 +862,9 @@
     .diag-kv .k { color: var(--muted); flex: 0 0 auto; }
     .diag-kv .v { color: var(--text); font-weight: 650; text-align: right; min-width: 0; word-break: break-word; }
     .diag-note { margin-top: 0.45rem; font-size: 0.75rem; color: var(--muted); line-height: 1.35; }
+    .diag-toggle-row { display: flex; align-items: center; gap: 0.55rem; margin-top: 0.25rem; font-size: 0.85rem; color: var(--text); font-weight: 650; }
+    .diag-toggle-row input { width: 16px; height: 16px; accent-color: var(--accent); }
+    .diag-toggle-row span { flex: 1; min-width: 0; }
 
     @media (max-width: 768px) {
       #config-modal .config-modal-card { width: 100%; max-height: 92vh; }
@@ -5259,6 +5262,11 @@
           const driftPixelOrders = sales && sales.drift && typeof sales.drift.pixelVsTruthOrders === 'number' ? sales.drift.pixelVsTruthOrders : null;
           const driftPixelRevenue = sales && sales.drift && typeof sales.drift.pixelVsTruthRevenueGbp === 'number' ? sales.drift.pixelVsTruthRevenueGbp : null;
           const pixel = c && c.pixel ? c.pixel : {};
+          const appSettings = c && c.settings ? c.settings : {};
+          const pixelSessionMode = (appSettings && appSettings.pixelSessionMode != null)
+            ? String(appSettings.pixelSessionMode).trim().toLowerCase()
+            : 'legacy';
+          const sharedSessionFixEnabled = pixelSessionMode === 'shared_ttl';
 
           const truthOrders = (typeof truthToday.orderCount === 'number') ? truthToday.orderCount : null;
           const truthRevenue = (typeof truthToday.revenueGbp === 'number') ? truthToday.revenueGbp : null;
@@ -5554,6 +5562,17 @@
           if (expectedIngestUrl) html += kv('Expected ingestUrl', code(expectedIngestUrl));
           if (ingestUrlMatch === false) html += '<div class="diag-note">Pixel ingestUrl does not match expected ingest URL. Run Pixel Ensure to update settings.</div>';
           html +=           '</div>';
+
+          html +=           '<div class="diag-panel-card">';
+          html +=             '<div class="diag-panel-card-title">' + icon('activity', '') + 'Session mode (beta)</div>';
+          html +=             '<label class="diag-toggle-row">' +
+                                '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
+                                '<span>Share session across tabs (30m inactivity)</span>' +
+                              '</label>';
+          html +=             '<div class="diag-note">ON reduces Birdseye session inflation. OFF reverts to legacy per-tab sessions.</div>';
+          html +=             '<div id="pixel-session-mode-msg" class="diag-note"></div>';
+          html +=           '</div>';
+
           html +=         '</div>';
           html +=       '</div>';
 
@@ -5649,6 +5668,53 @@
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
           try { initTrafficSourceMappingPanel(); } catch (_) {}
+          try {
+            const toggle = document.getElementById('pixel-session-mode-toggle');
+            const msgEl = document.getElementById('pixel-session-mode-msg');
+            if (toggle) {
+              toggle.onchange = function() {
+                const enabled = !!toggle.checked;
+                const nextMode = enabled ? 'shared_ttl' : 'legacy';
+                toggle.disabled = true;
+                if (msgEl) msgEl.textContent = 'Saving…';
+                fetch(API + '/api/settings', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'same-origin',
+                  cache: 'no-store',
+                  body: JSON.stringify({ pixelSessionMode: nextMode }),
+                })
+                  .then(function(r) {
+                    if (r.ok) return r.json();
+                    return r.json().catch(function() { return null; }).then(function(j) {
+                      const msg = j && j.error ? String(j.error) : ('HTTP ' + r.status);
+                      throw new Error(msg);
+                    });
+                  })
+                  .then(function() {
+                    const shop = getShopParam();
+                    if (shop && /\.myshopify\.com$/i.test(shop)) {
+                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings…';
+                      return fetch(API + '/api/pixel/ensure?shop=' + encodeURIComponent(shop), { credentials: 'same-origin', cache: 'no-store' })
+                        .then(function(r) { return r.ok ? r.json() : null; })
+                        .catch(function() { return null; });
+                    }
+                    return null;
+                  })
+                  .then(function() {
+                    if (msgEl) msgEl.textContent = 'Saved. Applies on next page view.';
+                  })
+                  .catch(function(err) {
+                    toggle.checked = !enabled;
+                    if (msgEl) msgEl.textContent = 'Failed to save: ' + (err && err.message ? String(err.message) : 'error');
+                  })
+                  .finally(function() {
+                    toggle.disabled = false;
+                    setTimeout(function() { try { refreshConfigStatus(); } catch (_) {} }, 600);
+                  });
+              };
+            }
+          } catch (_) {}
 
           // Footer: keep "Last sale" accurate. Prefer Shopify truth order.created_at, else evidence last checkout_completed.
           if (truthToday && typeof truthToday.lastOrderCreatedAt === 'number') {

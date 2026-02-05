@@ -37,6 +37,7 @@ const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
+const settings = require('./routes/settings');
 const dashboardAuth = require('./middleware/dashboardAuth');
 
 const app = express();
@@ -73,6 +74,8 @@ app.get('/api/stream', streamRouter);
 app.get('/api/sessions', sessionsRouter.list);
 app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/config-status', configStatus);
+app.get('/api/settings', settings.getSettings);
+app.post('/api/settings', settings.postSettings);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);

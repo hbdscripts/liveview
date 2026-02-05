@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (traffic source mapping fullscreen + key reuse)
+Last updated: 2026-02-05 (pixel session mode toggle)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -316,6 +316,9 @@ Backups durability:
 - Fix: harden purchase dedupe keys to **ignore non-string checkout_token / order_id** (avoid `"[object Object]"` collapsing all purchases into one) and normalize order_id to stable numeric ids when possible.
 - Ops: added migration `028_backfill_purchases_from_evidence` (one-time, idempotent) to backfill `purchases` from recent `purchase_events` using the original occurred_at timestamps (backdated). This is debug-only unless reporting source is switched to `pixel`.
 - Edge: Worker ingest matcher now normalizes trailing slashes so `/api/ingest/` is treated as ingest (enrichment/bot handling applies consistently).
+- Pixel: added a dashboard toggle (stored in DB setting `pixel_session_mode`) to switch the pixel’s session_id strategy:
+  - `legacy` (default): session_id in sessionStorage (tab-scoped; can inflate sessions)
+  - `shared_ttl`: session_id shared via localStorage with a 30m inactivity TTL (reduces Birdseye sessions vs Shopify).
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
 - Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Breakdown/Products/Traffic); Live remains 60s.
 - UI: update Online user icon + standardise SVG icon colouring (match footer icons).

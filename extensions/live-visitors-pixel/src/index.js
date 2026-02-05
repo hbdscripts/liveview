@@ -8,11 +8,22 @@ import { register } from '@shopify/web-pixels-extension';
 
 const VISITOR_KEY = 'lv_visitor';
 const SESSION_KEY = 'lv_session';
+const SHARED_SESSION_KEY = 'lv_session_shared';
 const VISITOR_DAYS = 30;
+const SESSION_TTL_MINUTES = 30;
+const SHARED_SESSION_TOUCH_MIN_MS = 15000;
 const HEARTBEAT_MS = 30000;
 
 function uuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
+}
+
+function sessionModeFromSettings(settings) {
+  const raw = settings && (settings.sessionMode ?? settings.session_mode);
+  if (typeof raw === 'boolean') return raw ? 'shared_ttl' : 'legacy';
+  const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (s === 'shared_ttl' || s === 'shared' || s === 'sharedttl') return 'shared_ttl';
+  return 'legacy';
 }
 
 function pathFromContext(ctx) {
@@ -76,8 +87,11 @@ register(({ analytics, init, browser, settings }) => {
 
   const ingestUrl = settings.ingestUrl.replace(/\/$/, '');
   const ingestSecret = settings.ingestSecret;
+  const sessionMode = sessionModeFromSettings(settings); // legacy (default) | shared_ttl
   let visitorId = null;
   let sessionId = null;
+  let sharedSessionStartedAt = null;
+  let sharedSessionLastWriteAt = 0;
   let cartQty = 0;
   let cartValue = null;
   let cartCurrency = null;
@@ -134,6 +148,80 @@ register(({ analytics, init, browser, settings }) => {
     return browser.sessionStorage.setItem(SESSION_KEY, id);
   }
 
+  function getSharedSession() {
+    return browser.localStorage.getItem(SHARED_SESSION_KEY).then(raw => {
+      if (!raw) return null;
+      try {
+        const o = JSON.parse(raw);
+        if (!o || typeof o !== 'object') return null;
+        const id = typeof o.id === 'string' ? o.id.trim() : '';
+        if (!id) return null;
+        const startedAt = o.startedAt != null ? Number(o.startedAt) : NaN;
+        const lastSeen = o.lastSeen != null ? Number(o.lastSeen) : NaN;
+        return {
+          id,
+          startedAt: Number.isFinite(startedAt) ? startedAt : null,
+          lastSeen: Number.isFinite(lastSeen) ? lastSeen : null,
+        };
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
+  function persistSharedSession(id, startedAt, lastSeen, { force = false } = {}) {
+    const now = typeof lastSeen === 'number' && isFinite(lastSeen) ? lastSeen : Date.now();
+    if (!force && sharedSessionLastWriteAt && (now - sharedSessionLastWriteAt) < SHARED_SESSION_TOUCH_MIN_MS) {
+      return Promise.resolve();
+    }
+    sharedSessionLastWriteAt = now;
+    const sAt = (typeof startedAt === 'number' && isFinite(startedAt)) ? startedAt : now;
+    const obj = { id, startedAt: sAt, lastSeen: now };
+    return browser.localStorage.setItem(SHARED_SESSION_KEY, JSON.stringify(obj)).catch(() => {});
+  }
+
+  function ensureLegacySessionId() {
+    return getSessionId().then(sid => {
+      if (!sid) {
+        sessionId = uuid();
+        return setSessionId(sessionId);
+      }
+      sessionId = sid;
+    });
+  }
+
+  function ensureSharedSessionId() {
+    const now = Date.now();
+    const ttlMs = SESSION_TTL_MINUTES * 60 * 1000;
+    return getSharedSession()
+      .then(prev => {
+        const prevId = prev && prev.id ? prev.id : null;
+        const prevStartedAt = prev && typeof prev.startedAt === 'number' ? prev.startedAt : null;
+        const prevLastSeen = prev && typeof prev.lastSeen === 'number' ? prev.lastSeen : null;
+        const valid = !!(prevId && prevLastSeen && isFinite(prevLastSeen) && (now - prevLastSeen) <= ttlMs);
+        if (valid) {
+          sessionId = prevId;
+          sharedSessionStartedAt = (prevStartedAt != null && isFinite(prevStartedAt) && prevStartedAt <= now) ? prevStartedAt : now;
+          return persistSharedSession(sessionId, sharedSessionStartedAt, now, { force: true });
+        }
+        sessionId = uuid();
+        sharedSessionStartedAt = now;
+        return persistSharedSession(sessionId, now, now, { force: true });
+      })
+      .then(() => {
+        // Also keep sessionStorage in sync so toggling back to legacy doesn't immediately fork.
+        return setSessionId(sessionId).catch(() => {});
+      })
+      .catch(() => ensureLegacySessionId());
+  }
+
+  function touchSharedSession() {
+    if (sessionMode !== 'shared_ttl' || !sessionId) return;
+    const now = Date.now();
+    // Best-effort: keep shared session alive while tab is open.
+    persistSharedSession(sessionId, sharedSessionStartedAt || now, now).catch(() => {});
+  }
+
   function ensureIds() {
     return getVisitorId()
       .then(vid => {
@@ -151,14 +239,7 @@ register(({ analytics, init, browser, settings }) => {
         visitorId = uuid();
         return setVisitorId(visitorId, Date.now(), Date.now());
       })
-      .then(() => getSessionId())
-      .then(sid => {
-        if (!sid) {
-          sessionId = uuid();
-          return setSessionId(sessionId);
-        }
-        sessionId = sid;
-      });
+      .then(() => (sessionMode === 'shared_ttl' ? ensureSharedSessionId() : ensureLegacySessionId()));
   }
 
   function payload(eventType, extra = {}) {
@@ -199,6 +280,7 @@ register(({ analytics, init, browser, settings }) => {
 
   function send(payload) {
     try {
+      touchSharedSession();
       fetch(ingestUrl, {
         method: 'POST',
         headers: {
