@@ -376,6 +376,7 @@ Backups durability:
 - UI: tweak landing entry/exit stack spacing (landing-lines margin + remove gap)
 - UI: map `/account/login` to “Login” in Landing Page entry/exit labels
 - UI: widen Landing Page column + remove max-width clamp to prevent entry/exit layout spilling into adjacent columns
+- Mobile: Breakdown tables stack 100% width (override `.stats-row.breakdown-row` two-column grid on small screens)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
