@@ -21,8 +21,8 @@
       --radius: 6px;
       --th-bg: #f8f8f8;
       --row-hover: #f5f5f5;
-      --converted-bg: #f6fefd;
-      --converted-hover: #f6fefd;
+      --converted-bg: #edf4f3;
+      --converted-hover: #edf4f3;
       --returning-bg: #fff;
       --badge-new-fg: #fff;
       --badge-returning: #6366f1;
@@ -93,11 +93,10 @@
     .muted { color: var(--muted); font-size: 0.8rem; }
     .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin-bottom: 0.75rem; }
     /* Breakdown tables: same border, shadow, radius as Live table; same padding/th style */
-    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
-    .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: var(--table-row-border); line-height: 1.4; }
+    .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--accent); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+    .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: none; line-height: 1.4; }
     .by-country-table tr:last-child td { border-bottom: none; }
-    /* Full-width row separator: draw on tr so no gap under first column (flex cell) */
-    .by-country-table tbody tr { box-shadow: inset 0 -1px 0 0 var(--border); }
+    .by-country-table tbody tr { box-shadow: none; }
     .by-country-table tbody tr:last-child { box-shadow: none; }
     .by-country-table tbody td { border-bottom: none !important; }
     .stats-card .by-country-table th:first-child, .stats-card .by-country-table td:first-child { padding-left: var(--table-cell-padding-x); padding-right: var(--table-cell-padding-x); min-width: 0; width: 32%; }
@@ -196,15 +195,19 @@
     .aov-list { list-style: none; padding: 0; margin: 0; font-size: var(--table-font-size); }
     .aov-list li { padding: 0.35rem 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
     .aov-list li > span { display: flex; align-items: center; gap: 0.5rem; }
-    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: var(--table-row-border); vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--accent); box-shadow: var(--shadow); }
+    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: none; vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
     tr:last-child td { border-bottom: none; }
     th:not(:first-child), td:not(:first-child) { text-align: center; }
     th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
     tr:hover { background: inherit; }
+    table tbody tr:nth-child(odd) td { background: #ffffff; }
+    table tbody tr:nth-child(even) td { background: #f8f8f8; }
     tr.returning { background: var(--returning-bg); }
+    tr.returning td { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
+    tr.converted td { background: var(--converted-bg); }
     tr.converted:hover { background: var(--converted-bg); }
     tr.converted td { font-weight: 500; }
     /* Converted: show a bold left-side accent (overlay icon is hidden). */
@@ -458,10 +461,10 @@
 #audio-mute-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #audio-mute-btn.muted { opacity: 0.6; color: var(--muted); }
 #audio-mute-btn svg { width: 20px; height: 20px; }
-.table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.75rem; border-radius: var(--radius); border: 1px solid var(--accent); }
 .table-scroll-wrap.tight-cols { --table-cell-padding-x: 0.6rem; }
-.table-scroll-wrap table { margin: 0; min-width: 800px; table-layout: auto; }
-.table-scroll-wrap th, .table-scroll-wrap td { border-bottom: var(--table-row-border); padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
+.table-scroll-wrap table { margin: 0; min-width: 800px; table-layout: auto; border: none; box-shadow: none; }
+.table-scroll-wrap th, .table-scroll-wrap td { border-bottom: none; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); }
     .table-scroll-wrap tr:last-child td { border-bottom: none; }
 .table-scroll-wrap th:nth-child(1), .table-scroll-wrap td:nth-child(1) { width: 1%; min-width: 130px; text-align: left; }
 .table-scroll-wrap .last-action-cell { min-width: 60px; }

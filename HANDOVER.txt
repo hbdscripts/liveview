@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (KPI compare colors + GEO thumbs + table header icons + CDN favicon)
+Last updated: 2026-02-05 (KPI compare colors + table zebra + CDN favicon)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -353,6 +353,7 @@ Backups durability:
 - UI: sale toast typography/amount styling refreshed (smaller product title, amount pill)
 - UI: font-weight 500 only on converted row cells (not all tds)
 - UI: dashboard favicon now uses the CDN asset
+- UI: tables use green outer borders with zebra striping (no inner borders)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
