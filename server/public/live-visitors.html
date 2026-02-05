@@ -1168,6 +1168,7 @@
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
+    let convertedCountDayYmd = null; // YYYY-MM-DD in admin TZ; resets converted-count baseline daily
     let lastSaleAt = null; // ms; authoritative timestamp of most recent sale we know about (Shopify truth preferred)
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let onlineCountInFlight = false;
@@ -1214,6 +1215,7 @@
     let saleAudio = null;
     let saleMuted = false;
     let saleToastActive = false;
+    let saleToastSessionId = null; // best-effort: session_id that opened the current toast (used to avoid double plays)
     let saleToastHideTimer = null;
     let saleToastPendingKpi = null; // { labelText, valueText }
     let saleToastLastOrderId = null;
@@ -1313,6 +1315,15 @@
       if (s < 60) return s + 's ago';
       if (s < 3600) return Math.floor(s / 60) + 'm ago';
       return Math.floor(s / 3600) + 'h ago';
+    }
+
+    function ymdNowInTz() {
+      try {
+        // en-CA yields YYYY-MM-DD.
+        return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      } catch (_) {
+        return new Date().toISOString().slice(0, 10);
+      }
     }
 
     function updateLastSaleAgo() {
@@ -2098,6 +2109,7 @@
       }
       if (!host || !toast) {
         saleToastActive = false;
+        saleToastSessionId = null;
         applyPendingSalesKpiUpdate();
         return;
       }
@@ -2107,6 +2119,7 @@
         toast.style.display = 'none';
         host.classList.remove('toast-open');
         saleToastActive = false;
+        saleToastSessionId = null;
         applyPendingSalesKpiUpdate();
       }, 260);
     }
@@ -2140,6 +2153,7 @@
       const session = opts.session || null;
       const kpiUpdate = opts.kpiUpdate || null;
       const playSound = opts.playSound !== false;
+      saleToastSessionId = session && session.session_id != null ? String(session.session_id) : null;
 
       // Freeze the Sales KPI until the toast fades away.
       if (kpiUpdate && typeof kpiUpdate.labelText === 'string' && typeof kpiUpdate.valueText === 'string') {
@@ -3275,6 +3289,21 @@
       const conv = data && data.convertedCount ? data.convertedCount : {};
       const haveToday = (typeof conv.today === 'number' && Number.isFinite(conv.today));
       if (!haveToday) return;
+
+      // Reset the converted-count baseline daily (admin TZ).
+      try {
+        const day = ymdNowInTz();
+        if (convertedCountDayYmd == null) convertedCountDayYmd = day;
+        if (day && convertedCountDayYmd !== day) {
+          convertedCountDayYmd = day;
+          hasSeenConvertedCountToday = false;
+          lastConvertedCountToday = 0;
+        }
+      } catch (_) {}
+
+      // Guard against stale/cache drift where counts briefly move backwards (would cause double "sale" sounds).
+      if (hasSeenConvertedCountToday && conv.today < lastConvertedCountToday) return;
+
       const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
       if (increased) {
         const kpiUpdate = buildSalesKpiUpdateFromStats(data);
@@ -5047,6 +5076,7 @@
           const withinArrived = startedAt >= Date.now() - ARRIVED_WINDOW_MS;
           const idx = sessions.findIndex(s => s.session_id === session.session_id);
           let becamePurchased = false;
+          let filledOrderTotal = false;
           let needRender = false;
           if (idx >= 0) {
             if (!withinActive || !withinArrived) {
@@ -5058,9 +5088,30 @@
               sessions[idx] = { ...sessions[idx], ...session };
               const nowPurchased = !!sessions[idx].has_purchased;
               const nowOrderTotal = sessions[idx].order_total != null;
-              becamePurchased = (!wasPurchased && nowPurchased) || (nowPurchased && !wasOrderTotal && nowOrderTotal);
+              becamePurchased = (!wasPurchased && nowPurchased);
+              filledOrderTotal = (nowPurchased && !wasOrderTotal && nowOrderTotal);
               sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-              if (becamePurchased) needRender = true;
+              if (becamePurchased || filledOrderTotal) needRender = true;
+              // Avoid a second "cha-ching" when order_total arrives after has_purchased.
+              // If the toast is currently showing for this session, just patch the amount.
+              if (filledOrderTotal) {
+                try {
+                  const sid = session && session.session_id != null ? String(session.session_id) : '';
+                  if (sid && saleToastActive && saleToastSessionId && String(saleToastSessionId) === sid) {
+                    const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
+                    const productTitle = (session && session.last_product_handle) ? titleCaseFromHandle(String(session.last_product_handle)) : '';
+                    const curTitle = document.getElementById('sale-toast-product') ? String(document.getElementById('sale-toast-product').textContent || '') : '';
+                    let amountGbp = null;
+                    if (session && session.order_total != null) {
+                      const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
+                      if (Number.isFinite(n)) amountGbp = n;
+                    }
+                    if (amountGbp != null && Number.isFinite(amountGbp)) {
+                      setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '—'), amountGbp });
+                    }
+                  }
+                } catch (_) {}
+              }
             }
           } else if (withinActive && withinArrived) {
             sessions.unshift(session);
@@ -5075,6 +5126,17 @@
               triggerSaleToast({ origin: 'sse', session: session, playSound: true });
               // Update footer immediately when a sale happens.
               setLastSaleAt(session.purchased_at || session.last_seen || Date.now());
+              // Keep the converted-count baseline in sync so KPI/stats refreshes don't double-trigger audio.
+              try {
+                const day = ymdNowInTz();
+                if (convertedCountDayYmd == null) convertedCountDayYmd = day;
+                if (day && convertedCountDayYmd !== day) {
+                  convertedCountDayYmd = day;
+                  hasSeenConvertedCountToday = false;
+                  lastConvertedCountToday = 0;
+                }
+                if (hasSeenConvertedCountToday) lastConvertedCountToday = (Number(lastConvertedCountToday) || 0) + 1;
+              } catch (_) {}
               try { refreshConfigStatus(); } catch (_) {}
               // Pull updated KPIs so Sales/Orders can animate after the toast fades.
               try { refreshKpis({ force: true }); } catch (_) {}
