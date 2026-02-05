@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 1;
+const DEFINITIONS_VERSION = 2;
 const LAST_UPDATED = '2026-02-05';
 
 /**
@@ -174,17 +174,17 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize/sort/dir'] },
     sources: [
       { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + line item revenue (paid only)' },
-      { kind: 'db', tables: ['sessions'], note: 'Landings = sessions that started on the product handle (human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Sales', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this product (paid orders)' },
-      { name: 'Landings', value: 'clicks', formula: 'COUNT(sessions) where first_product_handle = product.handle (human-only)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this product (paid orders)' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) (native currency in DB; rendered as GBP in endpoint)' },
-      { name: 'Order share%', value: 'cr', formula: 'orders / totalOrders × 100' },
+      { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Important', value: 'Order share% is not conversion. It’s share of all paid orders in range.' },
+      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },
@@ -196,19 +196,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['worst-products-table'] },
     endpoint: { method: 'GET', path: '/api/worst-products', params: ['range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Landings: sessions that started on /products/... (human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Landings: product-entry sessions used for inclusion filter (MIN_LANDINGS); Sessions column uses total human sessions in range' },
       { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions' },
       { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'ordersSource=orders_shopify: evidence-linked truth revenue per session/order' },
       { kind: 'fx', note: 'Revenue converted to GBP for display' },
     ],
     columns: [
-      { name: 'Landings', value: 'clicks', formula: 'COUNT(product-landing sessions)' },
-      { name: 'Sales', value: 'converted', formula: 'COUNT(orders attributed to those sessions)' },
+      { name: 'Orders', value: 'converted', formula: 'COUNT(orders attributed to those sessions)' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'Attributed revenue (GBP)' },
-      { name: 'CR%', value: 'conversion', formula: 'converted / clicks × 100' },
+      { name: 'CR%', value: 'conversion', formula: 'converted / sessions × 100' },
     ],
     math: [
-      { name: 'Minimum traffic', value: 'Only includes products with >= 3 landings (MIN_CLICKS)' },
+      { name: 'Minimum traffic', value: 'Only includes products with >= 3 product landings (MIN_LANDINGS) to avoid noise' },
+      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row).' },
     ],
     respectsReporting: { ordersSource: true, sessionsSource: false },
     requiresByReporting: {
@@ -227,17 +228,17 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-best-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + variant line item revenue' },
-      { kind: 'db', tables: ['sessions'], note: 'Landings: sessions that started on the product handle (human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Sales', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
-      { name: 'Landings', value: 'clicks', formula: 'COUNT(sessions) where first_product_handle = product.handle (human-only)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the variant' },
-      { name: 'Order share%', value: '(UI)', formula: 'orders / totalOrders × 100' },
+      { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Important', value: 'Order share% is not conversion. It’s share of all paid orders in range.' },
+      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },
@@ -250,17 +251,17 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-worst-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders + variant line item revenue' },
-      { kind: 'db', tables: ['sessions'], note: 'Landings: sessions that started on the product handle (human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions: total human sessions in the range (used as CR% denominator; same value for every row)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Sales', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
-      { name: 'Landings', value: 'clicks', formula: 'COUNT(sessions) where first_product_handle = product.handle (human-only)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant' },
+      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the variant' },
-      { name: 'Order share%', value: '(UI)', formula: 'orders / totalOrders × 100' },
+      { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Important', value: 'Order share% is not conversion. It’s share of all paid orders in range.' },
+      { name: 'Note', value: 'Sessions is the total sessions count for the range (same for every row) to keep Products math consistent with Breakdown.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['orders_shopify', 'orders_shopify_line_items', 'sessions'], shopifyToken: true },

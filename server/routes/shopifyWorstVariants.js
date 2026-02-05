@@ -61,20 +61,29 @@ async function getShopifyWorstVariants(req, res) {
       async () => {
         const t0 = Date.now();
         let msReconcile = 0;
-        let msDbTotalOrders = 0;
+        let msDbSessions = 0;
         let msDbCount = 0;
         let msDbAgg = 0;
         let msMeta = 0;
-        let msDbClicks = 0;
 
         // Ensure Shopify truth cache is populated for this range (throttled).
         const tReconcile0 = Date.now();
         await salesTruth.ensureReconciled(shop, start, end, `worst_variants_${range}`);
         msReconcile = Date.now() - tReconcile0;
 
-        const tTotalOrders0 = Date.now();
-        const totalOrders = await salesTruth.getTruthOrderCount(shop, start, end);
-        msDbTotalOrders = Date.now() - tTotalOrders0;
+        // Sessions in range (human-only). Used for conversion rate denominator.
+        const tSessions0 = Date.now();
+        const sessionsRow = await db.get(
+          `
+            SELECT COUNT(*) AS n
+            FROM sessions
+            WHERE started_at >= ? AND started_at < ?
+              AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+          `,
+          [start, end]
+        );
+        msDbSessions = Date.now() - tSessions0;
+        const totalSessions = sessionsRow && sessionsRow.n != null ? Number(sessionsRow.n) || 0 : 0;
 
         const tCount0 = Date.now();
         const countRow = await db.get(
@@ -143,69 +152,36 @@ async function getShopifyWorstVariants(req, res) {
         );
         msMeta = Date.now() - tMeta0;
 
-        // Clicks: sessions that started on this product handle. Human-only.
-        const handles = Array.from(
-          new Set(
-            pageItems
-              .map((v) => (v && v.handle != null ? String(v.handle).trim().toLowerCase() : ''))
-              .filter(Boolean)
-          )
-        );
-        if (handles.length) {
-          const tClicks0 = Date.now();
-          const placeholders = handles.map(() => '?').join(',');
-          const clickRows = await db.all(
-            `
-              SELECT LOWER(TRIM(first_product_handle)) AS handle, COUNT(*) AS clicks
-              FROM sessions
-              WHERE started_at >= ? AND started_at < ?
-                AND (cf_known_bot IS NULL OR cf_known_bot = 0)
-                AND first_product_handle IS NOT NULL AND TRIM(first_product_handle) != ''
-                AND LOWER(TRIM(first_product_handle)) IN (${placeholders})
-              GROUP BY LOWER(TRIM(first_product_handle))
-            `,
-            [start, end, ...handles]
-          );
-          msDbClicks = Date.now() - tClicks0;
-          const clicksByHandle = new Map();
-          for (const r of clickRows || []) {
-            const h = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
-            if (!h) continue;
-            clicksByHandle.set(h, r && r.clicks != null ? Number(r.clicks) || 0 : 0);
-          }
-          for (const v of pageItems) {
-            const h = v && v.handle != null ? String(v.handle).trim().toLowerCase() : '';
-            v.clicks = h && clicksByHandle.has(h) ? clicksByHandle.get(h) : 0;
-          }
-        } else {
-          for (const v of pageItems) v.clicks = 0;
+        // Sessions (denominator): total human sessions in range (same for each row).
+        for (const v of pageItems) {
+          v.clicks = totalSessions;
+          v.cr = totalSessions > 0 ? Math.round((v.orders / totalSessions) * 1000) / 10 : null;
         }
 
         const t1 = Date.now();
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-worst-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_totalOrders=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s ms_db_clicks=%s',
+            '[shopify-worst-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_sessions=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
             range,
             page,
             totalMs,
             msReconcile,
-            msDbTotalOrders,
+            msDbSessions,
             msDbCount,
             msDbAgg,
-            msMeta,
-            msDbClicks
+            msMeta
           );
         }
 
-        return { worstVariants: pageItems, totalOrders, page, pageSize, totalCount };
+        return { worstVariants: pageItems, totalSessions, page, pageSize, totalCount };
       }
     );
 
     // Cache: Shopify-derived report; allow 15 min caching to reduce API load.
     res.setHeader('Cache-Control', 'private, max-age=900');
     res.setHeader('Vary', 'Cookie');
-    return res.json(cached && cached.ok ? cached.data : { worstVariants: [], totalOrders: 0, page: 1, pageSize, totalCount: 0 });
+    return res.json(cached && cached.ok ? cached.data : { worstVariants: [], totalSessions: 0, page: 1, pageSize, totalCount: 0 });
   } catch (err) {
     console.error('[shopify-worst-variants]', err);
     return res.status(500).json({ error: 'Failed to fetch worst variants' });

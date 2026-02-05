@@ -4,10 +4,10 @@
  * (underperformers: lots of landings, few or no sales).
  *
  * Implementation notes:
- * - Clicks are sessions that *started* on a product page (first_path /products/... or first_product_handle).
- * - Conversion is session-level (has_purchased=1) for those sessions.
- * - Only products with at least MIN_CLICKS landings are included (avoids noise).
- * - Sort: worst conversion first, then most clicks (so high-traffic poor converters appear first).
+ * - We only *include* products with at least MIN_LANDINGS product landings (avoids noise).
+ * - The Sessions column is the total human sessions in the time range (same for every row).
+ * - Conversion rate is Orders / Sessions × 100 (matches Breakdown tables).
+ * - Sort: worst conversion first, then most landings (so high-traffic poor converters appear first).
  */
 
 const store = require('../store');
@@ -20,7 +20,7 @@ const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 10;
 /** Minimum landing sessions to include; avoids one-off visits dominating "worst" list. */
-const MIN_CLICKS = 3;
+const MIN_LANDINGS = 3;
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -74,6 +74,7 @@ async function getWorstProducts(req, res) {
     async () => {
       const t0 = Date.now();
       let msReconcile = 0;
+      let msSessions = 0;
       let msRows = 0;
       let msAgg = 0;
       if (shop && reporting.ordersSource === 'orders_shopify') {
@@ -82,6 +83,20 @@ async function getWorstProducts(req, res) {
         try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
         msReconcile = Date.now() - tReconcile0;
       }
+
+      // Sessions in range (human-only). Used for conversion rate denominator.
+      const tSessions0 = Date.now();
+      const sessionsRow = await db.get(
+        `
+          SELECT COUNT(*) AS n
+          FROM sessions s
+          WHERE s.started_at >= ? AND s.started_at < ?
+            ${botFilterSql}
+        `,
+        [start, end]
+      );
+      msSessions = Date.now() - tSessions0;
+      const totalSessions = sessionsRow && sessionsRow.n != null ? Number(sessionsRow.n) || 0 : 0;
 
       // Session landings, with optional linked truth orders for attribution (sum(revenue) <= truth total).
       const tRows0 = Date.now();
@@ -171,16 +186,16 @@ async function getWorstProducts(req, res) {
 
       const tAgg0 = Date.now();
       const ratesToGbp = await fx.getRatesToGbp();
-      const map = new Map(); // handle -> { handle, clicks, orderIds:Set, converted, revenue }
+      const map = new Map(); // handle -> { handle, landings, orderIds:Set, converted, revenue }
       for (const r of rows || []) {
         const handle = handleFromPath(r.first_path) || normalizeHandle(r.first_product_handle);
         if (!handle) continue;
         let entry = map.get(handle);
         if (!entry) {
-          entry = { handle, clicks: 0, orderIds: new Set(), converted: 0, revenue: 0 };
+          entry = { handle, landings: 0, orderIds: new Set(), converted: 0, revenue: 0 };
           map.set(handle, entry);
         }
-        entry.clicks += 1;
+        entry.landings += 1;
 
         const oid = r.order_id != null ? String(r.order_id) : '';
         if (oid) {
@@ -198,24 +213,25 @@ async function getWorstProducts(req, res) {
       }
 
       const list = Array.from(map.values())
-        .filter((e) => e.clicks >= MIN_CLICKS)
+        .filter((e) => e.landings >= MIN_LANDINGS)
         .map((e) => {
-          const cr = e.clicks > 0 ? Math.round((e.converted / e.clicks) * 1000) / 10 : null;
+          const cr = totalSessions > 0 ? Math.round((e.converted / totalSessions) * 1000) / 10 : null;
           return {
             handle: e.handle,
-            clicks: e.clicks,
+            landings: e.landings,
+            clicks: totalSessions, // UI expects "clicks" column; now used as total Sessions
             converted: e.converted,
             conversion: cr,
             revenue: Math.round(e.revenue * 100) / 100,
           };
         });
 
-      // Sort: worst conversion first, then most clicks (high-traffic underperformers at top).
+      // Sort: worst conversion first, then most landings (high-traffic underperformers at top).
       list.sort((a, b) => {
         const acr = a.conversion == null ? 0 : a.conversion;
         const bcr = b.conversion == null ? 0 : b.conversion;
         if (acr !== bcr) return acr - bcr;
-        if (b.clicks !== a.clicks) return b.clicks - a.clicks;
+        if ((b.landings || 0) !== (a.landings || 0)) return (b.landings || 0) - (a.landings || 0);
         const ar = a.revenue == null ? 0 : a.revenue;
         const br = b.revenue == null ? 0 : b.revenue;
         if (ar !== br) return ar - br;
@@ -233,11 +249,12 @@ async function getWorstProducts(req, res) {
       const totalMs = t1 - t0;
       if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
         console.log(
-          '[worst-products] range=%s page=%s ms_total=%s ms_reconcile=%s ms_rows=%s ms_agg=%s',
+          '[worst-products] range=%s page=%s ms_total=%s ms_reconcile=%s ms_sessions=%s ms_rows=%s ms_agg=%s',
           range,
           page,
           totalMs,
           msReconcile,
+          msSessions,
           msRows,
           msAgg
         );
@@ -247,6 +264,7 @@ async function getWorstProducts(req, res) {
         range,
         trafficMode,
         reporting,
+        totalSessions,
         page,
         pageSize,
         totalCount,
@@ -262,6 +280,7 @@ async function getWorstProducts(req, res) {
     range,
     trafficMode,
     reporting,
+    totalSessions: 0,
     page: 1,
     pageSize,
     totalCount: 0,
