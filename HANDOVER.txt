@@ -22,8 +22,8 @@ Main tabs (top row):
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
   - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
-    - `Entry: <name>`
-    - `Exit: <name>`
+    - Entry line: left-arrow SVG icon + page name (screen-reader text includes “Entry:”)
+    - Exit line: rotated-arrow SVG icon + page name (screen-reader text includes “Exit:”)
     - Exit thumbnail is smaller than entry (visual hierarchy)
   - Otherwise, shows the single thumbnail + label (existing behaviour)
 - Breakdown: Countries + Average Order Value tables for selected date range
@@ -49,6 +49,24 @@ Traffic tab (new)
   - Selections persist across visits
 
 ---
+
+## Requested next work (not shipped yet)
+
+Breakdown tab: add a new middle table so AOV becomes the 3rd card.
+
+New table: **Best GEO Products**
+- Goal: show highest-revenue products **per country** (max **3 products per country** for the selected date range).
+- Table headers: `Country` | `CR` | `Sales` | `Clicks` | `Rev`
+  - Product name should be shown inside the Country cell (e.g. as a second line under the flag/country).
+  - `CR` should align with existing meaning: \(Sales / Clicks\).
+- Data: prefer SQL using truth data:
+  - Country attribution should follow the existing truth-by-country pattern (purchase evidence → sessions.country_code).
+  - Product revenue should use `orders_shopify_line_items` (no `orders_shopify.raw_json` parsing in request path).
+  - Enforce “max 3 per country” via SQL (e.g. window function) so UI logic stays simple.
+- Likely files:
+  - `server/store.js` (new query helper, included in `getStats()`)
+  - `server/public/live-visitors.html` (new stats card + render)
+  - `server/routes/stats.js` (no new endpoint required if piggybacking `/api/stats`)
 
 ## High-level architecture
 
