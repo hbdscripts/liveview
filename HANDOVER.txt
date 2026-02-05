@@ -37,6 +37,8 @@ Global date range picker (applies to Breakdown + Products + Traffic):
   - Range selection: click a start day then an end day, preview highlights, then press Apply (Clear resets).
   - Custom ranges are represented as `r:YYYY-MM-DD:YYYY-MM-DD` (admin timezone). Legacy single-day keys `d:YYYY-MM-DD` are still accepted.
   - After applying, the dropdown shows the chosen date label (not “Custom”).
+  - UX fix: “Choose dates…” remains re-selectable (dropdown resets after opening the modal, so you don’t have to click Today/Yesterday first).
+  - Supported across: `/api/stats`, `/api/kpis`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`, `/api/shopify-best-variants`, `/api/shopify-worst-variants` (and `server/store.js#getRangeBounds`).
 
 Traffic tab (new)
 - Layout:
@@ -306,7 +308,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
-- Date picker: redesign “Custom” into “Choose dates…” range picker (two-click range selection with highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` across stats/products/traffic APIs and the dropdown shows the chosen dates.
+- Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
 - Ingest: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (so “Birdseye” diagnostics / pixel-derived reporting doesn’t show 0 orders).
 - Ops: one-off backfill script `scripts/backfill-purchases-from-evidence.js` to fill `purchases` from today’s `purchase_events` (safe to re-run; conflicts ignored).
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
