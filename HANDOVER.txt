@@ -289,6 +289,7 @@ Backups durability:
 - Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
 - UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
 - Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
+- Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
