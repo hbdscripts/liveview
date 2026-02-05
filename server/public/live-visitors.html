@@ -159,12 +159,12 @@
       font-size: clamp(12px, 0.25vw + 11px, 14px);
     }
     .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
-    .best-sellers-table th.sortable { cursor: pointer; user-select: none; }
-    .best-sellers-table th.sortable:hover { color: var(--accent); }
-    .best-sellers-table th.th-sort-asc::after,
-    .best-sellers-table th.th-sort-desc::after { content: ''; display: inline-block; width: 16px; height: 16px; margin-left: 6px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
-    .best-sellers-table th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
-    .best-sellers-table th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
+    .by-country-table th.sortable { cursor: pointer; user-select: none; }
+    .by-country-table th.sortable:hover { color: var(--accent); }
+    .by-country-table th.th-sort-asc::after,
+    .by-country-table th.th-sort-desc::after { content: ''; display: inline-block; width: 16px; height: 16px; margin-left: 6px; vertical-align: middle; background-color: currentColor; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+    .by-country-table th.th-sort-asc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 14.5L12 9.5L17 14.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
+    .by-country-table th.th-sort-desc::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); }
 
     /* Medium screens: allow 2 lines for product names. */
     @media (max-width: 1200px) {
@@ -756,14 +756,14 @@
   <table id="sessions-table">
     <thead>
       <tr>
-        <th aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></th>
+        <th class="sortable" data-sort="landing" aria-sort="none" tabindex="0" aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></th>
         <th class="sortable" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></th>
         <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
-        <th aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></th>
+        <th class="sortable" data-sort="device" aria-sort="none" tabindex="0" aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></th>
         <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></th>
         <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></th>
         <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></th>
-        <th aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></th>
+        <th class="sortable" data-sort="history" aria-sort="none" tabindex="0" aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></th>
         <th class="consent-col" style="display:none" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></th>
       </tr>
     </thead>
@@ -801,11 +801,11 @@
         <table id="country-table" class="by-country-table">
           <thead>
             <tr>
-              <th aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
-              <th aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
-              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="by-country-body">
@@ -827,11 +827,11 @@
         <table id="best-geo-products-table" class="by-country-table geo-products-table">
           <thead>
             <tr>
-              <th aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
-              <th aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
-              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="best-geo-products-body">
@@ -850,7 +850,7 @@
         <table id="aov-table" class="by-country-table aov-table">
           <thead>
             <tr>
-              <th aria-label="Average Order Value"><span class="th-label-long">Average Order Value</span><span class="th-label-short">AOV</span></th>
+              <th class="sortable" data-sort="aov" aria-sort="none" tabindex="0" aria-label="Average Order Value"><span class="th-label-long">Average Order Value</span><span class="th-label-short">AOV</span></th>
               <th></th>
             </tr>
           </thead>
@@ -884,11 +884,11 @@
         <table id="best-sellers-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
+              <th class="bs-product-col sortable" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
               <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
               <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="best-sellers-body">
@@ -907,11 +907,11 @@
         <table id="worst-products-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
-              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="bs-product-col sortable" data-sort="product" aria-sort="none" tabindex="0" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="worst-products-body">
@@ -930,11 +930,11 @@
         <table id="best-variants-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></th>
-              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="best-variants-body">
@@ -953,11 +953,11 @@
         <table id="worst-variants-table" class="by-country-table best-sellers-table">
           <thead>
             <tr>
-              <th class="bs-product-col" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></th>
-              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
-              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
             </tr>
           </thead>
           <tbody id="worst-variants-body">
@@ -996,11 +996,11 @@
         <table id="traffic-sources-table" class="by-country-table">
           <thead>
             <tr>
-              <th aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
-              <th aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
-              <th aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
+              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="traffic-sources-body">
@@ -1020,11 +1020,11 @@
         <table id="traffic-types-table" class="by-country-table">
           <thead>
             <tr>
-              <th aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></th>
-              <th aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
-              <th aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
-              <th aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
-              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+              <th class="sortable" data-sort="type" aria-sort="none" tabindex="0" aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></th>
+              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></th>
+              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
             </tr>
           </thead>
           <tbody id="traffic-types-body">
@@ -1191,6 +1191,26 @@
     let worstVariantsPage = 1;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
+    const tableSortState = {
+      country: { by: 'rev', dir: 'desc' },
+      bestGeoProducts: { by: 'rev', dir: 'desc' },
+      aov: { by: 'aov', dir: 'desc' },
+      worstProducts: { by: 'cr', dir: 'asc' },
+      bestVariants: { by: 'rev', dir: 'desc' },
+      worstVariants: { by: 'rev', dir: 'asc' },
+      trafficSources: { by: 'rev', dir: 'desc' },
+      trafficTypes: { by: 'rev', dir: 'desc' },
+    };
+    const TABLE_SORT_DEFAULTS = {
+      country: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
+      bestGeoProducts: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
+      aov: { aov: 'desc' },
+      worstProducts: { product: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'asc' },
+      bestVariants: { variant: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'desc' },
+      worstVariants: { variant: 'asc', sales: 'asc', clicks: 'asc', rev: 'asc', cr: 'asc' },
+      trafficSources: { source: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
+      trafficTypes: { type: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
+    };
     let saleAudio = null;
     let saleMuted = false;
     let saleToastActive = false;
@@ -1201,7 +1221,7 @@
     let currentPage = 1;
     let sortBy = 'last_seen';
     let sortDir = 'desc';
-    const SORT_DEFAULTS = { from: 'asc', arrived: 'desc', source: 'asc', cart: 'desc', last_seen: 'desc' };
+    const SORT_DEFAULTS = { landing: 'asc', from: 'asc', arrived: 'desc', source: 'asc', device: 'asc', cart: 'desc', last_seen: 'desc', history: 'desc' };
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -1476,6 +1496,45 @@
       const productsMatch = p.match(/^\/products\/([^/?#]+)/i);
       if (productsMatch) return titleCaseFromHandle(productsMatch[1]);
       return null;
+    }
+
+    function landingSortKey(s) {
+      function trimStr(v) { return v != null ? String(v).trim() : ''; }
+      function normalizeToPath(pathVal, handleVal) {
+        var path = trimStr(pathVal);
+        var handle = trimStr(handleVal);
+        if (!path && handle) path = '/products/' + handle.replace(/^\/+/, '');
+        if (path && !path.startsWith('/')) path = '/' + path;
+        try {
+          if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/';
+        } catch (_) {}
+        path = (path || '').split('#')[0].split('?')[0];
+        path = path.replace(/\/+$/, '');
+        if (path === '') path = '/';
+        return path;
+      }
+      function collapseKey(path) {
+        if (!path) return '';
+        var pathNorm = path.replace(/\/+$/, '');
+        if (path.indexOf('/checkouts') === 0) return '/checkouts';
+        if (pathNorm === '/cart') return '/cart';
+        if (path === '/orders' || pathNorm === '/orders' || path.indexOf('/orders/') === 0) return '/orders';
+        return path;
+      }
+
+      var path = normalizeToPath(s && s.first_path, s && s.first_product_handle);
+      var key = collapseKey(path);
+      if (!key) return '';
+      if (key === '/' || key === '/orders') return key === '/' ? 'Home' : key;
+      if (key === '/cart' || key === '/checkouts') return 'Cart';
+      return friendlyLabelFromPath(key) || key;
+    }
+
+    function visitsCount(s) {
+      var n = 0;
+      try { n = s && s.returning_count != null ? Number(s.returning_count) : 0; } catch (_) { n = 0; }
+      if (!Number.isFinite(n)) n = 0;
+      return n + 1;
     }
 
     function landingPageCell(s) {
@@ -1824,6 +1883,11 @@
       const mult = sortDir === 'asc' ? 1 : -1;
       list.sort(function (a, b) {
         var va, vb;
+        if (sortBy === 'landing') {
+          va = (landingSortKey(a) || '').toLowerCase();
+          vb = (landingSortKey(b) || '').toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        }
         if (sortBy === 'from') {
           va = (a.country_code || 'ZZ').toUpperCase();
           vb = (b.country_code || 'ZZ').toUpperCase();
@@ -1839,6 +1903,11 @@
           vb = sourceSortKey(b);
           return mult * (va < vb ? -1 : va > vb ? 1 : 0);
         }
+        if (sortBy === 'device') {
+          va = (a && a.device != null ? String(a.device) : '').trim().toLowerCase();
+          vb = (b && b.device != null ? String(b.device) : '').trim().toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        }
         if (sortBy === 'cart') {
           va = cartSortValue(a);
           vb = cartSortValue(b);
@@ -1847,6 +1916,11 @@
         if (sortBy === 'last_seen') {
           va = toMs(a.last_seen) ?? 0;
           vb = toMs(b.last_seen) ?? 0;
+          return mult * (va - vb);
+        }
+        if (sortBy === 'history') {
+          va = visitsCount(a);
+          vb = visitsCount(b);
           return mult * (va - vb);
         }
         return 0;
@@ -1909,11 +1983,21 @@
 
     function setupSortableHeaders() {
       document.querySelectorAll('.table-scroll-wrap th.sortable').forEach(function (th) {
-        th.addEventListener('click', function () {
-          var col = th.getAttribute('data-sort');
+        function activate() {
+          var col = (th.getAttribute('data-sort') || '').trim();
+          if (!col) return;
           if (sortBy === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
           else { sortBy = col; sortDir = SORT_DEFAULTS[col] || 'asc'; }
           renderTable();
+        }
+        th.addEventListener('click', function (e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          activate();
+        });
+        th.addEventListener('keydown', function (e) {
+          if (!e || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          activate();
         });
       });
     }
@@ -2215,10 +2299,29 @@
       if (!tbody) return;
       if (!data || !Array.isArray(data.worstProducts)) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('worst-products-table'), tableSortState.worstProducts.by, tableSortState.worstProducts.dir);
         updateCardPagination('worst-products', 1, 1);
         return;
       }
       const rows = data.worstProducts.slice();
+      const wpBy = (tableSortState.worstProducts.by || 'cr').toString().trim().toLowerCase();
+      const wpDir = (tableSortState.worstProducts.dir || 'asc').toString().trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
+      rows.sort(function(a, b) {
+        var primary = 0;
+        if (wpBy === 'product') primary = cmpNullableText(a && a.handle, b && b.handle, wpDir);
+        else if (wpBy === 'sales') primary = cmpNullableNumber(a && a.converted, b && b.converted, wpDir);
+        else if (wpBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, wpDir);
+        else if (wpBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, wpDir);
+        else if (wpBy === 'cr') primary = cmpNullableNumber(a && a.conversion, b && b.conversion, wpDir);
+
+        return primary ||
+          // Sensible, stable fallback ordering for "worst" list.
+          cmpNullableNumber(a && a.conversion, b && b.conversion, 'asc') ||
+          cmpNullableNumber(a && a.clicks, b && b.clicks, 'desc') ||
+          cmpNullableNumber(a && a.revenue, b && b.revenue, 'asc') ||
+          cmpNullableNumber(a && a.converted, b && b.converted, 'asc') ||
+          cmpNullableText(a && a.handle, b && b.handle, 'asc');
+      });
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -2226,6 +2329,7 @@
       updateCardPagination('worst-products', worstProductsPage, totalPages);
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No product landings in this range</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
@@ -2243,6 +2347,7 @@
         const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? (formatRevenue(revNum) || '\u2014') : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
     }
 
     function fetchBestVariants(options = {}) {
@@ -2310,10 +2415,37 @@
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestVariants)) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('best-variants-table'), tableSortState.bestVariants.by, tableSortState.bestVariants.dir);
         updateCardPagination('best-variants', 1, 1);
         return;
       }
       const rows = data.bestVariants.slice();
+      const bvBy = (tableSortState.bestVariants.by || 'rev').toString().trim().toLowerCase();
+      const bvDir = (tableSortState.bestVariants.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
+      function displayVariantName(v) {
+        const variantName = (v && v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
+        const productName = (v && v.title && String(v.title).trim()) ? String(v.title).trim() : '';
+        return variantName + (productName ? (' \u2014 ' + productName) : '');
+      }
+      rows.sort(function(a, b) {
+        var primary = 0;
+        if (bvBy === 'variant') primary = cmpNullableText(displayVariantName(a), displayVariantName(b), bvDir);
+        else if (bvBy === 'sales') primary = cmpNullableNumber(a && a.orders, b && b.orders, bvDir);
+        else if (bvBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, bvDir);
+        else if (bvBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, bvDir);
+        else if (bvBy === 'cr') {
+          var ao = a && a.orders != null ? (Number(a.orders) || 0) : 0;
+          var bo = b && b.orders != null ? (Number(b.orders) || 0) : 0;
+          var acr = totalOrders > 0 ? (ao / totalOrders) : null;
+          var bcr = totalOrders > 0 ? (bo / totalOrders) : null;
+          primary = cmpNullableNumber(acr, bcr, bvDir) || cmpNullableNumber(ao, bo, 'desc');
+        }
+        return primary ||
+          cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc') ||
+          cmpNullableNumber(a && a.orders, b && b.orders, 'desc') ||
+          cmpNullableText(displayVariantName(a), displayVariantName(b), 'asc');
+      });
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -2321,6 +2453,7 @@
       updateCardPagination('best-variants', bestVariantsPage, totalPages);
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
         return;
       }
       tbody.innerHTML = rows.map(function(v) {
@@ -2342,6 +2475,7 @@
         const cr = crVal != null ? pct(crVal) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
     }
 
     function renderWorstVariants(data, errorMessage) {
@@ -2349,10 +2483,39 @@
       if (!tbody) return;
       if (!data || !Array.isArray(data.worstVariants)) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('worst-variants-table'), tableSortState.worstVariants.by, tableSortState.worstVariants.dir);
         updateCardPagination('worst-variants', 1, 1);
         return;
       }
       const rows = data.worstVariants.slice();
+      const wvBy = (tableSortState.worstVariants.by || 'rev').toString().trim().toLowerCase();
+      const wvDir = (tableSortState.worstVariants.dir || 'asc').toString().trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
+      const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
+      function displayVariantName(v) {
+        const variantName = (v && v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
+        const productName = (v && v.title && String(v.title).trim()) ? String(v.title).trim() : '';
+        return variantName + (productName ? (' \u2014 ' + productName) : '');
+      }
+      rows.sort(function(a, b) {
+        var primary = 0;
+        if (wvBy === 'variant') primary = cmpNullableText(displayVariantName(a), displayVariantName(b), wvDir);
+        else if (wvBy === 'sales') primary = cmpNullableNumber(a && a.orders, b && b.orders, wvDir);
+        else if (wvBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, wvDir);
+        else if (wvBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, wvDir);
+        else if (wvBy === 'cr') {
+          var ao = a && a.orders != null ? (Number(a.orders) || 0) : 0;
+          var bo = b && b.orders != null ? (Number(b.orders) || 0) : 0;
+          var acr = totalOrders > 0 ? (ao / totalOrders) : null;
+          var bcr = totalOrders > 0 ? (bo / totalOrders) : null;
+          primary = cmpNullableNumber(acr, bcr, wvDir) || cmpNullableNumber(ao, bo, 'asc');
+        }
+        return primary ||
+          // Stable fallback ordering for "worst" list.
+          cmpNullableNumber(a && a.revenue, b && b.revenue, 'asc') ||
+          cmpNullableNumber(a && a.orders, b && b.orders, 'asc') ||
+          cmpNullableNumber(a && a.clicks, b && b.clicks, 'asc') ||
+          cmpNullableText(displayVariantName(a), displayVariantName(b), 'asc');
+      });
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -2360,6 +2523,7 @@
       updateCardPagination('worst-variants', worstVariantsPage, totalPages);
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
         return;
       }
       tbody.innerHTML = rows.map(function(v) {
@@ -2381,6 +2545,7 @@
         const cr = crVal != null ? pct(crVal) : '\u2014';
         return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
     }
 
     function renderBestSellers(data, errorMessage) {
@@ -2393,6 +2558,19 @@
         return;
       }
       const rows = data.bestSellers.slice();
+      const sortKey = (bestSellersSortBy || 'rev').toString().trim().toLowerCase();
+      const sortDir = (bestSellersSortDir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      rows.sort(function(a, b) {
+        if (sortKey === 'title') return cmpNullableText(a && a.title, b && b.title, sortDir);
+        if (sortKey === 'orders') return cmpNullableNumber(a && a.orders, b && b.orders, sortDir);
+        if (sortKey === 'clicks') return cmpNullableNumber(a && a.clicks, b && b.clicks, sortDir);
+        if (sortKey === 'rev') return cmpNullableNumber(a && a.revenue, b && b.revenue, sortDir);
+        if (sortKey === 'cr') {
+          return cmpNullableNumber(a && a.cr, b && b.cr, sortDir) ||
+            cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
+        }
+        return 0;
+      });
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -2430,14 +2608,146 @@
 
     function setupBestSellersSort() {
       document.querySelectorAll('#best-sellers-wrap th.sortable').forEach(function(th) {
-        th.addEventListener('click', function() {
-          var col = th.getAttribute('data-sort');
+        function activate() {
+          var col = (th.getAttribute('data-sort') || '').trim();
+          if (!col) return;
           if (bestSellersSortBy === col) bestSellersSortDir = bestSellersSortDir === 'asc' ? 'desc' : 'asc';
-          else { bestSellersSortBy = col; bestSellersSortDir = col === 'rev' ? 'desc' : 'asc'; }
+          else { bestSellersSortBy = col; bestSellersSortDir = col === 'title' ? 'asc' : 'desc'; }
           bestSellersPage = 1;
           updateBestSellersSortHeaders();
           fetchBestSellers();
+        }
+        th.addEventListener('click', function(e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          activate();
         });
+        th.addEventListener('keydown', function(e) {
+          if (!e || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          activate();
+        });
+      });
+    }
+
+    function asSortText(v) {
+      if (v == null) return '';
+      return String(v).trim().toLowerCase();
+    }
+
+    function asFiniteNumber(v) {
+      const n = (typeof v === 'number') ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function cmpNullableText(a, b, dir) {
+      const da = asSortText(a);
+      const db = asSortText(b);
+      const d = dir === 'asc' ? 'asc' : 'desc';
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      if (da === db) return 0;
+      if (d === 'asc') return da < db ? -1 : 1;
+      return da < db ? 1 : -1;
+    }
+
+    function cmpNullableNumber(a, b, dir) {
+      const na = asFiniteNumber(a);
+      const nb = asFiniteNumber(b);
+      const d = dir === 'asc' ? 'asc' : 'desc';
+      if (na == null && nb == null) return 0;
+      if (na == null) return 1;
+      if (nb == null) return -1;
+      if (na === nb) return 0;
+      return d === 'asc' ? (na - nb) : (nb - na);
+    }
+
+    function updateSortHeadersInContainer(container, sortBy, sortDir) {
+      const root = typeof container === 'string' ? document.querySelector(container) : container;
+      if (!root) return;
+      root.querySelectorAll('th.sortable').forEach(function(th) {
+        var col = (th.getAttribute('data-sort') || '').trim();
+        th.classList.remove('th-sort-asc', 'th-sort-desc');
+        th.setAttribute('aria-sort', sortBy === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+        if (sortBy === col) th.classList.add(sortDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+      });
+    }
+
+    function setupTableSortHeaders(container, state, defaults, onChange) {
+      const root = typeof container === 'string' ? document.querySelector(container) : container;
+      if (!root || !state) return;
+      root.querySelectorAll('th.sortable').forEach(function(th) {
+        function activate() {
+          var col = (th.getAttribute('data-sort') || '').trim();
+          if (!col) return;
+          var prevCol = state.by;
+          if (state.by === col) state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+          else { state.by = col; state.dir = (defaults && defaults[col]) ? defaults[col] : 'asc'; }
+          state.dir = state.dir === 'asc' ? 'asc' : 'desc';
+          updateSortHeadersInContainer(root, state.by, state.dir);
+          if (typeof onChange === 'function') onChange({ by: state.by, dir: state.dir, columnChanged: prevCol !== state.by });
+        }
+        th.addEventListener('click', function(e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          activate();
+        });
+        th.addEventListener('keydown', function(e) {
+          if (!e || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          activate();
+        });
+      });
+      state.dir = state.dir === 'asc' ? 'asc' : 'desc';
+      updateSortHeadersInContainer(root, state.by, state.dir);
+    }
+
+    function setupAllTableSorts() {
+      setupTableSortHeaders(document.getElementById('country-table'), tableSortState.country, TABLE_SORT_DEFAULTS.country, function(info) {
+        if (info && info.columnChanged) countryPage = 1;
+        renderCountry(statsCache);
+      });
+      setupTableSortHeaders(document.getElementById('best-geo-products-table'), tableSortState.bestGeoProducts, TABLE_SORT_DEFAULTS.bestGeoProducts, function(info) {
+        if (info && info.columnChanged) bestGeoProductsPage = 1;
+        renderBestGeoProducts(statsCache);
+      });
+      setupTableSortHeaders(document.getElementById('aov-table'), tableSortState.aov, TABLE_SORT_DEFAULTS.aov, function(info) {
+        if (info && info.columnChanged) aovPage = 1;
+        renderAov(statsCache);
+      });
+
+      setupTableSortHeaders(document.getElementById('worst-products-table'), tableSortState.worstProducts, TABLE_SORT_DEFAULTS.worstProducts, function(info) {
+        if (info && info.columnChanged) {
+          worstProductsPage = 1;
+          fetchWorstProducts();
+          return;
+        }
+        if (worstProductsCache) renderWorstProducts(worstProductsCache);
+        else fetchWorstProducts();
+      });
+      setupTableSortHeaders(document.getElementById('best-variants-table'), tableSortState.bestVariants, TABLE_SORT_DEFAULTS.bestVariants, function(info) {
+        if (info && info.columnChanged) {
+          bestVariantsPage = 1;
+          fetchBestVariants();
+          return;
+        }
+        if (bestVariantsCache) renderBestVariants(bestVariantsCache);
+        else fetchBestVariants();
+      });
+      setupTableSortHeaders(document.getElementById('worst-variants-table'), tableSortState.worstVariants, TABLE_SORT_DEFAULTS.worstVariants, function(info) {
+        if (info && info.columnChanged) {
+          worstVariantsPage = 1;
+          fetchWorstVariants();
+          return;
+        }
+        if (worstVariantsCache) renderWorstVariants(worstVariantsCache);
+        else fetchWorstVariants();
+      });
+
+      setupTableSortHeaders(document.getElementById('traffic-sources-table'), tableSortState.trafficSources, TABLE_SORT_DEFAULTS.trafficSources, function() {
+        renderTrafficTables(trafficCache || {});
+      });
+      setupTableSortHeaders(document.getElementById('traffic-types-table'), tableSortState.trafficTypes, TABLE_SORT_DEFAULTS.trafficTypes, function() {
+        renderTrafficTables(trafficCache || {});
       });
     }
 
@@ -2504,14 +2814,20 @@
       const filtered = rows.filter(r => r.aov != null && r.aov > 0);
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" class="empty">No data</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('aov-table'), tableSortState.aov.by, tableSortState.aov.dir);
         updateCardPagination('aov', 1, 1);
         return;
       }
-      const totalPages = Math.max(1, Math.ceil(filtered.length / TOP_TABLE_PAGE_SIZE));
+      const list = filtered.slice();
+      const aovBy = (tableSortState.aov.by || 'aov').toString().trim().toLowerCase();
+      const aovDir = (tableSortState.aov.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      if (aovBy === 'aov') list.sort(function(a, b) { return cmpNullableNumber(a && a.aov, b && b.aov, aovDir); });
+
+      const totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
       aovPage = clampPage(aovPage, totalPages);
       updateCardPagination('aov', aovPage, totalPages);
       const start = (aovPage - 1) * TOP_TABLE_PAGE_SIZE;
-      const pageRows = filtered.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const code = iso.toLowerCase();
@@ -2520,6 +2836,7 @@
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(iso) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + formatRevenue(r.aov) + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('aov-table'), aovBy, aovDir);
     }
 
     function renderCountry(data) {
@@ -2529,14 +2846,31 @@
       if (!tbody) return;
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('country-table'), tableSortState.country.by, tableSortState.country.dir);
         updateCardPagination('country', 1, 1);
         return;
       }
-      const totalPages = Math.max(1, Math.ceil(rows.length / TOP_TABLE_PAGE_SIZE));
+      const list = rows.slice();
+      const countryBy = (tableSortState.country.by || 'rev').toString().trim().toLowerCase();
+      const countryDir = (tableSortState.country.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      function labelFor(r) {
+        const code = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
+        return countryLabel(code);
+      }
+      list.sort(function(a, b) {
+        if (countryBy === 'country') return cmpNullableText(labelFor(a), labelFor(b), countryDir);
+        if (countryBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
+        if (countryBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
+        if (countryBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
+        if (countryBy === 'rev') return cmpNullableNumber(a && a.revenue, b && b.revenue, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
+        return 0;
+      });
+
+      const totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
       countryPage = clampPage(countryPage, totalPages);
       updateCardPagination('country', countryPage, totalPages);
       const start = (countryPage - 1) * TOP_TABLE_PAGE_SIZE;
-      const pageRows = rows.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const ccode = (r.country_code || 'xx').toLowerCase().slice(0, 2);
@@ -2549,6 +2883,7 @@
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('country-table'), countryBy, countryDir);
     }
 
     function renderBestGeoProducts(data) {
@@ -2558,14 +2893,37 @@
       if (!tbody) return;
       if (!Array.isArray(rows) || rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), tableSortState.bestGeoProducts.by, tableSortState.bestGeoProducts.dir);
         updateCardPagination('best-geo-products', 1, 1);
         return;
       }
-      const totalPages = Math.max(1, Math.ceil(rows.length / TOP_TABLE_PAGE_SIZE));
+      const list = rows.slice();
+      const geoBy = (tableSortState.bestGeoProducts.by || 'rev').toString().trim().toLowerCase();
+      const geoDir = (tableSortState.bestGeoProducts.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      function geoCountryLabel(r) {
+        const iso = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
+        return countryLabel(iso);
+      }
+      function geoProductTitle(r) {
+        return (r && r.product_title != null) ? String(r.product_title).trim() : '';
+      }
+      list.sort(function(a, b) {
+        if (geoBy === 'country') {
+          return cmpNullableText(geoCountryLabel(a), geoCountryLabel(b), geoDir) ||
+            cmpNullableText(geoProductTitle(a), geoProductTitle(b), 'asc');
+        }
+        if (geoBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, geoDir) || cmpNullableNumber(a && a.total, b && b.total, 'desc');
+        if (geoBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, geoDir) || cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc');
+        if (geoBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, geoDir) || cmpNullableNumber(a && a.converted, b && b.converted, 'desc');
+        if (geoBy === 'rev') return cmpNullableNumber(a && a.revenue, b && b.revenue, geoDir) || cmpNullableNumber(a && a.converted, b && b.converted, 'desc');
+        return 0;
+      });
+
+      const totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
       bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
       updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
       const start = (bestGeoProductsPage - 1) * TOP_TABLE_PAGE_SIZE;
-      const pageRows = rows.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const ccode = iso.toLowerCase();
@@ -2582,6 +2940,7 @@
         '</span>';
         return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
       }).join('');
+      updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), geoBy, geoDir);
     }
 
     function isCustomDayRangeKey(v) {
@@ -3235,6 +3594,10 @@
     function renderTrafficTables(data) {
       const sources = data && data.sources ? data.sources : null;
       const types = data && data.types ? data.types : null;
+      const srcBy = (tableSortState.trafficSources.by || 'rev').toString().trim().toLowerCase();
+      const srcDir = (tableSortState.trafficSources.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+      const typeBy = (tableSortState.trafficTypes.by || 'rev').toString().trim().toLowerCase();
+      const typeDir = (tableSortState.trafficTypes.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
 
       function trafficSourceIconHtml(keyRaw, labelRaw) {
         function icon(src, alt, title, extraClass) {
@@ -3257,10 +3620,23 @@
         const body = document.getElementById(bodyId);
         if (!body) return;
         const list = Array.isArray(rows) ? rows.slice() : [];
+        function sourceLabel(r) {
+          const key = (r && r.key != null) ? String(r.key).trim().toLowerCase() : '';
+          const labelText = (r && r.label) ? String(r.label) : (key || '—');
+          return labelText;
+        }
         list.sort(function(a, b) {
-          return (Number(b && b.revenueGbp) || 0) - (Number(a && a.revenueGbp) || 0) ||
-            (Number(b && b.orders) || 0) - (Number(a && a.orders) || 0) ||
-            (Number(b && b.sessions) || 0) - (Number(a && a.sessions) || 0);
+          var primary = 0;
+          if (srcBy === 'source') primary = cmpNullableText(sourceLabel(a), sourceLabel(b), srcDir);
+          else if (srcBy === 'cr') primary = cmpNullableNumber(a && a.conversionPct, b && b.conversionPct, srcDir);
+          else if (srcBy === 'orders') primary = cmpNullableNumber(a && a.orders, b && b.orders, srcDir);
+          else if (srcBy === 'sessions') primary = cmpNullableNumber(a && a.sessions, b && b.sessions, srcDir);
+          else if (srcBy === 'rev') primary = cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, srcDir);
+          return primary ||
+            cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
+            cmpNullableNumber(a && a.orders, b && b.orders, 'desc') ||
+            cmpNullableNumber(a && a.sessions, b && b.sessions, 'desc') ||
+            cmpNullableText(sourceLabel(a), sourceLabel(b), 'asc');
         });
         if (!list.length) {
           body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml(emptyText || '—') + '</td></tr>';
@@ -3295,6 +3671,27 @@
           body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml('Click the settings icon to choose devices.') + '</td></tr>';
           return;
         }
+        function typeLabel(r) {
+          if (!r) return '—';
+          if (r.label != null && String(r.label).trim() !== '') return String(r.label);
+          if (r.platform != null && String(r.platform).trim() !== '') return String(r.platform);
+          if (r.key != null && String(r.key).trim() !== '') return String(r.key);
+          return '—';
+        }
+        groups.sort(function(a, b) {
+          var primary = 0;
+          if (typeBy === 'type') primary = cmpNullableText(typeLabel(a), typeLabel(b), typeDir);
+          else if (typeBy === 'cr') primary = cmpNullableNumber(a && a.conversionPct, b && b.conversionPct, typeDir);
+          else if (typeBy === 'orders') primary = cmpNullableNumber(a && a.orders, b && b.orders, typeDir);
+          else if (typeBy === 'sessions') primary = cmpNullableNumber(a && a.sessions, b && b.sessions, typeDir);
+          else if (typeBy === 'rev') primary = cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, typeDir);
+          return primary ||
+            cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
+            cmpNullableNumber(a && a.orders, b && b.orders, 'desc') ||
+            cmpNullableNumber(a && a.sessions, b && b.sessions, 'desc') ||
+            cmpNullableText(typeLabel(a), typeLabel(b), 'asc');
+        });
+
         let html = '';
         groups.forEach(function(g) {
           const device = (g && g.device != null) ? String(g.device).trim().toLowerCase() : '';
@@ -3317,7 +3714,20 @@
             '<td>' + escapeHtml(rev || '—') + '</td>' +
           '</tr>';
 
-          const kids = (g && Array.isArray(g.children)) ? g.children : [];
+          const kids = (g && Array.isArray(g.children)) ? g.children.slice() : [];
+          kids.sort(function(a, b) {
+            var primary = 0;
+            if (typeBy === 'type') primary = cmpNullableText(typeLabel(a), typeLabel(b), typeDir);
+            else if (typeBy === 'cr') primary = cmpNullableNumber(a && a.conversionPct, b && b.conversionPct, typeDir);
+            else if (typeBy === 'orders') primary = cmpNullableNumber(a && a.orders, b && b.orders, typeDir);
+            else if (typeBy === 'sessions') primary = cmpNullableNumber(a && a.sessions, b && b.sessions, typeDir);
+            else if (typeBy === 'rev') primary = cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, typeDir);
+            return primary ||
+              cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
+              cmpNullableNumber(a && a.orders, b && b.orders, 'desc') ||
+              cmpNullableNumber(a && a.sessions, b && b.sessions, 'desc') ||
+              cmpNullableText(typeLabel(a), typeLabel(b), 'asc');
+          });
           kids.forEach(function(c) {
             const clabel = escapeHtml((c && c.label) ? String(c.label) : (c && c.platform ? String(c.platform) : (c && c.key ? String(c.key) : '—')));
             const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
@@ -3335,6 +3745,9 @@
         });
         body.innerHTML = html;
       })();
+
+      updateSortHeadersInContainer(document.getElementById('traffic-sources-table'), srcBy, srcDir);
+      updateSortHeadersInContainer(document.getElementById('traffic-types-table'), typeBy, typeDir);
     }
 
     function renderTrafficPickers(data) {
@@ -3661,6 +4074,7 @@
 
     setupSortableHeaders();
     setupBestSellersSort();
+    setupAllTableSorts();
 
     (function initTopTablePagination() {
       function bind(prefix, onPrev, onNext) {
