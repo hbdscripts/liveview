@@ -527,6 +527,8 @@
       .live-kpi-grid { --kpi-gap: 0.5rem; display: flex; gap: var(--kpi-gap); }
       .live-kpi-cell { min-width: 150px; flex: 0 0 auto; }
       .live-kpi-cell .live-kpi-value { font-size: 1rem; }
+      .sale-toast-host { position: static; }
+      .sale-toast { left: 0; top: 0; width: 100%; }
     }
     .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
     .live-view-header .table-title { margin: 0; font-size: var(--table-header-font-size); font-weight: 500; color: var(--text); flex-shrink: 0; display: flex; align-items: center; gap: 0.35rem; letter-spacing: -0.1px; }
@@ -805,6 +807,9 @@
     .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: var(--muted); background: #eee; }
     body { padding-bottom: 52px; }
     .dashboard-footer .footer-last-sale { white-space: nowrap; }
+    .dashboard-footer .footer-last-sale-toggle { border: none; background: none; color: var(--accent); font: inherit; padding: 0; margin: 0 0 0 6px; cursor: pointer; }
+    .dashboard-footer .footer-last-sale-toggle:hover { text-decoration: underline; }
+    .dashboard-footer .footer-last-sale-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
     .dashboard-footer .refresh-btn,
     .dashboard-footer #audio-mute-btn,
     .dashboard-footer .config-btn { flex-shrink: 0; }

@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers; Sale toast sync)
+Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers; Sale toast sync + show/hide)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -320,7 +320,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
-- UI: sale toast uses product thumb (width=100), shows vertical HH:MM time, removes dismiss button; debug replay via `?toast=true` using `/api/latest-sale` (now returns product thumb metadata when available).
+- UI: sale toast uses product thumb (width=100), shows vertical HH:MM time, removes dismiss button; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
 - UI: sale toast forces Home table refresh for Today/Last Hour/Live and updates footer “Last sale” from toast payload.
 - Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
 - Ingest/Sales evidence: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (pixel-derived “Birdseye” drift/debug).
@@ -436,4 +436,4 @@ Backups durability:
 - Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
 - Dashboard: replace Home tab SVG icon with birdseye PNG (25x25)
 - Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
-- Dashboard: sale toast overlays Sales+Sessions KPIs with product thumb + vertical HH:MM time + inline flag + order £ for ~10s (no manual dismiss); Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`, debug replay `?toast=true`)
+- Dashboard: sale toast overlays Sales+Sessions KPIs with product thumb + vertical HH:MM time + inline flag + order £ for ~10s (no manual dismiss); footer “Last sale” has Show/Hide to pin the latest toast until next sale; Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`)
