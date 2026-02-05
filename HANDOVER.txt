@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (pixel session mode toggle + mapped source icons only)
+Last updated: 2026-02-05 (traffic source mapping bulk save + dropdown)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -28,7 +28,9 @@ Main tabs (top row):
     - Exit thumbnail is smaller than entry (visual hierarchy)
   - Otherwise, shows the single thumbnail + label (existing behaviour)
 - Breakdown: Countries + Best GEO Products + Average Order Value tables for selected date range
-- Products: Best / Worst / Variants tables for selected date range (all tables show Sales / Clicks / Rev / CR)
+- Products: Best / Worst / Variants tables for selected date range
+  - Best sellers: Sales / Landings / Rev / Order share%
+  - Worst products + Variants tables: Sales / Clicks / Rev / CR
 - Traffic: two tables (Source + Traffic Type)
   - Channels table renders source icons (not text labels)
   - Home table “Source” column shows only Source-mapped icons (Traffic · Sources → Source mapping); unmapped sessions show no icon
@@ -56,6 +58,7 @@ Traffic tab (new)
   - “Traffic · Sources” modal also contains a “Source mapping” section (click to open full-screen):
     - Shows unmapped UTM tokens detected in session entry URLs
     - Lets you map tokens → Sources (reuses built-in keys like `google_ads`/`bing_ads` when labels match; otherwise creates `custom_...`)
+    - Token editor uses an existing-source dropdown + bulk “Save mappings” (inputs don’t wipe when saving/refreshing)
     - If a token is mapped again, the newest mapping wins (overrides earlier rules)
     - Icon previews fall back to built-in source icons when no custom icon URL is set
 
@@ -336,7 +339,8 @@ Backups durability:
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: table headers use icon abbreviations (Geo text) to avoid overlaps
 - KPIs: Returning revenue (Shopify truth) uses Shopify returning-customer signal (`orders_shopify.customer_orders_count >= 2`) rather than session “returning” heuristics
-- Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based click counts to best sellers/variants)
+- Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based landing counts to best sellers/variants)
+- Products: Best sellers table labels clarified (Clicks → Landings, CR% → Order share%) to match backend definitions
 - Products: product title column is responsive (more width + larger titles on desktop; clamped multi-line on smaller screens)
 - Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
 - Traffic: Channels table renders source icons (same icon set as Home table Source column)
@@ -345,6 +349,7 @@ Backups durability:
 - UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
 - Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
 - Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
+- Diagnostics: add checkout-token truth order/revenue breakdown (proxy for online-store checkouts); CR% uses checkout-token orders so Shopify sessions comparisons aren’t inflated by non-checkout channels
 - UI: make all dashboard table headers sortable on click (Home sessions + Breakdown/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
 - UI: prevent duplicate “cha-ching” for a single sale (avoid double-trigger when order totals arrive later / KPI refresh drift)
 - UI: sale toast: newest sale wins (no stale latest-sale overwrite) + add dismiss (×) button for faster clear
@@ -391,6 +396,7 @@ Backups durability:
 - UI: removed the converted-row left accent pseudo-element (`::before`) in the sessions table
 - UI: KPI grid shows green up-arrow / red down-arrow SVG at end of value when better/worse vs yesterday
 - Traffic: Source mapping panel opens full-screen from the Traffic · Sources modal and uses larger input boxes for faster mapping
+- Traffic: Source mapping token editor now supports an existing-source dropdown + bulk “Save mappings” (preserves in-progress edits across refresh)
 - Traffic: mapping now prefers built-in keys/icons (e.g. Google/Bing) and remapping a token overrides older rules (newest wins)
 
 2026-02-04

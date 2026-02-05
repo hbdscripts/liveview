@@ -21,7 +21,7 @@
       --radius: 6px;
       --th-bg: #f8f8f8;
       --row-hover: #f5f5f5;
-      --converted-bg: #edf4f3;
+      --converted-bg: #f1f9f8;
       --converted-hover: #edf4f3;
       --returning-bg: #fff;
       --badge-new-fg: #fff;
@@ -211,7 +211,8 @@
     tr.returning { background: var(--returning-bg); }
     tr.returning td { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }
-    tr.converted td { background: var(--converted-bg); }
+    tr.converted td { background: #f1f9f8 !important; }
+    tr.converted td:first-child { background: #f1f9f8 !important; box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
     tr.converted:hover { background: var(--converted-bg); }
     .rev-decimal { font-size: 0.75em; opacity: 0.7; vertical-align: top; }
     tr.converted td { font-weight: 500; }
@@ -458,7 +459,8 @@
     .kpi-mobile-next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .kpi-mobile-next svg { width: 18px; height: 18px; display: block; }
 @media (max-width: 768px) {
-  .kpi-mobile-pager { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .kpi-mobile-pager { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+  .kpi-mobile-pager::-webkit-scrollbar { display: none; }
   .live-kpi-grid { --kpi-gap: 0.5rem; display: flex; gap: var(--kpi-gap); }
   .live-kpi-cell { min-width: 150px; flex: 0 0 auto; }
   .live-kpi-cell .live-kpi-value { font-size: 1rem; }
@@ -853,6 +855,14 @@
     #diag-tab-sources:checked ~ .diag-panels .diag-panel-sources { display: block; }
     #diag-tab-system:checked ~ .diag-panels .diag-panel-system { display: block; }
 
+    /* Diagnostics main tabs (Comparison / Technical / Definitions) */
+    #diag-main-tab-compare:checked ~ .diag-panels .diag-panel-main-compare { display: block; }
+    #diag-main-tab-tech:checked ~ .diag-panels .diag-panel-main-tech { display: block; }
+    #diag-main-tab-defs:checked ~ .diag-panels .diag-panel-main-defs { display: block; }
+
+    /* When tech panel is already a tab, remove inner top border/padding */
+    .diag-panel-main-tech .diag-tabs { border-top: none; padding: 0; }
+
     .diag-panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .diag-panel-card { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255,255,255,0.82); padding: 0.75rem; }
     .diag-panel-card-title { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.5rem; font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -865,6 +875,9 @@
     .diag-toggle-row { display: flex; align-items: center; gap: 0.55rem; margin-top: 0.25rem; font-size: 0.85rem; color: var(--text); font-weight: 650; }
     .diag-toggle-row input { width: 16px; height: 16px; accent-color: var(--accent); }
     .diag-toggle-row span { flex: 1; min-width: 0; }
+    .diag-def-list { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 0.8125rem; color: var(--text); }
+    .diag-def-list li { margin: 0.2rem 0; }
+    .diag-def-list code { font-size: 0.78rem; }
 
     @media (max-width: 768px) {
       #config-modal .config-modal-card { width: 100%; max-height: 92vh; }
@@ -886,6 +899,15 @@
     .tsm-table tr:last-child td { border-bottom: none; }
     .tsm-input { width: 100%; min-height: 40px; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem; background: rgba(255,255,255,0.9); color: var(--text); font-size: 0.92rem; }
     .tsm-input::placeholder { color: rgba(0,0,0,0.4); }
+    .tsm-select { min-height: 40px; }
+    .tsm-save-msg { font-size: 0.75rem; color: var(--muted); }
+    .tsm-token-table th:nth-child(1), .tsm-token-table td:nth-child(1) { width: 25%; }
+    .tsm-token-table th:nth-child(2), .tsm-token-table td:nth-child(2) { width: 25%; }
+    .tsm-token-table th:nth-child(3), .tsm-token-table td:nth-child(3) { width: 50%; }
+    .tsm-token-map-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+    .tsm-token-map-row .tsm-select { width: 100px; flex: 0 0 100px; }
+    .tsm-token-other { flex: 1 1 180px; min-width: 160px; }
+    .tsm-token-icon { flex: 2 1 240px; min-width: 200px; }
     .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
     .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
   </style>
@@ -1058,8 +1080,8 @@
             <tr>
               <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></th>
               <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
@@ -1084,8 +1106,8 @@
             <tr>
               <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></th>
               <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
             </tr>
           </thead>
@@ -1121,9 +1143,9 @@
             <tr>
               <th class="bs-product-col sortable" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
               <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Landings"><span class="th-label-long">Landings</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="Order share%"><span class="th-label-long">Order share%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="best-sellers-body">
@@ -1144,7 +1166,7 @@
             <tr>
               <th class="bs-product-col sortable" data-sort="product" aria-sort="none" tabindex="0" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
               <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Landings"><span class="th-label-long">Landings</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
               <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
@@ -1167,9 +1189,9 @@
             <tr>
               <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></th>
               <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Landings"><span class="th-label-long">Landings</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="Order share%"><span class="th-label-long">Order share%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="best-variants-body">
@@ -1190,9 +1212,9 @@
             <tr>
               <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></th>
               <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
+              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Landings"><span class="th-label-long">Landings</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
               <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
+              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="Order share%"><span class="th-label-long">Order share%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
             </tr>
           </thead>
           <tbody id="worst-variants-body">
@@ -2279,6 +2301,100 @@
       }, 60000).then(function(r) { return r.ok ? r.json() : null; });
     }
 
+    // Preserve token editor inputs across refreshes (bulk mapping UX).
+    // Keyed by utm_param + utm_value so "Refresh/Scan/Show mapped tokens" won't wipe in-progress edits.
+    let trafficSourceTokenDrafts = new Map(); // tokenKey -> { sourcePick, sourceLabel, iconUrl }
+
+    function normalizeFlatLabel(v) {
+      const s = v != null ? String(v).trim().toLowerCase() : '';
+      if (!s) return '';
+      return s.replace(/[^a-z0-9]+/g, '');
+    }
+
+    function tokenDraftKey(utmParam, utmValue) {
+      const p = utmParam != null ? String(utmParam).trim().toLowerCase() : '';
+      const v = utmValue != null ? String(utmValue).trim().toLowerCase() : '';
+      if (!p || !v) return '';
+      return p + '\u0000' + v;
+    }
+
+    function setTokenRowOtherMode(row, on) {
+      const otherEl = row ? row.querySelector('input[data-field="source_label"]') : null;
+      if (otherEl) otherEl.style.display = on ? '' : 'none';
+    }
+
+    function readTokenDraftFromRow(row) {
+      const pickEl = row ? row.querySelector('select[data-field="source_pick"]') : null;
+      const labelEl = row ? row.querySelector('input[data-field="source_label"]') : null;
+      const iconEl = row ? row.querySelector('input[data-field="icon_url"]') : null;
+      const pick = pickEl ? String(pickEl.value || '').trim().toLowerCase() : '';
+      const sourceLabel = labelEl ? String(labelEl.value || '') : '';
+      const iconUrl = iconEl ? String(iconEl.value || '') : '';
+      return { sourcePick: pick, sourceLabel, iconUrl };
+    }
+
+    function upsertTokenDraft(key, draft) {
+      if (!key) return;
+      const pick = draft && draft.sourcePick != null ? String(draft.sourcePick).trim().toLowerCase() : '';
+      const label = draft && draft.sourceLabel != null ? String(draft.sourceLabel) : '';
+      const icon = draft && draft.iconUrl != null ? String(draft.iconUrl) : '';
+      const labelTrim = label.trim();
+      const iconTrim = icon.trim();
+      const meaningful = (!!pick) || (!!labelTrim) || (!!iconTrim);
+      if (!meaningful || (pick === '__other__' && !labelTrim && !iconTrim)) {
+        trafficSourceTokenDrafts.delete(key);
+        return;
+      }
+      trafficSourceTokenDrafts.set(key, { sourcePick: pick, sourceLabel: label, iconUrl: icon });
+    }
+
+    function stashTokenDraftsFromRoot(root) {
+      if (!root || !trafficSourceTokenDrafts || !trafficSourceTokenDrafts.size) return;
+      const rows = root.querySelectorAll('.tsm-token-row');
+      rows.forEach(function(row) {
+        const p = (row.getAttribute('data-utm-param') || '').trim();
+        const v = (row.getAttribute('data-utm-value') || '').trim();
+        const key = tokenDraftKey(p, v);
+        if (!key) return;
+        if (!trafficSourceTokenDrafts.has(key)) return; // only update existing drafts (avoid making every row "dirty")
+        upsertTokenDraft(key, readTokenDraftFromRow(row));
+      });
+    }
+
+    function applyTokenDraftsToRoot(root) {
+      if (!root || !trafficSourceTokenDrafts || !trafficSourceTokenDrafts.size) return;
+      const rows = root.querySelectorAll('.tsm-token-row');
+      rows.forEach(function(row) {
+        const p = (row.getAttribute('data-utm-param') || '').trim();
+        const v = (row.getAttribute('data-utm-value') || '').trim();
+        const key = tokenDraftKey(p, v);
+        if (!key) return;
+        const d = trafficSourceTokenDrafts.get(key);
+        if (!d) return;
+
+        const pickEl = row.querySelector('select[data-field="source_pick"]');
+        if (pickEl && d.sourcePick != null && String(d.sourcePick).trim() !== '') {
+          pickEl.value = String(d.sourcePick).trim().toLowerCase();
+        }
+
+        const labelEl = row.querySelector('input[data-field="source_label"]');
+        if (labelEl && d.sourceLabel != null) labelEl.value = String(d.sourceLabel);
+
+        const iconEl = row.querySelector('input[data-field="icon_url"]');
+        if (iconEl && d.iconUrl != null) iconEl.value = String(d.iconUrl);
+
+        const pickNow = pickEl ? String(pickEl.value || '').trim().toLowerCase() : (d.sourcePick || '');
+        const otherOn = (pickNow === '__other__') || (!!String(d.sourceLabel || '').trim() && (!pickNow || pickNow === '__other__'));
+        setTokenRowOtherMode(row, otherOn);
+      });
+    }
+
+    function setTsmSaveMsg(root, msg) {
+      if (!root) return;
+      const els = root.querySelectorAll('[data-tsm-save-msg]');
+      els.forEach(function(el) { el.textContent = msg != null ? String(msg) : ''; });
+    }
+
     function renderTrafficSourceMappingPanel(state) {
       const sources = (state && Array.isArray(state.sources)) ? state.sources.slice() : [];
       const tokens = (state && Array.isArray(state.tokens)) ? state.tokens.slice() : [];
@@ -2292,11 +2408,13 @@
 
       let html = '';
       html += '<div class="tsm-actions">';
-      html +=   '<button type="button" class="tsm-btn primary" data-tsm-action="refresh">' + '<span>Refresh</span>' + '</button>';
+      html +=   '<button type="button" class="tsm-btn primary" data-tsm-action="save-mappings">' + '<span>Save mappings</span>' + '</button>';
+      html +=   '<button type="button" class="tsm-btn" data-tsm-action="refresh">' + '<span>Refresh</span>' + '</button>';
       html +=   '<button type="button" class="tsm-btn" data-tsm-action="scan">' + '<span>Scan last 30d</span>' + '</button>';
       html +=   '<button type="button" class="tsm-btn" data-tsm-action="toggle-mapped">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Hide mapped tokens' : 'Show mapped tokens') + '</span>' + '</button>';
+      html +=   '<span class="tsm-save-msg" data-tsm-save-msg></span>';
       html += '</div>';
-      html += '<div class="diag-note">Unmapped tokens appear here first. Map a token to a Source name (reuses known keys like <code>google_ads</code>/<code>bing_ads</code> when the label matches; otherwise creates <code>custom_...</code>). If you map a token again, the newest mapping wins. Paste an icon URL to override the default icon.</div>';
+      html += '<div class="diag-note">Unmapped tokens appear here first. Pick an existing Source (or choose <strong>Other…</strong>), then press <strong>Save mappings</strong> to apply in bulk. If you map a token again, the newest mapping wins. Paste an icon URL to override the default icon.</div>';
 
       html += '<div class="diag-section-title">' + '<span>Mapped sources</span>' + '</div>';
       if (!sources.length) {
@@ -2334,7 +2452,7 @@
       if (!tokens.length) {
         html += '<div class="diag-note">No tokens captured yet. Click <strong>Scan last 30d</strong> (or wait for new sessions) and they will appear here.</div>';
       } else {
-        html += '<div class="tsm-table-scroll"><table class="tsm-table"><thead><tr>' +
+        html += '<div class="tsm-table-scroll"><table class="tsm-table tsm-token-table"><thead><tr>' +
           '<th>Token</th><th>Seen</th><th>Map / existing</th>' +
           '</tr></thead><tbody>';
         tokens.forEach(function(t) {
@@ -2344,14 +2462,24 @@
           const seenCount = t && typeof t.seen_count === 'number' ? t.seen_count : 0;
           const lastSeen = t && typeof t.last_seen_at === 'number' ? t.last_seen_at : null;
           const mapped = (t && Array.isArray(t.mapped)) ? t.mapped : [];
-          html += '<tr class="tsm-token-row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '">' +
+          const currentKey = (mapped && mapped[0] && mapped[0].source_key != null) ? String(mapped[0].source_key).trim().toLowerCase() : '';
+          let opts = '<option value="">Choose…</option>';
+          sources.forEach(function(s) {
+            const sk = s && s.source_key != null ? String(s.source_key).trim().toLowerCase() : '';
+            if (!sk) return;
+            const sl = s && s.label != null ? String(s.label) : sk;
+            opts += '<option value="' + escapeHtml(sk) + '"' + (sk === currentKey ? ' selected' : '') + '>' + escapeHtml(sl) + '</option>';
+          });
+          opts += '<option value="__other__">Other…</option>';
+
+          html += '<tr class="tsm-token-row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
             '<td><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></td>' +
             '<td>' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note" style="margin:0.15rem 0 0">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></td>' +
             '<td>' +
-              '<div style="display:grid;grid-template-columns: 1fr 1fr auto; gap:0.45rem; align-items:center">' +
-                '<input class="tsm-input" data-field="source_label" placeholder="Source name (e.g. Google Ads, Bing Ads, TikTok Influencers)" />' +
-                '<input class="tsm-input" data-field="icon_url" placeholder="Icon URL (optional)" />' +
-                '<button type="button" class="tsm-btn primary" data-tsm-action="map-token">Map</button>' +
+              '<div class="tsm-token-map-row">' +
+                '<select class="tsm-input tsm-select" data-field="source_pick">' + opts + '</select>' +
+                '<input class="tsm-input tsm-token-other" data-field="source_label" placeholder="Other source…" style="display:none" />' +
+                '<input class="tsm-input tsm-token-icon" data-field="icon_url" placeholder="Icon URL (optional)" />' +
               '</div>' +
               (mapped.length ? ('<div style="margin-top:0.35rem">' + mapped.map(function(m) {
                 const ml = m && m.label != null ? String(m.label) : (m && m.source_key ? String(m.source_key) : '');
@@ -2369,6 +2497,10 @@
           '</tr>';
         });
         html += '</tbody></table></div>';
+        html += '<div class="tsm-actions" style="margin-top:0.6rem">' +
+          '<button type="button" class="tsm-btn primary" data-tsm-action="save-mappings">' + '<span>Save mappings</span>' + '</button>' +
+          '<span class="tsm-save-msg" data-tsm-save-msg></span>' +
+        '</div>';
       }
 
       return html;
@@ -2401,11 +2533,13 @@
       const rootId = options && options.rootId ? String(options.rootId) : 'traffic-source-mapping-root';
       const root = document.getElementById(rootId);
       if (!root) return Promise.resolve(null);
+      try { stashTokenDraftsFromRoot(root); } catch (_) {}
       const force = !!options.force;
       const now = Date.now();
       const fresh = !!(trafficSourceMapsLastState && trafficSourceMapsLastLoadedAt && (now - trafficSourceMapsLastLoadedAt) < 30 * 1000);
       if (!force && fresh) {
         root.innerHTML = renderTrafficSourceMappingPanel(trafficSourceMapsLastState);
+        try { applyTokenDraftsToRoot(root); } catch (_) {}
         return Promise.resolve(trafficSourceMapsLastState);
       }
 
@@ -2414,7 +2548,10 @@
       if (trafficSourceMapsUiInFlight) {
         return trafficSourceMapsUiInFlight
           .then(function(state) {
-            if (state && state.ok === true) root.innerHTML = renderTrafficSourceMappingPanel(state);
+            if (state && state.ok === true) {
+              root.innerHTML = renderTrafficSourceMappingPanel(state);
+              try { applyTokenDraftsToRoot(root); } catch (_) {}
+            }
             else root.innerHTML = '<div class="diag-note">Failed to load source mapping.</div>';
             return state;
           })
@@ -2439,7 +2576,10 @@
         .finally(function() { trafficSourceMapsUiInFlight = null; });
 
       return trafficSourceMapsUiInFlight.then(function(state) {
-        if (state && state.ok === true) root.innerHTML = renderTrafficSourceMappingPanel(state);
+        if (state && state.ok === true) {
+          root.innerHTML = renderTrafficSourceMappingPanel(state);
+          try { applyTokenDraftsToRoot(root); } catch (_) {}
+        }
         else root.innerHTML = '<div class="diag-note">Failed to load source mapping.</div>';
         return state;
       });
@@ -2450,6 +2590,44 @@
       const root = document.getElementById(rootId);
       if (!root) return;
       try { bindTrafficSourceMappingFullscreen(); } catch (_) {}
+
+      // Draft-preserving editors (so Save/Refresh doesn't wipe other rows).
+      root.onchange = function(e) {
+        const el = e && e.target ? e.target : null;
+        if (!el || !el.closest) return;
+        const row = el.closest('.tsm-token-row');
+        if (!row) return;
+        const p = (row.getAttribute('data-utm-param') || '').trim();
+        const v = (row.getAttribute('data-utm-value') || '').trim();
+        const key = tokenDraftKey(p, v);
+        if (!key) return;
+
+        if (el.matches && el.matches('select[data-field="source_pick"]')) {
+          const pick = String(el.value || '').trim().toLowerCase();
+          setTokenRowOtherMode(row, pick === '__other__');
+          if (pick === '__other__') {
+            const otherEl = row.querySelector('input[data-field="source_label"]');
+            if (otherEl) { try { otherEl.focus(); } catch (_) {} }
+          }
+        }
+
+        upsertTokenDraft(key, readTokenDraftFromRow(row));
+        try { setTsmSaveMsg(root, ''); } catch (_) {}
+      };
+
+      root.oninput = function(e) {
+        const el = e && e.target ? e.target : null;
+        if (!el || !el.closest) return;
+        const row = el.closest('.tsm-token-row');
+        if (!row) return;
+        const p = (row.getAttribute('data-utm-param') || '').trim();
+        const v = (row.getAttribute('data-utm-value') || '').trim();
+        const key = tokenDraftKey(p, v);
+        if (!key) return;
+        upsertTokenDraft(key, readTokenDraftFromRow(row));
+        try { setTsmSaveMsg(root, ''); } catch (_) {}
+      };
+
       root.onclick = function(e) {
         const btn = e && e.target ? e.target.closest('button[data-tsm-action]') : null;
         if (!btn) return;
@@ -2468,6 +2646,132 @@
           postTrafficSourceBackfill({ since_days: 30, limit_sessions: 20000 })
             .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
             .finally(function() { btn.disabled = false; });
+          return;
+        }
+        if (action === 'save-mappings') {
+          const rootEl = root;
+          const rows = Array.from(rootEl.querySelectorAll('.tsm-token-row'));
+
+          // Capture any "dirty" rows into drafts (resilient even if a browser misses input events).
+          try {
+            rows.forEach(function(r) {
+              const utmParam = (r.getAttribute('data-utm-param') || '').trim();
+              const utmValue = (r.getAttribute('data-utm-value') || '').trim();
+              const tkey = tokenDraftKey(utmParam, utmValue);
+              if (!tkey) return;
+              const currentKey = (r.getAttribute('data-current-source-key') || '').trim().toLowerCase();
+              const pickEl = r.querySelector('select[data-field="source_pick"]');
+              const pick = pickEl ? String(pickEl.value || '').trim().toLowerCase() : '';
+              const labelEl = r.querySelector('input[data-field="source_label"]');
+              const iconEl = r.querySelector('input[data-field="icon_url"]');
+              const label = labelEl ? String(labelEl.value || '').trim() : '';
+              const iconUrl = iconEl ? String(iconEl.value || '').trim() : '';
+              const dirty = (pick === '__other__') || (!!label) || (!!iconUrl) || (!!pick && pick !== currentKey);
+              if (!dirty) return;
+              upsertTokenDraft(tkey, { sourcePick: pick, sourceLabel: label, iconUrl: iconUrl });
+            });
+          } catch (_) {}
+
+          const jobs = [];
+          rows.forEach(function(r) {
+            const utmParam = (r.getAttribute('data-utm-param') || '').trim();
+            const utmValue = (r.getAttribute('data-utm-value') || '').trim();
+            if (!utmParam || !utmValue) return;
+            const tkey = tokenDraftKey(utmParam, utmValue);
+            const currentKey = (r.getAttribute('data-current-source-key') || '').trim().toLowerCase();
+            const pickEl = r.querySelector('select[data-field="source_pick"]');
+            const pick = pickEl ? String(pickEl.value || '').trim().toLowerCase() : '';
+            const labelEl = r.querySelector('input[data-field="source_label"]');
+            const iconEl = r.querySelector('input[data-field="icon_url"]');
+            const label = labelEl ? String(labelEl.value || '').trim() : '';
+            const iconUrl = iconEl ? String(iconEl.value || '').trim() : '';
+            if (!pick && !label && !iconUrl) return; // nothing entered
+
+            const currentLabel = currentKey ? trafficSourceLabelForKey(currentKey, '') : '';
+            if (pick && pick !== '__other__') {
+              if (pick === currentKey) {
+                if (iconUrl) {
+                  jobs.push({
+                    kind: 'meta',
+                    tokenKey: tkey,
+                    payload: { source_key: pick, label: trafficSourceLabelForKey(pick, pick), icon_url: iconUrl },
+                  });
+                }
+                return;
+              }
+              jobs.push({
+                kind: 'map',
+                tokenKey: tkey,
+                payload: { utm_param: utmParam, utm_value: utmValue, source_key: pick, source_label: '', icon_url: iconUrl || null, since_days: 30, limit_sessions: 50000 },
+              });
+              return;
+            }
+
+            // Other/custom label mode.
+            if (!label) return; // can't map without a label
+
+            if (currentKey && normalizeFlatLabel(currentLabel) && normalizeFlatLabel(currentLabel) === normalizeFlatLabel(label)) {
+              if (iconUrl) {
+                jobs.push({
+                  kind: 'meta',
+                  tokenKey: tkey,
+                  payload: { source_key: currentKey, label: trafficSourceLabelForKey(currentKey, currentKey), icon_url: iconUrl },
+                });
+              }
+              return;
+            }
+
+            jobs.push({
+              kind: 'map',
+              tokenKey: tkey,
+              payload: { utm_param: utmParam, utm_value: utmValue, source_label: label, icon_url: iconUrl || null, since_days: 30, limit_sessions: 50000 },
+            });
+          });
+
+          if (!jobs.length) {
+            setTsmSaveMsg(rootEl, 'No pending mappings.');
+            return;
+          }
+
+          // Disable action buttons while saving.
+          rootEl.querySelectorAll('button[data-tsm-action]').forEach(function(b) { b.disabled = true; });
+          setTsmSaveMsg(rootEl, 'Saving ' + jobs.length + '…');
+
+          let ok = 0;
+          let fail = 0;
+          function run(i) {
+            if (i >= jobs.length) return Promise.resolve();
+            setTsmSaveMsg(rootEl, 'Saving ' + (i + 1) + '/' + jobs.length + '…');
+            const j = jobs[i];
+            const p = j.kind === 'meta' ? postTrafficSourceMeta(j.payload) : postTrafficSourceMap(j.payload);
+            return Promise.resolve(p)
+              .then(function() {
+                ok += 1;
+                if (j && j.tokenKey) trafficSourceTokenDrafts.delete(j.tokenKey);
+              })
+              .catch(function(err) {
+                fail += 1;
+                console.error(err);
+              })
+              .then(function() { return run(i + 1); });
+          }
+
+          run(0)
+            .then(function() { setTsmSaveMsg(rootEl, 'Saved ' + ok + (fail ? (', failed ' + fail) : '') + '. Refreshing…'); })
+            .then(function() { return refreshTrafficSourceMeta({ force: true }); })
+            .then(function() { try { refreshTraffic({ force: true }); } catch (_) {} })
+            .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
+            .catch(function(err) {
+              console.error(err);
+              setTsmSaveMsg(rootEl, 'Save failed: ' + (err && err.message ? String(err.message) : 'error'));
+            })
+            .finally(function() {
+              // Buttons will be recreated on refresh; if refresh failed, re-enable the existing ones.
+              try {
+                const rr = document.getElementById(rootId);
+                if (rr) rr.querySelectorAll('button[data-tsm-action]').forEach(function(b) { b.disabled = false; });
+              } catch (_) {}
+            });
           return;
         }
         if (action === 'map-token') {
@@ -5170,6 +5474,9 @@
             if (name === 'columns') {
               return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M3 4h18v16H3z"/></svg>';
             }
+            if (name === 'list') {
+              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
+            }
             if (name === 'bag') {
               return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
             }
@@ -5235,6 +5542,8 @@
 
           const truthOrders = (typeof truthToday.orderCount === 'number') ? truthToday.orderCount : null;
           const truthRevenue = (typeof truthToday.revenueGbp === 'number') ? truthToday.revenueGbp : null;
+          const truthCheckoutOrders = (typeof truthToday.checkoutOrderCount === 'number') ? truthToday.checkoutOrderCount : null;
+          const truthCheckoutRevenue = (typeof truthToday.checkoutRevenueGbp === 'number') ? truthToday.checkoutRevenueGbp : null;
           const truthReturningCustomers = (typeof truthToday.returningCustomerCount === 'number') ? truthToday.returningCustomerCount : null;
           const truthReturningRevenue = (typeof truthToday.returningRevenueGbp === 'number') ? truthToday.returningRevenueGbp : null;
           const evTotal = (typeof evidenceToday.checkoutCompleted === 'number') ? evidenceToday.checkoutCompleted : null;
@@ -5251,8 +5560,16 @@
           const botsBlockedToday = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') ? traffic.today.botsBlockedAtEdge : null;
           const botsBlockedUpdatedAt = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') ? traffic.today.botsBlockedAtEdgeUpdatedAt : null;
 
-          const shopifyCr = (truthOrders != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (truthOrders / shopifySessionsToday) * 100 : null;
-          const birdseyeCr = (truthOrders != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (truthOrders / birdseyeSessionsToday) * 100 : null;
+          // Prefer "checkout-token" truth orders for conversion-rate (aligns with Shopify sessions + pixel evidence).
+          const truthOrdersForCr = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
+          const shopifyCr = (truthOrdersForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (truthOrdersForCr / shopifySessionsToday) * 100 : null;
+          const birdseyeCr = (truthOrdersForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (truthOrdersForCr / birdseyeSessionsToday) * 100 : null;
+
+          const driftPixelCheckoutOrders = (truthCheckoutOrders != null && pixelDerivedOrders != null) ? (pixelDerivedOrders - truthCheckoutOrders) : null;
+          const driftPixelCheckoutRevenue = (truthCheckoutRevenue != null && pixelDerivedRevenue != null)
+            ? (Math.round((pixelDerivedRevenue - truthCheckoutRevenue) * 100) / 100)
+            : null;
+          const driftEvidenceCheckoutOrders = (truthCheckoutOrders != null && evTotal != null) ? (evTotal - truthCheckoutOrders) : null;
 
           const sessionsDiff = (shopifySessionsToday != null && birdseyeSessionsToday != null) ? (shopifySessionsToday - birdseyeSessionsToday) : null;
           const crDiff = (shopifyCr != null && birdseyeCr != null) ? (shopifyCr - birdseyeCr) : null;
@@ -5356,22 +5673,34 @@
           // Sales / drift
           html +=       '<tr><td><strong>Sales</strong></td><td></td><td></td><td></td></tr>';
           html +=       '<tr>' +
-                        '<td>Orders (today)</td>' +
+                        '<td>Orders (today, paid)</td>' +
                         '<td>' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</td>' +
                         '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
                         '<td>' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
                         '</tr>';
           html +=       '<tr>' +
-                        '<td>Revenue (today)</td>' +
+                        '<td>Revenue (today, paid)</td>' +
                         '<td>' + fmtRevenue(truthRevenue) + '</td>' +
                         '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
                         '<td>' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</td>' +
                         '</tr>';
           html +=       '<tr>' +
+                        '<td>Orders (today, checkout-token)</td>' +
+                        '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</td>' +
+                        '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
+                        '<td>' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
+                        '</tr>';
+          html +=       '<tr>' +
+                        '<td>Revenue (today, checkout-token)</td>' +
+                        '<td>' + fmtRevenue(truthCheckoutRevenue) + '</td>' +
+                        '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
+                        '<td>' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</td>' +
+                        '</tr>';
+          html +=       '<tr>' +
                         '<td>Checkout events (today)</td>' +
-                        '<td>' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</td>' +
+                        '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</td>' +
                         '<td>' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</td>' +
-                        '<td>' + (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
+                        '<td>' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
                         '</tr>';
 
           // Config checks
@@ -5413,7 +5742,8 @@
           if (missingScopes.length) {
             html += '<div class="diag-note">Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.</div>';
           }
-          if (truthOrders != null && truthOrders > 0 && evTotal === 0) {
+          const evidenceExpected = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
+          if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
             html += '<div class="diag-note">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
           }
           html += '</div>';
@@ -5456,6 +5786,13 @@
           html +=           '<div class="diag-panel-card">';
           html +=             '<div class="diag-panel-card-title">' + icon('bag', '') + 'Truth (orders)</div>';
           html +=             kv('Today', (truthOrders != null ? (code(truthOrders) + ' orders') : '\u2014') + (truthRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthRevenue))) : ''));
+          if (truthCheckoutOrders != null || truthCheckoutRevenue != null) {
+            html += kv(
+              'Checkout-token (today)',
+              (truthCheckoutOrders != null ? (code(truthCheckoutOrders) + ' orders') : '\u2014') +
+                (truthCheckoutRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthCheckoutRevenue))) : '')
+            );
+          }
           if (truthReturningCustomers != null || truthReturningRevenue != null) {
             html += kv('Returning (today)', (truthReturningCustomers != null ? (code(truthReturningCustomers) + ' customers') : '\u2014') + (truthReturningRevenue != null ? (' \u00b7 ' + code(formatRevenue(truthReturningRevenue))) : ''));
           }
@@ -5491,7 +5828,10 @@
           if (evTotal != null) {
             let evLine = code(evTotal) + ' events';
             if (evLinked != null && evUnlinked != null) evLine += ' \u00b7 linked ' + code(evLinked) + ' \u00b7 unlinked ' + code(evUnlinked);
-            if (driftOrders != null) evLine += ' \u00b7 drift vs truth ' + code((driftOrders >= 0 ? '+' + driftOrders : String(driftOrders)));
+            const driftEvidence = (driftEvidenceCheckoutOrders != null ? driftEvidenceCheckoutOrders : driftOrders);
+            if (driftEvidence != null) {
+              evLine += ' \u00b7 drift vs ' + (truthCheckoutOrders != null ? 'checkout-token' : 'truth') + ' ' + code((driftEvidence >= 0 ? '+' + driftEvidence : String(driftEvidence)));
+            }
             html += kv('Today', evLine);
           } else {
             html += kv('Today', '\u2014');
@@ -5504,8 +5844,14 @@
           if (pixelDerivedOrders != null || pixelDerivedRevenue != null) {
             let line = (pixelDerivedOrders != null ? (code(pixelDerivedOrders) + ' orders') : '\u2014');
             if (pixelDerivedRevenue != null) line += ' \u00b7 ' + code(formatRevenue(pixelDerivedRevenue));
-            if (driftPixelOrders != null) line += ' \u00b7 drift vs truth ' + code((driftPixelOrders >= 0 ? '+' + driftPixelOrders : String(driftPixelOrders)));
-            if (driftPixelRevenue != null) line += ' \u00b7 \u00a3 drift ' + code(String(driftPixelRevenue >= 0 ? ('+' + driftPixelRevenue) : driftPixelRevenue));
+            const driftOrdersShown = (driftPixelCheckoutOrders != null ? driftPixelCheckoutOrders : driftPixelOrders);
+            if (driftOrdersShown != null) {
+              line += ' \u00b7 drift vs ' + (truthCheckoutOrders != null ? 'checkout-token' : 'truth') + ' ' + code((driftOrdersShown >= 0 ? '+' + driftOrdersShown : String(driftOrdersShown)));
+            }
+            const driftRevenueShown = (driftPixelCheckoutRevenue != null ? driftPixelCheckoutRevenue : driftPixelRevenue);
+            if (driftRevenueShown != null) {
+              line += ' \u00b7 \u00a3 drift ' + code(String(driftRevenueShown >= 0 ? ('+' + driftRevenueShown) : driftRevenueShown));
+            }
             html += kv('Today', line);
           } else {
             html += kv('Today', '\u2014');

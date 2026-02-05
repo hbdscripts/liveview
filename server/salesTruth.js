@@ -975,6 +975,27 @@ async function getTruthOrderCount(shop, startMs, endMs) {
   return row ? Number(row.n) || 0 : 0;
 }
 
+/**
+ * "Checkout-token" truth orders: a proxy for online-store checkout orders.
+ * Many non-checkout channels (POS/manual/subscription renewals) won't have a checkout_token.
+ * Useful for apples-to-apples comparisons with Shopify "sessions" and pixel checkout_completed evidence.
+ */
+async function getTruthCheckoutOrderCount(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return 0;
+  const db = getDb();
+  const row = await db.get(
+    `SELECT COUNT(*) AS n FROM orders_shopify
+     WHERE shop = ? AND created_at >= ? AND created_at < ?
+       AND (test IS NULL OR test = 0)
+       AND cancelled_at IS NULL
+       AND financial_status = 'paid'
+       AND checkout_token IS NOT NULL AND TRIM(checkout_token) != ''`,
+    [safeShop, startMs, endMs]
+  );
+  return row ? Number(row.n) || 0 : 0;
+}
+
 async function getTruthSalesRows(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return [];
@@ -986,6 +1007,23 @@ async function getTruthSalesRows(shop, startMs, endMs) {
        AND (test IS NULL OR test = 0)
        AND cancelled_at IS NULL
        AND financial_status = 'paid'
+     GROUP BY currency`,
+    [safeShop, startMs, endMs]
+  );
+}
+
+async function getTruthCheckoutSalesRows(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return [];
+  const db = getDb();
+  return db.all(
+    `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(total_price), 0) AS total
+     FROM orders_shopify
+     WHERE shop = ? AND created_at >= ? AND created_at < ?
+       AND (test IS NULL OR test = 0)
+       AND cancelled_at IS NULL
+       AND financial_status = 'paid'
+       AND checkout_token IS NOT NULL AND TRIM(checkout_token) != ''
      GROUP BY currency`,
     [safeShop, startMs, endMs]
   );
@@ -1006,6 +1044,11 @@ async function sumRowsToGbp(rows) {
 
 async function getTruthSalesTotalGbp(shop, startMs, endMs) {
   const rows = await getTruthSalesRows(shop, startMs, endMs);
+  return sumRowsToGbp(rows);
+}
+
+async function getTruthCheckoutSalesTotalGbp(shop, startMs, endMs) {
+  const rows = await getTruthCheckoutSalesRows(shop, startMs, endMs);
   return sumRowsToGbp(rows);
 }
 
@@ -1320,7 +1363,9 @@ module.exports = {
   fetchShopifyOrdersSummary,
   shouldReconcile,
   getTruthOrderCount,
+  getTruthCheckoutOrderCount,
   getTruthSalesTotalGbp,
+  getTruthCheckoutSalesTotalGbp,
   getTruthReturningRevenueGbp,
   getTruthReturningOrderCount,
   getTruthReturningCustomerCount,

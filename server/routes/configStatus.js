@@ -8,6 +8,11 @@ const config = require('../config');
 const store = require('../store');
 const { getDb, isPostgres } = require('../db');
 const salesTruth = require('../salesTruth');
+const {
+  DEFINITIONS_VERSION: TRACKER_DEFS_VERSION,
+  LAST_UPDATED: TRACKER_DEFS_LAST_UPDATED,
+  TRACKER_TABLE_DEFINITIONS,
+} = require('../trackerDefinitions');
 const pkg = require('../../package.json');
 const shopifyQl = require('../shopifyQl');
 
@@ -108,10 +113,14 @@ async function configStatus(req, res, next) {
 
   // --- DB tables ---
   const tables = {
+    settings: await tableExists('settings'),
+    shop_sessions: await tableExists('shop_sessions'),
+    visitors: await tableExists('visitors'),
     sessions: await tableExists('sessions'),
     events: await tableExists('events'),
     purchases: await tableExists('purchases'),
     orders_shopify: await tableExists('orders_shopify'),
+    orders_shopify_line_items: await tableExists('orders_shopify_line_items'),
     customer_order_facts: await tableExists('customer_order_facts'),
     purchase_events: await tableExists('purchase_events'),
     reconcile_state: await tableExists('reconcile_state'),
@@ -119,6 +128,9 @@ async function configStatus(req, res, next) {
     shopify_sessions_snapshots: await tableExists('shopify_sessions_snapshots'),
     audit_log: await tableExists('audit_log'),
     bot_block_counts: await tableExists('bot_block_counts'),
+    traffic_source_meta: await tableExists('traffic_source_meta'),
+    traffic_source_rules: await tableExists('traffic_source_rules'),
+    traffic_source_tokens: await tableExists('traffic_source_tokens'),
   };
 
   let reporting = { ordersSource: 'orders_shopify', sessionsSource: 'sessions' };
@@ -239,6 +251,8 @@ async function configStatus(req, res, next) {
     today: {
       orderCount: null,
       revenueGbp: null,
+      checkoutOrderCount: null,
+      checkoutRevenueGbp: null,
       returningCustomerCount: null,
       returningRevenueGbp: null,
       lastOrderCreatedAt: null,
@@ -258,6 +272,8 @@ async function configStatus(req, res, next) {
     try {
       truth.today.orderCount = await salesTruth.getTruthOrderCount(shop, todayBounds.start, todayBounds.end);
       truth.today.revenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, todayBounds.start, todayBounds.end);
+      truth.today.checkoutOrderCount = await salesTruth.getTruthCheckoutOrderCount(shop, todayBounds.start, todayBounds.end);
+      truth.today.checkoutRevenueGbp = await salesTruth.getTruthCheckoutSalesTotalGbp(shop, todayBounds.start, todayBounds.end);
       truth.today.returningCustomerCount = await salesTruth.getTruthReturningCustomerCount(shop, todayBounds.start, todayBounds.end);
       truth.today.returningRevenueGbp = await salesTruth.getTruthReturningRevenueGbp(shop, todayBounds.start, todayBounds.end);
     } catch (_) {}
@@ -360,6 +376,31 @@ async function configStatus(req, res, next) {
     : (config.shopify.appUrl || '').replace(/\/$/, '');
   const effectiveIngestUrl = ingestBase ? `${ingestBase}/api/ingest` : '';
 
+  // --- Tracker metric/table definitions (auditable manifest + runtime checks) ---
+  function attachTrackerChecks(def) {
+    const requires = def && def.requires ? def.requires : {};
+    const requiredTables = Array.isArray(requires.dbTables) ? requires.dbTables : [];
+    const missingTables = requiredTables.filter((t) => !tables[String(t)]);
+    const needsToken = !!requires.shopifyToken;
+    const tokenOk = !needsToken || !!token;
+    return {
+      ...def,
+      checks: {
+        dbTablesOk: missingTables.length === 0,
+        dbTablesMissing: missingTables,
+        shopifyTokenOk: tokenOk,
+      },
+    };
+  }
+
+  const trackerDefinitions = {
+    version: TRACKER_DEFS_VERSION,
+    lastUpdated: TRACKER_DEFS_LAST_UPDATED,
+    tables: (TRACKER_TABLE_DEFINITIONS || []).map(attachTrackerChecks),
+    note:
+      'Update this manifest when adding/changing dashboard tables or metric math, so the diagnostics modal remains the single source of truth.',
+  };
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
   res.json({
@@ -413,6 +454,7 @@ async function configStatus(req, res, next) {
       },
     },
     pixel,
+    trackerDefinitions,
   });
 }
 
