@@ -373,6 +373,7 @@ Backups durability:
 - UI: Live table pagination is a single joined control (Prev / page / Next / Rows) without hover lift
 - UI: rows-per-page selector removed; Live sessions pagination defaults to 25 rows
 - UI: sessions table now expands to fill the card width (prevents blank white area to the right on wide screens)
+- UI: tweak landing entry/exit stack spacing (landing-lines margin + remove gap)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
