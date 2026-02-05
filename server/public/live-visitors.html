@@ -2957,7 +2957,7 @@
       }
 
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
-      saleToastHideTimer = setTimeout(hideSaleToast, 10000);
+      if (!saleToastDebugNoAutoHide) saleToastHideTimer = setTimeout(hideSaleToast, 10000);
 
       fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
         if (!sale) return;
@@ -6137,11 +6137,13 @@
       }
     });
 
-    // Debug: force the "new sale" toast for UI review.
+    // Debug: force the "new sale" toast for UI review; ?birdseye_sale=1 keeps it visible (no auto-hide).
+    let saleToastDebugNoAutoHide = false;
     (function maybeTriggerDebugSaleToast() {
       try {
         const params = new URLSearchParams(window.location.search);
         if (params.get('birdseye_sale') !== '1') return;
+        saleToastDebugNoAutoHide = true;
         setTimeout(function() {
           try {
             triggerSaleToast({
