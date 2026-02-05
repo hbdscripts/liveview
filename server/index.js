@@ -69,7 +69,10 @@ app.use('/api/ingest', cors({ origin: true, credentials: false }));
 
 app.use('/api/ingest', ingestRouter);
 
-// Admin API (no Shopify auth for minimal local run; add middleware for production)
+// Protect dashboard + admin API: only from Shopify admin (Referer/Origin) or Google OAuth cookie (direct visits)
+app.use(dashboardAuth.middleware);
+
+// Admin API
 app.get('/api/stream', streamRouter);
 app.get('/api/sessions', sessionsRouter.list);
 app.get('/api/sessions/:id/events', sessionsRouter.events);
@@ -148,8 +151,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Protect dashboard and API: only from Shopify admin (Referer) or with DASHBOARD_SECRET (cookie/header)
-app.use(dashboardAuth.middleware);
+// Public master stylesheet (login + auth loading pages need it without dashboard auth).
+app.get('/app.css', (req, res) => {
+  res.type('text/css');
+  res.sendFile(path.join(__dirname, 'public', 'app.css'));
+});
 
 // Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
 app.use(express.static(path.join(__dirname, 'public')));

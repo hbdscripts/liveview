@@ -171,18 +171,64 @@ function isShopifySignedAppUrlRequest(req) {
   return verifyShopifyHmac(q);
 }
 
+function hostNoPort(host) {
+  const h = String(host || '').trim().toLowerCase();
+  if (!h) return '';
+  // IPv6 in Host can be "[::1]:3000" – keep bracketed host.
+  if (h.startsWith('[')) {
+    const end = h.indexOf(']');
+    return end >= 0 ? h.slice(0, end + 1) : h;
+  }
+  return h.split(':')[0];
+}
+
+/**
+ * Embedded app API calls won't have the signed query params, but their Referer will be the
+ * signed App URL (/?shop=...&host=...&hmac=...&timestamp=...). Verify that HMAC.
+ */
+function isShopifySignedAppUrlReferer(req) {
+  const referer = (req.get('Referer') || req.get('referer') || '').trim();
+  if (!referer) return false;
+  try {
+    const u = new URL(referer);
+    // Only accept a signed referer from *this* host.
+    const reqHost = hostNoPort(req.get('host') || req.get('x-forwarded-host'));
+    const refHost = hostNoPort(u.host);
+    if (reqHost && refHost && reqHost !== refHost) return false;
+    if (u.pathname !== '/') return false;
+    if (!u.search || u.search.length < 5) return false;
+    const q = {};
+    for (const [k, v] of u.searchParams.entries()) {
+      if (!k) continue;
+      q[k] = v;
+    }
+    const shopNorm = String(q.shop || '').trim().toLowerCase();
+    if (!shopNorm) return false;
+    if (!q.hmac || !q.timestamp) return false;
+    const shopMatch = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/.test(shopNorm);
+    if (!shopMatch) return false;
+    return verifyShopifyHmac(q);
+  } catch (_) {
+    return false;
+  }
+}
+
 function allow(req) {
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
   // From Shopify admin: always allow (embed / open from Admin)
   if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
   // Embedded app load: allow signed Shopify App URL requests even if Referer/Origin are stripped.
   if (isShopifySignedAppUrlRequest(req)) return true;
+  // Embedded app API/XHR/SSE: allow when Referer is a signed Shopify App URL.
+  if (isShopifySignedAppUrlReferer(req)) return true;
   // Direct visit: require Google OAuth session when Google is configured
   if (hasGoogle) {
     const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
     return !!(oauthCookie && verifyOauthSession(oauthCookie));
   }
-  // No Google configured: allow (e.g. local dev)
+  // No Google configured: allow only in non-production (e.g. local dev).
+  // In production, fail-closed for direct visits (still allows Shopify Admin embeds above).
+  if (process.env.NODE_ENV === 'production') return false;
   return true;
 }
 

@@ -264,11 +264,7 @@ async function handleAppUrl(req, res, next) {
       const authUrlB64 = Buffer.from(authUrl, 'utf8').toString('base64');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.send(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Loading…</title><style>
-          *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f6f7;font-family:system-ui,sans-serif}
-          .spinner{width:40px;height:40px;border:3px solid #e1e3e5;border-top-color:#008060;border-radius:50%;animation:spin .8s linear infinite}
-          @keyframes spin{to{transform:rotate(360deg)}}
-        </style></head><body><div class="spinner" aria-hidden="true"></div><script>window.top.location.href=atob("${authUrlB64}");</script></body></html>`
+        `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>Loading…</title><link rel="stylesheet" href="/app.css" /></head><body class="page-auth-loading"><div class="spinner" aria-hidden="true"></div><script>window.top.location.href=atob("${authUrlB64}");</script></body></html>`
       );
     }
     return res.redirect(302, authUrl);

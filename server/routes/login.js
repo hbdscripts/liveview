@@ -47,99 +47,16 @@ function getLoginHtml(queryError) {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app.css" />
   <title>Birdseye Tracker · Sign in</title>
-  <style>
-    :root {
-      --bg: #f5f7f7;
-      --card: rgba(255, 255, 255, 0.92);
-      --text: #0f172a;
-      --muted: #475569;
-      --brand: #0d9488;
-      --brandHover: #0f766e;
-      --border: rgba(15, 23, 42, 0.10);
-      --shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
-      --radius: 16px;
-      --ring: rgba(13, 148, 136, 0.35);
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text);
-      background:
-        radial-gradient(900px circle at 20% 10%, rgba(13, 148, 136, 0.18), transparent 45%),
-        radial-gradient(700px circle at 90% 30%, rgba(13, 148, 136, 0.10), transparent 50%),
-        linear-gradient(180deg, #fafafa 0%, var(--bg) 100%);
-      padding: 28px 18px;
-    }
-    .shell { width: 100%; max-width: 460px; }
-    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 14px; }
-    .logo { width: 92px; height: 92px; object-fit: contain; display: block; }
-    .brand-title { margin: 10px 0 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
-    .brand-subtitle { margin: 6px 0 0; font-size: 0.9rem; color: var(--muted); text-align: center; line-height: 1.45; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 22px;
-      backdrop-filter: blur(8px);
-    }
-    .btn {
-      display: inline-flex;
-      width: 100%;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 0.8rem 1rem;
-      font-size: 0.95rem;
-      font-weight: 800;
-      border-radius: 12px;
-      border: 1px solid transparent;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      user-select: none;
-      transition: transform 90ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
-    .btn-icon { width: 18px; height: 18px; display: block; }
-    .btn-primary {
-      background: var(--brand);
-      color: #fff;
-      border-color: rgba(13, 148, 136, 0.55);
-      box-shadow: 0 8px 16px rgba(13, 148, 136, 0.22);
-    }
-    .btn-primary:hover { background: var(--brandHover); }
-    .alert {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 0.75rem 0.85rem;
-      margin-bottom: 12px;
-      background: rgba(255, 255, 255, 0.75);
-    }
-    .alert-title { font-weight: 800; font-size: 0.9rem; margin: 0 0 0.25rem; }
-    .alert-body { font-size: 0.9rem; color: var(--muted); }
-    .alert-error { border-color: rgba(220, 38, 38, 0.28); background: rgba(220, 38, 38, 0.06); }
-    .alert-error .alert-body { color: #991b1b; }
-    .muted { color: var(--muted); font-size: 0.9rem; margin: 0; }
-    .fineprint { margin-top: 14px; text-align: center; color: var(--muted); font-size: 0.78rem; line-height: 1.35; }
-    .fineprint a { color: var(--brandHover); text-decoration: none; font-weight: 700; }
-    .fineprint a:hover { text-decoration: underline; }
-  </style>
 </head>
-<body>
+<body class="page-login">
   <div class="shell">
     <div class="brand">
       <img class="logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338&width=200" alt="Birdseye" decoding="async" loading="eager" />
       <div class="brand-title">Birdseye</div>
     </div>
-    <div style="margin:20px auto;max-width:300px;">
+    <div class="login-actions">
       ${errMsg}
       ${buttons}
     </div>
@@ -150,10 +67,11 @@ function getLoginHtml(queryError) {
 
 function handleGetLogin(req, res) {
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
-  if (!hasGoogle) {
+  const queryError = (req.query && req.query.error) || '';
+  // Local dev: if Google isn't configured, just jump straight to the dashboard (auth middleware allows).
+  if (!hasGoogle && process.env.NODE_ENV !== 'production') {
     return res.redirect(302, '/app/live-visitors');
   }
-  const queryError = (req.query && req.query.error) || '';
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getLoginHtml(queryError));
 }

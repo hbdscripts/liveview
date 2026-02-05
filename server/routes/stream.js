@@ -3,7 +3,6 @@
  */
 
 const sse = require('../sse');
-const config = require('../config');
 
 function streamRouter(req, res, next) {
   res.setHeader('Content-Type', 'text/event-stream');

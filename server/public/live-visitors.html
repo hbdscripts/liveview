@@ -9,7 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <title>Birdseye Tracker</title>
-  <style>
+  <link rel="stylesheet" href="/app.css" />
+  <script type="text/plain" id="inline-css-deprecated">
     :root {
       --bg: #fafafa;
       --card: #fff;
@@ -917,9 +918,9 @@
     .tsm-token-icon { flex: 2 1 240px; min-width: 200px; }
     .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
     .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
-  </style>
+  </script>
 </head>
-<body>
+<body class="page-dashboard">
   <main class="main">
   <div class="main-tabs" role="tablist" aria-label="View">
     <button type="button" id="mobile-tabs-btn" class="mobile-tabs-btn" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
@@ -973,7 +974,7 @@
       <div class="live-kpi-cell sale-toast-host" id="live-kpi-sales-cell">
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
         <div class="live-kpi-value" id="live-kpi-sales">—</div>
-        <div class="sale-toast" id="sale-toast" aria-hidden="true" style="display:none">
+        <div class="sale-toast is-hidden" id="sale-toast" aria-hidden="true">
           <button type="button" class="sale-toast-close" id="sale-toast-close" aria-label="Dismiss sale notification" title="Dismiss">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M18 6L6 18M6 6l12 12"></path>
@@ -993,7 +994,7 @@
       <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div></div>
     </div>
-    <button type="button" class="kpi-mobile-next" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
+    <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
     </div>
@@ -1001,7 +1002,7 @@
   <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
     <h2 class="table-title" id="table-title">
-      <span id="table-title-tabs" class="table-title-tabs" role="tablist" aria-label="Time window" style="display: none;">
+      <span id="table-title-tabs" class="table-title-tabs is-hidden" role="tablist" aria-label="Time window">
         <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
         <span class="table-title-tabs-sep" id="table-tab-sep-today-1h" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
@@ -1011,8 +1012,8 @@
       <span id="table-title-text" class="table-title-label">Today</span>
     </h2>
     <span class="next-update-block live-view-next-update-center" id="next-update-block">
-      <span class="next-update-label" id="next-update-label">Next update</span>
-      <span class="next-update-timer" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span>
+      <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
+      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span>
       <span class="next-update-live-indicator" id="next-update-live-indicator" aria-hidden="true"><span class="live-pulse-dot"></span> Live</span>
     </span>
     <div class="live-view-online">
@@ -1020,29 +1021,29 @@
       Online:
       <span class="online-count-wrap">
         <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
-        <strong id="online-count" style="display:none">0</strong>
+        <strong id="online-count" class="is-hidden">0</strong>
       </span>
     </div>
   </div>
   <div class="sessions-table-wrap">
-    <div class="table-loading-overlay sessions-loading-overlay" id="sessions-loading-overlay" style="display: none;"><div class="spinner"></div></div>
+    <div class="table-loading-overlay sessions-loading-overlay is-hidden" id="sessions-loading-overlay"><div class="spinner"></div></div>
   <div class="table-scroll-wrap">
-  <table id="sessions-table">
-    <thead>
-      <tr>
-        <th class="sortable" data-sort="landing" aria-sort="none" tabindex="0" aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></th>
-        <th class="sortable" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></th>
-        <th class="source-cell sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
-        <th class="sortable" data-sort="device" aria-sort="none" tabindex="0" aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></th>
-        <th class="cart-value-cell sortable" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></th>
-        <th class="sortable" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></th>
-        <th class="sortable" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></th>
-        <th class="sortable" data-sort="history" aria-sort="none" tabindex="0" aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></th>
-        <th class="consent-col" style="display:none" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></th>
-      </tr>
-    </thead>
-    <tbody id="table-body"></tbody>
-  </table>
+  <div id="sessions-table" class="grid-table sessions-table" role="table" aria-label="Sessions">
+    <div class="grid-header" role="rowgroup">
+      <div class="grid-row grid-row--header" role="row">
+        <div class="grid-cell sortable" role="columnheader" data-sort="landing" aria-sort="none" tabindex="0" aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></div>
+        <div class="grid-cell source-cell sortable" role="columnheader" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="device" aria-sort="none" tabindex="0" aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></div>
+        <div class="grid-cell cart-value-cell sortable" role="columnheader" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="history" aria-sort="none" tabindex="0" aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></div>
+        <div class="grid-cell consent-col is-hidden" role="columnheader" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></div>
+      </div>
+    </div>
+    <div id="table-body" class="grid-body" role="rowgroup"></div>
+  </div>
   </div>
   <div class="table-pagination" id="table-pagination">
     <div class="pagination-segments" role="group" aria-label="Pagination">
@@ -1064,7 +1065,7 @@
   </div>
   <div id="tab-panel-stats" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-stats">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="stats-loading-overlay" style="display: none;">
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="stats-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
         <div class="report-build-title">building reports</div>
@@ -1082,22 +1083,22 @@
   <div class="stats-row breakdown-row">
     <div class="stats-card" id="stats-country">
       <div class="country-table-wrap" id="country-table-wrap">
-        <table id="country-table" class="by-country-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="by-country-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="country-table" class="grid-table by-country-table" role="table" aria-label="Country">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="by-country-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="country-pagination" aria-label="Country pagination">
+      <div class="card-pagination is-hidden" id="country-pagination" aria-label="Country pagination">
         <button type="button" id="country-prev">Prev</button>
         <span class="page-label" id="country-label">Page 1 of 1</span>
         <button type="button" id="country-next">Next</button>
@@ -1105,22 +1106,22 @@
     </div>
     <div class="stats-card" id="stats-best-geo-products">
       <div class="country-table-wrap" id="best-geo-products-wrap">
-        <table id="best-geo-products-table" class="by-country-table geo-products-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="country" aria-sort="none" tabindex="0" aria-label="Best/Geo"><span class="th-label-long">Best/Geo</span><span class="th-label-short">Best/Geo</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="best-geo-products-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="best-geo-products-table" class="grid-table by-country-table geo-products-table" role="table" aria-label="Best/Geo products">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Best/Geo"><span class="th-label-long">Best/Geo</span><span class="th-label-short">Best/Geo</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="best-geo-products-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
+      <div class="card-pagination is-hidden" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
         <button type="button" id="best-geo-products-prev">Prev</button>
         <span class="page-label" id="best-geo-products-label">Page 1 of 1</span>
         <button type="button" id="best-geo-products-next">Next</button>
@@ -1132,7 +1133,7 @@
 
   <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="products-loading-overlay" style="display: none;">
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="products-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
         <div class="report-build-title">building reports</div>
@@ -1142,22 +1143,22 @@
   <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
       <div class="country-table-wrap" id="best-sellers-wrap">
-        <table id="best-sellers-table" class="by-country-table best-sellers-table">
-          <thead>
-            <tr>
-              <th class="bs-product-col sortable" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="best-sellers-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="best-sellers-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best sellers">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="best-sellers-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="best-sellers-pagination" aria-label="Best sellers pagination">
+      <div class="card-pagination is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
         <button type="button" id="best-sellers-prev">Prev</button>
         <span class="page-label" id="best-sellers-label">Page 1 of 1</span>
         <button type="button" id="best-sellers-next">Next</button>
@@ -1165,22 +1166,22 @@
     </div>
     <div class="stats-card" id="stats-worst-products">
       <div class="country-table-wrap" id="worst-products-wrap">
-        <table id="worst-products-table" class="by-country-table best-sellers-table">
-          <thead>
-            <tr>
-              <th class="bs-product-col sortable" data-sort="product" aria-sort="none" tabindex="0" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="worst-products-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="worst-products-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Worst products">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="product" aria-sort="none" tabindex="0" aria-label="Worst"><span class="th-label-long">Worst</span><span class="th-label-short">Worst</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="worst-products-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="worst-products-pagination" aria-label="Worst products pagination">
+      <div class="card-pagination is-hidden" id="worst-products-pagination" aria-label="Worst products pagination">
         <button type="button" id="worst-products-prev">Prev</button>
         <span class="page-label" id="worst-products-label">Page 1 of 1</span>
         <button type="button" id="worst-products-next">Next</button>
@@ -1188,22 +1189,22 @@
     </div>
     <div class="stats-card" id="stats-best-variants">
       <div class="country-table-wrap" id="best-variants-wrap">
-        <table id="best-variants-table" class="by-country-table best-sellers-table">
-          <thead>
-            <tr>
-              <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="best-variants-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="best-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best variants">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Best Variants"><span class="th-label-long">Best Variants</span><span class="th-label-short">B.Var</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="best-variants-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="best-variants-pagination" aria-label="Best variants pagination">
+      <div class="card-pagination is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
         <button type="button" id="best-variants-prev">Prev</button>
         <span class="page-label" id="best-variants-label">Page 1 of 1</span>
         <button type="button" id="best-variants-next">Next</button>
@@ -1211,22 +1212,22 @@
     </div>
     <div class="stats-card" id="stats-worst-variants">
       <div class="country-table-wrap" id="worst-variants-wrap">
-        <table id="worst-variants-table" class="by-country-table best-sellers-table">
-          <thead>
-            <tr>
-              <th class="bs-product-col sortable" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></th>
-              <th class="sortable" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="worst-variants-body">
-            <tr><td colspan="5" class="empty">—</td></tr>
-          </tbody>
-        </table>
+        <div id="worst-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Worst variants">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Worst Variants"><span class="th-label-long">Worst Variants</span><span class="th-label-short">W.Var</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="worst-variants-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
+          </div>
+        </div>
       </div>
-      <div class="card-pagination" id="worst-variants-pagination" aria-label="Worst variants pagination">
+      <div class="card-pagination is-hidden" id="worst-variants-pagination" aria-label="Worst variants pagination">
         <button type="button" id="worst-variants-prev">Prev</button>
         <span class="page-label" id="worst-variants-label">Page 1 of 1</span>
         <button type="button" id="worst-variants-next">Next</button>
@@ -1238,7 +1239,7 @@
 
   <div id="tab-panel-traffic" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-traffic">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay" id="traffic-loading-overlay" style="display: none;">
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="traffic-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
         <div class="report-build-title">building reports</div>
@@ -1254,20 +1255,20 @@
         </button>
       </div>
       <div class="country-table-wrap">
-        <table id="traffic-sources-table" class="by-country-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="traffic-sources-body">
-            <tr><td colspan="5" class="empty">Click the settings icon to add sources.</td></tr>
-          </tbody>
-        </table>
+        <div id="traffic-sources-table" class="grid-table by-country-table" role="table" aria-label="Traffic sources">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell sortable" role="columnheader" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="traffic-sources-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Click the settings icon to add sources.</div></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="stats-card" id="traffic-types-card">
@@ -1278,27 +1279,27 @@
         </button>
       </div>
       <div class="country-table-wrap">
-        <table id="traffic-types-table" class="by-country-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="type" aria-sort="none" tabindex="0" aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></th>
-              <th class="sortable" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></th>
-              <th class="sortable" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></th>
-              <th class="sortable" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></th>
-            </tr>
-          </thead>
-          <tbody id="traffic-types-body">
-            <tr><td colspan="5" class="empty">Click the settings icon to add types.</td></tr>
-          </tbody>
-        </table>
+        <div id="traffic-types-table" class="grid-table by-country-table" role="table" aria-label="Traffic types">
+          <div class="grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell sortable" role="columnheader" data-sort="type" aria-sort="none" tabindex="0" aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+            </div>
+          </div>
+          <div id="traffic-types-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Click the settings icon to add types.</div></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   </div>
   </div>
 
-  <div id="side-panel" class="side-panel" style="display:none">
+  <div id="side-panel" class="side-panel is-hidden">
     <header class="side-panel-header">
       <h3 class="side-panel-title">Session</h3>
       <button type="button" class="side-panel-close" id="side-close" aria-label="Close">
@@ -1330,7 +1331,7 @@
     </button>
     <button type="button" id="audio-mute-btn" title="Toggle sale sound" aria-label="Toggle sale sound">
       <svg class="sound-icon-on" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 19C8.89555 19 7.01237 19 5.61714 19C4.87375 19 4.39116 18.2177 4.72361 17.5528L5.57771 15.8446C5.85542 15.2892 6 14.6774 6 14.0564C6 13.2867 6 12.1434 6 11C6 9 7 5 12 5C17 5 18 9 18 11C18 12.1434 18 13.2867 18 14.0564C18 14.6774 18.1446 15.2892 18.4223 15.8446L19.2764 17.5528C19.6088 18.2177 19.1253 19 18.382 19H14.5M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19"/><path d="M12 5V3"/></svg>
-      <svg class="sound-icon-off" style="display:none" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
+      <svg class="sound-icon-off is-hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15C6 15 6 13 6 11C6 9 7 5 12 5C13.5723 5 14.749 5.39552 15.6235 6M9.5 19C9.5 21 10.5 22 12 22C13.5 22 14.5 21 14.5 19M9.5 19C11.0621 19 14.5 19 14.5 19M9.5 19C9.14909 19 8.36719 19 7.5 19M14.5 19H18.382C19.1253 19 19.6088 18.2177 19.2764 17.5528L18 15C18 15 18 13 18 11C18 10.3755 17.9025 9.55594 17.6161 8.72408"/><path d="M12 5V3"/><path d="M21 3L3 21"/></svg>
     </button>
     <button type="button" id="config-open-btn" class="config-btn" title="Diagnostics" aria-label="Diagnostics">
       <svg width="18" height="18" viewBox="0 0 492.878 492.878" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true"><path d="M488.891,175.542l-0.4-1l-0.8-2l-1.6-4l-12.5-32.3l-0.4-1l-0.7-1.6l-0.5-1.1l-1.2-2.2c-1.5-2.6-3.1-4.6-5.1-6.5 c-3.9-3.8-8.7-6.6-14-8.1c-2.6-0.7-5.3-1.1-8.1-1.1c-1.4,0-2.7,0.1-4.1,0.2c-1.2,0.2-3,0.5-3.4,0.6l-8.5,1.7l-24.2,4.9 c-7.2-9.1-15.1-17.6-23.8-25.4l8.8-34.8l0.3-1.4c0.2-1.1,0.3-2.3,0.4-3.5c0.1-2,0.1-3.8-0.1-5.6c-0.4-3.7-1.4-7.4-2.9-10.8 c-3.1-6.8-8.6-12.6-15.4-15.9l-21.4-9.5l-21.3-9.3l-1.5-0.6c-1.1-0.4-2.3-0.7-3.5-1c-1.9-0.4-3.8-0.7-5.7-0.8 c-3.8-0.2-7.7,0.2-11.4,1.3c-7.4,2.1-14,6.7-18.5,12.9l-18.1,28.9c-10.6-1.1-21.4-1.4-32.2-0.8l-17.8-29.5l-0.8-1.2 c-0.7-1-1.5-2-2.4-3c-1.4-1.5-2.8-2.9-4.3-4.1c-3.1-2.5-6.6-4.4-10.3-5.8c-7.4-2.7-15.7-2.9-23.4-0.3c-2.3,0.8-2.7,1-3.7,1.4 l-2.6,1l-5.2,2.1l-10.5,4.2l-21.7,8.7l-1.3,0.6c-1,0.5-2.2,1.1-3.2,1.7c-1.8,1.1-3.4,2.3-4.9,3.6c-3,2.6-5.6,5.8-7.6,9.3 c-4,6.9-5.5,15.3-4.3,23.1l0.5,2.6l0.3,1.4l0.6,2.8l1.2,5.5l2.4,11l2.3,10.3c-8.6,7-16.5,14.8-23.7,23.2l-11.4-2.7l-11.5-2.7 l-5.8-1.3l-2.9-0.7l-1.6-0.3l-0.7-0.1l-1.5-0.2l-1.9-0.2c-8.5-0.6-16.7,1.8-23.3,6.7c-3.3,2.4-6.2,5.5-8.5,8.9 c-1.1,1.7-2.1,3.5-2.9,5.4l-1.2,2.8l-9,21.8l-4.3,9.7l-2.2,4.9l-0.8,2l-0.5,1.2c-0.3,0.8-0.7,2.2-1,3.2c-0.3,1.1-0.4,1.9-0.6,2.9 c-1.2,7.3,0,15,3.3,21.6c1.7,3.3,3.9,6.3,6.5,8.9c2.4,2.6,6.4,5.1,7.2,5.6l25.4,16.8c-1.1,10.5-1.3,21.1-0.7,31.6l-29.2,17.5 c-6.5,4.3-11.8,11.2-14.3,18.6c-2.6,7.4-2.8,15.8-0.2,23.5l8.7,22.1l8.6,21.7c3.2,7.3,9.2,13.8,16.4,17.5 c7.2,3.9,15.9,5.1,23.8,3.6l32.2-6.9c6.5,7.8,13.7,15.1,21.3,21.9l-7.7,32.4l-0.1,0.7l-0.2,1.4c-0.2,1.2-0.3,2.7-0.3,3.7 c-0.1,2,0,4.1,0.3,6.1c0.5,4.1,1.7,8,3.6,11.7c3.6,7.3,9.9,13.5,17.4,16.9l21.3,9l21.5,9c7.5,2.9,16.3,3.1,23.9,0.6 c7.7-2.4,14.6-7.6,19-14.3l18-28.5c10.7,0.8,21.4,0.8,32-0.1l15.7,24.8l1.4,2.2l1.2,1.8l1.1,1.5c0.7,0.9,1.4,1.8,2.1,2.5l1.9,1.9 c1.3,1.2,2.7,2.3,4.1,3.3c5.8,3.9,12.7,6,19.6,5.9c3.5,0,7-0.6,10.3-1.7l2.4-0.9l1.2-0.5l2.4-1l9.5-4c6.4-2.8,12.6-5.5,18.6-8.1 c3.2-1.5,6.4-2.9,9.5-4.3l1.1-0.5c0.4-0.2,1.5-0.8,2.3-1.3c1.7-1,2.6-1.8,3.9-2.8c2.3-1.9,4.3-4.2,5.9-6.5 c3.3-4.8,5.1-10.3,5.4-15.7c0.2-2.7,0-5.3-0.5-7.8l-0.4-1.9c-0.2-0.7-0.2-0.8-0.3-1.2l-0.6-1.9c-1.6-5.1-3.2-9.9-4.8-14.1 c-6.2-17-11.8-26.6-15.8-23.6c-3.6,2.7-4.8,14-3.7,31.7c0.3,4.3,0.8,9.4,1.2,14.2c-0.1,2.2-1.3,4.1-2.9,5.1c-0.3,0.2-1,0.6-1,0.5 c0.4-0.2-0.7,0.3-1.4,0.5c0.2-0.1-0.5,0.2,0.5-0.2l0,0h-0.1h-0.1l-0.3,0.1l-1,0.3l-1.1,0.4c-2.9,1-6,2.1-9.1,3.1 c-6.2,2.2-12.6,4.5-19.3,7.1l-9.3,3.5c-2.1,0.8-1.7,0.6-2.2,0.7c-0.3,0.1-0.7,0-1-0.1c-0.7-0.1-1.3-0.5-1.8-0.9 c-0.1-0.1-0.1-0.1-0.2-0.2c-0.1-0.2-0.3-0.5-0.5-0.7l-2.2-3.7c-6.7-11.4-13.4-22.9-20.2-34.4c-2.7-4.7-8-7.5-13.8-6.9l-0.5,0.1 c-15.6,1.7-31.5,1.4-47-1.3c-5.7-1-11.6,1.4-15,6.5l-0.2,0.4c-8.2,12.3-16.3,24.6-24.5,37c-0.3,0.3-0.4,0.3-0.6,0.3 c-0.1,0-0.1,0-0.1,0l-19.3-8.4l-20.3-8.9l-0.6-0.3c-0.1-0.1,0,0-0.1-0.1l0,0l0,0v-0.1c3.3-13.8,6.6-27.6,9.9-41.3l0.5-2.1v-0.1 c1.5-6.2-0.7-12.9-6.1-17c-12.4-9.4-23.3-20.6-32.7-33.2l-0.1-0.1c-3.7-5-10.2-7.6-16.6-6.2l-43.3,9.7c-0.4,0.1-0.6,0.2-0.9-0.4 l-8.2-20.1l-8.1-19.8c-0.3-0.5-0.1-1.7,0.6-2.1l37.7-23.4l0.2-0.1c4.9-3,7.8-8.7,6.9-14.8c-2.2-15.6-2.2-31.5,0.1-47v-0.3 c0.8-5.5-1.6-11.3-6.6-14.4l-37.6-23.8c-1-0.6-1.5-1.8-1.1-3.1l8.4-20.1l8.5-20.3c0.5-1.2,1.7-2.2,3.7-1.8l43.1,10l0.2,0.1 c4.9,1.1,10.2-0.6,13.3-4.9c5.8-7.8,12.3-15,19.4-21.6c5-4.2,10.2-8,15.7-11.6c4.2-2.8,6.6-7.9,5.6-13.1l-0.2-0.9 c-2.6-14.4-5.2-28.9-7.9-43.4c0-0.5,0.2-0.8,0.5-1c0.1-0.1,0.2-0.2,0.4-0.2l0.2-0.1c-0.1,0.1-0.3,0.2-0.4,0.3l1.1-0.5l20.5-7.6 l10.6-3.9l5.3-2l2.6-1l1.3-0.5c0.2-0.2,0.6,0,0.5-0.5c0,0,0,0.6,0,0.5c0,0,0.1-0.2,0.2-0.3l0,0l0.2,0.3l0.2,0.3 c-1.7-0.8-0.5-0.2-0.8-0.3l0,0v0.1l0.1,0.2l0.4,0.6l0.7,1.2l1.4,2.4l2.9,4.9l5.7,9.7l11.5,19.5c3.4,5.8,10.1,9.4,17.2,8.6l0.6-0.1 c15.1-1.7,30.6-1,46,1.5c7.1,1.2,14.5-1.9,18.6-8.3l0.2-0.4l12.1-18.8l6.1-9.4l3-4.7l1.3-2l0.3,0.1l2.6,1.1l5.1,2.2l10.3,4.5 l10.3,4.5l5.2,2.2l2,0.9v0.1l-0.7,2.7l-1.3,5.5l-2.7,10.9l-5.3,21.8c-1.8,7.3,0.7,15.4,7,20.4l0,0c12,9.4,22.7,20.4,31.5,32.7 c4.5,6.2,12.4,9.6,20.4,7.9l22-4.8l11-2.4l5.5-1.2l2-0.4v0.1l1.1,2.6l2.1,5.2l4.2,10.4l4.2,10.4l2.1,5.2l0.9,2.2l-0.1,0.1 l-2.4,1.5l-4.8,2.9l-9.6,5.9l-19.2,11.8h-0.1c-6.4,3.9-10.2,11.3-9.2,19.2c1.9,15,1.6,30.4-0.7,45.7c-1.1,7.4,2.1,15.1,8.8,19.5 l18.9,12.1l9.5,6.1l4.7,3l1.9,1.2l-0.1,0.2l-1.1,2.6l-2.2,5.2l-4.4,10.3l-4.4,10.3l-2.2,5.1l-0.8,1.8l-0.2-0.1l-2.7-0.7l-5.4-1.4 l-10.9-2.7l-21.7-5.4c-7.2-1.8-15.2,0.6-20.2,6.7l-0.4,0.5l-2.6,3.2c-3.8,4.6-8.3,10.8-12.6,16.4c-4.2,5.6-8.2,10.7-9.8,13.5 c-3.5,5.7-1.5,7,4.3,5.2c5.6-1.7,14.8-6.9,24.5-15c4-3.3,7.8-6.9,11.9-11.1l0.1-0.1c0.1-0.1,0.2-0.1,0.3-0.1 c12.8,4.7,26,9.3,39.7,13.9c1.7,0.5,3.3,1.2,5.7,1.6c2.4,0.4,4.6,0.3,6.9-0.1c4.6-0.8,9.1-3.1,12.4-6.8c0.8-0.9,1.6-1.9,2.3-2.9 c0.7-1,1.3-2.3,1.7-3l2.6-5c1.7-3.3,3.4-6.7,5.1-10c3.4-6.7,6.8-13.5,10.3-20.4l1.3-2.6l0.7-1.7c0.2-0.3,0.5-1.4,0.8-2.2 c0.9-3.1,1.2-5.9,1-9c-0.4-6-2.9-11.9-7.2-16.4c-1.1-1.1-2.2-2.2-3.5-3.1l-2.7-1.9l-4.8-3.4c-3.2-2.3-6.5-4.5-9.7-6.8 c-4.4-3-8.8-6.1-13.2-9.2c1.9-12.5,2.6-25.5,1.8-38.6c9.6-5.7,19.2-11.3,28.9-17.1l1.9-1.1l0.9-0.6l1.4-0.9l0.5-0.4l1-0.7 c0.6-0.5,1.3-1.1,1.8-1.5c1-0.9,1.9-1.8,2.8-2.8c3.4-4,5.8-8.9,6.8-14c1.1-5.1,0.8-10.6-0.9-15.7L488.891,175.542z"/><path d="M310.491,267.942l-1.4,3.9c-0.8,2.7-2.3,5-3.3,7.6c-2.7,4.8-5.6,9.6-9.4,13.8c-7.2,8.6-16.7,15.4-27.3,20 c-3,1.5-6,2.4-8.7,3.9c-2.8,1-5.3,2.5-7.4,3.9c-4.3,2.6-7.3,6.1-6.8,10.6c0.5,4.1,3.7,7.6,9.5,10.1c2.9,0.9,6.5,1.7,10.5,1.8 c4-0.2,8.5-0.3,13.1-1.9c8.5-2.2,16.4-6,24.1-10.4c7.5-4.6,14.6-10.2,20.7-16.7c6-6.6,11.5-13.8,15.5-21.9 c2.2-3.9,3.7-8.2,5.4-12.4c0.8-2.1,1.3-4.3,1.9-6.5s1.2-4.3,1.6-6.8l0.9-5.8l0.4-2.9l0.1-2.3l0.2-4.6l0.1-1.1v-0.6v-0.3v-0.9v-0.1 v-0.2l-0.1-2.7c-0.2-7.2-1.1-14.4-2.9-21.4c-3.5-14-10-27.2-18.9-38.4c-17.7-22.6-44.9-36.5-73.2-37.9c-11.9-2.4-25.4-2.4-38,0.6 c-12.8,2.9-25.1,8.6-35.8,16.5c-10.7,8-19.9,18.2-26.8,29.9l-4.7,9c-1.3,3.1-2.5,6.3-3.8,9.5c-1,3.2-1.9,6.5-2.8,9.8 c-0.8,3.5-1.3,7.3-1.9,10.9l-0.2,1.4l0.1,1.2l-0.1,2.1l-0.3,4.1l-0.1,1v0.5v1.1v0.2v0.3l0.1,2.5l0.2,5.1 c0.4,6.8,1.5,13.5,3.3,20.1c3.5,13.2,9.5,25.6,17.6,36.5s18.2,20.2,29.7,27.3c2.8,1.9,5.8,3.5,8.9,5c3,1.6,6.1,2.9,9.3,4.1 c3.1,1.3,6.4,2.4,9.6,3.3l4.9,1.4l5.5,1c6,1.2,11.7-2.2,13.9-4.4c4.1-4.6-0.5-9-7.8-12.8c-12.1-6.8-22.7-14.8-32-24 c-9.1-9.4-16.7-20.1-21.8-31.8c-3.2-7-4.9-14.6-5.6-22.1c-0.1-1.9-0.5-3.8-0.3-5.7l0.1-2.8v-1.4v-0.7v-0.2c0.5-4.4,0.9-9.4,1.8-12 l0.5-2.4c0.2-0.8,0.6-1.7,0.8-2.6c0.6-1.7,1-3.6,1.8-5.2l2.2-5.1l2.7-4.8c3.8-6.3,8.5-11.9,13.9-16.8c5.4-4.8,11.6-8.7,18.1-11.7 c3.2-1.6,6.7-2.6,10.1-3.8c3.5-0.8,6.9-1.7,10.5-2l2.7-0.4l2.7-0.1l2.7-0.1l1.3-0.1h0.1h0.7l6.9,0.4l4.7,0.7 c6.6,1.1,13.9,3.4,20.4,6.5c6.1,3.9,11.5,8.8,16.1,14.2c14.9,17.1,20.2,41.2,14.5,62.7L310.491,267.942z"/></svg>
@@ -1353,9 +1354,9 @@
         <h3 class="config-modal-title">Traffic · Sources</h3>
         <button type="button" class="config-close" id="traffic-sources-close-btn" aria-label="Close">×</button>
       </div>
-      <div class="muted" style="margin-bottom: 0.5rem;">Tick sources to show in the Traffic table. New sources appear here as they’re detected.</div>
+      <div class="muted u-mb-sm">Tick sources to show in the Traffic table. New sources appear here as they’re detected.</div>
       <div id="traffic-sources-picker" class="traffic-picker-list"></div>
-      <details class="diag-tech" id="traffic-source-mapping-details" style="margin-top: 0.85rem;">
+      <details class="diag-tech u-mt-md" id="traffic-source-mapping-details">
         <summary>
           <div class="diag-tech-head">
             <strong>Source mapping</strong>
@@ -1363,7 +1364,7 @@
           </div>
           <svg class="diag-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
-        <div style="border-top: 1px solid var(--border); padding: 0.75rem 0.9rem 0.9rem;">
+        <div class="diag-details-body">
           <div id="traffic-source-mapping-mini"><div class="muted">Loading…</div></div>
         </div>
       </details>
@@ -1376,7 +1377,7 @@
         <h3 class="config-modal-title">Traffic · Types</h3>
         <button type="button" class="config-close" id="traffic-types-close-btn" aria-label="Close">×</button>
       </div>
-      <div class="muted" style="margin-bottom: 0.5rem;">Tick device/platform types to show in the Traffic table.</div>
+      <div class="muted u-mb-sm">Tick device/platform types to show in the Traffic table.</div>
       <div id="traffic-types-picker" class="traffic-picker-list"></div>
     </div>
   </div>
@@ -1387,7 +1388,7 @@
         <h3 class="config-modal-title">Choose dates</h3>
         <button type="button" class="config-close" id="date-custom-close-btn" aria-label="Close">×</button>
       </div>
-      <div class="muted" style="margin-bottom: 0.5rem;">Click a start date, then an end date (last 30 days). Grey dates have no data.</div>
+      <div class="muted u-mb-sm">Click a start date, then an end date (last 30 days). Grey dates have no data.</div>
       <div id="date-custom-calendar" class="date-cal"></div>
       <div class="date-cal-footer">
         <div class="date-cal-summary" id="date-custom-summary">Select a start date.</div>
@@ -1541,23 +1542,13 @@
 
       const isLive = dateRange === 'live';
       const show = activeMainTab === 'spy' && (isLive || dateRange === '1h' || dateRange === 'today');
-      if (!show) {
-        block.style.display = 'none';
-        return;
-      }
+      block.classList.toggle('is-hidden', !show);
+      if (!show) return;
 
-      block.style.display = 'inline-flex';
-
-      if (isLive) {
-        if (labelEl) labelEl.style.display = 'none';
-        if (timerWrap) timerWrap.style.display = 'none';
-        if (liveEl) liveEl.style.display = 'inline-flex';
-        return;
-      }
-
-      if (labelEl) labelEl.style.display = '';
-      if (timerWrap) timerWrap.style.display = 'inline-flex';
-      if (liveEl) liveEl.style.display = 'none';
+      if (labelEl) labelEl.classList.toggle('is-hidden', isLive);
+      if (timerWrap) timerWrap.classList.toggle('is-hidden', isLive);
+      if (liveEl) liveEl.classList.toggle('is-hidden', !isLive);
+      if (isLive) return;
       if (!progressEl) return;
 
       const duration = RANGE_REFRESH_MS;
@@ -1566,8 +1557,8 @@
         : (Date.now() + RANGE_REFRESH_MS);
       const remaining = Math.max(0, target - Date.now());
       const progress = Math.min(1, 1 - remaining / duration);
-      progressEl.style.strokeDasharray = String(NEXT_UPDATE_CIRCLE_C);
-      progressEl.style.strokeDashoffset = String(NEXT_UPDATE_CIRCLE_C * (1 - progress));
+      progressEl.setAttribute('stroke-dasharray', String(NEXT_UPDATE_CIRCLE_C));
+      progressEl.setAttribute('stroke-dashoffset', String(NEXT_UPDATE_CIRCLE_C * (1 - progress)));
     }
 
     function toMs(v) {
@@ -1905,10 +1896,10 @@
         var exitMeta = metaForDual(exitPathDual);
 
         var entryImg = entryMeta.thumbSrc
-          ? '<img class="landing-thumb" src="' + entryMeta.thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">'
+          ? '<img class="landing-thumb" src="' + entryMeta.thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">'
           : '';
         var exitImg = exitMeta.thumbSrc
-          ? '<img class="landing-thumb landing-thumb-exit" src="' + exitMeta.thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">'
+          ? '<img class="landing-thumb landing-thumb-exit" src="' + exitMeta.thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">'
           : '';
         var thumbsInner = entryImg + exitImg;
         var overlay = isPurchasedDual
@@ -1986,8 +1977,8 @@
         var img = '';
         if (thumbSrc) {
           img = isPurchased
-            ? '<span class="thumb-wrap"><img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.parentNode && (this.parentNode.style.display=\\\'none\\\')"><span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span></span>'
-            : '<img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">';
+            ? '<span class="thumb-wrap"><img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.parentNode && this.parentNode.classList && this.parentNode.classList.add(\'is-hidden\')"><span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span></span>'
+            : '<img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">';
         }
         var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
         return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
@@ -2324,7 +2315,7 @@
 
     function setTokenRowOtherMode(row, on) {
       const otherEl = row ? row.querySelector('input[data-field="source_label"]') : null;
-      if (otherEl) otherEl.style.display = on ? '' : 'none';
+      if (otherEl) otherEl.classList.toggle('is-hidden', !on);
     }
 
     function readTokenDraftFromRow(row) {
@@ -2424,9 +2415,15 @@
       if (!sources.length) {
         html += '<div class="diag-note">No sources yet.</div>';
       } else {
-        html += '<div class="tsm-table-scroll"><table class="tsm-table"><thead><tr>' +
-          '<th>Source</th><th>Key</th><th>Icon URL</th><th></th>' +
-          '</tr></thead><tbody>';
+        html += '<div class="tsm-table-scroll">';
+        html +=   '<div class="grid-table tsm-table tsm-sources-grid" role="table" aria-label="Mapped sources">';
+        html +=     '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+                      '<div class="grid-cell" role="columnheader">Source</div>' +
+                      '<div class="grid-cell" role="columnheader">Key</div>' +
+                      '<div class="grid-cell" role="columnheader">Icon URL</div>' +
+                      '<div class="grid-cell" role="columnheader"></div>' +
+                    '</div></div></div>';
+        html +=     '<div class="grid-body" role="rowgroup">';
         sources.forEach(function(s) {
           const key = s && s.source_key != null ? String(s.source_key).trim().toLowerCase() : '';
           if (!key) return;
@@ -2437,28 +2434,33 @@
             ? iconUrl.trim()
             : ((builtIn && builtIn !== SOURCE_UNKNOWN_IMG) ? builtIn : '');
           const preview = previewSrc
-            ? ('<img class="tsm-icon-preview" src="' + escapeHtml(previewSrc) + '" alt="" onerror="this.style.display=\\\'none\\\'">')
-            : '<span style="display:inline-block;width:18px;height:18px"></span>';
-          html += '<tr class="tsm-source-row" data-source-key="' + escapeHtml(key) + '">' +
-            '<td><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></td>' +
-            '<td><code>' + escapeHtml(key) + '</code></td>' +
-            '<td><div style="display:flex;gap:0.45rem;align-items:center">' +
+            ? ('<img class="tsm-icon-preview" src="' + escapeHtml(previewSrc) + '" alt="" onerror="this.classList.add(\'is-hidden\')">')
+            : '<span class="tsm-icon-spacer" aria-hidden="true"></span>';
+          html += '<div class="grid-row tsm-source-row" role="row" data-source-key="' + escapeHtml(key) + '">' +
+            '<div class="grid-cell" role="cell"><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></div>' +
+            '<div class="grid-cell" role="cell"><code>' + escapeHtml(key) + '</code></div>' +
+            '<div class="grid-cell" role="cell"><div class="tsm-icon-input-row">' +
               preview +
               '<input class="tsm-input" data-field="icon_url" placeholder="https://.../icon.png" value="' + escapeHtml(iconUrl || '') + '" />' +
-            '</div></td>' +
-            '<td><button type="button" class="tsm-btn primary" data-tsm-action="save-meta">Save</button></td>' +
-          '</tr>';
+            '</div></div>' +
+            '<div class="grid-cell" role="cell"><button type="button" class="tsm-btn primary" data-tsm-action="save-meta">Save</button></div>' +
+          '</div>';
         });
-        html += '</tbody></table></div>';
+        html += '</div></div></div>';
       }
 
-      html += '<div class="diag-section-title" style="margin-top:0.85rem">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Tokens (mapped + unmapped)' : 'Unmapped tokens') + '</span>' + '</div>';
+      html += '<div class="diag-section-title u-mt-md">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Tokens (mapped + unmapped)' : 'Unmapped tokens') + '</span>' + '</div>';
       if (!tokens.length) {
         html += '<div class="diag-note">No tokens captured yet. Click <strong>Scan last 30d</strong> (or wait for new sessions) and they will appear here.</div>';
       } else {
-        html += '<div class="tsm-table-scroll"><table class="tsm-table tsm-token-table"><thead><tr>' +
-          '<th>Token</th><th>Seen</th><th>Map / existing</th>' +
-          '</tr></thead><tbody>';
+        html += '<div class="tsm-table-scroll">';
+        html +=   '<div class="grid-table tsm-table tsm-tokens-grid" role="table" aria-label="Tokens">';
+        html +=     '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+                      '<div class="grid-cell" role="columnheader">Token</div>' +
+                      '<div class="grid-cell" role="columnheader">Seen</div>' +
+                      '<div class="grid-cell" role="columnheader">Map / existing</div>' +
+                    '</div></div></div>';
+        html +=     '<div class="grid-body" role="rowgroup">';
         tokens.forEach(function(t) {
           const p = t && t.utm_param != null ? String(t.utm_param).trim().toLowerCase() : '';
           const v = t && t.utm_value != null ? String(t.utm_value).trim().toLowerCase() : '';
@@ -2476,16 +2478,16 @@
           });
           opts += '<option value="__other__">Other…</option>';
 
-          html += '<tr class="tsm-token-row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
-            '<td><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></td>' +
-            '<td>' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note" style="margin:0.15rem 0 0">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></td>' +
-            '<td>' +
+          html += '<div class="grid-row tsm-token-row" role="row" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
+            '<div class="grid-cell" role="cell"><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note tsm-seen-subnote">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></div>' +
+            '<div class="grid-cell" role="cell">' +
               '<div class="tsm-token-map-row">' +
                 '<select class="tsm-input tsm-select" data-field="source_pick">' + opts + '</select>' +
-                '<input class="tsm-input tsm-token-other" data-field="source_label" placeholder="Other source…" style="display:none" />' +
+                '<input class="tsm-input tsm-token-other is-hidden" data-field="source_label" placeholder="Other source…" />' +
                 '<input class="tsm-input tsm-token-icon" data-field="icon_url" placeholder="Icon URL (optional)" />' +
               '</div>' +
-              (mapped.length ? ('<div style="margin-top:0.35rem">' + mapped.map(function(m) {
+              (mapped.length ? ('<div class="tsm-mapped-list">' + mapped.map(function(m) {
                 const ml = m && m.label != null ? String(m.label) : (m && m.source_key ? String(m.source_key) : '');
                 const mu = m && m.icon_url != null ? String(m.icon_url) : '';
                 const mk = m && m.source_key != null ? String(m.source_key).trim().toLowerCase() : '';
@@ -2494,14 +2496,14 @@
                   const bi = trafficSourceBuiltInIconSrc(mk);
                   if (bi && bi !== SOURCE_UNKNOWN_IMG) prevSrc = bi;
                 }
-                const prev = prevSrc ? ('<img class="tsm-icon-preview" src="' + escapeHtml(prevSrc) + '" alt="" onerror="this.style.display=\\\'none\\\'">') : '';
+                const prev = prevSrc ? ('<img class="tsm-icon-preview" src="' + escapeHtml(prevSrc) + '" alt="" onerror="this.classList.add(\'is-hidden\')">') : '';
                 return '<span class="tsm-mapped-pill">' + prev + escapeHtml(ml) + '</span>';
               }).join('') + '</div>') : '') +
-            '</td>' +
-          '</tr>';
+            '</div>' +
+          '</div>';
         });
-        html += '</tbody></table></div>';
-        html += '<div class="tsm-actions" style="margin-top:0.6rem">' +
+        html += '</div></div></div>';
+        html += '<div class="tsm-actions tsm-actions--footer">' +
           '<button type="button" class="tsm-btn primary" data-tsm-action="save-mappings">' + '<span>Save mappings</span>' + '</button>' +
           '<span class="tsm-save-msg" data-tsm-save-msg></span>' +
         '</div>';
@@ -2900,18 +2902,24 @@
         ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
         : cartVal;
       const fromCell = flagImg(countryCode);
-      const consentDebug = s.meta_json ? (JSON.parse(s.meta_json || '{}').customer_privacy_debug ? 'yes' : '') : '';
-      return `<tr class="clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" data-session-id="${s.session_id}">
-        <td>${landingPageCell(s)}</td>
-        <td class="flag-cell">${fromCell}</td>
-        <td class="source-cell">${sourceCell(s)}</td>
-        <td>${escapeHtml(s.device || '')}</td>
-        <td class="cart-value-cell">${cartOrSaleCell}</td>
-        <td class="arrived-cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></td>
-        <td class="last-seen-cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></td>
-        <td>${visitsLabel}</td>
-        <td class="consent-debug consent-col" style="display:none">${escapeHtml(consentDebug)}</td>
-      </tr>`;
+      let consentDebug = '';
+      if (s && s.meta_json) {
+        try {
+          const mj = JSON.parse(String(s.meta_json || '{}'));
+          consentDebug = (mj && mj.customer_privacy_debug) ? 'yes' : '';
+        } catch (_) {}
+      }
+      return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
+        <div class="grid-cell" role="cell">${landingPageCell(s)}</div>
+        <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
+        <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
+        <div class="grid-cell" role="cell">${escapeHtml(s.device || '')}</div>
+        <div class="grid-cell cart-value-cell" role="cell">${cartOrSaleCell}</div>
+        <div class="grid-cell arrived-cell" role="cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></div>
+        <div class="grid-cell last-seen-cell" role="cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></div>
+        <div class="grid-cell" role="cell">${visitsLabel}</div>
+        <div class="grid-cell consent-debug consent-col is-hidden" role="cell">${escapeHtml(consentDebug)}</div>
+      </div>`;
     }
 
     function escapeHtml(str) {
@@ -2990,10 +2998,10 @@
       const pageSessions = isRangeMode ? sorted : sorted.slice(start, start + rowsPerPage);
       if (pageSessions.length === 0) {
         var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">' + escapeHtml(emptyMsg) + '</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyMsg) + '</div></div>';
       } else {
         tbody.innerHTML = pageSessions.map(renderRow).join('');
-        document.querySelectorAll('#table-body tr.clickable').forEach(tr => {
+        document.querySelectorAll('#table-body .grid-row.clickable').forEach(tr => {
           tr.addEventListener('click', () => {
             selectedSessionId = tr.dataset.sessionId;
             openSidePanel(selectedSessionId);
@@ -3023,7 +3031,7 @@
     }
 
     function updateSortHeaders() {
-      document.querySelectorAll('.table-scroll-wrap th.sortable').forEach(function (th) {
+      document.querySelectorAll('.table-scroll-wrap .grid-cell.sortable').forEach(function (th) {
         var col = th.getAttribute('data-sort');
         th.classList.remove('th-sort-asc', 'th-sort-desc');
         th.setAttribute('aria-sort', sortBy === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
@@ -3032,7 +3040,7 @@
     }
 
     function setupSortableHeaders() {
-      document.querySelectorAll('.table-scroll-wrap th.sortable').forEach(function (th) {
+      document.querySelectorAll('.table-scroll-wrap .grid-cell.sortable').forEach(function (th) {
         function activate() {
           var col = (th.getAttribute('data-sort') || '').trim();
           if (!col) return;
@@ -3139,7 +3147,7 @@
       saleToastActive = true;
       saleToastLastShownAt = Date.now();
       host.classList.add('toast-open');
-      toast.style.display = 'flex';
+      toast.classList.remove('is-hidden');
       toast.setAttribute('aria-hidden', 'false');
       requestAnimationFrame(function() { toast.classList.add('active'); });
     }
@@ -3172,7 +3180,7 @@
       toast.classList.remove('active');
       toast.setAttribute('aria-hidden', 'true');
       setTimeout(function() {
-        toast.style.display = 'none';
+        toast.classList.add('is-hidden');
         host.classList.remove('toast-open');
         saleToastActive = false;
         saleToastSessionId = null;
@@ -3385,7 +3393,7 @@
       const tbody = document.getElementById('worst-products-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.worstProducts)) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
         updateSortHeadersInContainer(document.getElementById('worst-products-table'), tableSortState.worstProducts.by, tableSortState.worstProducts.dir);
         updateCardPagination('worst-products', 1, 1);
         return;
@@ -3415,7 +3423,7 @@
       worstProductsPage = clampPage((data && typeof data.page === 'number') ? data.page : worstProductsPage, totalPages);
       updateCardPagination('worst-products', worstProductsPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No products with enough traffic in this range</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No products with enough traffic in this range</div></div>';
         updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
         return;
       }
@@ -3424,7 +3432,7 @@
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100' : '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
         const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
@@ -3432,7 +3440,13 @@
         const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
         const revNum = p.revenue != null ? Number(p.revenue) : NaN;
         const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? formatRevenueTableHtml(revNum) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + sales + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+        '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
     }
@@ -3501,7 +3515,7 @@
       const tbody = document.getElementById('best-variants-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestVariants)) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
         updateSortHeadersInContainer(document.getElementById('best-variants-table'), tableSortState.bestVariants.by, tableSortState.bestVariants.dir);
         updateCardPagination('best-variants', 1, 1);
         return;
@@ -3535,7 +3549,7 @@
       bestVariantsPage = clampPage((data && typeof data.page === 'number') ? data.page : bestVariantsPage, totalPages);
       updateCardPagination('best-variants', bestVariantsPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No orders in this range</div></div>';
         updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
         return;
       }
@@ -3555,7 +3569,13 @@
         const revenue = formatRevenueTableHtml(v.revenue);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + sales + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
     }
@@ -3564,7 +3584,7 @@
       const tbody = document.getElementById('worst-variants-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.worstVariants)) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
         updateSortHeadersInContainer(document.getElementById('worst-variants-table'), tableSortState.worstVariants.by, tableSortState.worstVariants.dir);
         updateCardPagination('worst-variants', 1, 1);
         return;
@@ -3600,7 +3620,7 @@
       worstVariantsPage = clampPage((data && typeof data.page === 'number') ? data.page : worstVariantsPage, totalPages);
       updateCardPagination('worst-variants', worstVariantsPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No orders in this range</div></div>';
         updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
         return;
       }
@@ -3620,7 +3640,13 @@
         const revenue = formatRevenueTableHtml(v.revenue);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + sales + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
     }
@@ -3629,7 +3655,7 @@
       const tbody = document.getElementById('best-sellers-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestSellers)) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
         updateBestSellersSortHeaders();
         updateCardPagination('best-sellers', 1, 1);
         return;
@@ -3654,7 +3680,7 @@
       bestSellersPage = clampPage((data && typeof data.page === 'number') ? data.page : bestSellersPage, totalPages);
       updateCardPagination('best-sellers', bestSellersPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No orders in this range</div></div>';
         updateBestSellersSortHeaders();
         return;
       }
@@ -3664,20 +3690,26 @@
         const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + orders + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
       }).join('');
       updateBestSellersSortHeaders();
     }
 
     function updateBestSellersSortHeaders() {
-      document.querySelectorAll('#best-sellers-wrap th.sortable').forEach(function(th) {
+      document.querySelectorAll('#best-sellers-wrap .grid-cell.sortable').forEach(function(th) {
         var col = th.getAttribute('data-sort');
         th.classList.remove('th-sort-asc', 'th-sort-desc');
         th.setAttribute('aria-sort', bestSellersSortBy === col ? (bestSellersSortDir === 'asc' ? 'ascending' : 'descending') : 'none');
@@ -3686,7 +3718,7 @@
     }
 
     function setupBestSellersSort() {
-      document.querySelectorAll('#best-sellers-wrap th.sortable').forEach(function(th) {
+      document.querySelectorAll('#best-sellers-wrap .grid-cell.sortable').forEach(function(th) {
         function activate() {
           var col = (th.getAttribute('data-sort') || '').trim();
           if (!col) return;
@@ -3744,7 +3776,7 @@
     function updateSortHeadersInContainer(container, sortBy, sortDir) {
       const root = typeof container === 'string' ? document.querySelector(container) : container;
       if (!root) return;
-      root.querySelectorAll('th.sortable').forEach(function(th) {
+      root.querySelectorAll('.grid-cell.sortable').forEach(function(th) {
         var col = (th.getAttribute('data-sort') || '').trim();
         th.classList.remove('th-sort-asc', 'th-sort-desc');
         th.setAttribute('aria-sort', sortBy === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
@@ -3755,7 +3787,7 @@
     function setupTableSortHeaders(container, state, defaults, onChange) {
       const root = typeof container === 'string' ? document.querySelector(container) : container;
       if (!root || !state) return;
-      root.querySelectorAll('th.sortable').forEach(function(th) {
+      root.querySelectorAll('.grid-cell.sortable').forEach(function(th) {
         function activate() {
           var col = (th.getAttribute('data-sort') || '').trim();
           if (!col) return;
@@ -3847,58 +3879,14 @@
       wrap.dataset.paginated = show ? '1' : '0';
       wrap.dataset.pages = String(pages);
       wrap.dataset.page = String(page);
-      wrap.style.display = show ? 'flex' : 'none';
+      wrap.classList.toggle('is-hidden', !show);
       prev.disabled = page <= 1;
       next.disabled = page >= pages;
       label.textContent = 'Page ' + page + ' of ' + pages;
     }
 
-    let breakdownSyncRaf = null;
     function scheduleBreakdownSync() {
-      if (typeof requestAnimationFrame !== 'function') {
-        syncBreakdownPaginationHeights();
-        return;
-      }
-      if (breakdownSyncRaf) cancelAnimationFrame(breakdownSyncRaf);
-      breakdownSyncRaf = requestAnimationFrame(function() {
-        breakdownSyncRaf = null;
-        syncBreakdownPaginationHeights();
-      });
-    }
-
-    function syncBreakdownPaginationHeights() {
-      const countryCard = document.getElementById('stats-country');
-      const geoCard = document.getElementById('stats-best-geo-products');
-      const countryPag = document.getElementById('country-pagination');
-      const geoPag = document.getElementById('best-geo-products-pagination');
-      if (!countryCard || !geoCard || !countryPag || !geoPag) return;
-
-      countryCard.style.minHeight = '';
-      geoCard.style.minHeight = '';
-
-      const countryNeeds = countryPag.dataset.paginated === '1';
-      const geoNeeds = geoPag.dataset.paginated === '1';
-      countryPag.style.display = countryNeeds ? 'flex' : 'none';
-      geoPag.style.display = geoNeeds ? 'flex' : 'none';
-
-      const countryHeight = countryCard.getBoundingClientRect().height;
-      const geoHeight = geoCard.getBoundingClientRect().height;
-      if (!Number.isFinite(countryHeight) || !Number.isFinite(geoHeight)) return;
-      if (Math.abs(countryHeight - geoHeight) < 1) return;
-
-      const shorter = countryHeight < geoHeight
-        ? { card: countryCard, pag: countryPag, needs: countryNeeds }
-        : { card: geoCard, pag: geoPag, needs: geoNeeds };
-      const taller = countryHeight < geoHeight ? geoCard : countryCard;
-
-      if (!shorter.needs) shorter.pag.style.display = 'flex';
-
-      const newCountryHeight = countryCard.getBoundingClientRect().height;
-      const newGeoHeight = geoCard.getBoundingClientRect().height;
-      const maxHeight = Math.max(newCountryHeight, newGeoHeight);
-      countryCard.style.minHeight = maxHeight + 'px';
-      geoCard.style.minHeight = maxHeight + 'px';
-      if (taller) taller.style.minHeight = maxHeight + 'px';
+      // No-op: layout is handled via CSS grid/flex.
     }
 
     function renderSales(data) {
@@ -3961,7 +3949,7 @@
       const tbody = document.getElementById('by-country-body');
       if (!tbody) return;
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
         updateSortHeadersInContainer(document.getElementById('country-table'), tableSortState.country.by, tableSortState.country.dir);
         updateCardPagination('country', 1, 1);
         return;
@@ -3997,7 +3985,13 @@
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
-        return '<tr><td><span class="country-cell">' + flag + labelHtml + '</span></td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+        '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('country-table'), countryBy, countryDir);
       scheduleBreakdownSync();
@@ -4009,7 +4003,7 @@
       const tbody = document.getElementById('best-geo-products-body');
       if (!tbody) return;
       if (!Array.isArray(rows) || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
         updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), tableSortState.bestGeoProducts.by, tableSortState.bestGeoProducts.dir);
         updateCardPagination('best-geo-products', 1, 1);
         return;
@@ -4062,7 +4056,13 @@
           ? '<a class="geo-product-thumb" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</a>'
           : '<span class="geo-product-thumb" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</span>';
         const labelHtml = '<span class="country-label">' + thumb + '</span>';
-        return '<tr><td><span class="country-cell">' + flag + labelHtml + '</span></td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
+          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+        '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-geo-products-table'), geoBy, geoDir);
       scheduleBreakdownSync();
@@ -4136,8 +4136,8 @@
       const textEl = document.getElementById('table-title-text');
       const sel = document.getElementById('global-date-select');
       const showTabs = (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
-      if (tabsWrap) tabsWrap.style.display = showTabs ? 'inline-flex' : 'none';
-      if (textEl) textEl.style.display = showTabs ? 'none' : 'inline';
+      if (tabsWrap) tabsWrap.classList.toggle('is-hidden', !showTabs);
+      if (textEl) textEl.classList.toggle('is-hidden', showTabs);
       if (showTabs && tabsWrap) {
         ['today', '1h', 'live'].forEach(function(r) {
           const btn = document.getElementById('table-tab-' + (r === '1h' ? '1h' : r));
@@ -4159,7 +4159,7 @@
 
     function updateRowsPerPageVisibility() {
       const wrap = document.getElementById('rows-per-page-wrap');
-      if (wrap) wrap.style.display = dateRange === 'live' ? 'none' : '';
+      if (wrap) wrap.classList.toggle('is-hidden', dateRange === 'live');
     }
 
     function syncDateSelectOptions() {
@@ -4587,18 +4587,18 @@
       if (!el) return;
       var icon = el.querySelector && el.querySelector('.kpi-delta-icon');
       if (icon) icon.remove();
-      el.style.color = '#444';
+      el.classList.remove('kpi-delta--up', 'kpi-delta--down');
       const delta = kpiDelta(current, baseline, invert);
       if (delta == null) return;
       if (delta >= 0.1) {
-        el.style.color = '#0d9488';
+        el.classList.add('kpi-delta--up');
         var span = document.createElement('span');
         span.className = 'kpi-delta-icon';
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = KPI_DELTA_SVG;
         el.appendChild(span);
       } else if (delta <= -0.1) {
-        el.style.color = '#940d0d';
+        el.classList.add('kpi-delta--down');
         var spanDown = document.createElement('span');
         spanDown.className = 'kpi-delta-icon kpi-delta-icon-down';
         spanDown.setAttribute('aria-hidden', 'true');
@@ -4693,17 +4693,14 @@
       const wrap = document.querySelector('.kpi-mobile-pager');
       if (!grid || !btn) return;
       const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
-      const cells = Array.from(grid.querySelectorAll('.live-kpi-cell'));
       if (isMobile) {
-        cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
-        btn.style.display = 'none';
+        btn.classList.add('is-hidden');
         btn.disabled = true;
         if (wrap) wrap.classList.remove('kpi-pager-active');
         return;
       }
-      cells.forEach(function(c) { c.style.display = ''; c.removeAttribute('aria-hidden'); });
       const hasOverflow = wrap && wrap.scrollWidth > wrap.clientWidth;
-      btn.style.display = hasOverflow ? 'inline-flex' : 'none';
+      btn.classList.toggle('is-hidden', !hasOverflow);
       btn.disabled = !hasOverflow;
       btn.setAttribute('aria-label', hasOverflow ? 'Scroll KPIs right' : 'KPIs');
       if (wrap) {
@@ -4764,7 +4761,7 @@
       const stepEl = stepId ? document.getElementById(stepId) : null;
 
       if (wrap) wrap.classList.add('report-building');
-      if (overlay) overlay.style.display = 'flex';
+      if (overlay) overlay.classList.remove('is-hidden');
       if (stepEl) stepEl.textContent = '';
 
       function step(text) {
@@ -4775,7 +4772,7 @@
 
       function finish() {
         if (reportBuildTokens[key] !== token) return;
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) overlay.classList.add('is-hidden');
         if (wrap) wrap.classList.remove('report-building');
       }
 
@@ -4968,7 +4965,7 @@
             cmpNullableText(sourceLabel(a), sourceLabel(b), 'asc');
         });
         if (!list.length) {
-          body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml(emptyText || '—') + '</td></tr>';
+          body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyText || '—') + '</div></div>';
           return;
         }
         let html = '';
@@ -4980,13 +4977,13 @@
           const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '—';
           const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '—';
           const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenueTableHtml(r.revenueGbp) : '—';
-          html += '<tr>' +
-            '<td>' + labelCell + '</td>' +
-            '<td>' + escapeHtml(cr || '—') + '</td>' +
-            '<td>' + escapeHtml(orders || '—') + '</td>' +
-            '<td>' + escapeHtml(sessions || '—') + '</td>' +
-            '<td>' + (rev || '—') + '</td>' +
-            '</tr>';
+          html += '<div class="grid-row" role="row">' +
+            '<div class="grid-cell" role="cell">' + labelCell + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
+            '</div>';
         });
         body.innerHTML = html;
       }
@@ -4997,7 +4994,7 @@
         if (!body) return;
         const groups = types && Array.isArray(types.rows) ? types.rows.slice() : [];
         if (!groups.length) {
-          body.innerHTML = '<tr><td colspan="5" class="empty">' + escapeHtml('Click the settings icon to choose devices.') + '</td></tr>';
+          body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml('Click the settings icon to choose devices.') + '</div></div>';
           return;
         }
         function typeLabel(r) {
@@ -5030,18 +5027,18 @@
           const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
           const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
           const rev = (g && typeof g.revenueGbp === 'number') ? formatRevenueTableHtml(g.revenueGbp) : '—';
-          html += '<tr class="traffic-type-parent" data-device="' + escapeHtml(device) + '">' +
-            '<td>' +
+          html += '<div class="grid-row traffic-type-parent" role="row" data-device="' + escapeHtml(device) + '">' +
+            '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
                 '<span class="chev" aria-hidden="true"></span>' +
                 '<span>' + label + '</span>' +
               '</button>' +
-            '</td>' +
-            '<td>' + escapeHtml(cr || '—') + '</td>' +
-            '<td>' + escapeHtml(orders || '—') + '</td>' +
-            '<td>' + escapeHtml(sessions || '—') + '</td>' +
-            '<td>' + (rev || '—') + '</td>' +
-          '</tr>';
+            '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
+          '</div>';
 
           const kids = (g && Array.isArray(g.children)) ? g.children.slice() : [];
           kids.sort(function(a, b) {
@@ -5063,13 +5060,13 @@
             const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
             const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
             const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTableHtml(c.revenueGbp) : '—';
-            html += '<tr class="traffic-type-child" data-parent="' + escapeHtml(device) + '"' + (open ? '' : ' style="display:none"') + '>' +
-              '<td>' + clabel + '</td>' +
-              '<td>' + escapeHtml(ccr || '—') + '</td>' +
-              '<td>' + escapeHtml(corders || '—') + '</td>' +
-              '<td>' + escapeHtml(csessions || '—') + '</td>' +
-              '<td>' + (crev || '—') + '</td>' +
-            '</tr>';
+            html += '<div class="grid-row traffic-type-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(device) + '">' +
+              '<div class="grid-cell" role="cell">' + clabel + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + (crev || '—') + '</div>' +
+            '</div>';
           });
         });
         body.innerHTML = html;
@@ -5208,7 +5205,7 @@
     function fetchSessions() {
       if (liveRefreshInFlight) return liveRefreshInFlight;
       var overlay = document.getElementById('sessions-loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+      if (overlay) overlay.classList.remove('is-hidden');
       var isLive = dateRange === 'live';
       var url;
       if (isLive) {
@@ -5262,7 +5259,7 @@
         .catch(function() { sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
         .finally(function() {
           liveRefreshInFlight = null;
-          if (overlay) overlay.style.display = 'none';
+          if (overlay) overlay.classList.add('is-hidden');
         });
       return liveRefreshInFlight;
     }
@@ -5289,12 +5286,12 @@
       const spinner = document.getElementById('online-count-spinner');
       if (!el) return;
       function showSpinner() {
-        if (spinner) spinner.style.display = '';
-        el.style.display = 'none';
+        if (spinner) spinner.classList.remove('is-hidden');
+        el.classList.add('is-hidden');
       }
       function showCount(n) {
-        if (spinner) spinner.style.display = 'none';
-        el.style.display = '';
+        if (spinner) spinner.classList.add('is-hidden');
+        el.classList.remove('is-hidden');
         el.textContent = String(n);
       }
       if (dateRange === 'live') {
@@ -5336,7 +5333,7 @@
 
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
-      panel.style.display = 'block';
+      panel.classList.remove('is-hidden');
       document.getElementById('side-events').innerHTML = '<li class="muted">Loading\u2026</li>';
       document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Loading\u2026</span></div>';
       const sideSourceEl = document.getElementById('side-source');
@@ -5357,7 +5354,7 @@
             if (path && !path.startsWith('/')) path = '/' + path;
             var pathLabel = path ? (friendlyLabelFromPath(path) || path) : (e.product_handle || '');
             var fullUrl = mainBase && path ? mainBase + path : '';
-            var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.style.display=\'none\'">' : '';
+            var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.classList.add(\'is-hidden\')">' : '';
             var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(pathLabel) + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
             return '<li>' + thumb + '<span>' + text + '</span></li>';
           }).join('');
@@ -5372,7 +5369,7 @@
           var startedMs = session.started_at != null ? Number(session.started_at) : 0;
           var seenMs = session.last_seen != null ? Number(session.last_seen) : 0;
           var gapHours = (seenMs - startedMs) / (60 * 60 * 1000);
-          var openTabHint = (gapHours >= 1) ? '<div class="side-panel-detail-row muted" style="margin-top:0.5rem;font-size:0.8em">If Started and Seen are many hours apart, the visitor likely left the tab open; we receive a heartbeat every 30s which updates Seen.</div>' : '';
+          var openTabHint = (gapHours >= 1) ? '<div class="side-panel-detail-row muted side-panel-hint">If Started and Seen are many hours apart, the visitor likely left the tab open; we receive a heartbeat every 30s which updates Seen.</div>' : '';
           document.getElementById('side-meta').innerHTML = metaRows + openTabHint + (saleBlock ? saleBlock : '');
           if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session);
           document.getElementById('side-cf').innerHTML = buildSidePanelCf(session);
@@ -5384,7 +5381,7 @@
     }
 
     document.getElementById('side-close').addEventListener('click', () => {
-      document.getElementById('side-panel').style.display = 'none';
+      document.getElementById('side-panel').classList.add('is-hidden');
     });
 
     document.getElementById('pagination-prev').addEventListener('click', function() {
@@ -5638,7 +5635,7 @@
               const list = Array.isArray(byPage[page]) ? byPage[page].slice() : [];
               list.sort(function(a, b) { return String((a && a.name) || '').localeCompare(String((b && b.name) || '')); });
 
-              out += '<div style="margin-top:0.85rem;">';
+              out += '<div class="u-mt-md">';
               out +=   '<div class="diag-section-title">' + escapeHtml(page) + '</div>';
 
               for (const d of list) {
@@ -5672,19 +5669,19 @@
                 if (missingTables.length) pillBits.push(pill('DB missing', 'bad'));
                 if (d && d.requires && d.requires.shopifyToken) pillBits.push(tokenOk ? pill('Token ok', 'ok') : pill('Token missing', 'bad'));
 
-                out += '<details class="diag-tech" style="margin-top:0.65rem;">';
+                out += '<details class="diag-tech u-mt-sm">';
                 out +=   '<summary>';
                 out +=     '<div class="diag-tech-head">';
                 out +=       '<strong>' + escapeHtml(name) + '</strong>';
                 out +=       '<span>' + escapeHtml(summaryBits.join(' · ')) + '</span>';
                 out +=     '</div>';
-                out +=     '<div style="display:flex;align-items:center;gap:0.45rem;flex-shrink:0">';
+                out +=     '<div class="diag-tech-meta">';
                 out +=       pillBits.join(' ');
                 out +=       icon('chev', 'diag-chevron');
                 out +=     '</div>';
                 out +=   '</summary>';
 
-                out +=   '<div style="border-top: 1px solid var(--border); padding: 0.75rem 0.9rem 0.9rem;">';
+                out +=   '<div class="diag-details-body">';
                 out +=     kv('Table id', id ? code(id) : '\u2014');
                 if (uiIds.length) {
                   out += kv('UI elementIds', code(uiIds.join(', ')));
@@ -5716,7 +5713,7 @@
 
                 const sources = (d && Array.isArray(d.sources)) ? d.sources : [];
                 if (sources.length) {
-                  out += '<div style="margin-top:0.65rem;">';
+                  out += '<div class="u-mt-sm">';
                   out +=   '<div class="diag-section-title">' + icon('link', '') + 'Sources</div>';
                   out +=   '<ul class="diag-def-list">';
                   for (const s of sources) {
@@ -5734,7 +5731,7 @@
 
                 const columns = (d && Array.isArray(d.columns)) ? d.columns : [];
                 if (columns.length) {
-                  out += '<div style="margin-top:0.65rem;">';
+                  out += '<div class="u-mt-sm">';
                   out +=   '<div class="diag-section-title">' + icon('columns', '') + 'Columns + math</div>';
                   out +=   '<ul class="diag-def-list">';
                   for (const col of columns) {
@@ -5743,7 +5740,7 @@
                     const cf = (col && col.formula != null) ? String(col.formula) : '';
                     let line = '<strong>' + escapeHtml(cn) + '</strong>';
                     if (cv) line += ' · ' + escapeHtml(cv);
-                    if (cf) line += ' · <span style="color:var(--muted);font-weight:650">' + escapeHtml(cf) + '</span>';
+                    if (cf) line += ' · <span class="diag-formula">' + escapeHtml(cf) + '</span>';
                     out += '<li>' + line + '</li>';
                   }
                   out +=   '</ul>';
@@ -5752,7 +5749,7 @@
 
                 const math = (d && Array.isArray(d.math)) ? d.math : [];
                 if (math.length) {
-                  out += '<div style="margin-top:0.65rem;">';
+                  out += '<div class="u-mt-sm">';
                   out +=   '<div class="diag-section-title">' + icon('bar', '') + 'Notes</div>';
                   out +=   '<ul class="diag-def-list">';
                   for (const m of math) {
@@ -5783,7 +5780,7 @@
           html +=   '<div class="diag-card-header">';
           html +=     '<div class="diag-brand">';
           html +=       '<img class="diag-logo" src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" alt="Shopify" decoding="async" loading="eager" fetchpriority="high" />';
-          html +=       '<div style="min-width:0">';
+          html +=       '<div class="u-minw-0">';
           html +=         '<div class="diag-title">Shopify</div>';
           html +=         '<div class="diag-sub">Sessions + CR%</div>';
           html +=       '</div>';
@@ -5799,7 +5796,7 @@
           html +=   '<div class="diag-card-header">';
           html +=     '<div class="diag-brand">';
           html +=       '<img class="diag-logo" src="' + escapeHtml(BIRDSEYE_LOGO_URL) + '" alt="Birdseye" decoding="async" loading="eager" fetchpriority="high" />';
-          html +=       '<div style="min-width:0">';
+          html +=       '<div class="u-minw-0">';
           html +=         '<div class="diag-title">Birdseye</div>';
           html +=         '<div class="diag-sub">Sessions + CR%</div>';
           html +=       '</div>';
@@ -5814,12 +5811,12 @@
           html += '<div class="diag-card diag-card-bots">';
           html +=   '<div class="diag-bots-left">';
           html +=     icon('shield', 'diag-icon');
-          html +=     '<div style="min-width:0">';
+          html +=     '<div class="u-minw-0">';
           html +=       '<div class="diag-title">Bots Blocked</div>';
           html +=       '<div class="diag-sub">Edge (today)</div>';
           html +=     '</div>';
           html +=   '</div>';
-          html +=   '<div style="text-align:right">';
+          html +=   '<div class="u-text-right">';
           html +=     '<div class="diag-metric-value small">' + fmtSessions(botsBlockedToday) + '</div>';
           html +=     (botsBlockedUpdatedAt ? ('<div class="diag-bots-meta">last ' + fmtTsMaybe(botsBlockedUpdatedAt) + '</div>') : '');
           html +=   '</div>';
@@ -5841,99 +5838,119 @@
           html +=       '<div class="diag-panel diag-panel-main-compare">';
           html +=         '<div class="diag-section-title">' + icon('columns', '') + 'Diffable comparison</div>';
           html +=         '<div class="diag-table-scroll">';
-          html +=           '<table class="diag-compare-table">';
-          html +=             '<thead><tr><th>Item</th><th>Shopify</th><th>Birdseye</th><th>Diff / status</th></tr></thead>';
-          html +=             '<tbody>';
+          html +=           '<div class="grid-table diag-compare-table" role="table" aria-label="Diffable comparison">';
+          html +=             '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+                                '<div class="grid-cell" role="columnheader">Item</div>' +
+                                '<div class="grid-cell" role="columnheader">Shopify</div>' +
+                                '<div class="grid-cell" role="columnheader">Birdseye</div>' +
+                                '<div class="grid-cell" role="columnheader">Diff / status</div>' +
+                              '</div></div></div>';
+          html +=             '<div class="grid-body" role="rowgroup">';
 
           // Traffic
-          html +=             '<tr><td><strong>Traffic</strong></td><td></td><td></td><td></td></tr>';
-          html +=             '<tr>' +
-                              '<td>Sessions (today)</td>' +
-                              '<td>' + fmtSessions(shopifySessionsToday) + '</td>' +
-                              '<td>' + fmtSessions(birdseyeSessionsToday) + '</td>' +
-                              '<td>' + (sessionsDiff == null ? '\u2014' : ('<span class="' + (sessionsDiff === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(sessionsDiff, function(a){ return formatSessions(a); }, '') + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>CR% (today)</td>' +
-                              '<td>' + fmtPct(shopifyCr) + '</td>' +
-                              '<td>' + fmtPct(birdseyeCr) + '</td>' +
-                              '<td>' + (crDiff == null ? '\u2014' : ('<span class="' + (Math.abs(crDiff) < 0.0001 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp') + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Bots blocked (today)</td>' +
-                              '<td>\u2014</td>' +
-                              '<td>' + fmtSessions(botsBlockedToday) + '</td>' +
-                              '<td>' + (botsBlockedToday != null ? pill('Tracked', 'ok') : '\u2014') + '</td>' +
-                              '</tr>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Traffic</strong></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Sessions (today)</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtSessions(shopifySessionsToday) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (sessionsDiff == null ? '\u2014' : ('<span class="' + (sessionsDiff === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(sessionsDiff, function(a){ return formatSessions(a); }, '') + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">CR% (today)</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtPct(shopifyCr) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtPct(birdseyeCr) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (crDiff == null ? '\u2014' : ('<span class="' + (Math.abs(crDiff) < 0.0001 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp') + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Bots blocked (today)</div>' +
+                                '<div class="grid-cell" role="cell">\u2014</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtSessions(botsBlockedToday) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (botsBlockedToday != null ? pill('Tracked', 'ok') : '\u2014') + '</div>' +
+                              '</div>';
 
           // Sales / drift
-          html +=             '<tr><td><strong>Sales</strong></td><td></td><td></td><td></td></tr>';
-          html +=             '<tr>' +
-                              '<td>Orders (today, paid)</td>' +
-                              '<td>' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</td>' +
-                              '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
-                              '<td>' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Revenue (today, paid)</td>' +
-                              '<td>' + fmtRevenue(truthRevenue) + '</td>' +
-                              '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
-                              '<td>' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Orders (today, checkout-token)</td>' +
-                              '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</td>' +
-                              '<td>' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</td>' +
-                              '<td>' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Revenue (today, checkout-token)</td>' +
-                              '<td>' + fmtRevenue(truthCheckoutRevenue) + '</td>' +
-                              '<td>' + fmtRevenue(pixelDerivedRevenue) + '</td>' +
-                              '<td>' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Checkout events (today)</td>' +
-                              '<td>' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</td>' +
-                              '<td>' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</td>' +
-                              '<td>' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</td>' +
-                              '</tr>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Sales</strong></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Orders (today, paid)</div>' +
+                                '<div class="grid-cell" role="cell">' + (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (driftPixelOrders == null ? '\u2014' : ('<span class="' + (driftPixelOrders === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + fmtSigned(driftPixelOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Revenue (today, paid)</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtRevenue(truthRevenue) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtRevenue(pixelDerivedRevenue) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (driftPixelRevenue == null ? '\u2014' : ('<span class="' + (driftPixelRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-bad') + '">' + escapeHtml((driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)) + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Orders (today, checkout-token)</div>' +
+                                '<div class="grid-cell" role="cell">' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (driftPixelCheckoutOrders == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftPixelCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Revenue (today, checkout-token)</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtRevenue(truthCheckoutRevenue) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + fmtRevenue(pixelDerivedRevenue) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (driftPixelCheckoutRevenue == null ? '\u2014' : ('<span class="' + (driftPixelCheckoutRevenue === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + escapeHtml((driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue)) + '</span>')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Checkout events (today)</div>' +
+                                '<div class="grid-cell" role="cell">' + (truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : (truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014')) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (evTotal != null ? escapeHtml(String(evTotal)) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (driftEvidenceCheckoutOrders == null ? (driftOrders == null ? '\u2014' : ('<span class="' + (driftOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftOrders, function(a){ return String(a); }, '') + '</span>')) : ('<span class="' + (driftEvidenceCheckoutOrders === 0 ? 'diag-diff-ok' : 'diag-diff-warn') + '">' + fmtSigned(driftEvidenceCheckoutOrders, function(a){ return String(a); }, '') + '</span>')) + '</div>' +
+                              '</div>';
 
           // Config checks
-          html +=             '<tr><td><strong>Config checks</strong></td><td></td><td></td><td></td></tr>';
-          html +=             '<tr>' +
-                              '<td>OAuth token</td>' +
-                              '<td>' + (shopify.hasToken ? pill('Stored', 'ok') : pill('Missing', 'bad')) + '</td>' +
-                              '<td>' + pill('Required', 'warn') + '</td>' +
-                              '<td>' + (shopify.hasToken ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Scopes</td>' +
-                              '<td>' + (storedScopes.length ? escapeHtml(String(storedScopes.length) + ' granted') : '\u2014') + '</td>' +
-                              '<td>' + (serverScopes.length ? escapeHtml(String(serverScopes.length) + ' required') : '\u2014') + '</td>' +
-                              '<td>' + (missingScopes.length ? (pill('Missing', 'bad') + ' ' + code(missingScopes.join(', '))) : pill('All scopes OK', 'ok')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Pixel installed</td>' +
-                              '<td>' + (pixel && pixel.installed === true ? pill('Yes', 'ok') : (pixel && pixel.installed === false ? pill('No', 'bad') : '\u2014')) + '</td>' +
-                              '<td>' + pill('Required', 'warn') + '</td>' +
-                              '<td>' + (pixel && pixel.installed === true ? pill('OK', 'ok') : (pixel && pixel.installed === false ? pill('Fix', 'bad') : '\u2014')) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Pixel ingestUrl</td>' +
-                              '<td>' + (pixelIngestUrl ? code(pixelIngestUrl) : '\u2014') + '</td>' +
-                              '<td>' + (expectedIngestUrl ? code(expectedIngestUrl) : '\u2014') + '</td>' +
-                              '<td>' + (ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? pill('Match', 'ok') : pill('Mismatch', 'bad'))) + '</td>' +
-                              '</tr>';
-          html +=             '<tr>' +
-                              '<td>Ingest secret</td>' +
-                              '<td>\u2014</td>' +
-                              '<td>' + (ingest.ingestSecretConfigured ? pill('Set', 'ok') : pill('Missing', 'bad')) + '</td>' +
-                              '<td>' + (ingest.ingestSecretConfigured ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</td>' +
-                              '</tr>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell diag-compare-section" role="cell"><strong>Config checks</strong></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                                '<div class="grid-cell diag-compare-section" role="cell"></div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">OAuth token</div>' +
+                                '<div class="grid-cell" role="cell">' + (shopify.hasToken ? pill('Stored', 'ok') : pill('Missing', 'bad')) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + pill('Required', 'warn') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (shopify.hasToken ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Scopes</div>' +
+                                '<div class="grid-cell" role="cell">' + (storedScopes.length ? escapeHtml(String(storedScopes.length) + ' granted') : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (serverScopes.length ? escapeHtml(String(serverScopes.length) + ' required') : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (missingScopes.length ? (pill('Missing', 'bad') + ' ' + code(missingScopes.join(', '))) : pill('All scopes OK', 'ok')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Pixel installed</div>' +
+                                '<div class="grid-cell" role="cell">' + (pixel && pixel.installed === true ? pill('Yes', 'ok') : (pixel && pixel.installed === false ? pill('No', 'bad') : '\u2014')) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + pill('Required', 'warn') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (pixel && pixel.installed === true ? pill('OK', 'ok') : (pixel && pixel.installed === false ? pill('Fix', 'bad') : '\u2014')) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Pixel ingestUrl</div>' +
+                                '<div class="grid-cell" role="cell">' + (pixelIngestUrl ? code(pixelIngestUrl) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (expectedIngestUrl ? code(expectedIngestUrl) : '\u2014') + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? pill('Match', 'ok') : pill('Mismatch', 'bad'))) + '</div>' +
+                              '</div>';
+          html +=             '<div class="grid-row" role="row">' +
+                                '<div class="grid-cell" role="cell">Ingest secret</div>' +
+                                '<div class="grid-cell" role="cell">\u2014</div>' +
+                                '<div class="grid-cell" role="cell">' + (ingest.ingestSecretConfigured ? pill('Set', 'ok') : pill('Missing', 'bad')) + '</div>' +
+                                '<div class="grid-cell" role="cell">' + (ingest.ingestSecretConfigured ? pill('OK', 'ok') : pill('Fix', 'bad')) + '</div>' +
+                              '</div>';
 
-          html +=             '</tbody>';
-          html +=           '</table>';
+          html +=             '</div>';
+          html +=           '</div>';
           html +=         '</div>';
           if (missingScopes.length) {
             html += '<div class="diag-note">Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.</div>';
@@ -6116,7 +6133,7 @@
           // Sources panel (mapping + icons)
           html +=       '<div class="diag-panel diag-panel-sources">';
           html +=         '<div class="diag-panel-grid">';
-          html +=           '<div class="diag-panel-card" style="grid-column: 1 / -1;">';
+          html +=           '<div class="diag-panel-card diag-panel-card--full">';
           html +=             '<div class="diag-panel-card-title">' + icon('link', '') + 'Source mapping</div>';
           html +=             '<div id="traffic-source-mapping-root"><div class="diag-note">Loading\u2026</div></div>';
           html +=           '</div>';
@@ -6328,8 +6345,8 @@
         const nextOpen = !trafficTypeExpanded[device];
         trafficTypeExpanded[device] = nextOpen;
         btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-        body.querySelectorAll('tr.traffic-type-child[data-parent="' + device + '"]').forEach(function(tr) {
-          tr.style.display = nextOpen ? '' : 'none';
+        body.querySelectorAll('.grid-row.traffic-type-child[data-parent="' + device + '"]').forEach(function(tr) {
+          tr.classList.toggle('is-hidden', !nextOpen);
         });
       });
     })();
@@ -6341,14 +6358,14 @@
       const iconOn = muteBtn && muteBtn.querySelector('.sound-icon-on');
       const iconOff = muteBtn && muteBtn.querySelector('.sound-icon-off');
       if (muteBtn) {
-        if (iconOn) iconOn.style.display = saleMuted ? 'none' : 'block';
-        if (iconOff) iconOff.style.display = saleMuted ? 'block' : 'none';
+        if (iconOn) iconOn.classList.toggle('is-hidden', saleMuted);
+        if (iconOff) iconOff.classList.toggle('is-hidden', !saleMuted);
         muteBtn.classList.toggle('muted', saleMuted);
         muteBtn.addEventListener('click', function() {
           saleMuted = !saleMuted;
           sessionStorage.setItem(SALE_MUTED_KEY, String(saleMuted));
-          if (iconOn) iconOn.style.display = saleMuted ? 'none' : 'block';
-          if (iconOff) iconOff.style.display = saleMuted ? 'block' : 'none';
+          if (iconOn) iconOn.classList.toggle('is-hidden', saleMuted);
+          if (iconOff) iconOff.classList.toggle('is-hidden', !saleMuted);
           muteBtn.classList.toggle('muted', saleMuted);
         });
       }
@@ -6527,10 +6544,10 @@
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
-          if (panelSpy) { panelSpy.classList.toggle('active', isSpy); panelSpy.style.display = isSpy ? '' : 'none'; }
-          if (panelStats) { panelStats.classList.toggle('active', isStats); panelStats.style.display = isStats ? '' : 'none'; }
-          if (panelProducts) { panelProducts.classList.toggle('active', isProducts); panelProducts.style.display = isProducts ? '' : 'none'; }
-          if (panelTraffic) { panelTraffic.classList.toggle('active', isTraffic); panelTraffic.style.display = isTraffic ? '' : 'none'; }
+          if (panelSpy) panelSpy.classList.toggle('active', isSpy);
+          if (panelStats) panelStats.classList.toggle('active', isStats);
+          if (panelProducts) panelProducts.classList.toggle('active', isProducts);
+          if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
