@@ -2832,21 +2832,41 @@
         return '<img src="' + escapeHtml(hotImg(src) || src || '') + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
       }
 
-      // Mapped icons only (Traffic tab → Source mapping).
-      // This avoids showing legacy hard-coded UTM/referrer icons and prevents duplicate icons in the main table.
+      // Show source icons driven by Traffic sources + mapping:
+      // - If a session matches multiple mapping rules, show multiple icons side-by-side.
+      // - Otherwise, show the derived `sessions.traffic_source_key` (includes Direct/no-referrer).
+      // This avoids legacy hard-coded UTM/referrer icon heuristics and prevents duplicates.
+      const keys = [];
+      const seen = new Set();
+      function addKey(v) {
+        const k = v != null ? String(v).trim().toLowerCase() : '';
+        if (!k) return;
+        if (seen.has(k)) return;
+        seen.add(k);
+        keys.push(k);
+      }
+
       try {
         const mapped = getMappedSourceKeysForSession(s);
-        if (mapped && mapped.length) {
-          const key = String(mapped[0] || '').trim().toLowerCase();
-          if (!key) return '';
-          const label = trafficSourceLabelForKey(key, key);
-          const metaIcon = trafficSourceIconUrlForKey(key);
-          const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
-          const extra = key === 'google_ads' ? 'source-googleads-img' : '';
-          return '<span class="source-icons">' + icon(src, label, label, extra) + '</span>';
-        }
+        (Array.isArray(mapped) ? mapped : []).forEach(addKey);
       } catch (_) {}
-      return '';
+
+      if (!keys.length) {
+        // Fallback: use stored source_key (so icon/meta changes go live even when no UTM-token mapping exists).
+        addKey(s && (s.traffic_source_key ?? s.trafficSourceKey ?? s.source_key ?? s.sourceKey));
+      }
+
+      if (!keys.length) return '';
+
+      const out = [];
+      keys.forEach(function(key) {
+        const label = trafficSourceLabelForKey(key, key);
+        const metaIcon = trafficSourceIconUrlForKey(key);
+        const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
+        const extra = key === 'google_ads' ? 'source-googleads-img' : '';
+        out.push(icon(src, label, label, extra));
+      });
+      return out.length ? ('<span class="source-icons">' + out.join('') + '</span>') : '';
     }
 
     function sourceDetailForPanel(s) {

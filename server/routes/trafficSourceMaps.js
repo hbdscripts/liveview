@@ -156,6 +156,32 @@ async function getTrafficSourceMaps(req, res) {
       updated_at: v && v.updatedAt != null ? Number(v.updatedAt) : null,
     });
   }
+  // Include built-in sources even if they don't have meta rows yet.
+  // This lets the UI set a custom icon for keys like "direct" without requiring a token mapping.
+  const BUILT_INS = [
+    { source_key: 'google_ads', label: 'Google Ads' },
+    { source_key: 'google_organic', label: 'Google Organic' },
+    { source_key: 'bing_ads', label: 'Bing Ads' },
+    { source_key: 'bing_organic', label: 'Bing Organic' },
+    { source_key: 'facebook_ads', label: 'Facebook Ads' },
+    { source_key: 'facebook_organic', label: 'Facebook Organic' },
+    { source_key: 'omnisend', label: 'Omnisend' },
+    { source_key: 'direct', label: 'Direct' },
+    { source_key: 'other', label: 'Other' },
+  ];
+  const existingKeys = new Set(sources.map((s) => (s && s.source_key ? String(s.source_key).trim().toLowerCase() : '')).filter(Boolean));
+  for (const bi of BUILT_INS) {
+    const key = bi && bi.source_key != null ? String(bi.source_key).trim().toLowerCase() : '';
+    if (!key || existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    sources.push({
+      source_key: key,
+      label: bi && bi.label != null ? String(bi.label) : key,
+      icon_url: null,
+      updated_at: null,
+      built_in: true,
+    });
+  }
 
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');

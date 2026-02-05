@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Products tables: CR% + Sessions)
+Last updated: 2026-02-05 (traffic source icons + direct)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -34,7 +34,7 @@ Main tabs (top row):
   - Best variants + Worst variants: Orders / Sessions / Rev / CR%
 - Traffic: two tables (Source + Traffic Type)
   - Channels table renders source icons (not text labels)
-  - Home table “Source” column shows only Source-mapped icons (Traffic · Sources → Source mapping); unmapped sessions show no icon
+  - Home table “Source” column shows icons from `sessions.traffic_source_key` and shows multiple icons when multiple mapping rules match (Traffic · Sources → Source mapping)
 
 Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / Choose dates…
@@ -61,6 +61,7 @@ Traffic tab (new)
     - Lets you map tokens → Sources (reuses built-in keys like `google_ads`/`bing_ads` when labels match; otherwise creates `custom_...`)
     - Token editor uses an existing-source dropdown + bulk “Save mappings” (inputs don’t wipe when saving/refreshing)
     - Source labels are deduped (case/spacing/punctuation-insensitive): identical names map to the same Source key; duplicates are merged on startup and prevented from reappearing
+    - Built-in sources (including `direct`) are shown in the sources list so you can set a custom icon even without a token mapping
     - If a token is mapped again, the newest mapping wins (overrides earlier rules)
     - Icon previews fall back to built-in source icons when no custom icon URL is set
 
