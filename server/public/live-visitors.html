@@ -357,6 +357,30 @@
 .main-tabs-date-select:hover { color: var(--accent); }
 .main-tabs-date-select:focus { outline: none; color: var(--accent); }
 .main-tabs-date-select option { color: var(--text); background: var(--card); }
+.mobile-date-btn {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+    padding: 10px 0;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    max-width: 80px;
+    width: 80px;
+    flex: 0 0 auto;
+}
+.mobile-date-btn:hover { color: var(--accent); }
+.mobile-date-btn svg { width: 18px; height: 18px; display: block; flex-shrink: 0; }
+.mobile-date-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.25rem; z-index: 50; min-width: 160px; }
+.mobile-date-menu.open { display: block; }
+.mobile-date-item { width: 100%; text-align: left; padding: 0.5rem 0.75rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: var(--text); border-radius: var(--radius); font-family: inherit; }
+.mobile-date-item:hover { background: var(--row-hover); }
+.mobile-date-item[aria-current="true"] { background: rgba(13, 148, 136, 0.12); color: var(--accent); }
 .mobile-tabs-btn {
     display: none;
     align-items: center;
@@ -382,6 +406,8 @@
   .main-tabs [role="tab"] { display: none; }
   .mobile-tabs-btn { display: inline-flex; }
   .main-tabs-center-logo { display: block; }
+  .main-tabs-date-select { display: none; }
+  .mobile-date-btn { display: inline-flex; }
 }
 .main-tab-panel { display: none; }
 .main-tab-panel.active { display: block; }
@@ -878,6 +904,18 @@
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
+    <button type="button" id="mobile-date-btn" class="mobile-date-btn" aria-label="Date range" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-date-menu">
+      <span>Date</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="3"></rect>
+        <path d="M16 2v4M8 2v4M3 10h18"></path>
+      </svg>
+    </button>
+    <div id="mobile-date-menu" class="mobile-date-menu" role="menu" aria-label="Date range menu">
+      <button type="button" class="mobile-date-item" role="menuitem" data-value="today">Today</button>
+      <button type="button" class="mobile-date-item" role="menuitem" data-value="yesterday">Yesterday</button>
+      <button type="button" class="mobile-date-item" role="menuitem" data-value="custom">Choose dates…</button>
+    </div>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
       <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
       <option value="today">Today</option>
@@ -5727,6 +5765,68 @@
         });
         initCustomDateModal();
       }
+      (function initMobileDateMenu() {
+        const btn = document.getElementById('mobile-date-btn');
+        const menu = document.getElementById('mobile-date-menu');
+        const sel = document.getElementById('global-date-select');
+        if (!btn || !menu || !sel) return;
+
+        function close() {
+          menu.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function syncSelection() {
+          let cur = String(dateRange || 'today');
+          if (cur === 'live' || cur === '1h') cur = 'today';
+          if (typeof cur === 'string' && (cur.startsWith('r:') || cur.startsWith('d:'))) cur = 'custom';
+          menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
+            const v = it.getAttribute('data-value');
+            it.setAttribute('aria-current', v === cur ? 'true' : 'false');
+          });
+        }
+
+        function toggle(e) {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          const nextOpen = !menu.classList.contains('open');
+          if (nextOpen) syncSelection();
+          menu.classList.toggle('open', nextOpen);
+          btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        }
+
+        btn.addEventListener('click', toggle);
+        menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
+          it.addEventListener('click', function(e) {
+            e.preventDefault();
+            const v = String(it.getAttribute('data-value') || '').trim().toLowerCase();
+            if (!v) return;
+            sel.value = v;
+            try {
+              sel.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (_) {
+              // Fallback for older browsers
+              const ev = document.createEvent('Event');
+              ev.initEvent('change', true, true);
+              sel.dispatchEvent(ev);
+            }
+            close();
+          });
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!menu.classList.contains('open')) return;
+          const target = e.target;
+          if (menu.contains(target) || btn.contains(target)) return;
+          close();
+        });
+        document.addEventListener('keydown', function(e) {
+          if (e.key !== 'Escape') return;
+          close();
+        });
+      })();
       (function initTableTitleTabs() {
         const tabsWrap = document.getElementById('table-title-tabs');
         if (!tabsWrap) return;
