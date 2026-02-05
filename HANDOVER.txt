@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (login label)
+Last updated: 2026-02-05 (traffic source mapping fullscreen + key reuse)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -52,9 +52,11 @@ Traffic tab (new)
   - Shows every *detected* source/type (last ~30 days)
   - Tick which ones should appear in the tables
   - Selections persist across visits
-  - “Traffic · Sources” modal also contains a minimized “Source mapping” section:
+  - “Traffic · Sources” modal also contains a “Source mapping” section (click to open full-screen):
     - Shows unmapped UTM tokens detected in session entry URLs
-    - Lets you map tokens → custom Sources (with icon URLs) so they become selectable in the picker
+    - Lets you map tokens → Sources (reuses built-in keys like `google_ads`/`bing_ads` when labels match; otherwise creates `custom_...`)
+    - If a token is mapped again, the newest mapping wins (overrides earlier rules)
+    - Icon previews fall back to built-in source icons when no custom icon URL is set
 
 ---
 
@@ -383,6 +385,8 @@ Backups durability:
 - UI: card pagination controls use a 30px tall segmented style (tighter padding/gaps)
 - UI: removed the converted-row left accent pseudo-element (`::before`) in the sessions table
 - UI: KPI grid shows green up-arrow / red down-arrow SVG at end of value when better/worse vs yesterday
+- Traffic: Source mapping panel opens full-screen from the Traffic · Sources modal and uses larger input boxes for faster mapping
+- Traffic: mapping now prefers built-in keys/icons (e.g. Google/Bing) and remapping a token overrides older rules (newest wins)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers

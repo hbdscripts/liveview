@@ -24,6 +24,43 @@ function normalizeTokenValue(v) {
   return typeof v === 'string' ? v.trim().toLowerCase() : '';
 }
 
+function normalizeSourceLabelForMatch(v) {
+  return typeof v === 'string' ? v.trim().toLowerCase() : '';
+}
+
+function normalizeFlatLabel(v) {
+  const s = normalizeSourceLabelForMatch(v);
+  if (!s) return '';
+  return s.replace(/[^a-z0-9]+/g, '');
+}
+
+function builtInTrafficSourceKeyFromLabel(label) {
+  const flat = normalizeFlatLabel(label);
+  if (!flat) return null;
+  if (flat === 'googleads' || flat === 'adwords' || flat === 'googleadwords') return 'google_ads';
+  if (flat === 'googleorganic') return 'google_organic';
+  if (flat === 'bingads' || flat === 'microsoftads' || flat === 'microsoftadvertising') return 'bing_ads';
+  if (flat === 'bingorganic') return 'bing_organic';
+  if (flat === 'facebookads' || flat === 'fbads' || flat === 'instagramads') return 'facebook_ads';
+  if (flat === 'facebookorganic' || flat === 'fborganic' || flat === 'instagramorganic') return 'facebook_organic';
+  if (flat === 'omnisend') return 'omnisend';
+  if (flat === 'direct' || flat === 'directvisitor') return 'direct';
+  if (flat === 'other') return 'other';
+  return null;
+}
+
+function findExistingSourceKeyByLabel(label, metaByKey) {
+  const target = normalizeFlatLabel(label);
+  if (!target) return null;
+  if (!metaByKey || typeof metaByKey.entries !== 'function') return null;
+  for (const [k, v] of metaByKey.entries()) {
+    const lbl = v && v.label != null ? String(v.label) : '';
+    if (!lbl) continue;
+    if (normalizeFlatLabel(lbl) === target) return k;
+  }
+  return null;
+}
+
 async function getTrafficSourceMeta(req, res) {
   const cfg = await store.getTrafficSourceMapConfigCached().catch(() => null);
   const meta = {};
@@ -90,7 +127,7 @@ async function getTrafficSourceMaps(req, res) {
     const v = normalizeTokenValue(r && r.utm_value != null ? String(r.utm_value) : '');
     if (!p || !v) continue;
     const mapKey = p + '\0' + v;
-    const mappedKeys = ruleMap.get(mapKey) || [];
+    const mappedKeys = (ruleMap.get(mapKey) || []).slice().reverse(); // newest mapping first (matches backend resolution)
     if (unmappedOnly && mappedKeys.length) continue;
     const mapped = mappedKeys.map((sourceKey) => {
       const meta = metaByKey.get(sourceKey);
@@ -140,13 +177,31 @@ async function mapTokenToSource(req, res) {
   const iconUrl = typeof body.icon_url === 'string' ? body.icon_url : null;
   const explicitKey = typeof body.source_key === 'string' ? body.source_key : null;
 
+  const cfg = await store.getTrafficSourceMapConfigCached({ force: true }).catch(() => null);
+  const metaByKey = cfg && cfg.metaByKey ? cfg.metaByKey : new Map();
+
   const sourceKey = explicitKey && explicitKey.trim()
     ? explicitKey.trim()
-    : store.makeCustomTrafficSourceKeyFromLabel(sourceLabel);
+    : (
+      builtInTrafficSourceKeyFromLabel(sourceLabel) ||
+      (normalizeSourceLabelForMatch(sourceLabel) && metaByKey.has(normalizeSourceLabelForMatch(sourceLabel)) ? normalizeSourceLabelForMatch(sourceLabel) : null) ||
+      findExistingSourceKeyByLabel(sourceLabel, metaByKey) ||
+      store.makeCustomTrafficSourceKeyFromLabel(sourceLabel)
+    );
 
   if (!sourceKey) return res.status(400).json({ ok: false, error: 'Missing source key/label' });
 
-  const metaRes = await store.upsertTrafficSourceMeta({ sourceKey, label: sourceLabel, iconUrl });
+  const keyLc = String(sourceKey || '').trim().toLowerCase();
+  const existing = keyLc ? metaByKey.get(keyLc) : null;
+  const nextLabel = existing && existing.label != null ? String(existing.label) : sourceLabel;
+  const nextIconUrl = (typeof iconUrl === 'string' && iconUrl.trim())
+    ? iconUrl
+    : (existing && existing.iconUrl != null ? existing.iconUrl : null);
+  const shouldUpsertMeta = !existing || (typeof iconUrl === 'string' && iconUrl.trim());
+
+  const metaRes = shouldUpsertMeta
+    ? await store.upsertTrafficSourceMeta({ sourceKey, label: nextLabel, iconUrl: nextIconUrl })
+    : { ok: true, sourceKey: keyLc, label: nextLabel, iconUrl: nextIconUrl, updatedAt: existing && existing.updatedAt != null ? Number(existing.updatedAt) : null, skipped: true };
   if (!metaRes || metaRes.ok !== true) {
     return res.status(400).json({ ok: false, error: metaRes && metaRes.error ? metaRes.error : 'Failed to save source meta' });
   }

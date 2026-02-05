@@ -752,6 +752,13 @@
     .config-modal-title { margin: 0; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .config-close { border: none; background: none; cursor: pointer; font-size: 1.25rem; line-height: 1; color: var(--muted); }
     .config-close:hover { color: var(--accent); }
+
+    /* Traffic sources modal: allow "Source mapping" to go full-screen */
+    #traffic-sources-modal.tsm-fullscreen { padding: 0; align-items: stretch; justify-content: stretch; }
+    #traffic-sources-modal.tsm-fullscreen .config-modal-card { width: 100vw; height: 100vh; max-height: none; border-radius: 0; }
+    #traffic-sources-modal.tsm-fullscreen .config-modal-card > .muted,
+    #traffic-sources-modal.tsm-fullscreen #traffic-sources-picker { display: none; }
+    #traffic-sources-modal.tsm-fullscreen .config-modal-header { position: sticky; top: 0; z-index: 5; margin-bottom: 0.85rem; padding-bottom: 0.85rem; background: var(--card); border-bottom: 1px solid var(--border); }
     .date-cal { display: grid; gap: 1rem; }
     .date-cal-month { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; background: rgba(255,255,255,0.6); }
     .date-cal-month-title { font-size: 0.8125rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem; }
@@ -875,7 +882,7 @@
     .tsm-table th, .tsm-table td { padding: 0.5rem 0.6rem; font-size: 0.8125rem; border-bottom: 1px dashed rgba(0,0,0,0.08); vertical-align: top; }
     .tsm-table th { text-align: left; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; }
     .tsm-table tr:last-child td { border-bottom: none; }
-    .tsm-input { width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border); border-radius: 0.6rem; background: rgba(255,255,255,0.9); color: var(--text); font-size: 0.82rem; }
+    .tsm-input { width: 100%; min-height: 40px; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem; background: rgba(255,255,255,0.9); color: var(--text); font-size: 0.92rem; }
     .tsm-input::placeholder { color: rgba(0,0,0,0.4); }
     .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
     .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
@@ -2201,12 +2208,13 @@
         if (!byVal) return;
         const keys = byVal.get(t.value);
         if (!Array.isArray(keys) || !keys.length) return;
-        keys.forEach(function(k) {
-          const kk = String(k || '').trim().toLowerCase();
-          if (!kk || seen.has(kk)) return;
+        // Newest mapping wins (rules are appended; API preserves created order).
+        for (let i = keys.length - 1; i >= 0; i--) {
+          const kk = String(keys[i] || '').trim().toLowerCase();
+          if (!kk || seen.has(kk)) continue;
           seen.add(kk);
           out.push(kk);
-        });
+        }
       });
       return out;
     }
@@ -2285,11 +2293,11 @@
       html +=   '<button type="button" class="tsm-btn" data-tsm-action="scan">' + '<span>Scan last 30d</span>' + '</button>';
       html +=   '<button type="button" class="tsm-btn" data-tsm-action="toggle-mapped">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Hide mapped tokens' : 'Show mapped tokens') + '</span>' + '</button>';
       html += '</div>';
-      html += '<div class="diag-note">Unmapped tokens appear here first. Map a token to a Source name (creates a new key like <code>custom_...</code>) and optionally paste an icon URL. Mapped sources will start showing in the Traffic picker + tables.</div>';
+      html += '<div class="diag-note">Unmapped tokens appear here first. Map a token to a Source name (reuses known keys like <code>google_ads</code>/<code>bing_ads</code> when the label matches; otherwise creates <code>custom_...</code>). If you map a token again, the newest mapping wins. Paste an icon URL to override the default icon.</div>';
 
       html += '<div class="diag-section-title">' + '<span>Mapped sources</span>' + '</div>';
       if (!sources.length) {
-        html += '<div class="diag-note">No custom sources yet.</div>';
+        html += '<div class="diag-note">No sources yet.</div>';
       } else {
         html += '<div class="tsm-table-scroll"><table class="tsm-table"><thead><tr>' +
           '<th>Source</th><th>Key</th><th>Icon URL</th><th></th>' +
@@ -2299,8 +2307,12 @@
           if (!key) return;
           const label = s && s.label != null ? String(s.label) : key;
           const iconUrl = s && s.icon_url != null ? String(s.icon_url) : '';
-          const preview = iconUrl && iconUrl.trim()
-            ? ('<img class="tsm-icon-preview" src="' + escapeHtml(iconUrl.trim()) + '" alt="" onerror="this.style.display=\\\'none\\\'">')
+          const builtIn = trafficSourceBuiltInIconSrc(key);
+          const previewSrc = (iconUrl && iconUrl.trim())
+            ? iconUrl.trim()
+            : ((builtIn && builtIn !== SOURCE_UNKNOWN_IMG) ? builtIn : '');
+          const preview = previewSrc
+            ? ('<img class="tsm-icon-preview" src="' + escapeHtml(previewSrc) + '" alt="" onerror="this.style.display=\\\'none\\\'">')
             : '<span style="display:inline-block;width:18px;height:18px"></span>';
           html += '<tr class="tsm-source-row" data-source-key="' + escapeHtml(key) + '">' +
             '<td><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></td>' +
@@ -2334,14 +2346,20 @@
             '<td>' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note" style="margin:0.15rem 0 0">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></td>' +
             '<td>' +
               '<div style="display:grid;grid-template-columns: 1fr 1fr auto; gap:0.45rem; align-items:center">' +
-                '<input class="tsm-input" data-field="source_label" placeholder="Source name (e.g. TikTok Influencers)" />' +
+                '<input class="tsm-input" data-field="source_label" placeholder="Source name (e.g. Google Ads, Bing Ads, TikTok Influencers)" />' +
                 '<input class="tsm-input" data-field="icon_url" placeholder="Icon URL (optional)" />' +
                 '<button type="button" class="tsm-btn primary" data-tsm-action="map-token">Map</button>' +
               '</div>' +
               (mapped.length ? ('<div style="margin-top:0.35rem">' + mapped.map(function(m) {
                 const ml = m && m.label != null ? String(m.label) : (m && m.source_key ? String(m.source_key) : '');
                 const mu = m && m.icon_url != null ? String(m.icon_url) : '';
-                const prev = (mu && mu.trim()) ? ('<img class="tsm-icon-preview" src="' + escapeHtml(mu.trim()) + '" alt="" onerror="this.style.display=\\\'none\\\'">') : '';
+                const mk = m && m.source_key != null ? String(m.source_key).trim().toLowerCase() : '';
+                let prevSrc = (mu && mu.trim()) ? mu.trim() : '';
+                if (!prevSrc && mk) {
+                  const bi = trafficSourceBuiltInIconSrc(mk);
+                  if (bi && bi !== SOURCE_UNKNOWN_IMG) prevSrc = bi;
+                }
+                const prev = prevSrc ? ('<img class="tsm-icon-preview" src="' + escapeHtml(prevSrc) + '" alt="" onerror="this.style.display=\\\'none\\\'">') : '';
                 return '<span class="tsm-mapped-pill">' + prev + escapeHtml(ml) + '</span>';
               }).join('') + '</div>') : '') +
             '</td>' +
@@ -2351,6 +2369,26 @@
       }
 
       return html;
+    }
+
+    function setTrafficSourceMappingFullscreen(on) {
+      const modal = document.getElementById('traffic-sources-modal');
+      if (!modal) return;
+      modal.classList.toggle('tsm-fullscreen', !!on);
+    }
+
+    function bindTrafficSourceMappingFullscreen() {
+      const details = document.getElementById('traffic-source-mapping-details');
+      if (!details) return;
+      if (details.getAttribute('data-tsm-fs-bound')) return;
+      details.setAttribute('data-tsm-fs-bound', '1');
+      details.addEventListener('toggle', function() {
+        setTrafficSourceMappingFullscreen(!!details.open);
+        if (details.open) {
+          try { details.scrollIntoView({ block: 'start' }); } catch (_) {}
+        }
+      });
+      setTrafficSourceMappingFullscreen(!!details.open);
     }
 
     let trafficSourceMapsLastState = null;
@@ -2408,6 +2446,7 @@
       const rootId = options && options.rootId ? String(options.rootId) : 'traffic-source-mapping-root';
       const root = document.getElementById(rootId);
       if (!root) return;
+      try { bindTrafficSourceMappingFullscreen(); } catch (_) {}
       root.onclick = function(e) {
         const btn = e && e.target ? e.target.closest('button[data-tsm-action]') : null;
         if (!btn) return;
@@ -5666,6 +5705,13 @@
       }
       function close(modal) {
         modal.classList.remove('open');
+        if (modal === sourcesModal) {
+          modal.classList.remove('tsm-fullscreen');
+          try {
+            const details = document.getElementById('traffic-source-mapping-details');
+            if (details) details.open = false;
+          } catch (_) {}
+        }
         modal.setAttribute('aria-hidden', 'true');
       }
 
