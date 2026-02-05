@@ -375,6 +375,7 @@ Backups durability:
 - UI: sessions table now expands to fill the card width (prevents blank white area to the right on wide screens)
 - UI: tweak landing entry/exit stack spacing (landing-lines margin + remove gap)
 - UI: map `/account/login` to “Login” in Landing Page entry/exit labels
+- UI: widen Landing Page column + remove max-width clamp to prevent entry/exit layout spilling into adjacent columns
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
