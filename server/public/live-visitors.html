@@ -419,12 +419,12 @@
 .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
 .sale-toast.active { opacity: 1; transform: translateY(0); }
 .sale-toast .sale-toast-flag { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 42px; height: 100%; object-fit: contain; border-radius: 6px; margin: 0; }
+.sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 35px; height: 100%; object-fit: contain; border-radius: 6px; display: block; }
 .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
     .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
-.sale-toast .sale-toast-inline-flag-img { width: 14px; height: 10px; object-fit: cover; border-radius: 3px; display: block; flex-shrink: 0; }
-    .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; background: #06655d; padding: 0 10px; border-radius: 0 4px 4px 0; }
+.sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 0 0; flex-shrink: 0; }
+    .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
+    .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; background: #088378; padding: 0 10px; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; }
     .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
 .sale-toast .sale-toast-close { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.12); color: #fff; border-radius: 8px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
 .sale-toast .sale-toast-close:hover { background: rgba(255, 255, 255, 0.18); }
@@ -1727,6 +1727,7 @@
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
     var NEW_SALE_BIRD_URL = hotImgSquare('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/newsalebird.webp?v=1770255597');
+    var SALE_TOAST_ICON_SVG = '<svg class="sale-toast-bird-icon" viewBox="-0.5 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" aria-hidden="true"><path d="M9.5474 3.5C8.82737 3.5 8.21601 4.02747 8.11049 4.73972L7.77563 7H10V10H7.33119L6.92345 12.7522C6.85846 13.1909 6.73748 13.6091 6.56841 14H14V17H2V14C2.98006 14 3.81221 13.282 3.95584 12.3126L4.29844 10H2V7H4.74289L5.14288 4.30008C5.46632 2.11683 7.34032 0.5 9.5474 0.5C12.0065 0.5 14 2.4935 14 4.9526V5H11V4.9526C11 4.15035 10.3496 3.5 9.5474 3.5Z" fill="#fff"/></svg>';
     var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
 
     function titleCaseFromHandle(handle) {
@@ -2830,7 +2831,7 @@
       const inlineFlagEl = document.getElementById('sale-toast-inline-flag');
       const productEl = document.getElementById('sale-toast-product');
       const amountEl = document.getElementById('sale-toast-amount');
-      if (flagEl) flagEl.innerHTML = '<img class="sale-toast-bird-icon" src="' + escapeHtml(NEW_SALE_BIRD_URL) + '" alt="" aria-hidden="true" decoding="async" loading="eager">';
+      if (flagEl) flagEl.innerHTML = SALE_TOAST_ICON_SVG;
       if (inlineFlagEl) inlineFlagEl.innerHTML = flagImgSmall(cc);
       if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
       if (amountEl) amountEl.textContent = (amountGbp != null && Number.isFinite(amountGbp)) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
