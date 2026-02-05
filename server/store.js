@@ -1579,7 +1579,8 @@ async function getKpis(options = {}) {
   let salesTruthSync = null;
   if (rangeKey === 'today' && salesShop && reporting.ordersSource === 'orders_shopify') {
     try {
-      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, 'kpis_today');
+      // Share the same reconcile_state(scope='today') as /api/stats and startup reconcile.
+      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, 'today');
     } catch (_) {
       salesTruthSync = { ok: false, error: 'reconcile_failed' };
     }

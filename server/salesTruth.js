@@ -1013,20 +1013,37 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return [];
   const db = getDb();
-  const sqlFacts = `
+  // Prefer Shopify-provided customer.orders_count (stored on each order payload) when present.
+  // When orders_count is missing, fall back to customer_order_facts (if available) or "prior paid order in DB".
+  const sqlPreferOrdersCountWithFacts = `
     SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
     FROM orders_shopify o
-    INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+    LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
     WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
       AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
-      AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
+      AND (
+        (o.customer_orders_count IS NOT NULL AND o.customer_orders_count >= 2)
+        OR (
+          o.customer_orders_count IS NULL AND (
+            (f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?)
+            OR EXISTS (
+              SELECT 1 FROM orders_shopify p
+              WHERE p.shop = o.shop AND p.customer_id = o.customer_id
+                AND (p.test IS NULL OR p.test = 0)
+                AND p.cancelled_at IS NULL
+                AND p.financial_status = 'paid'
+                AND p.created_at < ?
+            )
+          )
+        )
+      )
     GROUP BY currency
   `;
 
-  const sqlWithOrdersCount = `
+  const sqlPreferOrdersCount = `
     SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
     FROM orders_shopify o
     WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
@@ -1050,12 +1067,12 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
     GROUP BY currency
   `;
   try {
-    return await db.all(sqlFacts, [safeShop, startMs, endMs, startMs]);
+    return await db.all(sqlPreferOrdersCountWithFacts, [safeShop, startMs, endMs, startMs, startMs]);
   } catch (_) {
-    // Fall through to older heuristics.
+    // Fall through (no customer_order_facts table, or older schema).
   }
   try {
-    return await db.all(sqlWithOrdersCount, [safeShop, startMs, endMs, startMs]);
+    return await db.all(sqlPreferOrdersCount, [safeShop, startMs, endMs, startMs]);
   } catch (e) {
     // Backwards-compatible fallback (older schema without customer_orders_count).
     return db.all(
@@ -1091,24 +1108,65 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return 0;
   const db = getDb();
+  const sqlPreferOrdersCountWithFacts = `
+    SELECT COUNT(*) AS n
+    FROM orders_shopify o
+    LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      AND (o.test IS NULL OR o.test = 0)
+      AND o.cancelled_at IS NULL
+      AND o.financial_status = 'paid'
+      AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+      AND (
+        (o.customer_orders_count IS NOT NULL AND o.customer_orders_count >= 2)
+        OR (
+          o.customer_orders_count IS NULL AND (
+            (f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?)
+            OR EXISTS (
+              SELECT 1 FROM orders_shopify p
+              WHERE p.shop = o.shop AND p.customer_id = o.customer_id
+                AND (p.test IS NULL OR p.test = 0)
+                AND p.cancelled_at IS NULL
+                AND p.financial_status = 'paid'
+                AND p.created_at < ?
+            )
+          )
+        )
+      )
+  `;
+  const sqlPreferOrdersCount = `
+    SELECT COUNT(*) AS n
+    FROM orders_shopify o
+    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      AND (o.test IS NULL OR o.test = 0)
+      AND o.cancelled_at IS NULL
+      AND o.financial_status = 'paid'
+      AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
+      AND (
+        (o.customer_orders_count IS NOT NULL AND o.customer_orders_count >= 2)
+        OR (
+          o.customer_orders_count IS NULL AND EXISTS (
+            SELECT 1 FROM orders_shopify p
+            WHERE p.shop = o.shop AND p.customer_id = o.customer_id
+              AND (p.test IS NULL OR p.test = 0)
+              AND p.cancelled_at IS NULL
+              AND p.financial_status = 'paid'
+              AND p.created_at < ?
+          )
+        )
+      )
+  `;
   try {
-    const row = await db.get(
-      `
-      SELECT COUNT(*) AS n
-      FROM orders_shopify o
-      INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
-        AND (o.test IS NULL OR o.test = 0)
-        AND o.cancelled_at IS NULL
-        AND o.financial_status = 'paid'
-        AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
-        AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
-      `,
-      [safeShop, startMs, endMs, startMs]
-    );
+    const row = await db.get(sqlPreferOrdersCountWithFacts, [safeShop, startMs, endMs, startMs, startMs]);
     return row && row.n != null ? Number(row.n) || 0 : 0;
   } catch (_) {
-    // Best-effort fallback: count orders from customers who have prior paid orders in DB.
+    // Fall through (no customer_order_facts table, or older schema).
+  }
+  try {
+    const row = await db.get(sqlPreferOrdersCount, [safeShop, startMs, endMs, startMs]);
+    return row && row.n != null ? Number(row.n) || 0 : 0;
+  } catch (_) {
+    // Backwards-compatible fallback (older schema).
     const row = await db.get(
       `
       SELECT COUNT(*) AS n
@@ -1137,19 +1195,34 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return 0;
   const db = getDb();
-  const sqlFacts = `
+  const sqlPreferOrdersCountWithFacts = `
     SELECT COUNT(DISTINCT o.customer_id) AS n
     FROM orders_shopify o
-    INNER JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+    LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
     WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
       AND o.customer_id IS NOT NULL AND TRIM(o.customer_id) != ''
-      AND f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?
+      AND (
+        (o.customer_orders_count IS NOT NULL AND o.customer_orders_count >= 2)
+        OR (
+          o.customer_orders_count IS NULL AND (
+            (f.first_paid_order_at IS NOT NULL AND f.first_paid_order_at < ?)
+            OR EXISTS (
+              SELECT 1 FROM orders_shopify p
+              WHERE p.shop = o.shop AND p.customer_id = o.customer_id
+                AND (p.test IS NULL OR p.test = 0)
+                AND p.cancelled_at IS NULL
+                AND p.financial_status = 'paid'
+                AND p.created_at < ?
+            )
+          )
+        )
+      )
   `;
 
-  const sql = `
+  const sqlPreferOrdersCount = `
     SELECT COUNT(DISTINCT o.customer_id) AS n
     FROM orders_shopify o
     WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
@@ -1172,13 +1245,13 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
       )
   `;
   try {
-    const row = await db.get(sqlFacts, [safeShop, startMs, endMs, startMs]);
+    const row = await db.get(sqlPreferOrdersCountWithFacts, [safeShop, startMs, endMs, startMs, startMs]);
     return row && row.n != null ? Number(row.n) || 0 : 0;
   } catch (_) {
-    // Fall through to older heuristics.
+    // Fall through (no customer_order_facts table, or older schema).
   }
   try {
-    const row = await db.get(sql, [safeShop, startMs, endMs, startMs]);
+    const row = await db.get(sqlPreferOrdersCount, [safeShop, startMs, endMs, startMs]);
     return row && row.n != null ? Number(row.n) || 0 : 0;
   } catch (_) {
     // Backwards-compatible fallback (older schema).
