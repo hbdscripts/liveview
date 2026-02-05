@@ -518,7 +518,7 @@
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.65rem 0.85rem;
+  gap: 0;
   padding: 0.75rem 0 1.25rem;
   font-size: 0.875rem;
   color: var(--muted);
@@ -530,19 +530,19 @@
   gap: 0.4rem;
   padding: 0.42rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.85);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   color: var(--text);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 650;
   line-height: 1;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 .table-pagination button:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.6); outline-offset: 2px; }
-.table-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); transform: translateY(-1px); }
-.table-pagination button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 0 0 rgba(0,0,0,0); }
+.table-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
+.table-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
 .table-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 
 .table-pagination button#pagination-prev::before,
@@ -574,19 +574,27 @@
 }
 
 .table-pagination #pagination-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.38rem 0.85rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.75);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   color: var(--muted);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.table-pagination #pagination-prev { border-radius: 4px 0 0 4px; }
+.table-pagination #pagination-next { border-radius: 0 4px 4px 0; }
+.table-pagination #pagination-label,
+.table-pagination #pagination-next { border-left: none; }
 .table-pagination #rows-per-page-wrap {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  margin-left: 0.85rem;
   padding: 0.28rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -626,7 +634,7 @@
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0;
   padding: 0.65rem 0.75rem;
   background: rgba(255, 255, 255, 0.7);
   border-top: 1px solid var(--border);
@@ -643,31 +651,38 @@
   gap: 0.35rem;
   padding: 0.34rem 0.6rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   color: var(--text);
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 650;
   line-height: 1;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
-.card-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); transform: translateY(-1px); }
-.card-pagination button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 0 0 rgba(0,0,0,0); }
+.card-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
+.card-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
 .card-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 .card-pagination .page-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.82);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   min-width: 104px;
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
   font-weight: 600;
 }
+.card-pagination button[id$="-prev"] { border-radius: 4px 0 0 4px; }
+.card-pagination button[id$="-next"] { border-radius: 0 4px 4px 0; }
+.card-pagination .page-label,
+.card-pagination button[id$="-next"] { border-left: none; }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
     .source-icons { display: inline-flex; align-items: center; gap: 4px; }
     .source-icons img { width: 20px; height: 20px; }
