@@ -290,6 +290,7 @@ Backups durability:
 - UI: update Online user icon + standardise SVG icon colouring (match footer icons).
 - Breakdown: add “Best GEO Products” card (top 3 products per country) powered by `/api/stats` (`bestGeoProducts` truth query: purchase_events → sessions.country_code + orders_shopify_line_items revenue).
 - UI: fix product table names disappearing on large screens (product name cell no longer inherits country-table flex rules; name now reliably ellipsizes instead of collapsing).
+- UI: browser tab title is now “Birdseye Tracker”.
 - UI: sale toast (2-KPI overlay) restyled (green bg, bird icon, inline country flag, gold amount) + debug trigger `?birdseye_sale=1`.
 - UI: dashboard + login favicon now uses `/assets/favicon.png` (local).
 - UI: Home tab icon swaps to green image when active.
