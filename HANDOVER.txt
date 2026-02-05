@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers; Sale toast sync + show/hide)
+Last updated: 2026-02-05 (Diagnostics: sales drift AI notes + 3px radius; Traffic: mapping UX + direct self-referrers; Sale toast title/time layout)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -320,7 +320,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-05
-- UI: sale toast uses product thumb (width=100), shows vertical HH:MM time, removes dismiss button; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
+- UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with centered alignment; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
 - UI: sale toast forces Home table refresh for Today/Last Hour/Live and updates footer “Last sale” from toast payload.
 - Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
 - Ingest/Sales evidence: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (pixel-derived “Birdseye” drift/debug).

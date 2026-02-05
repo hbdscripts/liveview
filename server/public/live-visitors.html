@@ -981,13 +981,15 @@
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
         <div class="live-kpi-value" id="live-kpi-sales">—</div>
         <div class="sale-toast is-hidden" id="sale-toast" aria-hidden="true">
-          <div class="sale-toast-time" id="sale-toast-time">—</div>
           <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
           <div class="sale-toast-mid">
-            <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span>New Sale</div>
+            <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">—</span></div>
             <div class="sale-toast-product" id="sale-toast-product">—</div>
           </div>
-          <div class="sale-toast-amount-wrap"><div class="sale-toast-amount" id="sale-toast-amount">£—</div></div>
+          <div class="sale-toast-amount-wrap">
+            <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+            <div class="sale-toast-time" id="sale-toast-time">—</div>
+          </div>
         </div>
       </div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div></div>
@@ -3275,11 +3277,14 @@
       };
 
       const inlineFlagEl = document.getElementById('sale-toast-inline-flag');
+      const titleEl = document.getElementById('sale-toast-title');
       const productEl = document.getElementById('sale-toast-product');
       const amountEl = document.getElementById('sale-toast-amount');
       const thumbEl = document.getElementById('sale-toast-thumb');
       const timeEl = document.getElementById('sale-toast-time');
+      const titleText = (cc && cc !== 'XX') ? countryLabelFull(cc) : 'Unknown';
       if (inlineFlagEl) inlineFlagEl.innerHTML = flagImgSmall(cc);
+      if (titleEl) titleEl.textContent = titleText || 'Unknown';
       if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
       if (amountEl) amountEl.textContent = (amountGbp != null) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
       if (thumbEl) {
