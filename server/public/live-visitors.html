@@ -64,7 +64,7 @@
     @media (max-width: 768px) { .traffic-grid { grid-template-columns: 1fr; } }
     .stats-card { background: var(--card); padding: 0; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
     .stats-card:last-child { margin-right: 0; }
-    #stats-country, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-worst-variants, #stats-aov { display: flex; flex-direction: column; }
+    #stats-country, #stats-best-geo-products, #stats-best-sellers, #stats-worst-products, #stats-best-variants, #stats-worst-variants, #stats-aov { display: flex; flex-direction: column; }
     .traffic-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: var(--table-cell-padding-y) var(--table-cell-padding-x); background: var(--th-bg); border-bottom: var(--table-row-border); }
     .traffic-card-title { margin: 0; font-size: var(--table-th-font-size); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
     .traffic-picker-list { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -112,6 +112,10 @@
     .by-country-table tbody td:first-child { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
     .by-country-table tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Best GEO Products: show product name under country in the same cell. */
+    .geo-products-table tbody td:first-child .country-label { white-space: normal; text-overflow: clip; display: flex; flex-direction: column; gap: 0.15rem; }
+    .geo-products-table .country-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .geo-products-table .geo-product-name { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 600; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .by-country-table.aov-table .country-label { overflow: visible; text-overflow: clip; white-space: normal; word-break: break-word; }
     .by-country-table.aov-table { table-layout: fixed; }
     .stats-card .by-country-table.aov-table th:first-child,
@@ -813,6 +817,32 @@
         <button type="button" id="country-next">Next</button>
       </div>
     </div>
+    <div class="stats-card" id="stats-best-geo-products">
+      <div class="traffic-card-header">
+        <h3 class="traffic-card-title">Best GEO Products</h3>
+      </div>
+      <div class="country-table-wrap" id="best-geo-products-wrap">
+        <table id="best-geo-products-table" class="by-country-table geo-products-table">
+          <thead>
+            <tr>
+              <th aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Ctry</span></th>
+              <th aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short">CR</span></th>
+              <th aria-label="Sales"><span class="th-label-long">Sales</span><span class="th-label-short">Sls</span></th>
+              <th aria-label="Clicks"><span class="th-label-long">Clicks</span><span class="th-label-short">Clk</span></th>
+              <th aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></th>
+            </tr>
+          </thead>
+          <tbody id="best-geo-products-body">
+            <tr><td colspan="5" class="empty">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-pagination" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
+        <button type="button" id="best-geo-products-prev">Prev</button>
+        <span class="page-label" id="best-geo-products-label">Page 1 of 1</span>
+        <button type="button" id="best-geo-products-next">Next</button>
+      </div>
+    </div>
     <div class="stats-card" id="stats-aov">
       <div class="country-table-wrap" id="aov-list-wrap">
         <table id="aov-table" class="by-country-table aov-table">
@@ -1151,6 +1181,7 @@
     let bestVariantsCache = null;
     let worstVariantsCache = null;
     let countryPage = 1;
+    let bestGeoProductsPage = 1;
     let aovPage = 1;
     let bestSellersPage = 1;
     let worstProductsPage = 1;
@@ -2518,6 +2549,39 @@
       }).join('');
     }
 
+    function renderBestGeoProducts(data) {
+      const map = data && data.bestGeoProducts ? data.bestGeoProducts : {};
+      const rows = map[getStatsRange()] || [];
+      const tbody = document.getElementById('best-geo-products-body');
+      if (!tbody) return;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
+        updateCardPagination('best-geo-products', 1, 1);
+        return;
+      }
+      const totalPages = Math.max(1, Math.ceil(rows.length / TOP_TABLE_PAGE_SIZE));
+      bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
+      updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
+      const start = (bestGeoProductsPage - 1) * TOP_TABLE_PAGE_SIZE;
+      const pageRows = rows.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(r => {
+        const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
+        const ccode = iso.toLowerCase();
+        const label = countryLabel(iso);
+        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
+        const conversion = pct(r.conversion);
+        const salesCount = r.converted != null ? Number(r.converted) : 0;
+        const clicks = r.total != null ? formatSessions(r.total) : '—';
+        const revenue = formatRevenue(r.revenue);
+        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const labelHtml = '<span class="country-label">' +
+          '<span class="country-name">' + escapeHtml(label) + '</span>' +
+          '<span class="geo-product-name" title="' + escapeHtml(productTitle) + '">' + escapeHtml(productTitle) + '</span>' +
+        '</span>';
+        return '<tr><td>' + flag + labelHtml + '</td><td>' + conversion + '</td><td>' + salesCount + '</td><td>' + clicks + '</td><td>' + revenue + '</td></tr>';
+      }).join('');
+    }
+
     function isCustomDayRangeKey(v) {
       return typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
     }
@@ -2757,6 +2821,7 @@
     function applyDateRangeChange() {
       if (dateRange !== 'live') lastOnlineCount = null;
       countryPage = 1;
+      bestGeoProductsPage = 1;
       aovPage = 1;
       bestSellersPage = 1;
       bestVariantsPage = 1;
@@ -2881,8 +2946,9 @@
       kpiCache = statsCache;
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
-      renderAov(statsCache);
       renderCountry(statsCache);
+      renderBestGeoProducts(statsCache);
+      renderAov(statsCache);
       renderLiveKpis(getKpiData());
     }
 
@@ -3604,6 +3670,10 @@
       bind('country',
         function() { countryPage = Math.max(1, countryPage - 1); renderCountry(statsCache); },
         function() { countryPage = countryPage + 1; renderCountry(statsCache); }
+      );
+      bind('best-geo-products',
+        function() { bestGeoProductsPage = Math.max(1, bestGeoProductsPage - 1); renderBestGeoProducts(statsCache); },
+        function() { bestGeoProductsPage = bestGeoProductsPage + 1; renderBestGeoProducts(statsCache); }
       );
       bind('aov',
         function() { aovPage = Math.max(1, aovPage - 1); renderAov(statsCache); },

@@ -26,7 +26,7 @@ Main tabs (top row):
     - Exit line: rotated-arrow SVG icon + page name (screen-reader text includes “Exit:”)
     - Exit thumbnail is smaller than entry (visual hierarchy)
   - Otherwise, shows the single thumbnail + label (existing behaviour)
-- Breakdown: Countries + Average Order Value tables for selected date range
+- Breakdown: Countries + Best GEO Products + Average Order Value tables for selected date range
 - Products: Best / Worst / Variants tables for selected date range (all tables show Sales / Clicks / Rev / CR)
 - Traffic: two tables (Source + Traffic Type)
   - Channels table renders the same source icons used on the Home table (not text labels)
@@ -52,21 +52,7 @@ Traffic tab (new)
 
 ## Requested next work (not shipped yet)
 
-Breakdown tab: add a new middle table so AOV becomes the 3rd card.
-
-New table: **Best GEO Products**
-- Goal: show highest-revenue products **per country** (max **3 products per country** for the selected date range).
-- Table headers: `Country` | `CR` | `Sales` | `Clicks` | `Rev`
-  - Product name should be shown inside the Country cell (e.g. as a second line under the flag/country).
-  - `CR` should align with existing meaning: \(Sales / Clicks\).
-- Data: prefer SQL using truth data:
-  - Country attribution should follow the existing truth-by-country pattern (purchase evidence → sessions.country_code).
-  - Product revenue should use `orders_shopify_line_items` (no `orders_shopify.raw_json` parsing in request path).
-  - Enforce “max 3 per country” via SQL (e.g. window function) so UI logic stays simple.
-- Likely files:
-  - `server/store.js` (new query helper, included in `getStats()`)
-  - `server/public/live-visitors.html` (new stats card + render)
-  - `server/routes/stats.js` (no new endpoint required if piggybacking `/api/stats`)
+- (none queued)
 
 ## High-level architecture
 
@@ -302,6 +288,7 @@ Backups durability:
 - KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
 - Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Breakdown/Products/Traffic); Live remains 60s.
 - UI: update Online user icon + standardise SVG icon colouring (match footer icons).
+- Breakdown: add “Best GEO Products” card (top 3 products per country) powered by `/api/stats` (`bestGeoProducts` truth query: purchase_events → sessions.country_code + orders_shopify_line_items revenue).
 - UI: sale toast (2-KPI overlay) restyled (green bg, bird icon, inline country flag, gold amount) + debug trigger `?birdseye_sale=1`.
 - UI: dashboard + login favicon now uses `/assets/favicon.png` (local).
 - UI: Home tab icon swaps to green image when active.

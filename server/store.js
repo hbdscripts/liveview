@@ -1379,6 +1379,119 @@ async function getCountryStats(start, end, options = {}) {
   return out.slice(0, 20);
 }
 
+/**
+ * Best GEO Products: top revenue products per country (cap 3 per country).
+ *
+ * Attribution:
+ * - Country comes from sessions.country_code via purchase_events.session_id (truth evidence linkage).
+ * - Revenue comes from orders_shopify_line_items (no orders_shopify.raw_json parsing).
+ *
+ * Output rows:
+ * - country_code, product_title, conversion (pct), converted (orders), total (sessions), revenue (GBP)
+ */
+async function getBestGeoProducts(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
+  const filterAlias = filter.sql.replace(/sessions\./g, 's.');
+  const db = getDb();
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return [];
+
+  const sql = `
+    WITH sessions_by_country AS (
+      SELECT s.country_code AS country_code, COUNT(*) AS clicks
+      FROM sessions s
+      WHERE s.started_at >= ? AND s.started_at < ?
+        AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+        ${filterAlias}
+      GROUP BY s.country_code
+    ),
+    order_country AS (
+      SELECT DISTINCT pe.shop AS shop, s.country_code AS country_code, pe.linked_order_id AS order_id
+      FROM purchase_events pe
+      INNER JOIN sessions s ON s.session_id = pe.session_id
+      WHERE pe.shop = ?
+        AND pe.event_type = 'checkout_completed'
+        AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
+        AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+        ${filterAlias}
+    ),
+    product_rev AS (
+      SELECT
+        oc.country_code AS country_code,
+        COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
+        li.product_id AS product_id,
+        MAX(li.title) AS title,
+        COUNT(DISTINCT li.order_id) AS sales,
+        COALESCE(SUM(li.line_revenue), 0) AS revenue
+      FROM order_country oc
+      INNER JOIN orders_shopify_line_items li
+        ON li.shop = oc.shop AND li.order_id = oc.order_id
+      WHERE li.order_created_at >= ? AND li.order_created_at < ?
+        AND (li.order_test IS NULL OR li.order_test = 0)
+        AND li.order_cancelled_at IS NULL
+        AND li.order_financial_status = 'paid'
+        AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+        AND li.title IS NOT NULL AND TRIM(li.title) != ''
+      GROUP BY oc.country_code, currency, li.product_id
+    ),
+    ranked AS (
+      SELECT
+        pr.country_code,
+        pr.currency,
+        pr.product_id,
+        pr.title,
+        pr.sales,
+        pr.revenue,
+        COALESCE(sbc.clicks, 0) AS clicks,
+        ROW_NUMBER() OVER (PARTITION BY pr.country_code ORDER BY pr.revenue DESC) AS rn,
+        SUM(pr.revenue) OVER (PARTITION BY pr.country_code) AS country_revenue
+      FROM product_rev pr
+      LEFT JOIN sessions_by_country sbc ON sbc.country_code = pr.country_code
+    )
+    SELECT
+      country_code,
+      currency,
+      product_id,
+      title,
+      sales,
+      clicks,
+      revenue
+    FROM ranked
+    WHERE rn <= 3
+    ORDER BY country_revenue DESC, revenue DESC
+  `;
+
+  // filter.params is currently empty, but keep it twice since filterAlias is used twice.
+  const params = [start, end, ...filter.params, shop, ...filter.params, start, end];
+  const rows = await db.all(sql, params);
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  const out = [];
+  for (const row of rows || []) {
+    const code = normalizeCountry(row && row.country_code);
+    if (!code) continue;
+    const clicks = row && row.clicks != null ? Number(row.clicks) || 0 : 0;
+    const converted = row && row.sales != null ? Number(row.sales) || 0 : 0;
+    const revenueRaw = row && row.revenue != null ? Number(row.revenue) : 0;
+    const revenueNum = Number.isFinite(revenueRaw) ? revenueRaw : 0;
+    const cur = fx.normalizeCurrency(row && row.currency) || 'GBP';
+    const gbp = fx.convertToGbp(revenueNum, cur, ratesToGbp);
+    const revenue = (typeof gbp === 'number' && Number.isFinite(gbp)) ? (Math.round(gbp * 100) / 100) : 0;
+    const productTitle = (row && row.title != null) ? String(row.title).trim() : '';
+    const conversion = clicks > 0 ? Math.round((converted / clicks) * 1000) / 10 : null;
+    out.push({
+      country_code: code,
+      product_title: productTitle || null,
+      conversion,
+      total: clicks,
+      converted,
+      revenue,
+    });
+  }
+  return out;
+}
+
 async function getSessionCountsFromSessionsTable(start, end, options = {}) {
   const db = getDb();
   const totalRow = config.dbUrl
@@ -1483,6 +1596,7 @@ async function getStats(options = {}) {
     conversionByRangeEntries,
     productConversionByRangeEntries,
     countryByRangeEntries,
+    bestGeoProductsByRangeEntries,
     salesRollingEntries,
     conversionRollingEntries,
     convertedCountByRangeEntries,
@@ -1497,6 +1611,7 @@ async function getStats(options = {}) {
     Promise.all(rangeKeys.map(async key => [key, await getConversionRate(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
     Promise.all(rangeKeys.map(async key => [key, await getProductConversionRate(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
     Promise.all(rangeKeys.map(async key => [key, await getCountryStats(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
+    Promise.all(rangeKeys.map(async key => [key, await getBestGeoProducts(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
     Promise.all(SALES_ROLLING_WINDOWS.map(async w => [w.key, await getSalesTotal(now - w.ms, now, { ...opts, rangeKey: w.key })])),
     Promise.all(CONVERSION_ROLLING_WINDOWS.map(async w => [w.key, await getConversionRate(now - w.ms, now, { ...opts, rangeKey: w.key })])),
     Promise.all(rangeKeys.map(async key => [key, await getConvertedCount(ranges[key].start, ranges[key].end, { ...opts, rangeKey: key })])),
@@ -1511,6 +1626,7 @@ async function getStats(options = {}) {
   const conversionByRange = Object.fromEntries(conversionByRangeEntries);
   const productConversionByRange = Object.fromEntries(productConversionByRangeEntries);
   const countryByRange = Object.fromEntries(countryByRangeEntries);
+  const bestGeoProductsByRange = Object.fromEntries(bestGeoProductsByRangeEntries);
   const salesRolling = Object.fromEntries(salesRollingEntries);
   const conversionRolling = Object.fromEntries(conversionRollingEntries);
   const convertedCountByRange = Object.fromEntries(convertedCountByRangeEntries);
@@ -1535,6 +1651,7 @@ async function getStats(options = {}) {
     conversion: { ...conversionByRange, rolling: conversionRolling },
     productConversion: productConversionByRange,
     country: countryByRange,
+    bestGeoProducts: bestGeoProductsByRange,
     aov: { ...aovByRange, rolling: aovRolling },
     bounce: bounceByRange,
     revenueToday: salesByRange.today ?? 0,
