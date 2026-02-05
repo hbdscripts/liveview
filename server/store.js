@@ -1551,6 +1551,86 @@ async function getStats(options = {}) {
   };
 }
 
+/**
+ * Lightweight KPI payload for the top grid (no country/product breakdown).
+ * Returns a stats-shaped object but only for a single range key.
+ */
+async function getKpis(options = {}) {
+  const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
+  const now = Date.now();
+  const timeZone = resolveAdminTimeZone();
+  const reporting = await getReportingConfig();
+  const opts = { trafficMode, timeZone, reporting };
+
+  const requestedRangeRaw =
+    typeof options.rangeKey === 'string' ? options.rangeKey :
+      (typeof options.range === 'string' ? options.range : '');
+  const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
+  const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', 'month']);
+  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || allowedLegacy.has(requestedRange))
+    ? requestedRange
+    : 'today';
+
+  const bounds = getRangeBounds(rangeKey, now, timeZone);
+
+  // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
+  const salesShop = salesTruth.resolveShopForSales('');
+  let salesTruthSync = null;
+  if (rangeKey === 'today' && salesShop && reporting.ordersSource === 'orders_shopify') {
+    try {
+      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, 'kpis_today');
+    } catch (_) {
+      salesTruthSync = { ok: false, error: 'reconcile_failed' };
+    }
+  }
+
+  const yesterdayBounds = getRangeBounds('yesterday', now, timeZone);
+  const [
+    salesVal,
+    returningRevenueVal,
+    conversionVal,
+    convertedCountVal,
+    trafficBreakdownVal,
+    bounceVal,
+    yesterdayOk,
+    salesTruthHealth,
+  ] = await Promise.all([
+    getSalesTotal(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getReturningRevenue(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getConversionRate(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getConvertedCount(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getSessionCounts(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey }),
+    rangeHasSessions(yesterdayBounds.start, yesterdayBounds.end, opts),
+    (salesShop ? salesTruth.getTruthHealth(salesShop || '', 'today') : Promise.resolve(null)),
+  ]);
+
+  const aovVal = aovFromSalesAndCount(salesVal, convertedCountVal);
+  const rangeAvailable = {
+    today: true,
+    yesterday: yesterdayOk,
+  };
+
+  return {
+    sales: { [rangeKey]: salesVal },
+    returningRevenue: { [rangeKey]: returningRevenueVal },
+    conversion: { [rangeKey]: conversionVal },
+    aov: { [rangeKey]: aovVal },
+    bounce: { [rangeKey]: bounceVal },
+    convertedCount: { [rangeKey]: convertedCountVal },
+    trafficMode,
+    trafficBreakdown: { [rangeKey]: trafficBreakdownVal },
+    reporting,
+    salesTruth: {
+      shop: salesShop || '',
+      todaySync: salesTruthSync,
+      health: salesTruthHealth,
+    },
+    rangeAvailable,
+  };
+}
+
 async function rangeHasSessions(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
@@ -1589,6 +1669,7 @@ module.exports = {
   saveShopifySessionsSnapshot,
   getLatestShopifySessionsSnapshot,
   getStats,
+  getKpis,
   getRangeBounds,
   resolveAdminTimeZone,
   // Shared SQL helpers for pixel dedupe

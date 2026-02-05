@@ -63,6 +63,7 @@ async function getShopifyBestSellers(req, res) {
         let msDbCount = 0;
         let msDbAgg = 0;
         let msMeta = 0;
+        let msDbClicks = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
         const tReconcile0 = Date.now();
         await salesTruth.ensureReconciled(shop, start, end, `best_sellers_${range}`);
@@ -140,6 +141,44 @@ async function getShopifyBestSellers(req, res) {
         );
         msMeta = Date.now() - tMeta0;
 
+        // Clicks: sessions that started on this product (handle-based). Human-only.
+        const handles = Array.from(
+          new Set(
+            pageItems
+              .map((p) => (p && p.handle != null ? String(p.handle).trim().toLowerCase() : ''))
+              .filter(Boolean)
+          )
+        );
+        if (handles.length) {
+          const tClicks0 = Date.now();
+          const placeholders = handles.map(() => '?').join(',');
+          const clickRows = await db.all(
+            `
+              SELECT LOWER(TRIM(first_product_handle)) AS handle, COUNT(*) AS clicks
+              FROM sessions
+              WHERE started_at >= ? AND started_at < ?
+                AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+                AND first_product_handle IS NOT NULL AND TRIM(first_product_handle) != ''
+                AND LOWER(TRIM(first_product_handle)) IN (${placeholders})
+              GROUP BY LOWER(TRIM(first_product_handle))
+            `,
+            [start, end, ...handles]
+          );
+          msDbClicks = Date.now() - tClicks0;
+          const clicksByHandle = new Map();
+          for (const r of clickRows || []) {
+            const h = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
+            if (!h) continue;
+            clicksByHandle.set(h, r && r.clicks != null ? Number(r.clicks) || 0 : 0);
+          }
+          for (const p of pageItems) {
+            const h = p && p.handle != null ? String(p.handle).trim().toLowerCase() : '';
+            p.clicks = h && clicksByHandle.has(h) ? clicksByHandle.get(h) : 0;
+          }
+        } else {
+          for (const p of pageItems) p.clicks = 0;
+        }
+
         const conversionRate = totalOrders > 0 ? (p) => Math.round((p.orders / totalOrders) * 1000) / 10 : () => null;
         const bestSellers = pageItems.map((p) => ({
           product_id: p.product_id,
@@ -147,6 +186,7 @@ async function getShopifyBestSellers(req, res) {
           handle: p.handle || null,
           thumb_url: p.thumb_url || null,
           orders: p.orders,
+          clicks: typeof p.clicks === 'number' ? p.clicks : 0,
           revenue: p.revenue,
           cr: conversionRate(p),
         }));
@@ -155,7 +195,7 @@ async function getShopifyBestSellers(req, res) {
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_totalOrders=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
+            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_totalOrders=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s ms_db_clicks=%s',
             range,
             sort,
             dir,
@@ -165,7 +205,8 @@ async function getShopifyBestSellers(req, res) {
             msDbTotalOrders,
             msDbCount,
             msDbAgg,
-            msMeta
+            msMeta,
+            msDbClicks
           );
         }
 

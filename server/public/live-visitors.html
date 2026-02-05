@@ -93,7 +93,10 @@
     .by-country-table tbody td:first-child > *:first-child { flex-shrink: 0; }
     .by-country-table tbody td:first-child .country-label { flex: 1; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .by-country-table.aov-table .country-label { overflow: visible; text-overflow: clip; white-space: normal; word-break: break-word; }
+    .by-country-table.aov-table { table-layout: fixed; }
+    .stats-card .by-country-table.aov-table th:first-child,
     .stats-card .by-country-table.aov-table td:first-child { width: 70%; }
+    .stats-card .by-country-table.aov-table th:last-child,
     .stats-card .by-country-table.aov-table td:last-child { width: 30%; min-width: 5.5rem; }
     .by-country-table .country-name { display: inline; }
     .by-country-table .country-code { display: none; }
@@ -151,9 +154,32 @@
 .thumb-wrap.thumb-stack .landing-thumb { position: relative; }
 .thumb-wrap.thumb-stack .landing-thumb + .landing-thumb { margin-left: -14px; border: 2px solid var(--card); box-sizing: content-box; z-index: 2; }
 .thumb-wrap.thumb-stack .landing-thumb:first-child { z-index: 1; }
-    .thumb-overlay { position: absolute; left: 0px; top: 50%; transform: translate(-50%, -50%); width: 20px !important; height: 20px !important; border-radius: 999px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.12); box-shadow: 0 1px 2px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; pointer-events: none; }
-    .thumb-overlay img { width: 12px; height: 12px; display: block; }
-    @media (max-width: 768px) { .thumb-overlay { width: 14px; height: 14px; } .thumb-overlay img { width: 10px; height: 10px; } }
+.thumb-wrap.thumb-stack .landing-thumb-exit { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+
+.thumb-overlay {
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 25px !important;
+    height: 25px !important;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 9;
+}
+
+.thumb-overlay img {
+    width: 25px;
+    height: 25px;
+    display: block;
+    padding: 2px;
+    position: relative;
+}
 .table-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
     .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: var(--radius); font-size: 0.75rem; }
     .badge.new { background: var(--accent); color: var(--badge-new-fg); }
@@ -224,20 +250,34 @@
 .report-build-title { font-size: 0.95rem; font-weight: 700; color: var(--accent); letter-spacing: -0.1px; }
 .report-build-step { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
 /* Tab switch: Home (main table) vs Breakdown (cards); date range shared on same row */
-.main-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); position: relative; }
-.main-tabs [role="tab"] { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; }
+.main-tabs { display: flex; align-items: stretch; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); position: relative; }
+.main-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; }
 .main-tabs [role="tab"]:hover { color: var(--text); }
 .main-tabs [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .main-tabs [role="tab"] .tab-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
 .main-tabs [role="tab"] .tab-icon-home { width: 25px; height: 25px; object-fit: contain; }
 .main-tabs [role="tab"] .tab-text { display: inline; }
 @media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
+.main-tabs-center-logo { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; }
+.main-tabs-center-logo img { width: 25px; height: 25px; display: block; object-fit: contain; }
 .main-tabs-spacer { flex: 1; min-width: 0; }
 .main-tabs-date-select { padding: 0.35rem 1.5rem 0.35rem 0.5rem; border: none; background: none; font-size: 0.875rem; font-weight: 500; color: var(--text); cursor: pointer; font-family: inherit; appearance: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M17 9.5L12 14.5L7 9.5' stroke='%23666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.25rem center; background-size: 16px 16px; border-radius: var(--radius); margin-bottom: -1px; }
 .main-tabs-date-select:hover { color: var(--accent); }
 .main-tabs-date-select:focus { outline: none; color: var(--accent); }
 .main-tabs-date-select option { color: var(--text); background: var(--card); }
-.mobile-tabs-btn { display: none; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); cursor: pointer; color: var(--text); font-size: 0.875rem; font-weight: 500; }
+.mobile-tabs-btn {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 10px 0;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
 .mobile-tabs-btn:hover { color: var(--accent); }
 .mobile-tabs-btn svg { width: 18px; height: 18px; display: block; }
 .mobile-tabs-menu { display: none; position: absolute; left: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.25rem; z-index: 50; min-width: 180px; }
@@ -249,6 +289,7 @@
   .main-tabs { gap: 0.5rem; }
   .main-tabs [role="tab"] { display: none; }
   .mobile-tabs-btn { display: inline-flex; }
+  .main-tabs-center-logo { display: block; }
 }
 .main-tab-panel { display: none; }
 .main-tab-panel.active { display: block; }
@@ -260,6 +301,7 @@
 .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: var(--shadow); }
 .live-kpi-cell .live-kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #000; font-weight: 600; margin-bottom: 0.25rem; }
 .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #0d9488; line-height: 1.3; }
+.kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
 .sale-toast-host { position: relative; overflow: visible; }
 .sale-toast-host.toast-open { z-index: 10; }
 .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 2px); border-radius: var(--radius); border: 1px solid var(--border); background: rgba(255, 255, 255, 0.98); box-shadow: var(--shadow); display: flex; align-items: stretch; gap: 0.75rem; padding: 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; }
@@ -368,14 +410,17 @@
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: var(--table-header-font-size); }
       .table-title { font-size: var(--table-header-font-size); margin-bottom: 0.35rem; }
-      .live-view-header .next-update-block { display: none; }
+      .live-view-header .next-update-block { display: inline-flex; }
       .live-view-header .live-view-next-update-center { flex: 0; }
+      .next-update-label { display: none !important; }
+      #table-tab-1h, #table-tab-sep-today-1h, #table-tab-sep-1h-live { display: none !important; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel-close { min-width: 44px; min-height: 44px; }
       .last-action-cell a { display: none; }
       .last-action-cell .landing-lines { display: none; }
       .landing-thumb { width: 32px; height: 32px; }
+      .thumb-wrap.thumb-stack .landing-thumb-exit { width: 24px; height: 24px; min-width: 24px; min-height: 24px; }
     }
     @media (max-width: 480px) {
       .dashboard-top-bar { padding-left: 20px; padding-right: 20px; }
@@ -432,6 +477,10 @@
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
     </div>
 
+    <div class="main-tabs-center-logo" aria-hidden="true">
+      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" decoding="async" />
+    </div>
+
     <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
       <img class="tab-icon tab-icon-home" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" aria-hidden="true" decoding="async" />
       <span class="tab-text">Home</span>
@@ -473,9 +522,9 @@
     <h2 class="table-title" id="table-title">
       <span id="table-title-tabs" class="table-title-tabs" role="tablist" aria-label="Time window" style="display: none;">
         <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
-        <span class="table-title-tabs-sep" aria-hidden="true">|</span>
+        <span class="table-title-tabs-sep" id="table-tab-sep-today-1h" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
-        <span class="table-title-tabs-sep" aria-hidden="true">|</span>
+        <span class="table-title-tabs-sep" id="table-tab-sep-1h-live" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Now</button>
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
@@ -603,13 +652,14 @@
           <thead>
             <tr>
               <th class="bs-product-col">Best</th>
-              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0">Orders</th>
+              <th class="sortable" data-sort="orders" aria-sort="none" tabindex="0">Sales</th>
+              <th>Clicks</th>
               <th class="sortable" data-sort="rev" aria-sort="descending" tabindex="0">Rev</th>
               <th>CR%</th>
             </tr>
           </thead>
           <tbody id="best-sellers-body">
-            <tr><td colspan="4" class="empty">—</td></tr>
+            <tr><td colspan="5" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -625,13 +675,14 @@
           <thead>
             <tr>
               <th class="bs-product-col">Worst</th>
+              <th>Sales</th>
               <th>Clicks</th>
               <th>Rev</th>
               <th>CR%</th>
             </tr>
           </thead>
           <tbody id="worst-products-body">
-            <tr><td colspan="4" class="empty">—</td></tr>
+            <tr><td colspan="5" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -647,12 +698,14 @@
           <thead>
             <tr>
               <th class="bs-product-col">Variants</th>
-              <th>Orders</th>
+              <th>Sales</th>
+              <th>Clicks</th>
               <th>Rev</th>
+              <th>CR%</th>
             </tr>
           </thead>
           <tbody id="best-variants-body">
-            <tr><td colspan="3" class="empty">—</td></tr>
+            <tr><td colspan="5" class="empty">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -839,18 +892,22 @@
     let customDayYmd = null; // YYYY-MM-DD for dateRange keys like d:YYYY-MM-DD
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
+    function getKpiData() { return kpiCache || statsCache || {}; }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
     let nextRangeAt = 0; // next refresh for Today/Last Hour (10 min)
     let lastSessionsFetchedAt = 0;
     let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
+    let lastKpisFetchedAt = 0;
     let lastTrafficFetchedAt = 0;
     let lastProductsFetchedAt = 0;
+    let kpiCache = null;
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
+    let kpisRefreshInFlight = null;
     let reportBuildTokens = { stats: 0, products: 0, traffic: 0 };
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
@@ -1232,7 +1289,7 @@
           ? '<img class="landing-thumb" src="' + entryMeta.thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">'
           : '';
         var exitImg = exitMeta.thumbSrc
-          ? '<img class="landing-thumb" src="' + exitMeta.thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">'
+          ? '<img class="landing-thumb landing-thumb-exit" src="' + exitMeta.thumbSrc + '" alt="" onerror="this.style.display=\\\'none\\\'">'
           : '';
         var thumbsInner = entryImg + exitImg;
         var overlay = isPurchasedDual
@@ -1457,7 +1514,7 @@
       const visitsLabel = visits === 1 ? '1 visit' : visits + ' visits';
       const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
       const cartVal = s.has_purchased ? '' : ((s.cart_value != null && !Number.isNaN(cartValueNum))
-        ? formatMoney(cartValueNum, s.cart_currency)
+        ? formatMoney(Math.floor(cartValueNum), s.cart_currency)
         : '');
       const saleVal = s.has_purchased ? formatMoney(s.order_total != null ? Number(s.order_total) : null, s.order_currency) : '';
       const cartOrSaleCell = s.has_purchased
@@ -1796,7 +1853,7 @@
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
-          renderLiveKpis(statsCache);
+          renderLiveKpis(getKpiData());
         })
         .catch(function() {
           shopifySalesToday = null;
@@ -1804,7 +1861,7 @@
           shopifySalesTodayLoaded = true;
           shopifySalesTodayLoading = false;
           renderSales(statsCache);
-          renderLiveKpis(statsCache);
+          renderLiveKpis(getKpiData());
         });
     }
 
@@ -1823,13 +1880,13 @@
           shopifySessionsToday = data && typeof data.sessionsToday === 'number' ? data.sessionsToday : null;
           shopifySessionsTodayLoaded = true;
           shopifySessionsTodayLoading = false;
-          renderLiveKpis(statsCache);
+          renderLiveKpis(getKpiData());
         })
         .catch(function() {
           shopifySessionsToday = null;
           shopifySessionsTodayLoaded = true;
           shopifySessionsTodayLoading = false;
-          renderLiveKpis(statsCache);
+          renderLiveKpis(getKpiData());
         });
     }
 
@@ -1885,7 +1942,7 @@
       const tbody = document.getElementById('worst-products-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.worstProducts)) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>';
         updateCardPagination('worst-products', 1, 1);
         return;
       }
@@ -1896,7 +1953,7 @@
       worstProductsPage = clampPage((data && typeof data.page === 'number') ? data.page : worstProductsPage, totalPages);
       updateCardPagination('worst-products', worstProductsPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">No product landings in this range</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No product landings in this range</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(function(p) {
@@ -1908,10 +1965,11 @@
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
         const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
+        const sales = formatSessions(typeof p.converted === 'number' ? p.converted : 0);
         const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
         const revNum = p.revenue != null ? Number(p.revenue) : NaN;
         const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? (formatRevenue(revNum) || '\u2014') : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + conversion + '</td></tr>';
       }).join('');
     }
 
@@ -1949,7 +2007,7 @@
       const tbody = document.getElementById('best-variants-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestVariants)) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
         updateCardPagination('best-variants', 1, 1);
         return;
       }
@@ -1960,7 +2018,7 @@
       bestVariantsPage = clampPage((data && typeof data.page === 'number') ? data.page : bestVariantsPage, totalPages);
       updateCardPagination('best-variants', bestVariantsPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">No orders in this range</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(function(v) {
@@ -1973,9 +2031,14 @@
         const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</span>';
-        const orders = String(v.orders != null ? v.orders : 0);
+        const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
+        const sales = formatSessions(ordersNum);
+        const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
         const revenue = formatRevenue(v.revenue);
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td></tr>';
+        const totalOrders = (data && typeof data.totalOrders === 'number') ? (Number(data.totalOrders) || 0) : 0;
+        const crVal = totalOrders > 0 ? (Math.round((ordersNum / totalOrders) * 1000) / 10) : null;
+        const cr = crVal != null ? pct(crVal) : '\u2014';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + sales + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
     }
 
@@ -1983,7 +2046,7 @@
       const tbody = document.getElementById('best-sellers-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestSellers)) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</td></tr>';
         updateBestSellersSortHeaders();
         updateCardPagination('best-sellers', 1, 1);
         return;
@@ -1995,7 +2058,7 @@
       bestSellersPage = clampPage((data && typeof data.page === 'number') ? data.page : bestSellersPage, totalPages);
       updateCardPagination('best-sellers', bestSellersPage, totalPages);
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">No orders in this range</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders in this range</td></tr>';
         updateBestSellersSortHeaders();
         return;
       }
@@ -2007,9 +2070,10 @@
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
+        const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
         const revenue = formatRevenue(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
-        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
+        return '<tr><td class="bs-product-col"><div class="product-cell">' + thumb + ' ' + name + '</div></td><td>' + orders + '</td><td>' + clicks + '</td><td>' + revenue + '</td><td>' + cr + '</td></tr>';
       }).join('');
       updateBestSellersSortHeaders();
     }
@@ -2402,19 +2466,18 @@
       lastTrafficFetchedAt = 0;
       updateNextUpdateUi();
 
+      // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
+      refreshKpis({ force: true });
+
       if (activeMainTab === 'stats') {
         refreshStats({ force: false });
       } else if (activeMainTab === 'traffic') {
         refreshTraffic({ force: false });
-        fetchStatsData({ force: false });
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
-        fetchStatsData({ force: false });
       } else {
-        renderLiveKpis(statsCache || {});
         updateKpis();
         fetchSessions();
-        fetchStatsData({ force: false });
       }
     }
 
@@ -2472,30 +2535,45 @@
       }
     }
 
+    function maybeTriggerSaleToastFromStatsLikeData(data) {
+      const conv = data && data.convertedCount ? data.convertedCount : {};
+      const haveToday = (typeof conv.today === 'number' && Number.isFinite(conv.today));
+      if (!haveToday) return;
+      const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
+      if (increased) {
+        const kpiUpdate = buildSalesKpiUpdateFromStats(data);
+        // If a real-time sale toast is already open (e.g. SSE Live), don't double-trigger audio/toast.
+        if (saleToastActive) {
+          saleToastPendingKpi = kpiUpdate;
+        } else {
+          triggerSaleToast({ origin: 'stats', kpiUpdate: kpiUpdate, playSound: true });
+        }
+        // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
+        try { refreshConfigStatus(); } catch (_) {}
+      }
+      lastConvertedCountToday = conv.today;
+      hasSeenConvertedCountToday = true;
+    }
+
+    function setLiveKpisLoading() {
+      const spinner = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
+      const ids = ['live-kpi-sales', 'live-kpi-sessions', 'live-kpi-conv', 'live-kpi-returning', 'live-kpi-aov', 'live-kpi-bounce'];
+      ids.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (id === 'live-kpi-sales' && saleToastActive) return; // don't overwrite during toast freeze
+        el.innerHTML = spinner;
+      });
+    }
+
     function renderStats(data) {
       statsCache = data || {};
-      const conv = statsCache.convertedCount || {};
-      const haveToday = (typeof conv.today === 'number' && Number.isFinite(conv.today));
-      if (haveToday) {
-        const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
-        if (increased) {
-          const kpiUpdate = buildSalesKpiUpdateFromStats(statsCache);
-          // If a real-time sale toast is already open (e.g. SSE Live), don't double-trigger audio/toast.
-          if (saleToastActive) {
-            saleToastPendingKpi = kpiUpdate;
-          } else {
-            triggerSaleToast({ origin: 'stats', kpiUpdate: kpiUpdate, playSound: true });
-          }
-          // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
-          try { refreshConfigStatus(); } catch (_) {}
-        }
-        lastConvertedCountToday = conv.today;
-        hasSeenConvertedCountToday = true;
-      }
+      kpiCache = statsCache;
+      maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderAov(statsCache);
       renderCountry(statsCache);
-      renderLiveKpis(statsCache);
+      renderLiveKpis(getKpiData());
     }
 
     // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
@@ -2620,6 +2698,46 @@
         });
     }
 
+    const KPI_REFRESH_MS = 60000;
+    const KPI_SPINNER_MIN_MS = 800;
+
+    function fetchKpisData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/kpis?range=' + encodeURIComponent(getStatsRange());
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1';
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
+        .then(function(r) {
+          if (!r.ok) throw new Error('KPIs HTTP ' + r.status);
+          return r.json();
+        });
+    }
+
+    function refreshKpis(options = {}) {
+      const force = !!options.force;
+      if (kpisRefreshInFlight) return kpisRefreshInFlight;
+      setLiveKpisLoading();
+      kpisRefreshInFlight = Promise.all([fetchKpisData({ force }), delay(KPI_SPINNER_MIN_MS)])
+        .then(function(parts) {
+          const data = parts && parts[0] && typeof parts[0] === 'object' ? parts[0] : null;
+          lastKpisFetchedAt = Date.now();
+          if (data) {
+            kpiCache = data;
+            maybeTriggerSaleToastFromStatsLikeData(kpiCache);
+          }
+          renderLiveKpis(getKpiData());
+          return data;
+        })
+        .catch(function(err) {
+          console.error(err);
+          renderLiveKpis(getKpiData());
+          return null;
+        })
+        .finally(function() {
+          kpisRefreshInFlight = null;
+        });
+      return kpisRefreshInFlight;
+    }
+
     function refreshStats(options = {}) {
       const force = !!options.force;
       if (statsRefreshInFlight) return statsRefreshInFlight;
@@ -2680,6 +2798,23 @@
       const sources = data && data.sources ? data.sources : null;
       const types = data && data.types ? data.types : null;
 
+      function trafficSourceIconHtml(keyRaw, labelRaw) {
+        function icon(src, alt, title, extraClass) {
+          const cls = (extraClass ? (extraClass + ' ') : '') + 'source-icon-img';
+          const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
+          return '<img src="' + escapeHtml(hotImg(src) || src || '') + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
+        }
+        const key = keyRaw != null ? String(keyRaw).trim().toLowerCase() : '';
+        const label = labelRaw != null ? String(labelRaw).trim() : '';
+        if (!key) return escapeHtml(label || '—');
+        if (key === 'google_ads') return '<span class="source-icons">' + icon(getAssetsBase() + '/adwords.png?width=100', 'Google Ads', label || 'Google Ads', 'source-googleads-img') + '</span>';
+        if (key === 'google_organic') return '<span class="source-icons">' + icon(SOURCE_GOOGLE_IMG, 'Google', label || 'Google') + '</span>';
+        if (key === 'bing_ads' || key === 'bing_organic') return '<span class="source-icons">' + icon(SOURCE_BING_IMG, 'Bing', label || 'Bing') + '</span>';
+        if (key === 'omnisend') return '<span class="source-icons">' + icon(SOURCE_OMNISEND_IMG, 'Omnisend', label || 'Omnisend') + '</span>';
+        if (key === 'direct') return '<span class="source-icons">' + icon(SOURCE_DIRECT_IMG, 'Direct', label || 'Direct') + '</span>';
+        return '<span class="source-icons">' + icon(SOURCE_UNKNOWN_IMG, label || key, label || key) + '</span>';
+      }
+
       function renderRows(bodyId, rows, emptyText) {
         const body = document.getElementById(bodyId);
         if (!body) return;
@@ -2695,13 +2830,15 @@
         }
         let html = '';
         list.forEach(function(r) {
-          const label = escapeHtml((r && r.label) ? String(r.label) : (r && r.key ? String(r.key) : '—'));
+          const key = (r && r.key != null) ? String(r.key).trim().toLowerCase() : '';
+          const labelText = (r && r.label) ? String(r.label) : (key || '—');
+          const labelCell = trafficSourceIconHtml(key, labelText);
           const cr = (r && typeof r.conversionPct === 'number') ? pct(r.conversionPct) : '—';
           const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '—';
           const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '—';
           const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenue(r.revenueGbp) : '—';
           html += '<tr>' +
-            '<td>' + label + '</td>' +
+            '<td>' + labelCell + '</td>' +
             '<td>' + escapeHtml(cr || '—') + '</td>' +
             '<td>' + escapeHtml(orders || '—') + '</td>' +
             '<td>' + escapeHtml(sessions || '—') + '</td>' +
@@ -3493,7 +3630,7 @@
           countryPage = 1;
           updateLiveViewTitle();
           updateRowsPerPageVisibility();
-          renderLiveKpis(statsCache || {});
+          refreshKpis({ force: true });
           updateKpis();
           fetchSessions();
           updateNextUpdateUi();
@@ -3560,26 +3697,26 @@
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
+          function ensureKpis() {
+            const staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
+            if (staleKpis) refreshKpis({ force: false });
+            else renderLiveKpis(getKpiData());
+          }
           if (tab === 'stats') {
             // Always refresh when entering Breakdown so tables are never stuck on "Loading..."
             refreshStats({ force: false });
+            ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
-            const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
-            if (staleStats) fetchStatsData({ force: false });
-            else renderLiveKpis(statsCache || {});
+            ensureKpis();
           } else if (tab === 'traffic') {
             refreshTraffic({ force: false });
-            const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
-            if (staleStats) fetchStatsData({ force: false });
-            else renderLiveKpis(statsCache || {});
+            ensureKpis();
           } else {
             const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
             const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
-            const staleStats = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
             if (staleSessions) fetchSessions();
-            if (staleStats) fetchStatsData({ force: false });
-            else renderLiveKpis(statsCache || {});
+            ensureKpis();
           }
         }
         let initialTab = 'spy';
@@ -3677,6 +3814,11 @@
       refreshStats({ force: false });
     }
 
+    function onKpisAutoRefreshTick() {
+      if (document.visibilityState !== 'visible') return;
+      refreshKpis({ force: false });
+    }
+
     function onProductsAutoRefreshTick() {
       if (activeMainTab !== 'products') return;
       if (getStatsRange() !== 'today') return;
@@ -3694,6 +3836,7 @@
     // Live: refresh every 60s. Today/Last Hour: refresh every 10 min. Breakdown/Products/Traffic: every 15 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
     setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (10 min interval)
+    setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS);
@@ -3719,6 +3862,7 @@
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
       updateNextUpdateUi();
+      refreshKpis({ force: false });
       if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
@@ -3782,7 +3926,7 @@
               setLastSaleAt(session.purchased_at || session.last_seen || Date.now());
               try { refreshConfigStatus(); } catch (_) {}
               // Pull updated KPIs so Sales/Orders can animate after the toast fades.
-              try { fetchStatsData({ force: true }); } catch (_) {}
+              try { refreshKpis({ force: true }); } catch (_) {}
             }
             renderTable();
             updateKpis();

@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-04
+Last updated: 2026-02-05
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -16,15 +16,20 @@ Dashboard URL:
 - `/app/live-visitors` (also `/` typically redirects here after app URL handling)
 
 Main tabs (top row):
-- Home: live visitors table + live KPIs (SSE driven) (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu)
+- Home: live visitors table + top KPI grid
+  - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
+  - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
+  - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
   - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
     - `Entry: <name>`
     - `Exit: <name>`
+    - Exit thumbnail is smaller than entry (visual hierarchy)
   - Otherwise, shows the single thumbnail + label (existing behaviour)
 - Breakdown: Countries + Average Order Value tables for selected date range
-- Products: Best / Worst / Variants tables for selected date range
+- Products: Best / Worst / Variants tables for selected date range (all tables show Sales / Clicks / Rev / CR)
 - Traffic: two tables (Source + Traffic Type)
+  - Channels table renders the same source icons used on the Home table (not text labels)
 
 Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / Custom…
@@ -273,6 +278,13 @@ Backups durability:
 ---
 
 ## Changelog (high level)
+
+2026-02-05
+- KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
+- Mobile: centered birdseye logo in main tabs bar; hide “Last Hour”; “Next update” label hidden (icon only)
+- Products: align Best/Worst/Variants tables to Sales / Clicks / Rev / CR (and add handle-based click counts to best sellers/variants)
+- Traffic: Channels table renders source icons (same icon set as Home table Source column)
+- Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
