@@ -262,7 +262,13 @@ async function configStatus(req, res, next) {
     lastReconcile: null,
   };
   const evidence = {
-    today: { checkoutCompleted: null, linked: null, unlinked: null, lastOccurredAt: null },
+    today: {
+      checkoutCompleted: null,
+      checkoutCompletedSessions: null,
+      linked: null,
+      unlinked: null,
+      lastOccurredAt: null,
+    },
   };
   const pixelDerived = {
     today: { orderCount: null, revenueGbp: null },
@@ -298,6 +304,7 @@ async function configStatus(req, res, next) {
         `
         SELECT
           COUNT(*) AS total,
+          COUNT(DISTINCT NULLIF(TRIM(session_id), '')) AS sessions,
           SUM(CASE WHEN linked_order_id IS NOT NULL THEN 1 ELSE 0 END) AS linked,
           SUM(CASE WHEN linked_order_id IS NULL THEN 1 ELSE 0 END) AS unlinked,
           MAX(occurred_at) AS max_occurred_at
@@ -308,6 +315,7 @@ async function configStatus(req, res, next) {
         [shop, todayBounds.start, todayBounds.end]
       );
       evidence.today.checkoutCompleted = row?.total != null ? Number(row.total) || 0 : 0;
+      evidence.today.checkoutCompletedSessions = row?.sessions != null ? Number(row.sessions) || 0 : 0;
       evidence.today.linked = row?.linked != null ? Number(row.linked) || 0 : 0;
       evidence.today.unlinked = row?.unlinked != null ? Number(row.unlinked) || 0 : 0;
       evidence.today.lastOccurredAt = num(row?.max_occurred_at);

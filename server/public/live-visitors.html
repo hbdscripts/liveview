@@ -5548,6 +5548,7 @@
           const truthReturningCustomers = (typeof truthToday.returningCustomerCount === 'number') ? truthToday.returningCustomerCount : null;
           const truthReturningRevenue = (typeof truthToday.returningRevenueGbp === 'number') ? truthToday.returningRevenueGbp : null;
           const evTotal = (typeof evidenceToday.checkoutCompleted === 'number') ? evidenceToday.checkoutCompleted : null;
+          const evSessions = (typeof evidenceToday.checkoutCompletedSessions === 'number') ? evidenceToday.checkoutCompletedSessions : null;
           const evLinked = (typeof evidenceToday.linked === 'number') ? evidenceToday.linked : null;
           const evUnlinked = (typeof evidenceToday.unlinked === 'number') ? evidenceToday.unlinked : null;
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
@@ -5561,10 +5562,11 @@
           const botsBlockedToday = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') ? traffic.today.botsBlockedAtEdge : null;
           const botsBlockedUpdatedAt = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') ? traffic.today.botsBlockedAtEdgeUpdatedAt : null;
 
-          // Prefer "checkout-token" truth orders for conversion-rate (aligns with Shopify sessions + pixel evidence).
-          const truthOrdersForCr = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
-          const shopifyCr = (truthOrdersForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (truthOrdersForCr / shopifySessionsToday) * 100 : null;
-          const birdseyeCr = (truthOrdersForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (truthOrdersForCr / birdseyeSessionsToday) * 100 : null;
+          // Shopify's conversion rate is session-based ("sessions that completed checkout" / "sessions"), not orders/sessions.
+          // Prefer evidence sessions when present; fall back to checkout-token truth orders for older installs.
+          const convertedSessionsForCr = (evSessions != null ? evSessions : (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders));
+          const shopifyCr = (convertedSessionsForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (convertedSessionsForCr / shopifySessionsToday) * 100 : null;
+          const birdseyeCr = (convertedSessionsForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (convertedSessionsForCr / birdseyeSessionsToday) * 100 : null;
 
           const driftPixelCheckoutOrders = (truthCheckoutOrders != null && pixelDerivedOrders != null) ? (pixelDerivedOrders - truthCheckoutOrders) : null;
           const driftPixelCheckoutRevenue = (truthCheckoutRevenue != null && pixelDerivedRevenue != null)
@@ -6033,6 +6035,7 @@
           html +=             '<div class="diag-panel-card-title">' + icon('activity', '') + 'Evidence (checkout_completed)</div>';
           if (evTotal != null) {
             let evLine = code(evTotal) + ' events';
+            if (evSessions != null) evLine += ' \u00b7 ' + code(evSessions) + ' sessions';
             if (evLinked != null && evUnlinked != null) evLine += ' \u00b7 linked ' + code(evLinked) + ' \u00b7 unlinked ' + code(evUnlinked);
             const driftEvidence = (driftEvidenceCheckoutOrders != null ? driftEvidenceCheckoutOrders : driftOrders);
             if (driftEvidence != null) {
@@ -6086,7 +6089,7 @@
                                 '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
                                 '<span>Share session across tabs (30m inactivity)</span>' +
                               '</label>';
-          html +=             '<div class="diag-note">ON reduces Birdseye session inflation. OFF reverts to legacy per-tab sessions.</div>';
+          html +=             '<div class="diag-note">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>';
           html +=             '<div id="pixel-session-mode-msg" class="diag-note"></div>';
           html +=           '</div>';
 

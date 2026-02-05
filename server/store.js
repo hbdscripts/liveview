@@ -1761,8 +1761,8 @@ async function getConversionRate(start, end, options = {}) {
       );
     t = total?.n ?? 0;
   }
-  const p = await getConvertedCount(start, end, options);
-  return t > 0 ? Math.round((p / t) * 1000) / 10 : null;
+  const convertedSessions = await getConvertedSessionCount(start, end, options);
+  return t > 0 ? Math.round((convertedSessions / t) * 1000) / 10 : null;
 }
 
 /** Product-only sessions: landed on a product page (not homepage, collection, etc). */
@@ -2117,6 +2117,107 @@ async function getConvertedCount(start, end, options = {}) {
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
   return salesTruth.getTruthOrderCount(shop, start, end);
+}
+
+/**
+ * Session-based conversions (Shopify-style): count sessions that had >=1 purchase in the range.
+ * Shopify's "conversion rate" uses sessions that completed checkout, not raw order count.
+ *
+ * Falls back to order-count when required tables are missing (older installs).
+ */
+async function getConvertedSessionCount(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
+  const filterAlias = filter.sql.replace(/sessions\./g, 's.');
+  const db = getDb();
+
+  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  if (ordersSource === 'pixel') {
+    try {
+      const row = config.dbUrl
+        ? await db.get(
+          `
+            SELECT COUNT(*) AS n FROM (
+              SELECT DISTINCT s.session_id AS session_id
+              FROM sessions s
+              INNER JOIN purchases p ON p.session_id = s.session_id
+              WHERE s.started_at >= $1 AND s.started_at < $2
+                ${filterAlias}
+                AND p.purchased_at >= $3 AND p.purchased_at < $4
+                ${purchaseFilterExcludeDuplicateH('p')}
+            ) t
+          `,
+          [start, end, start, end, ...filter.params]
+        )
+        : await db.get(
+          `
+            SELECT COUNT(*) AS n FROM (
+              SELECT DISTINCT s.session_id AS session_id
+              FROM sessions s
+              INNER JOIN purchases p ON p.session_id = s.session_id
+              WHERE s.started_at >= ? AND s.started_at < ?
+                ${filterAlias}
+                AND p.purchased_at >= ? AND p.purchased_at < ?
+                ${purchaseFilterExcludeDuplicateH('p')}
+            ) t
+          `,
+          [start, end, start, end, ...filter.params]
+        );
+      return row?.n != null ? Number(row.n) || 0 : 0;
+    } catch (_) {
+      // Older installs might not have purchases table; fall back to order-count behavior.
+      return getConvertedCount(start, end, options);
+    }
+  }
+
+  // Truth-backed conversions attributed to sessions via linked purchase evidence.
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return getConvertedCount(start, end, options);
+  try {
+    const row = config.dbUrl
+      ? await db.get(
+        `
+          SELECT COUNT(*) AS n FROM (
+            SELECT DISTINCT s.session_id AS session_id
+            FROM sessions s
+            INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = $1
+            INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+            WHERE s.started_at >= $2 AND s.started_at < $3
+              ${filterAlias}
+              AND pe.event_type = 'checkout_completed'
+              AND pe.occurred_at >= $4 AND pe.occurred_at < $5
+              AND o.created_at >= $4 AND o.created_at < $5
+              AND (o.test IS NULL OR o.test = 0)
+              AND o.cancelled_at IS NULL
+              AND o.financial_status = 'paid'
+          ) t
+        `,
+        [shop, start, end, start, end, ...filter.params]
+      )
+      : await db.get(
+        `
+          SELECT COUNT(*) AS n FROM (
+            SELECT DISTINCT s.session_id AS session_id
+            FROM sessions s
+            INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
+            INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+            WHERE s.started_at >= ? AND s.started_at < ?
+              ${filterAlias}
+              AND pe.event_type = 'checkout_completed'
+              AND pe.occurred_at >= ? AND pe.occurred_at < ?
+              AND o.created_at >= ? AND o.created_at < ?
+              AND (o.test IS NULL OR o.test = 0)
+              AND o.cancelled_at IS NULL
+              AND o.financial_status = 'paid'
+          ) t
+        `,
+        [shop, start, end, start, end, start, end, ...filter.params]
+      );
+    return row?.n != null ? Number(row.n) || 0 : 0;
+  } catch (_) {
+    // If purchase evidence tables don't exist yet, keep legacy behavior instead of returning 0/null.
+    return getConvertedCount(start, end, options);
+  }
 }
 
 function aovFromSalesAndCount(sales, count) {

@@ -344,6 +344,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [
       { name: 'Shopify Sessions (today)', value: 'ShopifyQL: FROM sessions SHOW sessions DURING today' },
       { name: 'Birdseye Sessions (today)', value: 'sessions started today (human sessions if cf_known_bot tagging exists)' },
+      { name: 'Sessions completed checkout (today)', value: "purchase_events: COUNT(DISTINCT session_id) where event_type='checkout_completed' (orders can be > sessions)" },
+      { name: 'Conversion rate (today)', value: 'Sessions completed checkout / Sessions × 100 (Shopify definition)' },
       { name: 'Truth Orders/Revenue', value: 'orders_shopify paid orders (all channels)' },
       { name: 'Checkout-token Orders/Revenue', value: 'orders_shopify paid orders where checkout_token is set (online-store proxy)' },
       { name: 'Pixel Orders/Revenue', value: 'purchases table (deduped) from checkout_completed evidence' },
