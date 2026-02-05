@@ -706,7 +706,13 @@
       .stats-card #stats-best-variants .by-country-table td:first-child,
       .stats-card #stats-worst-variants .by-country-table th:first-child,
       .stats-card #stats-worst-variants .by-country-table td:first-child { width: 55%; min-width: 140px; }
-      .best-sellers-table .product-cell .bs-name { -webkit-line-clamp: 3; }
+      /* Mobile: keep product names clean (single-line + ellipsis). */
+      .best-sellers-table .product-cell .bs-name {
+        display: block;
+        white-space: nowrap;
+        -webkit-line-clamp: unset;
+        -webkit-box-orient: initial;
+      }
       .stats-main { font-size: 1.35rem; }
       .stats-breakdown { gap: 0.5rem; font-size: 0.75rem; }
       .live-view-header .table-title { font-size: var(--table-header-font-size); }
