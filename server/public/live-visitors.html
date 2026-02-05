@@ -596,17 +596,7 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.table-pagination #rows-per-page-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-left: 0;
-  padding: 0.34rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: none;
-}
+.table-pagination #rows-per-page-wrap { display: none !important; }
 .table-pagination #rows-per-page-wrap .muted {
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -1380,15 +1370,9 @@
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
-    const ROWS_PER_PAGE_KEY = 'livevisitors-rows-per-page';
-    const ROWS_PER_PAGE_OPTIONS = [15, 25, 30, 50, 75, 100];
+    const ROWS_PER_PAGE_DEFAULT = 25;
     function loadRowsPerPage() {
-      try {
-        const raw = sessionStorage.getItem(ROWS_PER_PAGE_KEY);
-        const n = parseInt(String(raw), 10);
-        if (ROWS_PER_PAGE_OPTIONS.indexOf(n) >= 0) return n;
-      } catch (_) {}
-      return 25;
+      return ROWS_PER_PAGE_DEFAULT;
     }
     let rowsPerPage = loadRowsPerPage();
     let sessions = [];
@@ -2684,7 +2668,7 @@
       if (nextBtn) { nextBtn.disabled = currentPage >= totalPages; }
       if (labelEl) labelEl.textContent = currentPage + ' of ' + totalPages;
       const rowsSelect = document.getElementById('rows-per-page-select');
-      if (rowsSelect && ROWS_PER_PAGE_OPTIONS.indexOf(rowsPerPage) >= 0) rowsSelect.value = String(rowsPerPage);
+      if (rowsSelect) rowsSelect.value = String(rowsPerPage);
       updateSortHeaders();
       syncSessionsTableTightMode();
       tickTimeOnSite();
@@ -5121,30 +5105,9 @@
     })();
 
     (function initRowsPerPageSelect() {
-      function syncRowsSelectToState() {
-        const sel = document.getElementById('rows-per-page-select');
-        if (sel && ROWS_PER_PAGE_OPTIONS.indexOf(rowsPerPage) >= 0) sel.value = String(rowsPerPage);
-      }
-      function attachRowsPerPageSelect() {
-        const sel = document.getElementById('rows-per-page-select');
-        if (!sel) return;
-        rowsPerPage = loadRowsPerPage();
-        sel.value = String(rowsPerPage);
-        sel.addEventListener('change', function onRowsChange() {
-          const n = parseInt(String(this.value), 10);
-          if (ROWS_PER_PAGE_OPTIONS.indexOf(n) < 0) return;
-          rowsPerPage = n;
-          try { sessionStorage.setItem(ROWS_PER_PAGE_KEY, String(n)); } catch (_) {}
-          currentPage = 1;
-          if (sessionsTotal != null) fetchSessions(); else { renderTable(); updateKpis(); }
-        });
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachRowsPerPageSelect);
-      } else {
-        attachRowsPerPageSelect();
-      }
-      syncRowsSelectToState();
+      // Rows-per-page UI is intentionally hidden; keep page size fixed at default.
+      const sel = document.getElementById('rows-per-page-select');
+      if (sel) sel.value = String(rowsPerPage);
     })();
 
     function getConfigStatusUrl() {
