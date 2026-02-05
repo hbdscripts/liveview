@@ -286,6 +286,7 @@ Backups durability:
 - UI: update Online user icon + standardise SVG icon colouring (match footer icons).
 - UI: sale toast (2-KPI overlay) restyled (green bg, bird icon, inline country flag, gold amount) + debug trigger `?birdseye_sale=1`.
 - UI: dashboard + login favicon now uses `/assets/favicon.png` (local).
+- UI: Home tab icon swaps to green image when active.
 - KPI grid (mobile): show 2 KPIs at a time with a right chevron to page through (order: Sales, Conversion Rate, Sessions, …). KPI mini-spinners only show on first load (silent refreshes after).
 - Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
 - Mobile: abbreviate table headers (TH labels) on small screens to avoid overlapping text

@@ -322,6 +322,12 @@
 .main-tabs [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .main-tabs [role="tab"] .tab-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
 .main-tabs [role="tab"] .tab-icon-home { width: 25px; height: 25px; object-fit: contain; }
+.main-tabs [role="tab"] .tab-icon-home-swap { position: relative; width: 25px; height: 25px; display: inline-block; flex-shrink: 0; }
+.main-tabs [role="tab"] .tab-icon-home-swap img { position: absolute; inset: 0; width: 25px; height: 25px; object-fit: contain; display: block; }
+#tab-spy .tab-icon-home--inactive { opacity: 1; }
+#tab-spy .tab-icon-home--active { opacity: 0; }
+#tab-spy[aria-selected="true"] .tab-icon-home--inactive { opacity: 0; }
+#tab-spy[aria-selected="true"] .tab-icon-home--active { opacity: 1; }
 .main-tabs [role="tab"] .tab-text { display: inline; }
 @media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
 .main-tabs-center-logo { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; }
@@ -665,7 +671,10 @@
     </div>
 
     <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
-      <img class="tab-icon tab-icon-home" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" aria-hidden="true" decoding="async" />
+      <span class="tab-icon-home-swap" aria-hidden="true">
+        <img class="tab-icon tab-icon-home tab-icon-home--inactive" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyesmallicon.png?v=1770248783" width="25" height="25" alt="" decoding="async" />
+        <img class="tab-icon tab-icon-home tab-icon-home--active" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770252642" width="25" height="25" alt="" decoding="async" />
+      </span>
       <span class="tab-text">Home</span>
     </button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
