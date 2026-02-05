@@ -524,6 +524,15 @@
   font-size: 0.875rem;
   color: var(--muted);
 }
+.table-pagination .pagination-segments {
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.table-pagination .pagination-segments > * + * { border-left: none; }
+.table-pagination .pagination-segments > :first-child { border-radius: 4px 0 0 4px; }
+.table-pagination .pagination-segments > :last-child { border-radius: 0 4px 4px 0; }
 .table-pagination button {
   display: inline-flex;
   align-items: center;
@@ -581,26 +590,22 @@
   padding: 0.38rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   box-shadow: none;
   color: var(--muted);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.table-pagination #pagination-prev { border-radius: 4px 0 0 4px; }
-.table-pagination #pagination-next { border-radius: 0 4px 4px 0; }
-.table-pagination #pagination-label,
-.table-pagination #pagination-next { border-left: none; }
 .table-pagination #rows-per-page-wrap {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  margin-left: 0.85rem;
-  padding: 0.28rem 0.55rem;
+  margin-left: 0;
+  padding: 0.34rem 0.6rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: var(--shadow);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
 }
 .table-pagination #rows-per-page-wrap .muted {
   font-size: 0.72rem;
@@ -626,7 +631,7 @@
   background-position: right 0.2rem center;
   background-size: 16px 16px;
 }
-.table-pagination #rows-per-page-wrap:focus-within { border-color: rgba(13, 148, 136, 0.5); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12); }
+.table-pagination #rows-per-page-wrap:focus-within { border-color: rgba(13, 148, 136, 0.5); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12); position: relative; z-index: 1; }
 .table-pagination #rows-per-page-select:hover { color: var(--accent); }
 .table-pagination #rows-per-page-select:focus { outline: none; }
 
@@ -1009,18 +1014,20 @@
   </table>
   </div>
   <div class="table-pagination" id="table-pagination">
-    <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
-    <span id="pagination-label">1 of 1</span>
-    <button type="button" id="pagination-next" aria-label="Next page">Next</button>
-    <span id="rows-per-page-wrap"><span class="muted">Rows</span>
-    <select id="rows-per-page-select" class="stats-select" aria-label="Rows per page">
+    <div class="pagination-segments" role="group" aria-label="Pagination">
+      <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
+      <span id="pagination-label">1 of 1</span>
+      <button type="button" id="pagination-next" aria-label="Next page">Next</button>
+      <span id="rows-per-page-wrap"><span class="muted">Rows</span>
+      <select id="rows-per-page-select" class="stats-select" aria-label="Rows per page">
       <option value="15">15</option>
       <option value="25" selected>25</option>
       <option value="30">30</option>
       <option value="50">50</option>
       <option value="75">75</option>
       <option value="100">100</option>
-    </select></span>
+      </select></span>
+    </div>
   </div>
   </div>
   </div>
