@@ -988,7 +988,13 @@
           </div>
           <div class="sale-toast-amount-wrap">
             <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
-            <div class="sale-toast-time" id="sale-toast-time">—</div>
+            <div class="sale-toast-time">
+              <svg class="sale-toast-time-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7v5l3 3"></path>
+              </svg>
+              <span id="sale-toast-time">—</span>
+            </div>
           </div>
         </div>
       </div>
@@ -3231,6 +3237,55 @@
       }, 460);
     }
 
+    function animateOdometerText(el, nextText) {
+      if (!el) return;
+      const next = nextText != null ? String(nextText) : '';
+      const prevStored = el.getAttribute('data-odometer');
+      const prev = prevStored != null ? String(prevStored) : (el.textContent != null ? String(el.textContent) : '');
+      if (prev === next) {
+        el.textContent = next;
+        el.setAttribute('data-odometer', next);
+        return;
+      }
+      const wrap = document.createElement('span');
+      wrap.className = 'kpi-odometer';
+      const stacks = [];
+      for (let i = 0; i < next.length; i++) {
+        const ch = next[i];
+        if (ch >= '0' && ch <= '9') {
+          const prevCh = prev[i] || '0';
+          const prevDigit = (prevCh >= '0' && prevCh <= '9') ? parseInt(prevCh, 10) : 0;
+          const digit = parseInt(ch, 10);
+          const digitWrap = document.createElement('span');
+          digitWrap.className = 'kpi-odometer-digit';
+          const stack = document.createElement('span');
+          stack.className = 'kpi-odometer-stack';
+          for (let d = 0; d <= 9; d++) {
+            const line = document.createElement('span');
+            line.textContent = String(d);
+            stack.appendChild(line);
+          }
+          stack.style.transform = 'translateY(' + (-prevDigit) + 'em)';
+          digitWrap.appendChild(stack);
+          wrap.appendChild(digitWrap);
+          stacks.push({ stack, digit });
+        } else {
+          const span = document.createElement('span');
+          span.className = 'kpi-odometer-char';
+          span.textContent = ch;
+          wrap.appendChild(span);
+        }
+      }
+      while (el.firstChild) el.removeChild(el.firstChild);
+      el.appendChild(wrap);
+      el.setAttribute('data-odometer', next);
+      requestAnimationFrame(function() {
+        stacks.forEach(function(item) {
+          item.stack.style.transform = 'translateY(' + (-item.digit) + 'em)';
+        });
+      });
+    }
+
     function productUrlFromHandle(handle) {
       const h = handle != null ? String(handle).trim() : '';
       if (!h) return '';
@@ -3326,7 +3381,7 @@
         labelEl.title = '';
         animateTickerText(labelEl, saleToastPendingKpi.labelText);
       }
-      if (valueEl) animateTickerText(valueEl, saleToastPendingKpi.valueText);
+      if (valueEl) animateOdometerText(valueEl, saleToastPendingKpi.valueText);
       saleToastPendingKpi = null;
     }
 

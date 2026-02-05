@@ -468,31 +468,26 @@
     .sale-toast-host.toast-open { z-index: 10; }
     .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 3px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
     .sale-toast.active { opacity: 1; transform: translateY(0); }
-    .sale-toast .sale-toast-time {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      color: #e7db75;
-      text-transform: uppercase;
-    }
     .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
     .sale-toast .sale-toast-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .sale-toast .sale-toast-thumb-placeholder { width: 100%; height: 100%; display: block; background: rgba(255,255,255,0.2); border-radius: inherit; }
     .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
     .sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 0 0; flex-shrink: 0; }
-        .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
-        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #088378; padding: 0 14px; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; text-align: center; }
+        .sale-toast .sale-toast-product { font-size: 11px; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
+        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0 14px; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; text-align: center; }
         .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
+        .sale-toast .sale-toast-time { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: #f6f3da; text-transform: uppercase; }
+        .sale-toast .sale-toast-time-icon { width: 12px; height: 12px; display: block; }
     .kpi-ticker { display: inline-block; overflow: hidden; height: 1.15em; vertical-align: bottom; }
     .kpi-ticker-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
     .kpi-ticker-line { display: block; height: 1.15em; line-height: 1.15em; }
     .kpi-ticker.run .kpi-ticker-stack { transform: translateY(-100%); }
+    .kpi-odometer { display: inline-flex; align-items: baseline; }
+    .kpi-odometer-char { display: inline-block; }
+    .kpi-odometer-digit { display: inline-block; overflow: hidden; height: 1em; line-height: 1em; }
+    .kpi-odometer-stack { display: block; transform: translateY(0); transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+    .kpi-odometer-stack span { display: block; height: 1em; line-height: 1em; }
     .shared-kpi-wrap { margin-bottom: 1.25rem; }
         .kpi-mobile-pager { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
         .kpi-mobile-pager::-webkit-scrollbar { display: none; }
@@ -524,7 +519,19 @@
       .live-kpi-cell { min-width: 150px; flex: 0 0 auto; }
       .live-kpi-cell .live-kpi-value { font-size: 1rem; }
       .sale-toast-host { position: static; }
-      .sale-toast { left: 0; top: 0; width: 100%; }
+      .sale-toast {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: auto;
+        border-radius: 0;
+        transform: translateY(-100%);
+        z-index: 1000;
+      }
+      .sale-toast.active { transform: translateY(0); }
+      .sale-toast .sale-toast-amount-wrap,
+      .sale-toast .sale-toast-inline-flag-img { border-radius: 0; }
     }
     .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
     .live-view-header .table-title { margin: 0; font-size: var(--table-header-font-size); font-weight: 500; color: var(--text); flex-shrink: 0; display: flex; align-items: center; gap: 0.35rem; letter-spacing: -0.1px; }
