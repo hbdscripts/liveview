@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-05 (traffic source mapping + Direct/Other + custom source icons + mobile logo cleanup)
+Last updated: 2026-02-05 (traffic source mapping + custom icons + landing thumb polish)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -337,6 +337,7 @@ Backups durability:
 - UI: if a card has its own header bar (e.g. Traffic), only that bar is grey; table header row is white
 - Traffic: add Direct + Other handling and a configurable “Source mapping” UI (map UTM tokens → custom sources + icon URLs); mapping affects Traffic picker, Traffic channels icons, and Home table source icons
 - UI: remove duplicate mobile top-bar logo and update the centered tabs logo to the green Birdseye mark
+- UI: landing thumbnails framed + stacked overlap tweak; hide purchase overlay and instead show a 3px green left bar on converted rows; update link colour (`--link-fg`)
 
 2026-02-04
 - Added Traffic tab (Source + Traffic Type) with persistent pickers
