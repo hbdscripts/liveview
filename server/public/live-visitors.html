@@ -1273,20 +1273,16 @@
             thumbSrc = HICON_URL;
           } else if (isCheckout) {
             labelText = 'Cart';
-            if (isPurchasedDual) {
-              // Don't use the checkout placeholder for purchased sessions; prefer a product thumb when possible.
-              var ph = '';
-              try {
-                ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
-                     (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
-              } catch (_) { ph = ''; }
-              if (ph && mainBaseDual) {
-                thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBaseDual + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
-              } else {
-                thumbSrc = HICON_URL;
-              }
+            // Prefer a product thumb when possible (even if the session didn't purchase).
+            var ph = '';
+            try {
+              ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
+                   (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
+            } catch (_) { ph = ''; }
+            if (ph && mainBaseDual) {
+              thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBaseDual + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
             } else {
-              thumbSrc = getAssetsBase() + '/checkout.webp?width=100';
+              thumbSrc = HICON_URL;
             }
           } else if (path) {
             labelText = friendlyLabelFromPath(path) || path;
@@ -1346,20 +1342,16 @@
         thumbSrc = HICON_URL;
       } else if (isCheckout) {
         label = 'Cart';
-        if (isPurchased) {
-          // Don't use the checkout placeholder for purchased sessions; prefer a product thumb when possible.
-          var ph = '';
-          try {
-            ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
-                 (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
-          } catch (_) { ph = ''; }
-          if (ph && mainBase) {
-            thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBase + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
-          } else {
-            thumbSrc = HICON_URL;
-          }
+        // Prefer a product thumb when possible (even if the session didn't purchase).
+        var ph = '';
+        try {
+          ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
+               (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
+        } catch (_) { ph = ''; }
+        if (ph && mainBase) {
+          thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBase + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
         } else {
-          thumbSrc = getAssetsBase() + '/checkout.webp?width=100';
+          thumbSrc = HICON_URL;
         }
       } else if (path) {
         // Display friendly name: /collections/bracelets -> Bracelets, /products/<handle> -> title-cased (link unchanged).
