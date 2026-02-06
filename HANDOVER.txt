@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Products: Finishes revenue cards + safer truth reconcile gating)
+Last updated: 2026-02-06 (Products: Finishes cards 4-up row + metal swatches)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -322,6 +322,7 @@ Backups durability:
 2026-02-06
 - Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
 - Products: add “Finishes” revenue cards (Gold / Silver / Vermeil / Solid Silver) powered by `GET /api/shopify-finishes` (Shopify truth line items, grouped by variant title finish mapping).
+- Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
 - Truth sync: add an in-flight gate to prevent duplicate concurrent reconciles; unify product-report reconciliation scope to `products_${range}` so Products endpoints share one truth sync.
 - Settings modal: modal and open button labelled "Settings"; Copy/meta bar (Shop · TZ · Updated, Copy AI debug, pills) moved into collapsible "Copy / meta" dropdown; AUTH + SCOPES / TRUTH SYNC HEALTH tables use grid (minmax 200px + 1fr) for consistent alignment; dm-def-details use odd/even backgrounds (#e2e8f0 / #f1f5f9), no border-bottom; Sources tab (#traffic-source-mapping-root) forced to modal design (tsm-* overrides in diagnostics-modal.css).
 - Diagnostics modal: single background (#f1f5f9), sections separated by border-bottom only; dropdown directly under header, Copy Debug in its own section; Bots blocked (today) hero on first page (Overview); dm-brand-sub, dm-card-note, dm-hint hidden for quick scan; no white card/box backgrounds.
