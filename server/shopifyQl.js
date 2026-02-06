@@ -24,6 +24,18 @@ function normalizeColumnName(name) {
   return String(name || '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
 }
 
+function getRowValue(row, idx, colName) {
+  if (Array.isArray(row)) return row[idx];
+  if (!row || typeof row !== 'object') return undefined;
+  if (colName && Object.prototype.hasOwnProperty.call(row, colName)) return row[colName];
+  if (!colName) return undefined;
+  const target = normalizeColumnName(colName);
+  for (const key of Object.keys(row)) {
+    if (normalizeColumnName(key) === target) return row[key];
+  }
+  return undefined;
+}
+
 function parseNumericValue(val) {
   if (val == null) return null;
   if (typeof val === 'number') return Number.isFinite(val) ? val : null;
@@ -50,8 +62,7 @@ function extractSessionsCount(table) {
   if (sessionsIdx === -1) return null;
   let total = 0;
   for (const row of table.rows || []) {
-    const rowObj = Array.isArray(row) ? row : row || {};
-    const val = rowObj[sessionsIdx];
+    const val = getRowValue(row, sessionsIdx, columns[sessionsIdx]);
     const n = parseNumericValue(val);
     if (n != null) total += n;
   }
@@ -142,6 +153,7 @@ async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today'
   if (sessionsIdx === -1 && conversionIdx === -1) {
     return { sessions: null, conversionRate: null, error: 'Sessions/conversion columns not found' };
   }
+  const conversionMissingError = (conversionIdx === -1) ? 'conversion_rate column not found' : '';
 
   let sessionsTotal = 0;
   let sessionsSeen = false;
@@ -151,15 +163,14 @@ async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today'
   let convCount = 0;
 
   for (const row of table.rows || []) {
-    const rowObj = Array.isArray(row) ? row : row || {};
-    const sVal = sessionsIdx >= 0 ? rowObj[sessionsIdx] : null;
+    const sVal = sessionsIdx >= 0 ? getRowValue(row, sessionsIdx, columns[sessionsIdx]) : null;
     const sessions = parseNumericValue(sVal);
     if (sessions != null) {
       sessionsTotal += sessions;
       sessionsSeen = true;
     }
 
-    const cVal = conversionIdx >= 0 ? rowObj[conversionIdx] : null;
+    const cVal = conversionIdx >= 0 ? getRowValue(row, conversionIdx, columns[conversionIdx]) : null;
     const conv = normalizeConversionRate(cVal);
     if (conv != null) {
       convSimpleSum += conv;
@@ -178,7 +189,7 @@ async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today'
   return {
     sessions: sessionsSeen ? sessionsTotal : (sessionsIdx >= 0 ? 0 : null),
     conversionRate,
-    error: '',
+    error: conversionMissingError,
   };
 }
 

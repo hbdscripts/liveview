@@ -325,6 +325,7 @@ Backups durability:
 - Conversion: standardised to **Orders / Sessions × 100** across KPI + Breakdown/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
+- Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
