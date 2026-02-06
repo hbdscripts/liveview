@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Reporting: truth-only sales/orders across all tables; Traffic/Products now use orders_shopify(+line_items) not evidence/pixel; Conversion = Orders / Sessions; latest sale never falls back to pixel purchases)
+Last updated: 2026-02-06 (Diagnostics: Shopify CR now uses ShopifyQL conversion_rate and has a refresh button; Reporting remains truth-only orders/sales)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -324,6 +324,7 @@ Backups durability:
 - Breakdown/Traffic/Products: removed reliance on `purchase_events` evidence linkage for Orders/Rev so reports can’t undercount due to blocked checkout events and can’t exceed Shopify.
 - Conversion: standardised to **Orders / Sessions × 100** across KPI + Breakdown/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
+- Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).

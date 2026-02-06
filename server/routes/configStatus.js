@@ -28,7 +28,13 @@ function firstErrorMsg(json) {
 }
 
 async function fetchShopifySessionsToday(shop, accessToken) {
-  return shopifyQl.fetchShopifySessionsCount(shop, accessToken, { during: 'today' });
+  const result = await shopifyQl.fetchShopifySessionsMetrics(shop, accessToken, { during: 'today' });
+  if (typeof result.sessions === 'number') return { count: result.sessions, error: '' };
+  return { count: null, error: result.error || 'Shopify sessions unavailable' };
+}
+
+async function fetchShopifySessionsMetricsToday(shop, accessToken) {
+  return shopifyQl.fetchShopifySessionsMetrics(shop, accessToken, { during: 'today' });
 }
 
 function safeJsonParse(str) {
@@ -169,6 +175,8 @@ async function configStatus(req, res, next) {
     last24h: { sessionsReachedApp: null, humanSessions: null, botSessionsTagged: null },
     shopifySessionsToday: null,
     shopifySessionsTodayNote: '',
+    shopifyConversionRateToday: null,
+    shopifyConversionRateTodayNote: '',
   };
   if (tables.sessions) {
     try {
@@ -229,10 +237,16 @@ async function configStatus(req, res, next) {
 
   // Shopify sessions today (ShopifyQL). Useful for diagnosing "why Shopify sessions don't match ours".
   if (shop && token) {
-    const result = await fetchShopifySessionsToday(shop, token);
-    if (typeof result.count === 'number') {
-      traffic.shopifySessionsToday = result.count;
+    const result = await fetchShopifySessionsMetricsToday(shop, token);
+    if (typeof result.sessions === 'number') {
+      traffic.shopifySessionsToday = result.sessions;
       traffic.shopifySessionsTodayNote = '';
+      if (typeof result.conversionRate === 'number') {
+        traffic.shopifyConversionRateToday = result.conversionRate;
+        traffic.shopifyConversionRateTodayNote = '';
+      } else if (result.error) {
+        traffic.shopifyConversionRateTodayNote = String(result.error);
+      }
       // Append Shopify sessions snapshot (today). Fail-open if table doesn't exist.
       try {
         const dayYmd = new Date(todayBounds.start).toLocaleDateString('en-CA', { timeZone });
@@ -240,18 +254,22 @@ async function configStatus(req, res, next) {
           shop,
           snapshotKey: 'today',
           dayYmd,
-          sessionsCount: result.count,
+          sessionsCount: result.sessions,
           fetchedAt: now,
         });
       } catch (_) {}
     } else {
       traffic.shopifySessionsToday = null;
       traffic.shopifySessionsTodayNote = result.error ? String(result.error) : 'Shopify sessions unavailable';
+      traffic.shopifyConversionRateToday = null;
+      traffic.shopifyConversionRateTodayNote = result.error ? String(result.error) : 'Shopify conversion rate unavailable';
     }
   } else if (shop && !token) {
     traffic.shopifySessionsTodayNote = 'No Shopify access token stored for this shop (install/reinstall from Shopify Admin).';
+    traffic.shopifyConversionRateTodayNote = traffic.shopifySessionsTodayNote;
   } else if (!shop) {
     traffic.shopifySessionsTodayNote = 'Missing shop domain (open the dashboard with ?shop=store.myshopify.com or set ALLOWED_SHOP_DOMAIN).';
+    traffic.shopifyConversionRateTodayNote = traffic.shopifySessionsTodayNote;
   }
 
   // --- Sales truth + evidence diagnostics ---
@@ -570,3 +588,4 @@ async function configStatus(req, res, next) {
 
 module.exports = configStatus;
 module.exports.fetchShopifySessionsToday = fetchShopifySessionsToday;
+module.exports.fetchShopifySessionsMetricsToday = fetchShopifySessionsMetricsToday;

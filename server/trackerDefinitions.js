@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 5;
+const DEFINITIONS_VERSION = 6;
 const LAST_UPDATED = '2026-02-06';
 
 /**
@@ -301,7 +301,8 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Shopify Sessions (today)', value: 'ShopifyQL: FROM sessions SHOW sessions DURING today' },
       { name: 'Birdseye Sessions (today)', value: 'sessions started today (human sessions if cf_known_bot tagging exists)' },
       { name: 'Evidence sessions (today)', value: "purchase_events: COUNT(DISTINCT session_id) where event_type IN ('checkout_completed','checkout_started') (debug only; can be < truth)" },
-      { name: 'Conversion rate (today)', value: 'Truth Orders / Sessions × 100 (used across Breakdown/Traffic/Products tables)' },
+      { name: 'Shopify CR% (today)', value: 'ShopifyQL conversion_rate (sessions table; matches Shopify Admin)' },
+      { name: 'Birdseye CR% (today)', value: 'Truth Orders / Human Sessions × 100 (Birdseye-only comparison)' },
       { name: 'Truth Orders/Revenue', value: 'orders_shopify paid orders (all channels)' },
       { name: 'Checkout-token Orders/Revenue', value: 'orders_shopify paid orders where checkout_token is set (online-store proxy)' },
       { name: 'Pixel Orders/Revenue', value: 'purchases table (deduped) from checkout_completed evidence' },
