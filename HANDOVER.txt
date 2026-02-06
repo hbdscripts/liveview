@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Products: Finishes cards 4-up row + metal swatches)
+Last updated: 2026-02-06 (UI: sale toast sound unlock; Conversion: add Shopify vs Birdseye compare modal from CR KPI; Products: Finishes cards 4-up row + metal swatches; Traffic settings centralized in footer Settings modal)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -19,6 +19,7 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
+  - Conv rate KPI has a tiny Shopify icon (top-right) that opens a Shopify vs Birdseye comparison modal (with in-modal refresh)
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -33,9 +34,9 @@ Main tabs (top row):
   - Worst products: Orders / Sessions / Rev / CR%
   - Best variants + Worst variants: Orders / Sessions / Rev / CR%
   - Sessions is per-row product landings (variants use parent product landings as the Sessions denominator)
-- Traffic: two tables (Source + Traffic Type)
-  - Channels table renders source icons (not text labels)
-  - Home table “Source” column shows icons from `sessions.traffic_source_key` and shows multiple icons when multiple mapping rules match (Traffic · Sources → Source mapping)
+- Traffic: two tables (Channels + Traffic Type)
+  - Channels table renders source icons + labels
+  - Home table “Source” column shows icons from `sessions.traffic_source_key` (mapping rules configurable in Settings → Sources)
 
 Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / Choose dates…
@@ -53,11 +54,12 @@ Traffic tab (new)
 - Tables:
   - Channels table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
   - Traffic table: device → platform breakdown (expandable): Desktop/Mobile/Tablet parents with OS children (Windows/Mac/Linux/Chrome OS/iOS/Android/Unknown)
-- Each table has a ⚙ settings button that opens a picker modal:
-  - Shows every *detected* source/type (last ~30 days)
-  - Tick which ones should appear in the tables
-  - Selections persist across visits
-  - “Traffic · Sources” modal also contains a “Source mapping” section (click to open full-screen):
+- Settings:
+  - Footer Settings modal → Traffic:
+    - Shows every *detected* source/type (last ~30 days)
+    - Tick which ones should appear in the tables
+    - Selections persist across visits
+  - Footer Settings modal → Sources (Source mapping):
     - Shows unmapped UTM tokens detected in session entry URLs
     - Lets you map tokens → Sources (reuses built-in keys like `google_ads`/`bing_ads` when labels match; otherwise creates `custom_...`)
     - Token editor uses an existing-source dropdown + bulk “Save mappings” (inputs don’t wipe when saving/refreshing)
@@ -184,7 +186,7 @@ File:
 Additions:
 - New “Traffic” tab + panel
 - Two responsive cards (Source / Traffic Type) with tables
-- Two modals for selection pickers
+- Traffic settings pickers live in the footer Settings modal → Traffic (single source of truth)
 - Auto-refresh integration (same cadence as Breakdown)
 
 ---
@@ -323,8 +325,10 @@ Backups durability:
 - Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
 - Products: add “Finishes” revenue cards (Gold / Silver / Vermeil / Solid Silver) powered by `GET /api/shopify-finishes` (Shopify truth line items, grouped by variant title finish mapping).
 - Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
+- UI: restore sale toast chime (cash-register.mp3) by priming audio on first interaction and retrying on click when autoplay is blocked (embedded Shopify admin).
 - Truth sync: add an in-flight gate to prevent duplicate concurrent reconciles; unify product-report reconciliation scope to `products_${range}` so Products endpoints share one truth sync.
 - Settings modal: modal and open button labelled "Settings"; Copy/meta bar (Shop · TZ · Updated, Copy AI debug, pills) moved into collapsible "Copy / meta" dropdown; AUTH + SCOPES / TRUTH SYNC HEALTH tables use grid (minmax 200px + 1fr) for consistent alignment; dm-def-details use odd/even backgrounds (#e2e8f0 / #f1f5f9), no border-bottom; Sources tab (#traffic-source-mapping-root) forced to modal design (tsm-* overrides in diagnostics-modal.css).
+- Traffic: remove per-table ⚙ buttons on the Traffic tab and centralize channel/device settings inside the footer Settings modal → Traffic.
 - Diagnostics modal: single background (#f1f5f9), sections separated by border-bottom only; dropdown directly under header, Copy Debug in its own section; Bots blocked (today) hero on first page (Overview); dm-brand-sub, dm-card-note, dm-hint hidden for quick scan; no white card/box backgrounds.
 - Diagnostics modal (footer settings icon): new `server/public/diagnostics-modal.css`; all inline styles removed from modal HTML and from JS-rendered content; class-based layout (dm-*), full-screen–friendly, mobile-responsive; tab/panel and copy-msg use classList.
 - Reporting guardrail: sales/orders in all tables are Shopify truth (`orders_shopify` / `orders_shopify_line_items`). Pixel `purchases` remain drift/debug only.
@@ -343,6 +347,7 @@ Backups durability:
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 - UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
 - UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
+- UI: Conv rate KPI has a tiny Shopify icon that opens a modern Shopify vs Birdseye comparison modal (sessions, CR%, truth orders/revenue, bots blocked) with an in-modal refresh button.
 - UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now use a true down-right SVG with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
 - UI: Mobile KPI cards fit two-per-view with unified gap spacing (matches table gap).
 - UI: KPI delta badges use white backgrounds and good/bad border tints (bounce inverted).
