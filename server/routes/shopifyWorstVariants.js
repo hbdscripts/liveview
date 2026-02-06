@@ -199,7 +199,7 @@ async function getShopifyWorstVariants(req, res) {
 
         // Ensure Shopify truth cache is populated for this range (throttled).
         const tReconcile0 = Date.now();
-        await salesTruth.ensureReconciled(shop, start, end, `worst_variants_${range}`);
+        await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
         msReconcile = Date.now() - tReconcile0;
 
         const tRows0 = Date.now();

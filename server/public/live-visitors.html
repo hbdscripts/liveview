@@ -1456,6 +1456,7 @@
     let shopifySessionsTodayLoaded = false;
     let shopifySessionsTodayLoading = false;
     let finishesCache = null;
+    let finishesLoading = false;
     let bestSellersCache = null;
     let bestVariantsCache = null;
     let countryPage = 1;
@@ -3661,10 +3662,13 @@
       const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) {
+        finishesLoading = false;
         finishesCache = null;
         renderFinishes(null);
         return Promise.resolve(null);
       }
+      finishesLoading = true;
+      if (!finishesCache) renderFinishes(null);
       let url = API + '/api/shopify-finishes?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(getStatsRange());
       if (force) url += '&_=' + Date.now();
@@ -3675,7 +3679,8 @@
           renderFinishes(data);
           return data;
         })
-        .catch(function() { finishesCache = null; renderFinishes(null); return null; });
+        .catch(function() { finishesCache = null; renderFinishes(null); return null; })
+        .finally(function() { finishesLoading = false; });
     }
 
     function fetchBestVariants(options = {}) {
@@ -4054,7 +4059,8 @@
       if (!grid) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (rows.length === 0) {
-        grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
+        const msg = finishesLoading ? 'Loading finishes…' : 'No data';
+        grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
       function iconFor(key) {
@@ -5054,9 +5060,12 @@
       if (productsRefreshInFlight) return productsRefreshInFlight;
 
       const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
-      const finishesP = fetchFinishes({ force });
-      const bestP = fetchBestSellers({ force });
-      const variantsP = fetchBestVariants({ force });
+      let finishesP = null;
+      let bestP = null;
+      let variantsP = null;
+      try { finishesP = fetchFinishes({ force }); } catch (err) { console.error(err); finishesP = Promise.resolve(null); }
+      try { bestP = fetchBestSellers({ force }); } catch (err) { console.error(err); bestP = Promise.resolve(null); }
+      try { variantsP = fetchBestVariants({ force }); } catch (err) { console.error(err); variantsP = Promise.resolve(null); }
       function settled(p) {
         return Promise.resolve(p)
           .then(function(v) { return { ok: true, value: v }; })
@@ -5074,6 +5083,10 @@
         .then(function() { build.step('building best variants...'); return variantsS; })
         .then(function() { build.step('building best variants... done'); return delay(180); })
         .then(function() { lastProductsFetchedAt = Date.now(); })
+        .catch(function(err) {
+          console.error(err);
+          return null;
+        })
         .finally(function() {
           productsRefreshInFlight = null;
           build.finish();

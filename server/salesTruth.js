@@ -688,10 +688,21 @@ async function shouldReconcile(shop, scope) {
   const state = await getReconcileState(shop, scope);
   const now = Date.now();
   const lastSuccess = state?.last_success_at != null ? Number(state.last_success_at) : null;
+  const lastAttempt = state?.last_attempt_at != null ? Number(state.last_attempt_at) : null;
   if (lastSuccess != null && Number.isFinite(lastSuccess)) {
     const age = now - lastSuccess;
     if (age >= 0 && age < reconcileMinIntervalMs()) {
       return { ok: false, reason: 'throttled', state };
+    }
+  }
+  // Prevent concurrent (duplicate) reconciles when multiple endpoints refresh at once.
+  // If an attempt started recently and we don't have a newer success yet, treat as in-flight.
+  if (lastAttempt != null && Number.isFinite(lastAttempt)) {
+    const attemptAge = now - lastAttempt;
+    const inFlightWindow = Math.max(30 * 1000, reconcileMinIntervalMs());
+    const successIsNewer = (lastSuccess != null && Number.isFinite(lastSuccess) && lastSuccess >= lastAttempt);
+    if (!successIsNewer && attemptAge >= 0 && attemptAge < inFlightWindow) {
+      return { ok: false, reason: 'in_flight', state };
     }
   }
   return { ok: true, reason: 'stale_or_missing', state };

@@ -95,7 +95,7 @@ async function getShopifyBestVariants(req, res) {
         let msMeta = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
         const tReconcile0 = Date.now();
-        await salesTruth.ensureReconciled(shop, start, end, `best_variants_${range}`);
+        await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
         msReconcile = Date.now() - tReconcile0;
 
         const tCount0 = Date.now();

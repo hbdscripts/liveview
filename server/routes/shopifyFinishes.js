@@ -16,8 +16,17 @@ function normalizeFinishKey(variantTitle) {
 
   if (clean.includes(' solid silver ')) return 'solid_silver';
   if (clean.includes(' gold vermeil ') || clean.includes(' vermeil ')) return 'vermeil';
-  if (clean.includes(' 925 sterling silver ') || clean.includes(' 925 silver ') || clean.includes(' sterling silver ') || clean.trim() === 'silver') return 'silver';
-  if (clean.includes(' 14ct gold ') || clean.includes(' 18ct gold ') || clean.trim() === 'gold') return 'gold';
+  if (
+    clean.includes(' 925 sterling silver ') ||
+    clean.includes(' 925 silver ') ||
+    clean.includes(' sterling silver ') ||
+    clean.includes(' silver ')
+  ) return 'silver';
+  if (
+    clean.includes(' 14ct gold ') ||
+    clean.includes(' 18ct gold ') ||
+    clean.includes(' gold ')
+  ) return 'gold';
 
   return null;
 }
@@ -61,7 +70,7 @@ async function getShopifyFinishes(req, res) {
       },
       async () => {
         try {
-          await salesTruth.ensureReconciled(shop, start, end, `finishes_${range}`);
+          await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
         } catch (_) {}
 
         const rows = config.dbUrl

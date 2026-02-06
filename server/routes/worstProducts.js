@@ -270,7 +270,7 @@ async function getWorstProducts(req, res) {
       if (shop) {
         // Best-effort: keep truth cache warm for this range (throttled).
         const tReconcile0 = Date.now();
-        try { await salesTruth.ensureReconciled(shop, start, end, `worst_products_${range}`); } catch (_) {}
+        try { await salesTruth.ensureReconciled(shop, start, end, `products_${range}`); } catch (_) {}
         msReconcile = Date.now() - tReconcile0;
       }
 
