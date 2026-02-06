@@ -166,6 +166,7 @@ async function getShopifyLeaderboard(req, res) {
           return {
             product_id: pid || null,
             title: p && p.title ? String(p.title) : null,
+            handle: meta && meta.handle ? String(meta.handle) : null,
             thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
             revenueGbp: round2(p && p.revenueGbp),
           };

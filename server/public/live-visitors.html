@@ -1135,7 +1135,7 @@
     </div>
     <div class="aov-cards-wrap" id="leaderboard-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Leaderboard (7d)</div>
+        <div class="aov-cards-title">7 Day Leaderboard</div>
         <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
           <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-leaderboard-btn" aria-haspopup="true" aria-expanded="false">
             <span id="products-leaderboard-label">Title</span>
@@ -1464,6 +1464,7 @@
     let shopifySessionsTodayLoaded = false;
     let shopifySessionsTodayLoading = false;
     const PRODUCTS_LEADERBOARD_VIEW_KEY = 'products-leaderboard-view';
+    const PRODUCTS_LEADERBOARD_FETCH_LIMIT = 20;
     let productsLeaderboardView = 'title';
     let leaderboardCache = null;
     let leaderboardLoading = false;
@@ -2048,6 +2049,35 @@
       const code = (currencyCode || 'GBP').toUpperCase();
       const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
       return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
+    }
+
+    function formatCompactNumber(amount) {
+      const raw = typeof amount === 'number' ? amount : Number(amount);
+      const n = Number.isFinite(raw) ? Math.abs(raw) : 0;
+      if (n < 1000) return String(Math.round(n));
+      if (n >= 1e9) {
+        const v = n / 1e9;
+        const dec = v < 100 ? 1 : 0;
+        return v.toFixed(dec).replace(/\.0$/, '') + 'b';
+      }
+      if (n >= 1e6) {
+        const v = n / 1e6;
+        const dec = v < 100 ? 1 : 0;
+        return v.toFixed(dec).replace(/\.0$/, '') + 'm';
+      }
+      // n >= 1e3
+      const v = n / 1e3;
+      const dec = v < 100 ? 1 : 0;
+      return v.toFixed(dec).replace(/\.0$/, '') + 'k';
+    }
+
+    function formatMoneyCompact(amount, currencyCode) {
+      if (amount == null || typeof amount !== 'number') return '';
+      const code = (currencyCode || 'GBP').toUpperCase();
+      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
+      const n = Number.isFinite(amount) ? amount : 0;
+      const sign = n < 0 ? '-' : '';
+      return sign + sym + formatCompactNumber(n);
     }
 
     function sourceLabel(s) {
@@ -3962,7 +3992,9 @@
       }
       leaderboardLoading = true;
       if (!leaderboardCache) renderProductsLeaderboard(null);
-      let url = API + '/api/shopify-leaderboard?shop=' + encodeURIComponent(shop);
+      let url = API + '/api/shopify-leaderboard?shop=' + encodeURIComponent(shop) +
+        '&topProducts=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT)) +
+        '&topTypes=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT));
       if (force) url += '&_=' + Date.now();
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.ok ? r.json() : null; })
@@ -3975,6 +4007,44 @@
         .finally(function() { leaderboardLoading = false; });
     }
 
+    function productsLeaderboardIsMobile() {
+      return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    }
+
+    function productsLeaderboardIsMedium() {
+      return !!(window.matchMedia && window.matchMedia('(max-width: 980px)').matches);
+    }
+
+    function productsLeaderboardColumnsForView(view) {
+      const v = normalizeProductsLeaderboardView(view);
+      const isMobile = productsLeaderboardIsMobile();
+      const isMedium = !isMobile && productsLeaderboardIsMedium();
+      if (v === 'type') {
+        if (isMobile) return 1;
+        if (isMedium) return 2;
+        return 4;
+      }
+      // v === 'title'
+      if (isMobile) return 2;
+      if (isMedium) return 4;
+      return 6;
+    }
+
+    function productsLeaderboardMaxItems() {
+      return productsLeaderboardIsMobile() ? 4 : 12;
+    }
+
+    function sliceProductsLeaderboardEven(list, view) {
+      const arr = Array.isArray(list) ? list : [];
+      const cols = productsLeaderboardColumnsForView(view);
+      const max = productsLeaderboardMaxItems();
+      const target = Math.min(arr.length, max);
+      if (target <= 0) return [];
+      if (cols <= 1 || target < cols) return arr.slice(0, target);
+      const even = target - (target % cols);
+      return arr.slice(0, even || target);
+    }
+
     function renderProductsLeaderboard(data) {
       const view = normalizeProductsLeaderboardView(productsLeaderboardView);
       const grid = document.getElementById('leaderboard-cards-grid');
@@ -3982,11 +4052,12 @@
       grid.setAttribute('data-leaderboard-view', view);
 
       const hasData = !!(data && data.ok);
-      const list = hasData ? (view === 'type' ? (data.byType || []) : (data.byTitle || [])) : [];
+      const listAll = hasData ? (view === 'type' ? (data.byType || []) : (data.byTitle || [])) : [];
+      const list = sliceProductsLeaderboardEven(listAll, view);
 
-      if (!hasData || !list.length) {
+      if (!hasData || !listAll.length) {
         if (leaderboardLoading) {
-          grid.innerHTML = '<div class="aov-card aov-card-empty">Loading leaderboard\u2026</div>';
+          grid.innerHTML = '<div class="aov-card aov-card-empty aov-card--leaderboard-loading"><span class="inline-spinner" aria-hidden="true"></span><span>Building leaderboards...</span></div>';
         } else {
           grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
         }
@@ -3997,7 +4068,7 @@
         grid.innerHTML = list.map(function(row) {
           const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
           const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
-          const value = formatMoney(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+          const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
           return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
               '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
               '<div class="aov-card-value">' + escapeHtml(value) + '</div>' +
@@ -4007,17 +4078,23 @@
       }
 
       // view === 'title'
+      const mainBase = getMainBaseUrl();
       grid.innerHTML = list.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
+        const handle = row && row.handle ? String(row.handle) : '';
         const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
-        const value = formatMoney(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
-        const img = '<span class="leaderboard-thumb-wrap">' +
+        const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const thumbInner = '<span class="leaderboard-thumb-wrap">' +
             '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
             (thumb
               ? '<img class="leaderboard-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
               : '') +
           '</span>';
+        const img = productUrl
+          ? '<a class="leaderboard-thumb-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '">' + thumbInner + '</a>'
+          : thumbInner;
         return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-title">' +
             '<div class="aov-card-left">' +
               img +
@@ -4027,6 +4104,25 @@
           '</div>';
       }).join('');
     }
+
+    (function initProductsLeaderboardResizeWatcher() {
+      let raf = null;
+      function schedule() {
+        if (activeMainTab !== 'products') return;
+        if (!leaderboardCache && !leaderboardLoading) return;
+        if (typeof requestAnimationFrame !== 'function') {
+          renderProductsLeaderboard(leaderboardCache);
+          return;
+        }
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(function() {
+          raf = null;
+          if (activeMainTab !== 'products') return;
+          renderProductsLeaderboard(leaderboardCache);
+        });
+      }
+      try { window.addEventListener('resize', schedule); } catch (_) {}
+    })();
 
     function fetchFinishes(options = {}) {
       const force = !!options.force;
