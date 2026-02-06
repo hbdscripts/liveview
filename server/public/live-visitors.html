@@ -1133,6 +1133,24 @@
         <div class="report-build-step" id="products-build-step">—</div>
       </div>
     </div>
+    <div class="aov-cards-wrap" id="leaderboard-cards-wrap">
+      <div class="aov-cards-header">
+        <div class="aov-cards-title">Leaderboard (7d)</div>
+        <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
+          <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-leaderboard-btn" aria-haspopup="true" aria-expanded="false">
+            <span id="products-leaderboard-label">Title</span>
+            <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="aov-cards-title-menu" id="products-leaderboard-menu" role="menu" aria-hidden="true">
+            <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Title</button>
+            <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Type</button>
+          </div>
+        </div>
+      </div>
+      <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title">
+        <div class="aov-card aov-card-empty">—</div>
+      </div>
+    </div>
     <div class="aov-cards-wrap" id="finishes-cards-wrap">
       <div class="aov-cards-header">
         <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
@@ -1444,6 +1462,10 @@
     let shopifySessionsToday = null;
     let shopifySessionsTodayLoaded = false;
     let shopifySessionsTodayLoading = false;
+    const PRODUCTS_LEADERBOARD_VIEW_KEY = 'products-leaderboard-view';
+    let productsLeaderboardView = 'title';
+    let leaderboardCache = null;
+    let leaderboardLoading = false;
     const PRODUCTS_VARIANT_CARDS_VIEW_KEY = 'products-variant-cards-view';
     let productsVariantCardsView = 'finishes';
     let finishesCache = null;
@@ -1498,6 +1520,16 @@
         productsVariantCardsView = (s === 'lengths' || s === 'length') ? 'lengths' : 'finishes';
       } catch (_) {
         productsVariantCardsView = 'finishes';
+      }
+    })();
+
+    (function restoreProductsLeaderboardView() {
+      try {
+        const raw = sessionStorage.getItem(PRODUCTS_LEADERBOARD_VIEW_KEY);
+        const s = raw != null ? String(raw).trim().toLowerCase() : '';
+        productsLeaderboardView = (s === 'type') ? 'type' : 'title';
+      } catch (_) {
+        productsLeaderboardView = 'title';
       }
     })();
 
@@ -1729,6 +1761,7 @@
               if (link) link.href = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchProductsLeaderboard === 'function') fetchProductsLeaderboard();
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
             if (activeMainTab === 'products' && shopForSalesFallback) {
@@ -3725,6 +3758,99 @@
         .catch(function() { bestSellersCache = null; renderBestSellers(null); return null; });
     }
 
+    function normalizeProductsLeaderboardView(v) {
+      const s = v != null ? String(v).trim().toLowerCase() : '';
+      return s === 'type' ? 'type' : 'title';
+    }
+
+    function labelForProductsLeaderboardView(view) {
+      return normalizeProductsLeaderboardView(view) === 'type' ? 'Type' : 'Title';
+    }
+
+    function updateProductsLeaderboardDropdownUi() {
+      const view = normalizeProductsLeaderboardView(productsLeaderboardView);
+      const labelEl = document.getElementById('products-leaderboard-label');
+      const grid = document.getElementById('leaderboard-cards-grid');
+      const wrap = document.getElementById('leaderboard-cards-wrap');
+      const menu = document.getElementById('products-leaderboard-menu');
+      if (labelEl) labelEl.textContent = labelForProductsLeaderboardView(view);
+      if (grid) grid.setAttribute('data-leaderboard-view', view);
+      if (wrap) wrap.setAttribute('data-leaderboard-view', view);
+      if (menu) {
+        const opts = menu.querySelectorAll('.aov-cards-title-option');
+        opts.forEach(function(el) {
+          const v = normalizeProductsLeaderboardView(el && el.getAttribute ? el.getAttribute('data-view') : '');
+          el.setAttribute('aria-current', v === view ? 'true' : 'false');
+        });
+      }
+    }
+
+    function closeProductsLeaderboardMenu() {
+      const btn = document.getElementById('products-leaderboard-btn');
+      const menu = document.getElementById('products-leaderboard-menu');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+      if (menu) {
+        menu.classList.remove('open');
+        menu.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function toggleProductsLeaderboardMenu() {
+      const btn = document.getElementById('products-leaderboard-btn');
+      const menu = document.getElementById('products-leaderboard-menu');
+      if (!btn || !menu) return;
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      if (open) {
+        closeProductsLeaderboardMenu();
+      } else {
+        btn.setAttribute('aria-expanded', 'true');
+        menu.classList.add('open');
+        menu.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    function setProductsLeaderboardView(nextView, options = {}) {
+      const force = !!(options && options.force);
+      const view = normalizeProductsLeaderboardView(nextView);
+      productsLeaderboardView = view;
+      try { sessionStorage.setItem(PRODUCTS_LEADERBOARD_VIEW_KEY, view); } catch (_) {}
+      updateProductsLeaderboardDropdownUi();
+      closeProductsLeaderboardMenu();
+      renderProductsLeaderboard(leaderboardCache);
+      if (activeMainTab !== 'products') return;
+      fetchProductsLeaderboard({ force }).catch(function() {});
+    }
+
+    (function initProductsLeaderboardDropdown() {
+      updateProductsLeaderboardDropdownUi();
+      const btn = document.getElementById('products-leaderboard-btn');
+      const menu = document.getElementById('products-leaderboard-menu');
+      const root = document.getElementById('products-leaderboard-dropdown');
+      if (!btn || !menu || !root) return;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleProductsLeaderboardMenu();
+      });
+      menu.addEventListener('click', function(e) {
+        const t = e && e.target ? e.target : null;
+        const opt = t && t.closest ? t.closest('.aov-cards-title-option') : null;
+        if (!opt) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setProductsLeaderboardView(opt.getAttribute('data-view') || '', { force: false });
+      });
+      document.addEventListener('click', function(e) {
+        const target = e && e.target ? e.target : null;
+        if (target && root.contains && root.contains(target)) return;
+        closeProductsLeaderboardMenu();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Escape') return;
+        closeProductsLeaderboardMenu();
+      });
+    })();
+
     function normalizeProductsVariantCardsView(v) {
       const s = v != null ? String(v).trim().toLowerCase() : '';
       if (s === 'lengths' || s === 'length') return 'lengths';
@@ -3823,6 +3949,83 @@
         closeProductsVariantCardsMenu();
       });
     })();
+
+    function fetchProductsLeaderboard(options = {}) {
+      const force = !!options.force;
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) {
+        leaderboardLoading = false;
+        leaderboardCache = null;
+        renderProductsLeaderboard(null);
+        return Promise.resolve(null);
+      }
+      leaderboardLoading = true;
+      if (!leaderboardCache) renderProductsLeaderboard(null);
+      let url = API + '/api/shopify-leaderboard?shop=' + encodeURIComponent(shop);
+      if (force) url += '&_=' + Date.now();
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          leaderboardCache = data;
+          renderProductsLeaderboard(data);
+          return data;
+        })
+        .catch(function() { leaderboardCache = null; renderProductsLeaderboard(null); return null; })
+        .finally(function() { leaderboardLoading = false; });
+    }
+
+    function renderProductsLeaderboard(data) {
+      const view = normalizeProductsLeaderboardView(productsLeaderboardView);
+      const grid = document.getElementById('leaderboard-cards-grid');
+      if (!grid) return;
+      grid.setAttribute('data-leaderboard-view', view);
+
+      const hasData = !!(data && data.ok);
+      const list = hasData ? (view === 'type' ? (data.byType || []) : (data.byTitle || [])) : [];
+
+      if (!hasData || !list.length) {
+        if (leaderboardLoading) {
+          grid.innerHTML = '<div class="aov-card aov-card-empty">Loading leaderboard\u2026</div>';
+        } else {
+          grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
+        }
+        return;
+      }
+
+      if (view === 'type') {
+        grid.innerHTML = list.map(function(row) {
+          const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
+          const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
+          const value = formatMoney(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+          return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
+              '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
+              '<div class="aov-card-value">' + escapeHtml(value) + '</div>' +
+            '</div>';
+        }).join('');
+        return;
+      }
+
+      // view === 'title'
+      grid.innerHTML = list.map(function(row) {
+        const title = row && row.title != null ? String(row.title) : 'Product';
+        const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
+        const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
+        const value = formatMoney(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+        const img = '<span class="leaderboard-thumb-wrap">' +
+            '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
+            (thumb
+              ? '<img class="leaderboard-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.classList.add(\\'is-hidden\\')">'
+              : '') +
+          '</span>';
+        return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-title">' +
+            '<div class="aov-card-left">' +
+              img +
+              '<span class="aov-card-name sr-only">' + escapeHtml(title || 'Product') + '</span>' +
+            '</div>' +
+            '<div class="aov-card-value">' + escapeHtml(value) + '</div>' +
+          '</div>';
+      }).join('');
+    }
 
     function fetchFinishes(options = {}) {
       const force = !!options.force;
@@ -5292,11 +5495,18 @@
       if (productsRefreshInFlight) return productsRefreshInFlight;
 
       const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
+      let leaderboardP = null;
       let cardsP = null;
       let bestP = null;
       let variantsP = null;
       const cardsView = normalizeProductsVariantCardsView(productsVariantCardsView);
       const cardsLabel = cardsView === 'lengths' ? 'lengths' : 'finishes';
+      try {
+        leaderboardP = fetchProductsLeaderboard({ force });
+      } catch (err) {
+        console.error(err);
+        leaderboardP = Promise.resolve(null);
+      }
       try {
         cardsP = (cardsView === 'lengths' ? fetchLengths : fetchFinishes)({ force });
       } catch (err) {
@@ -5310,11 +5520,14 @@
           .then(function(v) { return { ok: true, value: v }; })
           .catch(function(err) { console.error(err); return { ok: false, error: err }; });
       }
+      const leaderboardS = settled(leaderboardP);
       const cardsS = settled(cardsP);
       const bestS = settled(bestP);
       const variantsS = settled(variantsP);
 
       productsRefreshInFlight = Promise.resolve()
+        .then(function() { build.step('building leaderboard...'); return leaderboardS; })
+        .then(function() { build.step('building leaderboard... done'); return delay(180); })
         .then(function() { build.step('building ' + cardsLabel + '...'); return cardsS; })
         .then(function() { build.step('building ' + cardsLabel + '... done'); return delay(180); })
         .then(function() { build.step('building best products...'); return bestS; })

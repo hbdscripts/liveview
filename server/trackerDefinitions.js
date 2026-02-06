@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 10;
+const DEFINITIONS_VERSION = 11;
 const LAST_UPDATED = '2026-02-06';
 
 /**
@@ -247,6 +247,29 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
+  },
+  {
+    id: 'products_leaderboard_cards',
+    page: 'Products',
+    name: 'Leaderboard cards: Title / Type (7d)',
+    ui: { elementIds: ['leaderboard-cards-grid'] },
+    endpoint: { method: 'GET', path: '/api/shopify-leaderboard', params: ['shop=...', 'topProducts/topTypes (optional)', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by product_id (truth line items; rolling 7d in admin TZ)' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled for 7d)' },
+      { kind: 'shopify', note: 'Product metadata for product image + product_type (REST /products/{id}.json) when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Title', value: 'byTitle[]', formula: 'Top products by SUM(line_revenue) over rolling 7d (converted to GBP); includes thumb_url for UI cards' },
+      { name: 'Type', value: 'byType[]', formula: 'Top product types by SUM(revenue of products in rolling 7d); type sourced from Shopify product_type' },
+    ],
+    math: [
+      { name: 'Range', value: 'Rolling 7d (startOfDay -6d → now) in admin time zone' },
+      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
   },
   {
     id: 'products_finishes_cards',
