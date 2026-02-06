@@ -5271,8 +5271,6 @@
           el.innerHTML = compareBtn('conv', 'Compare conversion rate vs Shopify') + escapeHtml(text == null ? '' : String(text));
         } else if (el === sessionsSubEl) {
           el.innerHTML = compareBtn('sessions', 'Compare sessions vs Shopify') + escapeHtml(text == null ? '' : String(text));
-        } else if (el === salesSubEl) {
-          el.innerHTML = compareBtn('sales', 'Compare sales vs Shopify') + escapeHtml(text == null ? '' : String(text));
         } else if (el === aovSubEl) {
           el.innerHTML = compareBtn('aov', 'Compare AOV vs Shopify') + escapeHtml(text == null ? '' : String(text));
         } else {
@@ -6963,7 +6961,6 @@
               function kickerForKey(key) {
                 const k = key ? String(key).trim().toLowerCase() : '';
                 if (k === 'sessions') return 'Sessions';
-                if (k === 'sales') return 'Sales';
                 if (k === 'aov') return 'AOV';
                 return 'Conversion rate';
               }
@@ -7033,9 +7030,6 @@
               if (compareKey === 'sessions') {
                 const d = (birdseyeSessionsToday != null && shopifySessionsToday != null) ? (birdseyeSessionsToday - shopifySessionsToday) : null;
                 diffText = (d != null) ? ('Δ Sessions ' + fmtSignedCount(d)) : '';
-              } else if (compareKey === 'sales') {
-                const d = (pixelDerivedRevenue != null && truthRevenue != null) ? (pixelDerivedRevenue - truthRevenue) : null;
-                diffText = (d != null) ? ('Δ Sales ' + fmtSignedMoney(d)) : '';
               } else if (compareKey === 'aov') {
                 const d = (pixelAov != null && truthAov != null) ? (pixelAov - truthAov) : null;
                 diffText = (d != null) ? ('Δ AOV ' + fmtSignedMoney(d)) : '';
@@ -7061,37 +7055,12 @@
                 cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-                                 compareMetric('CR% (Shopify)', fmtPct(shopifyCr)) +
-                                 compareMetric('Orders (paid)', ordersHtml) +
-                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
                                '</div>';
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · bot signals');
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-                                 compareMetric('Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') +
-                                 compareMetric('Bot-tagged (today)', botsTaggedToday != null ? fmtSessions(botsTaggedToday) : '\u2014') +
-                                 compareMetric('Total traffic est', totalTrafficEstToday != null ? fmtSessions(totalTrafficEstToday) : (sessionsReachedAppToday != null ? fmtSessions(sessionsReachedAppToday) : '\u2014')) +
-                               '</div>';
-                cmpHtml +=   '</div>';
-              } else if (compareKey === 'sales') {
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                                 compareMetric('Orders (paid)', ordersHtml) +
-                                 compareMetric('AOV', fmtRevenue(truthAov)) +
-                                 compareMetric('Missing evidence', missingEvidenceHtml) +
-                               '</div>';
-                cmpHtml +=   '</div>';
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('Revenue (pixel)', fmtRevenue(pixelDerivedRevenue)) +
-                                 compareMetric('Orders (pixel)', pixelOrdersHtml) +
-                                 compareMetric('AOV', fmtRevenue(pixelAov)) +
-                                 compareMetric('Evidence checkouts', evidenceHtml) +
                                '</div>';
                 cmpHtml +=   '</div>';
               } else if (compareKey === 'aov') {
@@ -7099,18 +7068,12 @@
                 cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('AOV', fmtRevenue(truthAov)) +
-                                 compareMetric('Orders (paid)', ordersHtml) +
-                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                                 compareMetric('Missing evidence', missingEvidenceHtml) +
                                '</div>';
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card">';
                 cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('AOV', fmtRevenue(pixelAov)) +
-                                 compareMetric('Orders (pixel)', pixelOrdersHtml) +
-                                 compareMetric('Revenue (pixel)', fmtRevenue(pixelDerivedRevenue)) +
-                                 compareMetric('Evidence checkouts', evidenceHtml) +
                                '</div>';
                 cmpHtml +=   '</div>';
               } else {
@@ -7333,7 +7296,6 @@
       function kickerForKey(key) {
         const k = key ? String(key).trim().toLowerCase() : '';
         if (k === 'sessions') return 'Sessions';
-        if (k === 'sales') return 'Sales';
         if (k === 'aov') return 'AOV';
         return 'Conversion rate';
       }
