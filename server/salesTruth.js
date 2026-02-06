@@ -389,6 +389,8 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
     'total_tax',
     'total_discounts',
     'total_shipping_price_set',
+    'shipping_address',
+    'billing_address',
     'customer',
     'checkout_token',
     'line_items',
@@ -468,13 +470,13 @@ async function getExistingOrderMeta(shop, orderId) {
   const db = getDb();
   try {
     return await db.get(
-      'SELECT updated_at, synced_at, customer_orders_count FROM orders_shopify WHERE shop = ? AND order_id = ?',
+      'SELECT updated_at, synced_at, customer_orders_count, raw_json FROM orders_shopify WHERE shop = ? AND order_id = ?',
       [shop, orderId]
     );
   } catch (_) {
     // Backwards-compatible fallback (older schema).
     return db.get(
-      'SELECT updated_at, synced_at FROM orders_shopify WHERE shop = ? AND order_id = ?',
+      'SELECT updated_at, synced_at, raw_json FROM orders_shopify WHERE shop = ? AND order_id = ?',
       [shop, orderId]
     );
   }
@@ -618,8 +620,13 @@ async function upsertOrder(row) {
   const prevOrdersCount = existing.customer_orders_count != null ? Number(existing.customer_orders_count) : null;
   const nextOrdersCount = row.customer_orders_count != null ? Number(row.customer_orders_count) : null;
   const missingDerived = prevOrdersCount == null && nextOrdersCount != null;
+  const prevRaw = existing && typeof existing.raw_json === 'string' ? existing.raw_json : '';
+  const nextRaw = row && typeof row.raw_json === 'string' ? row.raw_json : '';
+  const prevHasAddresses = !!(prevRaw && (prevRaw.includes('"shipping_address"') || prevRaw.includes('"billing_address"') || prevRaw.includes('"shippingAddress"') || prevRaw.includes('"billingAddress"')));
+  const nextHasAddresses = !!(nextRaw && (nextRaw.includes('"shipping_address"') || nextRaw.includes('"billing_address"') || nextRaw.includes('"shippingAddress"') || nextRaw.includes('"billingAddress"')));
+  const missingAddressFields = !prevHasAddresses && nextHasAddresses;
   // Update when Shopify updated_at changed, or when we have never synced a row.
-  const shouldUpdate = missingDerived || (prevUpdated == null || nextUpdated == null ? true : nextUpdated !== prevUpdated);
+  const shouldUpdate = missingDerived || missingAddressFields || (prevUpdated == null || nextUpdated == null ? true : nextUpdated !== prevUpdated);
   if (shouldUpdate) {
     await updateOrder(row);
     return { inserted: 0, updated: 1 };
