@@ -990,8 +990,9 @@
           <div class="sale-toast-amount-wrap">
             <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
             <div class="sale-toast-time">
-              <svg class="sale-toast-time-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M14.6,21.3c-.3.226-.619.464-.89.7H16a1,1,0,0,1,0,2H12a1,1,0,0,1-1-1c0-1.5,1.275-2.456,2.4-3.3.75-.562,1.6-1.2,1.6-1.7a1,1,0,0,0-2,0,1,1,0,0,1-2,0,3,3,0,0,1,6,0C17,19.5,15.725,20.456,14.6,21.3ZM23,15a1,1,0,0,0-1,1v3H21a1,1,0,0,1-1-1V16a1,1,0,0,0-2,0v2a3,3,0,0,0,3,3h1v2a1,1,0,0,0,2,0V16A1,1,0,0,0,23,15ZM13,12V7a1,1,0,0,0-2,0v4H8a1,1,0,0,0,0,2h4A1,1,0,0,0,13,12ZM23,2a1,1,0,0,0-1,1V5.374A12,12,0,1,0,7.636,23.182,1.015,1.015,0,0,0,8,23.25a1,1,0,0,0,.364-1.932A10,10,0,1,1,20.636,7H18a1,1,0,0,0,0,2h3a3,3,0,0,0,3-3V3A1,1,0,0,0,23,2Z"></path>
+              <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <title>time</title>
+                <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
               </svg>
               <span id="sale-toast-time">—</span>
             </div>
@@ -1335,7 +1336,10 @@
   </div>
   </main>
   <footer class="dashboard-footer" id="dashboard-footer">
-    <span class="footer-last-sale">Last sale: <span id="last-sale-ago">—</span> <button type="button" id="last-sale-toggle" class="footer-last-sale-toggle" aria-pressed="false">(show)</button></span>
+    <span class="footer-last-sale">Last sale: <span id="last-sale-ago">—</span> <button type="button" id="last-sale-toggle" class="footer-last-sale-toggle" aria-pressed="false" aria-label="Show last sale toast">
+      <svg class="toggle-icon toggle-icon-show" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M15.0007 12C15.0007 13.6569 13.6576 15 12.0007 15C10.3439 15 9.00073 13.6569 9.00073 12C9.00073 10.3431 10.3439 9 12.0007 9C13.6576 9 15.0007 10.3431 15.0007 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12.0012 5C7.52354 5 3.73326 7.94288 2.45898 12C3.73324 16.0571 7.52354 19 12.0012 19C16.4788 19 20.2691 16.0571 21.5434 12C20.2691 7.94291 16.4788 5 12.0012 5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <svg class="toggle-icon toggle-icon-hide" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.99902 3L20.999 21M9.8433 9.91364C9.32066 10.4536 8.99902 11.1892 8.99902 12C8.99902 13.6569 10.3422 15 11.999 15C12.8215 15 13.5667 14.669 14.1086 14.133M6.49902 6.64715C4.59972 7.90034 3.15305 9.78394 2.45703 12C3.73128 16.0571 7.52159 19 11.9992 19C13.9881 19 15.8414 18.4194 17.3988 17.4184M10.999 5.04939C11.328 5.01673 11.6617 5 11.9992 5C16.4769 5 20.2672 7.94291 21.5414 12C21.2607 12.894 20.8577 13.7338 20.3522 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </button></span>
     <button type="button" id="refresh-btn" class="refresh-btn" title="Refresh" aria-label="Refresh">
       <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
     </button>
@@ -1437,7 +1441,11 @@
     let customCalendarLastPayload = null; // last /api/available-days payload used for rendering
     /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
     function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
-    function getKpiData() { return kpiCache || statsCache || {}; }
+    function getKpiData() {
+      if (kpiCache) return kpiCache;
+      if (getStatsRange() === 'today') return {};
+      return statsCache || {};
+    }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
     let nextRangeAt = 0; // next refresh for Today/Last Hour (5 min)
@@ -3362,8 +3370,9 @@
       const btn = document.getElementById('last-sale-toggle');
       if (!btn) return;
       const isPinned = !!saleToastPinned;
-      btn.textContent = isPinned ? '(hide)' : '(show)';
+      btn.classList.toggle('is-on', isPinned);
       btn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
+      btn.setAttribute('aria-label', isPinned ? 'Hide last sale toast' : 'Show last sale toast');
     }
 
     function showSaleToast() {
@@ -4865,10 +4874,13 @@
 
     function renderStats(data) {
       statsCache = data || {};
-      if (kpiCache && kpiCache.compare && !statsCache.compare) {
-        kpiCache = { ...statsCache, compare: kpiCache.compare };
-      } else {
-        kpiCache = statsCache;
+      const statsRange = getStatsRange();
+      if (statsRange !== 'today') {
+        if (kpiCache && kpiCache.compare && !statsCache.compare) {
+          kpiCache = { ...statsCache, compare: kpiCache.compare };
+        } else {
+          kpiCache = statsCache;
+        }
       }
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
@@ -5900,11 +5912,11 @@
           const botsBlockedToday = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') ? traffic.today.botsBlockedAtEdge : null;
           const botsBlockedUpdatedAt = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') ? traffic.today.botsBlockedAtEdgeUpdatedAt : null;
 
-          // Shopify's conversion rate is session-based ("sessions that completed checkout" / "sessions"), not orders/sessions.
-          // Prefer evidence sessions when present; fall back to checkout-token truth orders for older installs.
-          const convertedSessionsForCr = (evSessions != null ? evSessions : (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders));
-          const shopifyCr = (convertedSessionsForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (convertedSessionsForCr / shopifySessionsToday) * 100 : null;
-          const birdseyeCr = (convertedSessionsForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (convertedSessionsForCr / birdseyeSessionsToday) * 100 : null;
+          // Conversion rate used across Birdseye tables: truth orders / sessions.
+          // Prefer checkout-token truth orders (online-store proxy) when available.
+          const convertedOrdersForCr = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
+          const shopifyCr = (convertedOrdersForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0) ? (convertedOrdersForCr / shopifySessionsToday) * 100 : null;
+          const birdseyeCr = (convertedOrdersForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (convertedOrdersForCr / birdseyeSessionsToday) * 100 : null;
 
           const driftPixelCheckoutOrders = (truthCheckoutOrders != null && pixelDerivedOrders != null) ? (pixelDerivedOrders - truthCheckoutOrders) : null;
           const driftPixelCheckoutRevenue = (truthCheckoutRevenue != null && pixelDerivedRevenue != null)
@@ -6117,12 +6129,8 @@
           }
 
           // --- New flattened, top-tab Diagnostics UI (inline-styled) ---
-          const shopifyOrderRate = (truthOrders != null && shopifySessionsToday != null && shopifySessionsToday > 0)
-            ? (truthOrders / shopifySessionsToday) * 100
-            : null;
-          const birdseyeOrderRate = (pixelDerivedOrders != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0)
-            ? (pixelDerivedOrders / birdseyeSessionsToday) * 100
-            : null;
+          const shopifyOrderRate = shopifyCr;
+          const birdseyeOrderRate = birdseyeCr;
           const orderRateDiff = (shopifyOrderRate != null && birdseyeOrderRate != null) ? (shopifyOrderRate - birdseyeOrderRate) : null;
 
           const evidenceExpected = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
@@ -6378,21 +6386,21 @@
             brandHeader('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · truth orders', '149,191,71') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
               metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-              metric('CR% (sessions)', fmtPct(shopifyCr)) +
+              metric('CR% (truth)', fmtPct(shopifyCr)) +
               metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
-              metric('Orders / session%', fmtPct(shopifyOrderRate)) +
+              metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
             '</div>' +
-            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">CR% (sessions) = sessions that completed checkout / sessions (Shopify definition). Orders/session% counts orders, so it can be higher when multiple orders happen in one session.</div>'
+            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">CR% (truth) = paid truth orders / sessions. If you also track evidence sessions, you can compare evidence coverage separately.</div>'
           ));
           overview += card('', (
-            brandHeader('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · pixel-derived purchases', '13,148,136') +
+            brandHeader('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · truth orders', '13,148,136') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
               metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-              metric('CR% (sessions)', fmtPct(birdseyeCr)) +
-              metric('Orders (derived)', pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014') +
-              metric('Orders / session%', fmtPct(birdseyeOrderRate)) +
+              metric('CR% (truth)', fmtPct(birdseyeCr)) +
+              metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
+              metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
             '</div>' +
-            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">Birdseye “Orders (derived)” comes from our pixel-derived `purchases` table (deduped). CR% (sessions) uses distinct checkout-completed sessions, so it will drop vs orders/session% when repeat purchases happen in one session.</div>'
+            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">Birdseye reporting uses Shopify truth orders so it can never exceed Shopify. Pixel-derived purchases remain in Diagnostics for drift/debug only.</div>'
           ));
           overview += '</div>';
           overview += '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
@@ -6427,16 +6435,10 @@
                   '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
                 '</div>' +
                 '<div role="row" style="display:contents;">' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">CR% (sessions converted)</div>' +
+                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">CR% (truth orders)</div>' +
                   '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(shopifyCr) + '</div>' +
                   '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(birdseyeCr) + '</div>' +
                   '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
-                '</div>' +
-                '<div role="row" style="display:contents;">' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);">Orders / session%</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);">' + fmtPct(shopifyOrderRate) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);">' + fmtPct(birdseyeOrderRate) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;">' + (orderRateDiff == null ? '\u2014' : diffSpan(orderRateDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
                 '</div>' +
               '</div>' +
             '</div>'
@@ -6457,7 +6459,7 @@
             rowKV('Checkout-token orders', truthCheckoutOrders != null ? codeInline(String(truthCheckoutOrders)) : '\u2014') +
             rowKV('Checkout-token revenue', truthCheckoutRevenue != null ? codeInline(formatRevenue(truthCheckoutRevenue)) : '\u2014')
           ));
-          salesPanel += card('Birdseye (derived)', (
+          salesPanel += card('Pixel (derived)', (
             rowKV('Derived orders', pixelDerivedOrders != null ? codeInline(String(pixelDerivedOrders)) : '\u2014') +
             rowKV('Derived revenue', pixelDerivedRevenue != null ? codeInline(formatRevenue(pixelDerivedRevenue)) : '\u2014') +
             rowKV('Drift vs truth (orders)', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
