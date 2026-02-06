@@ -170,12 +170,47 @@
   background: #f1f5f9;
 }
 
-/* Section: Copy Debug */
+/* Section: Copy Debug (dropdown) */
 #config-modal .dm-section-copy {
   flex-shrink: 0;
-  padding: 12px 20px;
+  padding: 0 20px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   background: #f1f5f9;
+}
+
+#config-modal .dm-copy-dropdown {
+  border: none;
+  padding: 0;
+}
+
+#config-modal .dm-copy-dropdown-summary {
+  list-style: none;
+  padding: 12px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #334155);
+}
+
+#config-modal .dm-copy-dropdown-summary::-webkit-details-marker {
+  display: none;
+}
+
+#config-modal .dm-copy-dropdown-summary::after {
+  content: ' ▾';
+  color: var(--muted, #64748b);
+}
+
+#config-modal .dm-copy-dropdown[open] .dm-copy-dropdown-summary::after {
+  content: ' ▴';
+}
+
+#config-modal .dm-copy-dropdown-body {
+  padding: 0 0 12px;
+}
+
+#config-modal .dm-copy-dropdown-body .dm-bar-row {
+  flex-wrap: wrap;
 }
 
 #config-modal .dm-panel {
@@ -399,23 +434,18 @@
 }
 
 #config-modal .dm-row-kv {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 200px) 1fr;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 12px 20px;
   padding: 8px 0;
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
   font-size: 13px;
-}
-
-#config-modal .dm-row-kv:last-child {
-  border-bottom: none;
 }
 
 #config-modal .dm-row-kv .dm-k {
   color: var(--muted, #64748b);
   font-weight: 500;
-  flex: 0 0 auto;
+  min-width: 0;
 }
 
 #config-modal .dm-row-kv .dm-v {
@@ -564,10 +594,17 @@
 }
 
 #config-modal .dm-def-details {
-  margin-top: 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: transparent;
+  margin-top: 0;
+  padding: 12px 14px;
+  border-bottom: none;
+}
+
+#config-modal .dm-def-page-box .dm-def-details:nth-of-type(odd) {
+  background: #e2e8f0;
+}
+
+#config-modal .dm-def-page-box .dm-def-details:nth-of-type(even) {
+  background: #f1f5f9;
 }
 
 #config-modal .dm-def-details summary {
@@ -707,6 +744,81 @@
 
 #config-modal .dm-mt .dm-grid {
   margin-top: 0;
+}
+
+/* Sources panel (traffic-source-mapping): force Settings modal design */
+#config-modal #traffic-source-mapping-root,
+#config-modal #traffic-source-mapping-root * {
+  box-sizing: border-box;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-actions {
+  margin: 10px 0;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-btn {
+  border-radius: 0;
+  background: #e2e8f0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-btn.primary {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+#config-modal #traffic-source-mapping-root .tsm-table-scroll {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-table .grid-cell {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
+  font-weight: 500;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-table .grid-body .grid-row:nth-child(odd) .grid-cell {
+  background: #e2e8f0;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-table .grid-body .grid-row:nth-child(even) .grid-cell {
+  background: #f1f5f9;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-input {
+  border-radius: 0;
+  background: #e2e8f0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-mapped-pill {
+  border-radius: 0;
+  background: #e2e8f0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+#config-modal #traffic-source-mapping-root .tsm-icon-preview {
+  border-radius: 0;
+  background: transparent;
+  border: none;
+}
+
+#config-modal #traffic-source-mapping-root .diag-tech,
+#config-modal #traffic-source-mapping-root .diag-details-body {
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  padding: 12px 0;
+}
+
+#config-modal #traffic-source-mapping-root .diag-tech summary {
+  padding: 0;
 }
 
 @media (max-width: 640px) {
