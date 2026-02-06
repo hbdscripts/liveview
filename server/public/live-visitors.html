@@ -4565,6 +4565,8 @@
       const ordered = rows.slice();
       const orderIndex = { gold: 0, silver: 1, vermeil: 2, solid_silver: 3, 'solid-silver': 3 };
       ordered.sort(function(a, b) {
+        const primary = cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc');
+        if (primary) return primary;
         const ak = a && a.key != null ? String(a.key) : '';
         const bk = b && b.key != null ? String(b.key) : '';
         const ai = Object.prototype.hasOwnProperty.call(orderIndex, ak) ? orderIndex[ak] : 99;
@@ -4592,7 +4594,10 @@
         return;
       }
       const ordered = rows.slice();
-      ordered.sort(function(a, b) { return cmpNullableNumber(a && a.inches, b && b.inches, 'asc'); });
+      ordered.sort(function(a, b) {
+        return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
+          cmpNullableNumber(a && a.inches, b && b.inches, 'asc');
+      });
       grid.innerHTML = ordered.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
