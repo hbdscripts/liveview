@@ -339,6 +339,7 @@ Backups durability:
 - UI: KPI labels/subtext refreshed (11px label, top divider and spacing for subline).
 - UI: KPI subline is now an anchored bottom bar on each KPI card (absolute footer).
 - UI: Footer “Last sale” toggle now refreshes toast content when cached data is stale.
+- UI: Mobile sale toast no longer forces `.sale-toast-host` to static positioning.
 - UI: Sales KPI odometer finalize preserves the delta icon.
 
 2026-02-05
