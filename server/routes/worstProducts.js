@@ -48,6 +48,18 @@ function handleFromPath(path) {
   return m ? normalizeHandle(m[1]) : null;
 }
 
+function handleFromUrl(url) {
+  if (typeof url !== 'string') return null;
+  const raw = url.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    return handleFromPath(u.pathname || '');
+  } catch (_) {
+    return handleFromPath(raw);
+  }
+}
+
 function cacheKeyForProductHandle(shop, handle) {
   const s = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
   const h = typeof handle === 'string' ? handle.trim().toLowerCase() : '';
@@ -265,13 +277,14 @@ async function getWorstProducts(req, res) {
       const tRows0 = Date.now();
       const sessionRows = await db.all(
         `
-          SELECT s.first_path, s.first_product_handle
+          SELECT s.first_path, s.first_product_handle, s.entry_url
           FROM sessions s
           WHERE s.started_at >= ? AND s.started_at < ?
             ${botFilterSql}
             AND (
-              s.first_path LIKE '/products/%'
+              (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
               OR (s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != '')
+              OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
             )
         `,
         [start, end]
@@ -281,7 +294,10 @@ async function getWorstProducts(req, res) {
       const tAgg0 = Date.now();
       const landingsByHandle = new Map(); // handle -> landings
       for (const r of sessionRows || []) {
-        const handle = handleFromPath(r && r.first_path) || normalizeHandle(r && r.first_product_handle);
+        const handle =
+          handleFromPath(r && r.first_path) ||
+          normalizeHandle(r && r.first_product_handle) ||
+          handleFromUrl(r && r.entry_url);
         if (!handle) continue;
         landingsByHandle.set(handle, (landingsByHandle.get(handle) || 0) + 1);
       }

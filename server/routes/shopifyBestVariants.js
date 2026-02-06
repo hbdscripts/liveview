@@ -16,6 +16,39 @@ function clampInt(v, fallback, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+function normalizeHandle(v) {
+  if (typeof v !== 'string') return null;
+  const h = v.trim().toLowerCase();
+  if (!h) return null;
+  return h.slice(0, 128);
+}
+
+function handleFromPath(path) {
+  if (typeof path !== 'string') return null;
+  const m = path.match(/^\/products\/([^/?#]+)/i);
+  return m ? normalizeHandle(m[1]) : null;
+}
+
+function handleFromUrl(url) {
+  if (typeof url !== 'string') return null;
+  const raw = url.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    return handleFromPath(u.pathname || '');
+  } catch (_) {
+    return handleFromPath(raw);
+  }
+}
+
+function handleFromSessionRow(row) {
+  return (
+    handleFromPath(row && row.first_path) ||
+    normalizeHandle(row && row.first_product_handle) ||
+    handleFromUrl(row && row.entry_url)
+  );
+}
+
 async function getShopifyBestVariants(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
   let range = (req.query.range || 'today').toLowerCase();
@@ -135,25 +168,27 @@ async function getShopifyBestVariants(req, res) {
         // Sessions (denominator): product landings for the parent product handle (human-only).
         // Orders/Rev: Shopify truth (line items) for the variant (100% of paid orders).
         const uniqHandles = Array.from(new Set(pageItems.map((v) => (v && v.handle ? String(v.handle).trim().toLowerCase() : '')).filter(Boolean)));
+        const handleSet = new Set(uniqHandles.map((h) => normalizeHandle(String(h || ''))).filter(Boolean));
         const clicksByHandle = new Map();
-        if (uniqHandles.length) {
-          const inSql = uniqHandles.map(() => '?').join(', ');
+        if (handleSet.size) {
           const landRows = await db.all(
             `
-              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(DISTINCT s.session_id) AS landings
+              SELECT s.first_path, s.first_product_handle, s.entry_url
               FROM sessions s
               WHERE s.started_at >= ? AND s.started_at < ?
                 AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-                AND LOWER(TRIM(s.first_product_handle)) IN (${inSql})
-              GROUP BY LOWER(TRIM(s.first_product_handle))
+                AND (
+                  (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+                  OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+                  OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+                )
             `,
-            [start, end, ...uniqHandles]
+            [start, end]
           );
           for (const r of landRows || []) {
-            const h = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
-            if (!h) continue;
-            clicksByHandle.set(h, r && r.landings != null ? Number(r.landings) || 0 : 0);
+            const h = handleFromSessionRow(r);
+            if (!h || !handleSet.has(h)) continue;
+            clicksByHandle.set(h, (clicksByHandle.get(h) || 0) + 1);
           }
         }
 

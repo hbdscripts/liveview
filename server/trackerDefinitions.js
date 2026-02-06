@@ -155,7 +155,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['best-sellers-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize/sort/dir'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
@@ -178,7 +178,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['worst-products-table'] },
     endpoint: { method: 'GET', path: '/api/worst-products', params: ['range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only). Used for Sessions column + MIN_LANDINGS filter.' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_path/entry_url → handle, fallback first_product_handle; human-only). Used for Sessions column + MIN_LANDINGS filter.' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Maps product handle → product_id via Admin GraphQL productByHandle (cached) so truth line items can be joined' },
       { kind: 'fx', note: 'Revenue converted to GBP for display' },
@@ -203,7 +203,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['best-variants-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-best-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
@@ -226,7 +226,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['worst-variants-table'] },
     endpoint: { method: 'GET', path: '/api/shopify-worst-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
+      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],

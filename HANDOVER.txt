@@ -326,12 +326,14 @@ Backups durability:
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
 - Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
+- Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 - UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
 - UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
 - UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now use a true down-right SVG with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
+- UI: Mobile KPI cards fit two-per-view with unified gap spacing (matches table gap).
 - UI: KPI delta badges use white backgrounds and per-trend border colors (green/red tints).
 
 2026-02-05
