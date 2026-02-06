@@ -1705,7 +1705,15 @@
             }
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchFinishes === 'function') fetchFinishes();
+            if (activeMainTab === 'products' && shopForSalesFallback) {
+              try {
+                if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') {
+                  if (typeof fetchLengths === 'function') fetchLengths();
+                } else {
+                  if (typeof fetchFinishes === 'function') fetchFinishes();
+                }
+              } catch (_) {}
+            }
           }
           storeBaseUrlLoaded = true;
           if (typeof renderSales === 'function') renderSales(statsCache);
@@ -5243,10 +5251,17 @@
       if (productsRefreshInFlight) return productsRefreshInFlight;
 
       const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
-      let finishesP = null;
+      let cardsP = null;
       let bestP = null;
       let variantsP = null;
-      try { finishesP = fetchFinishes({ force }); } catch (err) { console.error(err); finishesP = Promise.resolve(null); }
+      const cardsView = normalizeProductsVariantCardsView(productsVariantCardsView);
+      const cardsLabel = cardsView === 'lengths' ? 'lengths' : 'finishes';
+      try {
+        cardsP = (cardsView === 'lengths' ? fetchLengths : fetchFinishes)({ force });
+      } catch (err) {
+        console.error(err);
+        cardsP = Promise.resolve(null);
+      }
       try { bestP = fetchBestSellers({ force }); } catch (err) { console.error(err); bestP = Promise.resolve(null); }
       try { variantsP = fetchBestVariants({ force }); } catch (err) { console.error(err); variantsP = Promise.resolve(null); }
       function settled(p) {
@@ -5254,13 +5269,13 @@
           .then(function(v) { return { ok: true, value: v }; })
           .catch(function(err) { console.error(err); return { ok: false, error: err }; });
       }
-      const finishesS = settled(finishesP);
+      const cardsS = settled(cardsP);
       const bestS = settled(bestP);
       const variantsS = settled(variantsP);
 
       productsRefreshInFlight = Promise.resolve()
-        .then(function() { build.step('building finishes...'); return finishesS; })
-        .then(function() { build.step('building finishes... done'); return delay(180); })
+        .then(function() { build.step('building ' + cardsLabel + '...'); return cardsS; })
+        .then(function() { build.step('building ' + cardsLabel + '... done'); return delay(180); })
         .then(function() { build.step('building best products...'); return bestS; })
         .then(function() { build.step('building best products... done'); return delay(180); })
         .then(function() { build.step('building best variants...'); return variantsS; })
