@@ -530,22 +530,24 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.75rem 0.75rem;
+      /* Reserve room for the right-side amount/time block (absolute). */
+      padding: 0.75rem 132px 0.75rem 0.75rem;
       opacity: 0;
       transform: translateY(-120%);
       transition: opacity 260ms ease, transform 260ms ease;
       will-change: transform, opacity;
       color: #fff;
+      pointer-events: none;
     }
     .sale-toast.active { opacity: 1; transform: translateY(0); }
-    .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
+    .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
     .sale-toast .sale-toast-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .sale-toast .sale-toast-thumb-placeholder { width: 100%; height: 100%; display: block; background: rgba(255,255,255,0.2); border-radius: inherit; }
     .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
     .sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 0; display: block; margin: -1px 0 0; flex-shrink: 0; }
         .sale-toast .sale-toast-product { font-size: 13px; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
-        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0.25rem 14px; border-radius: 0; margin-left: auto; text-align: center; }
+        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0 14px; border-radius: 0; position: absolute; top: 0; right: 0; height: 100%; text-align: center; }
         .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
         .sale-toast .sale-toast-time { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: #e7db75; text-transform: uppercase; }
         .sale-toast .sale-toast-time-icon { width: 11px; height: 11px; display: block; color: currentColor; fill: currentColor; flex-shrink: 0; }
