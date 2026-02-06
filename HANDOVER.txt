@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Sale toast is now a body-level overlay; Sales KPI no longer freezes while toast is visible)
+Last updated: 2026-02-06 (Diagnostics modal restyled + mobile friendly; sale toast is body-level overlay and KPI no longer freezes)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -332,6 +332,7 @@ Backups durability:
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
 - UI: Sale toast is now rendered as a `body` overlay (not inside the KPI grid). Desktop is centered and capped at 500px; mobile is full-viewport width; toast slides down/up. Sales KPI animations are no longer blocked while the toast is visible.
+- UI: Diagnostics / config modal uses modern inline styles and responsive layout (auto-stacking grids on mobile, improved header/actions, better scrolling).
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 - UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
 - UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
