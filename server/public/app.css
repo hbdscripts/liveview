@@ -600,6 +600,7 @@
     .sessions-table-wrap { position: relative; }
     .live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: var(--kpi-gap); }
     .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 10px 30px; text-align: center; box-shadow: var(--shadow); position: relative; }
+    .live-kpi-grid.kpi-not-today .live-kpi-cell { padding: 15px; }
     .live-kpi-cell .live-kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #444; font-weight: 500; margin-bottom: 0; }
     .live-kpi-cell .live-kpi-value { font-size: 1.2rem; font-weight: 700; color: #000; line-height: 1.3; }
     .live-kpi-cell .live-kpi-sub {

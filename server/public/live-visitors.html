@@ -5344,6 +5344,8 @@
       applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
 
       const showYesterday = kpiRange === 'today';
+      const kpiGrid = document.getElementById('live-kpi-grid');
+      if (kpiGrid) kpiGrid.classList.toggle('kpi-not-today', !showYesterday);
       function setSub(el, text) {
         if (!el) return;
         if (!showYesterday || text === '' || text == null) {
