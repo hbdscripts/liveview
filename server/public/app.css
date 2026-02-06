@@ -1443,13 +1443,18 @@
       background: #e2e8f0;
       padding: 12px;
     }
+    #kpi-compare-modal .kpi-compare-card--simple .kpi-compare-brand { margin: 0; }
 
     #kpi-compare-modal .kpi-compare-brand { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 2px 0 12px; }
     #kpi-compare-modal .kpi-compare-brand-left { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+    #kpi-compare-modal .kpi-compare-brand-right { display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; }
     #kpi-compare-modal .kpi-compare-brand-icon { width: 28px; height: 28px; border-radius: 3px; background: #f1f5f9; border: 1px solid rgba(0,0,0,0.06); object-fit: contain; flex-shrink: 0; }
     #kpi-compare-modal .kpi-compare-brand-text { display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
     #kpi-compare-modal .kpi-compare-brand-name { font-size: 13px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
     #kpi-compare-modal .kpi-compare-brand-sub { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #kpi-compare-modal .kpi-compare-inline-metric { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; text-align: right; }
+    #kpi-compare-modal .kpi-compare-inline-label { font-size: 11px; font-weight: 500; color: rgba(15, 23, 42, 0.7); text-transform: uppercase; letter-spacing: 0.06em; }
+    #kpi-compare-modal .kpi-compare-inline-value { font-size: 16px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
 
     #kpi-compare-modal .kpi-compare-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     #kpi-compare-modal .kpi-compare-metric {
