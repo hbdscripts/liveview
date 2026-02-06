@@ -1711,16 +1711,23 @@
       return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100&height=100';
     }
 
-    function flagImg(code) {
-      if (!code || code === 'XX') return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/xx.png') + '" alt="?" loading="lazy">';
-      const c = (code || 'xx').toLowerCase().slice(0, 2);
-      return '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + escapeHtml(c) + '.png') + '" alt="' + escapeHtml(code) + '" loading="lazy">';
+    const FLAG_PLACEHOLDER_SRC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2230%22%20viewBox%3D%220%200%2040%2030%22%3E%3Crect%20width%3D%2240%22%20height%3D%2230%22%20fill%3D%22%23f0f0f0%22/%3E%3Cpath%20d%3D%22M12%2010h16v2H12zm0%208h16v2H12z%22%20fill%3D%22%23c0c0c0%22/%3E%3C/svg%3E';
+
+    function flagSrc(code) {
+      const raw = (code || '').toString().trim().toLowerCase();
+      if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) return FLAG_PLACEHOLDER_SRC;
+      return hotImg('https://flagcdn.com/w40/' + raw + '.png');
+    }
+
+    function flagImg(code, label) {
+      const src = flagSrc(code);
+      const safeLabel = label != null ? String(label) : (code ? String(code) : '?');
+      const titleAttr = label ? ' title="' + escapeHtml(safeLabel) + '"' : '';
+      return '<img class="flag-img" src="' + src + '" alt="' + escapeHtml(safeLabel) + '"' + titleAttr + ' loading="lazy">';
     }
 
     function flagImgSmall(code) {
-      const src = (!code || code === 'XX')
-        ? hotImg('https://flagcdn.com/w40/xx.png')
-        : hotImg('https://flagcdn.com/w40/' + escapeHtml((code || 'xx').toLowerCase().slice(0, 2)) + '.png');
+      const src = flagSrc(code);
       return '<img class="sale-toast-inline-flag-img" src="' + src + '" alt="" aria-hidden="true" loading="lazy">';
     }
 
@@ -4257,9 +4264,8 @@
       list.sort(function(a, b) { return cmpNullableNumber(a && a.aov, b && b.aov, 'desc'); });
       grid.innerHTML = list.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        const code = iso.toLowerCase();
         const label = countryLabelFull(iso);
-        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + code + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const flag = flagImg(iso, label);
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + flag + '<span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
           '<div class="aov-card-value">' + formatRevenueTableHtml(r.aov) + '</div>' +
@@ -4301,13 +4307,12 @@
       const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        const ccode = (r.country_code || 'xx').toLowerCase().slice(0, 2);
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
-        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
@@ -4361,7 +4366,6 @@
       const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        const ccode = iso.toLowerCase();
         const label = countryLabel(iso);
         const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
@@ -4372,7 +4376,7 @@
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
-        const flag = '<img class="flag-img" src="' + hotImg('https://flagcdn.com/w40/' + ccode + '.png') + '" alt="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" loading="lazy">';
+        const flag = flagImg(iso, label);
         const thumbImg = productThumb
           ? '<img src="' + escapeHtml(productThumb) + '" alt="' + escapeHtml(productTitle) + '" loading="lazy">'
           : '<span class="geo-product-thumb-placeholder" aria-hidden="true"></span>';

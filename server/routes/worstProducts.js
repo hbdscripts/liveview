@@ -341,7 +341,7 @@ async function getWorstProducts(req, res) {
             SELECT
               TRIM(product_id) AS product_id,
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
-              COUNT(DISTINCT order_id) AS orders,
+              COALESCE(SUM(quantity), 0) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?

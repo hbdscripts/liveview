@@ -130,7 +130,7 @@ async function getShopifyBestSellers(req, res) {
             SELECT
               TRIM(product_id) AS product_id,
               MAX(title) AS title,
-              COUNT(DISTINCT order_id) AS orders,
+              COALESCE(SUM(quantity), 0) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?

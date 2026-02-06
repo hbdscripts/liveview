@@ -125,7 +125,7 @@ async function getShopifyBestVariants(req, res) {
               MAX(product_id) AS product_id,
               MAX(title) AS title,
               MAX(variant_title) AS variant_title,
-              COUNT(DISTINCT order_id) AS orders,
+              COALESCE(SUM(quantity), 0) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?

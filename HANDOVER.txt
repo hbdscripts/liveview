@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Latest-sale API returns chronologically latest order so footer eye toast matches)
+Last updated: 2026-02-06 (Products: Orders now show units sold; unknown flags use a placeholder)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -322,6 +322,7 @@ Backups durability:
 2026-02-06
 - Reporting guardrail: sales/orders in all tables are Shopify truth (`orders_shopify` / `orders_shopify_line_items`). Pixel `purchases` remain drift/debug only.
 - Products: Best tables ordered by revenue; Worst products/variants now list zero-order items sorted by highest clicks then lowest revenue.
+- Products: Orders columns now sum line-item quantities (units sold) instead of distinct order counts; unknown country flags now use a placeholder instead of 404.
 - Breakdown/Traffic/Products: removed reliance on `purchase_events` evidence linkage for Orders/Rev so reports can’t undercount due to blocked checkout events and can’t exceed Shopify.
 - Conversion: standardised to **Orders / Sessions × 100** across KPI + Breakdown/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
