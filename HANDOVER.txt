@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Products: worst tables now show zero-order items sorted by clicks desc + revenue asc; best tables order by revenue)
+Last updated: 2026-02-06 (Table/pagination: no double border, no extra gap above pagination)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -342,6 +342,7 @@ Backups durability:
 - UI: Footer “Last sale” toggle now refreshes toast content when cached data is stale.
 - UI: Mobile sale toast no longer forces `.sale-toast-host` to static positioning.
 - UI: Sales KPI odometer finalize preserves the delta icon.
+- UI: Stats tables (BEST/Worst/Variants etc.): removed “border within a border” (table border dropped inside cards so only card border shows); removed extra whitespace above pagination; single separator above pagination (no double line).
 
 2026-02-05
 - UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.

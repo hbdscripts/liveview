@@ -84,9 +84,10 @@
     .stats-divider { height: 1px; /* background: var(--border); */ margin: 0.6rem 0; }
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
-    .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin-bottom: 0.75rem; }
-    /* Breakdown tables: same border, shadow, radius as Live table; same padding/th style */
+    .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin-bottom: 0; }
+    /* Breakdown tables: same padding/th style; border only on card so no double border */
     .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+    .stats-card .by-country-table { border: none; box-shadow: none; }
     .by-country-table th, .by-country-table td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); border-bottom: none; line-height: 1.4; }
     .by-country-table tr:last-child td { border-bottom: none; }
     .by-country-table tbody tr { box-shadow: none; }
@@ -746,7 +747,7 @@
       justify-content: center;
       flex-wrap: wrap;
       gap: 0;
-      padding: 0.65rem 0.75rem;
+      padding: 0.5rem 0.75rem;
       background: rgba(255, 255, 255, 0.7);
       border-top: 1px solid var(--border);
       font-size: 0.8125rem;
@@ -860,7 +861,6 @@
       align-items: center;
       gap: 4px;
       padding-right: 12px;
-      margin-right: 12px;
       border-right: 1px solid #e1e1e1;
     }
     .dashboard-footer .footer-last-sale-toggle {
