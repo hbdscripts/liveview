@@ -507,18 +507,45 @@
     .live-kpi-cell .kpi-delta-icon.kpi-delta-bad { color: #940d0d; }
     .live-kpi-cell .kpi-delta-icon svg { width: 100%; height: 100%; display: block; color: inherit; }
     .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
-    .sale-toast-host { position: relative; overflow: visible; }
-    .sale-toast-host.toast-open { z-index: 10; }
-    .sale-toast { position: absolute; left: -1px; top: -1px; height: calc(100% + 2px); width: calc(200% + var(--kpi-gap) + 3px); border-radius: var(--radius); border: 1px solid #0d9488; background: #0d9488; display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 2.25rem 0.65rem 0.75rem; opacity: 0; transform: translateY(6px); transition: opacity 240ms ease, transform 240ms ease; pointer-events: none; color: #fff; }
+    /* Sale toast: body-level overlay (not inside KPI grid). */
+    .sale-toast-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .sale-toast {
+      position: relative;
+      width: min(500px, calc(100vw - 24px));
+      max-width: 500px;
+      border-radius: 0; /* no rounding except the product image */
+      border: 1px solid #0d9488;
+      background: #0d9488;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0.75rem;
+      opacity: 0;
+      transform: translateY(-120%);
+      transition: opacity 260ms ease, transform 260ms ease;
+      will-change: transform, opacity;
+      color: #fff;
+    }
     .sale-toast.active { opacity: 1; transform: translateY(0); }
-    .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
+    .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
     .sale-toast .sale-toast-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .sale-toast .sale-toast-thumb-placeholder { width: 100%; height: 100%; display: block; background: rgba(255,255,255,0.2); border-radius: inherit; }
     .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
-    .sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 0 0; flex-shrink: 0; }
+    .sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 0; display: block; margin: -1px 0 0; flex-shrink: 0; }
         .sale-toast .sale-toast-product { font-size: 13px; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
-        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0 14px; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; text-align: center; }
+        .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #088378; padding: 0.25rem 14px; border-radius: 0; margin-left: auto; text-align: center; }
         .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: center; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
         .sale-toast .sale-toast-time { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: #e7db75; text-transform: uppercase; }
         .sale-toast .sale-toast-time-icon { width: 11px; height: 11px; display: block; color: currentColor; fill: currentColor; flex-shrink: 0; }
@@ -562,22 +589,12 @@
       .live-kpi-grid { --kpi-gap: var(--table-gap); display: flex; gap: var(--kpi-gap); }
       .live-kpi-cell { min-width: calc(50% - (var(--kpi-gap) / 2)); flex: 0 0 calc(50% - (var(--kpi-gap) / 2)); }
       .live-kpi-cell .live-kpi-value { font-size: 1rem; }
-      .sale-toast {
-        position: fixed;
-        left: 0;
-        top: 0;
-        right: 0;
-        width: 100vw;
-        max-width: 100vw;
-        height: auto;
-        border-radius: 0;
-        transform: translateY(-100%);
-        z-index: 1000;
-      }
-      .sale-toast.active { transform: translateY(0); }
-      .sale-toast .sale-toast-amount-wrap,
-      .sale-toast .sale-toast-inline-flag-img { border-radius: 0; }
+      .sale-toast-overlay { justify-content: stretch; }
+      .sale-toast { width: 100vw; max-width: 100vw; transform: translateY(-110%); }
       .sale-toast .sale-toast-product { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sale-toast { transition: none; }
     }
     .live-view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 0; }
     .live-view-header .table-title { margin: 0; font-size: var(--table-header-font-size); font-weight: 500; color: var(--text); flex-shrink: 0; display: flex; align-items: center; gap: 0.35rem; letter-spacing: -0.1px; }

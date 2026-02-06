@@ -980,27 +980,10 @@
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
     <div class="kpi-mobile-pager">
     <div class="live-kpi-grid" id="live-kpi-grid">
-      <div class="live-kpi-cell sale-toast-host" id="live-kpi-sales-cell">
+      <div class="live-kpi-cell" id="live-kpi-sales-cell">
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
         <div class="live-kpi-value" id="live-kpi-sales">—</div>
         <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
-        <div class="sale-toast is-hidden" id="sale-toast" aria-hidden="true">
-          <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
-          <div class="sale-toast-mid">
-            <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">—</span></div>
-            <div class="sale-toast-product" id="sale-toast-product">—</div>
-          </div>
-          <div class="sale-toast-amount-wrap">
-            <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
-            <div class="sale-toast-time">
-              <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <title>time</title>
-                <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
-              </svg>
-              <span id="sale-toast-time">—</span>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Conv rate</div><div class="live-kpi-value" id="live-kpi-conv">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div></div>
       <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
@@ -1422,6 +1405,26 @@
     </div>
   </div>
 
+  <div class="sale-toast-overlay" id="sale-toast-overlay" aria-hidden="true">
+    <div class="sale-toast" id="sale-toast" aria-hidden="true">
+      <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
+      <div class="sale-toast-mid">
+        <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">—</span></div>
+        <div class="sale-toast-product" id="sale-toast-product">—</div>
+      </div>
+      <div class="sale-toast-amount-wrap">
+        <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+        <div class="sale-toast-time">
+          <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <title>time</title>
+            <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
+          </svg>
+          <span id="sale-toast-time">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
@@ -1523,7 +1526,6 @@
     let saleToastToken = 0; // increments per toast trigger; prevents stale latest-sale fetch overwriting newer toasts
     let saleToastSessionId = null; // best-effort: session_id that opened the current toast (used to avoid double plays)
     let saleToastHideTimer = null;
-    let saleToastPendingKpi = null; // { labelText, valueText }
     let saleToastLastOrderId = null;
     let saleToastLastPayload = null;
     let saleToastPinned = false;
@@ -3398,51 +3400,35 @@
     }
 
     function showSaleToast() {
-      const host = document.getElementById('live-kpi-sales-cell');
+      const overlay = document.getElementById('sale-toast-overlay');
       const toast = document.getElementById('sale-toast');
-      if (!host || !toast) return;
+      if (!overlay || !toast) return;
       saleToastActive = true;
       saleToastLastShownAt = Date.now();
-      host.classList.add('toast-open');
-      toast.classList.remove('is-hidden');
+      overlay.setAttribute('aria-hidden', 'false');
       toast.setAttribute('aria-hidden', 'false');
       requestAnimationFrame(function() { toast.classList.add('active'); });
     }
 
-    function applyPendingSalesKpiUpdate() {
-      if (!saleToastPendingKpi) return;
-      const labelEl = document.getElementById('live-kpi-sales-label');
-      const valueEl = document.getElementById('live-kpi-sales');
-      if (labelEl) {
-        labelEl.title = '';
-        animateTickerText(labelEl, saleToastPendingKpi.labelText);
-      }
-      if (valueEl) animateOdometerText(valueEl, saleToastPendingKpi.valueText);
-      saleToastPendingKpi = null;
-    }
-
     function hideSaleToast() {
-      const host = document.getElementById('live-kpi-sales-cell');
+      const overlay = document.getElementById('sale-toast-overlay');
       const toast = document.getElementById('sale-toast');
       if (saleToastHideTimer) {
         clearTimeout(saleToastHideTimer);
         saleToastHideTimer = null;
       }
-      if (!host || !toast) {
+      if (!overlay || !toast) {
         saleToastActive = false;
         saleToastSessionId = null;
-        applyPendingSalesKpiUpdate();
         return;
       }
       toast.classList.remove('active');
       toast.setAttribute('aria-hidden', 'true');
+      overlay.setAttribute('aria-hidden', 'true');
       setTimeout(function() {
-        toast.classList.add('is-hidden');
-        host.classList.remove('toast-open');
         saleToastActive = false;
         saleToastSessionId = null;
-        applyPendingSalesKpiUpdate();
-      }, 260);
+      }, 320);
     }
 
     let latestSaleFetchInFlight = null;
@@ -3474,7 +3460,6 @@
     function triggerSaleToast(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const session = opts.session || null;
-      const kpiUpdate = opts.kpiUpdate || null;
       const playSound = opts.playSound !== false;
       const payload = opts.payload || null;
       const skipLatest = !!opts.skipLatest;
@@ -3489,11 +3474,6 @@
       } else if (saleToastPinned) {
         saleToastPinned = false;
         updateSaleToastToggle();
-      }
-
-      // Freeze the Sales KPI until the toast fades away.
-      if (kpiUpdate && typeof kpiUpdate.labelText === 'string' && typeof kpiUpdate.valueText === 'string') {
-        saleToastPendingKpi = { labelText: kpiUpdate.labelText, valueText: kpiUpdate.valueText };
       }
 
       showSaleToast();
@@ -4865,13 +4845,7 @@
 
       const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
       if (increased) {
-        const kpiUpdate = buildSalesKpiUpdateFromStats(data);
-        // If a real-time sale toast is already open (e.g. SSE Live), don't double-trigger audio/toast.
-        if (saleToastActive) {
-          saleToastPendingKpi = kpiUpdate;
-        } else {
-          triggerSaleToast({ origin: 'stats', kpiUpdate: kpiUpdate, playSound: true });
-        }
+        triggerSaleToast({ origin: 'stats', playSound: true });
         // Keep Home tables in sync when a toast fires outside SSE (Today/Last Hour/Live).
         if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === '1h' || dateRange === 'live')) {
           try { fetchSessions(); } catch (_) {}
@@ -4889,7 +4863,6 @@
       ids.forEach(function(id) {
         const el = document.getElementById(id);
         if (!el) return;
-        if (id === 'live-kpi-sales' && saleToastActive) return; // don't overwrite during toast freeze
         el.innerHTML = spinner;
       });
     }
@@ -4991,12 +4964,11 @@
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
-      const freezeSales = !!saleToastActive;
-      if (salesLabelEl && !freezeSales) {
+      if (salesLabelEl) {
         salesLabelEl.textContent = orderCountVal != null ? (orderCountVal + ' Orders') : 'Orders';
         salesLabelEl.title = '';
       }
-      if (salesEl && !freezeSales) {
+      if (salesEl) {
         animateOdometerText(salesEl, salesVal != null ? formatRevenue(salesVal) : '\u2014');
       }
       if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
@@ -5005,7 +4977,7 @@
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
 
-      if (!freezeSales) applyKpiDeltaColor(salesEl, salesVal, compareSalesVal, false);
+      applyKpiDeltaColor(salesEl, salesVal, compareSalesVal, false);
       applyKpiDeltaColor(sessionsEl, sessionsVal, compareSessionsVal, false);
       applyKpiDeltaColor(convEl, convVal, compareConvVal, false);
       applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
@@ -7425,7 +7397,7 @@
                 if (hasSeenConvertedCountToday) lastConvertedCountToday = (Number(lastConvertedCountToday) || 0) + 1;
               } catch (_) {}
               try { refreshConfigStatus(); } catch (_) {}
-              // Pull updated KPIs so Sales/Orders can animate after the toast fades.
+              // Pull updated KPIs so Sales/Orders can animate immediately.
               try { refreshKpis({ force: true }); } catch (_) {}
             }
             renderTable();
