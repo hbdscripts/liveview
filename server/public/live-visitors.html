@@ -3573,7 +3573,10 @@
     function triggerManualSaleToast(persist) {
       const keep = !!persist;
       const cached = saleToastLastPayload;
-      if (cached && (cached.productTitle || cached.amountGbp != null || cached.productHandle || cached.productThumbUrl)) {
+      const cachedAt = cached && cached.createdAt != null ? toMs(cached.createdAt) : null;
+      const latestAt = toMs(lastSaleAt);
+      const cacheIsFresh = cachedAt != null && latestAt != null && Math.abs(cachedAt - latestAt) < 1000;
+      if (cached && (cached.productTitle || cached.amountGbp != null || cached.productHandle || cached.productThumbUrl) && cacheIsFresh) {
         triggerSaleToast({ origin: 'manual', payload: cached, playSound: false, skipLatest: true, persist: keep });
         return;
       }
