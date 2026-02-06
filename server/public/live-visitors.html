@@ -3405,6 +3405,7 @@
       if (!overlay || !toast) return;
       saleToastActive = true;
       saleToastLastShownAt = Date.now();
+      toast.classList.remove('settled');
       overlay.setAttribute('aria-hidden', 'false');
       toast.setAttribute('aria-hidden', 'false');
       requestAnimationFrame(function() { toast.classList.add('active'); });
@@ -3422,6 +3423,7 @@
         saleToastSessionId = null;
         return;
       }
+      toast.classList.remove('settled');
       toast.classList.remove('active');
       toast.setAttribute('aria-hidden', 'true');
       overlay.setAttribute('aria-hidden', 'true');
@@ -3430,6 +3432,17 @@
         saleToastSessionId = null;
       }, 320);
     }
+
+    (function initSaleToastTextCrispFix() {
+      const toast = document.getElementById('sale-toast');
+      if (!toast || !toast.addEventListener) return;
+      toast.addEventListener('transitionend', function(e) {
+        // When the toast finishes sliding in, drop the transform layer so text stays crisp.
+        if (!toast.classList.contains('active')) return;
+        if (e && e.propertyName && e.propertyName !== 'transform') return;
+        toast.classList.add('settled');
+      });
+    })();
 
     let latestSaleFetchInFlight = null;
     function fetchLatestSaleForToast(options = {}) {

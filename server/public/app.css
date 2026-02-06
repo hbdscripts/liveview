@@ -535,11 +535,12 @@
       opacity: 0;
       transform: translateY(-120%);
       transition: opacity 260ms ease, transform 260ms ease;
-      will-change: transform, opacity;
       color: #fff;
       pointer-events: none;
     }
     .sale-toast.active { opacity: 1; transform: translateY(0); }
+    /* After the slide completes we remove transform to avoid fuzzy text on Windows */
+    .sale-toast.settled { transform: none !important; }
     .sale-toast .sale-toast-thumb { width: 42px; height: 42px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.12); flex-shrink: 0; }
     .sale-toast .sale-toast-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .sale-toast .sale-toast-thumb-placeholder { width: 100%; height: 100%; display: block; background: rgba(255,255,255,0.2); border-radius: inherit; }
