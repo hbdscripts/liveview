@@ -196,7 +196,7 @@
       .stats-card .by-country-table.best-sellers-table td:last-child { min-width: 3.6rem; }
     }
     .aov-cards-wrap { margin-bottom: 1rem; }
-    .aov-cards-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .aov-cards-header { display: flex; align-items: center; justify-content: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
     .aov-cards-title { font-size: var(--table-header-font-size); font-weight: 600; color: var(--text); }
     .aov-cards-title-dropdown { position: relative; display: inline-flex; align-items: center; }
     .aov-cards-title-btn {
@@ -219,6 +219,40 @@
     .aov-cards-title-option:hover { background: var(--row-hover); }
     .aov-cards-title-option[aria-current="true"] { background: rgba(13, 148, 136, 0.12); color: var(--accent); }
     .aov-cards-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--table-gap); }
+
+    /* Card grids: frame + internal dividers (table-like, no gaps/shadows). */
+    #aov-cards-grid,
+    #leaderboard-cards-grid,
+    #finishes-cards-grid {
+      position: relative;
+      gap: 0;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: none;
+    }
+    #aov-cards-grid::after,
+    #leaderboard-cards-grid::after,
+    #finishes-cards-grid::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--border);
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #aov-cards-grid .aov-card,
+    #leaderboard-cards-grid .aov-card,
+    #finishes-cards-grid .aov-card {
+      border: 0;
+      border-radius: 0;
+      box-shadow: inset -1px 0 0 var(--border), inset 0 -1px 0 var(--border);
+      background: transparent;
+      position: relative;
+      z-index: 1;
+    }
+
     #finishes-cards-grid[data-cards-view="finishes"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     #finishes-cards-grid[data-cards-view="lengths"] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     @media (max-width: 980px) {
