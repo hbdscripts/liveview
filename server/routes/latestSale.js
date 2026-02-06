@@ -76,63 +76,47 @@ async function getLatestSale(req, res) {
     const nowMs = Date.now();
     const bounds = store.getRangeBounds('today', nowMs, tz);
 
+    // Always use chronologically latest order (truth) so footer "last sale" time and toast content match.
+    // Session link can lag; if we preferred "latest with purchase_events" we could return 2nd-latest.
     let row = null;
     let source = null;
     if (shop) {
-      // Best-effort: keep truth cache warm for today so "latest" stays accurate.
       try { await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'latest_sale_today'); } catch (_) {}
 
-      // Prefer orders that are linked to a session via evidence so we can show a country flag.
       row = await db.get(
         `
         SELECT
-          o.order_id AS order_id,
-          o.order_name AS order_name,
-          o.created_at AS created_at,
-          COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-          o.total_price AS total_price,
-          o.raw_json AS raw_json,
-          COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(pe.cf_country), ''), 'XX') AS country_code
-        FROM purchase_events pe
-        INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-        LEFT JOIN sessions s ON s.session_id = pe.session_id
-        WHERE pe.shop = ?
-          AND pe.event_type IN ('checkout_completed', 'checkout_started')
-          AND o.created_at >= ? AND o.created_at < ?
-          AND (o.test IS NULL OR o.test = 0)
-          AND o.cancelled_at IS NULL
-          AND o.financial_status = 'paid'
-        ORDER BY o.created_at DESC
+          order_id AS order_id,
+          order_name AS order_name,
+          created_at AS created_at,
+          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+          total_price AS total_price,
+          raw_json AS raw_json
+        FROM orders_shopify
+        WHERE shop = ?
+          AND created_at >= ? AND created_at < ?
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+        ORDER BY created_at DESC
         LIMIT 1
         `,
         [shop, bounds.start, bounds.end]
       );
-      if (row) source = 'orders_shopify_linked';
-
-      // Fall back to truth-only when we have no linked evidence yet.
-      if (!row) {
-        row = await db.get(
+      if (row) {
+        source = 'orders_shopify';
+        // Enrich country from purchase_events + sessions when evidence exists (may lag for newest order).
+        const linkRow = await db.get(
           `
-          SELECT
-            order_id AS order_id,
-            order_name AS order_name,
-            created_at AS created_at,
-            COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
-            total_price AS total_price,
-            raw_json AS raw_json,
-            'XX' AS country_code
-          FROM orders_shopify
-          WHERE shop = ?
-            AND created_at >= ? AND created_at < ?
-            AND (test IS NULL OR test = 0)
-            AND cancelled_at IS NULL
-            AND financial_status = 'paid'
-          ORDER BY created_at DESC
+          SELECT COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(pe.cf_country), ''), 'XX') AS country_code
+          FROM purchase_events pe
+          LEFT JOIN sessions s ON s.session_id = pe.session_id
+          WHERE pe.shop = ? AND pe.linked_order_id = ? AND pe.event_type IN ('checkout_completed', 'checkout_started')
           LIMIT 1
           `,
-          [shop, bounds.start, bounds.end]
+          [shop, row.order_id]
         );
-        if (row) source = 'orders_shopify';
+        row.country_code = linkRow && linkRow.country_code ? linkRow.country_code : 'XX';
       }
     }
 
