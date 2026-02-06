@@ -1769,8 +1769,8 @@
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
-    // Local asset (served by /assets) so the chime is same-origin and reliable in the Shopify admin embed.
-    var CASH_REGISTER_MP3_URL = (API || '') + '/assets/cash-register.mp3';
+    // Sale toast chime: load from Shopify CDN (do not rely on a repo-local MP3 file).
+    var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
 
     function titleCaseFromHandle(handle) {
       if (typeof handle !== 'string') return null;

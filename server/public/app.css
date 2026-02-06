@@ -250,15 +250,15 @@
 
     /* Products → Lengths cards */
     .length-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
       width: 34px;
       height: 34px;
       border-radius: 10px;
       border: 1px solid rgba(15, 23, 42, 0.12);
       background: rgba(15, 23, 42, 0.04);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
       font-weight: 950;
       letter-spacing: -0.03em;
       color: #0f172a;

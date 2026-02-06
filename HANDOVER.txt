@@ -342,7 +342,7 @@ Backups durability:
 - Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
 - Products: Finishes header is now a dropdown (Finishes / Lengths). Lengths cards (12"–21") are powered by `GET /api/shopify-lengths` and render as big inch labels (no gradients).
 - API: add `GET /api/shopify-lengths` (Shopify truth line items grouped by inferred length from variant_title).
-- UI: restore sale toast chime (cash-register.mp3) by priming audio on first interaction and retrying on click when autoplay is blocked (embedded Shopify admin).
+- UI: restore sale toast chime (Shopify CDN MP3) by priming audio on first interaction and retrying on click when autoplay is blocked (embedded Shopify admin). Keep this remote (do not add/replace with a local MP3 file).
 - Truth sync: add an in-flight gate to prevent duplicate concurrent reconciles; unify product-report reconciliation scope to `products_${range}` so Products endpoints share one truth sync.
 - Settings modal: modal and open button labelled "Settings"; Copy/meta bar (Shop · TZ · Updated, Copy AI debug, pills) moved into collapsible "Copy / meta" dropdown; AUTH + SCOPES / TRUTH SYNC HEALTH tables use grid (minmax 200px + 1fr) for consistent alignment; dm-def-details use odd/even backgrounds (#e2e8f0 / #f1f5f9), no border-bottom; Sources tab (#traffic-source-mapping-root) forced to modal design (tsm-* overrides in diagnostics-modal.css).
 - Traffic: remove per-table ⚙ buttons on the Traffic tab and centralize channel/device settings inside the footer Settings modal → Traffic.
