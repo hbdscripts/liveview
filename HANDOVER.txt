@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; UI: Conv rate KPI Shopify compare modal; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
+Last updated: 2026-02-06 (UI: Geos tab rename; UI: Conv rate KPI Shopify compare modal (3px radii, max font-weight 500, diagnostics palette); UI: lengths icon padding tweak; Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -8,6 +8,7 @@ IMPORTANT (for future agents)
 - Keep this file accurate. If you change core paths (routes, schema, ingest fields, dashboard UX/auth/deploy), update this file in the SAME commit.
 - This repo avoids creating new markdown docs; this handover is intentionally `HANDOVER.txt` (markdown-formatted text).
 - Multiple agents may be working on this repo in parallel. If “surprise” files/changes appear in your working tree, assume it may be other agent work and confirm with `git status`/`git log` before attributing changes.
+- UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
 
 ---
 
@@ -20,7 +21,7 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
-  - Conv rate KPI: small compare icon inline in the “yesterday” subline opens a “Shopify vs Birdseye” comparison modal using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
+  - Conv rate KPI: small compare icon inline in the “yesterday” subline opens a “Shopify vs Birdseye” comparison modal (styled to match Diagnostics palette; 3px radii; max font-weight 500) using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -29,7 +30,7 @@ Main tabs (top row):
     - Exit line: red “>” + page name (screen-reader text includes “Exit:”)
     - Exit thumbnail is smaller than entry (visual hierarchy)
   - Otherwise, shows the single thumbnail + label (existing behaviour)
-- Breakdown: Countries + Best GEO Products + Average Order Value tables for selected date range
+- Geos: Countries + Best GEO Products + Average Order Value tables for selected date range
 - Products: Best / Worst / Variants tables for selected date range
   - Best sellers: Orders / Sessions / Rev / CR%
   - Worst products: Orders / Sessions / Rev / CR%
@@ -41,7 +42,7 @@ Main tabs (top row):
 - Ads: placeholder Ads panel (lazy-loads `/ads.js`)
   - API: `GET /api/ads/status` and `GET /api/ads/summary?range=...`
 
-Global date range picker (applies to Breakdown + Products + Traffic):
+Global date range picker (applies to Geos + Products + Traffic):
 - Today / Yesterday / Choose dates…
   - Choose dates opens a calendar popup (last 30 days). Grey dates have no session data.
   - Range selection: click a start day then an end day, preview highlights, then press Apply (Clear resets).
@@ -125,7 +126,7 @@ Edge (optional but used for better bot signals):
 
 4) Dashboard queries
 - Home uses SSE: `GET /api/stream`
-- Breakdown uses: `GET /api/stats`
+- Geos uses: `GET /api/stats`
 - Traffic uses: `GET /api/traffic`
 - Traffic prefs saved via: `POST /api/traffic-prefs`
 
@@ -201,7 +202,7 @@ Additions:
 - New “Traffic” tab + panel
 - Two responsive cards (Source / Traffic Type) with tables
 - Traffic settings pickers live in the footer Settings modal → Traffic (single source of truth)
-- Auto-refresh integration (same cadence as Breakdown)
+- Auto-refresh integration (same cadence as Geos)
 
 ---
 
@@ -305,9 +306,9 @@ Performance direction:
 ## Known weaknesses + remedies (high priority)
 
 Report load speed (biggest pain):
-- **Symptoms**: “Products” / “Breakdown” / “Traffic” reports can feel slow or appear stuck (client uses long fetches + overlays; server work can exceed client timeouts on large datasets).
+- **Symptoms**: “Products” / “Geos” / “Traffic” reports can feel slow or appear stuck (client uses long fetches + overlays; server work can exceed client timeouts on large datasets).
 - **Root causes** (current):
-  - “Breakdown” + “Traffic” endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
+  - “Geos” + “Traffic” endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
   - Shopify reconciliation (Orders API fetch) can still dominate first-run latency for a range (network + rate limiting).
   - Some caches are still **in-memory** (e.g. Shopify product metadata); persisted caching now exists for report payloads (see below).
   - SQLite in production is slow/ephemeral; Postgres is recommended for real shops.
@@ -351,11 +352,12 @@ Backups durability:
 - Reporting guardrail: sales/orders in all tables are Shopify truth (`orders_shopify` / `orders_shopify_line_items`). Pixel `purchases` remain drift/debug only.
 - Products: Best tables ordered by revenue; Worst products/variants now list zero-order items sorted by highest clicks then lowest revenue.
 - Products: Orders columns now sum line-item quantities (units sold) instead of distinct order counts; unknown country flags now use a placeholder instead of 404.
-- Breakdown/Traffic/Products: removed reliance on `purchase_events` evidence linkage for Orders/Rev so reports can’t undercount due to blocked checkout events and can’t exceed Shopify.
-- Conversion: standardised to **Orders / Sessions × 100** across KPI + Breakdown/Traffic/Products tables (truth numerator).
+- Geos/Traffic/Products: removed reliance on `purchase_events` evidence linkage for Orders/Rev so reports can’t undercount due to blocked checkout events and can’t exceed Shopify.
+- Conversion: standardised to **Orders / Sessions × 100** across KPI + Geos/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
 - UI: Conv rate KPI now has a tiny Shopify compare icon which opens a modern “Shopify vs Birdseye” modal (sessions, CR%, orders, revenue) with “Bots blocked (today)” shown under the Birdseye section and a manual refresh button.
+- UI: rename Breakdown tab to Geos; CR compare modal styling now matches Diagnostics palette (3px radii, max font-weight 500); `.length-icon` padding reset to 0.
 - Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
 - Diagnostics: tracker definitions (`server/trackerDefinitions.js`) updated to include Products “Finishes” cards and to document Traffic settings sources (settings.traffic_sources_enabled / settings.traffic_types_enabled).
 - Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.
@@ -394,10 +396,10 @@ Backups durability:
 - Pixel: added a dashboard toggle (stored in DB setting `pixel_session_mode`) to switch the pixel’s session_id strategy:
   - `legacy` (default): session_id in sessionStorage (tab-scoped; can inflate sessions)
   - `shared_ttl`: session_id shared via localStorage with a 30m inactivity TTL (reduces Birdseye sessions vs Shopify).
-- KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Breakdown/Products/Traffic refresh cadence)
-- Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Breakdown/Products/Traffic); Live remains 60s.
+- KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Geos/Products/Traffic refresh cadence)
+- Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Geos/Products/Traffic); Live remains 60s.
 - UI: update Online user icon + standardise SVG icon colouring (match footer icons).
-- Breakdown: add “Best GEO Products” card (top 3 products per country) powered by `/api/stats` (`bestGeoProducts` truth query: purchase_events → sessions.country_code + orders_shopify_line_items revenue).
+- Geos: add “Best GEO Products” card (top 3 products per country) powered by `/api/stats` (`bestGeoProducts` truth query: purchase_events → sessions.country_code + orders_shopify_line_items revenue).
 - UI: fix product table names disappearing on large screens (product name cell no longer inherits country-table flex rules; name now reliably ellipsizes instead of collapsing).
 - UI: browser tab title is now “Birdseye Tracker”.
 - UI: restyle `/app/login` (Birdseye logo + green primary Google sign-in button).
@@ -428,7 +430,7 @@ Backups durability:
 - Traffic: Source mapping panel UX: widen source dropdown and add an inline mapped-token icon jump row (click icon → scroll to token row)
 - Diagnostics: Definitions tab is powered by `server/trackerDefinitions.js` and includes runtime checks (DB tables present, token stored, UI ids present).
 - KPIs/Stats: conversion rate is session-based (sessions-with-purchase / sessions), not raw order-count / sessions (matches Shopify analytics definition)
-- UI: make all dashboard table headers sortable on click (Home sessions + Breakdown/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
+- UI: make all dashboard table headers sortable on click (Home sessions + Geos/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
 - UI: prevent duplicate “cha-ching” for a single sale (avoid double-trigger when order totals arrive later / KPI refresh drift)
 - UI: sale toast: newest sale wins (no stale latest-sale overwrite) + add dismiss (×) button for faster clear
 - UI: modernise pagination styling across all tables (pill buttons, chevrons, better disabled/hover, compact rows selector)
@@ -446,7 +448,7 @@ Backups durability:
 - UI: font-weight 500 only on converted row cells (not all tds)
 - UI: dashboard favicon now uses the CDN asset
 - UI: tables use green outer borders with zebra striping (no inner borders)
-- UI: Breakdown AOV now renders as a card strip above the country/geo tables, and pagination only shows to balance table heights
+- UI: Geos AOV now renders as a card strip above the country/geo tables, and pagination only shows to balance table heights
 - UI: Best-by-GEO row pill styling added around product thumbs
 - UI: mobile icon headers shift sort arrows up for clearer alignment
 - UI: icon-mode tables round revenue values to whole pounds
@@ -468,7 +470,7 @@ Backups durability:
 - UI: tweak landing entry/exit stack spacing (landing-lines margin + remove gap)
 - UI: map `/account/login` to “Login” in Landing Page entry/exit labels
 - UI: widen Landing Page column + remove max-width clamp to prevent entry/exit layout spilling into adjacent columns
-- Mobile: Breakdown tables stack 100% width (override `.stats-row.breakdown-row` two-column grid on small screens)
+- Mobile: Geos tables stack 100% width (override `.stats-row.breakdown-row` two-column grid on small screens)
 - Mobile: date button width tightened to 55px
 - UI: card pagination controls use a 30px tall segmented style (tighter padding/gaps)
 - UI: removed the converted-row left accent pseudo-element (`::before`) in the sessions table
@@ -493,10 +495,10 @@ Backups durability:
 - Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
 - Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
 - Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
-- Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Breakdown
+- Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Geos
 - Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
 - Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
-- Dashboard: Breakdown/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
+- Dashboard: Geos/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
 - Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
 - Dashboard: replace Home tab SVG icon with birdseye PNG (25x25)
 - Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
