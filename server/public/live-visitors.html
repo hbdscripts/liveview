@@ -1131,9 +1131,18 @@
     </div>
     <div class="aov-cards-wrap" id="finishes-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Finishes</div>
+        <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
+          <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-variant-cards-btn" aria-haspopup="true" aria-expanded="false">
+            <span id="products-variant-cards-label">Finishes</span>
+            <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="aov-cards-title-menu" id="products-variant-cards-menu" role="menu" aria-hidden="true">
+            <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Finishes</button>
+            <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Lengths</button>
+          </div>
+        </div>
       </div>
-      <div class="aov-cards-grid" id="finishes-cards-grid">
+      <div class="aov-cards-grid" id="finishes-cards-grid" data-cards-view="finishes">
         <div class="aov-card aov-card-empty">—</div>
       </div>
     </div>
@@ -1409,8 +1418,12 @@
     let shopifySessionsToday = null;
     let shopifySessionsTodayLoaded = false;
     let shopifySessionsTodayLoading = false;
+    const PRODUCTS_VARIANT_CARDS_VIEW_KEY = 'products-variant-cards-view';
+    let productsVariantCardsView = 'finishes';
     let finishesCache = null;
     let finishesLoading = false;
+    let lengthsCache = null;
+    let lengthsLoading = false;
     let bestSellersCache = null;
     let bestVariantsCache = null;
     let countryPage = 1;
@@ -1451,6 +1464,16 @@
     let sortBy = 'last_seen';
     let sortDir = 'desc';
     const SORT_DEFAULTS = { landing: 'asc', from: 'asc', arrived: 'desc', source: 'asc', device: 'asc', cart: 'desc', last_seen: 'desc', history: 'desc' };
+
+    (function restoreProductsVariantCardsView() {
+      try {
+        const raw = sessionStorage.getItem(PRODUCTS_VARIANT_CARDS_VIEW_KEY);
+        const s = raw != null ? String(raw).trim().toLowerCase() : '';
+        productsVariantCardsView = (s === 'lengths' || s === 'length') ? 'lengths' : 'finishes';
+      } catch (_) {
+        productsVariantCardsView = 'finishes';
+      }
+    })();
 
     // Auto-configure pixel when opened from Shopify (shop in URL) so merchants don't run mutations manually
     (function ensurePixelOnce() {
@@ -3668,17 +3691,116 @@
         .catch(function() { bestSellersCache = null; renderBestSellers(null); return null; });
     }
 
+    function normalizeProductsVariantCardsView(v) {
+      const s = v != null ? String(v).trim().toLowerCase() : '';
+      if (s === 'lengths' || s === 'length') return 'lengths';
+      return 'finishes';
+    }
+
+    function labelForProductsVariantCardsView(view) {
+      return normalizeProductsVariantCardsView(view) === 'lengths' ? 'Lengths' : 'Finishes';
+    }
+
+    function updateProductsVariantCardsDropdownUi() {
+      const view = normalizeProductsVariantCardsView(productsVariantCardsView);
+      const labelEl = document.getElementById('products-variant-cards-label');
+      const grid = document.getElementById('finishes-cards-grid');
+      const wrap = document.getElementById('finishes-cards-wrap');
+      const menu = document.getElementById('products-variant-cards-menu');
+      if (labelEl) labelEl.textContent = labelForProductsVariantCardsView(view);
+      if (grid) grid.setAttribute('data-cards-view', view);
+      if (wrap) wrap.setAttribute('data-cards-view', view);
+      if (menu) {
+        const opts = menu.querySelectorAll('.aov-cards-title-option');
+        opts.forEach(function(el) {
+          const v = normalizeProductsVariantCardsView(el && el.getAttribute ? el.getAttribute('data-view') : '');
+          el.setAttribute('aria-current', v === view ? 'true' : 'false');
+        });
+      }
+    }
+
+    function closeProductsVariantCardsMenu() {
+      const btn = document.getElementById('products-variant-cards-btn');
+      const menu = document.getElementById('products-variant-cards-menu');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+      if (menu) {
+        menu.classList.remove('open');
+        menu.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function toggleProductsVariantCardsMenu() {
+      const btn = document.getElementById('products-variant-cards-btn');
+      const menu = document.getElementById('products-variant-cards-menu');
+      if (!btn || !menu) return;
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      if (open) {
+        closeProductsVariantCardsMenu();
+      } else {
+        btn.setAttribute('aria-expanded', 'true');
+        menu.classList.add('open');
+        menu.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    function setProductsVariantCardsView(nextView, options = {}) {
+      const force = !!(options && options.force);
+      const view = normalizeProductsVariantCardsView(nextView);
+      productsVariantCardsView = view;
+      try { sessionStorage.setItem(PRODUCTS_VARIANT_CARDS_VIEW_KEY, view); } catch (_) {}
+      updateProductsVariantCardsDropdownUi();
+      closeProductsVariantCardsMenu();
+      if (activeMainTab !== 'products') return;
+      if (view === 'lengths') {
+        if (lengthsCache) renderLengths(lengthsCache);
+        fetchLengths({ force }).catch(function() {});
+      } else {
+        if (finishesCache) renderFinishes(finishesCache);
+        fetchFinishes({ force }).catch(function() {});
+      }
+    }
+
+    (function initProductsVariantCardsDropdown() {
+      updateProductsVariantCardsDropdownUi();
+      const btn = document.getElementById('products-variant-cards-btn');
+      const menu = document.getElementById('products-variant-cards-menu');
+      const root = document.getElementById('products-variant-cards-dropdown');
+      if (!btn || !menu || !root) return;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleProductsVariantCardsMenu();
+      });
+      menu.addEventListener('click', function(e) {
+        const t = e && e.target ? e.target : null;
+        const opt = t && t.closest ? t.closest('.aov-cards-title-option') : null;
+        if (!opt) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setProductsVariantCardsView(opt.getAttribute('data-view') || '', { force: false });
+      });
+      document.addEventListener('click', function(e) {
+        const target = e && e.target ? e.target : null;
+        if (target && root.contains && root.contains(target)) return;
+        closeProductsVariantCardsMenu();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (!e || e.key !== 'Escape') return;
+        closeProductsVariantCardsMenu();
+      });
+    })();
+
     function fetchFinishes(options = {}) {
       const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) {
         finishesLoading = false;
         finishesCache = null;
-        renderFinishes(null);
+        if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(null);
         return Promise.resolve(null);
       }
       finishesLoading = true;
-      if (!finishesCache) renderFinishes(null);
+      if (!finishesCache && normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(null);
       let url = API + '/api/shopify-finishes?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(getStatsRange());
       if (force) url += '&_=' + Date.now();
@@ -3686,11 +3808,36 @@
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           finishesCache = data;
-          renderFinishes(data);
+          if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(data);
           return data;
         })
-        .catch(function() { finishesCache = null; renderFinishes(null); return null; })
+        .catch(function() { finishesCache = null; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(null); return null; })
         .finally(function() { finishesLoading = false; });
+    }
+
+    function fetchLengths(options = {}) {
+      const force = !!options.force;
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) {
+        lengthsLoading = false;
+        lengthsCache = null;
+        if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(null);
+        return Promise.resolve(null);
+      }
+      lengthsLoading = true;
+      if (!lengthsCache && normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(null);
+      let url = API + '/api/shopify-lengths?shop=' + encodeURIComponent(shop) +
+          '&range=' + encodeURIComponent(getStatsRange());
+      if (force) url += '&_=' + Date.now();
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          lengthsCache = data;
+          if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(data);
+          return data;
+        })
+        .catch(function() { lengthsCache = null; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(null); return null; })
+        .finally(function() { lengthsLoading = false; });
     }
 
     function fetchBestVariants(options = {}) {
@@ -4096,6 +4243,31 @@
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '—') + '</span></div>' +
+          '<div class="aov-card-value">' + value + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderLengths(data) {
+      const grid = document.getElementById('finishes-cards-grid');
+      if (!grid) return;
+      const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
+      if (rows.length === 0) {
+        const msg = lengthsLoading ? 'Loading lengths…' : 'No data';
+        grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
+        return;
+      }
+      const ordered = rows.slice();
+      ordered.sort(function(a, b) { return cmpNullableNumber(a && a.inches, b && b.inches, 'asc'); });
+      grid.innerHTML = ordered.map(function(r) {
+        const inches = (r && r.inches != null) ? Number(r.inches) : null;
+        const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
+        const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
+        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '—') + '</span></span>';
+        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '—') + ' Inches') + '</span>';
+        return '<div class="aov-card aov-card--length">' +
+          '<div class="aov-card-left">' + icon + sr + '</div>' +
           '<div class="aov-card-value">' + value + '</div>' +
         '</div>';
       }).join('');
@@ -4534,6 +4706,7 @@
       syncDateSelectOptions();
       // Reset caches when range changes.
       finishesCache = null;
+      lengthsCache = null;
       bestSellersCache = null;
       bestVariantsCache = null;
       trafficCache = null;

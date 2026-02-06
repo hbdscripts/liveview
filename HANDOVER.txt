@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (UI: sale toast sound unlock; Products: Finishes cards 4-up row + metal swatches; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed for finishes + traffic settings)
+Last updated: 2026-02-06 (UI: Conv rate KPI Shopify compare modal; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -19,6 +19,7 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
+  - Conv rate KPI: tiny Shopify icon (top-right) opens a “Shopify vs Birdseye” comparison modal using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -324,6 +325,7 @@ Backups durability:
 - Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
 - Products: add “Finishes” revenue cards (Gold / Silver / Vermeil / Solid Silver) powered by `GET /api/shopify-finishes` (Shopify truth line items, grouped by variant title finish mapping).
 - Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
+- Products: Finishes header is now a dropdown (Finishes / Lengths). Lengths cards (12"–21") are powered by `GET /api/shopify-lengths` and render as big inch labels (no gradients).
 - UI: restore sale toast chime (cash-register.mp3) by priming audio on first interaction and retrying on click when autoplay is blocked (embedded Shopify admin).
 - Truth sync: add an in-flight gate to prevent duplicate concurrent reconciles; unify product-report reconciliation scope to `products_${range}` so Products endpoints share one truth sync.
 - Settings modal: modal and open button labelled "Settings"; Copy/meta bar (Shop · TZ · Updated, Copy AI debug, pills) moved into collapsible "Copy / meta" dropdown; AUTH + SCOPES / TRUTH SYNC HEALTH tables use grid (minmax 200px + 1fr) for consistent alignment; dm-def-details use odd/even backgrounds (#e2e8f0 / #f1f5f9), no border-bottom; Sources tab (#traffic-source-mapping-root) forced to modal design (tsm-* overrides in diagnostics-modal.css).
@@ -337,6 +339,7 @@ Backups durability:
 - Conversion: standardised to **Orders / Sessions × 100** across KPI + Breakdown/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
+- UI: Conv rate KPI now has a tiny Shopify compare icon which opens a modern “Shopify vs Birdseye” modal (sessions, CR%, orders, revenue) with “Bots blocked (today)” shown under the Birdseye section and a manual refresh button.
 - Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
 - Diagnostics: tracker definitions (`server/trackerDefinitions.js`) updated to include Products “Finishes” cards and to document Traffic settings sources (settings.traffic_sources_enabled / settings.traffic_types_enabled).
 - Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.

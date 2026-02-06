@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 9;
+const DEFINITIONS_VERSION = 10;
 const LAST_UPDATED = '2026-02-06';
 
 /**
@@ -251,7 +251,7 @@ const TRACKER_TABLE_DEFINITIONS = [
   {
     id: 'products_finishes_cards',
     page: 'Products',
-    name: 'Finishes revenue cards',
+    name: 'Variant cards: Finishes',
     ui: { elementIds: ['finishes-cards-grid'] },
     endpoint: { method: 'GET', path: '/api/shopify-finishes', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
     sources: [
@@ -266,6 +266,29 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Finish inference', value: 'Derived from variant_title keywords (normalizeFinishKey in shopifyFinishes route)' },
+      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
+    id: 'products_lengths_cards',
+    page: 'Products',
+    name: 'Variant cards: Lengths',
+    ui: { elementIds: ['finishes-cards-grid'] },
+    endpoint: { method: 'GET', path: '/api/shopify-lengths', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred length (inches) from variant_title' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
+      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, cards rely on existing DB truth.' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Length', value: '12" | 13" | … | 21"' },
+      { name: 'Revenue', value: 'revenueGbp', formula: 'SUM(line_revenue) by length, converted to GBP' },
+    ],
+    math: [
+      { name: 'Length inference', value: 'Derived from variant_title (e.g. 15" Inches) using normalizeLengthInches in shopifyLengths route' },
       { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
