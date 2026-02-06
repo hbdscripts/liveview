@@ -326,6 +326,7 @@ Backups durability:
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
+- UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 
 2026-02-05
 - UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
