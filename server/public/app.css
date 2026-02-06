@@ -539,8 +539,8 @@
     @media (max-width: 768px) {
       .kpi-mobile-pager { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
       .kpi-mobile-pager::-webkit-scrollbar { display: none; }
-      .live-kpi-grid { --kpi-gap: 0.5rem; display: flex; gap: var(--kpi-gap); }
-      .live-kpi-cell { min-width: calc(50vw - (var(--kpi-gap) / 2)); flex: 0 0 calc(50vw - (var(--kpi-gap) / 2)); }
+      .live-kpi-grid { --kpi-gap: var(--table-gap); display: flex; gap: var(--kpi-gap); }
+      .live-kpi-cell { min-width: calc(50% - (var(--kpi-gap) / 2)); flex: 0 0 calc(50% - (var(--kpi-gap) / 2)); }
       .live-kpi-cell .live-kpi-value { font-size: 1rem; }
       .sale-toast-host { position: static; }
       .sale-toast {
