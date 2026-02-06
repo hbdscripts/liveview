@@ -1,5 +1,5 @@
 /**
- * GET /api/shopify-best-sellers?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10&sort=rev|orders&dir=asc|desc
+ * GET /api/shopify-best-sellers?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10
  * Returns best-performing products for the date range:
  * - Sessions: product landings (sessions whose first page was that product) from our sessions table (human-only)
  * - Orders/Rev: Shopify truth orders (100%) via orders_shopify_line_items (paid, not cancelled/test)
@@ -69,8 +69,8 @@ async function getShopifyBestSellers(req, res) {
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
 
   try {
-    const sort = (req.query.sort || 'rev').toString().trim().toLowerCase();
-    const dir = (req.query.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const sort = 'rev';
+    const dir = 'desc';
     const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
     const resolvedShop = salesTruth.resolveShopForSales(shop);
     const botFilterSql = trafficMode === 'human_only' ? ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)' : '';
@@ -122,10 +122,7 @@ async function getShopifyBestSellers(req, res) {
         const offset = (page - 1) * pageSize;
 
         // Orders + revenue from Shopify truth (line items). Sessions are computed separately from our sessions table.
-        const orderBy =
-          sort === 'orders'
-            ? `orders ${dir.toUpperCase()}, revenue ${dir.toUpperCase()}`
-            : `revenue ${dir.toUpperCase()}, orders ${dir.toUpperCase()}`;
+        const orderBy = `revenue DESC, orders DESC`;
 
         const tAgg0 = Date.now();
         const rows = resolvedShop ? await db.all(

@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 6;
+const DEFINITIONS_VERSION = 7;
 const LAST_UPDATED = '2026-02-06';
 
 /**
@@ -153,7 +153,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     page: 'Products',
     name: 'Best sellers table',
     ui: { elementIds: ['best-sellers-table'] },
-    endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize/sort/dir'] },
+    endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
@@ -167,6 +167,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Note', value: 'Orders/Rev are Shopify truth (product line items). Sessions are product landings from our sessions table.' },
+      { name: 'Sort', value: 'Ordered by revenue (desc) then orders.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
@@ -192,6 +193,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [
       { name: 'Minimum traffic', value: 'Only includes products with >= 3 product landings (MIN_LANDINGS) to avoid noise' },
       { name: 'Note', value: 'Sessions is product landings (per row). Orders/Rev are Shopify truth for that product; CR% = Orders / Sessions.' },
+      { name: 'Filter', value: 'Only products with zero orders (converted = 0) are listed.' },
+      { name: 'Sort', value: 'Ordered by highest sessions (clicks) then lowest revenue.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
@@ -215,6 +218,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
+      { name: 'Sort', value: 'Ordered by revenue (desc) then orders.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
@@ -228,7 +232,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
-      { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
+      { kind: 'shopify', note: 'ProductByHandle GraphQL for product + variants (handle + thumb + variant list)' },
     ],
     columns: [
       { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (truth line items)' },
@@ -238,6 +242,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
+      { name: 'Filter', value: 'Only variants with zero orders are listed.' },
+      { name: 'Sort', value: 'Ordered by highest sessions (clicks) then lowest revenue.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },

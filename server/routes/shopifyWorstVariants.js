@@ -1,18 +1,23 @@
 /**
  * GET /api/shopify-worst-variants?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10
- * Returns lowest selling variants by revenue for the date range (Shopify Orders + Products API).
+ * Returns worst-performing variants by traffic with zero orders (Shopify Orders + Products API).
  *
  * Notes:
- * - Uses `orders_shopify_line_items` (persisted facts) so this is pure SQL aggregation (fast).
- * - Still attaches product handle + thumb via Shopify Products API (cached).
+ * - Uses `orders_shopify_line_items` (persisted facts) for truth orders/revenue.
+ * - Sessions (clicks) come from product landing sessions (human-only).
+ * - Only includes variants with zero orders, ordered by highest clicks then lowest revenue.
  */
 const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
-const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
+const MIN_LANDINGS = 3;
+const MAX_CANDIDATE_HANDLES = 200;
+const MAX_CANDIDATE_VARIANTS = 2000;
+const GRAPHQL_API_VERSION = '2024-01';
+const PRODUCT_HANDLE_BATCH_SIZE = 10;
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -25,6 +30,21 @@ function normalizeHandle(v) {
   const h = v.trim().toLowerCase();
   if (!h) return null;
   return h.slice(0, 128);
+}
+
+function normalizeTitle(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return s || 'Unknown';
+}
+
+function extractGidId(gid, type) {
+  const s = gid != null ? String(gid).trim() : '';
+  if (!s) return null;
+  const re = new RegExp(`/${type}/(\\d+)$`);
+  const m = s.match(re);
+  if (m) return m[1];
+  if (/^\\d+$/.test(s)) return s;
+  return null;
 }
 
 function handleFromPath(path) {
@@ -51,6 +71,85 @@ function handleFromSessionRow(row) {
     normalizeHandle(row && row.first_product_handle) ||
     handleFromUrl(row && row.entry_url)
   );
+}
+
+async function fetchProductsByHandleBatch(shop, token, handles) {
+  const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
+  const list = Array.isArray(handles) ? handles.map((h) => (typeof h === 'string' ? h.trim().toLowerCase() : '')).filter(Boolean) : [];
+  const out = new Map();
+  for (const h of list) out.set(h, null);
+  if (!safeShop || !token || !list.length) return out;
+
+  const vars = {};
+  const varDecls = [];
+  const fields = [];
+  for (let i = 0; i < list.length; i++) {
+    const v = 'h' + i;
+    vars[v] = list[i];
+    varDecls.push(`$${v}: String!`);
+    fields.push(
+      `p${i}: productByHandle(handle: $${v}) { id legacyResourceId handle title featuredImage { url } variants(first: 100) { nodes { id legacyResourceId title } } }`
+    );
+  }
+  const query = `query(${varDecls.join(', ')}) {\n${fields.join('\n')}\n}`;
+  const url = `https://${safeShop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
+  let json = null;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
+      body: JSON.stringify({ query, variables: vars }),
+    });
+    json = await res.json().catch(() => null);
+    if (!res.ok) return out;
+    if (json && Array.isArray(json.errors) && json.errors.length) return out;
+  } catch (_) {
+    return out;
+  }
+  const data = json && json.data ? json.data : null;
+  if (!data || typeof data !== 'object') return out;
+  for (let i = 0; i < list.length; i++) {
+    const handle = list[i];
+    const node = data['p' + i] || null;
+    if (!node) continue;
+    const productId =
+      (node.legacyResourceId != null ? String(node.legacyResourceId).trim() : '') ||
+      extractGidId(node.id, 'Product');
+    const handleOut = normalizeHandle(node.handle) || handle;
+    const title = normalizeTitle(node.title);
+    const thumb = node.featuredImage && node.featuredImage.url ? String(node.featuredImage.url).trim() : null;
+    const variantsRaw = node.variants && Array.isArray(node.variants.nodes) ? node.variants.nodes : [];
+    const variants = [];
+    for (const v of variantsRaw) {
+      const vid =
+        (v && v.legacyResourceId != null ? String(v.legacyResourceId).trim() : '') ||
+        extractGidId(v && v.id, 'ProductVariant');
+      if (!vid) continue;
+      variants.push({ variant_id: vid, variant_title: v && v.title != null ? String(v.title) : null });
+    }
+    out.set(handle, {
+      product_id: productId || null,
+      handle: handleOut || null,
+      title,
+      thumb_url: thumb || null,
+      variants,
+    });
+  }
+  return out;
+}
+
+async function fetchProductsByHandle(shop, token, handles) {
+  const list = Array.isArray(handles) ? handles : [];
+  const out = new Map();
+  for (let i = 0; i < list.length; i += PRODUCT_HANDLE_BATCH_SIZE) {
+    const batch = list.slice(i, i + PRODUCT_HANDLE_BATCH_SIZE);
+    const res = await fetchProductsByHandleBatch(shop, token, batch);
+    for (const h of batch) out.set(h, res && res.has(h) ? res.get(h) : null);
+  }
+  return out;
 }
 
 async function getShopifyWorstVariants(req, res) {
@@ -94,8 +193,8 @@ async function getShopifyWorstVariants(req, res) {
       async () => {
         const t0 = Date.now();
         let msReconcile = 0;
-        let msDbCount = 0;
-        let msDbAgg = 0;
+        let msRows = 0;
+        let msAgg = 0;
         let msMeta = 0;
 
         // Ensure Shopify truth cache is populated for this range (throttled).
@@ -103,120 +202,160 @@ async function getShopifyWorstVariants(req, res) {
         await salesTruth.ensureReconciled(shop, start, end, `worst_variants_${range}`);
         msReconcile = Date.now() - tReconcile0;
 
-        const tCount0 = Date.now();
-        const countRow = await db.get(
+        const tRows0 = Date.now();
+        const sessionRows = await db.all(
           `
-            SELECT COUNT(DISTINCT variant_id) AS n
-            FROM orders_shopify_line_items
-            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
-              AND (order_test IS NULL OR order_test = 0)
-              AND order_cancelled_at IS NULL
-              AND order_financial_status = 'paid'
-              AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+            SELECT s.first_path, s.first_product_handle, s.entry_url
+            FROM sessions s
+            WHERE s.started_at >= ? AND s.started_at < ?
+              AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
+              AND (
+                (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+                OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+                OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+              )
           `,
-          [shop, start, end]
+          [start, end]
         );
-        msDbCount = Date.now() - tCount0;
-        const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
-        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-        const page = clampInt(req.query.page, 1, 1, totalPages);
-        const offset = (page - 1) * pageSize;
+        msRows = Date.now() - tRows0;
 
-        const tAgg0 = Date.now();
-        const rows = await db.all(
-          `
-            SELECT
-              variant_id,
-              MAX(product_id) AS product_id,
-              MAX(title) AS title,
-              MAX(variant_title) AS variant_title,
-              COUNT(DISTINCT order_id) AS orders,
-              COALESCE(SUM(line_revenue), 0) AS revenue
-            FROM orders_shopify_line_items
-            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
-              AND (order_test IS NULL OR order_test = 0)
-              AND order_cancelled_at IS NULL
-              AND order_financial_status = 'paid'
-              AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-            GROUP BY variant_id
-            ORDER BY revenue ASC, orders ASC
-            LIMIT ? OFFSET ?
-          `,
-          [shop, start, end, pageSize, offset]
-        );
-        msDbAgg = Date.now() - tAgg0;
+        const landingsByHandle = new Map();
+        for (const r of sessionRows || []) {
+          const h = handleFromSessionRow(r);
+          if (!h) continue;
+          landingsByHandle.set(h, (landingsByHandle.get(h) || 0) + 1);
+        }
 
-        const pageItems = (rows || []).map((r) => ({
-          variant_id: r && r.variant_id != null ? String(r.variant_id) : '',
-          product_id: r && r.product_id != null ? String(r.product_id) : '',
-          title: r && r.title != null ? String(r.title) : 'Unknown',
-          variant_title: r && r.variant_title != null ? String(r.variant_title) : null,
-          orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
-          revenue: Math.round(((r && r.revenue != null ? Number(r.revenue) : 0) || 0) * 100) / 100,
-        }));
+        const handles = Array.from(landingsByHandle.entries())
+          .filter(([_, landings]) => (Number(landings) || 0) >= MIN_LANDINGS)
+          .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))
+          .slice(0, MAX_CANDIDATE_HANDLES)
+          .map(([h]) => h);
+
+        if (!handles.length) {
+          return { worstVariants: [], page: 1, pageSize, totalCount: 0 };
+        }
 
         const tMeta0 = Date.now();
-        await Promise.all(
-          pageItems.map(async (v) => {
-            try {
-              const meta = await productMetaCache.getProductMeta(shop, token, v.product_id);
-              v.handle = meta && meta.ok ? (meta.handle || null) : null;
-              v.thumb_url = meta && meta.ok ? (meta.thumb_url || null) : null;
-            } catch (_) {
-              v.handle = null;
-              v.thumb_url = null;
-            }
-          })
-        );
+        const productsByHandle = await fetchProductsByHandle(shop, token, handles);
         msMeta = Date.now() - tMeta0;
 
-        // Sessions (denominator): product landings for the parent product handle (human-only).
-        // Orders/Rev: Shopify truth (line items) for the variant (100% of paid orders).
-        const uniqHandles = Array.from(new Set(pageItems.map((v) => (v && v.handle ? String(v.handle).trim().toLowerCase() : '')).filter(Boolean)));
-        const handleSet = new Set(uniqHandles.map((h) => normalizeHandle(String(h || ''))).filter(Boolean));
-        const clicksByHandle = new Map();
-        if (handleSet.size) {
-          const landRows = await db.all(
+        const tAgg0 = Date.now();
+        const variantCandidates = [];
+        for (const h of handles) {
+          const product = productsByHandle.get(h);
+          if (!product || !Array.isArray(product.variants) || !product.variants.length) continue;
+          const clicks = landingsByHandle.get(h) || 0;
+          for (const v of product.variants) {
+            if (variantCandidates.length >= MAX_CANDIDATE_VARIANTS) break;
+            if (!v || !v.variant_id) continue;
+            variantCandidates.push({
+              variant_id: v.variant_id,
+              product_id: product.product_id || null,
+              title: product.title || 'Unknown',
+              variant_title: v.variant_title != null ? String(v.variant_title) : null,
+              handle: product.handle || h,
+              thumb_url: product.thumb_url || null,
+              clicks,
+            });
+          }
+          if (variantCandidates.length >= MAX_CANDIDATE_VARIANTS) break;
+        }
+
+        if (!variantCandidates.length) {
+          return { worstVariants: [], page: 1, pageSize, totalCount: 0 };
+        }
+
+        const variantIds = Array.from(
+          new Set(variantCandidates.map((v) => (v && v.variant_id ? String(v.variant_id).trim() : '')).filter(Boolean))
+        );
+        const salesByVariantId = new Map();
+        if (variantIds.length) {
+          const inSql = variantIds.map(() => '?').join(', ');
+          const liRows = await db.all(
             `
-              SELECT s.first_path, s.first_product_handle, s.entry_url
-              FROM sessions s
-              WHERE s.started_at >= ? AND s.started_at < ?
-                AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-                AND (
-                  (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-                  OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-                  OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-                )
+              SELECT
+                TRIM(variant_id) AS variant_id,
+                COUNT(DISTINCT order_id) AS orders,
+                COALESCE(SUM(line_revenue), 0) AS revenue
+              FROM orders_shopify_line_items
+              WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+                AND (order_test IS NULL OR order_test = 0)
+                AND order_cancelled_at IS NULL
+                AND order_financial_status = 'paid'
+                AND variant_id IS NOT NULL AND TRIM(variant_id) IN (${inSql})
+              GROUP BY TRIM(variant_id)
             `,
-            [start, end]
+            [shop, start, end, ...variantIds]
           );
-          for (const r of landRows || []) {
-            const h = handleFromSessionRow(r);
-            if (!h || !handleSet.has(h)) continue;
-            clicksByHandle.set(h, (clicksByHandle.get(h) || 0) + 1);
+          for (const r of liRows || []) {
+            const vid = r && r.variant_id != null ? String(r.variant_id).trim() : '';
+            if (!vid) continue;
+            salesByVariantId.set(vid, {
+              orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
+              revenue: r && r.revenue != null ? Number(r.revenue) || 0 : 0,
+            });
           }
         }
 
-        for (const v of pageItems) {
-          const handle = v && v.handle ? String(v.handle).trim().toLowerCase() : '';
-          const clicks = handle ? (clicksByHandle.get(handle) || 0) : 0;
-          const orders = v && v.orders != null ? Number(v.orders) || 0 : 0;
-          v.clicks = clicks;
-          v.cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
-        }
+        const list = variantCandidates.map((v) => {
+          const vid = v && v.variant_id != null ? String(v.variant_id).trim() : '';
+          const sales = vid && salesByVariantId.has(vid) ? salesByVariantId.get(vid) : { orders: 0, revenue: 0 };
+          const orders = sales && sales.orders != null ? Number(sales.orders) || 0 : 0;
+          const revenue = Math.round((sales && sales.revenue != null ? Number(sales.revenue) : 0) * 100) / 100;
+          const clicks = v && v.clicks != null ? Number(v.clicks) || 0 : 0;
+          const cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
+          return {
+            variant_id: vid,
+            product_id: v && v.product_id != null ? String(v.product_id) : '',
+            title: v && v.title != null ? String(v.title) : 'Unknown',
+            variant_title: v && v.variant_title != null ? String(v.variant_title) : null,
+            handle: v && v.handle != null ? String(v.handle) : null,
+            thumb_url: v && v.thumb_url != null ? String(v.thumb_url) : null,
+            orders,
+            revenue,
+            clicks,
+            cr,
+          };
+        });
+
+        const zeroOrders = list.filter((row) => (row.orders || 0) === 0);
+
+        zeroOrders.sort((a, b) => {
+          const ac = a.clicks || 0;
+          const bc = b.clicks || 0;
+          if (ac !== bc) return bc - ac;
+          const ar = a.revenue == null ? 0 : a.revenue;
+          const br = b.revenue == null ? 0 : b.revenue;
+          if (ar !== br) return ar - br;
+          const at = a.title || '';
+          const bt = b.title || '';
+          if (at !== bt) return at.localeCompare(bt);
+          const avt = a.variant_title || '';
+          const bvt = b.variant_title || '';
+          if (avt !== bvt) return avt.localeCompare(bvt);
+          return String(a.variant_id || '').localeCompare(String(b.variant_id || ''));
+        });
+
+        const totalCount = zeroOrders.length;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+        const page = clampInt(req.query.page, 1, 1, totalPages);
+        const startIdx = (page - 1) * pageSize;
+        const pageItems = zeroOrders.slice(startIdx, startIdx + pageSize);
+        msAgg = Date.now() - tAgg0;
 
         const t1 = Date.now();
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-worst-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
+            '[shopify-worst-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_rows=%s ms_meta=%s ms_agg=%s',
             range,
             page,
             totalMs,
             msReconcile,
-            msDbCount,
-            msDbAgg,
-            msMeta
+            msRows,
+            msMeta,
+            msAgg
           );
         }
 

@@ -7,7 +7,8 @@
  * - We only *include* products with at least MIN_LANDINGS product landings (avoids noise).
  * - The Sessions column is product landings (sessions that started on that product).
  * - Conversion rate is Orders / Sessions × 100 (product landing conversion).
- * - Sort: worst conversion first, then most landings (so high-traffic poor converters appear first).
+ * - Only includes products with zero orders (converted = 0).
+ * - Sort: highest landings (clicks) first, then lowest revenue.
  */
 
 const store = require('../store');
@@ -387,23 +388,24 @@ async function getWorstProducts(req, res) {
         };
       });
 
-      // Sort: worst conversion first, then most landings (high-traffic underperformers at top).
-      list.sort((a, b) => {
-        const acr = a.conversion == null ? 0 : a.conversion;
-        const bcr = b.conversion == null ? 0 : b.conversion;
-        if (acr !== bcr) return acr - bcr;
-        if ((b.landings || 0) !== (a.landings || 0)) return (b.landings || 0) - (a.landings || 0);
+      const zeroOrders = list.filter((row) => (row.converted || 0) === 0);
+
+      // Sort: highest landings first, then lowest revenue.
+      zeroOrders.sort((a, b) => {
+        const ac = a.clicks || 0;
+        const bc = b.clicks || 0;
+        if (ac !== bc) return bc - ac;
         const ar = a.revenue == null ? 0 : a.revenue;
         const br = b.revenue == null ? 0 : b.revenue;
         if (ar !== br) return ar - br;
-        return (a.converted - b.converted) || (a.handle < b.handle ? -1 : a.handle > b.handle ? 1 : 0);
+        return (a.handle < b.handle ? -1 : a.handle > b.handle ? 1 : 0);
       });
 
-      const totalCount = list.length;
+      const totalCount = zeroOrders.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
       const page = clampInt(req.query.page, 1, 1, totalPages);
       const startIdx = (page - 1) * pageSize;
-      const pageItems = list.slice(startIdx, startIdx + pageSize);
+      const pageItems = zeroOrders.slice(startIdx, startIdx + pageSize);
       msAgg = Date.now() - tAgg0;
 
       const t1 = Date.now();
