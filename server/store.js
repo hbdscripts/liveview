@@ -1554,19 +1554,23 @@ async function getShopifySessionsCountForBounds(shop, startMs, endMs, timeZone, 
   return total;
 }
 
-/** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d/1h is selected. */
+/** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d/1h/Sales is selected. */
 async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const db = getDb();
   const now = Date.now();
   const tz = timeZone || resolveAdminTimeZone();
-  const bounds = getRangeBounds(rangeKey, now, tz);
+  const isSales = rangeKey === 'sales';
+  // Sales is a "Today" sub-view: show only converted sessions in today's date bounds (admin TZ).
+  const boundsKey = isSales ? 'today' : rangeKey;
+  const bounds = getRangeBounds(boundsKey, now, tz);
   const { start, end } = bounds;
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
   const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
   // Last Hour: filter by activity (last_seen) so we show sessions active in the last hour, not only sessions that started in the last hour
   const useLastSeen = rangeKey === '1h';
-  const timeCol = useLastSeen ? 's.last_seen' : 's.started_at';
+  const timeCol = isSales ? 's.purchased_at' : (useLastSeen ? 's.last_seen' : 's.started_at');
+  const purchasedFilterSql = isSales ? ' AND s.has_purchased = 1' : '';
 
   const baseSql = `
     SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
@@ -1574,17 +1578,18 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
       v.device, v.network_speed
     FROM sessions s
     LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
-    WHERE ${timeCol} >= ${config.dbUrl ? '$1' : '?'} AND ${timeCol} < ${config.dbUrl ? '$2' : '?'}
+    WHERE ${timeCol} >= ${config.dbUrl ? '$1' : '?'} AND ${timeCol} < ${config.dbUrl ? '$2' : '?'}${purchasedFilterSql}
   `;
   const baseParams = [start, end];
 
   const countSql = config.dbUrl
-    ? 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= $1 AND ' + timeCol + ' < $2'
-    : 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= ? AND ' + timeCol + ' < ?';
+    ? 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= $1 AND ' + timeCol + ' < $2' + purchasedFilterSql
+    : 'SELECT COUNT(*) AS n FROM sessions s WHERE ' + timeCol + ' >= ? AND ' + timeCol + ' < ?' + purchasedFilterSql;
   const countRow = await db.get(countSql, [start, end]);
   const total = (countRow && countRow.n != null) ? Number(countRow.n) : 0;
 
-  const orderLimitOffset = ' ORDER BY s.last_seen DESC LIMIT ' + (config.dbUrl ? '$3' : '?') + ' OFFSET ' + (config.dbUrl ? '$4' : '?');
+  const orderBy = isSales ? ' ORDER BY s.purchased_at DESC, s.last_seen DESC' : ' ORDER BY s.last_seen DESC';
+  const orderLimitOffset = orderBy + ' LIMIT ' + (config.dbUrl ? '$3' : '?') + ' OFFSET ' + (config.dbUrl ? '$4' : '?');
   const rows = config.dbUrl
     ? await db.all(baseSql + orderLimitOffset, [...baseParams, limitNum, offsetNum])
     : await db.all(baseSql + orderLimitOffset, [...baseParams, limitNum, offsetNum]);

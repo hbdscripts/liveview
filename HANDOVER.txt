@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Products: framed divider grids for AOV/Leaderboard/Finishes + leaderboard dropdown moved left; Products: Finishes/Lengths cards now sort by revenue; DB: add line-items variant_title index for finishes/lengths; Products: 7 Day Leaderboard dropdown cards polish (clickable thumbs, compact teal revenue, even responsive counts, spinner) + /api/shopify-leaderboard; UI: Geos tab rename; UI: Conv rate KPI Shopify compare modal (3px radii, max font-weight 500, diagnostics palette); UI: lengths icon padding tweak; Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
+Last updated: 2026-02-06 (Home: replace “Last Hour” quick-tab with “Sales” (converted-only); Products: framed divider grids for AOV/Leaderboard/Finishes + leaderboard dropdown moved left; Products: Finishes/Lengths cards now sort by revenue; DB: add line-items variant_title index for finishes/lengths; Products: 7 Day Leaderboard dropdown cards polish (clickable thumbs, compact teal revenue, even responsive counts, spinner) + /api/shopify-leaderboard; UI: Geos tab rename; UI: Conv rate KPI Shopify compare modal (3px radii, max font-weight 500, diagnostics palette); UI: lengths icon padding tweak; Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -23,7 +23,7 @@ Main tabs (top row):
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
   - KPI diff compare: tiny inline icon in the “yesterday” subline for **Sessions / Conv rate / AOV** opens a reusable “Shopify vs Birdseye” KPI diff modal (styled to match Diagnostics palette; 3px radii; max font-weight 500) using `GET /api/config-status` (manual Refresh inside modal). Sessions + AOV are simplified (only those values); Conv rate keeps the richer bot/CR view.
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
-  - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
+  - Mobile-only: hide “Sales” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
   - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
     - Entry line: green “<” + page name (screen-reader text includes “Entry:”)
@@ -340,6 +340,7 @@ Backups durability:
 - Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
 - Ads: scaffold tab + API (`/api/ads/status`, `/api/ads/summary`) and lazy-loaded frontend (`/ads.js`).
 - Products: add rolling 7d Leaderboard cards above variant cards, with a dropdown (Title / Type) powered by `GET /api/shopify-leaderboard` (Title shows product image + revenue; Type shows Shopify product_type + revenue).
+- Home: replace Home table “Last Hour” quick-tab with “Sales” (shows only converted sessions in today’s date bounds; `GET /api/sessions?range=sales`).
 - Products: Leaderboard polish: header is now “7 Day Leaderboard”; product thumbs link to `/products/<handle>`; revenue is compact (e.g. `£3.1k`) and teal; responsive render keeps full rows (mobile max 4, desktop up to 12); loading state uses spinner + “Building leaderboards...”.
 - UI: AOV + Products card grids (AOV/Leaderboard/Finishes/Lengths) now use a framed grid with internal dividers (no card gaps/shadows), and the leaderboard dropdown sits on the left to match the Finishes/Lengths dropdown.
 - Products: Finishes + Lengths cards are now ordered by revenue (highest first).

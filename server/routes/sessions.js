@@ -7,7 +7,7 @@ const store = require('../store');
 
 function list(req, res, next) {
   const range = req.query.range;
-  const rangeAllowed = ['today', 'yesterday', '3d', '7d', '1h'];
+  const rangeAllowed = ['today', 'yesterday', '3d', '7d', '1h', 'sales'];
   const isDayKey = (v) => typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
   const isRangeKey = (v) => typeof v === 'string' && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(v);
   if (range != null && range !== '') {

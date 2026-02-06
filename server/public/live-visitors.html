@@ -730,7 +730,7 @@
       .live-view-header .next-update-block { display: inline-flex; }
       .live-view-header .live-view-next-update-center { flex: 0; }
       .next-update-label { display: none !important; }
-      #table-tab-1h, #table-tab-sep-today-1h, #table-tab-sep-1h-live { display: none !important; }
+      #table-tab-sales, #table-tab-sep-today-sales, #table-tab-sep-sales-live { display: none !important; }
       .table-scroll-wrap { margin-left: 0; margin-right: 0; border-radius: var(--radius); -webkit-overflow-scrolling: touch; overflow-x: auto; }
       .side-panel { width: 100%; padding: 1rem; }
       .side-panel-close { min-width: 44px; min-height: 44px; }
@@ -963,7 +963,7 @@
       <button type="button" class="mobile-date-item" role="menuitem" data-value="custom">Custom</button>
     </div>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
-      <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
+      <!-- Date range Today: table tabs Today | Sales | Now above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
       <option value="custom" id="date-opt-custom">Custom</option>
@@ -997,9 +997,9 @@
     <h2 class="table-title" id="table-title">
       <span id="table-title-tabs" class="table-title-tabs is-hidden" role="tablist" aria-label="Time window">
         <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
-        <span class="table-title-tabs-sep" id="table-tab-sep-today-1h" aria-hidden="true">|</span>
-        <button type="button" role="tab" id="table-tab-1h" data-range="1h" aria-selected="false">Last Hour</button>
-        <span class="table-title-tabs-sep" id="table-tab-sep-1h-live" aria-hidden="true">|</span>
+        <span class="table-title-tabs-sep" id="table-tab-sep-today-sales" aria-hidden="true">|</span>
+        <button type="button" role="tab" id="table-tab-sales" data-range="sales" aria-selected="false">Sales</button>
+        <span class="table-title-tabs-sep" id="table-tab-sep-sales-live" aria-hidden="true">|</span>
         <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false">Now</button>
       </span>
       <span id="table-title-text" class="table-title-label">Today</span>
@@ -1402,7 +1402,7 @@
   <script>
     const API = '';
     const LIVE_REFRESH_MS = 60000;
-    const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Last Hour refresh every 5 min
+    const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
     const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
@@ -1424,8 +1424,8 @@
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
     let pendingCustomRangeEndYmd = null; // modal-only pending selection
     let customCalendarLastPayload = null; // last /api/available-days payload used for rendering
-    /** When dateRange is 'live' or '1h', stats/KPIs use today's data; only the main table shows live/lasthour. */
-    function getStatsRange() { return (dateRange === 'live' || dateRange === '1h') ? 'today' : dateRange; }
+    /** When dateRange is 'live' or 'sales', stats/KPIs use today's data; only the main table shows those special views. */
+    function getStatsRange() { return (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : dateRange; }
     function getKpiData() {
       if (kpiCache) return kpiCache;
       if (getStatsRange() === 'today') return {};
@@ -1433,7 +1433,7 @@
     }
     let activeMainTab = 'spy';
     let nextLiveAt = 0;
-    let nextRangeAt = 0; // next refresh for Today/Last Hour (5 min)
+    let nextRangeAt = 0; // next refresh for Today/Sales (5 min)
     let lastSessionsFetchedAt = 0;
     let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
@@ -1570,7 +1570,7 @@
       const liveEl = document.getElementById('next-update-live-indicator');
 
       const isLive = dateRange === 'live';
-      const show = activeMainTab === 'spy' && (isLive || dateRange === '1h' || dateRange === 'today');
+      const show = activeMainTab === 'spy' && (isLive || dateRange === 'sales' || dateRange === 'today' || dateRange === '1h');
       block.classList.toggle('is-hidden', !show);
       if (!show) return;
 
@@ -4802,12 +4802,12 @@
       const tabsWrap = document.getElementById('table-title-tabs');
       const textEl = document.getElementById('table-title-text');
       const sel = document.getElementById('global-date-select');
-      const showTabs = (dateRange === 'live' || dateRange === '1h' || dateRange === 'today');
+      const showTabs = (dateRange === 'live' || dateRange === 'sales' || dateRange === 'today');
       if (tabsWrap) tabsWrap.classList.toggle('is-hidden', !showTabs);
       if (textEl) textEl.classList.toggle('is-hidden', showTabs);
       if (showTabs && tabsWrap) {
-        ['today', '1h', 'live'].forEach(function(r) {
-          const btn = document.getElementById('table-tab-' + (r === '1h' ? '1h' : r));
+        ['today', 'sales', 'live'].forEach(function(r) {
+          const btn = document.getElementById('table-tab-' + r);
           if (btn) btn.setAttribute('aria-selected', dateRange === r ? 'true' : 'false');
         });
       } else {
@@ -4819,7 +4819,7 @@
           const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
-        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
+        const fallback = { live: 'Now', today: 'Today', sales: 'Sales', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
         if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
@@ -4861,15 +4861,15 @@
         else sel.appendChild(opt);
         sel.value = String(dateRange);
       } else if (activeMainTab === 'spy') {
-        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Custom.
-        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
+        // Spy supports live/sales table tabs; dropdown stays on Today/Yesterday/Custom.
+        sel.value = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       } else {
         // Other tabs only use day/range ranges; if somehow on live, treat as Today.
         if (dateRange === 'live') {
           dateRange = 'today';
           sessionsTotal = null;
         }
-        sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
+        sel.value = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       }
 
       updateLiveViewTitle();
@@ -5205,8 +5205,8 @@
       const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
       if (increased) {
         triggerSaleToast({ origin: 'stats', playSound: true });
-        // Keep Home tables in sync when a toast fires outside SSE (Today/Last Hour/Live).
-        if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === '1h' || dateRange === 'live')) {
+        // Keep Home tables in sync when a toast fires outside SSE (Today/Sales/Live).
+        if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === 'sales' || dateRange === 'live' || dateRange === '1h')) {
           try { fetchSessions(); } catch (_) {}
         }
         // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
@@ -5993,7 +5993,7 @@
           lastSessionsMode = isLive ? 'live' : 'range';
           lastSessionsFetchedAt = Date.now();
           if (isLive) nextLiveAt = Date.now() + LIVE_REFRESH_MS;
-          else if (dateRange === 'today' || dateRange === '1h') nextRangeAt = Date.now() + RANGE_REFRESH_MS;
+          else if (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h') nextRangeAt = Date.now() + RANGE_REFRESH_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
           renderTable();
@@ -7537,7 +7537,7 @@
 
         function syncSelection() {
           let cur = String(dateRange || 'today');
-          if (cur === 'live' || cur === '1h') cur = 'today';
+          if (cur === 'live' || cur === 'sales' || cur === '1h') cur = 'today';
           if (typeof cur === 'string' && (cur.startsWith('r:') || cur.startsWith('d:'))) cur = 'custom';
           menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
             const v = it.getAttribute('data-value');
@@ -7591,7 +7591,7 @@
         if (!tabsWrap) return;
         function setRangeFromTab(range) {
           dateRange = range;
-          if (dateRange === '1h') {
+          if (dateRange === 'sales' || dateRange === '1h') {
             const sel = document.getElementById('global-date-select');
             if (sel) sel.value = 'today';
           }
@@ -7728,7 +7728,7 @@
               } catch (_) {}
             });
           } else {
-            const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
+            const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
             const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
             if (staleSessions) fetchSessions();
             ensureKpis();
@@ -7820,7 +7820,7 @@
 
     function onRangeAutoRefreshTick() {
       if (activeMainTab !== 'spy') return;
-      if (dateRange !== 'today' && dateRange !== '1h') return;
+      if (dateRange !== 'today' && dateRange !== 'sales' && dateRange !== '1h') return;
       if (document.visibilityState !== 'visible') return;
       if (Date.now() < nextRangeAt) return;
       fetchSessions();
@@ -7852,9 +7852,9 @@
       refreshTraffic({ force: false });
     }
 
-    // Live: refresh every 60s. Today/Last Hour: refresh every 5 min. Breakdown/Products/Traffic: every 5 min (Today only).
+    // Live: refresh every 60s. Today/Sales: refresh every 5 min. Breakdown/Products/Traffic: every 5 min (Today only).
     setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
-    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/1h (5 min interval)
+    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/Sales (5 min interval)
     setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);
@@ -7894,7 +7894,7 @@
       } else if (activeMainTab === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
-        const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
+        const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
         const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
         if (stale) fetchSessions();
       }
