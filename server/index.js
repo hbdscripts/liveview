@@ -30,8 +30,10 @@ const reconcileSales = require('./routes/reconcileSales');
 const latestSale = require('./routes/latestSale');
 const shopifyBestSellers = require('./routes/shopifyBestSellers');
 const shopifyBestVariants = require('./routes/shopifyBestVariants');
+const shopifyFinishes = require('./routes/shopifyFinishes');
 const shopifyWorstVariants = require('./routes/shopifyWorstVariants');
 const worstProducts = require('./routes/worstProducts');
+const adsRouter = require('./routes/ads');
 const ogThumb = require('./routes/ogThumb');
 const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
@@ -102,10 +104,13 @@ app.get('/api/shopify-sales', shopifySales.getShopifySalesToday);
 app.get('/api/shopify-sessions', shopifySessions.getShopifySessionsToday);
 app.get('/api/shopify-best-sellers', shopifyBestSellers.getShopifyBestSellers);
 app.get('/api/shopify-best-variants', shopifyBestVariants.getShopifyBestVariants);
+app.get('/api/shopify-finishes', shopifyFinishes.getShopifyFinishes);
 app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVariants);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
+// Ads feature area: mounted as a router to keep Ads endpoints self-contained.
+app.use('/api/ads', adsRouter);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 app.get('/api/store-base-url', (req, res) => {

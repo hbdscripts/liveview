@@ -937,6 +937,7 @@
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Breakdown</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="ads">Ads</button>
     </div>
 
     <div class="main-tabs-center-logo" aria-hidden="true">
@@ -953,6 +954,7 @@
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Breakdown</button>
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
+    <button type="button" role="tab" id="tab-ads" aria-selected="false" aria-controls="tab-panel-ads" data-tab="ads">Ads</button>
     <span class="main-tabs-spacer" aria-hidden="true"></span>
     <button type="button" id="mobile-date-btn" class="mobile-date-btn" aria-label="Date range" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-date-menu">
       <span>Date</span>
@@ -1252,6 +1254,10 @@
     </div>
   </div>
   </div>
+  </div>
+
+  <div id="tab-panel-ads" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-ads">
+    <div id="ads-root"></div>
   </div>
 
   <div id="side-panel" class="side-panel is-hidden">
@@ -4529,6 +4535,8 @@
         refreshTraffic({ force: false });
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
+      } else if (activeMainTab === 'ads') {
+        try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
         updateKpis();
         fetchSessions();
@@ -6837,13 +6845,47 @@
         const tabStats = document.getElementById('tab-stats');
         const tabProducts = document.getElementById('tab-products');
         const tabTraffic = document.getElementById('tab-traffic');
+        const tabAds = document.getElementById('tab-ads');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
         const panelProducts = document.getElementById('tab-panel-products');
         const panelTraffic = document.getElementById('tab-panel-traffic');
+        const panelAds = document.getElementById('tab-panel-ads');
         const mobileBtn = document.getElementById('mobile-tabs-btn');
         const mobileMenu = document.getElementById('mobile-tabs-menu');
         const mobileCurrent = document.getElementById('mobile-tabs-current');
+
+        // Ads tab: lazy-load /ads.js only when Ads is opened.
+        let adsLoading = null;
+        let adsLoaded = false;
+        function ensureAdsLoaded() {
+          if (adsLoaded) return Promise.resolve(true);
+          if (adsLoading) return adsLoading;
+          adsLoading = new Promise(function(resolve) {
+            const existing = document.querySelector('script[data-ads-js="1"]');
+            if (existing) {
+              adsLoaded = true;
+              resolve(true);
+              return;
+            }
+            const s = document.createElement('script');
+            s.src = '/ads.js';
+            s.async = true;
+            s.defer = true;
+            s.setAttribute('data-ads-js', '1');
+            s.onload = function() {
+              adsLoaded = true;
+              resolve(true);
+            };
+            s.onerror = function() {
+              resolve(false);
+            };
+            document.head.appendChild(s);
+          }).finally(function() {
+            adsLoading = null;
+          });
+          return adsLoading;
+        }
 
         function closeMobileMenu() {
           if (!mobileMenu || !mobileBtn) return;
@@ -6853,7 +6895,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'stats' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : 'Home'));
+            mobileCurrent.textContent = tab === 'stats' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home')));
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -6875,6 +6917,7 @@
           const isStats = tab === 'stats';
           const isProducts = tab === 'products';
           const isTraffic = tab === 'traffic';
+          const isAds = tab === 'ads';
           activeMainTab = tab;
           syncMobileMenu(tab);
           closeMobileMenu();
@@ -6882,10 +6925,12 @@
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
+          if (tabAds) tabAds.setAttribute('aria-selected', isAds ? 'true' : 'false');
           if (panelSpy) panelSpy.classList.toggle('active', isSpy);
           if (panelStats) panelStats.classList.toggle('active', isStats);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
+          if (panelAds) panelAds.classList.toggle('active', isAds);
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
@@ -6904,6 +6949,15 @@
           } else if (tab === 'traffic') {
             refreshTraffic({ force: false });
             ensureKpis();
+          } else if (tab === 'ads') {
+            ensureKpis();
+            ensureAdsLoaded().then(function(ok) {
+              if (!ok) return;
+              try {
+                if (window.__adsInit) window.__adsInit();
+                else if (window.__adsRefresh) window.__adsRefresh({ force: false });
+              } catch (_) {}
+            });
           } else {
             const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
             const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
@@ -6914,13 +6968,14 @@
         let initialTab = 'spy';
         try {
           const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'spy' || saved === 'products' || saved === 'traffic') initialTab = saved;
+          if (saved === 'stats' || saved === 'spy' || saved === 'products' || saved === 'traffic' || saved === 'ads') initialTab = saved;
         } catch (_) {}
         setTab(initialTab);
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
+        if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
         if (mobileBtn && mobileMenu) {
           mobileBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -6955,6 +7010,7 @@
             if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
+            else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
             else fetchSessions();
           });
         }
@@ -7066,6 +7122,8 @@
       } else if (activeMainTab === 'traffic') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });
+      } else if (activeMainTab === 'ads') {
+        try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
         const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
         const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
