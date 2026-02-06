@@ -965,13 +965,13 @@
     <div id="mobile-date-menu" class="mobile-date-menu" role="menu" aria-label="Date range menu">
       <button type="button" class="mobile-date-item" role="menuitem" data-value="today">Today</button>
       <button type="button" class="mobile-date-item" role="menuitem" data-value="yesterday">Yesterday</button>
-      <button type="button" class="mobile-date-item" role="menuitem" data-value="custom">Choose dates…</button>
+      <button type="button" class="mobile-date-item" role="menuitem" data-value="custom">Custom</button>
     </div>
     <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
       <!-- Date range Today: table tabs Today | Last Hour | Now above table -->
       <option value="today">Today</option>
       <option value="yesterday">Yesterday</option>
-      <option value="custom" id="date-opt-custom">Choose dates…</option>
+      <option value="custom" id="date-opt-custom">Custom</option>
     </select>
   </div>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
@@ -1024,7 +1024,7 @@
     </h2>
     <span class="next-update-block live-view-next-update-center" id="next-update-block">
       <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
-      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"><svg class="next-update-circle" viewBox="0 0 36 36" width="18" height="18"><circle class="next-update-circle-bg" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle id="next-update-circle-progress" class="next-update-circle-progress" cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 18 18)"/></svg></span>
+      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"></span>
       <span class="next-update-live-indicator" id="next-update-live-indicator" aria-hidden="true"><span class="live-pulse-dot"></span> Live</span>
     </span>
     <div class="live-view-online">
@@ -1551,14 +1551,12 @@
       el.textContent = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    const NEXT_UPDATE_CIRCLE_C = 2 * Math.PI * 15.9;
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
       if (!block) return;
       const labelEl = document.getElementById('next-update-label');
       const timerWrap = document.getElementById('next-update-timer-wrap');
       const liveEl = document.getElementById('next-update-live-indicator');
-      const progressEl = document.getElementById('next-update-circle-progress');
 
       const isLive = dateRange === 'live';
       const show = activeMainTab === 'spy' && (isLive || dateRange === '1h' || dateRange === 'today');
@@ -1568,8 +1566,11 @@
       if (labelEl) labelEl.classList.toggle('is-hidden', isLive);
       if (timerWrap) timerWrap.classList.toggle('is-hidden', isLive);
       if (liveEl) liveEl.classList.toggle('is-hidden', !isLive);
-      if (isLive) return;
-      if (!progressEl) return;
+      if (isLive) {
+        if (timerWrap) timerWrap.style.setProperty('--progress', '0');
+        return;
+      }
+      if (!timerWrap) return;
 
       const duration = RANGE_REFRESH_MS;
       const target = (typeof nextRangeAt === 'number' && nextRangeAt > Date.now())
@@ -1577,8 +1578,7 @@
         : (Date.now() + RANGE_REFRESH_MS);
       const remaining = Math.max(0, target - Date.now());
       const progress = Math.min(1, 1 - remaining / duration);
-      progressEl.setAttribute('stroke-dasharray', String(NEXT_UPDATE_CIRCLE_C));
-      progressEl.setAttribute('stroke-dashoffset', String(NEXT_UPDATE_CIRCLE_C * (1 - progress)));
+      timerWrap.style.setProperty('--progress', String(progress));
     }
 
     function toMs(v) {
@@ -4458,7 +4458,7 @@
           const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
-        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Choose dates' };
+        const fallback = { live: 'Now', today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
         if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
@@ -4473,9 +4473,9 @@
       if (!sel) return;
       const hasLive = sel.querySelector('option[value="live"]');
       if (hasLive) hasLive.remove();
-      // Keep the "Choose dates…" option stable, and create a dynamic option for the currently applied custom range.
+      // Keep the "Custom" option stable, and create a dynamic option for the currently applied custom range.
       const customOpt = document.getElementById('date-opt-custom') || sel.querySelector('option[value="custom"]');
-      if (customOpt) customOpt.textContent = 'Choose dates…';
+      if (customOpt) customOpt.textContent = 'Custom';
 
       // Remove previous dynamic custom-range option(s).
       sel.querySelectorAll('option[data-custom-range="1"]').forEach(function(o) { try { o.remove(); } catch (_) {} });
@@ -4500,7 +4500,7 @@
         else sel.appendChild(opt);
         sel.value = String(dateRange);
       } else if (activeMainTab === 'spy') {
-        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Choose dates.
+        // Spy supports live/last-hour table tabs; dropdown stays on Today/Yesterday/Custom.
         sel.value = (dateRange === 'live' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       } else {
         // Other tabs only use day/range ranges; if somehow on live, treat as Today.
@@ -4906,13 +4906,13 @@
       if (icon) icon.remove();
       const delta = kpiDelta(current, baseline, invert);
       if (delta == null) return;
-      if (delta >= 0.1) {
+      if (delta > 0) {
         var span = document.createElement('span');
         span.className = 'kpi-delta-icon kpi-delta-icon-up';
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = KPI_DELTA_SVG;
         el.appendChild(span);
-      } else if (delta <= -0.1) {
+      } else if (delta < 0) {
         var spanDown = document.createElement('span');
         spanDown.className = 'kpi-delta-icon kpi-delta-icon-down';
         spanDown.setAttribute('aria-hidden', 'true');
@@ -6174,16 +6174,13 @@
             return '<div style="border:1px solid rgba(0,0,0,0.08);border-radius:3px;background:linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 10px 30px rgba(0,0,0,0.06);padding:14px;">' + h + (bodyHtml || '') + '</div>';
           }
           function brandHeader(name, iconUrl, subtitle, accentRgb) {
-            const rgb = accentRgb || '0,0,0';
             const sub = subtitle
               ? ('<div style="font-size:11px;color:var(--muted);font-weight:750;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(subtitle) + '</div>')
               : '';
             return (
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
-                '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
-                  '<span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
-                    '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:18px;height:18px;object-fit:contain;display:block;" />' +
-                  '</span>' +
+                '<div style="display:flex;align-items:center;gap:4px;min-width:0;">' +
+                  '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:20px;height:20px;object-fit:contain;display:block;" />' +
                   '<div style="display:flex;flex-direction:column;min-width:0;line-height:1.1;">' +
                     '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(name || '')) + '</div>' +
                     sub +
@@ -6193,11 +6190,8 @@
             );
           }
           function brandIconTiny(name, iconUrl, accentRgb) {
-            const rgb = accentRgb || '0,0,0';
             return (
-              '<span style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid rgba(' + rgb + ',0.25);background:rgba(' + rgb + ',0.10);flex:0 0 auto;">' +
-                '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:12px;height:12px;object-fit:contain;display:block;" />' +
-              '</span>'
+              '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:20px;height:20px;object-fit:contain;display:block;flex:0 0 auto;" />'
             );
           }
           function metric(label, valueHtml) {
@@ -6424,8 +6418,8 @@
               '<div role="table" aria-label="Comparison" style="min-width:760px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;">' +
                 '<div role="row" style="display:contents;">' +
                   '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Item</div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:8px;">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:8px;">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + '<span>Birdseye</span></span></div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:4px;">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
+                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:4px;">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + '<span>Birdseye</span></span></div>' +
                   '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Diff</div>' +
                 '</div>' +
                 '<div role="row" style="display:contents;">' +
@@ -6949,7 +6943,7 @@
           const next = String(this.value || '').trim().toLowerCase();
           if (next === 'custom') {
             openCustomDateModal();
-            // Revert the select so "Choose dates…" can be selected again.
+            // Revert the select so "Custom" can be selected again.
             syncDateSelectOptions();
             return;
           }
