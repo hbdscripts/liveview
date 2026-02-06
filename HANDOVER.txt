@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (UI: sale toast sound unlock; Conversion: add Shopify vs Birdseye compare modal from CR KPI; Products: Finishes cards 4-up row + metal swatches; Traffic settings centralized in footer Settings modal)
+Last updated: 2026-02-06 (UI: sale toast sound unlock; Products: Finishes cards 4-up row + metal swatches; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed for finishes + traffic settings)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -19,7 +19,6 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
-  - Conv rate KPI has a tiny Shopify icon (top-right) that opens a Shopify vs Birdseye comparison modal (with in-modal refresh)
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -339,6 +338,7 @@ Backups durability:
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
 - Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
+- Diagnostics: tracker definitions (`server/trackerDefinitions.js`) updated to include Products “Finishes” cards and to document Traffic settings sources (settings.traffic_sources_enabled / settings.traffic_types_enabled).
 - Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.
 - Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
 - Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
@@ -347,7 +347,6 @@ Backups durability:
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 - UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
 - UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
-- UI: Conv rate KPI has a tiny Shopify icon that opens a modern Shopify vs Birdseye comparison modal (sessions, CR%, truth orders/revenue, bots blocked) with an in-modal refresh button.
 - UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now use a true down-right SVG with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
 - UI: Mobile KPI cards fit two-per-view with unified gap spacing (matches table gap).
 - UI: KPI delta badges use white backgrounds and good/bad border tints (bounce inverted).

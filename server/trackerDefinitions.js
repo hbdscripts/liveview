@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 8;
+const DEFINITIONS_VERSION = 9;
 const LAST_UPDATED = '2026-02-06';
 
 /**
@@ -249,6 +249,29 @@ const TRACKER_TABLE_DEFINITIONS = [
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
+    id: 'products_finishes_cards',
+    page: 'Products',
+    name: 'Finishes revenue cards',
+    ui: { elementIds: ['finishes-cards-grid'] },
+    endpoint: { method: 'GET', path: '/api/shopify-finishes', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred finish from variant_title' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
+      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, cards rely on existing DB truth.' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Finish', value: 'Gold | Silver | Vermeil | Solid Silver' },
+      { name: 'Revenue', value: 'revenueGbp', formula: 'SUM(line_revenue) by finish, converted to GBP' },
+    ],
+    math: [
+      { name: 'Finish inference', value: 'Derived from variant_title keywords (normalizeFinishKey in shopifyFinishes route)' },
+      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
     id: 'traffic_channels',
     page: 'Traffic',
     name: 'Channels table',
@@ -256,7 +279,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/traffic', params: ['range=...'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Sessions grouped by sessions.traffic_source_key (human-only)' },
-      { kind: 'db', tables: ['orders_shopify', 'settings'], note: 'Orders/revenue from Shopify truth orders, with source derived from orders_shopify.raw_json (landing_site/referring_site) + traffic source mapping rules' },
+      { kind: 'db', tables: ['orders_shopify', 'settings', 'traffic_source_meta', 'traffic_source_rules'], note: 'Orders/revenue from Shopify truth orders. Source is derived from orders_shopify.raw_json (landing_site/referring_site) + mapping rules. Enabled channels come from settings.traffic_sources_enabled; labels/icons can be overridden via traffic_source_meta.' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
@@ -267,6 +290,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Note', value: 'Orders/Rev are Shopify truth. Sessions come from our sessions table; CR% = Orders / Sessions.' },
+      { name: 'Settings', value: 'Visible channels are controlled by settings.traffic_sources_enabled (Settings → Traffic).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
@@ -278,7 +302,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['traffic-types-table'] },
     endpoint: { method: 'GET', path: '/api/traffic', params: ['range=...'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Sessions grouped by ua_device_type + ua_platform (human-only)' },
+      { kind: 'db', tables: ['sessions', 'settings'], note: 'Sessions grouped by ua_device_type + ua_platform (human-only). Enabled device keys come from settings.traffic_types_enabled.' },
       { kind: 'db', tables: ['orders_shopify'], note: 'Orders/revenue from Shopify truth orders, with device/platform derived from orders_shopify.raw_json client_details.user_agent' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
@@ -288,7 +312,9 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Rev', value: 'revenueGbp', formula: 'Truth revenue in GBP' },
       { name: 'CR%', value: 'orders / sessions × 100' },
     ],
-    math: [],
+    math: [
+      { name: 'Settings', value: 'Visible device types are controlled by settings.traffic_types_enabled (Settings → Traffic).' },
+    ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
