@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Diagnostics modal restyled + mobile friendly; sale toast is body-level overlay and KPI no longer freezes)
+Last updated: 2026-02-06 (Diagnostics modal: dedicated CSS, no inline styles, ultra-modern mobile-friendly UI)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -320,6 +320,7 @@ Backups durability:
 ## Changelog (high level)
 
 2026-02-06
+- Diagnostics modal (footer settings icon): new `server/public/diagnostics-modal.css`; all inline styles removed from modal HTML and from JS-rendered content; class-based layout (dm-*), full-screen–friendly, mobile-responsive; tab/panel and copy-msg use classList.
 - Reporting guardrail: sales/orders in all tables are Shopify truth (`orders_shopify` / `orders_shopify_line_items`). Pixel `purchases` remain drift/debug only.
 - Products: Best tables ordered by revenue; Worst products/variants now list zero-order items sorted by highest clicks then lowest revenue.
 - Products: Orders columns now sum line-item quantities (units sold) instead of distinct order counts; unknown country flags now use a placeholder instead of 404.

@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <title>Birdseye Tracker</title>
   <link rel="stylesheet" href="/app.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
   <script type="text/plain" id="inline-css-deprecated">
     :root {
       --bg: #fafafa;
@@ -799,10 +800,6 @@
     .config-row.ok { color: #0f766e; }
     .config-row.missing { color: #b91c1c; }
 
-    /* Diagnostics (config status) redesign */
-    #config-modal .config-modal-card { width: 940px; max-width: calc(100vw - 2rem); max-height: 86vh; border-radius: 3px; }
-    #config-modal .config-modal-header { margin-bottom: 0.5rem; }
-
     .diag { display: flex; flex-direction: column; gap: 0.85rem; }
     .diag-loading { font-size: 0.85rem; color: var(--muted); padding: 0.5rem 0; }
 
@@ -891,7 +888,6 @@
     .diag-def-list code { font-size: 0.78rem; }
 
     @media (max-width: 768px) {
-      #config-modal .config-modal-card { width: 100%; max-height: 92vh; }
       .diag-top-grid { grid-template-columns: 1fr; }
       .diag-card-bots { grid-column: auto; }
       .diag-panel-grid { grid-template-columns: 1fr; }
@@ -1338,21 +1334,21 @@
     </button>
   </footer>
 
-  <div class="config-modal" id="config-modal" aria-hidden="true" style="background:rgba(10,10,12,0.55);backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);padding:max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));">
-    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Diagnostics" style="width:min(1040px, 100%);max-height:92vh;max-height:min(92dvh, 900px);height:auto;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.92);box-shadow:0 16px 60px rgba(0,0,0,0.28);">
-      <div class="config-modal-header" style="position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 14px 12px;background:rgba(255,255,255,0.92);border-bottom:1px solid rgba(0,0,0,0.08);">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-          <h3 class="config-modal-title" style="margin:0;font-size:12px;font-weight:950;color:#111827;letter-spacing:0.08em;text-transform:uppercase;">Diagnostics</h3>
-          <div style="font-size:12px;color:rgba(17,24,39,0.62);font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Shopify truth · pixel evidence · system health</div>
+  <div class="config-modal" id="config-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Diagnostics">
+      <div class="config-modal-header">
+        <div class="config-modal-header-inner">
+          <h3 class="config-modal-title">Diagnostics</h3>
+          <div class="config-modal-subtitle">Shopify truth · pixel evidence · system health</div>
         </div>
-        <div class="config-modal-actions" style="display:flex;align-items:center;gap:10px;">
-          <button type="button" id="config-refresh-btn" class="config-btn config-refresh-btn" title="Refresh diagnostics" aria-label="Refresh diagnostics" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:40px;height:40px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.86);box-shadow:0 1px 0 rgba(0,0,0,0.04);">
+        <div class="config-modal-actions">
+          <button type="button" id="config-refresh-btn" class="config-btn config-refresh-btn" title="Refresh diagnostics" aria-label="Refresh diagnostics">
             <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
           </button>
-          <button type="button" class="config-close" id="config-close-btn" aria-label="Close" style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.86);box-shadow:0 1px 0 rgba(0,0,0,0.04);font-size:22px;line-height:1;color:#111827;">×</button>
+          <button type="button" class="config-close" id="config-close-btn" aria-label="Close">×</button>
         </div>
       </div>
-      <div id="config-status" style="flex:1;min-height:0;overflow:auto;padding:14px 14px 18px;-webkit-overflow-scrolling:touch;"></div>
+      <div id="config-status"></div>
     </div>
   </div>
 
@@ -5814,7 +5810,7 @@
       if (configStatusRefreshInFlight && !options.force) return configStatusRefreshInFlight;
       const refreshBtn = document.getElementById('config-refresh-btn');
       const configStatusEl = document.getElementById('config-status');
-      if (configStatusEl) configStatusEl.innerHTML = '<div style="font-size:0.9rem;color:var(--muted);padding:0.5rem 0;">Loading…</div>';
+      if (configStatusEl) configStatusEl.innerHTML = '<div class="dm-loading">Loading…</div>';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       const p = fetch(getConfigStatusUrl({ force: !!options.force }), { credentials: 'same-origin', cache: 'no-store' })
@@ -5975,29 +5971,26 @@
 
           function renderTrackerDefinitions(defs) {
             if (!defs || !Array.isArray(defs.tables)) {
-              return '<div style="font-size:12px;color:var(--muted);line-height:1.35;">No tracker definitions available from server.</div>';
+              return '<div class="dm-def-note">No tracker definitions available from server.</div>';
             }
 
             function pill2(text, tone) {
               const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
-              const base = 'display:inline-flex;align-items:center;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:850;white-space:nowrap;border:1px solid ';
-              if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
-              if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
-              return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
+              return '<span class="dm-pill dm-pill-' + t + '">' + escapeHtml(String(text || '')) + '</span>';
             }
             function code2(value) {
-              return '<code style="font-size:12px;padding:2px 8px;border-radius:3px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+              return '<code class="dm-code">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
             }
             function line2(label, valueHtml) {
               return (
-                '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:13px;">' +
-                  '<div style="color:var(--muted);font-weight:750;">' + escapeHtml(label) + '</div>' +
-                  '<div style="color:var(--text);font-weight:750;text-align:right;min-width:0;word-break:break-word;">' + (valueHtml || '\u2014') + '</div>' +
+                '<div class="dm-row-kv">' +
+                  '<div class="dm-k">' + escapeHtml(label) + '</div>' +
+                  '<div class="dm-v">' + (valueHtml || '\u2014') + '</div>' +
                 '</div>'
               );
             }
             function sectionTitle2(text) {
-              return '<div style="margin-top:10px;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">' + escapeHtml(text) + '</div>';
+              return '<div class="dm-def-section-title">' + escapeHtml(text) + '</div>';
             }
 
             const ver = (defs.version != null) ? String(defs.version) : '';
@@ -6024,15 +6017,15 @@
             });
 
             let out = '';
-            out += '<div style="display:flex;flex-direction:column;gap:10px;">';
+            out += '<div class="dm-def-root">';
             const metaBits = [];
             if (ver) metaBits.push('v' + ver);
             if (last) metaBits.push('Last updated ' + last);
-            if (metaBits.length) out += '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + escapeHtml(metaBits.join(' · ')) + '</div>';
-            if (note) out += '<div style="font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml(note) + '</div>';
+            if (metaBits.length) out += '<div class="dm-def-meta">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+            if (note) out += '<div class="dm-def-note">' + escapeHtml(note) + '</div>';
 
             if (!pages.length) {
-              out += '<div style="font-size:12px;color:var(--muted);">No definitions found.</div>';
+              out += '<div class="dm-def-note">No definitions found.</div>';
               out += '</div>';
               return out;
             }
@@ -6041,8 +6034,8 @@
               const list = Array.isArray(byPage[page]) ? byPage[page].slice() : [];
               list.sort(function(a, b) { return String((a && a.name) || '').localeCompare(String((b && b.name) || '')); });
 
-              out += '<div style="border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.75);padding:12px;">';
-              out +=   '<div style="font-size:14px;font-weight:950;color:var(--text);margin-bottom:6px;">' + escapeHtml(page) + '</div>';
+              out += '<div class="dm-def-page-box">';
+              out +=   '<div class="dm-def-page-title">' + escapeHtml(page) + '</div>';
 
               for (const d of list) {
                 const id = (d && d.id) ? String(d.id) : '';
@@ -6075,16 +6068,16 @@
                 if (missingTables.length) chips.push(pill2('DB missing', 'bad'));
                 if (d && d.requires && d.requires.shopifyToken) chips.push(tokenOk ? pill2('Token OK', 'ok') : pill2('Token missing', 'bad'));
 
-                out += '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.06);border-radius:3px;background:rgba(255,255,255,0.78);padding:10px;">';
-                out +=   '<summary style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;list-style:none;">';
+                out += '<details class="dm-def-details">';
+                out +=   '<summary>';
                 out +=     '<div style="min-width:0;">';
-                out +=       '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(name) + '</div>';
-                out +=       '<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(summaryBits.join(' · ')) + '</div>';
+                out +=       '<div class="dm-def-details-name">' + escapeHtml(name) + '</div>';
+                out +=       '<div class="dm-def-details-sub">' + escapeHtml(summaryBits.join(' · ')) + '</div>';
                 out +=     '</div>';
-                out +=     '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' + chips.join('') + '<span style="color:var(--muted);font-weight:900;padding:2px 6px;">▾</span></div>';
+                out +=     '<div class="dm-def-details-chips">' + chips.join('') + '<span style="color:var(--muted);font-weight:900;padding:2px 6px;">▾</span></div>';
                 out +=   '</summary>';
 
-                out +=   '<div style="margin-top:10px;">';
+                out +=   '<div class="dm-def-details-body">';
                 if (id) out += line2('Id', code2(id));
                 if (method && path) out += line2('Endpoint', code2(method + ' ' + path));
                 if (params.length) out += line2('Params', code2(params.join(', ')));
@@ -6107,7 +6100,7 @@
                 const sources = (d && Array.isArray(d.sources)) ? d.sources : [];
                 if (sources.length) {
                   out += sectionTitle2('Sources');
-                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
+                  out += '<ul class="dm-def-list">';
                   for (const s of sources) {
                     const kind = (s && s.kind) ? String(s.kind) : 'source';
                     const st = (s && Array.isArray(s.tables)) ? s.tables : [];
@@ -6115,7 +6108,7 @@
                     let line = '<strong>' + escapeHtml(kind) + '</strong>';
                     if (st.length) line += ' · ' + escapeHtml(st.join(', '));
                     if (note2) line += ' — ' + escapeHtml(note2);
-                    out += '<li style="margin:2px 0;">' + line + '</li>';
+                    out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
                 }
@@ -6123,15 +6116,15 @@
                 const columns = (d && Array.isArray(d.columns)) ? d.columns : [];
                 if (columns.length) {
                   out += sectionTitle2('Columns + math');
-                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
+                  out += '<ul class="dm-def-list">';
                   for (const col of columns) {
                     const cn = (col && col.name) ? String(col.name) : 'Column';
                     const cv = (col && col.value != null) ? String(col.value) : '';
                     const cf = (col && col.formula != null) ? String(col.formula) : '';
                     let line = '<strong>' + escapeHtml(cn) + '</strong>';
                     if (cv) line += ' · ' + escapeHtml(cv);
-                    if (cf) line += ' · <span style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;font-size:12px;">' + escapeHtml(cf) + '</span>';
-                    out += '<li style="margin:2px 0;">' + line + '</li>';
+                    if (cf) line += ' · <code class="dm-code">' + escapeHtml(cf) + '</code>';
+                    out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
                 }
@@ -6139,11 +6132,11 @@
                 const math = (d && Array.isArray(d.math)) ? d.math : [];
                 if (math.length) {
                   out += sectionTitle2('Notes');
-                  out += '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text);">';
+                  out += '<ul class="dm-def-list">';
                   for (const m of math) {
                     const mn = (m && m.name) ? String(m.name) : 'Note';
                     const mv = (m && m.value != null) ? String(m.value) : '';
-                    out += '<li style="margin:2px 0;"><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
+                    out += '<li><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
                   }
                   out += '</ul>';
                 }
@@ -6186,34 +6179,23 @@
 
           function pillInline(text, tone) {
             const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
-            const base = 'display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:0.01em;white-space:nowrap;border:1px solid ';
-            if (t === 'bad') return '<span style="' + base + 'rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">' + escapeHtml(String(text || '')) + '</span>';
-            if (t === 'warn') return '<span style="' + base + 'rgba(161,98,7,0.24);background:rgba(161,98,7,0.10);color:#a16207;">' + escapeHtml(String(text || '')) + '</span>';
-            return '<span style="' + base + 'rgba(13,148,136,0.25);background:rgba(13,148,136,0.10);color:#0f766e;">' + escapeHtml(String(text || '')) + '</span>';
+            return '<span class="dm-pill dm-pill-' + t + '">' + escapeHtml(String(text || '')) + '</span>';
           }
           function codeInline(value) {
-            return '<code style="font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.7);color:var(--text);">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
+            return '<code class="dm-code">' + escapeHtml(value == null ? '' : String(value)) + '</code>';
           }
           function card(title, bodyHtml) {
-            const h = title
-              ? (
-                  '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">' +
-                    '<div style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">' + escapeHtml(title) + '</div>' +
-                  '</div>'
-                )
-              : '';
-            return '<div style="border:1px solid rgba(0,0,0,0.08);border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.82));box-shadow:0 1px 0 rgba(0,0,0,0.04), 0 12px 40px rgba(0,0,0,0.08);padding:14px;">' + h + (bodyHtml || '') + '</div>';
+            const h = title ? ('<div class="dm-card-title">' + escapeHtml(title) + '</div>') : '';
+            return '<div class="dm-card">' + h + (bodyHtml || '') + '</div>';
           }
           function brandHeader(name, iconUrl, subtitle, accentRgb) {
-            const sub = subtitle
-              ? ('<div style="font-size:11px;color:var(--muted);font-weight:750;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(subtitle) + '</div>')
-              : '';
+            const sub = subtitle ? ('<div class="dm-brand-sub">' + escapeHtml(subtitle) + '</div>') : '';
             return (
-              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
-                '<div style="display:flex;align-items:center;gap:4px;min-width:0;">' +
-                  '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:20px;height:20px;object-fit:contain;display:block;" />' +
-                  '<div style="display:flex;flex-direction:column;min-width:0;line-height:1.1;">' +
-                    '<div style="font-size:13px;font-weight:950;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(name || '')) + '</div>' +
+              '<div class="dm-brand-header">' +
+                '<div class="dm-brand-header-inner">' +
+                  '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" class="dm-brand-icon" />' +
+                  '<div style="min-width:0;line-height:1.1;">' +
+                    '<div class="dm-brand-name">' + escapeHtml(String(name || '')) + '</div>' +
                     sub +
                   '</div>' +
                 '</div>' +
@@ -6221,25 +6203,23 @@
             );
           }
           function brandIconTiny(name, iconUrl, accentRgb) {
-            return (
-              '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" style="width:20px;height:20px;object-fit:contain;display:block;flex:0 0 auto;" />'
-            );
+            return '<img src="' + escapeHtml(String(iconUrl || '')) + '" alt="' + escapeHtml(String(name || '')) + '" class="dm-brand-icon" />';
           }
           function metric(label, valueHtml) {
             return (
-              '<div style="display:flex;flex-direction:column;gap:4px;min-width:0;">' +
-                '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(label) + '</div>' +
-                '<div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (valueHtml || '\u2014') + '</div>' +
+              '<div class="dm-metric">' +
+                '<div class="dm-metric-label">' + escapeHtml(label) + '</div>' +
+                '<div class="dm-metric-value">' + (valueHtml || '\u2014') + '</div>' +
               '</div>'
             );
           }
           function rowKV(label, valueHtml, noteHtml) {
             return (
-              '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:13px;">' +
-                '<div style="color:var(--muted);font-weight:750;flex:0 0 auto;">' + escapeHtml(label) + '</div>' +
-                '<div style="color:var(--text);font-weight:750;text-align:right;min-width:0;word-break:break-word;">' + (valueHtml || '\u2014') + '</div>' +
+              '<div class="dm-row-kv">' +
+                '<div class="dm-k">' + escapeHtml(label) + '</div>' +
+                '<div class="dm-v">' + (valueHtml || '\u2014') + '</div>' +
               '</div>' +
-              (noteHtml ? ('<div style="margin-top:6px;font-size:12px;color:var(--muted);line-height:1.35;">' + noteHtml + '</div>') : '')
+              (noteHtml ? ('<div class="dm-row-kv-note">' + noteHtml + '</div>') : '')
             );
           }
           function diffSpan(n, fmtAbsFn, unitSuffix) {
@@ -6254,25 +6234,13 @@
 
           function tabButton(t) {
             const isActive = t.id === activeTab;
-            const s = [
-              'display:inline-flex',
-              'align-items:center',
-              'gap:8px',
-              'padding:7px 12px',
-              'border-radius:999px',
-              'border:1px solid ' + (isActive ? 'rgba(13,148,136,0.55)' : 'var(--border)'),
-              'background:' + (isActive ? 'rgba(13,148,136,0.10)' : 'rgba(255,255,255,0.75)'),
-              'color:' + (isActive ? 'var(--accent)' : 'var(--text)'),
-              'font-size:12.5px',
-              'font-weight:850',
-              'cursor:pointer',
-              'white-space:nowrap',
-            ].join(';');
-            return '<button type="button" data-be-tab="' + escapeHtml(t.id) + '" aria-selected="' + (isActive ? 'true' : 'false') + '" style="' + s + '">' + escapeHtml(t.label) + '</button>';
+            const cls = 'dm-tab' + (isActive ? ' dm-tab--active' : '');
+            return '<button type="button" class="' + cls + '" data-be-tab="' + escapeHtml(t.id) + '" aria-selected="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(t.label) + '</button>';
           }
 
           function panelWrap(id, innerHtml) {
-            return '<div data-be-panel="' + escapeHtml(id) + '" style="display:' + (id === activeTab ? 'block' : 'none') + ';">' + (innerHtml || '') + '</div>';
+            const cls = 'dm-panel' + (id === activeTab ? ' dm-panel--active' : '');
+            return '<div class="' + cls + '" data-be-panel="' + escapeHtml(id) + '">' + (innerHtml || '') + '</div>';
           }
 
           const headerMetaBits = [];
@@ -6370,52 +6338,35 @@
             aiCopyText = 'Birdseye diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
           }
 
+          const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+
           let html = '';
-          html += '<div id="be-diag-root" style="display:flex;flex-direction:column;gap:12px;">';
-
-          // Sticky top tabs (single level)
-          html += '<div style="position:sticky;top:0;z-index:4;background:rgba(255,255,255,0.88);margin:-14px -14px 12px;padding:12px 14px 12px;border-bottom:1px solid rgba(0,0,0,0.06);backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);">';
-          const copyBtnStyle = [
-            'display:inline-flex',
-            'align-items:center',
-            'gap:8px',
-            'padding:7px 12px',
-            'border-radius:999px',
-            'border:1px solid rgba(0,0,0,0.10)',
-            'background:linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78))',
-            'box-shadow:0 1px 0 rgba(0,0,0,0.03)',
-            'color:var(--text)',
-            'font-size:12.5px',
-            'font-weight:900',
-            'cursor:pointer',
-            'white-space:nowrap',
-          ].join(';');
-          const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;opacity:0.9;"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-
-          html +=   '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
-          html +=     '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + headerMetaBits.join(' · ') + '</div>';
-          html +=     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-                        '<button type="button" id="be-copy-ai-btn" title="Copy a detailed diagnostics payload for AI" style="' + copyBtnStyle + '">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                        '<span id="be-copy-ai-msg" style="font-size:12px;color:var(--muted);font-weight:750;"></span>' +
+          html += '<div id="be-diag-root" class="dm-root">';
+          html += '<div class="dm-bar">';
+          html +=   '<div class="dm-bar-row">';
+          html +=     '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
+          html +=     '<div class="dm-bar-actions">' +
+                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
+                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                         (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                         (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
                       '</div>';
           html +=   '</div>';
-          html +=   '<div style="margin-top:10px;display:flex;gap:8px;overflow:auto;padding-bottom:2px;">' + allTabs.map(tabButton).join('') + '</div>';
+          html +=   '<div class="dm-tabs">' + allTabs.map(tabButton).join('') + '</div>';
           html += '</div>';
 
           // Overview
           let overview = '';
-          overview += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          overview += '<div class="dm-grid">';
           overview += card('', (
             brandHeader('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate · truth orders', '149,191,71') +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;">' +
+            '<div class="dm-metrics">' +
               metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
               metric('CR% (Shopify)', fmtPct(shopifyCr)) +
               metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
               metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
             '</div>' +
-            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">' +
+            '<div class="dm-card-note">' +
               escapeHtml(
                 shopifyConversionRateToday != null
                   ? 'CR% (Shopify) uses ShopifyQL conversion_rate (matches Shopify Admin).'
@@ -6426,21 +6377,22 @@
           ));
           overview += card('', (
             brandHeader('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · truth orders', '13,148,136') +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;">' +
+            '<div class="dm-metrics">' +
               metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
               metric('CR% (truth)', fmtPct(birdseyeCr)) +
               metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
               metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
             '</div>' +
-            '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">Birdseye reporting uses Shopify truth orders so it can never exceed Shopify. Pixel-derived purchases remain in Diagnostics for drift/debug only.</div>'
+            '<div class="dm-card-note">Birdseye reporting uses Shopify truth orders so it can never exceed Shopify. Pixel-derived purchases remain in Diagnostics for drift/debug only.</div>'
           ));
           overview += '</div>';
-          overview += '<div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          overview += '<div class="dm-grid dm-mt">';
           overview += card('Bots blocked (edge, today)', (
-            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">' +
-              '<div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.1;">' + fmtSessions(botsBlockedToday) + '</div>' +
-              '<div style="font-size:12px;color:var(--muted);font-weight:750;">' + (botsBlockedUpdatedAt ? ('last ' + escapeHtml(formatTs(botsBlockedUpdatedAt))) : '\u2014') + '</div>' +
-            '</div>'
+            '<div class="dm-row-kv">' +
+              '<div class="dm-k">Count</div>' +
+              '<div class="dm-v">' + fmtSessions(botsBlockedToday) + '</div>' +
+            '</div>' +
+            '<div class="dm-row-kv-note">' + (botsBlockedUpdatedAt ? ('last ' + escapeHtml(formatTs(botsBlockedUpdatedAt))) : '\u2014') + '</div>'
           ));
           overview += card('Quick drift', (
             rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
@@ -6452,39 +6404,39 @@
           // Compare
           let compare = '';
           compare += card('Comparison (today)', (
-            '<div style="overflow:auto;border-radius:14px;border:1px solid rgba(0,0,0,0.06);">' +
-              '<div role="table" aria-label="Comparison" style="min-width:760px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;">' +
-                '<div role="row" style="display:contents;">' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Item</div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:4px;">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);"><span style="display:flex;align-items:center;gap:4px;">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + '<span>Birdseye</span></span></div>' +
-                  '<div role="columnheader" style="padding:10px 12px;background:rgba(255,255,255,0.65);font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(0,0,0,0.06);">Diff</div>' +
+            '<div class="dm-table-wrap">' +
+              '<div class="dm-table" role="table" aria-label="Comparison">' +
+                '<div class="dm-table-row">' +
+                  '<div class="dm-table-cell">Item</div>' +
+                  '<div class="dm-table-cell">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + ' Shopify</div>' +
+                  '<div class="dm-table-cell">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + ' Birdseye</div>' +
+                  '<div class="dm-table-cell">Diff</div>' +
                 '</div>' +
-                '<div role="row" style="display:contents;">' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">Sessions</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtSessions(shopifySessionsToday) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
+                '<div class="dm-table-row">' +
+                  '<div class="dm-table-cell">Sessions</div>' +
+                  '<div class="dm-table-cell">' + fmtSessions(shopifySessionsToday) + '</div>' +
+                  '<div class="dm-table-cell">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
+                  '<div class="dm-table-cell">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
                 '</div>' +
-                '<div role="row" style="display:contents;">' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:850;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">Conversion rate</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(shopifyCr) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;font-weight:750;color:var(--text);border-bottom:1px solid rgba(0,0,0,0.06);">' + fmtPct(birdseyeCr) + '</div>' +
-                  '<div role="cell" style="padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
+                '<div class="dm-table-row">' +
+                  '<div class="dm-table-cell">Conversion rate</div>' +
+                  '<div class="dm-table-cell">' + fmtPct(shopifyCr) + '</div>' +
+                  '<div class="dm-table-cell">' + fmtPct(birdseyeCr) + '</div>' +
+                  '<div class="dm-table-cell">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
                 '</div>' +
               '</div>' +
             '</div>'
           ));
           if (missingScopes.length) {
-            compare += '<div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml('Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.') + '</div>';
+            compare += '<div class="dm-hint dm-mt">' + escapeHtml('Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.') + '</div>';
           }
           if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
-            compare += '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
+            compare += '<div class="dm-hint dm-mt">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
           }
 
           // Sales
           let salesPanel = '';
-          salesPanel += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          salesPanel += '<div class="dm-grid">';
           salesPanel += card('Truth (paid)', (
             rowKV('Orders', truthOrders != null ? codeInline(String(truthOrders)) : '\u2014') +
             rowKV('Revenue', truthRevenue != null ? codeInline(formatRevenue(truthRevenue)) : '\u2014') +
@@ -6498,7 +6450,7 @@
             rowKV('Drift vs truth (revenue)', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)))
           ));
           salesPanel += '</div>';
-          salesPanel += '<div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          salesPanel += '<div class="dm-grid dm-mt">';
           salesPanel += card('Evidence (checkout_completed)', (
             rowKV('Events (today)', evTotal != null ? codeInline(String(evTotal)) : '\u2014') +
             rowKV('Converted sessions (today)', evSessions != null ? codeInline(String(evSessions)) : '\u2014') +
@@ -6541,38 +6493,38 @@
               if (refh) bits.push('ref=' + escapeHtml(refh));
               if (gw) bits.push('gateway=' + escapeHtml(gw));
               if (!bits.length) return '';
-              return '<div style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:12.5px;color:var(--text);font-weight:750;word-break:break-word;">' + bits.join(' · ') + '</div>';
+              return '<div class="dm-missing-line">' + bits.join(' · ') + '</div>';
             }
 
             let missingSampleHtml = '';
             if (missingEvidenceSample && missingEvidenceSample.length) {
               const lines = missingEvidenceSample.slice(0, 25).map(missingLine).filter(Boolean).join('');
               missingSampleHtml =
-                '<details style="margin-top:10px;border:1px solid rgba(0,0,0,0.08);border-radius:3px;background:rgba(255,255,255,0.78);padding:10px;">' +
-                  '<summary style="cursor:pointer;font-size:12px;font-weight:900;color:var(--text);">Missing evidence orders (sample ' + escapeHtml(String(missingEvidenceSample.length)) + ')</summary>' +
-                  '<div style="margin-top:10px;">' + (lines || '<div style="font-size:12px;color:var(--muted);">No sample rows.</div>') + '</div>' +
-                  '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">If these are mostly <code>source=web</code> but still missing evidence, it’s usually adblock/consent or pixel not running on the completion surface. If they’re <code>source=pos</code> / manual / subscription renewals, pixel evidence won’t exist.</div>' +
+                '<details class="dm-missing-details">' +
+                  '<summary>Missing evidence orders (sample ' + escapeHtml(String(missingEvidenceSample.length)) + ')</summary>' +
+                  '<div class="dm-def-details-body">' + (lines || '<div class="dm-def-note">No sample rows.</div>') + '</div>' +
+                  '<div class="dm-hint">If these are mostly <code class="dm-code">source=web</code> but still missing evidence, it’s usually adblock/consent or pixel not running on the completion surface. If they’re <code class="dm-code">source=pos</code> / manual / subscription renewals, pixel evidence won’t exist.</div>' +
                 '</details>';
             }
 
             const guide =
-              '<div style="font-size:12px;color:var(--muted);line-height:1.45;">' +
-                '<div style="font-weight:950;color:var(--text);margin-bottom:6px;">How to debug sales drift (Truth vs Birdseye)</div>' +
-                '<ul style="margin:0;padding-left:18px;">' +
+              '<div class="dm-guide dm-hint">' +
+                '<div class="dm-guide-title">How to debug sales drift (Truth vs Birdseye)</div>' +
+                '<ul>' +
                   '<li><strong>Truth</strong> = Shopify Orders API cache (`orders_shopify`, paid, not cancelled). This is the authoritative number.</li>' +
-                  '<li><strong>Evidence</strong> = Web Pixel <code>checkout_completed</code> events (`purchase_events`). If Evidence &lt; Truth, events are missing (capture issue), not a truth sync issue.</li>' +
+                  '<li><strong>Evidence</strong> = Web Pixel <code class="dm-code">checkout_completed</code> events (`purchase_events`). If Evidence &lt; Truth, events are missing (capture issue), not a truth sync issue.</li>' +
                   '<li><strong>Birdseye derived</strong> = `purchases` (built from evidence). If it matches Evidence (as it does when linked/unlinked looks healthy), drift is upstream of purchases.</li>' +
                   '<li>First check: pixel installed + ingestUrl match, and Evidence linked/unlinked (linking health). Then inspect the Missing Evidence sample below.</li>' +
                 '</ul>' +
               '</div>';
 
-            salesPanel += '<div style="margin-top:12px;">' + card('Sales drift (AI notes)', (
+            salesPanel += '<div class="dm-mt">' + card('Sales drift (AI notes)', (
               rowKV('Coverage (evidence / truth)', (evTotal != null && denomForCoverage != null)
-                ? (codeInline(String(evTotal)) + ' / ' + codeInline(String(denomForCoverage)) + ' ' + pillInline((cov != null ? (cov + '%') : '—') + ' evidence', covTone))
+                ? (codeInline(String(evTotal)) + ' / ' + codeInline(String(denomForCoverage)) + ' ' + pillInline((cov != null ? (cov + '%') : '\u2014') + ' evidence', covTone))
                 : '\u2014'
               ) +
               rowKV('Missing evidence (count)', missingOrders == null ? '\u2014' : pillInline(String(missingOrders), missingOrders === 0 ? 'ok' : (missingOrders <= 3 ? 'warn' : 'bad'))) +
-              (missingEvidenceNote ? ('<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">' + escapeHtml(missingEvidenceNote) + '</div>') : '') +
+              (missingEvidenceNote ? ('<div class="dm-hint">' + escapeHtml(missingEvidenceNote) + '</div>') : '') +
               guide +
               (missingSampleHtml || '')
             )) + '</div>';
@@ -6580,7 +6532,7 @@
 
           // Traffic
           let trafficPanel = '';
-          trafficPanel += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          trafficPanel += '<div class="dm-grid">';
           trafficPanel += card('Sessions', (
             (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number' ? rowKV('Reached app (today)', codeInline(formatSessions(traffic.today.sessionsReachedApp))) : '') +
             (traffic && traffic.today && typeof traffic.today.humanSessions === 'number' ? rowKV('Human sessions (today)', codeInline(formatSessions(traffic.today.humanSessions))) : '') +
@@ -6601,7 +6553,7 @@
 
           // Pixel
           let pixelPanel = '';
-          pixelPanel += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          pixelPanel += '<div class="dm-grid">';
           pixelPanel += card('Pixel (Shopify)', (
             rowKV('Installed', pixel && pixel.installed === true ? pillInline('Yes', 'ok') : (pixel && pixel.installed === false ? pillInline('No', 'bad') : '\u2014')) +
             (pixel && pixel.message ? rowKV('Status', codeInline(pixel.message)) : '') +
@@ -6610,18 +6562,18 @@
             (ingestUrlMatch == null ? '' : rowKV('IngestUrl match', ingestUrlMatch ? pillInline('Match', 'ok') : pillInline('Mismatch', 'bad')))
           ));
           pixelPanel += card('Session mode (beta)', (
-            '<label style="display:flex;align-items:center;gap:10px;margin-top:2px;font-size:13px;color:var(--text);font-weight:800;">' +
-              '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);" />' +
-              '<span style="flex:1;min-width:0;">Share session across tabs (30m inactivity)</span>' +
+            '<label class="dm-toggle-row">' +
+              '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
+              '<span>Share session across tabs (30m inactivity)</span>' +
             '</label>' +
-            '<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>' +
-            '<div id="pixel-session-mode-msg" style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.35;"></div>'
+            '<div class="dm-hint">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>' +
+            '<div id="pixel-session-mode-msg" class="dm-toggle-msg"></div>'
           ));
           pixelPanel += '</div>';
 
           // Shopify
           let shopifyPanel = '';
-          shopifyPanel += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          shopifyPanel += '<div class="dm-grid">';
           shopifyPanel += card('Auth + scopes', (
             rowKV('Shop', shopify.shop ? codeInline(shopify.shop) : pillInline('Missing', 'bad')) +
             rowKV('Token stored', shopify.hasToken ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
@@ -6640,13 +6592,13 @@
           // Sources
           let sourcesPanel = '';
           sourcesPanel += card('Traffic source mapping', (
-            '<div style="font-size:12px;color:var(--muted);line-height:1.35;margin-bottom:10px;">Map URL UTMs into custom sources + icons (affects Traffic + Home source icons). Unmapped tokens appear first.</div>' +
-            '<div id="traffic-source-mapping-root"><div style="font-size:12px;color:var(--muted);">Loading…</div></div>'
+            '<div class="dm-hint">Map URL UTMs into custom sources + icons (affects Traffic + Home source icons). Unmapped tokens appear first.</div>' +
+            '<div id="traffic-source-mapping-root"><div class="dm-loading">Loading…</div></div>'
           ));
 
           // System
           let systemPanel = '';
-          systemPanel += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px;">';
+          systemPanel += '<div class="dm-grid">';
           systemPanel += card('Reporting', (
             (reporting && (reporting.ordersSource || reporting.sessionsSource))
               ? (
@@ -6710,16 +6662,14 @@
               const panels = Array.from(root.querySelectorAll('[data-be-panel]'));
               function styleTabBtn(btn, isActive) {
                 if (!btn) return;
-                btn.style.borderColor = isActive ? 'rgba(13,148,136,0.55)' : 'var(--border)';
-                btn.style.background = isActive ? 'rgba(13,148,136,0.10)' : 'rgba(255,255,255,0.75)';
-                btn.style.color = isActive ? 'var(--accent)' : 'var(--text)';
+                btn.classList.toggle('dm-tab--active', !!isActive);
                 btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
               }
               function setActiveTab(tabId) {
                 const id = tabId && panels.some(p => p.getAttribute('data-be-panel') === tabId) ? tabId : 'overview';
                 panels.forEach(function(p) {
                   const pid = p.getAttribute('data-be-panel');
-                  p.style.display = (pid === id) ? 'block' : 'none';
+                  p.classList.toggle('dm-panel--active', pid === id);
                 });
                 buttons.forEach(function(b) {
                   const bid = b.getAttribute('data-be-tab');
@@ -6743,7 +6693,8 @@
                 function setMsg(t, ok) {
                   if (!msg) return;
                   msg.textContent = t || '';
-                  msg.style.color = ok ? '#0f766e' : '#b91c1c';
+                  msg.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
+                  msg.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
                 }
                 function fallbackCopy(t) {
                   const ta = document.createElement('textarea');
@@ -6845,8 +6796,8 @@
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) {
             configStatusEl.innerHTML =
-              '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);padding:10px 0;">' +
-                '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:3px;font-size:12px;font-weight:900;border:1px solid rgba(185,28,28,0.25);background:rgba(185,28,28,0.10);color:#b91c1c;">Error</span>' +
+              '<div class="dm-error">' +
+                '<span class="dm-pill dm-pill-bad">Error</span>' +
                 '<span>Could not load diagnostics.</span>' +
               '</div>';
           }
