@@ -818,14 +818,14 @@
       color: var(--text);
       cursor: pointer;
       font-size: 0.875rem;
-      font-weight: 650;
+      font-weight: 500;
       line-height: 1;
       transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
     }
     .table-pagination button:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.6); outline-offset: 2px; }
     .table-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
     .table-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
-    .table-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
+    .table-pagination button:disabled { opacity: 1; cursor: default; box-shadow: none; transform: none; }
 
     .table-pagination button#pagination-prev::before,
     .card-pagination button[id$="-prev"]::before,
@@ -865,7 +865,7 @@
       background: rgba(255, 255, 255, 0.85);
       box-shadow: none;
       color: var(--muted);
-      font-weight: 600;
+      font-weight: 500;
       font-variant-numeric: tabular-nums;
     }
     .table-pagination #rows-per-page-wrap { display: none !important; }
@@ -926,13 +926,13 @@
       color: var(--text);
       cursor: pointer;
       font-size: 0.8125rem;
-      font-weight: 650;
+      font-weight: 500;
       line-height: 1;
       transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
     }
     .card-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
     .card-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
-    .card-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
+    .card-pagination button:disabled { opacity: 1; cursor: default; box-shadow: none; transform: none; }
     .card-pagination .page-label {
       display: inline-flex;
       align-items: center;
@@ -947,7 +947,7 @@
       text-align: center;
       font-variant-numeric: tabular-nums;
       color: var(--muted);
-      font-weight: 600;
+      font-weight: 500;
     }
     .card-pagination button[id$="-prev"] { border-radius: 4px 0 0 4px; }
     .card-pagination button[id$="-next"] { border-radius: 0 4px 4px 0; }

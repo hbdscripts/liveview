@@ -1093,7 +1093,7 @@
       </div>
       <div class="card-pagination is-hidden" id="country-pagination" aria-label="Country pagination">
         <button type="button" id="country-prev">Prev</button>
-        <span class="page-label" id="country-label">Page 1 of 1</span>
+        <span class="page-label" id="country-label">1 of 1</span>
         <button type="button" id="country-next">Next</button>
       </div>
     </div>
@@ -1116,7 +1116,7 @@
       </div>
       <div class="card-pagination is-hidden" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
         <button type="button" id="best-geo-products-prev">Prev</button>
-        <span class="page-label" id="best-geo-products-label">Page 1 of 1</span>
+        <span class="page-label" id="best-geo-products-label">1 of 1</span>
         <button type="button" id="best-geo-products-next">Next</button>
       </div>
     </div>
@@ -1188,7 +1188,7 @@
       </div>
       <div class="card-pagination is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
         <button type="button" id="best-sellers-prev">Prev</button>
-        <span class="page-label" id="best-sellers-label">Page 1 of 1</span>
+        <span class="page-label" id="best-sellers-label">1 of 1</span>
         <button type="button" id="best-sellers-next">Next</button>
       </div>
     </div>
@@ -1211,7 +1211,7 @@
       </div>
       <div class="card-pagination is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
         <button type="button" id="best-variants-prev">Prev</button>
-        <span class="page-label" id="best-variants-label">Page 1 of 1</span>
+        <span class="page-label" id="best-variants-label">1 of 1</span>
         <button type="button" id="best-variants-next">Next</button>
       </div>
     </div>
@@ -4485,7 +4485,7 @@
       wrap.classList.toggle('is-hidden', !show);
       prev.disabled = page <= 1;
       next.disabled = page >= pages;
-      label.textContent = 'Page ' + page + ' of ' + pages;
+      label.textContent = page + ' of ' + pages;
     }
 
     function scheduleBreakdownSync() {
@@ -7079,7 +7079,8 @@
                   '</div>'
                 );
               }
-              function compareBrand(name, logoUrl, sub) {
+              function compareBrand(name, logoUrl, sub, rightHtml) {
+                const right = rightHtml ? String(rightHtml) : '';
                 return (
                   '<div class="kpi-compare-brand">' +
                     '<div class="kpi-compare-brand-left">' +
@@ -7089,7 +7090,16 @@
                         '<div class="kpi-compare-brand-sub">' + escapeHtml(sub || '') + '</div>' +
                       '</div>' +
                     '</div>' +
+                    (right ? ('<div class="kpi-compare-brand-right">' + right + '</div>') : '') +
                   '</div>'
+                );
+              }
+              function inlineMetric(label, valueHtml) {
+                return (
+                  '<span class="kpi-compare-inline-metric">' +
+                    '<span class="kpi-compare-inline-label">' + escapeHtml(label || '') + '</span>' +
+                    '<span class="kpi-compare-inline-value">' + (valueHtml || '\u2014') + '</span>' +
+                  '</span>'
                 );
               }
 
@@ -7154,30 +7164,18 @@
               cmpHtml += '<div class="kpi-compare-grid">';
 
               if (compareKey === 'sessions') {
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-                               '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions', inlineMetric('Sessions', fmtSessions(shopifySessionsToday)));
                 cmpHtml +=   '</div>';
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-                               '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions', inlineMetric('Sessions', fmtSessions(birdseyeSessionsToday)));
                 cmpHtml +=   '</div>';
               } else if (compareKey === 'aov') {
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('AOV', fmtRevenue(truthAov)) +
-                               '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders', inlineMetric('AOV', fmtRevenue(truthAov)));
                 cmpHtml +=   '</div>';
-                cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)');
-                cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('AOV', fmtRevenue(pixelAov)) +
-                               '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)', inlineMetric('AOV', fmtRevenue(pixelAov)));
                 cmpHtml +=   '</div>';
               } else {
                 cmpHtml +=   '<div class="kpi-compare-card">';
