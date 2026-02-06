@@ -337,6 +337,7 @@ Backups durability:
 - UI: KPI delta badges use white backgrounds and good/bad border tints (bounce inverted).
 - UI: Sales KPI odometer now settles to plain text after animating.
 - UI: KPI labels/subtext refreshed (11px label, top divider and spacing for subline).
+- UI: KPI subline is now an anchored bottom bar on each KPI card (absolute footer).
 
 2026-02-05
 - UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
