@@ -1451,24 +1451,18 @@
     let shopifySessionsTodayLoading = false;
     let finishesCache = null;
     let bestSellersCache = null;
-    let worstProductsCache = null;
     let bestVariantsCache = null;
-    let worstVariantsCache = null;
     let countryPage = 1;
     let bestGeoProductsPage = 1;
     let bestSellersPage = 1;
-    let worstProductsPage = 1;
     let bestVariantsPage = 1;
-    let worstVariantsPage = 1;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
     const tableSortState = {
       country: { by: 'rev', dir: 'desc' },
       bestGeoProducts: { by: 'rev', dir: 'desc' },
       aov: { by: 'aov', dir: 'desc' },
-      worstProducts: { by: 'cr', dir: 'asc' },
       bestVariants: { by: 'rev', dir: 'desc' },
-      worstVariants: { by: 'rev', dir: 'asc' },
       trafficSources: { by: 'rev', dir: 'desc' },
       trafficTypes: { by: 'rev', dir: 'desc' },
     };
@@ -1476,9 +1470,7 @@
       country: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
       bestGeoProducts: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
       aov: { aov: 'desc' },
-      worstProducts: { product: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'asc' },
       bestVariants: { variant: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'desc' },
-      worstVariants: { variant: 'asc', sales: 'asc', clicks: 'asc', rev: 'asc', cr: 'asc' },
       trafficSources: { source: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
       trafficTypes: { type: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
     };
@@ -1727,7 +1719,7 @@
             }
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchWorstVariants === 'function') fetchWorstVariants();
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchFinishes === 'function') fetchFinishes();
           }
           storeBaseUrlLoaded = true;
           if (typeof renderSales === 'function') renderSales(statsCache);
@@ -3680,84 +3672,6 @@
         .catch(function() { finishesCache = null; renderFinishes(null); return null; });
     }
 
-    function fetchWorstProducts(options = {}) {
-      const force = !!options.force;
-      let url = API + '/api/worst-products?range=' + encodeURIComponent(getStatsRange()) +
-          '&page=' + encodeURIComponent(String(worstProductsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
-      if (force) url += '&_=' + Date.now();
-      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(data) {
-          worstProductsCache = data;
-          renderWorstProducts(data);
-          return data;
-        })
-        .catch(function() { worstProductsCache = null; renderWorstProducts(null); return null; });
-    }
-
-    function renderWorstProducts(data) {
-      const tbody = document.getElementById('worst-products-body');
-      if (!tbody) return;
-      if (!data || !Array.isArray(data.worstProducts)) {
-        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
-        updateSortHeadersInContainer(document.getElementById('worst-products-table'), tableSortState.worstProducts.by, tableSortState.worstProducts.dir);
-        updateCardPagination('worst-products', 1, 1);
-        return;
-      }
-      const rows = data.worstProducts.slice();
-      const wpBy = (tableSortState.worstProducts.by || 'cr').toString().trim().toLowerCase();
-      const wpDir = (tableSortState.worstProducts.dir || 'asc').toString().trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
-      rows.sort(function(a, b) {
-        var primary = 0;
-        if (wpBy === 'product') primary = cmpNullableText(a && a.handle, b && b.handle, wpDir);
-        else if (wpBy === 'sales') primary = cmpNullableNumber(a && a.converted, b && b.converted, wpDir);
-        else if (wpBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, wpDir);
-        else if (wpBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, wpDir);
-        else if (wpBy === 'cr') primary = cmpNullableNumber(a && a.conversion, b && b.conversion, wpDir);
-
-        return primary ||
-          // Sensible, stable fallback ordering for "worst" list.
-          cmpNullableNumber(a && a.conversion, b && b.conversion, 'asc') ||
-          cmpNullableNumber(a && a.clicks, b && b.clicks, 'desc') ||
-          cmpNullableNumber(a && a.revenue, b && b.revenue, 'asc') ||
-          cmpNullableNumber(a && a.converted, b && b.converted, 'asc') ||
-          cmpNullableText(a && a.handle, b && b.handle, 'asc');
-      });
-      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
-      const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      worstProductsPage = clampPage((data && typeof data.page === 'number') ? data.page : worstProductsPage, totalPages);
-      updateCardPagination('worst-products', worstProductsPage, totalPages);
-      if (rows.length === 0) {
-        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No products with enough traffic in this range</div></div>';
-        updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
-        return;
-      }
-      tbody.innerHTML = rows.map(function(p) {
-        const handle = p.handle || '';
-        const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbSrc = productUrl ? (API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100' : '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + thumbSrc + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
-        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
-        const name = '<span class="bs-name" title="' + escapeHtml(handle) + '">' + escapeHtml(handle) + '</span>';
-        const conversion = p.conversion != null ? pct(p.conversion) : '\u2014';
-        const sales = formatSessions(typeof p.converted === 'number' ? p.converted : 0);
-        const clicks = formatSessions(typeof p.clicks === 'number' ? p.clicks : 0);
-        const revNum = p.revenue != null ? Number(p.revenue) : NaN;
-        const revenue = (!Number.isNaN(revNum) && Number.isFinite(revNum)) ? formatRevenueTableHtml(revNum) : '\u2014';
-        return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + sales + '</div>' +
-          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
-          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
-          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
-        '</div>';
-      }).join('');
-      updateSortHeadersInContainer(document.getElementById('worst-products-table'), wpBy, wpDir);
-    }
-
     function fetchBestVariants(options = {}) {
       const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
@@ -3786,36 +3700,6 @@
           return null;
         })
         .catch(function() { bestVariantsCache = null; renderBestVariants(null); return null; });
-    }
-
-    function fetchWorstVariants(options = {}) {
-      const force = !!options.force;
-      var shop = getShopParam() || shopForSalesFallback || null;
-      if (!shop) {
-        worstVariantsCache = null;
-        renderWorstVariants(null);
-        return Promise.resolve(null);
-      }
-      let url = API + '/api/shopify-worst-variants?shop=' + encodeURIComponent(shop) +
-          '&range=' + encodeURIComponent(getStatsRange()) +
-          '&page=' + encodeURIComponent(String(worstVariantsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
-      if (force) url += '&_=' + Date.now();
-      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
-        .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
-        .then(function(result) {
-          if (result.ok) {
-            worstVariantsCache = result.data;
-            renderWorstVariants(result.data);
-            return result.data;
-          }
-          var msg = (result.data && result.data.error) ? result.data.error : ('Error ' + result.status);
-          if (result.data && result.data.hint) msg += '. ' + result.data.hint;
-          worstVariantsCache = null;
-          renderWorstVariants(null, msg);
-          return null;
-        })
-        .catch(function() { worstVariantsCache = null; renderWorstVariants(null); return null; });
     }
 
     function renderBestVariants(data, errorMessage) {
@@ -3885,77 +3769,6 @@
         '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
-    }
-
-    function renderWorstVariants(data, errorMessage) {
-      const tbody = document.getElementById('worst-variants-body');
-      if (!tbody) return;
-      if (!data || !Array.isArray(data.worstVariants)) {
-        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
-        updateSortHeadersInContainer(document.getElementById('worst-variants-table'), tableSortState.worstVariants.by, tableSortState.worstVariants.dir);
-        updateCardPagination('worst-variants', 1, 1);
-        return;
-      }
-      const rows = data.worstVariants.slice();
-      const wvBy = (tableSortState.worstVariants.by || 'rev').toString().trim().toLowerCase();
-      const wvDir = (tableSortState.worstVariants.dir || 'asc').toString().trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
-      function displayVariantName(v) {
-        const variantName = (v && v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
-        const productName = (v && v.title && String(v.title).trim()) ? String(v.title).trim() : '';
-        return variantName + (productName ? (' \u2014 ' + productName) : '');
-      }
-      rows.sort(function(a, b) {
-        var primary = 0;
-        if (wvBy === 'variant') primary = cmpNullableText(displayVariantName(a), displayVariantName(b), wvDir);
-        else if (wvBy === 'sales') primary = cmpNullableNumber(a && a.orders, b && b.orders, wvDir);
-        else if (wvBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, wvDir);
-        else if (wvBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, wvDir);
-        else if (wvBy === 'cr') {
-          primary = cmpNullableNumber(a && a.cr, b && b.cr, wvDir) ||
-            cmpNullableNumber(a && a.orders, b && b.orders, 'asc');
-        }
-        return primary ||
-          // Stable fallback ordering for "worst" list.
-          cmpNullableNumber(a && a.revenue, b && b.revenue, 'asc') ||
-          cmpNullableNumber(a && a.orders, b && b.orders, 'asc') ||
-          cmpNullableNumber(a && a.clicks, b && b.clicks, 'asc') ||
-          cmpNullableText(displayVariantName(a), displayVariantName(b), 'asc');
-      });
-      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
-      const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
-      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      worstVariantsPage = clampPage((data && typeof data.page === 'number') ? data.page : worstVariantsPage, totalPages);
-      updateCardPagination('worst-variants', worstVariantsPage, totalPages);
-      if (rows.length === 0) {
-        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No orders in this range</div></div>';
-        updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
-        return;
-      }
-      tbody.innerHTML = rows.map(function(v) {
-        const variantName = (v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
-        const productName = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
-        const displayName = variantName + (productName ? (' \u2014 ' + productName) : '');
-        const thumbUrl = v.thumb_url ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
-        const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
-        const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
-        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
-        const name = '<span class="bs-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</span>';
-        const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
-        const sales = formatSessions(ordersNum);
-        const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenueTableHtml(v.revenue);
-        const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
-        const cr = crVal != null ? pct(crVal) : '\u2014';
-        return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + sales + '</div>' +
-          '<div class="grid-cell" role="cell">' + clicks + '</div>' +
-          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
-          '<div class="grid-cell" role="cell">' + cr + '</div>' +
-        '</div>';
-      }).join('');
-      updateSortHeadersInContainer(document.getElementById('worst-variants-table'), wvBy, wvDir);
     }
 
     function renderBestSellers(data, errorMessage) {
@@ -4128,15 +3941,6 @@
         if (info && info.columnChanged) bestGeoProductsPage = 1;
         renderBestGeoProducts(statsCache);
       });
-      setupTableSortHeaders(document.getElementById('worst-products-table'), tableSortState.worstProducts, TABLE_SORT_DEFAULTS.worstProducts, function(info) {
-        if (info && info.columnChanged) {
-          worstProductsPage = 1;
-          fetchWorstProducts();
-          return;
-        }
-        if (worstProductsCache) renderWorstProducts(worstProductsCache);
-        else fetchWorstProducts();
-      });
       setupTableSortHeaders(document.getElementById('best-variants-table'), tableSortState.bestVariants, TABLE_SORT_DEFAULTS.bestVariants, function(info) {
         if (info && info.columnChanged) {
           bestVariantsPage = 1;
@@ -4146,16 +3950,6 @@
         if (bestVariantsCache) renderBestVariants(bestVariantsCache);
         else fetchBestVariants();
       });
-      setupTableSortHeaders(document.getElementById('worst-variants-table'), tableSortState.worstVariants, TABLE_SORT_DEFAULTS.worstVariants, function(info) {
-        if (info && info.columnChanged) {
-          worstVariantsPage = 1;
-          fetchWorstVariants();
-          return;
-        }
-        if (worstVariantsCache) renderWorstVariants(worstVariantsCache);
-        else fetchWorstVariants();
-      });
-
       setupTableSortHeaders(document.getElementById('traffic-sources-table'), tableSortState.trafficSources, TABLE_SORT_DEFAULTS.trafficSources, function() {
         renderTrafficTables(trafficCache || {});
       });
@@ -4714,15 +4508,12 @@
       aovPage = 1;
       bestSellersPage = 1;
       bestVariantsPage = 1;
-      worstProductsPage = 1;
-      worstVariantsPage = 1;
       currentPage = 1;
       syncDateSelectOptions();
       // Reset caches when range changes.
+      finishesCache = null;
       bestSellersCache = null;
       bestVariantsCache = null;
-      worstProductsCache = null;
-      worstVariantsCache = null;
       trafficCache = null;
       lastStatsFetchedAt = 0;
       lastProductsFetchedAt = 0;
@@ -5789,17 +5580,9 @@
         function() { bestSellersPage = Math.max(1, bestSellersPage - 1); fetchBestSellers(); },
         function() { bestSellersPage = bestSellersPage + 1; fetchBestSellers(); }
       );
-      bind('worst-products',
-        function() { worstProductsPage = Math.max(1, worstProductsPage - 1); fetchWorstProducts(); },
-        function() { worstProductsPage = worstProductsPage + 1; fetchWorstProducts(); }
-      );
       bind('best-variants',
         function() { bestVariantsPage = Math.max(1, bestVariantsPage - 1); fetchBestVariants(); },
         function() { bestVariantsPage = bestVariantsPage + 1; fetchBestVariants(); }
-      );
-      bind('worst-variants',
-        function() { worstVariantsPage = Math.max(1, worstVariantsPage - 1); fetchWorstVariants(); },
-        function() { worstVariantsPage = worstVariantsPage + 1; fetchWorstVariants(); }
       );
     })();
 
@@ -6360,21 +6143,23 @@
 
           let html = '';
           html += '<div id="be-diag-root" class="dm-root">';
-          html += '<div class="dm-bar">';
-          html +=   '<div class="dm-bar-row">';
-          html +=     '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
-          html +=     '<div class="dm-bar-actions">' +
+          html += '<div class="dm-section dm-section-nav"><div class="dm-tab-row">' + tabSelectHtml() + '</div></div>';
+          html += '<div class="dm-section dm-section-copy"><div class="dm-bar-row">';
+          html +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
+          html +=   '<div class="dm-bar-actions">' +
                         '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
                         '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                         (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                         (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
                       '</div>';
-          html +=   '</div>';
-          html +=   '<div class="dm-tab-row">' + tabSelectHtml() + '</div>';
-          html += '</div>';
+          html += '</div></div>';
 
-          // Overview
+          // Overview: bots at top, then Shopify/Birdseye cards, then Quick drift
           let overview = '';
+          overview += '<div class="dm-hero-row">';
+          overview +=   '<span class="dm-hero-label">Bots blocked (today)</span>';
+          overview +=   '<span class="dm-hero-value">' + (botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') + '</span>';
+          overview += '</div>';
           overview += '<div class="dm-grid">';
           overview += card('', (
             brandHeader('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate · truth orders', '149,191,71') +
@@ -6405,13 +6190,6 @@
           ));
           overview += '</div>';
           overview += '<div class="dm-grid dm-mt">';
-          overview += card('Bots blocked (edge, today)', (
-            '<div class="dm-row-kv">' +
-              '<div class="dm-k">Count</div>' +
-              '<div class="dm-v">' + fmtSessions(botsBlockedToday) + '</div>' +
-            '</div>' +
-            '<div class="dm-row-kv-note">' + (botsBlockedUpdatedAt ? ('last ' + escapeHtml(formatTs(botsBlockedUpdatedAt))) : '\u2014') + '</div>'
-          ));
           overview += card('Quick drift', (
             rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
             rowKV('Pixel vs truth revenue', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue))) +
@@ -7199,9 +6977,7 @@
       }
       onScroll('country-table-wrap', 'stats-country');
       onScroll('best-sellers-wrap', 'stats-best-sellers');
-      onScroll('worst-products-wrap', 'stats-worst-products');
       onScroll('best-variants-wrap', 'stats-best-variants');
-      onScroll('worst-variants-wrap', 'stats-worst-variants');
     })();
 
     // Load traffic source mapping + custom icons (best-effort).

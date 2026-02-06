@@ -27,9 +27,9 @@
   max-height: min(92dvh, 96vh);
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f1f5f9;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
 }
 
 #config-modal .config-modal-header {
@@ -41,11 +41,9 @@
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  padding: 14px 20px;
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 #config-modal .config-modal-header-inner {
@@ -90,8 +88,8 @@
   height: 44px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #e2e8f0;
   color: var(--text, #334155);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -132,8 +130,8 @@
   height: 44px;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #e2e8f0;
   color: #0f172a;
   font-size: 24px;
   line-height: 1;
@@ -151,7 +149,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 20px 24px;
+  padding: 0;
+  background: #f1f5f9;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -160,7 +159,29 @@
 #config-modal .dm-root {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
+}
+
+/* Section: dropdown (under header) */
+#config-modal .dm-section-nav {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f1f5f9;
+}
+
+/* Section: Copy Debug */
+#config-modal .dm-section-copy {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f1f5f9;
+}
+
+#config-modal .dm-panel {
+  display: none;
+  padding: 16px 20px 24px;
+  background: #f1f5f9;
 }
 
 #config-modal .dm-loading {
@@ -179,18 +200,6 @@
 }
 
 #config-modal .dm-error .dm-pill { flex-shrink: 0; }
-
-#config-modal .dm-bar {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  margin: -16px -20px 16px;
-  padding: 14px 20px 14px;
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
-}
 
 #config-modal .dm-bar-row {
   display: flex;
@@ -218,8 +227,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.85));
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #e2e8f0;
   color: var(--text, #334155);
   font-size: 12.5px;
   font-weight: 500;
@@ -256,7 +265,6 @@
 }
 
 #config-modal .dm-tab-row {
-  margin-top: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -267,7 +275,7 @@
   min-width: 160px;
   padding: 8px 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.95);
+  background: #e2e8f0;
   color: var(--text, #334155);
   font-size: 13px;
   font-weight: 500;
@@ -280,10 +288,6 @@
   outline-offset: 1px;
 }
 
-#config-modal .dm-panel {
-  display: none;
-}
-
 #config-modal .dm-panel.dm-panel--active {
   display: block;
 }
@@ -291,14 +295,17 @@
 #config-modal .dm-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 0;
 }
 
 #config-modal .dm-card {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.88));
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03), 0 12px 40px rgba(0, 0, 0, 0.06);
-  padding: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+}
+
+#config-modal .dm-card:last-child {
+  border-bottom: none;
 }
 
 #config-modal .dm-card-title {
@@ -351,13 +358,7 @@
 }
 
 #config-modal .dm-brand-sub {
-  font-size: 11px;
-  color: var(--muted, #64748b);
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 #config-modal .dm-metrics {
@@ -394,10 +395,7 @@
 }
 
 #config-modal .dm-card-note {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--muted, #64748b);
-  line-height: 1.4;
+  display: none;
 }
 
 #config-modal .dm-row-kv {
@@ -429,10 +427,31 @@
 }
 
 #config-modal .dm-row-kv-note {
-  margin-top: 6px;
+  display: none;
+}
+
+#config-modal .dm-hero-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+#config-modal .dm-hero-label {
   font-size: 12px;
+  font-weight: 500;
   color: var(--muted, #64748b);
-  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#config-modal .dm-hero-value {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text, #334155);
 }
 
 #config-modal .dm-code {
@@ -475,7 +494,7 @@
 /* Comparison table */
 #config-modal .dm-table-wrap {
   overflow: auto;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 #config-modal .dm-table {
@@ -496,14 +515,13 @@
   color: var(--muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.7);
+  background: transparent;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 #config-modal .dm-table-row:not(:first-child) .dm-table-cell {
   font-weight: 500;
   color: var(--text, #334155);
-  background: transparent;
 }
 
 #config-modal .dm-table-cell .dm-diff-ok { color: #0f766e; font-weight: 500; }
@@ -511,10 +529,7 @@
 #config-modal .dm-table-cell .dm-diff-warn { color: #a16207; font-weight: 500; }
 
 #config-modal .dm-hint {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--muted, #64748b);
-  line-height: 1.35;
+  display: none;
 }
 
 /* Definitions (renderTrackerDefinitions) */
@@ -536,9 +551,9 @@
 }
 
 #config-modal .dm-def-page-box {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.88);
-  padding: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
 }
 
 #config-modal .dm-def-page-title {
@@ -550,9 +565,9 @@
 
 #config-modal .dm-def-details {
   margin-top: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.85);
-  padding: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
 }
 
 #config-modal .dm-def-details summary {
@@ -649,9 +664,9 @@
 /* Missing evidence details */
 #config-modal .dm-missing-details {
   margin-top: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.85);
-  padding: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
 }
 
 #config-modal .dm-missing-details summary {
@@ -703,13 +718,13 @@
     padding: 14px 16px;
   }
 
-  #config-modal #config-status {
-    padding: 14px 16px 20px;
+  #config-modal .dm-section-nav,
+  #config-modal .dm-section-copy {
+    padding: 12px 16px;
   }
 
-  #config-modal .dm-bar {
-    margin: -14px -16px 14px;
-    padding: 12px 16px;
+  #config-modal .dm-panel.dm-panel--active {
+    padding: 14px 16px 20px;
   }
 
   #config-modal .dm-grid {
@@ -726,3 +741,5 @@
     font-size: 11px;
   }
 }
+.tsm-jump-btn{border:0;background:none;}
+.tsm-jump-btn img{width:20px;height:20px}
