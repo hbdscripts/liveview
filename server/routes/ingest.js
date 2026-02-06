@@ -26,13 +26,21 @@ function getClientIp(req) {
   return req.ip || req.connection?.remoteAddress || '';
 }
 
-/** Country from Cloudflare header (when app/ingest is behind CF). CF-IPCountry is two-letter ISO, or "T1" for Tor. */
-function countryFromCloudflare(req) {
-  const cc = req.get('cf-ipcountry');
-  if (!cc || typeof cc !== 'string') return null;
-  const c = cc.trim().toUpperCase();
+function normalizeCountryCode(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const c = raw.trim().toUpperCase();
   if (c.length !== 2 || c === 'T1' || c === 'XX') return null;
   return c;
+}
+
+/** Country from Cloudflare header (when app/ingest is behind CF). CF-IPCountry is two-letter ISO, or "T1" for Tor. */
+function countryFromCloudflare(req) {
+  return normalizeCountryCode(req.get('cf-ipcountry'));
+}
+
+/** Country from Cloudflare Worker headers (x-cf-country). */
+function countryFromWorker(req) {
+  return normalizeCountryCode(req.get('x-cf-country'));
 }
 
 function countryFromIp(ip) {
@@ -42,6 +50,8 @@ function countryFromIp(ip) {
 }
 
 function getVisitorCountry(req) {
+  const worker = countryFromWorker(req);
+  if (worker) return worker;
   const cf = countryFromCloudflare(req);
   if (cf) return cf;
   return countryFromIp(getClientIp(req));
@@ -227,7 +237,12 @@ function ingestRouter(req, res, next) {
     .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))
     .then(([sessionRow, visitor]) => {
       if (sessionRow) {
-        const countryCode = sessionRow.country_code || visitor?.last_country || 'XX';
+        const countryCode =
+          normalizeCountryCode(sessionRow.country_code) ||
+          normalizeCountryCode(sessionRow.cf_country) ||
+          normalizeCountryCode(visitor?.last_country) ||
+          normalizeCountryCode(cfContext && cfContext.cf_country) ||
+          'XX';
         sse.broadcast({
           type: 'session_update',
           session: {
