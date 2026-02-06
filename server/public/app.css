@@ -485,8 +485,10 @@
       border-radius: 100px;
       justify-content: center;
     }
-    .live-kpi-cell .kpi-delta-icon.kpi-delta-icon-up { border-color: #8ac5c0; }
-    .live-kpi-cell .kpi-delta-icon.kpi-delta-icon-down { border-color: #c6a6a6; }
+    .live-kpi-cell .kpi-delta-icon.kpi-delta-icon-up { border-color: inherit; }
+    .live-kpi-cell .kpi-delta-icon.kpi-delta-icon-down { border-color: inherit; }
+    .live-kpi-cell .kpi-delta-icon.kpi-delta-good { border-color: #8ac5c0; }
+    .live-kpi-cell .kpi-delta-icon.kpi-delta-bad { border-color: #c6a6a6; }
     .live-kpi-cell .kpi-delta-icon.kpi-delta-good { color: var(--accent); }
     .live-kpi-cell .kpi-delta-icon.kpi-delta-bad { color: #940d0d; }
     .live-kpi-cell .kpi-delta-icon svg { width: 100%; height: 100%; display: block; color: inherit; }
