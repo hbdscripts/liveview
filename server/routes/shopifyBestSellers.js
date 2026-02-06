@@ -1,18 +1,15 @@
 /**
  * GET /api/shopify-best-sellers?shop=xxx.myshopify.com&range=today|yesterday|3d|7d&page=1&pageSize=10&sort=rev|orders&dir=asc|desc
- * Returns best-performing *landing products* for the date range:
- * - Sessions: product landings (sessions whose first page was that product)
- * - Orders/Rev: attributed orders/revenue for those sessions (pixel or truth evidence)
+ * Returns best-performing products for the date range:
+ * - Sessions: product landings (sessions whose first page was that product) from our sessions table (human-only)
+ * - Orders/Rev: Shopify truth orders (100%) via orders_shopify_line_items (paid, not cancelled/test)
  * - CR%: Orders / Sessions × 100
- *
- * Why this differs from "Shopify best sellers":
- * - Product-level conversion only makes sense when numerator + denominator share the same cohort.
- * - Breakdown tables attribute orders to session cohorts; Products uses the same approach per product landing handle.
  */
 
 const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
+const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
@@ -32,7 +29,6 @@ async function getShopifyBestSellers(req, res) {
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();
-  const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   const trafficMode = 'human_only';
 
   const timeZone = store.resolveAdminTimeZone();
@@ -61,168 +57,129 @@ async function getShopifyBestSellers(req, res) {
         let msReconcile = 0;
         let msDbCount = 0;
         let msDbAgg = 0;
+        let msMeta = 0;
+        let msLandings = 0;
 
-        // Truth mode needs a shop domain; keep the truth cache warm for this range.
-        if (resolvedShop && reporting.ordersSource === 'orders_shopify') {
+        // Keep the truth cache warm for this range (throttled inside salesTruth).
+        if (resolvedShop) {
           const tReconcile0 = Date.now();
           try { await salesTruth.ensureReconciled(resolvedShop, start, end, `best_products_${range}`); } catch (_) {}
           msReconcile = Date.now() - tReconcile0;
         }
+        const token = resolvedShop ? await salesTruth.getAccessToken(resolvedShop) : null;
 
         const tCount0 = Date.now();
-        const countRow = (reporting.ordersSource === 'pixel') ? await db.get(
+        const countRow = resolvedShop ? await db.get(
           `
-            SELECT COUNT(DISTINCT LOWER(TRIM(s.first_product_handle))) AS n
-            FROM sessions s
-            INNER JOIN purchases p ON p.session_id = s.session_id
-            WHERE s.started_at >= ? AND s.started_at < ?
-              ${botFilterSql}
-              AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-              AND p.purchased_at >= ? AND p.purchased_at < ?
-              ${store.purchaseFilterExcludeDuplicateH('p')}
+            SELECT COUNT(DISTINCT TRIM(product_id)) AS n
+            FROM orders_shopify_line_items
+            WHERE shop = ?
+              AND order_created_at >= ? AND order_created_at < ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND product_id IS NOT NULL AND TRIM(product_id) != ''
           `,
-          [start, end, start, end]
-        ) : (resolvedShop ? await db.get(
-          `
-            SELECT COUNT(DISTINCT LOWER(TRIM(s.first_product_handle))) AS n
-            FROM sessions s
-            INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
-            INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-            WHERE s.started_at >= ? AND s.started_at < ?
-              ${botFilterSql}
-              AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-              AND pe.event_type IN ('checkout_completed', 'checkout_started')
-              AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
-              AND o.created_at >= ? AND o.created_at < ?
-              AND (o.test IS NULL OR o.test = 0)
-              AND o.cancelled_at IS NULL
-              AND o.financial_status = 'paid'
-          `,
-          [resolvedShop, start, end, start, end]
-        ) : { n: 0 });
+          [resolvedShop, start, end]
+        ) : { n: 0 };
         msDbCount = Date.now() - tCount0;
         const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
         const page = clampInt(req.query.page, 1, 1, totalPages);
         const offset = (page - 1) * pageSize;
 
-        // Orders + revenue attributed to landing sessions for each handle.
-        // We aggregate in SQL to avoid pulling all sessions into Node.
+        // Orders + revenue from Shopify truth (line items). Sessions are computed separately from our sessions table.
         const orderBy =
           sort === 'orders'
             ? `orders ${dir.toUpperCase()}, revenue ${dir.toUpperCase()}`
             : `revenue ${dir.toUpperCase()}, orders ${dir.toUpperCase()}`;
 
         const tAgg0 = Date.now();
-        const rows = (reporting.ordersSource === 'pixel') ? await db.all(
+        const rows = resolvedShop ? await db.all(
           `
-            WITH landings AS (
-              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS landings
-              FROM sessions s
-              WHERE s.started_at >= ? AND s.started_at < ?
-                ${botFilterSql}
-                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-              GROUP BY LOWER(TRIM(s.first_product_handle))
-            ),
-            orders_by_handle AS (
-              SELECT
-                LOWER(TRIM(s.first_product_handle)) AS handle,
-                COUNT(DISTINCT ${store.purchaseDedupeKeySql('p')}) AS orders,
-                COALESCE(SUM(p.order_total), 0) AS revenue
-              FROM sessions s
-              INNER JOIN purchases p ON p.session_id = s.session_id
-              WHERE s.started_at >= ? AND s.started_at < ?
-                ${botFilterSql}
-                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-                AND p.purchased_at >= ? AND p.purchased_at < ?
-                ${store.purchaseFilterExcludeDuplicateH('p')}
-              GROUP BY LOWER(TRIM(s.first_product_handle))
-            )
             SELECT
-              l.handle AS handle,
-              l.landings AS landings,
-              COALESCE(o.orders, 0) AS orders,
-              COALESCE(o.revenue, 0) AS revenue
-            FROM landings l
-            LEFT JOIN orders_by_handle o ON o.handle = l.handle
-            WHERE COALESCE(o.orders, 0) > 0
+              TRIM(product_id) AS product_id,
+              MAX(title) AS title,
+              COUNT(DISTINCT order_id) AS orders,
+              COALESCE(SUM(line_revenue), 0) AS revenue
+            FROM orders_shopify_line_items
+            WHERE shop = ?
+              AND order_created_at >= ? AND order_created_at < ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND product_id IS NOT NULL AND TRIM(product_id) != ''
+              AND title IS NOT NULL AND TRIM(title) != ''
+            GROUP BY TRIM(product_id)
             ORDER BY ${orderBy}
             LIMIT ? OFFSET ?
           `,
-          [start, end, start, end, start, end, pageSize, offset]
-        ) : (resolvedShop ? await db.all(
-          `
-            WITH landings AS (
-              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS landings
-              FROM sessions s
-              WHERE s.started_at >= ? AND s.started_at < ?
-                ${botFilterSql}
-                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-              GROUP BY LOWER(TRIM(s.first_product_handle))
-            ),
-            orders_dedup AS (
-              SELECT DISTINCT
-                LOWER(TRIM(s.first_product_handle)) AS handle,
-                pe.linked_order_id AS order_id
-              FROM sessions s
-              INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
-              WHERE s.started_at >= ? AND s.started_at < ?
-                ${botFilterSql}
-                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-                AND pe.event_type IN ('checkout_completed', 'checkout_started')
-                AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
-            ),
-            orders_by_handle AS (
-              SELECT
-                od.handle AS handle,
-                COUNT(DISTINCT o.order_id) AS orders,
-                COALESCE(SUM(o.total_price), 0) AS revenue
-              FROM orders_dedup od
-              INNER JOIN orders_shopify o ON o.shop = ? AND o.order_id = od.order_id
-              WHERE o.created_at >= ? AND o.created_at < ?
-                AND (o.test IS NULL OR o.test = 0)
-                AND o.cancelled_at IS NULL
-                AND o.financial_status = 'paid'
-              GROUP BY od.handle
-            )
-            SELECT
-              l.handle AS handle,
-              l.landings AS landings,
-              COALESCE(o.orders, 0) AS orders,
-              COALESCE(o.revenue, 0) AS revenue
-            FROM landings l
-            LEFT JOIN orders_by_handle o ON o.handle = l.handle
-            WHERE COALESCE(o.orders, 0) > 0
-            ORDER BY ${orderBy}
-            LIMIT ? OFFSET ?
-          `,
-          [start, end, resolvedShop, start, end, resolvedShop, start, end, pageSize, offset]
-        ) : []);
+          [resolvedShop, start, end, pageSize, offset]
+        ) : [];
         msDbAgg = Date.now() - tAgg0;
 
-        function titleFromHandle(handle) {
-          const h = String(handle || '').trim().toLowerCase();
-          if (!h) return '—';
-          return h
-            .replace(/[-_]+/g, ' ')
-            .split(' ')
-            .filter(Boolean)
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' ');
+        const productIds = Array.from(new Set((rows || []).map((r) => (r && r.product_id != null ? String(r.product_id).trim() : '')).filter(Boolean)));
+        const metaByProductId = new Map();
+        const handleByProductId = new Map();
+        const thumbByProductId = new Map();
+        if (resolvedShop && token && productIds.length) {
+          const tMeta0 = Date.now();
+          await Promise.all(
+            productIds.map(async (pid) => {
+              try {
+                const meta = await productMetaCache.getProductMeta(resolvedShop, token, pid);
+                if (meta && meta.ok) {
+                  metaByProductId.set(pid, meta);
+                  if (meta.handle) handleByProductId.set(pid, String(meta.handle).trim().toLowerCase());
+                  if (meta.thumb_url) thumbByProductId.set(pid, String(meta.thumb_url).trim());
+                }
+              } catch (_) {}
+            })
+          );
+          msMeta = Date.now() - tMeta0;
+        }
+
+        // Landings (sessions) by handle for the products we’re returning.
+        const handles = Array.from(new Set(productIds.map((pid) => handleByProductId.get(pid)).filter(Boolean)));
+        const clicksByHandle = new Map();
+        if (handles.length) {
+          const tLand0 = Date.now();
+          const inSql = handles.map(() => '?').join(', ');
+          const landRows = await db.all(
+            `
+              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS landings
+              FROM sessions s
+              WHERE s.started_at >= ? AND s.started_at < ?
+                ${botFilterSql}
+                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                AND LOWER(TRIM(s.first_product_handle)) IN (${inSql})
+              GROUP BY LOWER(TRIM(s.first_product_handle))
+            `,
+            [start, end, ...handles]
+          );
+          for (const r of landRows || []) {
+            const h = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
+            if (!h) continue;
+            clicksByHandle.set(h, r && r.landings != null ? Number(r.landings) || 0 : 0);
+          }
+          msLandings = Date.now() - tLand0;
         }
 
         const bestSellers = (rows || []).map((r) => {
-          const handle = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
-          const clicks = r && r.landings != null ? Number(r.landings) || 0 : 0;
+          const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+          const title = r && r.title != null ? String(r.title).trim() : '';
+          const handle = pid && handleByProductId.has(pid) ? handleByProductId.get(pid) : '';
+          const thumbUrl = pid && thumbByProductId.has(pid) ? thumbByProductId.get(pid) : '';
+          const clicks = handle ? (clicksByHandle.get(handle) || 0) : 0;
           const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
           const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
           const revenue = Number.isFinite(revRaw) ? Math.round(revRaw * 100) / 100 : 0;
           const cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
           return {
-            product_id: null,
-            title: titleFromHandle(handle),
+            product_id: pid || null,
+            title: title || null,
             handle: handle || null,
-            thumb_url: null,
+            thumb_url: thumbUrl || null,
             orders,
             clicks,
             revenue,
@@ -234,7 +191,7 @@ async function getShopifyBestSellers(req, res) {
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_count=%s ms_db_agg=%s',
+            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s ms_landings=%s',
             range,
             sort,
             dir,
@@ -242,7 +199,9 @@ async function getShopifyBestSellers(req, res) {
             totalMs,
             msReconcile,
             msDbCount,
-            msDbAgg
+            msDbAgg,
+            msMeta,
+            msLandings
           );
         }
 

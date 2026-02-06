@@ -132,85 +132,36 @@ async function getShopifyBestVariants(req, res) {
         );
         msMeta = Date.now() - tMeta0;
 
-        // Sessions (denominator): product landings for the parent product (per row).
-        // Orders/Rev: evidence-linked variant sales for those landing sessions (so CR% is meaningful).
-        const variantPairs = pageItems
-          .map((v) => ({ variant_id: v && v.variant_id != null ? String(v.variant_id).trim() : '', handle: v && v.handle ? String(v.handle).trim().toLowerCase() : '' }))
-          .filter((x) => x.variant_id && x.handle);
-
-        const metricsByVariant = new Map(); // variant_id -> { landings, orders, revenue }
-        if (variantPairs.length) {
-          const valuesSql = variantPairs.map(() => '(?, ?)').join(', ');
-          const params = [];
-          for (const x of variantPairs) { params.push(x.variant_id, x.handle); }
-          // Bounds used twice (sessions + line items) and shop used twice (purchase_events + line_items).
-          params.push(start, end, shop, start, end, shop, start, end);
-          const rows2 = await db.all(
+        // Sessions (denominator): product landings for the parent product handle (human-only).
+        // Orders/Rev: Shopify truth (line items) for the variant (100% of paid orders).
+        const uniqHandles = Array.from(new Set(pageItems.map((v) => (v && v.handle ? String(v.handle).trim().toLowerCase() : '')).filter(Boolean)));
+        const clicksByHandle = new Map();
+        if (uniqHandles.length) {
+          const inSql = uniqHandles.map(() => '?').join(', ');
+          const landRows = await db.all(
             `
-              WITH t(variant_id, handle) AS (VALUES ${valuesSql}),
-              landings AS (
-                SELECT t.variant_id AS variant_id, COUNT(DISTINCT s.session_id) AS landings
-                FROM t
-                INNER JOIN sessions s ON LOWER(TRIM(s.first_product_handle)) = t.handle
-                WHERE s.started_at >= ? AND s.started_at < ?
-                  AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-                GROUP BY t.variant_id
-              ),
-              order_ids AS (
-                SELECT DISTINCT t.variant_id AS variant_id, pe.linked_order_id AS order_id
-                FROM t
-                INNER JOIN sessions s ON LOWER(TRIM(s.first_product_handle)) = t.handle
-                INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
-                WHERE s.started_at >= ? AND s.started_at < ?
-                  AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-                  AND pe.event_type IN ('checkout_completed', 'checkout_started')
-                  AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
-              ),
-              sales AS (
-                SELECT
-                  oi.variant_id AS variant_id,
-                  COUNT(DISTINCT li.order_id) AS orders,
-                  COALESCE(SUM(li.line_revenue), 0) AS revenue
-                FROM order_ids oi
-                INNER JOIN orders_shopify_line_items li
-                  ON li.shop = ? AND li.order_id = oi.order_id AND li.variant_id = oi.variant_id
-                WHERE li.order_created_at >= ? AND li.order_created_at < ?
-                  AND (li.order_test IS NULL OR li.order_test = 0)
-                  AND li.order_cancelled_at IS NULL
-                  AND li.order_financial_status = 'paid'
-                GROUP BY oi.variant_id
-              )
-              SELECT
-                t.variant_id AS variant_id,
-                COALESCE(l.landings, 0) AS landings,
-                COALESCE(s.orders, 0) AS orders,
-                COALESCE(s.revenue, 0) AS revenue
-              FROM t
-              LEFT JOIN landings l ON l.variant_id = t.variant_id
-              LEFT JOIN sales s ON s.variant_id = t.variant_id
+              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(DISTINCT s.session_id) AS landings
+              FROM sessions s
+              WHERE s.started_at >= ? AND s.started_at < ?
+                AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
+                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                AND LOWER(TRIM(s.first_product_handle)) IN (${inSql})
+              GROUP BY LOWER(TRIM(s.first_product_handle))
             `,
-            params
+            [start, end, ...uniqHandles]
           );
-          for (const r of rows2 || []) {
-            const vid = r && r.variant_id != null ? String(r.variant_id).trim() : '';
-            if (!vid) continue;
-            metricsByVariant.set(vid, {
-              landings: r && r.landings != null ? Number(r.landings) || 0 : 0,
-              orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
-              revenue: r && r.revenue != null ? (Number(r.revenue) || 0) : 0,
-            });
+          for (const r of landRows || []) {
+            const h = r && r.handle != null ? String(r.handle).trim().toLowerCase() : '';
+            if (!h) continue;
+            clicksByHandle.set(h, r && r.landings != null ? Number(r.landings) || 0 : 0);
           }
         }
 
         for (const v of pageItems) {
-          const vid = v && v.variant_id != null ? String(v.variant_id).trim() : '';
-          const m = vid && metricsByVariant.has(vid) ? metricsByVariant.get(vid) : null;
-          const clicks = m ? (Number(m.landings) || 0) : 0;
-          const orders = m ? (Number(m.orders) || 0) : 0;
-          const revenue = m ? (Number(m.revenue) || 0) : 0;
+          const handle = v && v.handle ? String(v.handle).trim().toLowerCase() : '';
+          const clicks = handle ? (clicksByHandle.get(handle) || 0) : 0;
+          const orders = v && v.orders != null ? Number(v.orders) || 0 : 0;
           v.clicks = clicks;
-          v.orders = orders;
-          v.revenue = Math.round(revenue * 100) / 100;
           v.cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
         }
 

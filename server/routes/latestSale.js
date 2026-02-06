@@ -4,7 +4,7 @@
  * Returns latest paid Shopify order (truth) we can attribute to a session, plus a best-effort
  * "top product" (most expensive line item) for UI notifications.
  *
- * Fail-open: if truth isn't configured/linked, falls back to most recent purchase row.
+ * Guardrail: never fall back to pixel-derived purchases (sales must never exceed Shopify truth).
  */
 const store = require('../store');
 const fx = require('../fx');
@@ -79,6 +79,9 @@ async function getLatestSale(req, res) {
     let row = null;
     let source = null;
     if (shop) {
+      // Best-effort: keep truth cache warm for today so "latest" stays accurate.
+      try { await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'latest_sale_today'); } catch (_) {}
+
       // Prefer orders that are linked to a session via evidence so we can show a country flag.
       row = await db.get(
         `
@@ -131,28 +134,6 @@ async function getLatestSale(req, res) {
         );
         if (row) source = 'orders_shopify';
       }
-    }
-
-    // Last-resort fallback: pixel purchases table (no line items).
-    if (!row) {
-      row = await db.get(
-        `
-        SELECT
-          order_id AS order_id,
-          NULL AS order_name,
-          purchased_at AS created_at,
-          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS currency,
-          order_total AS total_price,
-          NULL AS raw_json,
-          COALESCE(NULLIF(TRIM(country_code), ''), 'XX') AS country_code
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ?
-        ORDER BY purchased_at DESC
-        LIMIT 1
-        `,
-        [bounds.start, bounds.end]
-      );
-      if (row) source = 'purchases';
     }
 
     res.setHeader('Cache-Control', 'no-store');

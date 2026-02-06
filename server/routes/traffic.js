@@ -303,56 +303,117 @@ async function getTraffic(req, res) {
 
       const tSalesBySource0 = Date.now();
       let salesBySource = new Map();
-      if (reporting.ordersSource === 'pixel') {
-        const salesSourceKeyExpr = effectiveSourceKeySql('s');
-        const salesRows = await db.all(
+      let salesByPairTruth = new Map(); // pair_key ("device|platform") -> { orders, revenueGbp }
+      if (shop) {
+        // Keep truth cache warm for this range (throttled inside salesTruth).
+        try { await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, `traffic_${rangeKey}`); } catch (_) {}
+
+        function safeJsonParse(str) {
+          if (!str || typeof str !== 'string') return null;
+          try { return JSON.parse(str); } catch (_) { return null; }
+        }
+        function parseTrafficTypeFromUaString(uaRaw) {
+          const ua = typeof uaRaw === 'string' ? uaRaw.trim() : '';
+          if (!ua) return { uaDeviceType: 'unknown', uaPlatform: 'other', uaModel: null };
+          const s = ua.toLowerCase();
+          const isIphone = /\biphone\b/.test(s) || /\bipod\b/.test(s);
+          const isIpad = /\bipad\b/.test(s) || (/\bmacintosh\b/.test(s) && /\bmobile\b/.test(s) && !isIphone);
+          const isAndroid = /\bandroid\b/.test(s);
+
+          let uaDeviceType = 'desktop';
+          if (isIpad || /\btablet\b/.test(s) || (isAndroid && !/\bmobile\b/.test(s))) uaDeviceType = 'tablet';
+          else if (/\bmobi\b/.test(s) || isIphone || isAndroid) uaDeviceType = 'mobile';
+
+          let uaPlatform = 'other';
+          if (isIphone || isIpad || /\bipod\b/.test(s)) uaPlatform = 'ios';
+          else if (isAndroid) uaPlatform = 'android';
+          else if (/\bwindows\b/.test(s)) uaPlatform = 'windows';
+          else if (/\bmacintosh\b|\bmac os\b|\bmac os x\b/.test(s)) uaPlatform = 'mac';
+          else if (/\bcros\b/.test(s)) uaPlatform = 'chromeos';
+          else if (/\blinux\b|\bubuntu\b|\bfedora\b/.test(s)) uaPlatform = 'linux';
+
+          let uaModel = null;
+          if (isIphone) uaModel = 'iphone';
+          else if (isIpad) uaModel = 'ipad';
+
+          return { uaDeviceType, uaPlatform, uaModel };
+        }
+
+        const ratesToGbp = await fx.getRatesToGbp();
+        const orders = await db.all(
           `
-            SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-            FROM (
-              SELECT
-                ${salesSourceKeyExpr} AS traffic_source_key,
-                COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-                p.order_total AS revenue
-              FROM purchases p
-              INNER JOIN sessions s ON s.session_id = p.session_id
-              WHERE p.purchased_at >= ? AND p.purchased_at < ?
-                AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
-                ${humanOnlyClause('s')}
-                ${store.purchaseFilterExcludeDuplicateH('p')}
-            ) t
-            GROUP BY traffic_source_key, currency
-          `,
-          [bounds.start, bounds.end]
-        );
-        salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
-      } else if (shop) {
-        const salesSourceKeyExpr = effectiveSourceKeySql('s');
-        const salesRows = await db.all(
-          `
-            SELECT traffic_source_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-            FROM (
-              SELECT DISTINCT
-                ${salesSourceKeyExpr} AS traffic_source_key,
-                COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-                o.order_id AS order_id,
-                o.total_price AS revenue
-              FROM purchase_events pe
-              INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-              INNER JOIN sessions s ON s.session_id = pe.session_id
-              WHERE pe.shop = ?
-                AND pe.event_type IN ('checkout_completed', 'checkout_started')
-                AND o.created_at >= ? AND o.created_at < ?
-                AND s.traffic_source_key IS NOT NULL AND TRIM(s.traffic_source_key) != ''
-                ${humanOnlyClause('s')}
-                AND (o.test IS NULL OR o.test = 0)
-                AND o.cancelled_at IS NULL
-                AND o.financial_status = 'paid'
-            ) t
-            GROUP BY traffic_source_key, currency
+            SELECT
+              order_id,
+              COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+              total_price AS total_price,
+              raw_json
+            FROM orders_shopify
+            WHERE shop = ?
+              AND created_at >= ? AND created_at < ?
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
           `,
           [shop, bounds.start, bounds.end]
         );
-        salesBySource = await aggCurrencyRowsToGbp(salesRows, { keyField: 'traffic_source_key' });
+
+        for (const o of orders || []) {
+          const cur = fx.normalizeCurrency(o && o.currency) || 'GBP';
+          const amtRaw = o && o.total_price != null ? Number(o.total_price) : 0;
+          const amt = Number.isFinite(amtRaw) ? amtRaw : 0;
+          const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+          const gbpAmt = typeof gbp === 'number' && Number.isFinite(gbp) ? gbp : 0;
+
+          const raw = safeJsonParse(o && o.raw_json != null ? String(o.raw_json) : '') || null;
+          const landingSite = raw ? (raw.landing_site ?? raw.landingSite ?? raw.landing_site_ref ?? raw.landingSiteRef ?? null) : null;
+          const referringSite = raw ? (raw.referring_site ?? raw.referringSite ?? null) : null;
+          const uaStr = raw ? (raw?.client_details?.user_agent ?? raw?.client_details?.userAgent ?? raw?.clientDetails?.userAgent ?? raw?.clientDetails?.user_agent ?? null) : null;
+
+          // Source key from Shopify truth (landing/referrer) + our mapping rules.
+          let sourceKey = 'direct';
+          try {
+            const derived = await store.deriveTrafficSourceKeyWithMaps({
+              utmSource: null,
+              utmMedium: null,
+              utmCampaign: null,
+              utmContent: null,
+              referrer: referringSite != null ? String(referringSite) : null,
+              entryUrl: landingSite != null ? String(landingSite) : null,
+            });
+            if (derived && derived.trafficSourceKey) sourceKey = String(derived.trafficSourceKey).trim().toLowerCase() || 'direct';
+          } catch (_) {}
+
+          const prev = salesBySource.get(sourceKey) || { orders: 0, revenueGbp: 0 };
+          prev.orders += 1;
+          prev.revenueGbp += gbpAmt;
+          salesBySource.set(sourceKey, prev);
+
+          // Device/platform from Shopify truth (client_details.user_agent).
+          const tt = parseTrafficTypeFromUaString(uaStr);
+          const device = (tt.uaDeviceType || 'unknown').trim().toLowerCase();
+          const platform = (tt.uaPlatform || 'other').trim().toLowerCase();
+          const pairKey = device + '|' + platform;
+          const prevPair = salesByPairTruth.get(pairKey) || { orders: 0, revenueGbp: 0 };
+          prevPair.orders += 1;
+          prevPair.revenueGbp += gbpAmt;
+          salesByPairTruth.set(pairKey, prevPair);
+        }
+
+        // Round revenue and normalize keys to lower-case for consistent lookups.
+        const nextSource = new Map();
+        for (const [k, v] of salesBySource.entries()) {
+          const kk = String(k || '').trim().toLowerCase();
+          if (!kk) continue;
+          nextSource.set(kk, { orders: Number(v.orders) || 0, revenueGbp: Math.round((Number(v.revenueGbp) || 0) * 100) / 100 });
+        }
+        salesBySource = nextSource;
+        const nextPair = new Map();
+        for (const [k, v] of salesByPairTruth.entries()) {
+          const kk = String(k || '').trim().toLowerCase();
+          if (!kk) continue;
+          nextPair.set(kk, { orders: Number(v.orders) || 0, revenueGbp: Math.round((Number(v.revenueGbp) || 0) * 100) / 100 });
+        }
+        salesByPairTruth = nextPair;
       }
       // Normalize keys to lower-case for consistent lookups.
       if (salesBySource && typeof salesBySource.entries === 'function') {
@@ -441,60 +502,9 @@ async function getTraffic(req, res) {
       // --- Type breakdown (range): sales ---
       const tSalesByPair0 = Date.now();
       let salesByPair = new Map();
-      if (reporting.ordersSource === 'pixel') {
-        const salesPairRows = await db.all(
-          `
-            SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-            FROM (
-              SELECT
-                (
-                  COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
-                  || '|' ||
-                  COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
-                ) AS pair_key,
-                COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-                p.order_total AS revenue
-              FROM purchases p
-              INNER JOIN sessions s ON s.session_id = p.session_id
-              WHERE p.purchased_at >= ? AND p.purchased_at < ?
-                ${humanOnlyClause('s')}
-                ${store.purchaseFilterExcludeDuplicateH('p')}
-            ) t
-            GROUP BY pair_key, currency
-          `,
-          [bounds.start, bounds.end]
-        );
-        salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
-      } else if (shop) {
-        const salesPairRows = await db.all(
-          `
-            SELECT pair_key, currency, COUNT(*) AS orders, COALESCE(SUM(revenue), 0) AS revenue
-            FROM (
-              SELECT DISTINCT
-                (
-                  COALESCE(NULLIF(TRIM(s.ua_device_type), ''), 'unknown')
-                  || '|' ||
-                  COALESCE(NULLIF(TRIM(s.ua_platform), ''), 'other')
-                ) AS pair_key,
-                COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-                o.order_id AS order_id,
-                o.total_price AS revenue
-              FROM purchase_events pe
-              INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-              INNER JOIN sessions s ON s.session_id = pe.session_id
-              WHERE pe.shop = ?
-                AND pe.event_type IN ('checkout_completed', 'checkout_started')
-                AND o.created_at >= ? AND o.created_at < ?
-                ${humanOnlyClause('s')}
-                AND (o.test IS NULL OR o.test = 0)
-                AND o.cancelled_at IS NULL
-                AND o.financial_status = 'paid'
-            ) t
-            GROUP BY pair_key, currency
-          `,
-          [shop, bounds.start, bounds.end]
-        );
-        salesByPair = await aggCurrencyRowsToGbp(salesPairRows, { keyField: 'pair_key' });
+      // Truth-only sales by type is computed from orders_shopify above (salesByPairTruth) so it cannot exceed Shopify.
+      if (shop && salesByPairTruth && typeof salesByPairTruth.entries === 'function') {
+        salesByPair = salesByPairTruth;
       }
       msSalesByPair = Date.now() - tSalesByPair0;
 

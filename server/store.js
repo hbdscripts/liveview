@@ -718,7 +718,8 @@ const REPORTING_SESSIONS_SOURCE_KEY = 'reporting_sessions_source'; // sessions |
 
 function normalizeReportingOrdersSource(v) {
   const s = v == null ? '' : String(v).trim().toLowerCase();
-  if (s === 'orders_shopify' || s === 'pixel') return s;
+  // Guardrail: reporting must never exceed Shopify. Pixel-derived purchases remain debug-only.
+  if (s === 'orders_shopify') return s;
   return null;
 }
 
@@ -1722,8 +1723,7 @@ function isDayLikeRangeKey(key) {
 
 /** Total sales in range. Dedupe in query only; never delete rows. */
 async function getSalesTotal(start, end, options = {}) {
-  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
-  if (ordersSource === 'pixel') return getPixelSalesTotalGbp(start, end);
+  // Guardrail: report sales from Shopify truth only (never exceed Shopify).
   // Truth: Shopify Orders API cached in orders_shopify.
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
@@ -1732,8 +1732,7 @@ async function getSalesTotal(start, end, options = {}) {
 
 /** Revenue from returning-customer sessions only (sessions.is_returning = 1). Same dedupe and GBP conversion as getSalesTotal. */
 async function getReturningRevenue(start, end, options = {}) {
-  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
-  if (ordersSource === 'pixel') return getPixelReturningRevenueGbp(start, end);
+  // Guardrail: report sales from Shopify truth only (never exceed Shopify).
   // Truth-based returning revenue: customers with a prior paid order before start.
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
@@ -1767,8 +1766,10 @@ async function getConversionRate(start, end, options = {}) {
       );
     t = total?.n ?? 0;
   }
-  const convertedSessions = await getConvertedSessionCount(start, end, options);
-  return t > 0 ? Math.round((convertedSessions / t) * 1000) / 10 : null;
+  // Guardrail: conversion must be based on Shopify truth orders (never exceed Shopify).
+  // Definition used across Breakdown/Traffic/Product tables: Orders / Sessions × 100.
+  const convertedOrders = await getConvertedCount(start, end, options);
+  return t > 0 ? Math.round((convertedOrders / t) * 1000) / 10 : null;
 }
 
 /** Product-only sessions: landed on a product page (not homepage, collection, etc). */
@@ -1792,125 +1793,157 @@ async function getProductConversionRate(start, end, options = {}) {
   const t = total?.n ?? 0;
   if (t <= 0) return null;
 
-  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+  // Guardrail: conversions must be Shopify truth (never exceed Shopify).
+  // Approximation: count truth orders whose first landing page was a product page (landing_site contains "/products/").
+  // This avoids relying on pixel evidence linkage which can be incomplete under blockers.
+  function safeJsonParse(str) {
+    if (!str || typeof str !== 'string') return null;
+    try { return JSON.parse(str); } catch (_) { return null; }
+  }
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return null;
+  const orderRows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT raw_json
+        FROM orders_shopify
+        WHERE shop = $1
+          AND created_at >= $2 AND created_at < $3
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `,
+      [shop, start, end]
+    )
+    : await db.all(
+      `
+        SELECT raw_json
+        FROM orders_shopify
+        WHERE shop = ?
+          AND created_at >= ? AND created_at < ?
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `,
+      [shop, start, end]
+    );
   let c = 0;
-  if (ordersSource === 'pixel') {
-    const convertedRow = await db.get(
-      `
-        SELECT COUNT(*) AS n FROM (
-          SELECT DISTINCT ${purchaseDedupeKeySql('p')} AS k
-          FROM sessions s
-          INNER JOIN purchases p ON p.session_id = s.session_id
-          WHERE s.started_at >= ? AND s.started_at < ?
-            ${productFilter.replace(/sessions\./g, 's.')}
-            AND p.purchased_at >= ? AND p.purchased_at < ?
-            ${purchaseFilterExcludeDuplicateH('p')}
-        ) t
-      `,
-      [start, end, start, end, ...filter.params]
-    );
-    c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
-  } else {
-    // Truth conversions attributed to product-landed sessions via linked evidence.
-    const shop = salesTruth.resolveShopForSales('');
-    if (!shop) return null;
-    const convertedRow = await db.get(
-      `
-        SELECT COUNT(DISTINCT o.order_id) AS n
-        FROM sessions s
-        INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
-        INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-        WHERE s.started_at >= ? AND s.started_at < ?
-          ${productFilter.replace(/sessions\./g, 's.')}
-          AND o.created_at >= ? AND o.created_at < ?
-          AND (o.test IS NULL OR o.test = 0)
-          AND o.cancelled_at IS NULL
-          AND o.financial_status = 'paid'
-      `,
-      [shop, start, end, start, end, ...filter.params]
-    );
-    c = convertedRow?.n != null ? Number(convertedRow.n) || 0 : 0;
+  for (const r of orderRows || []) {
+    const raw = safeJsonParse(r && r.raw_json != null ? String(r.raw_json) : '');
+    if (!raw || typeof raw !== 'object') continue;
+    const landing = raw?.landing_site ?? raw?.landingSite ?? raw?.landing_site_ref ?? raw?.landingSiteRef ?? null;
+    const s = landing != null ? String(landing) : '';
+    if (s && s.toLowerCase().includes('/products/')) c++;
   }
   return t > 0 ? Math.round((c / t) * 1000) / 10 : null;
 }
 
-/** Sessions and revenue by country. Revenue excludes purchases with null/empty/XX country_code; sum(revenue) <= getSalesTotal. */
+/** Sessions and revenue by country (truth). Includes 'XX' for unknown order/session country. */
 async function getCountryStats(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
+  function normalizeCountryOrXX(value) {
+    const s = typeof value === 'string' ? value.trim().toUpperCase() : '';
+    if (!s) return 'XX';
+    const code = s.slice(0, 2);
+    if (!/^[A-Z]{2}$/.test(code)) return 'XX';
+    return code;
+  }
   const conversionRows = config.dbUrl
     ? await db.all(`
-      SELECT country_code, COUNT(*) AS total
+      SELECT COALESCE(NULLIF(TRIM(country_code), ''), 'XX') AS country_code, COUNT(*) AS total
       FROM sessions
       WHERE started_at >= $1 AND started_at < $2
-        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
         ${filter.sql.replace(/sessions\./g, '')}
-      GROUP BY country_code
+      GROUP BY COALESCE(NULLIF(TRIM(country_code), ''), 'XX')
     `, [start, end, ...filter.params])
     : await db.all(`
-      SELECT country_code, COUNT(*) AS total
+      SELECT COALESCE(NULLIF(TRIM(country_code), ''), 'XX') AS country_code, COUNT(*) AS total
       FROM sessions
       WHERE started_at >= ? AND started_at < ?
-        AND country_code IS NOT NULL AND country_code != '' AND country_code != 'XX'
         ${filter.sql.replace(/sessions\./g, '')}
-      GROUP BY country_code
+      GROUP BY COALESCE(NULLIF(TRIM(country_code), ''), 'XX')
     `, [start, end, ...filter.params]);
-  // Truth revenue by country is attributed via linked purchase evidence (so sum(revenue) <= truth total).
-  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
+
+  // Guardrail: conversions + revenue must be Shopify truth (never exceed Shopify).
+  // Attribution basis: Shopify order country (shipping/billing) rather than pixel-evidence linkage.
+  function safeJsonParse(str) {
+    if (!str || typeof str !== 'string') return null;
+    try { return JSON.parse(str); } catch (_) { return null; }
+  }
+  function orderCountryCodeFromRawJson(rawJson) {
+    const raw = safeJsonParse(rawJson);
+    if (!raw || typeof raw !== 'object') return null;
+    const ship =
+      raw?.shipping_address?.country_code ??
+      raw?.shipping_address?.countryCode ??
+      raw?.shippingAddress?.countryCode ??
+      raw?.shippingAddress?.country_code ??
+      null;
+    const bill =
+      raw?.billing_address?.country_code ??
+      raw?.billing_address?.countryCode ??
+      raw?.billingAddress?.countryCode ??
+      raw?.billingAddress?.country_code ??
+      null;
+    return normalizeCountryOrXX(ship || bill);
+  }
+
   const shop = salesTruth.resolveShopForSales('');
-  const purchaseAgg = ordersSource === 'pixel'
-    ? await db.all(
-      `
-        SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
-        FROM (
-          SELECT
-            COALESCE(NULLIF(TRIM(p.country_code), ''), 'XX') AS country_code,
-            COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-            ${purchaseDedupeKeySql('p')} AS order_key,
-            p.order_total AS revenue
-          FROM purchases p
-          WHERE p.purchased_at >= ? AND p.purchased_at < ?
-            AND p.country_code IS NOT NULL AND TRIM(p.country_code) != '' AND p.country_code != 'XX'
-            ${purchaseFilterExcludeDuplicateH('p')}
-        ) t
-        GROUP BY country_code, currency
-      `,
-      [start, end]
-    )
-    : (shop
+  let purchaseAgg = [];
+  if (shop) {
+    const orders = config.dbUrl
       ? await db.all(
         `
-          SELECT country_code, currency, COUNT(*) AS converted, COALESCE(SUM(revenue), 0) AS revenue
-          FROM (
-            SELECT DISTINCT
-              s.country_code AS country_code,
-              COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency,
-              o.order_id AS order_id,
-              o.total_price AS revenue
-            FROM purchase_events pe
-            INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
-            INNER JOIN sessions s ON s.session_id = pe.session_id
-            WHERE pe.shop = ?
-              AND pe.event_type IN ('checkout_completed', 'checkout_started')
-              AND o.created_at >= ? AND o.created_at < ?
-              AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-              ${filter.sql.replace(/sessions\./g, 's.')}
-              AND (o.test IS NULL OR o.test = 0)
-              AND o.cancelled_at IS NULL
-              AND o.financial_status = 'paid'
-          ) t
-          GROUP BY country_code, currency
+          SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price AS revenue, raw_json
+          FROM orders_shopify
+          WHERE shop = $1
+            AND created_at >= $2 AND created_at < $3
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+            AND total_price IS NOT NULL
         `,
-        [shop, start, end, ...filter.params]
+        [shop, start, end]
       )
-      : []);
+      : await db.all(
+        `
+          SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price AS revenue, raw_json
+          FROM orders_shopify
+          WHERE shop = ?
+            AND created_at >= ? AND created_at < ?
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+            AND total_price IS NOT NULL
+        `,
+        [shop, start, end]
+      );
+    const byCountryCurrency = new Map(); // "CC|CUR" -> { country_code, currency, converted, revenue }
+    for (const o of orders || []) {
+      const cc = orderCountryCodeFromRawJson(o && o.raw_json != null ? String(o.raw_json) : '') || 'XX';
+      const cur = fx.normalizeCurrency(o && o.currency != null ? String(o.currency) : '') || 'GBP';
+      const rev = o && o.revenue != null ? Number(o.revenue) : 0;
+      const amt = Number.isFinite(rev) ? rev : 0;
+      const key = cc + '|' + cur;
+      const curRow = byCountryCurrency.get(key) || { country_code: cc, currency: cur, converted: 0, revenue: 0 };
+      curRow.converted += 1;
+      curRow.revenue += amt;
+      byCountryCurrency.set(key, curRow);
+    }
+    purchaseAgg = Array.from(byCountryCurrency.values()).map((r) => ({
+      country_code: r.country_code,
+      currency: r.currency,
+      converted: r.converted,
+      revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
+    }));
+  }
 
   const ratesToGbp = await fx.getRatesToGbp();
   const map = new Map();
   for (const row of conversionRows) {
-    const code = normalizeCountry(row.country_code);
-    if (!code) continue;
+    const code = normalizeCountryOrXX(row && row.country_code != null ? String(row.country_code) : '');
     map.set(code, {
       country_code: code,
       total: Number(row.total) || 0,
@@ -1921,8 +1954,7 @@ async function getCountryStats(start, end, options = {}) {
 
   // Sum converted counts and convert revenue to GBP across currencies.
   for (const row of purchaseAgg || []) {
-    const code = normalizeCountry(row.country_code);
-    if (!code) continue;
+    const code = normalizeCountryOrXX(row && row.country_code != null ? String(row.country_code) : '');
     const current = map.get(code) || { country_code: code, total: 0, converted: 0, revenue: 0 };
     const converted = Number(row.converted) || 0;
     const revenue = row.revenue != null ? Number(row.revenue) : 0;
@@ -1954,8 +1986,8 @@ async function getCountryStats(start, end, options = {}) {
  * Best GEO Products: top revenue products per country (cap 3 per country).
  *
  * Attribution:
- * - Country comes from sessions.country_code via purchase_events.session_id (truth evidence linkage).
- * - Revenue comes from orders_shopify_line_items (no orders_shopify.raw_json parsing).
+ * - Country comes from Shopify truth orders (shipping/billing country parsed from orders_shopify.raw_json).
+ * - Revenue comes from orders_shopify_line_items (truth line-item facts).
  *
  * Output rows:
  * - country_code, product_id, product_title, product_handle, product_thumb_url,
@@ -1964,126 +1996,224 @@ async function getCountryStats(start, end, options = {}) {
 async function getBestGeoProducts(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
-  const filterAlias = filter.sql.replace(/sessions\./g, 's.');
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return [];
   const token = await salesTruth.getAccessToken(shop);
 
-  const sql = `
-    WITH sessions_by_country AS (
-      SELECT s.country_code AS country_code, COUNT(*) AS clicks
-      FROM sessions s
-      WHERE s.started_at >= ? AND s.started_at < ?
-        AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-        ${filterAlias}
-      GROUP BY s.country_code
-    ),
-    order_country AS (
-      SELECT DISTINCT pe.shop AS shop, s.country_code AS country_code, pe.linked_order_id AS order_id
-      FROM purchase_events pe
-      INNER JOIN sessions s ON s.session_id = pe.session_id
-      WHERE pe.shop = ?
-        AND pe.event_type IN ('checkout_completed', 'checkout_started')
-        AND pe.linked_order_id IS NOT NULL AND TRIM(pe.linked_order_id) != ''
-        AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-        ${filterAlias}
-    ),
-    product_rev AS (
-      SELECT
-        oc.country_code AS country_code,
-        COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
-        li.product_id AS product_id,
-        MAX(li.title) AS title,
-        COUNT(DISTINCT li.order_id) AS sales,
-        COALESCE(SUM(li.line_revenue), 0) AS revenue
-      FROM order_country oc
-      INNER JOIN orders_shopify_line_items li
-        ON li.shop = oc.shop AND li.order_id = oc.order_id
-      WHERE li.order_created_at >= ? AND li.order_created_at < ?
-        AND (li.order_test IS NULL OR li.order_test = 0)
-        AND li.order_cancelled_at IS NULL
-        AND li.order_financial_status = 'paid'
-        AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-        AND li.title IS NOT NULL AND TRIM(li.title) != ''
-      GROUP BY oc.country_code, currency, li.product_id
-    ),
-    ranked AS (
-      SELECT
-        pr.country_code,
-        pr.currency,
-        pr.product_id,
-        pr.title,
-        pr.sales,
-        pr.revenue,
-        COALESCE(sbc.clicks, 0) AS clicks,
-        ROW_NUMBER() OVER (PARTITION BY pr.country_code ORDER BY pr.revenue DESC) AS rn,
-        SUM(pr.revenue) OVER (PARTITION BY pr.country_code) AS country_revenue
-      FROM product_rev pr
-      LEFT JOIN sessions_by_country sbc ON sbc.country_code = pr.country_code
-    )
-    SELECT
-      country_code,
-      currency,
-      product_id,
-      title,
-      sales,
-      clicks,
-      revenue
-    FROM ranked
-    WHERE rn <= 3
-    ORDER BY country_revenue DESC, revenue DESC
-  `;
+  // Guardrail: use Shopify truth orders + line items (no pixel-evidence linkage) so totals match Shopify.
+  function safeJsonParse(str) {
+    if (!str || typeof str !== 'string') return null;
+    try { return JSON.parse(str); } catch (_) { return null; }
+  }
+  function orderCountryCodeFromRawJson(rawJson) {
+    const raw = safeJsonParse(rawJson);
+    if (!raw || typeof raw !== 'object') return null;
+    const ship =
+      raw?.shipping_address?.country_code ??
+      raw?.shipping_address?.countryCode ??
+      raw?.shippingAddress?.countryCode ??
+      raw?.shippingAddress?.country_code ??
+      null;
+    const bill =
+      raw?.billing_address?.country_code ??
+      raw?.billing_address?.countryCode ??
+      raw?.billingAddress?.countryCode ??
+      raw?.billingAddress?.country_code ??
+      null;
+    return normalizeCountry(ship || bill);
+  }
 
-  // filter.params is currently empty, but keep it twice since filterAlias is used twice.
-  const params = [start, end, ...filter.params, shop, ...filter.params, start, end];
-  const rows = await db.all(sql, params);
+  // Sessions by country (denominator). Keep human-only filtering in sessions.
+  const filterAlias = filter.sql.replace(/sessions\./g, 's.');
+  const sessionsRows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT s.country_code AS country_code, COUNT(*) AS clicks
+        FROM sessions s
+        WHERE s.started_at >= $1 AND s.started_at < $2
+          AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+          ${filterAlias}
+        GROUP BY s.country_code
+      `,
+      [start, end, ...filter.params]
+    )
+    : await db.all(
+      `
+        SELECT s.country_code AS country_code, COUNT(*) AS clicks
+        FROM sessions s
+        WHERE s.started_at >= ? AND s.started_at < ?
+          AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
+          ${filterAlias}
+        GROUP BY s.country_code
+      `,
+      [start, end, ...filter.params]
+    );
+  const clicksByCountry = new Map();
+  for (const r of sessionsRows || []) {
+    const cc = normalizeCountry(r && r.country_code);
+    if (!cc) continue;
+    clicksByCountry.set(cc, r && r.clicks != null ? Number(r.clicks) || 0 : 0);
+  }
+
+  // Truth orders -> country (shipping/billing).
+  const orderRows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT order_id, raw_json
+        FROM orders_shopify
+        WHERE shop = $1
+          AND created_at >= $2 AND created_at < $3
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `,
+      [shop, start, end]
+    )
+    : await db.all(
+      `
+        SELECT order_id, raw_json
+        FROM orders_shopify
+        WHERE shop = ?
+          AND created_at >= ? AND created_at < ?
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `,
+      [shop, start, end]
+    );
+  const orderCountry = new Map(); // order_id -> CC
+  for (const o of orderRows || []) {
+    const oid = o && o.order_id != null ? String(o.order_id).trim() : '';
+    if (!oid) continue;
+    const cc = orderCountryCodeFromRawJson(o && o.raw_json != null ? String(o.raw_json) : '');
+    if (!cc || cc === 'XX') continue;
+    orderCountry.set(oid, cc);
+  }
+
+  // Line items (truth revenue per product) for those orders in range.
+  const liRows = config.dbUrl
+    ? await db.all(
+      `
+        SELECT
+          order_id,
+          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+          product_id,
+          title,
+          line_revenue AS revenue
+        FROM orders_shopify_line_items
+        WHERE shop = $1
+          AND order_created_at >= $2 AND order_created_at < $3
+          AND (order_test IS NULL OR order_test = 0)
+          AND order_cancelled_at IS NULL
+          AND order_financial_status = 'paid'
+          AND product_id IS NOT NULL AND TRIM(product_id) != ''
+          AND title IS NOT NULL AND TRIM(title) != ''
+      `,
+      [shop, start, end]
+    )
+    : await db.all(
+      `
+        SELECT
+          order_id,
+          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+          product_id,
+          title,
+          line_revenue AS revenue
+        FROM orders_shopify_line_items
+        WHERE shop = ?
+          AND order_created_at >= ? AND order_created_at < ?
+          AND (order_test IS NULL OR order_test = 0)
+          AND order_cancelled_at IS NULL
+          AND order_financial_status = 'paid'
+          AND product_id IS NOT NULL AND TRIM(product_id) != ''
+          AND title IS NOT NULL AND TRIM(title) != ''
+      `,
+      [shop, start, end]
+    );
 
   const ratesToGbp = await fx.getRatesToGbp();
+  const byCountryProduct = new Map(); // "CC|PID" -> { country_code, product_id, title, orderIds:Set, revenueGbp }
+  for (const r of liRows || []) {
+    const oid = r && r.order_id != null ? String(r.order_id).trim() : '';
+    if (!oid) continue;
+    const cc = orderCountry.get(oid);
+    if (!cc) continue;
+    const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+    if (!pid) continue;
+    const title = r && r.title != null ? String(r.title).trim() : '';
+    const cur = fx.normalizeCurrency(r && r.currency) || 'GBP';
+    const rev = r && r.revenue != null ? Number(r.revenue) : 0;
+    const amt = Number.isFinite(rev) ? rev : 0;
+    const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+    const gbpAmt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+
+    const key = cc + '|' + pid;
+    const curRow = byCountryProduct.get(key) || { country_code: cc, product_id: pid, title: title || null, orderIds: new Set(), revenueGbp: 0 };
+    curRow.orderIds.add(oid);
+    curRow.revenueGbp += gbpAmt;
+    if (!curRow.title && title) curRow.title = title;
+    byCountryProduct.set(key, curRow);
+  }
+
+  // Pick top 3 products per country by revenue.
+  const byCountryList = new Map(); // CC -> rows[]
+  for (const v of byCountryProduct.values()) {
+    const list = byCountryList.get(v.country_code) || [];
+    list.push(v);
+    byCountryList.set(v.country_code, list);
+  }
+  for (const [cc, list] of byCountryList.entries()) {
+    list.sort((a, b) => (b.revenueGbp - a.revenueGbp) || (b.orderIds.size - a.orderIds.size));
+    byCountryList.set(cc, list.slice(0, 3));
+  }
+
+  // Fetch product meta (handle + thumb) for the selected products.
   const metaByProduct = new Map();
   if (token) {
-    const uniqIds = Array.from(new Set((rows || []).map((row) => (row && row.product_id != null ? String(row.product_id).trim() : '')).filter(Boolean)));
+    const selected = new Set();
+    for (const list of byCountryList.values()) {
+      for (const v of list || []) {
+        if (v && v.product_id) selected.add(v.product_id);
+      }
+    }
+    const uniqIds = Array.from(selected.values()).filter(Boolean);
     await Promise.all(
       uniqIds.map(async (pid) => {
         try {
           const meta = await productMetaCache.getProductMeta(shop, token, pid);
           if (meta && meta.ok) metaByProduct.set(pid, meta);
-        } catch (_) {
-          // Ignore per-item failures.
-        }
+        } catch (_) {}
       })
     );
   }
 
   const out = [];
-  for (const row of rows || []) {
-    const code = normalizeCountry(row && row.country_code);
-    if (!code) continue;
-    const pid = row && row.product_id != null ? String(row.product_id).trim() : '';
-    const meta = pid && metaByProduct.has(pid) ? metaByProduct.get(pid) : null;
-    const handle = meta && meta.handle ? String(meta.handle).trim() : '';
-    const thumbUrl = meta && meta.thumb_url ? String(meta.thumb_url).trim() : '';
-    const clicks = row && row.clicks != null ? Number(row.clicks) || 0 : 0;
-    const converted = row && row.sales != null ? Number(row.sales) || 0 : 0;
-    const revenueRaw = row && row.revenue != null ? Number(row.revenue) : 0;
-    const revenueNum = Number.isFinite(revenueRaw) ? revenueRaw : 0;
-    const cur = fx.normalizeCurrency(row && row.currency) || 'GBP';
-    const gbp = fx.convertToGbp(revenueNum, cur, ratesToGbp);
-    const revenue = (typeof gbp === 'number' && Number.isFinite(gbp)) ? (Math.round(gbp * 100) / 100) : 0;
-    const productTitle = (row && row.title != null) ? String(row.title).trim() : '';
-    const conversion = clicks > 0 ? Math.round((converted / clicks) * 1000) / 10 : null;
-    out.push({
-      country_code: code,
-      product_id: pid || null,
-      product_title: productTitle || null,
-      product_handle: handle || null,
-      product_thumb_url: thumbUrl || null,
-      conversion,
-      total: clicks,
-      converted,
-      revenue,
-    });
+  for (const [cc, list] of byCountryList.entries()) {
+    const clicks = clicksByCountry.get(cc) || 0;
+    for (const v of list || []) {
+      const pid = v.product_id;
+      const meta = pid && metaByProduct.has(pid) ? metaByProduct.get(pid) : null;
+      const handle = meta && meta.handle ? String(meta.handle).trim() : '';
+      const thumbUrl = meta && meta.thumb_url ? String(meta.thumb_url).trim() : '';
+      const converted = v.orderIds ? v.orderIds.size : 0;
+      const revenue = Math.round((Number(v.revenueGbp) || 0) * 100) / 100;
+      const conversion = clicks > 0 ? Math.round((converted / clicks) * 1000) / 10 : null;
+      out.push({
+        country_code: cc,
+        product_id: pid || null,
+        product_title: v.title || null,
+        product_handle: handle || null,
+        product_thumb_url: thumbUrl || null,
+        conversion,
+        total: clicks,
+        converted,
+        revenue,
+      });
+    }
   }
+  // Keep stable ordering: highest revenue first.
+  out.sort((a, b) => (b.revenue - a.revenue) || (b.converted - a.converted) || (b.total - a.total));
   return out;
 }
 
@@ -2118,8 +2248,7 @@ async function getSessionCounts(start, end, options = {}) {
 }
 
 async function getConvertedCount(start, end, options = {}) {
-  const ordersSource = options?.reporting?.ordersSource || 'orders_shopify';
-  if (ordersSource === 'pixel') return getPixelOrderCount(start, end);
+  // Guardrail: report order counts from Shopify truth only (never exceed Shopify).
   const shop = salesTruth.resolveShopForSales('');
   if (!shop) return 0;
   return salesTruth.getTruthOrderCount(shop, start, end);
@@ -2276,14 +2405,29 @@ async function getStats(options = {}) {
   for (const key of rangeKeys) {
     ranges[key] = getRangeBounds(key, now, timeZone);
   }
-  // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
+  // Guardrail: ensure Shopify truth cache is fresh for the ranges we will report.
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthTodaySync = null;
-  if (salesShop && reporting.ordersSource === 'orders_shopify') {
+  if (salesShop) {
+    // Always reconcile Today with scope='today' (also ensures returning-customer facts).
     try {
       salesTruthTodaySync = await salesTruth.ensureReconciled(salesShop, ranges.today.start, ranges.today.end, 'today');
     } catch (_) {
       salesTruthTodaySync = { ok: false, error: 'reconcile_failed' };
+    }
+
+    // Reconcile other ranges (skip ranges fully contained inside another requested range).
+    const others = rangeKeys
+      .map((key) => ({ key, start: ranges[key]?.start, end: ranges[key]?.end }))
+      .filter((r) => r && r.key && r.key !== 'today' && typeof r.start === 'number' && Number.isFinite(r.start) && typeof r.end === 'number' && Number.isFinite(r.end) && r.end > r.start);
+    const needed = [];
+    for (const r of others) {
+      const contained = others.some((o) => o !== r && o.start <= r.start && o.end >= r.end);
+      if (!contained) needed.push(r);
+    }
+    for (const r of needed) {
+      const scopeKey = ('stats_' + String(r.key || 'range')).slice(0, 64);
+      try { await salesTruth.ensureReconciled(salesShop, r.start, r.end, scopeKey); } catch (_) {}
     }
   }
   // Run all stats queries in one parallel batch to avoid N+1 (many sequential DB round-trips). Fixes NODE-1.
@@ -2389,13 +2533,14 @@ async function getKpis(options = {}) {
 
   const bounds = getRangeBounds(rangeKey, now, timeZone);
 
-  // Ensure Shopify truth cache is fresh for "today" before computing KPI stats.
+  // Guardrail: ensure Shopify truth cache is fresh for this range.
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthSync = null;
-  if (rangeKey === 'today' && salesShop && reporting.ordersSource === 'orders_shopify') {
+  if (salesShop) {
+    const scopeKey = rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'range')).slice(0, 64);
     try {
       // Share the same reconcile_state(scope='today') as /api/stats and startup reconcile.
-      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, 'today');
+      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
     } catch (_) {
       salesTruthSync = { ok: false, error: 'reconcile_failed' };
     }
@@ -2529,6 +2674,7 @@ module.exports = {
   getTrafficSourceMapConfigCached,
   invalidateTrafficSourceMapCache,
   getTrafficSourceMapVersion,
+  deriveTrafficSourceKeyWithMaps,
   upsertTrafficSourceMeta,
   addTrafficSourceRule,
   makeCustomTrafficSourceKeyFromLabel,

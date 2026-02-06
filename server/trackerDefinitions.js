@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 4;
-const LAST_UPDATED = '2026-02-05';
+const DEFINITIONS_VERSION = 5;
+const LAST_UPDATED = '2026-02-06';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -53,14 +53,14 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['live-kpi-grid'] },
     endpoint: { method: 'GET', path: '/api/kpis', params: ['range=...', 'force=1 (optional)'] },
     sources: [
-      { kind: 'db', tables: ['sessions', 'purchases'], note: 'Sessions + pixel-derived purchases when ordersSource=pixel' },
-      { kind: 'db', tables: ['orders_shopify', 'reconcile_state'], note: 'Shopify truth cache when ordersSource=orders_shopify' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions (human-only filtering in queries)' },
+      { kind: 'db', tables: ['orders_shopify', 'reconcile_state'], note: 'Shopify truth cache (paid orders). Pixel purchases are debug-only.' },
       { kind: 'db', tables: ['shopify_sessions_snapshots'], note: 'Optional denominator when sessionsSource=shopify_sessions' },
-      { kind: 'shopify', note: 'Orders API sync (throttled) when ordersSource=orders_shopify' },
+      { kind: 'shopify', note: 'Orders API sync (throttled) to keep truth current' },
     ],
     columns: [
-      { name: 'Revenue', value: 'sales[range] (GBP)', formula: 'ordersSource=pixel → SUM(purchases.order_total); else → SUM(orders_shopify.total_price)' },
-      { name: 'Conversion', value: 'conversion[range] (%)', formula: 'convertedSessions / sessionsCount × 100 (Shopify: sessions that completed checkout)' },
+      { name: 'Revenue', value: 'sales[range] (GBP)', formula: 'SUM(orders_shopify.total_price) converted to GBP (truth; never exceeds Shopify)' },
+      { name: 'Conversion', value: 'conversion[range] (%)', formula: 'convertedCount / sessionsCount × 100 (Orders / Sessions)' },
       { name: 'AOV', value: 'aov[range] (GBP)', formula: 'Revenue / convertedCount' },
       { name: 'Sessions', value: 'trafficBreakdown[range].human_sessions', formula: 'sessionsSource=sessions → COUNT(sessions.started_at); sessionsSource=shopify_sessions → ShopifyQL snapshot count (day-like ranges only)' },
       { name: 'Bounce', value: 'bounce[range] (%)', formula: 'single-page sessions / sessions × 100 (human-only)' },
@@ -69,12 +69,8 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Traffic mode', value: 'human_only (exclude cf_known_bot=1)' },
       { name: 'Time basis', value: 'range bounds are admin timezone day/range (see getRangeBounds)' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: true },
+    respectsReporting: { ordersSource: false, sessionsSource: true },
     requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['orders_shopify', 'reconcile_state'],
-      },
       sessionsSource: {
         shopify_sessions: ['shopify_sessions_snapshots'],
       },
@@ -89,28 +85,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=... (same picker as dashboard)'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Denominator sessions by country (started_at in range, human-only)' },
-      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: numerator/revenue by purchase.country_code' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: numerator/revenue via evidence-linked truth orders' },
+      { kind: 'db', tables: ['orders_shopify'], note: 'Numerator/revenue from Shopify truth orders, grouped by order country (shipping/billing) parsed from orders_shopify.raw_json' },
       { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
     ],
     columns: [
       { name: 'Country', value: 'sessions.country_code (2-letter ISO; excludes XX)' },
       { name: 'CR', value: 'converted / total', formula: 'Orders / Sessions' },
-      { name: 'Orders', value: 'converted', formula: 'ordersSource=pixel → deduped purchases; else → DISTINCT orders_shopify.order_id linked via purchase_events' },
+      { name: 'Orders', value: 'converted', formula: 'COUNT(DISTINCT orders_shopify.order_id) for paid orders in range, grouped by order country' },
       { name: 'Sessions', value: 'total', formula: 'COUNT(sessions) started_at in range, human-only' },
       { name: 'Rev', value: 'revenue (GBP)', formula: 'SUM(order_total) converted to GBP' },
     ],
     math: [
-      { name: 'Deduping (pixel)', value: 'Exclude duplicate h: rows when token/order rows exist (purchaseFilterExcludeDuplicateH)' },
-      { name: 'Attribution (truth)', value: 'Paid orders are attributed via linked purchase_events (checkout_completed and checkout_started token fallback). Coverage can still be < 100% if checkout events are blocked.' },
+      { name: 'Order country', value: 'Use Shopify order shipping_address.country_code (fallback billing_address.country_code) from orders_shopify.raw_json' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify'],
-      },
-    },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -132,13 +120,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [
       { name: 'Important', value: 'This is derived from the same country rows as the Country table (uses the country.aov field returned by /api/stats).' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify'],
-      },
-    },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -149,22 +131,22 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=...'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Country sessions (started_at in range, human-only)' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'Truth attribution via linked evidence; product revenue from line items' },
+      { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders by order country (shipping/billing from orders_shopify.raw_json) + product revenue from line items' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
       { name: 'Country', value: 'sessions.country_code' },
       { name: 'CR', value: 'converted / total', formula: 'Product orders / country sessions' },
-      { name: 'Orders', value: 'converted', formula: 'COUNT(DISTINCT order_id) containing the product (truth, linked evidence only)' },
+      { name: 'Orders', value: 'converted', formula: 'COUNT(DISTINCT order_id) containing the product (truth line items)' },
       { name: 'Sessions', value: 'total', formula: 'COUNT(sessions) started_at in range for that country (human-only)' },
       { name: 'Rev', value: 'revenue (GBP)', formula: 'SUM(line_revenue) converted to GBP' },
     ],
     math: [
-      { name: 'Important', value: 'This is NOT “product landing conversion”. It’s orders for the product per country session (truth attribution).' },
+      { name: 'Important', value: 'This is NOT “product landing conversion”. It’s orders containing the product per country session.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['sessions', 'purchase_events', 'orders_shopify_line_items'], shopifyToken: true },
+    requires: { dbTables: ['sessions', 'orders_shopify', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'products_best_sellers',
@@ -174,26 +156,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-best-sellers', params: ['shop=...', 'range=...', 'page/pageSize/sort/dir'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only)' },
-      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions via session_id' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: evidence-linked Shopify orders (paid only) attributed to sessions' },
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
+      { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) attributed to those landing sessions (pixel or truth evidence)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing the product (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) that landed on this product (human-only)' },
-      { name: 'Rev', value: 'revenue', formula: 'Attributed revenue from those orders' },
+      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the product (truth)' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Attribution', value: 'Orders/Rev are attributed to sessions that landed on the product (same cohort as Sessions), matching Breakdown-style cohort math.' },
+      { name: 'Note', value: 'Orders/Rev are Shopify truth (product line items). Sessions are product landings from our sessions table.' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify'],
-      },
-    },
-    requires: { dbTables: ['sessions'], shopifyToken: false },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'products_worst_products',
@@ -203,28 +179,22 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/worst-products', params: ['range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_product_handle in range; human-only). Used for Sessions column + MIN_LANDINGS filter.' },
-      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'ordersSource=orders_shopify: evidence-linked truth revenue per session/order' },
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
+      { kind: 'shopify', note: 'Maps product handle → product_id via Admin GraphQL productByHandle (cached) so truth line items can be joined' },
       { kind: 'fx', note: 'Revenue converted to GBP for display' },
     ],
     columns: [
-      { name: 'Orders', value: 'converted', formula: 'COUNT(orders attributed to those sessions)' },
+      { name: 'Orders', value: 'converted', formula: 'COUNT(DISTINCT order_id) containing the product (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'Attributed revenue (GBP)' },
       { name: 'CR%', value: 'conversion', formula: 'converted / sessions × 100' },
     ],
     math: [
       { name: 'Minimum traffic', value: 'Only includes products with >= 3 product landings (MIN_LANDINGS) to avoid noise' },
-      { name: 'Note', value: 'Sessions is product landings (per row). CR% is landing conversion (orders attributed to those landings).' },
+      { name: 'Note', value: 'Sessions is product landings (per row). Orders/Rev are Shopify truth for that product; CR% = Orders / Sessions.' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify_line_items'],
-      },
-    },
-    requires: { dbTables: ['sessions'], shopifyToken: false },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'products_best_variants',
@@ -234,20 +204,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-best-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'Evidence-linked truth variant orders/revenue attributed to those landing sessions' },
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (evidence-linked to landing sessions)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant within those orders' },
+      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant (truth)' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
       { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['sessions', 'purchase_events', 'orders_shopify_line_items'], shopifyToken: true },
+    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'products_worst_variants',
@@ -257,20 +227,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/shopify-worst-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (human-only); used as Sessions denominator' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify_line_items'], note: 'Evidence-linked truth variant orders/revenue attributed to those landing sessions' },
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (evidence-linked to landing sessions)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant within those orders' },
+      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant (truth)' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
     ],
     math: [
       { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['sessions', 'purchase_events', 'orders_shopify_line_items'], shopifyToken: true },
+    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'traffic_channels',
@@ -280,26 +250,19 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/traffic', params: ['range=...'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Sessions grouped by sessions.traffic_source_key (human-only)' },
-      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions for attribution' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: evidence-linked truth orders attributed to sessions' },
+      { kind: 'db', tables: ['orders_shopify', 'settings'], note: 'Orders/revenue from Shopify truth orders, with source derived from orders_shopify.raw_json (landing_site/referring_site) + traffic source mapping rules' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
       { name: 'Sessions', value: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Orders', value: 'orders', formula: 'Attributed orders in range' },
-      { name: 'Rev', value: 'revenueGbp', formula: 'Attributed revenue in GBP' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(truth orders) in range for that derived source' },
+      { name: 'Rev', value: 'revenueGbp', formula: 'Truth revenue in GBP' },
       { name: 'CR%', value: 'orders / sessions × 100' },
     ],
     math: [
-      { name: 'Attribution', value: 'Truth mode requires linked evidence; unmapped sources or missing evidence reduce coverage.' },
+      { name: 'Note', value: 'Orders/Rev are Shopify truth. Sessions come from our sessions table; CR% = Orders / Sessions.' },
     ],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify'],
-      },
-    },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -310,24 +273,17 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: { method: 'GET', path: '/api/traffic', params: ['range=...'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Sessions grouped by ua_device_type + ua_platform (human-only)' },
-      { kind: 'db', tables: ['purchases'], note: 'ordersSource=pixel: purchases joined to sessions' },
-      { kind: 'db', tables: ['purchase_events', 'orders_shopify'], note: 'ordersSource=orders_shopify: evidence-linked truth orders attributed to sessions' },
+      { kind: 'db', tables: ['orders_shopify'], note: 'Orders/revenue from Shopify truth orders, with device/platform derived from orders_shopify.raw_json client_details.user_agent' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
       { name: 'Sessions', value: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Orders', value: 'orders', formula: 'Attributed orders in range' },
-      { name: 'Rev', value: 'revenueGbp', formula: 'Attributed revenue in GBP' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(truth orders) in range for that device/platform bucket' },
+      { name: 'Rev', value: 'revenueGbp', formula: 'Truth revenue in GBP' },
       { name: 'CR%', value: 'orders / sessions × 100' },
     ],
     math: [],
-    respectsReporting: { ordersSource: true, sessionsSource: false },
-    requiresByReporting: {
-      ordersSource: {
-        pixel: ['purchases'],
-        orders_shopify: ['purchase_events', 'orders_shopify'],
-      },
-    },
+    respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
@@ -344,8 +300,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [
       { name: 'Shopify Sessions (today)', value: 'ShopifyQL: FROM sessions SHOW sessions DURING today' },
       { name: 'Birdseye Sessions (today)', value: 'sessions started today (human sessions if cf_known_bot tagging exists)' },
-      { name: 'Sessions completed checkout (today)', value: "purchase_events: COUNT(DISTINCT session_id) where event_type='checkout_completed' (orders can be > sessions)" },
-      { name: 'Conversion rate (today)', value: 'Sessions completed checkout / Sessions × 100 (Shopify definition)' },
+      { name: 'Evidence sessions (today)', value: "purchase_events: COUNT(DISTINCT session_id) where event_type IN ('checkout_completed','checkout_started') (debug only; can be < truth)" },
+      { name: 'Conversion rate (today)', value: 'Truth Orders / Sessions × 100 (used across Breakdown/Traffic/Products tables)' },
       { name: 'Truth Orders/Revenue', value: 'orders_shopify paid orders (all channels)' },
       { name: 'Checkout-token Orders/Revenue', value: 'orders_shopify paid orders where checkout_token is set (online-store proxy)' },
       { name: 'Pixel Orders/Revenue', value: 'purchases table (deduped) from checkout_completed evidence' },
