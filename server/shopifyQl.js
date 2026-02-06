@@ -69,6 +69,47 @@ function extractSessionsCount(table) {
   return total;
 }
 
+function extractConversionRate(table, candidates = ['conversion_rate']) {
+  if (!table?.rows?.length) return null;
+  const columns = (table.columns || []).map((c) => c && c.name);
+  const normalized = columns.map(normalizeColumnName);
+  let convIdx = -1;
+  for (const candidate of candidates) {
+    const idx = normalized.findIndex((n) => n === candidate || n.includes(candidate));
+    if (idx !== -1) {
+      convIdx = idx;
+      break;
+    }
+  }
+  if (convIdx === -1) return null;
+  const sessionsIdx = normalized.findIndex((n) => n === 'sessions' || n.includes('sessions'));
+
+  let convWeightedSum = 0;
+  let convWeightTotal = 0;
+  let convSimpleSum = 0;
+  let convCount = 0;
+
+  for (const row of table.rows || []) {
+    const cVal = getRowValue(row, convIdx, columns[convIdx]);
+    const conv = normalizeConversionRate(cVal);
+    if (conv == null) continue;
+    convSimpleSum += conv;
+    convCount += 1;
+    if (sessionsIdx >= 0) {
+      const sVal = getRowValue(row, sessionsIdx, columns[sessionsIdx]);
+      const sessions = parseNumericValue(sVal);
+      if (sessions != null && sessions > 0) {
+        convWeightedSum += conv * sessions;
+        convWeightTotal += sessions;
+      }
+    }
+  }
+
+  if (convWeightTotal > 0) return convWeightedSum / convWeightTotal;
+  if (convCount > 0) return convSimpleSum / convCount;
+  return null;
+}
+
 async function fetchShopifyQlTable(shop, accessToken, query) {
   const graphqlUrl = `https://${shop}/admin/api/${GRAPHQL_API_VERSION}/graphql.json`;
   let res;
@@ -130,66 +171,52 @@ async function fetchShopifySessionsCount(shop, accessToken, { during = 'today' }
 async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today' } = {}) {
   const duringSafe = sanitizeDuring(during);
   if (!duringSafe) return { sessions: null, conversionRate: null, error: 'Invalid DURING value' };
-  const query = `FROM sessions SHOW sessions, conversion_rate DURING ${duringSafe}`;
-  const result = await fetchShopifyQlTable(shop, accessToken, query);
-  if (result.error) {
-    const fallback = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions DURING ${duringSafe}`);
-    if (!fallback.error) {
-      const sessions = extractSessionsCount(fallback.table);
-      if (typeof sessions === 'number') {
-        return { sessions, conversionRate: null, error: result.error };
-      }
-    }
-    return { sessions: null, conversionRate: null, error: result.error };
+  let sessions = null;
+  let conversionRate = null;
+  let conversionError = '';
+
+  const combinedQuery = `FROM sessions SHOW sessions, conversion_rate DURING ${duringSafe}`;
+  const combined = await fetchShopifyQlTable(shop, accessToken, combinedQuery);
+  if (!combined.error && combined.table?.rows?.length) {
+    sessions = extractSessionsCount(combined.table);
+    conversionRate = extractConversionRate(combined.table, ['conversion_rate', 'online_store_conversion_rate']);
+  } else if (combined.error) {
+    conversionError = combined.error;
   }
-  const table = result.table;
-  if (!table?.rows?.length) return { sessions: 0, conversionRate: null, error: '' };
 
-  const columns = (table.columns || []).map((c) => c && c.name);
-  const normalized = columns.map(normalizeColumnName);
-  const sessionsIdx = normalized.findIndex((n) => n === 'sessions' || n.includes('sessions'));
-  const conversionIdx = normalized.findIndex((n) => n === 'conversion_rate' || n === 'online_store_conversion_rate' || n.includes('conversion_rate'));
-
-  if (sessionsIdx === -1 && conversionIdx === -1) {
-    return { sessions: null, conversionRate: null, error: 'Sessions/conversion columns not found' };
-  }
-  const conversionMissingError = (conversionIdx === -1) ? 'conversion_rate column not found' : '';
-
-  let sessionsTotal = 0;
-  let sessionsSeen = false;
-  let convWeightedSum = 0;
-  let convWeightTotal = 0;
-  let convSimpleSum = 0;
-  let convCount = 0;
-
-  for (const row of table.rows || []) {
-    const sVal = sessionsIdx >= 0 ? getRowValue(row, sessionsIdx, columns[sessionsIdx]) : null;
-    const sessions = parseNumericValue(sVal);
-    if (sessions != null) {
-      sessionsTotal += sessions;
-      sessionsSeen = true;
-    }
-
-    const cVal = conversionIdx >= 0 ? getRowValue(row, conversionIdx, columns[conversionIdx]) : null;
-    const conv = normalizeConversionRate(cVal);
-    if (conv != null) {
-      convSimpleSum += conv;
-      convCount += 1;
-      if (sessions != null && sessions > 0) {
-        convWeightedSum += conv * sessions;
-        convWeightTotal += sessions;
-      }
+  if (sessions == null) {
+    const sessionsOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions DURING ${duringSafe}`);
+    if (!sessionsOnly.error) {
+      sessions = extractSessionsCount(sessionsOnly.table);
+    } else if (!conversionError) {
+      conversionError = sessionsOnly.error;
     }
   }
 
-  const conversionRate = convWeightTotal > 0
-    ? (convWeightedSum / convWeightTotal)
-    : (convCount > 0 ? (convSimpleSum / convCount) : null);
+  if (conversionRate == null) {
+    const convOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW conversion_rate DURING ${duringSafe}`);
+    if (!convOnly.error) {
+      conversionRate = extractConversionRate(convOnly.table, ['conversion_rate']);
+    } else if (!conversionError) {
+      conversionError = convOnly.error;
+    }
+  }
+
+  if (conversionRate == null) {
+    const convAlt = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW online_store_conversion_rate DURING ${duringSafe}`);
+    if (!convAlt.error) {
+      conversionRate = extractConversionRate(convAlt.table, ['online_store_conversion_rate']);
+    } else if (!conversionError) {
+      conversionError = convAlt.error;
+    }
+  }
+
+  if (conversionRate == null && !conversionError) conversionError = 'conversion_rate unavailable';
 
   return {
-    sessions: sessionsSeen ? sessionsTotal : (sessionsIdx >= 0 ? 0 : null),
+    sessions: typeof sessions === 'number' ? sessions : null,
     conversionRate,
-    error: conversionMissingError,
+    error: conversionError,
   };
 }
 
