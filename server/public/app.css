@@ -475,16 +475,18 @@
     .live-kpi-cell .kpi-delta-icon {
       display: inline-flex;
       align-items: center;
-      margin: -2px 0 0 5px;
+      margin: -2px 0 0 8px;
       vertical-align: middle;
-      background: #eee;
+      background: #fafafa;
       height: 18px;
+      border: 1px solid #e1e1e1;
       width: 18px;
       padding: 3px;
       border-radius: 100px;
       justify-content: center;
     }
     .live-kpi-cell .kpi-delta-icon svg { width: 100%; height: 100%; display: block; color: inherit; }
+    .live-kpi-cell .kpi-delta-icon.kpi-delta-icon-down svg { transform: rotate(180deg); }
     .kpi-mini-spinner { width: 14px; height: 14px; border: 2px solid rgba(13, 148, 136, 0.25); border-top-color: #0d9488; border-radius: 50%; animation: refresh-spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
     .sale-toast-host { position: relative; overflow: visible; }
     .sale-toast-host.toast-open { z-index: 10; }
@@ -539,7 +541,7 @@
       .kpi-mobile-pager { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
       .kpi-mobile-pager::-webkit-scrollbar { display: none; }
       .live-kpi-grid { --kpi-gap: 0.5rem; display: flex; gap: var(--kpi-gap); }
-      .live-kpi-cell { min-width: 150px; flex: 0 0 auto; }
+      .live-kpi-cell { min-width: calc(50vw - (var(--kpi-gap) / 2)); flex: 0 0 calc(50vw - (var(--kpi-gap) / 2)); }
       .live-kpi-cell .live-kpi-value { font-size: 1rem; }
       .sale-toast-host { position: static; }
       .sale-toast {
@@ -835,14 +837,22 @@
     }
     .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: var(--muted); background: #eee; }
     body { padding-bottom: 52px; }
-    .dashboard-footer .footer-last-sale { white-space: nowrap; }
+    .dashboard-footer .footer-last-sale {
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding-right: 12px;
+      margin-right: 12px;
+      border-right: 1px solid #e1e1e1;
+    }
     .dashboard-footer .footer-last-sale-toggle {
       border: none;
       background: none;
       color: var(--accent);
       font: inherit;
       padding: 0;
-      margin: 0 0 0 6px;
+      margin: 0 0 0 2px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;

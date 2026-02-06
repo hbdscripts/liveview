@@ -330,6 +330,7 @@ Backups durability:
 - UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
 - UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
 - UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
+- UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now trend downward with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
 
 2026-02-05
 - UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
