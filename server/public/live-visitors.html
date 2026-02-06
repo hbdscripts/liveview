@@ -3305,6 +3305,9 @@
           item.stack.style.transform = 'translateY(' + (-item.digit) + 'em)';
         });
       });
+      setTimeout(function() {
+        if (el && el.contains(wrap)) el.textContent = next;
+      }, 460);
     }
 
     function productUrlFromHandle(handle) {

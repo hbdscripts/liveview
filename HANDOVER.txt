@@ -335,6 +335,7 @@ Backups durability:
 - UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now use a true down-right SVG with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
 - UI: Mobile KPI cards fit two-per-view with unified gap spacing (matches table gap).
 - UI: KPI delta badges use white backgrounds and good/bad border tints (bounce inverted).
+- UI: Sales KPI odometer now settles to plain text after animating.
 - UI: KPI labels/subtext refreshed (11px label, top divider and spacing for subline).
 
 2026-02-05
