@@ -1265,34 +1265,21 @@
     }
 
     /* Conversion rate: Shopify comparison modal */
-    #live-kpi-conv-cell { position: relative; }
-    .kpi-shopify-compare-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 10;
-      width: 24px;
-      height: 24px;
+    .kpi-conv-compare-inline-btn {
+      border: none;
+      background: none;
       padding: 0;
-      border-radius: 10px;
-      border: 1px solid rgba(15, 23, 42, 0.10);
-      background: rgba(255, 255, 255, 0.75);
+      margin: 0 3px 0 0;
+      color: #888;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 10px 26px rgba(2, 6, 23, 0.10);
-      backdrop-filter: blur(10px);
-      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+      vertical-align: middle;
     }
-    .kpi-shopify-compare-btn img { width: 14px; height: 14px; display: block; object-fit: contain; }
-    .kpi-shopify-compare-btn:hover {
-      transform: translateY(-1px);
-      border-color: rgba(13, 148, 136, 0.35);
-      box-shadow: 0 14px 34px rgba(2, 6, 23, 0.14);
-    }
-    .kpi-shopify-compare-btn:active { transform: translateY(0); }
-    .kpi-shopify-compare-btn:focus-visible { outline: 3px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; }
+    .kpi-conv-compare-inline-btn svg { width: 13px; height: 13px; display: block; fill: currentColor; }
+    .kpi-conv-compare-inline-btn:hover { color: #666; }
+    .kpi-conv-compare-inline-btn:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; border-radius: 6px; }
 
     #cr-compare-modal {
       background:

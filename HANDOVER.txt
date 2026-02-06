@@ -1,5 +1,5 @@
 Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (API: /api/shopify-lengths; UI: Conv rate KPI Shopify compare modal; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
+Last updated: 2026-02-06 (Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; UI: Conv rate KPI Shopify compare modal; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
 
 This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
 The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
@@ -7,6 +7,7 @@ The dashboard is a single vanilla HTML page and the backend is a Node/Express se
 IMPORTANT (for future agents)
 - Keep this file accurate. If you change core paths (routes, schema, ingest fields, dashboard UX/auth/deploy), update this file in the SAME commit.
 - This repo avoids creating new markdown docs; this handover is intentionally `HANDOVER.txt` (markdown-formatted text).
+- Multiple agents may be working on this repo in parallel. If “surprise” files/changes appear in your working tree, assume it may be other agent work and confirm with `git status`/`git log` before attributing changes.
 
 ---
 
@@ -19,7 +20,7 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
-  - Conv rate KPI: tiny Shopify icon (top-right) opens a “Shopify vs Birdseye” comparison modal using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
+  - Conv rate KPI: small compare icon inline in the “yesterday” subline opens a “Shopify vs Birdseye” comparison modal using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -37,6 +38,8 @@ Main tabs (top row):
 - Traffic: two tables (Channels + Traffic Type)
   - Channels table renders source icons + labels
   - Home table “Source” column shows icons from `sessions.traffic_source_key` (mapping rules configurable in Settings → Sources)
+- Ads: placeholder Ads panel (lazy-loads `/ads.js`)
+  - API: `GET /api/ads/status` and `GET /api/ads/summary?range=...`
 
 Global date range picker (applies to Breakdown + Products + Traffic):
 - Today / Yesterday / Choose dates…
@@ -72,7 +75,18 @@ Traffic tab (new)
 
 ## Requested next work (not shipped yet)
 
-- (none queued)
+- Google Ads API integration for Ads tab:
+  - OAuth connect + callback, store refresh token in settings
+  - Fetch spend/clicks/impressions/conversions/conversion value for selected range and render in Ads tab
+  - Env vars (server):
+    - `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET` (or reuse `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`)
+    - `GOOGLE_ADS_DEVELOPER_TOKEN`
+    - Optional: `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `GOOGLE_ADS_API_VERSION`
+  - Endpoints:
+    - `GET /api/ads/google/connect`
+    - `GET /api/ads/google/callback`
+    - `POST /api/ads/google/config`
+    - `POST /api/ads/google/disconnect`
 
 ## High-level architecture
 
@@ -323,6 +337,7 @@ Backups durability:
 
 2026-02-06
 - Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
+- Ads: scaffold tab + API (`/api/ads/status`, `/api/ads/summary`) and lazy-loaded frontend (`/ads.js`).
 - Products: add “Finishes” revenue cards (Gold / Silver / Vermeil / Solid Silver) powered by `GET /api/shopify-finishes` (Shopify truth line items, grouped by variant title finish mapping).
 - Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
 - Products: Finishes header is now a dropdown (Finishes / Lengths). Lengths cards (12"–21") are powered by `GET /api/shopify-lengths` and render as big inch labels (no gradients).

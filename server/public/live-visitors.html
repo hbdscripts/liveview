@@ -978,9 +978,6 @@
         <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
       </div>
       <div class="live-kpi-cell" id="live-kpi-conv-cell">
-        <button type="button" class="kpi-shopify-compare-btn" id="cr-compare-open-btn" aria-label="Compare conversion rate vs Shopify" title="Compare vs Shopify">
-          <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770259752" width="14" height="14" alt="" aria-hidden="true" decoding="async" />
-        </button>
         <div class="live-kpi-label">Conv rate</div>
         <div class="live-kpi-value" id="live-kpi-conv">—</div>
         <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
@@ -5049,7 +5046,22 @@
           el.classList.add('is-hidden');
           return;
         }
-        el.textContent = text;
+        if (el === convSubEl) {
+          const convCompareSvg =
+            '<svg fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+              '<path d="M46.05,60.163H31.923c-0.836,0-1.513,0.677-1.513,1.513v21.934c0,0.836,0.677,1.513,1.513,1.513H46.05 c0.836,0,1.512-0.677,1.512-1.513V61.675C47.562,60.839,46.885,60.163,46.05,60.163z"></path>' +
+              '<path d="M68.077,14.878H53.95c-0.836,0-1.513,0.677-1.513,1.513v67.218c0,0.836,0.677,1.513,1.513,1.513h14.127 c0.836,0,1.513-0.677,1.513-1.513V16.391C69.59,15.555,68.913,14.878,68.077,14.878z"></path>' +
+              '<path d="M90.217,35.299H76.09c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513h14.126 c0.836,0,1.513-0.677,1.513-1.513V36.812C91.729,35.977,91.052,35.299,90.217,35.299z"></path>' +
+              '<path d="M23.91,35.299H9.783c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513H23.91 c0.836,0,1.513-0.677,1.513-1.513V36.812C25.423,35.977,24.746,35.299,23.91,35.299z"></path>' +
+            '</svg>';
+          el.innerHTML =
+            '<button type="button" class="kpi-conv-compare-inline-btn" id="cr-compare-open-btn" aria-label="Compare conversion rate vs Shopify" title="Compare vs Shopify">' +
+              convCompareSvg +
+            '</button>' +
+            escapeHtml(text == null ? '' : String(text));
+        } else {
+          el.textContent = text;
+        }
         el.classList.remove('is-hidden');
       }
       setSub(salesSubEl, compareSalesVal != null ? formatRevenueSub(compareSalesVal) : '\u2014');
@@ -6970,7 +6982,6 @@
 
     (function initCrCompareModal() {
       const modal = document.getElementById('cr-compare-modal');
-      const openBtn = document.getElementById('cr-compare-open-btn');
       const refreshBtn = document.getElementById('cr-compare-refresh-btn');
       const closeBtn = document.getElementById('cr-compare-close-btn');
       if (!modal) return;
@@ -6980,7 +6991,14 @@
         try { refreshConfigStatus({ force: true }); } catch (_) {}
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
-      if (openBtn) openBtn.addEventListener('click', open);
+      document.addEventListener('click', function(e) {
+        const target = e && e.target ? e.target : null;
+        const btn = target && target.closest ? target.closest('#cr-compare-open-btn') : null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        open();
+      });
       if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true }); } catch (_) {} });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
