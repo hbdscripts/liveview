@@ -4899,11 +4899,11 @@
       scheduleBreakdownSync();
     }
 
-    function kpiDelta(current, baseline, invert) {
+    function kpiDelta(current, baseline) {
       const cur = typeof current === 'number' ? current : NaN;
       const base = typeof baseline === 'number' ? baseline : NaN;
       if (!Number.isFinite(cur) || !Number.isFinite(base)) return null;
-      const diff = invert ? (base - cur) : (cur - base);
+      const diff = cur - base;
       if (diff === 0) return 0;
       if (base <= 0) return diff > 0 ? 1 : -1;
       return diff / base;
@@ -4915,18 +4915,20 @@
       if (!el) return;
       var icon = el.querySelector && el.querySelector('.kpi-delta-icon');
       if (icon) icon.remove();
-      const delta = kpiDelta(current, baseline, invert);
+      const delta = kpiDelta(current, baseline);
       if (delta == null) return;
       if (Math.abs(delta) < 0.005) return;
+      const toneDelta = invert ? -delta : delta;
+      const toneClass = toneDelta > 0 ? 'kpi-delta-good' : 'kpi-delta-bad';
       if (delta > 0) {
         var span = document.createElement('span');
-        span.className = 'kpi-delta-icon kpi-delta-icon-up';
+        span.className = 'kpi-delta-icon kpi-delta-icon-up ' + toneClass;
         span.setAttribute('aria-hidden', 'true');
         span.innerHTML = KPI_DELTA_SVG;
         el.appendChild(span);
       } else if (delta < 0) {
         var spanDown = document.createElement('span');
-        spanDown.className = 'kpi-delta-icon kpi-delta-icon-down';
+        spanDown.className = 'kpi-delta-icon kpi-delta-icon-down ' + toneClass;
         spanDown.setAttribute('aria-hidden', 'true');
         spanDown.innerHTML = KPI_DELTA_SVG_DOWN;
         el.appendChild(spanDown);
