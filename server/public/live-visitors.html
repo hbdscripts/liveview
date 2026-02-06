@@ -3306,7 +3306,10 @@
         });
       });
       setTimeout(function() {
-        if (el && el.contains(wrap)) el.textContent = next;
+        if (!el || !el.contains(wrap)) return;
+        const icon = el.querySelector('.kpi-delta-icon');
+        el.textContent = next;
+        if (icon) el.appendChild(icon);
       }, 460);
     }
 
