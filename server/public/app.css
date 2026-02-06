@@ -1297,8 +1297,8 @@
       animation: refresh-spin .8s linear infinite;
     }
 
-    /* Conversion rate: Shopify comparison modal */
-    .kpi-conv-compare-inline-btn {
+    /* KPI diff: Shopify vs Birdseye compare modal */
+    .kpi-compare-inline-btn {
       border: none;
       background: none;
       padding: 0;
@@ -1310,17 +1310,17 @@
       justify-content: center;
       vertical-align: middle;
     }
-    .kpi-conv-compare-inline-btn svg { width: 13px; height: 13px; display: block; fill: #888; }
-    .kpi-conv-compare-inline-btn:hover { color: #666; }
-    .kpi-conv-compare-inline-btn:hover svg { fill: #666; }
-    .kpi-conv-compare-inline-btn:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; border-radius: 6px; }
+    .kpi-compare-inline-btn svg { width: 13px; height: 13px; display: block; fill: #888; }
+    .kpi-compare-inline-btn:hover { color: #666; }
+    .kpi-compare-inline-btn:hover svg { fill: #666; }
+    .kpi-compare-inline-btn:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; border-radius: 3px; }
 
-    #cr-compare-modal {
+    #kpi-compare-modal {
       background: rgba(10, 10, 14, 0.6);
       backdrop-filter: blur(12px) saturate(140%);
       -webkit-backdrop-filter: blur(12px) saturate(140%);
     }
-    #cr-compare-modal .cr-compare-modal-card {
+    #kpi-compare-modal .kpi-compare-modal-card {
       display: flex;
       flex-direction: column;
       width: 980px;
@@ -1333,7 +1333,7 @@
       background: #f1f5f9;
       box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
     }
-    #cr-compare-modal .cr-compare-modal-header {
+    #kpi-compare-modal .kpi-compare-modal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1342,18 +1342,18 @@
       border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       background: #f1f5f9;
     }
-    #cr-compare-modal .cr-compare-modal-header-left { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-    #cr-compare-modal .cr-compare-kicker {
+    #kpi-compare-modal .kpi-compare-modal-header-left { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    #kpi-compare-modal .kpi-compare-kicker {
       font-size: 11px;
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: rgba(15, 23, 42, 0.7);
     }
-    #cr-compare-modal .cr-compare-title { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
-    #cr-compare-modal .cr-compare-meta { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); }
-    #cr-compare-modal .cr-compare-modal-actions { display: inline-flex; align-items: center; gap: 0.55rem; flex-shrink: 0; }
-    #cr-compare-modal .cr-compare-action-btn {
+    #kpi-compare-modal .kpi-compare-title { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
+    #kpi-compare-modal .kpi-compare-meta { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); }
+    #kpi-compare-modal .kpi-compare-modal-actions { display: inline-flex; align-items: center; gap: 0.55rem; flex-shrink: 0; }
+    #kpi-compare-modal .kpi-compare-action-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -1368,12 +1368,12 @@
       font-weight: 500;
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
-    #cr-compare-modal .cr-compare-action-btn svg { width: 18px; height: 18px; display: block; }
-    #cr-compare-modal .cr-compare-action-btn:hover { background: rgba(13, 148, 136, 0.08); border-color: rgba(13, 148, 136, 0.25); color: var(--accent, #0d9488); }
-    #cr-compare-modal .cr-compare-action-btn:active { transform: translateY(1px); }
-    #cr-compare-modal .cr-compare-action-btn:focus-visible { outline: 2px solid var(--accent, #0d9488); outline-offset: 2px; }
-    #cr-compare-modal .cr-compare-action-btn.spinning svg { animation: refresh-spin 0.8s linear infinite; }
-    #cr-compare-modal .cr-compare-close-btn {
+    #kpi-compare-modal .kpi-compare-action-btn svg { width: 18px; height: 18px; display: block; }
+    #kpi-compare-modal .kpi-compare-action-btn:hover { background: rgba(13, 148, 136, 0.08); border-color: rgba(13, 148, 136, 0.25); color: var(--accent, #0d9488); }
+    #kpi-compare-modal .kpi-compare-action-btn:active { transform: translateY(1px); }
+    #kpi-compare-modal .kpi-compare-action-btn:focus-visible { outline: 2px solid var(--accent, #0d9488); outline-offset: 2px; }
+    #kpi-compare-modal .kpi-compare-action-btn.spinning svg { animation: refresh-spin 0.8s linear infinite; }
+    #kpi-compare-modal .kpi-compare-close-btn {
       width: 36px;
       height: 36px;
       padding: 0;
@@ -1389,64 +1389,48 @@
       justify-content: center;
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
-    #cr-compare-modal .cr-compare-close-btn:hover { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); color: #b91c1c; }
-    #cr-compare-modal .cr-compare-close-btn:active { transform: translateY(1px); }
-    #cr-compare-modal .cr-compare-close-btn:focus-visible { outline: 2px solid rgba(239, 68, 68, 0.28); outline-offset: 2px; }
+    #kpi-compare-modal .kpi-compare-close-btn:hover { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); color: #b91c1c; }
+    #kpi-compare-modal .kpi-compare-close-btn:active { transform: translateY(1px); }
+    #kpi-compare-modal .kpi-compare-close-btn:focus-visible { outline: 2px solid rgba(239, 68, 68, 0.28); outline-offset: 2px; }
 
-    #cr-compare-modal .cr-compare-modal-body { padding: 16px 18px 18px; overflow: auto; }
-    #cr-compare-modal .cr-compare-loading { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); padding: 10px 2px; }
+    #kpi-compare-modal .kpi-compare-modal-body { padding: 16px 18px 18px; overflow: auto; }
+    #kpi-compare-modal .kpi-compare-loading { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); padding: 10px 2px; }
 
-    #cr-compare-modal .cr-compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    #cr-compare-modal .cr-compare-card {
+    #kpi-compare-modal .kpi-compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #kpi-compare-modal .kpi-compare-card {
       border: 1px solid rgba(15, 23, 42, 0.10);
       border-radius: 3px;
       background: #e2e8f0;
       padding: 12px;
     }
 
-    #cr-compare-modal .cr-compare-brand { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 2px 0 12px; }
-    #cr-compare-modal .cr-compare-brand-left { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
-    #cr-compare-modal .cr-compare-brand-icon { width: 20px; height: 20px; border-radius: 3px; background: #f1f5f9; border: 1px solid rgba(0,0,0,0.06); object-fit: contain; flex-shrink: 0; }
-    #cr-compare-modal .cr-compare-brand-text { display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
-    #cr-compare-modal .cr-compare-brand-name { font-size: 13px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
-    #cr-compare-modal .cr-compare-brand-sub { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #kpi-compare-modal .kpi-compare-brand { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 2px 0 12px; }
+    #kpi-compare-modal .kpi-compare-brand-left { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+    #kpi-compare-modal .kpi-compare-brand-icon { width: 28px; height: 28px; border-radius: 3px; background: #f1f5f9; border: 1px solid rgba(0,0,0,0.06); object-fit: contain; flex-shrink: 0; }
+    #kpi-compare-modal .kpi-compare-brand-text { display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
+    #kpi-compare-modal .kpi-compare-brand-name { font-size: 13px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
+    #kpi-compare-modal .kpi-compare-brand-sub { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    #cr-compare-modal .cr-compare-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    #cr-compare-modal .cr-compare-metric {
+    #kpi-compare-modal .kpi-compare-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #kpi-compare-modal .kpi-compare-metric {
       border: 1px solid rgba(15, 23, 42, 0.08);
       border-radius: 3px;
       padding: 10px 10px;
       background: #f1f5f9;
     }
-    #cr-compare-modal .cr-compare-metric-label { font-size: 11px; font-weight: 500; color: rgba(15, 23, 42, 0.7); text-transform: uppercase; letter-spacing: 0.06em; }
-    #cr-compare-modal .cr-compare-metric-value { margin-top: 4px; font-size: 16px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
+    #kpi-compare-modal .kpi-compare-metric-label { font-size: 11px; font-weight: 500; color: rgba(15, 23, 42, 0.7); text-transform: uppercase; letter-spacing: 0.06em; }
+    #kpi-compare-modal .kpi-compare-metric-value { margin-top: 4px; font-size: 16px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
 
-    #cr-compare-modal .cr-compare-bots {
-      margin-top: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding: 10px 12px;
-      border-radius: 3px;
-      border: 1px dashed rgba(13, 148, 136, 0.25);
-      background: rgba(13, 148, 136, 0.08);
-    }
-    #cr-compare-modal .cr-compare-bots-label { font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.7); }
-    #cr-compare-modal .cr-compare-bots-value { font-size: 14px; font-weight: 500; letter-spacing: 0; color: #0f172a; }
-
-    #cr-compare-modal .cr-compare-note { margin-top: 10px; font-size: 12px; font-weight: 500; color: rgba(15, 23, 42, 0.6); line-height: 1.35; }
-
-    #cr-compare-modal .cr-compare-error {
+    #kpi-compare-modal .kpi-compare-error {
       border: 1px solid rgba(220, 38, 38, 0.22);
       background: rgba(220, 38, 38, 0.06);
       border-radius: 3px;
       padding: 12px 14px;
     }
-    #cr-compare-modal .cr-compare-error-title { font-weight: 500; color: #991b1b; margin-bottom: 2px; }
-    #cr-compare-modal .cr-compare-error-body { font-weight: 500; color: rgba(153, 27, 27, 0.88); font-size: 12px; }
+    #kpi-compare-modal .kpi-compare-error-title { font-weight: 500; color: #991b1b; margin-bottom: 2px; }
+    #kpi-compare-modal .kpi-compare-error-body { font-weight: 500; color: rgba(153, 27, 27, 0.88); font-size: 12px; }
 
     @media (max-width: 820px) {
-      #cr-compare-modal .cr-compare-grid { grid-template-columns: 1fr; }
-      #cr-compare-modal .cr-compare-brand-sub { white-space: normal; }
+      #kpi-compare-modal .kpi-compare-grid { grid-template-columns: 1fr; }
+      #kpi-compare-modal .kpi-compare-brand-sub { white-space: normal; }
     }

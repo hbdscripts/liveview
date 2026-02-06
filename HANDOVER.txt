@@ -21,7 +21,7 @@ Main tabs (top row):
 - Home: live visitors table + top KPI grid
   - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
   - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
-  - Conv rate KPI: small compare icon inline in the “yesterday” subline opens a “Shopify vs Birdseye” comparison modal (styled to match Diagnostics palette; 3px radii; max font-weight 500) using the same data as Diagnostics → Overview (`GET /api/config-status`); includes sessions, CR%, orders, revenue, and moves “Bots blocked (today)” under the Birdseye section; modal has its own Refresh button
+  - KPI diff compare: tiny inline icon in the “yesterday” subline for **Sales / Sessions / Conv rate / AOV** opens a reusable “Shopify vs Birdseye” KPI diff modal (styled to match Diagnostics palette; 3px radii; max font-weight 500) using `GET /api/config-status` (manual Refresh inside modal). Modal content is KPI-specific: sessions/CR focus on bot/human session diffs; sales/AOV compare truth vs pixel-derived purchases.
   - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
   - Mobile-only: hide “Last Hour” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
 - Home “Landing Page” cell:
@@ -357,8 +357,8 @@ Backups durability:
 - Conversion: standardised to **Orders / Sessions × 100** across KPI + Geos/Traffic/Products tables (truth numerator).
 - Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
 - Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
-- UI: Conv rate KPI now has a tiny Shopify compare icon which opens a modern “Shopify vs Birdseye” modal (sessions, CR%, orders, revenue) with “Bots blocked (today)” shown under the Birdseye section and a manual refresh button.
-- UI: rename Breakdown tab to Geos; CR compare modal styling now matches Diagnostics palette (3px radii, max font-weight 500); `.length-icon` padding reset to 0.
+- UI: KPI grid: tiny inline compare icon on Sales/Sessions/Conv rate/AOV opens a reusable “Shopify vs Birdseye” KPI diff modal (KPI-specific diffs; manual refresh).
+- UI: rename Breakdown tab to Geos; add reusable KPI diff modal opened from tiny inline compare icon on Sales/Sessions/Conv rate/AOV yesterday sublines (3px radii, max font-weight 500, Diagnostics palette; KPI-specific diffs including bots + truth vs pixel); `.length-icon` padding reset to 0.
 - Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
 - Diagnostics: tracker definitions (`server/trackerDefinitions.js`) updated to include Products “Finishes” cards and to document Traffic settings sources (settings.traffic_sources_enabled / settings.traffic_types_enabled).
 - Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.

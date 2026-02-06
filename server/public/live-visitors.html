@@ -1339,24 +1339,24 @@
     </div>
   </div>
 
-  <div class="config-modal" id="cr-compare-modal" aria-hidden="true">
-    <div class="config-modal-card cr-compare-modal-card" role="dialog" aria-modal="true" aria-label="Conversion rate comparison">
-      <div class="cr-compare-modal-header">
-        <div class="cr-compare-modal-header-left">
-          <div class="cr-compare-kicker">Conversion rate</div>
-          <h3 class="cr-compare-title">Shopify vs Birdseye</h3>
-          <div class="cr-compare-meta" id="cr-compare-updated">Updated —</div>
+  <div class="config-modal" id="kpi-compare-modal" aria-hidden="true">
+    <div class="config-modal-card kpi-compare-modal-card" role="dialog" aria-modal="true" aria-label="KPI comparison">
+      <div class="kpi-compare-modal-header">
+        <div class="kpi-compare-modal-header-left">
+          <div class="kpi-compare-kicker" id="kpi-compare-kicker">KPI</div>
+          <h3 class="kpi-compare-title">Shopify vs Birdseye</h3>
+          <div class="kpi-compare-meta" id="kpi-compare-updated">Updated —</div>
         </div>
-        <div class="cr-compare-modal-actions">
-          <button type="button" id="cr-compare-refresh-btn" class="cr-compare-action-btn" title="Refresh comparison" aria-label="Refresh comparison">
+        <div class="kpi-compare-modal-actions">
+          <button type="button" id="kpi-compare-refresh-btn" class="kpi-compare-action-btn" title="Refresh comparison" aria-label="Refresh comparison">
             <svg viewBox="0 0 329.028 329.028" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true"><path d="M241.852,72.459l10.847-54.533c1.184-5.95-1.334-12.028-6.378-15.398c-5.045-3.37-11.623-3.37-16.667,0 L156.182,51.62c-0.004,0.003-0.008,0.006-0.012,0.009c-0.415,0.278-0.817,0.576-1.201,0.893c-0.219,0.181-0.418,0.377-0.625,0.568 c-0.148,0.137-0.304,0.265-0.447,0.408c-0.249,0.25-0.478,0.514-0.707,0.778c-0.088,0.101-0.183,0.196-0.268,0.299 c-0.208,0.253-0.396,0.519-0.586,0.783c-0.095,0.132-0.197,0.259-0.288,0.394c-0.155,0.232-0.292,0.473-0.433,0.712 c-0.109,0.185-0.225,0.365-0.327,0.554c-0.104,0.195-0.192,0.397-0.288,0.597c-0.118,0.245-0.24,0.487-0.344,0.739 c-0.064,0.156-0.115,0.317-0.174,0.475c-0.112,0.299-0.227,0.598-0.32,0.906c-0.042,0.137-0.069,0.276-0.106,0.414 c-0.09,0.329-0.181,0.658-0.248,0.996c-0.045,0.223-0.068,0.45-0.103,0.675c-0.038,0.252-0.088,0.501-0.113,0.758 c-0.051,0.498-0.075,0.998-0.076,1.5c0,0.004-0.001,0.009-0.001,0.013c0,0.058,0.008,0.113,0.009,0.17 c0.004,0.437,0.023,0.874,0.066,1.311c0.016,0.156,0.045,0.307,0.065,0.461c0.043,0.332,0.086,0.664,0.151,0.994 c0.042,0.212,0.102,0.418,0.152,0.627c0.064,0.264,0.124,0.529,0.204,0.791c0.077,0.256,0.173,0.503,0.264,0.753 c0.076,0.208,0.143,0.418,0.229,0.624c0.126,0.305,0.272,0.598,0.418,0.892c0.072,0.146,0.134,0.295,0.211,0.438 c0.203,0.379,0.426,0.745,0.66,1.104c0.036,0.055,0.064,0.113,0.1,0.167l0.019,0.028c0.01,0.015,0.02,0.03,0.03,0.045l49.044,73.401 c2.817,4.217,7.525,6.667,12.47,6.667c0.971,0,1.952-0.094,2.928-0.288c5.951-1.184,10.602-5.835,11.786-11.786l7.052-35.455 c23.901,20.188,39.11,50.36,39.11,84.023c0,60.636-49.331,109.968-109.967,109.968c-60.637,0-109.969-49.332-109.969-109.968 c0-40.179,21.91-77.153,57.179-96.494c7.264-3.983,9.923-13.101,5.94-20.365c-3.983-7.264-13.101-9.924-20.365-5.94 C52.424,90.871,24.546,137.924,24.546,189.06c0,77.178,62.79,139.968,139.969,139.968c77.178,0,139.967-62.79,139.967-139.968 C304.482,140.453,279.571,97.56,241.852,72.459z"/></svg>
             <span>Refresh</span>
           </button>
-          <button type="button" class="cr-compare-close-btn" id="cr-compare-close-btn" aria-label="Close">×</button>
+          <button type="button" class="kpi-compare-close-btn" id="kpi-compare-close-btn" aria-label="Close">×</button>
         </div>
       </div>
-      <div class="cr-compare-modal-body" id="cr-compare-status">
-        <div class="cr-compare-loading">Loading…</div>
+      <div class="kpi-compare-modal-body" id="kpi-compare-status">
+        <div class="kpi-compare-loading">Loading…</div>
       </div>
     </div>
   </div>
@@ -1447,6 +1447,7 @@
     let productsRefreshInFlight = null;
     let kpisRefreshInFlight = null;
     let configStatusRefreshInFlight = null;
+    let activeKpiCompareKey = 'conv';
     let reportBuildTokens = { stats: 0, products: 0, traffic: 0 };
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
@@ -5249,19 +5250,31 @@
           el.classList.add('is-hidden');
           return;
         }
+        const compareSvg =
+          '<svg fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+            '<path d="M46.05,60.163H31.923c-0.836,0-1.513,0.677-1.513,1.513v21.934c0,0.836,0.677,1.513,1.513,1.513H46.05 c0.836,0,1.512-0.677,1.512-1.513V61.675C47.562,60.839,46.885,60.163,46.05,60.163z"></path>' +
+            '<path d="M68.077,14.878H53.95c-0.836,0-1.513,0.677-1.513,1.513v67.218c0,0.836,0.677,1.513,1.513,1.513h14.127 c0.836,0,1.513-0.677,1.513-1.513V16.391C69.59,15.555,68.913,14.878,68.077,14.878z"></path>' +
+            '<path d="M90.217,35.299H76.09c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513h14.126 c0.836,0,1.513-0.677,1.513-1.513V36.812C91.729,35.977,91.052,35.299,90.217,35.299z"></path>' +
+            '<path d="M23.91,35.299H9.783c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513H23.91 c0.836,0,1.513-0.677,1.513-1.513V36.812C25.423,35.977,24.746,35.299,23.91,35.299z"></path>' +
+          '</svg>';
+
+        function compareBtn(kpiKey, ariaLabel) {
+          return (
+            '<button type="button" class="kpi-compare-inline-btn kpi-compare-open-btn" data-kpi-compare="' + escapeHtml(kpiKey) + '"' +
+              ' aria-label="' + escapeHtml(ariaLabel) + '" title="Compare vs Shopify">' +
+              compareSvg +
+            '</button>'
+          );
+        }
+
         if (el === convSubEl) {
-          const convCompareSvg =
-            '<svg fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
-              '<path d="M46.05,60.163H31.923c-0.836,0-1.513,0.677-1.513,1.513v21.934c0,0.836,0.677,1.513,1.513,1.513H46.05 c0.836,0,1.512-0.677,1.512-1.513V61.675C47.562,60.839,46.885,60.163,46.05,60.163z"></path>' +
-              '<path d="M68.077,14.878H53.95c-0.836,0-1.513,0.677-1.513,1.513v67.218c0,0.836,0.677,1.513,1.513,1.513h14.127 c0.836,0,1.513-0.677,1.513-1.513V16.391C69.59,15.555,68.913,14.878,68.077,14.878z"></path>' +
-              '<path d="M90.217,35.299H76.09c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513h14.126 c0.836,0,1.513-0.677,1.513-1.513V36.812C91.729,35.977,91.052,35.299,90.217,35.299z"></path>' +
-              '<path d="M23.91,35.299H9.783c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513H23.91 c0.836,0,1.513-0.677,1.513-1.513V36.812C25.423,35.977,24.746,35.299,23.91,35.299z"></path>' +
-            '</svg>';
-          el.innerHTML =
-            '<button type="button" class="kpi-conv-compare-inline-btn" id="cr-compare-open-btn" aria-label="Compare conversion rate vs Shopify" title="Compare vs Shopify">' +
-              convCompareSvg +
-            '</button>' +
-            escapeHtml(text == null ? '' : String(text));
+          el.innerHTML = compareBtn('conv', 'Compare conversion rate vs Shopify') + escapeHtml(text == null ? '' : String(text));
+        } else if (el === sessionsSubEl) {
+          el.innerHTML = compareBtn('sessions', 'Compare sessions vs Shopify') + escapeHtml(text == null ? '' : String(text));
+        } else if (el === salesSubEl) {
+          el.innerHTML = compareBtn('sales', 'Compare sales vs Shopify') + escapeHtml(text == null ? '' : String(text));
+        } else if (el === aovSubEl) {
+          el.innerHTML = compareBtn('aov', 'Compare AOV vs Shopify') + escapeHtml(text == null ? '' : String(text));
         } else {
           el.textContent = text;
         }
@@ -6082,13 +6095,14 @@
       if (configStatusRefreshInFlight && !options.force) return configStatusRefreshInFlight;
       const refreshBtn = document.getElementById('config-refresh-btn');
       const configStatusEl = document.getElementById('config-status');
-      const compareModalEl = document.getElementById('cr-compare-modal');
-      const compareRefreshBtn = document.getElementById('cr-compare-refresh-btn');
-      const compareStatusEl = document.getElementById('cr-compare-status');
-      const compareUpdatedEl = document.getElementById('cr-compare-updated');
+      const compareModalEl = document.getElementById('kpi-compare-modal');
+      const compareRefreshBtn = document.getElementById('kpi-compare-refresh-btn');
+      const compareStatusEl = document.getElementById('kpi-compare-status');
+      const compareUpdatedEl = document.getElementById('kpi-compare-updated');
+      const compareKickerEl = document.getElementById('kpi-compare-kicker');
       const compareOpen = !!(compareModalEl && compareModalEl.classList.contains('open'));
       if (configStatusEl) configStatusEl.innerHTML = '<div class="dm-loading">Loading…</div>';
-      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="cr-compare-loading">Loading…</div>';
+      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading">Loading…</div>';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
@@ -6945,65 +6959,181 @@
             const compareIsOpenNow = !!(compareModalEl && compareModalEl.classList.contains('open'));
             if (compareIsOpenNow && compareStatusEl) {
               const updatedAtMs = (c && typeof c.now === 'number' && isFinite(c.now)) ? c.now : Date.now();
-              if (compareUpdatedEl) compareUpdatedEl.textContent = 'Updated ' + formatTs(updatedAtMs);
+
+              function kickerForKey(key) {
+                const k = key ? String(key).trim().toLowerCase() : '';
+                if (k === 'sessions') return 'Sessions';
+                if (k === 'sales') return 'Sales';
+                if (k === 'aov') return 'AOV';
+                return 'Conversion rate';
+              }
+
+              const compareKey = activeKpiCompareKey ? String(activeKpiCompareKey).trim().toLowerCase() : 'conv';
+              if (compareKickerEl) compareKickerEl.textContent = kickerForKey(compareKey);
 
               function compareMetric(label, valueHtml) {
                 return (
-                  '<div class="cr-compare-metric">' +
-                    '<div class="cr-compare-metric-label">' + escapeHtml(label) + '</div>' +
-                    '<div class="cr-compare-metric-value">' + (valueHtml || '\u2014') + '</div>' +
+                  '<div class="kpi-compare-metric">' +
+                    '<div class="kpi-compare-metric-label">' + escapeHtml(label) + '</div>' +
+                    '<div class="kpi-compare-metric-value">' + (valueHtml || '\u2014') + '</div>' +
                   '</div>'
                 );
               }
               function compareBrand(name, logoUrl, sub) {
                 return (
-                  '<div class="cr-compare-brand">' +
-                    '<div class="cr-compare-brand-left">' +
-                      '<img class="cr-compare-brand-icon" src="' + escapeHtml(String(logoUrl || '')) + '" width="22" height="22" alt="" aria-hidden="true" decoding="async" />' +
-                      '<div class="cr-compare-brand-text">' +
-                        '<div class="cr-compare-brand-name">' + escapeHtml(name || '') + '</div>' +
-                        '<div class="cr-compare-brand-sub">' + escapeHtml(sub || '') + '</div>' +
+                  '<div class="kpi-compare-brand">' +
+                    '<div class="kpi-compare-brand-left">' +
+                      '<img class="kpi-compare-brand-icon" src="' + escapeHtml(String(logoUrl || '')) + '" width="28" height="28" alt="" aria-hidden="true" decoding="async" />' +
+                      '<div class="kpi-compare-brand-text">' +
+                        '<div class="kpi-compare-brand-name">' + escapeHtml(name || '') + '</div>' +
+                        '<div class="kpi-compare-brand-sub">' + escapeHtml(sub || '') + '</div>' +
                       '</div>' +
                     '</div>' +
                   '</div>'
                 );
               }
 
+              function fmtSignedCount(v) {
+                if (typeof v !== 'number' || !isFinite(v)) return '';
+                const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+                return sign + formatSessions(Math.abs(v));
+              }
+              function fmtSignedMoney(v) {
+                if (typeof v !== 'number' || !isFinite(v)) return '';
+                const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+                return sign + formatRevenue(Math.abs(v));
+              }
+              function fmtSignedPp(v) {
+                if (typeof v !== 'number' || !isFinite(v)) return '';
+                const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+                const abs = Math.abs(v);
+                const s = (Math.round(abs * 100) / 100).toFixed(2).replace(/\.?0+$/, '');
+                return sign + s + 'pp';
+              }
+              function safeAov(revenue, orders) {
+                if (typeof revenue !== 'number' || !isFinite(revenue)) return null;
+                if (typeof orders !== 'number' || !isFinite(orders) || orders <= 0) return null;
+                return revenue / orders;
+              }
+
+              const botsTaggedToday = (traffic && traffic.today && typeof traffic.today.botSessionsTagged === 'number')
+                ? traffic.today.botSessionsTagged
+                : null;
+              const totalTrafficEstToday = (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number')
+                ? traffic.today.totalTrafficEst
+                : null;
+              const sessionsReachedAppToday = (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number')
+                ? traffic.today.sessionsReachedApp
+                : null;
+
+              const truthAov = safeAov(truthRevenue, truthOrders);
+              const pixelAov = safeAov(pixelDerivedRevenue, pixelDerivedOrders);
+
+              let diffText = '';
+              if (compareKey === 'sessions') {
+                const d = (birdseyeSessionsToday != null && shopifySessionsToday != null) ? (birdseyeSessionsToday - shopifySessionsToday) : null;
+                diffText = (d != null) ? ('Δ Sessions ' + fmtSignedCount(d)) : '';
+              } else if (compareKey === 'sales') {
+                const d = (pixelDerivedRevenue != null && truthRevenue != null) ? (pixelDerivedRevenue - truthRevenue) : null;
+                diffText = (d != null) ? ('Δ Sales ' + fmtSignedMoney(d)) : '';
+              } else if (compareKey === 'aov') {
+                const d = (pixelAov != null && truthAov != null) ? (pixelAov - truthAov) : null;
+                diffText = (d != null) ? ('Δ AOV ' + fmtSignedMoney(d)) : '';
+              } else {
+                const d = (birdseyeCr != null && shopifyCr != null) ? (birdseyeCr - shopifyCr) : null;
+                diffText = (d != null) ? ('Δ CR ' + fmtSignedPp(d)) : '';
+              }
+
+              if (compareUpdatedEl) {
+                compareUpdatedEl.textContent = 'Updated ' + formatTs(updatedAtMs) + (diffText ? (' · ' + diffText) : '');
+              }
+
               const ordersHtml = (truthOrders != null) ? escapeHtml(String(truthOrders)) : '\u2014';
-              const shopifyNote =
-                (
-                  shopifyConversionRateToday != null
-                    ? 'CR% (Shopify) uses ShopifyQL conversion_rate (matches Shopify Admin).'
-                    : 'CR% (fallback) = paid truth orders / ShopifyQL sessions (conversion_rate unavailable).'
-                ) +
-                (shopifyConversionRateNote ? (' ' + String(shopifyConversionRateNote)) : '');
+              const pixelOrdersHtml = (pixelDerivedOrders != null) ? escapeHtml(String(pixelDerivedOrders)) : '\u2014';
+              const missingEvidenceHtml = (typeof missingEvidenceCount === 'number' && isFinite(missingEvidenceCount)) ? escapeHtml(String(missingEvidenceCount)) : '\u2014';
+              const evidenceHtml = (typeof evTotal === 'number' && isFinite(evTotal)) ? escapeHtml(String(evTotal)) : '\u2014';
 
               let cmpHtml = '';
-              cmpHtml += '<div class="cr-compare-grid">';
-              cmpHtml +=   '<div class="cr-compare-card">';
-              cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate · truth orders');
-              cmpHtml +=     '<div class="cr-compare-metrics">' +
-                               compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-                               compareMetric('CR% (Shopify)', fmtPct(shopifyCr)) +
-                               compareMetric('Orders (paid)', ordersHtml) +
-                               compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                             '</div>';
-              cmpHtml +=     '<div class="cr-compare-note">' + escapeHtml(shopifyNote) + '</div>';
-              cmpHtml +=   '</div>';
-              cmpHtml +=   '<div class="cr-compare-card cr-compare-card--birdseye">';
-              cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · truth orders');
-              cmpHtml +=     '<div class="cr-compare-metrics">' +
-                               compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-                               compareMetric('CR% (truth)', fmtPct(birdseyeCr)) +
-                               compareMetric('Orders (paid)', ordersHtml) +
-                               compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                             '</div>';
-              cmpHtml +=     '<div class="cr-compare-bots">' +
-                               '<span class="cr-compare-bots-label">Bots blocked (today)</span>' +
-                               '<span class="cr-compare-bots-value">' + (botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') + '</span>' +
-                             '</div>';
-              cmpHtml +=     '<div class="cr-compare-note">Birdseye CR% uses paid truth orders / human sessions. Orders and revenue match Shopify truth.</div>';
-              cmpHtml +=   '</div>';
+              cmpHtml += '<div class="kpi-compare-grid">';
+
+              if (compareKey === 'sessions') {
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
+                                 compareMetric('CR% (Shopify)', fmtPct(shopifyCr)) +
+                                 compareMetric('Orders (paid)', ordersHtml) +
+                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · bot signals');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
+                                 compareMetric('Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') +
+                                 compareMetric('Bot-tagged (today)', botsTaggedToday != null ? fmtSessions(botsTaggedToday) : '\u2014') +
+                                 compareMetric('Total traffic est', totalTrafficEstToday != null ? fmtSessions(totalTrafficEstToday) : (sessionsReachedAppToday != null ? fmtSessions(sessionsReachedAppToday) : '\u2014')) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+              } else if (compareKey === 'sales') {
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                                 compareMetric('Orders (paid)', ordersHtml) +
+                                 compareMetric('AOV', fmtRevenue(truthAov)) +
+                                 compareMetric('Missing evidence', missingEvidenceHtml) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('Revenue (pixel)', fmtRevenue(pixelDerivedRevenue)) +
+                                 compareMetric('Orders (pixel)', pixelOrdersHtml) +
+                                 compareMetric('AOV', fmtRevenue(pixelAov)) +
+                                 compareMetric('Evidence checkouts', evidenceHtml) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+              } else if (compareKey === 'aov') {
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('AOV', fmtRevenue(truthAov)) +
+                                 compareMetric('Orders (paid)', ordersHtml) +
+                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                                 compareMetric('Missing evidence', missingEvidenceHtml) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('AOV', fmtRevenue(pixelAov)) +
+                                 compareMetric('Orders (pixel)', pixelOrdersHtml) +
+                                 compareMetric('Revenue (pixel)', fmtRevenue(pixelDerivedRevenue)) +
+                                 compareMetric('Evidence checkouts', evidenceHtml) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+              } else {
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('CR% (Shopify)', fmtPct(shopifyCr)) +
+                                 compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
+                                 compareMetric('Orders (paid)', ordersHtml) +
+                                 compareMetric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                               '</div>';
+                cmpHtml +=   '</div>';
+                cmpHtml +=   '<div class="kpi-compare-card">';
+                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · bot signals');
+                cmpHtml +=     '<div class="kpi-compare-metrics">' +
+                                 compareMetric('CR% (truth)', fmtPct(birdseyeCr)) +
+                                 compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
+                                 compareMetric('Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') +
+                                 compareMetric('Bot-tagged (today)', botsTaggedToday != null ? fmtSessions(botsTaggedToday) : '\u2014') +
+                               '</div>';
+                cmpHtml +=   '</div>';
+              }
+
               cmpHtml += '</div>';
 
               compareStatusEl.innerHTML = cmpHtml;
@@ -7151,9 +7281,9 @@
             const compareIsOpenNow = !!(compareModalEl && compareModalEl.classList.contains('open'));
             if (compareIsOpenNow && compareStatusEl) {
               compareStatusEl.innerHTML =
-                '<div class="cr-compare-error">' +
-                  '<div class="cr-compare-error-title">Error</div>' +
-                  '<div class="cr-compare-error-body">Could not load comparison.</div>' +
+                '<div class="kpi-compare-error">' +
+                  '<div class="kpi-compare-error-title">Error</div>' +
+                  '<div class="kpi-compare-error-body">Could not load comparison.</div>' +
                 '</div>';
               if (compareUpdatedEl) compareUpdatedEl.textContent = 'Update failed';
             }
@@ -7193,25 +7323,40 @@
       document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
     })();
 
-    (function initCrCompareModal() {
-      const modal = document.getElementById('cr-compare-modal');
-      const refreshBtn = document.getElementById('cr-compare-refresh-btn');
-      const closeBtn = document.getElementById('cr-compare-close-btn');
+    (function initKpiCompareModal() {
+      const modal = document.getElementById('kpi-compare-modal');
+      const refreshBtn = document.getElementById('kpi-compare-refresh-btn');
+      const closeBtn = document.getElementById('kpi-compare-close-btn');
+      const kickerEl = document.getElementById('kpi-compare-kicker');
       if (!modal) return;
-      function open() {
+
+      function kickerForKey(key) {
+        const k = key ? String(key).trim().toLowerCase() : '';
+        if (k === 'sessions') return 'Sessions';
+        if (k === 'sales') return 'Sales';
+        if (k === 'aov') return 'AOV';
+        return 'Conversion rate';
+      }
+
+      function open(key) {
+        activeKpiCompareKey = key ? String(key).trim().toLowerCase() : 'conv';
+        if (kickerEl) kickerEl.textContent = kickerForKey(activeKpiCompareKey);
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
         try { refreshConfigStatus({ force: true }); } catch (_) {}
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+
       document.addEventListener('click', function(e) {
         const target = e && e.target ? e.target : null;
-        const btn = target && target.closest ? target.closest('#cr-compare-open-btn') : null;
+        const btn = target && target.closest ? target.closest('.kpi-compare-open-btn[data-kpi-compare]') : null;
         if (!btn) return;
         e.preventDefault();
         e.stopPropagation();
-        open();
+        const key = (btn.getAttribute('data-kpi-compare') || '').trim().toLowerCase();
+        open(key || 'conv');
       });
+
       if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true }); } catch (_) {} });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
