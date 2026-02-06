@@ -470,14 +470,14 @@
     .live-kpi-cell .live-kpi-sub { font-size: 11px; font-weight: 500; color: #777; line-height: 1.2; margin-top: 2px; }
     .live-kpi-cell .live-kpi-sub.is-hidden { display: none; }
     #live-kpi-sales { color: #0d9488; }
-    .kpi-delta-icon.kpi-delta-icon-up { color: var(--accent); }
-    .kpi-delta-icon.kpi-delta-icon-down { color: #940d0d; }
+    .kpi-delta-icon.kpi-delta-icon-up { color: var(--accent); border-color: #8ac5c0; }
+    .kpi-delta-icon.kpi-delta-icon-down { color: #940d0d; border-color: #c6a6a6; }
     .live-kpi-cell .kpi-delta-icon {
       display: inline-flex;
       align-items: center;
       margin: -2px 0 0 8px;
       vertical-align: middle;
-      background: #fafafa;
+      background: #fff;
       height: 18px;
       border: 1px solid #e1e1e1;
       width: 18px;
