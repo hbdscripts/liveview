@@ -133,7 +133,7 @@
 }
 #config-modal .dm-card-note { display: none; }
 
-/* ── Bots blocked stat (under Birdseye card) ── */
+/* ── Bots blocked stat (under Kexo card) ── */
 #config-modal .dm-bots-stat {
   display: flex; align-items: baseline; gap: 6px;
   font-size: 12px; font-weight: 500; color: #64748b;

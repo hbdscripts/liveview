@@ -48,13 +48,13 @@ function getLoginHtml(queryError) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/app.css" />
-  <title>Birdseye Tracker · Sign in</title>
+  <title>Kexo · Sign in</title>
 </head>
 <body class="page-login">
   <div class="shell">
     <div class="brand">
-      <img class="logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338&width=200" alt="Birdseye" decoding="async" loading="eager" />
-      <div class="brand-title">Birdseye</div>
+      <img class="logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338&width=200" alt="Kexo" decoding="async" loading="eager" />
+      <div class="brand-title">Kexo</div>
     </div>
     <div class="login-actions">
       ${errMsg}

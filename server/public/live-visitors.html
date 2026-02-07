@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <title>Birdseye Tracker</title>
+  <title>Kexo</title>
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
@@ -1579,7 +1579,7 @@
       <div class="kpi-compare-modal-header">
         <div class="kpi-compare-modal-header-left">
           <div class="kpi-compare-kicker" id="kpi-compare-kicker">KPI</div>
-          <h3 class="kpi-compare-title">Shopify vs Birdseye</h3>
+          <h3 class="kpi-compare-title">Shopify vs Kexo</h3>
           <div class="kpi-compare-meta" id="kpi-compare-updated">Updated —</div>
         </div>
         <div class="kpi-compare-modal-actions">
@@ -7023,17 +7023,17 @@
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
 
           const SHOPIFY_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770259752';
-          const BIRDSEYE_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338';
+          const KEXO_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338';
 
           const shopifySessionsToday = (traffic && typeof traffic.shopifySessionsToday === 'number') ? traffic.shopifySessionsToday : null;
           const shopifyConversionRateToday = (traffic && typeof traffic.shopifyConversionRateToday === 'number') ? traffic.shopifyConversionRateToday : null;
           const shopifyConversionRateNote = (traffic && typeof traffic.shopifyConversionRateTodayNote === 'string') ? traffic.shopifyConversionRateTodayNote : '';
-          const birdseyeSessionsToday = (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') ? traffic.today.humanSessions :
+          const kexoSessionsToday = (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') ? traffic.today.humanSessions :
             (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number') ? traffic.today.sessionsReachedApp : null;
           const botsBlockedToday = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') ? traffic.today.botsBlockedAtEdge : null;
           const botsBlockedUpdatedAt = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') ? traffic.today.botsBlockedAtEdgeUpdatedAt : null;
 
-          // Conversion rate used across Birdseye tables: truth orders / sessions.
+          // Conversion rate used across Kexo tables: truth orders / sessions.
           // Prefer checkout-token truth orders (online-store proxy) when available.
           const convertedOrdersForCr = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
           const shopifyCr = (shopifyConversionRateToday != null)
@@ -7041,7 +7041,7 @@
             : ((convertedOrdersForCr != null && shopifySessionsToday != null && shopifySessionsToday > 0)
               ? (convertedOrdersForCr / shopifySessionsToday) * 100
               : null);
-          const birdseyeCr = (convertedOrdersForCr != null && birdseyeSessionsToday != null && birdseyeSessionsToday > 0) ? (convertedOrdersForCr / birdseyeSessionsToday) * 100 : null;
+          const kexoCr = (convertedOrdersForCr != null && kexoSessionsToday != null && kexoSessionsToday > 0) ? (convertedOrdersForCr / kexoSessionsToday) * 100 : null;
           const shopifyCrSource = (shopifyConversionRateToday != null)
             ? 'traffic.shopifyConversionRateToday (ShopifyQL conversion_rate)'
             : 'computed: truth orders / Shopify sessions (fallback)';
@@ -7052,8 +7052,8 @@
             : null;
           const driftEvidenceCheckoutOrders = (truthCheckoutOrders != null && evTotal != null) ? (evTotal - truthCheckoutOrders) : null;
 
-          const sessionsDiff = (shopifySessionsToday != null && birdseyeSessionsToday != null) ? (shopifySessionsToday - birdseyeSessionsToday) : null;
-          const crDiff = (shopifyCr != null && birdseyeCr != null) ? (shopifyCr - birdseyeCr) : null;
+          const sessionsDiff = (shopifySessionsToday != null && kexoSessionsToday != null) ? (shopifySessionsToday - kexoSessionsToday) : null;
+          const crDiff = (shopifyCr != null && kexoCr != null) ? (shopifyCr - kexoCr) : null;
 
           const storedScopesStr = (shopify && shopify.storedScopes) ? String(shopify.storedScopes) : '';
           const serverScopesStr = (shopify && shopify.serverScopes) ? String(shopify.serverScopes) : '';
@@ -7255,8 +7255,8 @@
 
           // --- New flattened, top-tab Diagnostics UI (inline-styled) ---
           const shopifyOrderRate = shopifyCr;
-          const birdseyeOrderRate = birdseyeCr;
-          const orderRateDiff = (shopifyOrderRate != null && birdseyeOrderRate != null) ? (shopifyOrderRate - birdseyeOrderRate) : null;
+          const kexoOrderRate = kexoCr;
+          const orderRateDiff = (shopifyOrderRate != null && kexoOrderRate != null) ? (shopifyOrderRate - kexoOrderRate) : null;
 
           const evidenceExpected = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
 
@@ -7328,7 +7328,7 @@
               ? 'sales.evidence.today.checkoutCompletedSessions'
               : (truthCheckoutOrders != null ? 'sales.truth.today.checkoutOrderCount (fallback)' : (truthOrders != null ? 'sales.truth.today.orderCount (fallback)' : 'unknown'));
             const aiPayload = {
-              kind: 'birdseye_diagnostics_v1',
+              kind: 'kexo_diagnostics_v1',
               generatedAt: aiCopyGeneratedAt,
               page: {
                 href: (typeof window !== 'undefined' && window.location) ? window.location.href : '',
@@ -7340,25 +7340,25 @@
               aiNotes: [
                 'Truth = Shopify Orders API cache (orders_shopify). This is authoritative.',
                 'Evidence = Web Pixel checkout_completed events (purchase_events). Evidence < Truth usually means missing pixel events (consent/adblock/checkout surface) or non-storefront orders.',
-                'Birdseye derived = purchases built from evidence; if derived matches evidence, drift is upstream of purchases.',
+                'Kexo derived = purchases built from evidence; if derived matches evidence, drift is upstream of purchases.',
                 'Inspect rawConfigStatus.sales.missingEvidence.today.missingOrdersSample for a sample of truth orders missing evidence.',
               ],
               computed: {
                 sessions: {
                   shopifyToday: shopifySessionsToday,
-                  birdseyeHumanToday: birdseyeSessionsToday,
+                  kexoHumanToday: kexoSessionsToday,
                   diff: sessionsDiff,
                 },
                 conversions: {
-                  definition: 'Shopify CR% uses ShopifyQL conversion_rate; Birdseye CR% uses truth orders / sessions * 100',
+                  definition: 'Shopify CR% uses ShopifyQL conversion_rate; Kexo CR% uses truth orders / sessions * 100',
                   shopifyCrSource,
                   convertedSessionsSource,
                   shopifyCrPct: shopifyCr,
-                  birdseyeCrPct: birdseyeCr,
+                  kexoCrPct: kexoCr,
                   crDiffPctPoints: crDiff,
                   ordersPerSessionPct: {
                     shopify: shopifyOrderRate,
-                    birdseye: birdseyeOrderRate,
+                    kexo: kexoOrderRate,
                     diffPctPoints: orderRateDiff,
                   },
                 },
@@ -7403,12 +7403,12 @@
               rawConfigStatus: c,
             };
             aiCopyText =
-              'Birdseye diagnostics (paste this for AI)\n' +
+              'Kexo diagnostics (paste this for AI)\n' +
               'Generated: ' + aiCopyGeneratedAt + '\n' +
               (shopify && shopify.shop ? ('Shop: ' + shopify.shop + '\n') : '') +
               '\n```json\n' + JSON.stringify(aiPayload, null, 2) + '\n```\n';
           } catch (err) {
-            aiCopyText = 'Birdseye diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
+            aiCopyText = 'Kexo diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
           }
 
           const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
@@ -7455,15 +7455,15 @@
                             metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
                           '</div>';
           html +=     '</div>';
-          // Birdseye card
+          // Kexo card
           html +=     '<div class="dm-compare-card">';
           html +=       '<div class="dm-compare-card-head">';
-          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(BIRDSEYE_LOGO_URL) + '" alt="Birdseye" />';
-          html +=         '<div><div class="dm-compare-card-title">Birdseye</div></div>';
+          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(KEXO_LOGO_URL) + '" alt="Kexo" />';
+          html +=         '<div><div class="dm-compare-card-title">Kexo</div></div>';
           html +=       '</div>';
           html +=       '<div class="dm-metrics">' +
-                            metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-                            metric('CR%', fmtPct(birdseyeCr)) +
+                            metric('Sessions (human, today)', fmtSessions(kexoSessionsToday)) +
+                            metric('CR%', fmtPct(kexoCr)) +
                             metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
                             metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
                           '</div>';
@@ -7480,19 +7480,19 @@
                 '<div class="dm-table-row">' +
                   '<div class="dm-table-cell">Item</div>' +
                   '<div class="dm-table-cell"><span class="dm-table-cell-icon-wrap">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
-                  '<div class="dm-table-cell"><span class="dm-table-cell-icon-wrap">' + brandIconTiny('Birdseye', BIRDSEYE_LOGO_URL, '13,148,136') + '<span>Birdseye</span></span></div>' +
+                  '<div class="dm-table-cell"><span class="dm-table-cell-icon-wrap">' + brandIconTiny('Kexo', KEXO_LOGO_URL, '13,148,136') + '<span>Kexo</span></span></div>' +
                   '<div class="dm-table-cell">Diff</div>' +
                 '</div>' +
                 '<div class="dm-table-row">' +
                   '<div class="dm-table-cell">Sessions</div>' +
                   '<div class="dm-table-cell">' + fmtSessions(shopifySessionsToday) + '</div>' +
-                  '<div class="dm-table-cell">' + fmtSessions(birdseyeSessionsToday) + '</div>' +
+                  '<div class="dm-table-cell">' + fmtSessions(kexoSessionsToday) + '</div>' +
                   '<div class="dm-table-cell">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
                 '</div>' +
                 '<div class="dm-table-row">' +
                   '<div class="dm-table-cell">Conversion rate</div>' +
                   '<div class="dm-table-cell">' + fmtPct(shopifyCr) + '</div>' +
-                  '<div class="dm-table-cell">' + fmtPct(birdseyeCr) + '</div>' +
+                  '<div class="dm-table-cell">' + fmtPct(kexoCr) + '</div>' +
                   '<div class="dm-table-cell">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
                 '</div>' +
               '</div>' +
@@ -7585,11 +7585,11 @@
 
             const guide =
               '<div class="dm-guide dm-hint">' +
-                '<div class="dm-guide-title">How to debug sales drift (Truth vs Birdseye)</div>' +
+                '<div class="dm-guide-title">How to debug sales drift (Truth vs Kexo)</div>' +
                 '<ul>' +
                   '<li><strong>Truth</strong> = Shopify Orders API cache (`orders_shopify`, paid, not cancelled). This is the authoritative number.</li>' +
                   '<li><strong>Evidence</strong> = Web Pixel <code class="dm-code">checkout_completed</code> events (`purchase_events`). If Evidence &lt; Truth, events are missing (capture issue), not a truth sync issue.</li>' +
-                  '<li><strong>Birdseye derived</strong> = `purchases` (built from evidence). If it matches Evidence (as it does when linked/unlinked looks healthy), drift is upstream of purchases.</li>' +
+                  '<li><strong>Kexo derived</strong> = `purchases` (built from evidence). If it matches Evidence (as it does when linked/unlinked looks healthy), drift is upstream of purchases.</li>' +
                   '<li>First check: pixel installed + ingestUrl match, and Evidence linked/unlinked (linking health). Then inspect the Missing Evidence sample below.</li>' +
                 '</ul>' +
               '</div>';
@@ -7933,13 +7933,13 @@
 
               let diffText = '';
               if (compareKey === 'sessions') {
-                const d = (birdseyeSessionsToday != null && shopifySessionsToday != null) ? (birdseyeSessionsToday - shopifySessionsToday) : null;
+                const d = (kexoSessionsToday != null && shopifySessionsToday != null) ? (kexoSessionsToday - shopifySessionsToday) : null;
                 diffText = (d != null) ? ('Δ Sessions ' + fmtSignedCount(d)) : '';
               } else if (compareKey === 'aov') {
                 const d = (pixelAov != null && truthAov != null) ? (pixelAov - truthAov) : null;
                 diffText = (d != null) ? ('Δ AOV ' + fmtSignedMoney(d)) : '';
               } else {
-                const d = (birdseyeCr != null && shopifyCr != null) ? (birdseyeCr - shopifyCr) : null;
+                const d = (kexoCr != null && shopifyCr != null) ? (kexoCr - shopifyCr) : null;
                 diffText = (d != null) ? ('Δ CR ' + fmtSignedPp(d)) : '';
               }
 
@@ -7960,14 +7960,14 @@
                 cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions', inlineMetric('Sessions', fmtSessions(shopifySessionsToday)));
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions', inlineMetric('Sessions', fmtSessions(birdseyeSessionsToday)));
+                cmpHtml +=     compareBrand('Kexo', KEXO_LOGO_URL, 'Human sessions', inlineMetric('Sessions', fmtSessions(kexoSessionsToday)));
                 cmpHtml +=   '</div>';
               } else if (compareKey === 'aov') {
                 cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
                 cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'Paid truth orders', inlineMetric('AOV', fmtRevenue(truthAov)));
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card kpi-compare-card--simple">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Pixel purchases (deduped)', inlineMetric('AOV', fmtRevenue(pixelAov)));
+                cmpHtml +=     compareBrand('Kexo', KEXO_LOGO_URL, 'Pixel purchases (deduped)', inlineMetric('AOV', fmtRevenue(pixelAov)));
                 cmpHtml +=   '</div>';
               } else {
                 cmpHtml +=   '<div class="kpi-compare-card">';
@@ -7980,10 +7980,10 @@
                                '</div>';
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · bot signals');
+                cmpHtml +=     compareBrand('Kexo', KEXO_LOGO_URL, 'Human sessions · bot signals');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
-                                 compareMetric('CR% (truth)', fmtPct(birdseyeCr)) +
-                                 compareMetric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
+                                 compareMetric('CR% (truth)', fmtPct(kexoCr)) +
+                                 compareMetric('Sessions (human, today)', fmtSessions(kexoSessionsToday)) +
                                  compareMetric('Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') +
                                  compareMetric('Bot-tagged (today)', botsTaggedToday != null ? fmtSessions(botsTaggedToday) : '\u2014') +
                                '</div>';

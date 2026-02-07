@@ -78,7 +78,7 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue (Birdseye rollups)
+  // Revenue (Kexo rollups)
   const revFilterSql = source ? ' AND source = ?' : '';
   const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
   const revRows = await adsDb.all(
