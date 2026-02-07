@@ -1079,6 +1079,8 @@
     .dashboard-footer #audio-mute-btn,
     .dashboard-footer .config-btn { flex-shrink: 0; }
 
+    .dashboard-footer .config-btn { border: 0; background: none; }
+
     .config-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: var(--card); cursor: pointer; color: var(--text); font-size: 12px; line-height: 1; }
     .config-btn svg { display: block; width: 18px; height: 18px; }
         .config-btn:hover { color: var(--accent); }
