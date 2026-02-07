@@ -4108,8 +4108,7 @@
           const cr = crPillHtml(row && row.cr);
           return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
               '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
-              '<div class="aov-card-mid">' + cr + '</div>' +
-              '<div class="aov-card-right">' + escapeHtml(value) + '</div>' +
+              '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
             '</div>';
         }).join('');
         return;
@@ -4139,8 +4138,7 @@
               img +
               '<span class="aov-card-name sr-only">' + escapeHtml(title || 'Product') + '</span>' +
             '</div>' +
-            '<div class="aov-card-mid">' + cr + '</div>' +
-            '<div class="aov-card-right">' + escapeHtml(value) + '</div>' +
+            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
           '</div>';
       }).join('');
     }
@@ -4563,24 +4561,6 @@
       if (sessionsYesterdayEl) sessionsYesterdayEl.textContent = formatSessions(yesterday);
     }
 
-    function swipeWrap(cards, pageSize) {
-      if (!pageSize || pageSize <= 0) pageSize = 5;
-      var pages = [];
-      for (var i = 0; i < cards.length; i += pageSize) {
-        pages.push('<div class="aov-grid-page">' + cards.slice(i, i + pageSize).join('') + '</div>');
-      }
-      return pages.join('');
-    }
-    function applySwipe(grid) {
-      if (!grid) return;
-      var isMobile = window.innerWidth <= 768;
-      if (isMobile && grid.querySelectorAll('.aov-grid-page').length > 1) {
-        grid.classList.add('aov-swipe');
-      } else {
-        grid.classList.remove('aov-swipe');
-      }
-    }
-
     function renderAov(data) {
       const rows = (data.country || {})[getStatsRange()] || [];
       const grid = document.getElementById('aov-cards-grid');
@@ -4591,21 +4571,16 @@
         return;
       }
       const list = filtered.slice();
-      list.sort(function(a, b) { return cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc') || cmpNullableNumber(a && a.aov, b && b.aov, 'desc'); });
-      var cards = list.map(r => {
+      list.sort(function(a, b) { return cmpNullableNumber(a && a.aov, b && b.aov, 'desc'); });
+      grid.innerHTML = list.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabelFull(iso);
         const flag = flagImg(iso, label);
-        const aovVal = formatRevenueTableHtml(r.aov);
-        const revVal = formatRevenueTableHtml(r.revenue);
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + flag + '<span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
-          '<div class="aov-card-mid">' + aovVal + '</div>' +
-          '<div class="aov-card-right">' + revVal + '</div>' +
+          '<div class="aov-card-value">' + formatRevenueTableHtml(r.aov) + '</div>' +
         '</div>';
-      });
-      grid.innerHTML = swipeWrap(cards, 5);
-      applySwipe(grid);
+      }).join('');
     }
 
     function renderFinishes(data) {
@@ -4643,8 +4618,7 @@
         const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '—') + '</span></div>' +
-          '<div class="aov-card-mid">' + cr + '</div>' +
-          '<div class="aov-card-right">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
     }
@@ -4673,8 +4647,7 @@
         const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '—') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
-          '<div class="aov-card-mid">' + cr + '</div>' +
-          '<div class="aov-card-right">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
     }
@@ -4693,7 +4666,7 @@
         return;
       }
       const mainBase = getMainBaseUrl();
-      var cards = list.map(function(row) {
+      grid.innerHTML = list.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
         const handle = row && row.handle ? String(row.handle) : '';
         const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
@@ -4715,12 +4688,9 @@
               img +
               '<span class="aov-card-name sr-only">' + escapeHtml(title || 'Product') + '</span>' +
             '</div>' +
-            '<div class="aov-card-mid">' + cr + '</div>' +
-            '<div class="aov-card-right">' + escapeHtml(value) + '</div>' +
+            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
           '</div>';
-      });
-      grid.innerHTML = swipeWrap(cards, 5);
-      applySwipe(grid);
+      }).join('');
     }
 
     function renderBreakdownTypes(data) {
@@ -4736,19 +4706,16 @@
         }
         return;
       }
-      var cards = list.map(function(row) {
+      grid.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
         return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
             '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
-            '<div class="aov-card-mid">' + cr + '</div>' +
-            '<div class="aov-card-right">' + escapeHtml(value) + '</div>' +
+            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
           '</div>';
-      });
-      grid.innerHTML = swipeWrap(cards, 5);
-      applySwipe(grid);
+      }).join('');
     }
 
     function renderBreakdownFinishes(data) {
@@ -4770,19 +4737,16 @@
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
-      var cards = ordered.map(function(r) {
+      grid.innerHTML = ordered.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
         const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '\u2014') + '</span></div>' +
-          '<div class="aov-card-mid">' + cr + '</div>' +
-          '<div class="aov-card-right">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
-      });
-      grid.innerHTML = swipeWrap(cards, 5);
-      applySwipe(grid);
+      }).join('');
     }
 
     function renderBreakdownLengths(data) {
@@ -4799,7 +4763,7 @@
         return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
           cmpNullableNumber(a && a.inches, b && b.inches, 'asc');
       });
-      var cards = ordered.map(function(r) {
+      grid.innerHTML = ordered.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -4809,12 +4773,9 @@
         const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '\u2014') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
-          '<div class="aov-card-mid">' + cr + '</div>' +
-          '<div class="aov-card-right">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
-      });
-      grid.innerHTML = swipeWrap(cards, 5);
-      applySwipe(grid);
+      }).join('');
     }
 
     function renderCountry(data) {

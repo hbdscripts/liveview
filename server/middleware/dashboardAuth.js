@@ -87,6 +87,7 @@ function requiresAuth(pathname, method) {
   if (pathname === '/app/login' || pathname === '/app/logout') return false;
   if (pathname === '/auth/google' || pathname === '/auth/google/callback') return false;
   if (pathname === '/auth/shopify-login' || pathname === '/auth/shopify-login/callback') return false;
+  if (pathname === '/api/ads/google/callback') return false;
   // Public: ingest URL the server would push (for scripts / curl to verify before pixel ensure)
   if (pathname === '/api/pixel/config') return false;
   return isProtectedPath(pathname);

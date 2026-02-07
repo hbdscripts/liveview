@@ -271,50 +271,24 @@
       #finishes-cards-grid[data-cards-view="finishes"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #finishes-cards-grid[data-cards-view="lengths"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-    .aov-card { display: grid; grid-template-columns: 1fr auto auto; align-items: stretch; min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
-    .aov-card-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; padding: 0.55rem 0.75rem; }
+    .aov-card { padding: 0.6rem 0.8rem; box-shadow: 2px 2px 2px #eee; display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+    .aov-card-left { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .aov-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .aov-card-mid { display: flex; align-items: center; justify-content: center; padding: 0.55rem 0.75rem; border-left: 1px solid var(--border); font-size: 12px; font-weight: 500; color: #999; white-space: nowrap; min-width: 64px; }
-    .aov-card-right { display: flex; align-items: center; justify-content: center; padding: 0.55rem 0.75rem; border-left: 1px solid var(--border); font-size: 0.9rem; font-weight: 600; color: var(--text); white-space: nowrap; min-width: 72px; }
     .aov-card-value { font-size: 0.9rem; font-weight: 600; color: var(--text); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
     .aov-card-cr-pill {
       display: inline-flex;
       align-items: center;
-      padding: 0;
-      border-radius: 0;
-      font-size: 12px;
-      font-weight: 500;
+      padding: 0.14rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
       line-height: 1;
       white-space: nowrap;
-      background: none;
-      border: none;
-      color: #999;
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      color: #0f766e;
     }
-    .aov-card-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); padding: 0.55rem 0.75rem; }
-
-    /* Mobile swipe pages for overview grids */
-    .aov-grid-page { display: contents; }
-    @media (max-width: 768px) {
-      .aov-cards-grid.aov-swipe {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 0;
-      }
-      .aov-cards-grid.aov-swipe::-webkit-scrollbar { display: none; }
-      .aov-cards-grid.aov-swipe .aov-grid-page {
-        display: flex;
-        flex-direction: column;
-        flex: 0 0 100%;
-        scroll-snap-align: start;
-        min-width: 0;
-      }
-      .aov-cards-grid.aov-swipe .aov-grid-page .aov-card {
-        box-shadow: inset 0 -1px 0 var(--border);
-      }
-    }
+    .aov-card-empty { justify-content: center; color: var(--muted); }
 
     /* Products → Finishes cards */
     .finish-icon {
@@ -357,7 +331,7 @@
       #leaderboard-cards-grid[data-leaderboard-view="title"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #leaderboard-cards-grid[data-leaderboard-view="type"] { grid-template-columns: 1fr; }
     }
-    .aov-card--leaderboard .aov-card-right { color: #0d9488; font-weight: 600; }
+    .aov-card--leaderboard .aov-card-value-main { color: #0d9488; }
     .leaderboard-thumb-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; }
     .leaderboard-thumb-link:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.55); outline-offset: 2px; border-radius: 12px; }
     .leaderboard-thumb-link:hover .leaderboard-thumb-wrap { border-color: rgba(13, 148, 136, 0.35); }
@@ -400,11 +374,10 @@
       #breakdown-length-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 768px) {
-      #breakdown-title-grid { grid-template-columns: 1fr; }
+      #breakdown-title-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #breakdown-type-grid { grid-template-columns: 1fr; }
       #breakdown-finish-grid { grid-template-columns: 1fr; }
-      #breakdown-length-grid { grid-template-columns: 1fr; }
-      #aov-cards-grid { grid-template-columns: 1fr; }
+      #breakdown-length-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     /* Div/Grid "tables" (no <table>, no <tr>, no <td>) */
