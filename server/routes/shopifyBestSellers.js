@@ -71,7 +71,7 @@ async function getShopifyBestSellers(req, res) {
   try {
     const sort = 'rev';
     const dir = 'desc';
-    const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
+    const pageSize = clampInt(req.query.pageSize, 5, 1, 20);
     const resolvedShop = salesTruth.resolveShopForSales(shop);
     const botFilterSql = trafficMode === 'human_only' ? ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)' : '';
     const cached = await reportCache.getOrComputeJson(

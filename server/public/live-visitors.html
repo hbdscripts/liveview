@@ -1143,46 +1143,69 @@
         <div class="report-build-step" id="breakdown-build-step">—</div>
       </div>
     </div>
-    <div class="aov-cards-wrap" id="aov-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title">Average Order Value</div>
+  <div class="stats-row breakdown-row">
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-aov-table" class="grid-table by-country-table" role="table" aria-label="Average Order Value">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">AOV by Country</span><span class="th-label-short">AOV</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">AOV</span><span class="th-label-short">AOV</span></div>
+          </div></div>
+          <div id="breakdown-aov-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
       </div>
-      <div class="aov-cards-grid" id="aov-cards-grid">
-        <div class="aov-card aov-card-empty">—</div>
+      <div class="card-pagination is-hidden" id="breakdown-aov-pagination" aria-label="AOV pagination"><button type="button" id="breakdown-aov-prev">Prev</button><span class="page-label" id="breakdown-aov-label">1 of 1</span><button type="button" id="breakdown-aov-next">Next</button></div>
+    </div>
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-product-table" class="grid-table by-country-table" role="table" aria-label="Product breakdown">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="breakdown-title-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="breakdown-title-pagination" aria-label="Product pagination"><button type="button" id="breakdown-title-prev">Prev</button><span class="page-label" id="breakdown-title-label">1 of 1</span><button type="button" id="breakdown-title-next">Next</button></div>
+    </div>
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-type-table" class="grid-table by-country-table" role="table" aria-label="Type breakdown">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Type</span><span class="th-label-short">Type</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="breakdown-type-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
       </div>
     </div>
-    <div class="aov-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title">Product</div>
-      </div>
-      <div class="aov-cards-grid" id="breakdown-title-grid">
-        <div class="aov-card aov-card-empty">—</div>
-      </div>
-    </div>
-    <div class="aov-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title">Type</div>
-      </div>
-      <div class="aov-cards-grid" id="breakdown-type-grid">
-        <div class="aov-card aov-card-empty">—</div>
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-finish-table" class="grid-table by-country-table" role="table" aria-label="Finish breakdown">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Finish</span><span class="th-label-short">Finish</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="breakdown-finish-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
       </div>
     </div>
-    <div class="aov-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title">Finish</div>
-      </div>
-      <div class="aov-cards-grid" id="breakdown-finish-grid">
-        <div class="aov-card aov-card-empty">—</div>
-      </div>
-    </div>
-    <div class="aov-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title">Length</div>
-      </div>
-      <div class="aov-cards-grid" id="breakdown-length-grid">
-        <div class="aov-card aov-card-empty">—</div>
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-length-table" class="grid-table by-country-table" role="table" aria-label="Length breakdown">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Length</span><span class="th-label-short">Length</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="breakdown-length-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
       </div>
     </div>
+  </div>
   </div>
   </div>
 
@@ -1241,6 +1264,92 @@
         <span class="page-label" id="best-variants-label">1 of 1</span>
         <button type="button" id="best-variants-next">Next</button>
       </div>
+    </div>
+  </div>
+  <div class="stats-row" id="products-type-tables-row">
+    <div class="stats-card" id="stats-type-necklaces">
+      <div class="country-table-wrap">
+        <div id="type-necklaces-table" class="grid-table by-country-table" role="table" aria-label="Necklaces">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Necklaces</span><span class="th-label-short">Necklaces</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-necklaces-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><button type="button" id="type-necklaces-prev">Prev</button><span class="page-label" id="type-necklaces-label">1 of 1</span><button type="button" id="type-necklaces-next">Next</button></div>
+    </div>
+    <div class="stats-card" id="stats-type-bracelets">
+      <div class="country-table-wrap">
+        <div id="type-bracelets-table" class="grid-table by-country-table" role="table" aria-label="Bracelets">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Bracelets</span><span class="th-label-short">Bracelets</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-bracelets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><button type="button" id="type-bracelets-prev">Prev</button><span class="page-label" id="type-bracelets-label">1 of 1</span><button type="button" id="type-bracelets-next">Next</button></div>
+    </div>
+    <div class="stats-card" id="stats-type-earrings">
+      <div class="country-table-wrap">
+        <div id="type-earrings-table" class="grid-table by-country-table" role="table" aria-label="Earrings">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Earrings</span><span class="th-label-short">Earrings</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-earrings-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><button type="button" id="type-earrings-prev">Prev</button><span class="page-label" id="type-earrings-label">1 of 1</span><button type="button" id="type-earrings-next">Next</button></div>
+    </div>
+    <div class="stats-card" id="stats-type-sets">
+      <div class="country-table-wrap">
+        <div id="type-sets-table" class="grid-table by-country-table" role="table" aria-label="Sets">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sets</span><span class="th-label-short">Sets</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-sets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><button type="button" id="type-sets-prev">Prev</button><span class="page-label" id="type-sets-label">1 of 1</span><button type="button" id="type-sets-next">Next</button></div>
+    </div>
+    <div class="stats-card" id="stats-type-charms">
+      <div class="country-table-wrap">
+        <div id="type-charms-table" class="grid-table by-country-table" role="table" aria-label="Charms">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Charms</span><span class="th-label-short">Charms</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-charms-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><button type="button" id="type-charms-prev">Prev</button><span class="page-label" id="type-charms-label">1 of 1</span><button type="button" id="type-charms-next">Next</button></div>
+    </div>
+    <div class="stats-card" id="stats-type-extras">
+      <div class="country-table-wrap">
+        <div id="type-extras-table" class="grid-table by-country-table" role="table" aria-label="Extras">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Extras</span><span class="th-label-short">Extras</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="type-extras-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+      <div class="card-pagination is-hidden" id="type-extras-pagination" aria-label="Extras pagination"><button type="button" id="type-extras-prev">Prev</button><span class="page-label" id="type-extras-label">1 of 1</span><button type="button" id="type-extras-next">Next</button></div>
     </div>
   </div>
   </div>
@@ -1368,7 +1477,7 @@
           <button type="button" class="config-close" id="config-close-btn" aria-label="Close">×</button>
         </div>
       </div>
-      <div id="config-status"><div class="dm-loading-spinner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div></div>
+      <div id="config-status"><div class="dm-loading-spinner"><span class="be-spinner" aria-label="Loading" role="status"></span></div></div>
     </div>
   </div>
 
@@ -1389,7 +1498,7 @@
         </div>
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
-        <div class="kpi-compare-loading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>
+        <div class="kpi-compare-loading"><span class="be-spinner" aria-label="Loading" role="status"></span></div>
       </div>
     </div>
   </div>
@@ -1440,7 +1549,8 @@
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
-    const TOP_TABLE_PAGE_SIZE = 10;
+    const TOP_TABLE_PAGE_SIZE = 5;
+    const COUNTRY_PAGE_SIZE = 11;
     const ROWS_PER_PAGE_DEFAULT = 25;
     function loadRowsPerPage() {
       return ROWS_PER_PAGE_DEFAULT;
@@ -4037,9 +4147,10 @@
         .then(function(data) {
           leaderboardCache = data;
           renderProductsLeaderboard(data);
+          renderAllTypeTables(data);
           return data;
         })
-        .catch(function() { leaderboardCache = null; renderProductsLeaderboard(null); return null; })
+        .catch(function() { leaderboardCache = null; renderProductsLeaderboard(null); renderAllTypeTables(null); return null; })
         .finally(function() { leaderboardLoading = false; });
     }
 
@@ -4142,6 +4253,77 @@
           '</div>';
       }).join('');
     }
+
+    // ── Product Type Tables (Necklaces, Bracelets, Earrings, Sets, Charms, Extras) ──
+    var TYPE_TABLE_DEFS = [
+      { id: 'necklaces', keys: ['necklaces', 'necklace'] },
+      { id: 'bracelets', keys: ['bracelets', 'bracelet'] },
+      { id: 'earrings',  keys: ['earrings', 'earring'] },
+      { id: 'sets',      keys: ['sets', 'set'] },
+      { id: 'charms',    keys: ['charms', 'charm'] },
+      { id: 'extras',    keys: ['extras', 'extra'] },
+    ];
+    var TYPE_TABLE_PAGE_SIZE = 5;
+    var typeTablePages = {};
+    TYPE_TABLE_DEFS.forEach(function(d) { typeTablePages[d.id] = 1; });
+
+    function getTypeProducts(data, def) {
+      if (!data || !data.productsByType) return [];
+      var out = [];
+      for (var i = 0; i < def.keys.length; i++) {
+        var arr = data.productsByType[def.keys[i]];
+        if (Array.isArray(arr)) out = out.concat(arr);
+      }
+      return out;
+    }
+
+    function renderTypeTable(data, def) {
+      var tbody = document.getElementById('type-' + def.id + '-body');
+      if (!tbody) return;
+      var rows = getTypeProducts(data, def);
+      if (!rows.length) {
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        updateCardPagination('type-' + def.id, 1, 1);
+        return;
+      }
+      var totalPages = Math.max(1, Math.ceil(rows.length / TYPE_TABLE_PAGE_SIZE));
+      var page = clampPage(typeTablePages[def.id] || 1, totalPages);
+      typeTablePages[def.id] = page;
+      updateCardPagination('type-' + def.id, page, totalPages);
+      var start = (page - 1) * TYPE_TABLE_PAGE_SIZE;
+      var pageRows = rows.slice(start, start + TYPE_TABLE_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(function(r) {
+        var title = r && r.title ? String(r.title) : '—';
+        var orders = r && r.orders != null ? Number(r.orders) : 0;
+        var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '—';
+        var cr = r && r.cr != null ? pct(r.cr) : '—';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(title) + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + orders + '</div>' +
+          '<div class="grid-cell" role="cell">' + rev + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderAllTypeTables(data) {
+      TYPE_TABLE_DEFS.forEach(function(def) { renderTypeTable(data, def); });
+    }
+
+    (function initTypeTablePagination() {
+      TYPE_TABLE_DEFS.forEach(function(def) {
+        var prevBtn = document.getElementById('type-' + def.id + '-prev');
+        var nextBtn = document.getElementById('type-' + def.id + '-next');
+        if (prevBtn) prevBtn.addEventListener('click', function() {
+          typeTablePages[def.id] = Math.max(1, (typeTablePages[def.id] || 1) - 1);
+          renderTypeTable(leaderboardCache, def);
+        });
+        if (nextBtn) nextBtn.addEventListener('click', function() {
+          typeTablePages[def.id] = (typeTablePages[def.id] || 1) + 1;
+          renderTypeTable(leaderboardCache, def);
+        });
+      });
+    })();
 
     (function initProductsLeaderboardResizeWatcher() {
       let raf = null;
@@ -4561,24 +4743,31 @@
       if (sessionsYesterdayEl) sessionsYesterdayEl.textContent = formatSessions(yesterday);
     }
 
+    var breakdownAovPage = 1;
     function renderAov(data) {
       const rows = (data.country || {})[getStatsRange()] || [];
-      const grid = document.getElementById('aov-cards-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('breakdown-aov-body');
+      if (!tbody) return;
       const filtered = rows.filter(r => r.aov != null && r.aov > 0);
       if (filtered.length === 0) {
-        grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
+        updateCardPagination('breakdown-aov', 1, 1);
         return;
       }
       const list = filtered.slice();
       list.sort(function(a, b) { return cmpNullableNumber(a && a.aov, b && b.aov, 'desc'); });
-      grid.innerHTML = list.map(r => {
+      var totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
+      breakdownAovPage = clampPage(breakdownAovPage, totalPages);
+      updateCardPagination('breakdown-aov', breakdownAovPage, totalPages);
+      var start = (breakdownAovPage - 1) * TOP_TABLE_PAGE_SIZE;
+      var pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabelFull(iso);
         const flag = flagImg(iso, label);
-        return '<div class="aov-card">' +
-          '<div class="aov-card-left">' + flag + '<span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
-          '<div class="aov-card-value">' + formatRevenueTableHtml(r.aov) + '</div>' +
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span></span></span></div>' +
+          '<div class="grid-cell" role="cell">' + formatRevenueTableHtml(r.aov) + '</div>' +
         '</div>';
       }).join('');
     }
@@ -4652,110 +4841,86 @@
       }).join('');
     }
 
+    var breakdownTitlePage = 1;
     function renderBreakdownTitles(data) {
-      const grid = document.getElementById('breakdown-title-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('breakdown-title-body');
+      if (!tbody) return;
       const hasData = !!(data && data.ok);
-      const list = hasData ? (data.byTitle || []).slice(0, 12) : [];
+      const list = hasData ? (data.byTitle || []) : [];
       if (!list.length) {
-        if (leaderboardLoading) {
-          grid.innerHTML = '<div class="aov-card aov-card-empty aov-card--leaderboard-loading"><span class="inline-spinner" aria-hidden="true"></span><span>Building leaderboards\u2026</span></div>';
-        } else {
-          grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
-        }
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        updateCardPagination('breakdown-title', 1, 1);
         return;
       }
-      const mainBase = getMainBaseUrl();
-      grid.innerHTML = list.map(function(row) {
+      var totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
+      breakdownTitlePage = clampPage(breakdownTitlePage, totalPages);
+      updateCardPagination('breakdown-title', breakdownTitlePage, totalPages);
+      var start = (breakdownTitlePage - 1) * TOP_TABLE_PAGE_SIZE;
+      var pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
-        const handle = row && row.handle ? String(row.handle) : '';
-        const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
-        const cr = crPillHtml(row && row.cr);
-        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbInner = '<span class="leaderboard-thumb-wrap">' +
-            '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
-            (thumb
-              ? '<img class="leaderboard-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
-              : '') +
-          '</span>';
-        const img = productUrl
-          ? '<a class="leaderboard-thumb-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '">' + thumbInner + '</a>'
-          : thumbInner;
-        return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-title">' +
-            '<div class="aov-card-left">' +
-              img +
-              '<span class="aov-card-name sr-only">' + escapeHtml(title || 'Product') + '</span>' +
-            '</div>' +
-            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
-          '</div>';
+        const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(title) + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(value) + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
       }).join('');
     }
 
     function renderBreakdownTypes(data) {
-      const grid = document.getElementById('breakdown-type-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('breakdown-type-body');
+      if (!tbody) return;
       const hasData = !!(data && data.ok);
-      const list = hasData ? (data.byType || []).slice(0, 12) : [];
+      const list = hasData ? (data.byType || []) : [];
       if (!list.length) {
-        if (leaderboardLoading) {
-          grid.innerHTML = '<div class="aov-card aov-card-empty aov-card--leaderboard-loading"><span class="inline-spinner" aria-hidden="true"></span><span>Building leaderboards\u2026</span></div>';
-        } else {
-          grid.innerHTML = '<div class="aov-card aov-card-empty">No data</div>';
-        }
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
-      grid.innerHTML = list.map(function(row) {
+      tbody.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
-        const cr = crPillHtml(row && row.cr);
-        return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
-            '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
-            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
-          '</div>';
+        const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(value) + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
       }).join('');
     }
 
     function renderBreakdownFinishes(data) {
-      const grid = document.getElementById('breakdown-finish-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('breakdown-finish-body');
+      if (!tbody) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (!rows.length) {
-        const msg = finishesLoading ? 'Loading finishes\u2026' : 'No data';
-        grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (finishesLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
-      }
-      function iconFor(key) {
-        const k = (key || '').toString().trim().toLowerCase();
-        if (k === 'gold') return '<span class="finish-icon finish-icon-gold" aria-hidden="true"></span>';
-        if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
-        if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
-        if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
-        return '<span class="finish-icon" aria-hidden="true"></span>';
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
-      grid.innerHTML = ordered.map(function(r) {
-        const label = (r && r.label != null) ? String(r.label) : '';
+      tbody.innerHTML = ordered.map(function(r) {
+        const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
-        const cr = crPillHtml(r && r.cr);
-        return '<div class="aov-card">' +
-          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '\u2014') + '</span></div>' +
-          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
+        const cr = r && r.cr != null ? pct(r.cr) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
         '</div>';
       }).join('');
     }
 
     function renderBreakdownLengths(data) {
-      const grid = document.getElementById('breakdown-length-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('breakdown-length-body');
+      if (!tbody) return;
       const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
       if (!rows.length) {
-        const msg = lengthsLoading ? 'Loading lengths\u2026' : 'No data';
-        grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (lengthsLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
       var ordered = rows.slice();
@@ -4763,17 +4928,16 @@
         return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
           cmpNullableNumber(a && a.inches, b && b.inches, 'asc');
       });
-      grid.innerHTML = ordered.map(function(r) {
+      tbody.innerHTML = ordered.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
-        const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
+        const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
-        const cr = crPillHtml(r && r.cr);
-        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '\u2014') + '</span></span>';
-        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '\u2014') + ' Inches') + '</span>';
-        return '<div class="aov-card aov-card--length">' +
-          '<div class="aov-card-left">' + icon + sr + '</div>' +
-          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
+        const cr = r && r.cr != null ? pct(r.cr) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(label) + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
         '</div>';
       }).join('');
     }
@@ -4805,11 +4969,11 @@
         return 0;
       });
 
-      const totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
+      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
       countryPage = clampPage(countryPage, totalPages);
       updateCardPagination('country', countryPage, totalPages);
-      const start = (countryPage - 1) * TOP_TABLE_PAGE_SIZE;
-      const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      const start = (countryPage - 1) * COUNTRY_PAGE_SIZE;
+      const pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(code);
@@ -4864,11 +5028,11 @@
         return 0;
       });
 
-      const totalPages = Math.max(1, Math.ceil(list.length / TOP_TABLE_PAGE_SIZE));
+      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
       bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
       updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
-      const start = (bestGeoProductsPage - 1) * TOP_TABLE_PAGE_SIZE;
-      const pageRows = list.slice(start, start + TOP_TABLE_PAGE_SIZE);
+      const start = (bestGeoProductsPage - 1) * COUNTRY_PAGE_SIZE;
+      const pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
@@ -6387,6 +6551,14 @@
         function() { bestVariantsPage = Math.max(1, bestVariantsPage - 1); fetchBestVariants(); },
         function() { bestVariantsPage = bestVariantsPage + 1; fetchBestVariants(); }
       );
+      bind('breakdown-aov',
+        function() { breakdownAovPage = Math.max(1, breakdownAovPage - 1); renderAov(statsCache); },
+        function() { breakdownAovPage = breakdownAovPage + 1; renderAov(statsCache); }
+      );
+      bind('breakdown-title',
+        function() { breakdownTitlePage = Math.max(1, breakdownTitlePage - 1); renderBreakdownTitles(leaderboardCache); },
+        function() { breakdownTitlePage = breakdownTitlePage + 1; renderBreakdownTitles(leaderboardCache); }
+      );
     })();
 
     (function initRowsPerPageSelect() {
@@ -6459,8 +6631,8 @@
       const compareUpdatedEl = document.getElementById('kpi-compare-updated');
       const compareKickerEl = document.getElementById('kpi-compare-kicker');
       const compareOpen = !!(compareModalEl && compareModalEl.classList.contains('open'));
-      if (configStatusEl) configStatusEl.innerHTML = '<div class="dm-loading">Loading…</div>';
-      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading">Loading…</div>';
+      if (configStatusEl) configStatusEl.innerHTML = '<div class="dm-loading-spinner"><span class="be-spinner" aria-label="Loading" role="status"></span></div>';
+      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><span class="be-spinner" aria-label="Loading" role="status"></span></div>';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');

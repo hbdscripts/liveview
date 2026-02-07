@@ -290,6 +290,34 @@ async function getShopifyLeaderboard(req, res) {
           }
         }
 
+        // Build productsByType: map of typeKey -> array of individual products
+        const productsByTypeMap = new Map();
+        for (const p of products) {
+          const pid = p && p.product_id ? String(p.product_id) : '';
+          const meta = pid && metaByProductId.has(pid) ? metaByProductId.get(pid) : null;
+          const t = normalizeTypeLabel(meta && meta.product_type ? String(meta.product_type) : '');
+          const handle = meta && meta.handle ? normalizeHandle(String(meta.handle)) : null;
+          const sessions = handle ? (sessionsByHandle.get(handle) || 0) : 0;
+          const orders = p && typeof p.orders === 'number' && Number.isFinite(p.orders) ? Math.trunc(p.orders) : 0;
+          const cr = sessions > 0 ? Math.round((orders / sessions) * 1000) / 10 : null;
+          const item = {
+            product_id: pid || null,
+            title: p && p.title ? String(p.title) : null,
+            handle,
+            thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
+            revenueGbp: round2(p && p.revenueGbp),
+            orders,
+            sessions,
+            cr,
+          };
+          if (!productsByTypeMap.has(t.key)) productsByTypeMap.set(t.key, []);
+          productsByTypeMap.get(t.key).push(item);
+        }
+        const productsByType = {};
+        for (const [key, items] of productsByTypeMap.entries()) {
+          productsByType[key] = items.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
+        }
+
         return {
           ok: true,
           range: { key: range, start, end },
@@ -307,6 +335,7 @@ async function getShopifyLeaderboard(req, res) {
             const cr = sessions > 0 ? Math.round((orders / sessions) * 1000) / 10 : null;
             return { ...row, sessions, cr };
           }),
+          productsByType,
         };
       }
     );

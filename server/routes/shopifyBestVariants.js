@@ -75,7 +75,7 @@ async function getShopifyBestVariants(req, res) {
   const token = row.access_token;
 
   try {
-    const pageSize = clampInt(req.query.pageSize, 10, 1, 10);
+    const pageSize = clampInt(req.query.pageSize, 5, 1, 20);
     const cached = await reportCache.getOrComputeJson(
       {
         shop,
