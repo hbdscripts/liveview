@@ -3,7 +3,7 @@ const adsService = require('../ads/adsService');
 const store = require('../store');
 const { rollupRevenueHourly } = require('../ads/adsRevenueRollup');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
-const { syncGoogleAdsSpendHourly } = require('../ads/googleAdsSpendSync');
+const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
 
 const router = express.Router();
 
@@ -87,14 +87,30 @@ router.post('/refresh', async (req, res) => {
     const body = req && req.body && typeof req.body === 'object' ? req.body : {};
     const source = body && body.source != null ? String(body.source).trim().toLowerCase() : 'googleads';
 
-    const rollup = await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
+    // 1. Sync spend from Google Ads API
     let spend = null;
     try {
       spend = await syncGoogleAdsSpendHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end });
     } catch (e) {
       spend = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'spend_sync_failed' };
     }
-    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, rollup, spend });
+
+    // 2. Backfill campaign IDs on sessions via gclid → click_view mapping
+    let gclidBackfill = null;
+    try {
+      gclidBackfill = await backfillCampaignIdsFromGclid({
+        rangeStartTs: bounds.start,
+        rangeEndTs: bounds.end,
+        apiVersion: spend && spend.apiVersion ? spend.apiVersion : '',
+      });
+    } catch (e) {
+      gclidBackfill = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'gclid_backfill_failed' };
+    }
+
+    // 3. Revenue rollup (now picks up sessions with newly-backfilled campaign IDs)
+    const rollup = await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
+
+    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, gclidBackfill, rollup });
   } catch (err) {
     console.error('[ads.refresh]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });

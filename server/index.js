@@ -251,6 +251,7 @@ const { up: up029 } = require('./migrations/029_dedupe_traffic_source_meta_label
 const { up: up030 } = require('./migrations/030_canonicalize_built_in_traffic_sources');
 const { up: up031 } = require('./migrations/031_orders_shopify_line_items_variant_title_index');
 const { up: up032 } = require('./migrations/032_sessions_bs_ads_fields');
+const { up: up033 } = require('./migrations/033_sessions_landing_composite_index');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -294,6 +295,7 @@ async function migrateAndStart() {
   await up030();
   await up031();
   await up032();
+  await up033();
 
   try {
     const r = await runAdsMigrations();
@@ -368,7 +370,7 @@ setInterval(() => {
 (function scheduleAdsSync() {
   const store = require('./store');
   const { rollupRevenueHourly } = require('./ads/adsRevenueRollup');
-  const { syncGoogleAdsSpendHourly } = require('./ads/googleAdsSpendSync');
+  const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
   const { getAdsDb } = require('./ads/adsDb');
 
   async function runAdsSync() {
@@ -381,9 +383,7 @@ setInterval(() => {
       const rangeStartTs = bounds.start;
       const rangeEndTs = bounds.end;
 
-      const rollup = await rollupRevenueHourly({ rangeStartTs, rangeEndTs, source: 'googleads' });
-      console.log('[ads-sync] Revenue rollup:', rollup && rollup.ok ? `${rollup.upserts} upserts` : (rollup && rollup.error || 'failed'));
-
+      // 1. Spend sync
       let spend = null;
       try {
         spend = await syncGoogleAdsSpendHourly({ rangeStartTs, rangeEndTs });
@@ -391,6 +391,19 @@ setInterval(() => {
         spend = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'spend_sync_failed' };
       }
       console.log('[ads-sync] Spend sync:', spend && spend.ok ? `${spend.upserts} upserts (${spend.apiVersion})` : (spend && spend.error || 'failed'));
+
+      // 2. Gclid backfill (maps gclid in session entry_url → campaign via click_view)
+      let gclidBf = null;
+      try {
+        gclidBf = await backfillCampaignIdsFromGclid({ rangeStartTs, rangeEndTs, apiVersion: spend && spend.apiVersion ? spend.apiVersion : '' });
+      } catch (e) {
+        gclidBf = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'gclid_backfill_failed' };
+      }
+      console.log('[ads-sync] Gclid backfill:', gclidBf && gclidBf.ok ? `${gclidBf.updated || 0} updated` : (gclidBf && gclidBf.error || 'failed'));
+
+      // 3. Revenue rollup (picks up newly-backfilled campaign IDs)
+      const rollup = await rollupRevenueHourly({ rangeStartTs, rangeEndTs, source: 'googleads' });
+      console.log('[ads-sync] Revenue rollup:', rollup && rollup.ok ? `${rollup.upserts} upserts` : (rollup && rollup.error || 'failed'));
     } catch (err) {
       console.error('[ads-sync] Error:', err);
     }

@@ -1,5 +1,6 @@
 const config = require('../config');
 const fx = require('../fx');
+const { getDb, isPostgres } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig } = require('./adsStore');
 
@@ -398,6 +399,133 @@ async function syncGoogleAdsSpendHourly(options = {}) {
   }
 }
 
+function extractGclid(url) {
+  if (!url) return null;
+  try {
+    const m = String(url).match(/[?&]gclid=([^&]+)/);
+    return m ? decodeURIComponent(m[1]).trim() : null;
+  } catch (_) { return null; }
+}
+
+async function backfillCampaignIdsFromGclid(options = {}) {
+  try {
+    const rangeStartTs = options.rangeStartTs != null ? Number(options.rangeStartTs) : null;
+    const rangeEndTs = options.rangeEndTs != null ? Number(options.rangeEndTs) : null;
+    if (!rangeStartTs || !rangeEndTs) return { ok: false, error: 'Missing range' };
+
+    const db = getDb();
+    if (!db) return { ok: false, error: 'Main DB not available' };
+
+    const adsDb = getAdsDb();
+    if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+
+    const developerToken = (config.googleAdsDeveloperToken || '').trim();
+    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
+    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
+    if (!developerToken || !customerId) return { ok: false, error: 'Missing Google Ads credentials' };
+
+    const cfg = await getGoogleAdsConfig();
+    const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
+    if (!refreshToken) return { ok: false, error: 'Google Ads not connected' };
+
+    const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
+    const apiVersion = options.apiVersion || '';
+
+    // Step 1: Find sessions with gclid in entry_url but no bs_campaign_id
+    const sessions = await db.all(
+      `SELECT session_id, entry_url FROM sessions
+       WHERE entry_url LIKE ?
+         AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')
+         AND created_at >= ? AND created_at < ?
+       LIMIT 5000`,
+      ['%gclid=%', rangeStartTs, rangeEndTs]
+    );
+
+    if (!sessions || !sessions.length) {
+      return { ok: true, sessionsScanned: 0, updated: 0, message: 'No sessions with gclid need backfill' };
+    }
+
+    // Step 2: Extract gclids
+    const gclidToSessions = new Map();
+    for (const s of sessions) {
+      const gclid = extractGclid(s.entry_url);
+      if (gclid) {
+        const arr = gclidToSessions.get(gclid) || [];
+        arr.push(s.session_id);
+        gclidToSessions.set(gclid, arr);
+      }
+    }
+
+    if (!gclidToSessions.size) {
+      return { ok: true, sessionsScanned: sessions.length, updated: 0, message: 'No valid gclids extracted' };
+    }
+
+    // Step 3: Query click_view from Google Ads API
+    const meta = await fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken });
+    const accountTz = (meta && meta.ok && meta.timeZone) ? meta.timeZone : 'UTC';
+    const startYmd = fmtYmdInTz(rangeStartTs, accountTz);
+    const endYmd = fmtYmdInTz(rangeEndTs - 1, accountTz);
+
+    const cvQuery =
+      "SELECT click_view.gclid, campaign.id, ad_group.id " +
+      "FROM click_view " +
+      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
+
+    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query: cvQuery, apiVersionHint: apiVersion || (meta && meta.apiVersion) || '' });
+
+    if (!out || !out.ok) {
+      return {
+        ok: false,
+        stage: 'click_view',
+        sessionsScanned: sessions.length,
+        gclidCount: gclidToSessions.size,
+        error: (out && out.error) ? String(out.error).slice(0, 300) : 'click_view query failed',
+      };
+    }
+
+    // Step 4: Build gclid → campaign map
+    const gclidCampaignMap = new Map();
+    for (const r of out.results || []) {
+      const cv = r && r.clickView ? r.clickView : null;
+      const gclid = cv && cv.gclid ? String(cv.gclid) : '';
+      const campId = r && r.campaign && r.campaign.id != null ? String(r.campaign.id) : '';
+      const agId = r && r.adGroup && r.adGroup.id != null ? String(r.adGroup.id) : '_all_';
+      if (gclid && campId) gclidCampaignMap.set(gclid, { campaignId: campId, adgroupId: agId });
+    }
+
+    // Step 5: Update sessions
+    let updated = 0;
+    for (const [gclid, sessionIds] of gclidToSessions) {
+      const mapping = gclidCampaignMap.get(gclid);
+      if (!mapping) continue;
+
+      for (const sessionId of sessionIds) {
+        await db.run(
+          `UPDATE sessions SET
+             bs_source = COALESCE(NULLIF(TRIM(bs_source), ''), ?),
+             bs_campaign_id = ?,
+             bs_adgroup_id = COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), ?)
+           WHERE session_id = ? AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')`,
+          ['google', mapping.campaignId, mapping.adgroupId, sessionId]
+        );
+        updated++;
+      }
+    }
+
+    return {
+      ok: true,
+      sessionsScanned: sessions.length,
+      gclidCount: gclidToSessions.size,
+      clickViewRows: Array.isArray(out.results) ? out.results.length : 0,
+      gclidsMapped: gclidCampaignMap.size,
+      updated,
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 380) : 'gclid_backfill_failed' };
+  }
+}
+
 module.exports = {
   syncGoogleAdsSpendHourly,
+  backfillCampaignIdsFromGclid,
 };
