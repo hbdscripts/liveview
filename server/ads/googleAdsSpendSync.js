@@ -132,7 +132,7 @@ function getApiVersionsToTry(options = {}) {
   return Array.from(new Set(versionsRaw));
 }
 
-async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize = 10000, apiVersionHint = '' }) {
+async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint = '' }) {
   const versions = getApiVersionsToTry({ apiVersionHint });
 
   const headers = {
@@ -145,70 +145,62 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
   const attempts = [];
   let lastErr = null;
   for (const ver of versions) {
-    const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(customerId)}/googleAds:search`;
+    const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(customerId)}/googleAds:searchStream`;
 
     try {
-      let completed = false;
-      let pageToken = null;
-      const results = [];
-      while (true) {
-        const body = { query, pageSize };
-        if (pageToken) body.pageToken = pageToken;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query }),
+      });
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
+      const contentType = String(res.headers && res.headers.get ? (res.headers.get('content-type') || '') : '');
+
+      if (!res.ok) {
+        const errText = await res.text();
+        const bodySnippet = String(errText || '').slice(0, 380);
+        attempts.push({
+          version: ver,
+          url,
+          ok: false,
+          status: res.status,
+          contentType,
+          bodySnippet,
         });
-
-        const contentType = String(res.headers && res.headers.get ? (res.headers.get('content-type') || '') : '');
-
-        if (!res.ok) {
-          const errText = await res.text();
-          const bodySnippet = String(errText || '').slice(0, 380);
-          attempts.push({
-            version: ver,
-            url,
+        if (isLikelyDeprecatedEndpoint404(res, errText)) {
+          lastErr = new Error('Google Ads endpoint not found for ' + ver);
+          continue; // try next version
+        }
+        // 403 "API not enabled" — no point trying other versions
+        if (res.status === 403 && errText.includes('Enable it by visiting')) {
+          const m = errText.match(/https:\/\/console\.developers\.google\.com\/[^\s"]+/);
+          const enableUrl = m ? m[0] : 'https://console.developers.google.com/apis/api/googleads.googleapis.com/overview';
+          return {
             ok: false,
-            status: res.status,
-            contentType,
-            bodySnippet,
-          });
-          if (isLikelyDeprecatedEndpoint404(res, errText)) {
-            lastErr = new Error('Google Ads endpoint not found for ' + ver);
-            break; // try next version
-          }
-          // 403 "API not enabled" — no point trying other versions
-          if (res.status === 403 && errText.includes('Enable it by visiting')) {
-            const m = errText.match(/https:\/\/console\.developers\.google\.com\/[^\s"]+/);
-            const enableUrl = m ? m[0] : 'https://console.developers.google.com/apis/api/googleads.googleapis.com/overview';
-            return {
-              ok: false,
-              apiVersion: null,
-              error: 'Google Ads API is not enabled in your Google Cloud project. Enable it at: ' + enableUrl,
-              attempts,
-            };
-          }
-          lastErr = new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + bodySnippet);
-          break; // try next version
+            apiVersion: null,
+            error: 'Google Ads API is not enabled in your Google Cloud project. Enable it at: ' + enableUrl,
+            attempts,
+          };
         }
-
-        if (!attempts.some((a) => a && a.version === ver)) {
-          attempts.push({ version: ver, url, ok: true, status: res.status, contentType, bodySnippet: null });
-        }
-
-        const data = await res.json();
-        const rows = data && Array.isArray(data.results) ? data.results : [];
-        for (const r of rows) results.push(r);
-
-        pageToken = data && data.nextPageToken ? String(data.nextPageToken) : '';
-        if (!pageToken) {
-          completed = true;
-          break;
-        }
+        lastErr = new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + bodySnippet);
+        continue; // try next version
       }
 
-      if (completed) return { ok: true, apiVersion: ver, results, attempts };
+      attempts.push({ version: ver, url, ok: true, status: res.status, contentType, bodySnippet: null });
+
+      // searchStream returns an array of batch objects, each with a results array
+      const data = await res.json();
+      const results = [];
+      if (Array.isArray(data)) {
+        for (const batch of data) {
+          const rows = batch && Array.isArray(batch.results) ? batch.results : [];
+          for (const r of rows) results.push(r);
+        }
+      } else if (data && Array.isArray(data.results)) {
+        for (const r of data.results) results.push(r);
+      }
+
+      return { ok: true, apiVersion: ver, results, attempts };
     } catch (e) {
       const msg = e && e.message ? String(e.message) : 'request_failed';
       attempts.push({
@@ -233,7 +225,7 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
 
 async function fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken }) {
   const query = 'SELECT customer.time_zone, customer.currency_code FROM customer LIMIT 1';
-  const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 1 });
+  const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query });
   if (!out || !out.ok) {
     return { ok: false, error: (out && out.error) ? out.error : 'Google Ads customer meta query failed', attempts: out && out.attempts ? out.attempts : [] };
   }
@@ -299,7 +291,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
       "FROM ad_group " +
       `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
 
-    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 10000, apiVersionHint: meta.apiVersion || '' });
+    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint: meta.apiVersion || '' });
     if (!out || !out.ok) {
       return {
         ok: false,
