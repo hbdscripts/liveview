@@ -64,6 +64,20 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+router.get('/campaign-detail', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=15');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const rangeKey = req && req.query ? req.query.range : '';
+    const campaignId = req && req.query ? req.query.campaignId : '';
+    const out = await adsService.getCampaignDetail({ rangeKey, campaignId });
+    res.json(out);
+  } catch (err) {
+    console.error('[ads.campaign-detail]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.get('/refresh', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');

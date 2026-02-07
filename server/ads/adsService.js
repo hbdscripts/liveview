@@ -332,8 +332,152 @@ async function getSummary(options = {}) {
   };
 }
 
+async function getCampaignDetail(options = {}) {
+  const rangeKey = normalizeRangeKey(options.rangeKey);
+  const campaignId = options.campaignId != null ? String(options.campaignId).trim() : '';
+  if (!campaignId) return { ok: false, error: 'Missing campaignId' };
+
+  const now = Date.now();
+  const timeZone = store.resolveAdminTimeZone();
+  const bounds = store.getRangeBounds(rangeKey, now, timeZone);
+  const currency = 'GBP';
+
+  const adsDb = getAdsDb();
+  if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+
+  // Hourly spend for this campaign
+  const spendHourly = await adsDb.all(
+    `SELECT
+       EXTRACT(EPOCH FROM hour_ts)::bigint * 1000 AS ts,
+       COALESCE(SUM(spend_gbp), 0) AS spend,
+       COALESCE(SUM(clicks), 0) AS clicks,
+       COALESCE(SUM(impressions), 0) AS impressions
+     FROM google_ads_spend_hourly
+     WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+       AND campaign_id = ?
+     GROUP BY hour_ts
+     ORDER BY hour_ts ASC`,
+    [bounds.start, bounds.end, campaignId]
+  );
+
+  // Attributed orders for this campaign (from orders_shopify via landing_site)
+  const mainDb = getDb();
+  let recentSales = [];
+  let revenueHourly = new Map();
+
+  if (mainDb) {
+    const orders = await mainDb.all(
+      `SELECT order_id, order_name, total_price, currency, created_at, raw_json
+       FROM orders_shopify
+       WHERE created_at >= ? AND created_at < ?
+         AND financial_status IN ('paid', 'partially_refunded')
+         AND cancelled_at IS NULL
+       ORDER BY created_at DESC`,
+      [bounds.start, bounds.end]
+    );
+
+    let gclidCache = new Map();
+    try {
+      const cacheRows = await adsDb.all('SELECT gclid, campaign_id, adgroup_id FROM gclid_campaign_cache');
+      for (const cr of cacheRows || []) {
+        if (cr.gclid && cr.campaign_id) gclidCache.set(cr.gclid, { campaignId: String(cr.campaign_id), adgroupId: cr.adgroup_id || '_all_' });
+      }
+    } catch (_) {}
+
+    const ratesToGbp = await fx.getRatesToGbp();
+    const seenOrderIds = new Set();
+
+    for (const o of orders || []) {
+      const oid = o && o.order_id ? String(o.order_id) : '';
+      if (!oid || seenOrderIds.has(oid)) continue;
+
+      let json = null;
+      let landingSite = '';
+      try {
+        json = typeof o.raw_json === 'string' ? JSON.parse(o.raw_json) : null;
+        landingSite = (json && (json.landing_site || json.landingSite)) || '';
+      } catch (_) {}
+      if (!landingSite) continue;
+
+      const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
+      let matchedCampaignId = bsIds.bsCampaignId || '';
+
+      if (!matchedCampaignId) {
+        const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
+        const gclid = gclidMatch ? decodeURIComponent(gclidMatch[1]).trim() : '';
+        if (gclid) {
+          const mapping = gclidCache.get(gclid);
+          if (mapping) matchedCampaignId = mapping.campaignId;
+        }
+      }
+      if (matchedCampaignId !== campaignId) continue;
+
+      seenOrderIds.add(oid);
+      const cur = fx.normalizeCurrency(o.currency) || 'GBP';
+      const rawPrice = o.total_price != null ? Number(o.total_price) : 0;
+      const priceGbp = fx.convertToGbp(Number.isFinite(rawPrice) ? rawPrice : 0, cur, ratesToGbp);
+      const rev = (typeof priceGbp === 'number' && Number.isFinite(priceGbp)) ? priceGbp : 0;
+
+      // Country from shipping/billing address
+      let country = '';
+      if (json) {
+        const addr = json.shipping_address || json.shippingAddress || json.billing_address || json.billingAddress || {};
+        country = addr.country_code || addr.countryCode || addr.country || '';
+      }
+
+      // Bucket into hourly for graph
+      const createdAt = o.created_at != null ? Number(o.created_at) : 0;
+      const hourTs = Math.floor(createdAt / 3600000) * 3600000;
+      const prev = revenueHourly.get(hourTs) || 0;
+      revenueHourly.set(hourTs, prev + rev);
+
+      // Collect for recent sales list
+      recentSales.push({
+        orderId: oid,
+        orderName: o.order_name || oid,
+        country: country ? String(country).toUpperCase() : '',
+        value: Math.round(rev * 100) / 100,
+        currency,
+        time: createdAt,
+      });
+    }
+  }
+
+  // Build aligned hourly arrays for chart
+  const allTs = new Set();
+  for (const r of spendHourly || []) {
+    if (r && r.ts) allTs.add(Number(r.ts));
+  }
+  for (const ts of revenueHourly.keys()) {
+    allTs.add(ts);
+  }
+  const sortedTs = Array.from(allTs).sort((a, b) => a - b);
+  const spendByTs = new Map();
+  for (const r of spendHourly || []) {
+    spendByTs.set(Number(r.ts), Number(r.spend) || 0);
+  }
+
+  const chart = {
+    labels: sortedTs.map(function (ts) {
+      try { return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone }); } catch (_) { return String(ts); }
+    }),
+    spend: sortedTs.map(function (ts) { return Math.round((spendByTs.get(ts) || 0) * 100) / 100; }),
+    revenue: sortedTs.map(function (ts) { return Math.round((revenueHourly.get(ts) || 0) * 100) / 100; }),
+  };
+
+  return {
+    ok: true,
+    campaignId,
+    rangeKey,
+    currency,
+    chart,
+    recentSales: recentSales.slice(0, 10),
+  };
+}
+
 module.exports = {
   normalizeRangeKey,
   getStatus,
   getSummary,
+  getCampaignDetail,
 };
