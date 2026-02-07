@@ -442,7 +442,7 @@ async function backfillCampaignIdsFromGclid(options = {}) {
       `SELECT session_id, entry_url FROM sessions
        WHERE entry_url LIKE ?
          AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')
-         AND created_at >= ? AND created_at < ?
+         AND started_at >= ? AND started_at < ?
        LIMIT 5000`,
       ['%gclid=%', rangeStartTs, rangeEndTs]
     );
