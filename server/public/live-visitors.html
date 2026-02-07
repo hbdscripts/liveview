@@ -948,6 +948,7 @@
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Geos</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="breakdown">Breakdown</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="ads">Ads</button>
@@ -965,6 +966,7 @@
       <span class="tab-text">Home</span>
     </button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Geos</button>
+    <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Breakdown</button>
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <button type="button" role="tab" id="tab-ads" aria-selected="false" aria-controls="tab-panel-ads" data-tab="ads">Ads</button>
@@ -1143,25 +1145,25 @@
   </div>
   </div>
 
-  <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
+  <div id="tab-panel-breakdown" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-breakdown">
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="products-loading-overlay">
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="breakdown-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
         <div class="report-build-title">building reports</div>
-        <div class="report-build-step" id="products-build-step">—</div>
+        <div class="report-build-step" id="breakdown-build-step">—</div>
       </div>
     </div>
     <div class="aov-cards-wrap" id="leaderboard-cards-wrap">
       <div class="aov-cards-header">
         <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
           <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-leaderboard-btn" aria-haspopup="true" aria-expanded="false">
-            <span id="products-leaderboard-label">Title</span>
+            <span id="products-leaderboard-label">Product Title</span>
             <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="aov-cards-title-menu" id="products-leaderboard-menu" role="menu" aria-hidden="true">
-            <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Title</button>
-            <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Type</button>
+            <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Product Title</button>
+            <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Product Type</button>
           </div>
         </div>
         <div class="aov-cards-title">Leaderboard</div>
@@ -1174,17 +1176,29 @@
       <div class="aov-cards-header">
         <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
           <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-variant-cards-btn" aria-haspopup="true" aria-expanded="false">
-            <span id="products-variant-cards-label">Finishes</span>
+            <span id="products-variant-cards-label">Variant Finish</span>
             <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="aov-cards-title-menu" id="products-variant-cards-menu" role="menu" aria-hidden="true">
-            <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Finishes</button>
-            <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Lengths</button>
+            <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Variant Finish</button>
+            <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Variant Length</button>
           </div>
         </div>
       </div>
       <div class="aov-cards-grid" id="finishes-cards-grid" data-cards-view="finishes">
         <div class="aov-card aov-card-empty">—</div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
+  <div class="stats-row-wrap">
+    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="products-loading-overlay">
+      <div class="report-build-wrap">
+        <div class="spinner"></div>
+        <div class="report-build-title">building reports</div>
+        <div class="report-build-step" id="products-build-step">—</div>
       </div>
     </div>
   <div class="stats-row">
@@ -1345,7 +1359,6 @@
       <div class="config-modal-header">
         <div class="config-modal-header-inner">
           <h3 class="config-modal-title">Settings</h3>
-          <div class="config-modal-subtitle">Shopify truth · pixel evidence · system health</div>
         </div>
         <div class="config-modal-actions">
           <button type="button" id="config-refresh-btn" class="config-btn config-refresh-btn" title="Refresh diagnostics" aria-label="Refresh diagnostics">
@@ -1462,15 +1475,17 @@
     let lastKpisFetchedAt = 0;
     let lastTrafficFetchedAt = 0;
     let lastProductsFetchedAt = 0;
+    let lastBreakdownFetchedAt = 0;
     let kpiCache = null;
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
+    let breakdownRefreshInFlight = null;
     let kpisRefreshInFlight = null;
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
-    let reportBuildTokens = { stats: 0, products: 0, traffic: 0 };
+    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0 };
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
@@ -1785,10 +1800,8 @@
               if (link) link.href = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchProductsLeaderboard === 'function') fetchProductsLeaderboard();
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
-            if (activeMainTab === 'products' && shopForSalesFallback) {
+            if (activeMainTab === 'breakdown' && shopForSalesFallback && typeof fetchProductsLeaderboard === 'function') fetchProductsLeaderboard();
+            if (activeMainTab === 'breakdown' && shopForSalesFallback) {
               try {
                 if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') {
                   if (typeof fetchLengths === 'function') fetchLengths();
@@ -1797,6 +1810,8 @@
                 }
               } catch (_) {}
             }
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
+            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
           if (typeof renderSales === 'function') renderSales(statsCache);
@@ -3823,7 +3838,7 @@
     }
 
     function labelForProductsLeaderboardView(view) {
-      return normalizeProductsLeaderboardView(view) === 'type' ? 'Type' : 'Title';
+      return normalizeProductsLeaderboardView(view) === 'type' ? 'Product Type' : 'Product Title';
     }
 
     function updateProductsLeaderboardDropdownUi() {
@@ -3876,7 +3891,7 @@
       updateProductsLeaderboardDropdownUi();
       closeProductsLeaderboardMenu();
       renderProductsLeaderboard(leaderboardCache);
-      if (activeMainTab !== 'products') return;
+      if (activeMainTab !== 'breakdown' && activeMainTab !== 'products') return;
       fetchProductsLeaderboard({ force }).catch(function() {});
     }
 
@@ -3917,7 +3932,7 @@
     }
 
     function labelForProductsVariantCardsView(view) {
-      return normalizeProductsVariantCardsView(view) === 'lengths' ? 'Lengths' : 'Finishes';
+      return normalizeProductsVariantCardsView(view) === 'lengths' ? 'Variant Length' : 'Variant Finish';
     }
 
     function updateProductsVariantCardsDropdownUi() {
@@ -3969,7 +3984,7 @@
       try { sessionStorage.setItem(PRODUCTS_VARIANT_CARDS_VIEW_KEY, view); } catch (_) {}
       updateProductsVariantCardsDropdownUi();
       closeProductsVariantCardsMenu();
-      if (activeMainTab !== 'products') return;
+      if (activeMainTab !== 'breakdown' && activeMainTab !== 'products') return;
       if (view === 'lengths') {
         if (lengthsCache) renderLengths(lengthsCache);
         fetchLengths({ force }).catch(function() {});
@@ -5077,12 +5092,14 @@
       currentPage = 1;
       syncDateSelectOptions();
       // Reset caches when range changes.
+      leaderboardCache = null;
       finishesCache = null;
       lengthsCache = null;
       bestSellersCache = null;
       bestVariantsCache = null;
       trafficCache = null;
       lastStatsFetchedAt = 0;
+      lastBreakdownFetchedAt = 0;
       lastProductsFetchedAt = 0;
       lastTrafficFetchedAt = 0;
       updateNextUpdateUi();
@@ -5092,6 +5109,8 @@
 
       if (activeMainTab === 'stats') {
         refreshStats({ force: false });
+      } else if (activeMainTab === 'breakdown') {
+        refreshBreakdown({ force: false });
       } else if (activeMainTab === 'traffic') {
         refreshTraffic({ force: false });
       } else if (activeMainTab === 'products') {
@@ -5637,31 +5656,17 @@
       return statsRefreshInFlight;
     }
 
-    function refreshProducts(options = {}) {
+    function refreshBreakdown(options = {}) {
       const force = !!options.force;
-      if (productsRefreshInFlight) return productsRefreshInFlight;
+      if (breakdownRefreshInFlight) return breakdownRefreshInFlight;
 
-      const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
+      const build = startReportBuild({ key: 'breakdown', overlayId: 'breakdown-loading-overlay', stepId: 'breakdown-build-step' });
       let leaderboardP = null;
       let cardsP = null;
-      let bestP = null;
-      let variantsP = null;
       const cardsView = normalizeProductsVariantCardsView(productsVariantCardsView);
       const cardsLabel = cardsView === 'lengths' ? 'lengths' : 'finishes';
-      try {
-        leaderboardP = fetchProductsLeaderboard({ force });
-      } catch (err) {
-        console.error(err);
-        leaderboardP = Promise.resolve(null);
-      }
-      try {
-        cardsP = (cardsView === 'lengths' ? fetchLengths : fetchFinishes)({ force });
-      } catch (err) {
-        console.error(err);
-        cardsP = Promise.resolve(null);
-      }
-      try { bestP = fetchBestSellers({ force }); } catch (err) { console.error(err); bestP = Promise.resolve(null); }
-      try { variantsP = fetchBestVariants({ force }); } catch (err) { console.error(err); variantsP = Promise.resolve(null); }
+      try { leaderboardP = fetchProductsLeaderboard({ force }); } catch (err) { console.error(err); leaderboardP = Promise.resolve(null); }
+      try { cardsP = (cardsView === 'lengths' ? fetchLengths : fetchFinishes)({ force }); } catch (err) { console.error(err); cardsP = Promise.resolve(null); }
       function settled(p) {
         return Promise.resolve(p)
           .then(function(v) { return { ok: true, value: v }; })
@@ -5669,14 +5674,36 @@
       }
       const leaderboardS = settled(leaderboardP);
       const cardsS = settled(cardsP);
-      const bestS = settled(bestP);
-      const variantsS = settled(variantsP);
 
-      productsRefreshInFlight = Promise.resolve()
+      breakdownRefreshInFlight = Promise.resolve()
         .then(function() { build.step('building leaderboard...'); return leaderboardS; })
         .then(function() { build.step('building leaderboard... done'); return delay(180); })
         .then(function() { build.step('building ' + cardsLabel + '...'); return cardsS; })
         .then(function() { build.step('building ' + cardsLabel + '... done'); return delay(180); })
+        .then(function() { lastBreakdownFetchedAt = Date.now(); })
+        .catch(function(err) { console.error(err); return null; })
+        .finally(function() { breakdownRefreshInFlight = null; build.finish(); });
+      return breakdownRefreshInFlight;
+    }
+
+    function refreshProducts(options = {}) {
+      const force = !!options.force;
+      if (productsRefreshInFlight) return productsRefreshInFlight;
+
+      const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
+      let bestP = null;
+      let variantsP = null;
+      try { bestP = fetchBestSellers({ force }); } catch (err) { console.error(err); bestP = Promise.resolve(null); }
+      try { variantsP = fetchBestVariants({ force }); } catch (err) { console.error(err); variantsP = Promise.resolve(null); }
+      function settled(p) {
+        return Promise.resolve(p)
+          .then(function(v) { return { ok: true, value: v }; })
+          .catch(function(err) { console.error(err); return { ok: false, error: err }; });
+      }
+      const bestS = settled(bestP);
+      const variantsS = settled(variantsP);
+
+      productsRefreshInFlight = Promise.resolve()
         .then(function() { build.step('building best products...'); return bestS; })
         .then(function() { build.step('building best products... done'); return delay(180); })
         .then(function() { build.step('building best variants...'); return variantsS; })
@@ -6627,24 +6654,6 @@
 
           const evidenceExpected = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
 
-          const TAB_KEY = 'birdseye_diag_tab';
-          const allTabs = [
-            { id: 'overview', label: 'Overview' },
-            { id: 'compare', label: 'Compare' },
-            { id: 'sales', label: 'Sales' },
-            { id: 'traffic', label: 'Traffic' },
-            { id: 'pixel', label: 'Pixel' },
-            { id: 'shopify', label: 'Shopify' },
-            { id: 'sources', label: 'Sources' },
-            { id: 'system', label: 'System' },
-            { id: 'defs', label: 'Definitions' },
-          ];
-          let activeTab = 'overview';
-          try {
-            const saved = localStorage.getItem(TAB_KEY);
-            if (saved && allTabs.some(t => t.id === saved)) activeTab = saved;
-          } catch (_) {}
-
           function pillInline(text, tone) {
             const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
             return '<span class="dm-pill dm-pill-' + t + '">' + escapeHtml(String(text || '')) + '</span>';
@@ -6700,17 +6709,15 @@
             return pillInline(text, tone);
           }
 
-          function tabSelectHtml() {
-            let opts = '';
-            allTabs.forEach(function(t) {
-              opts += '<option value="' + escapeHtml(t.id) + '"' + (t.id === activeTab ? ' selected' : '') + '>' + escapeHtml(t.label) + '</option>';
-            });
-            return '<select id="be-diag-tab-select" class="dm-tab-select" aria-label="Section">' + opts + '</select>';
-          }
-
-          function panelWrap(id, innerHtml) {
-            const cls = 'dm-panel' + (id === activeTab ? ' dm-panel--active' : '');
-            return '<div class="' + cls + '" data-be-panel="' + escapeHtml(id) + '">' + (innerHtml || '') + '</div>';
+          function diagSection(title, innerHtml, options = {}) {
+            const open = options && options.open === true;
+            const safeTitle = escapeHtml(title || '');
+            return (
+              '<details class="dm-section-details"' + (open ? ' open' : '') + '>' +
+                '<summary class="dm-section-summary">' + safeTitle + '</summary>' +
+                '<div class="dm-section-body">' + (innerHtml || '') + '</div>' +
+              '</details>'
+            );
           }
 
           const headerMetaBits = [];
@@ -6812,19 +6819,17 @@
 
           let html = '';
           html += '<div id="be-diag-root" class="dm-root">';
-          html += '<div class="dm-section dm-section-nav"><div class="dm-tab-row">' + tabSelectHtml() + '</div></div>';
-          html += '<div class="dm-section dm-section-copy">';
           html += '<details class="dm-copy-dropdown">';
-          html += '<summary class="dm-copy-dropdown-summary">Copy / meta</summary>';
+          html += '<summary class="dm-copy-dropdown-summary">Advanced</summary>';
           html += '<div class="dm-copy-dropdown-body"><div class="dm-bar-row">';
           html +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
           html +=   '<div class="dm-bar-actions">' +
-                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
-                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
-                        (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
-                      '</div>';
-          html += '</div></div></details></div>';
+                       '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
+                       '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
+                       (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
+                       (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
+                     '</div>';
+          html += '</div></div></details>';
 
           // Overview: bots at top, then Shopify/Birdseye cards, then Quick drift
           let overview = '';
@@ -7116,15 +7121,15 @@
           let defsPanel = '';
           defsPanel += card('Metric + table definitions', renderTrackerDefinitions(trackerDefinitions));
 
-          html += panelWrap('overview', overview);
-          html += panelWrap('compare', compare);
-          html += panelWrap('sales', salesPanel);
-          html += panelWrap('traffic', trafficPanel);
-          html += panelWrap('pixel', pixelPanel);
-          html += panelWrap('shopify', shopifyPanel);
-          html += panelWrap('sources', sourcesPanel);
-          html += panelWrap('system', systemPanel);
-          html += panelWrap('defs', defsPanel);
+          html += diagSection('Overview', overview, { open: true });
+          html += diagSection('Sales', salesPanel, { open: true });
+          html += diagSection('Comparison', compare);
+          html += diagSection('Traffic', trafficPanel);
+          html += diagSection('Pixel', pixelPanel);
+          html += diagSection('Shopify', shopifyPanel);
+          html += diagSection('Sources', sourcesPanel);
+          html += diagSection('System', systemPanel);
+          html += diagSection('Definitions', defsPanel);
 
           html += '</div>'; // be-diag-root
 
@@ -7278,26 +7283,6 @@
             }
           } catch (_) {}
           try { renderTrafficPickers(trafficCache || null); } catch (_) {}
-          try {
-            const root = document.getElementById('be-diag-root');
-            if (root) {
-              const selectEl = root.querySelector('#be-diag-tab-select');
-              const panels = Array.from(root.querySelectorAll('[data-be-panel]'));
-              function setActiveTab(tabId) {
-                const id = tabId && panels.some(p => p.getAttribute('data-be-panel') === tabId) ? tabId : 'overview';
-                panels.forEach(function(p) {
-                  const pid = p.getAttribute('data-be-panel');
-                  p.classList.toggle('dm-panel--active', pid === id);
-                });
-                if (selectEl) selectEl.value = id;
-                try { localStorage.setItem(TAB_KEY, id); } catch (_) {}
-              }
-              if (selectEl) {
-                selectEl.addEventListener('change', function() { setActiveTab(selectEl.value); });
-              }
-              setActiveTab(activeTab);
-            }
-          } catch (_) {}
           try {
             const btn = document.getElementById('be-copy-ai-btn');
             const msg = document.getElementById('be-copy-ai-msg');
@@ -7688,11 +7673,13 @@
         const TAB_KEY = 'livevisitors-main-tab';
         const tabSpy = document.getElementById('tab-spy');
         const tabStats = document.getElementById('tab-stats');
+        const tabBreakdown = document.getElementById('tab-breakdown');
         const tabProducts = document.getElementById('tab-products');
         const tabTraffic = document.getElementById('tab-traffic');
         const tabAds = document.getElementById('tab-ads');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
+        const panelBreakdown = document.getElementById('tab-panel-breakdown');
         const panelProducts = document.getElementById('tab-panel-products');
         const panelTraffic = document.getElementById('tab-panel-traffic');
         const panelAds = document.getElementById('tab-panel-ads');
@@ -7740,7 +7727,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'stats' ? 'Geos' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home')));
+            mobileCurrent.textContent = tab === 'stats' ? 'Geos' : (tab === 'breakdown' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -7760,6 +7747,7 @@
         function setTab(tab) {
           const isSpy = tab === 'spy';
           const isStats = tab === 'stats';
+          const isBreakdown = tab === 'breakdown';
           const isProducts = tab === 'products';
           const isTraffic = tab === 'traffic';
           const isAds = tab === 'ads';
@@ -7768,11 +7756,13 @@
           closeMobileMenu();
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
+          if (tabBreakdown) tabBreakdown.setAttribute('aria-selected', isBreakdown ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', isAds ? 'true' : 'false');
           if (panelSpy) panelSpy.classList.toggle('active', isSpy);
           if (panelStats) panelStats.classList.toggle('active', isStats);
+          if (panelBreakdown) panelBreakdown.classList.toggle('active', isBreakdown);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
           if (panelAds) panelAds.classList.toggle('active', isAds);
@@ -7787,6 +7777,9 @@
           if (tab === 'stats') {
             // Always refresh when entering Geos so tables are never stuck on "Loading..."
             refreshStats({ force: false });
+            ensureKpis();
+          } else if (tab === 'breakdown') {
+            refreshBreakdown({ force: false });
             ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
@@ -7813,11 +7806,12 @@
         let initialTab = 'spy';
         try {
           const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'spy' || saved === 'products' || saved === 'traffic' || saved === 'ads') initialTab = saved;
+          if (saved === 'stats' || saved === 'breakdown' || saved === 'spy' || saved === 'products' || saved === 'traffic' || saved === 'ads') initialTab = saved;
         } catch (_) {}
         setTab(initialTab);
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
+        if (tabBreakdown) tabBreakdown.addEventListener('click', function() { setTab('breakdown'); });
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
@@ -7853,6 +7847,7 @@
             btn.classList.add('spinning');
             setTimeout(function() { btn.classList.remove('spinning'); }, 800);
             if (activeMainTab === 'stats') refreshStats({ force: true });
+            else if (activeMainTab === 'breakdown') refreshBreakdown({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
@@ -7914,6 +7909,13 @@
       refreshKpis({ force: false });
     }
 
+    function onBreakdownAutoRefreshTick() {
+      if (activeMainTab !== 'breakdown') return;
+      if (getStatsRange() !== 'today') return;
+      if (document.visibilityState !== 'visible') return;
+      refreshBreakdown({ force: false });
+    }
+
     function onProductsAutoRefreshTick() {
       if (activeMainTab !== 'products') return;
       if (getStatsRange() !== 'today') return;
@@ -7933,6 +7935,7 @@
     setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/Sales (5 min interval)
     setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS);
     setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
+    setInterval(onBreakdownAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS);
     setInterval(tickTimeOnSite, 30000);
@@ -7961,6 +7964,9 @@
       if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
+      } else if (activeMainTab === 'breakdown') {
+        const staleBreakdown = !lastBreakdownFetchedAt || (Date.now() - lastBreakdownFetchedAt) > STATS_REFRESH_MS;
+        if (staleBreakdown) refreshBreakdown({ force: false });
       } else if (activeMainTab === 'products') {
         const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
         if (staleProducts) refreshProducts({ force: false });
