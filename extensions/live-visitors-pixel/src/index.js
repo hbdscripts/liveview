@@ -75,6 +75,12 @@ function utmParamsFromContext(ctx) {
   }
 }
 
+function entryUrlFromContext(ctx) {
+  const loc = ctx?.document?.location || ctx?.location;
+  if (typeof loc?.href === 'string' && loc.href.trim()) return loc.href.trim();
+  return null;
+}
+
 function referrerFromContext(ctx) {
   const ref = ctx?.document?.referrer;
   if (typeof ref !== 'string' || !ref.trim()) return null;
@@ -324,7 +330,10 @@ register(({ analytics, init, browser, settings }) => {
     lastPath = pathFromContext(init?.context) || '/';
     updateUtmFromContext(init?.context);
     updateReferrerFromContext(init?.context);
-    send(payload('page_viewed', { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency }));
+    const entryUrl = entryUrlFromContext(init?.context);
+    const initExtra = { cart_qty: cartQty, cart_value: cartValue, cart_currency: cartCurrency };
+    if (entryUrl) initExtra.entry_url = entryUrl;
+    send(payload('page_viewed', initExtra));
     startHeartbeat();
   }).catch(() => {});
 

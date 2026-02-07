@@ -1125,6 +1125,7 @@
       .main { padding: 20px; }
       .stats-row { grid-template-columns: 1fr; gap: var(--table-gap); margin-bottom: 1.25rem; }
       .stats-row.breakdown-row { grid-template-columns: 1fr; }
+      #tab-panel-breakdown .stats-row { grid-template-columns: 1fr; }
       #tab-panel-products .stats-row,
       #products-type-tables-row { grid-template-columns: 1fr; }
       .stats-card { min-width: 100%; padding: 0; }
