@@ -389,6 +389,9 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
     'total_tax',
     'total_discounts',
     'total_shipping_price_set',
+    'landing_site',
+    'referring_site',
+    'client_details',
     'shipping_address',
     'billing_address',
     'customer',
@@ -422,6 +425,9 @@ function priorPaidOrderForCustomerBeforeApiUrl(shop, customerId, beforeIso) {
     'total_tax',
     'total_discounts',
     'total_shipping_price_set',
+    'landing_site',
+    'referring_site',
+    'client_details',
     'customer',
     'checkout_token',
   ].join(',');
@@ -625,8 +631,10 @@ async function upsertOrder(row) {
   const prevHasAddresses = !!(prevRaw && (prevRaw.includes('"shipping_address"') || prevRaw.includes('"billing_address"') || prevRaw.includes('"shippingAddress"') || prevRaw.includes('"billingAddress"')));
   const nextHasAddresses = !!(nextRaw && (nextRaw.includes('"shipping_address"') || nextRaw.includes('"billing_address"') || nextRaw.includes('"shippingAddress"') || nextRaw.includes('"billingAddress"')));
   const missingAddressFields = !prevHasAddresses && nextHasAddresses;
-  // Update when Shopify updated_at changed, or when we have never synced a row.
-  const shouldUpdate = missingDerived || missingAddressFields || (prevUpdated == null || nextUpdated == null ? true : nextUpdated !== prevUpdated);
+  const prevHasAttribution = !!(prevRaw && (prevRaw.includes('"landing_site"') || prevRaw.includes('"landingSite"') || prevRaw.includes('"referring_site"') || prevRaw.includes('"referringSite"') || prevRaw.includes('"client_details"') || prevRaw.includes('"clientDetails"')));
+  const nextHasAttribution = !!(nextRaw && (nextRaw.includes('"landing_site"') || nextRaw.includes('"landingSite"') || nextRaw.includes('"referring_site"') || nextRaw.includes('"referringSite"') || nextRaw.includes('"client_details"') || nextRaw.includes('"clientDetails"')));
+  const missingAttributionFields = !prevHasAttribution && nextHasAttribution;
+  const shouldUpdate = missingDerived || missingAddressFields || missingAttributionFields || (prevUpdated == null || nextUpdated == null ? true : nextUpdated !== prevUpdated);
   if (shouldUpdate) {
     await updateOrder(row);
     return { inserted: 0, updated: 1 };
