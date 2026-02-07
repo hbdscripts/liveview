@@ -9103,7 +9103,10 @@
             prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
             prodTbody.innerHTML = products.map(function(p) {
-              return '<tr><td>' + escapeHtml(p.title) + '</td><td>' + fmtGbp(p.revenue) + '</td><td>' + p.orders + '</td></tr>';
+              var thumbHtml = p.thumb_url
+                ? '<img src="' + escapeHtml(hotImg(p.thumb_url)) + '" width="32" height="32" style="border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:0.5rem" loading="lazy" alt="">'
+                : '';
+              return '<tr><td><span style="display:inline-flex;align-items:center">' + thumbHtml + escapeHtml(p.title) + '</span></td><td>' + fmtGbp(p.revenue) + '</td><td>' + p.orders + '</td></tr>';
             }).join('');
           }
         }

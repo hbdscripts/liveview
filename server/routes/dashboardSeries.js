@@ -9,6 +9,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
+const productMetaCache = require('../shopifyProductMetaCache');
 
 function sessionFilterForTraffic(trafficMode) {
   if (trafficMode === 'human_only') {
@@ -58,6 +59,9 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const shop = salesTruth.resolveShopForSales('');
   const filter = sessionFilterForTraffic(trafficMode);
 
+  // Platform start date: never show data before Feb 1 2025
+  const PLATFORM_START = '2025-02-01';
+
   // Build day boundaries
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone,
@@ -70,6 +74,10 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     const d = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day));
     d.setUTCDate(d.getUTCDate() - i);
     const parts = { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+    const label = String(parts.year).padStart(4, '0') + '-' +
+      String(parts.month).padStart(2, '0') + '-' +
+      String(parts.day).padStart(2, '0');
+    if (label < PLATFORM_START) continue; // skip dates before platform start
     const startMs = zonedTimeToUtcMs(parts.year, parts.month, parts.day, 0, 0, 0, timeZone);
     let endMs;
     if (i === 0) {
@@ -79,9 +87,6 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       next.setUTCDate(next.getUTCDate() + 1);
       endMs = zonedTimeToUtcMs(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate(), 0, 0, 0, timeZone);
     }
-    const label = String(parts.year).padStart(4, '0') + '-' +
-      String(parts.month).padStart(2, '0') + '-' +
-      String(parts.day).padStart(2, '0');
     dayBounds.push({ label, start: startMs, end: endMs });
   }
 
@@ -198,27 +203,41 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
-             GROUP BY li.product_id
+             GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`
-          : `SELECT MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
-             GROUP BY li.product_id
+             GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`,
         [shop, overallStart, overallEnd]
       );
+      // Fetch product thumbnails
+      let token = null;
+      try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
+      const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
+      const metaMap = new Map();
+      for (const pid of productIds) {
+        try {
+          const meta = await productMetaCache.getProductMeta(shop, token, pid);
+          if (meta && meta.ok) metaMap.set(String(pid), meta);
+        } catch (_) {}
+      }
       topProducts = productRows.map(function(r) {
+        const pid = r.product_id ? String(r.product_id) : '';
+        const meta = metaMap.get(pid);
         return {
           title: r.title || 'Unknown',
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
+          thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
         };
       });
     } catch (_) {}
@@ -270,8 +289,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   let adSpendPerDay = {};
   try {
     const adsDb = require('../ads/adsDb');
-    if (adsDb && typeof adsDb.getPool === 'function') {
-      const pool = adsDb.getPool();
+    if (adsDb && typeof adsDb.getAdsPool === 'function') {
+      const pool = adsDb.getAdsPool();
       if (pool) {
         const spendRows = await pool.query(
           `SELECT date, SUM(cost_micros) AS cost_micros
