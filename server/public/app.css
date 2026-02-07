@@ -262,7 +262,20 @@
     .aov-card { padding: 0.6rem 0.8rem; box-shadow: 2px 2px 2px #eee; display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
     .aov-card-left { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .aov-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .aov-card-value { font-size: 0.9rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+    .aov-card-value { font-size: 0.9rem; font-weight: 600; color: var(--text); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .aov-card-cr-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.14rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      color: #0f766e;
+    }
     .aov-card-empty { justify-content: center; color: var(--muted); }
 
     /* Products → Finishes cards */
@@ -306,7 +319,7 @@
       #leaderboard-cards-grid[data-leaderboard-view="title"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #leaderboard-cards-grid[data-leaderboard-view="type"] { grid-template-columns: 1fr; }
     }
-    .aov-card--leaderboard .aov-card-value { color: #0d9488; }
+    .aov-card--leaderboard .aov-card-value-main { color: #0d9488; }
     .leaderboard-thumb-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; }
     .leaderboard-thumb-link:focus-visible { outline: 2px solid rgba(13, 148, 136, 0.55); outline-offset: 2px; border-radius: 12px; }
     .leaderboard-thumb-link:hover .leaderboard-thumb-wrap { border-color: rgba(13, 148, 136, 0.35); }

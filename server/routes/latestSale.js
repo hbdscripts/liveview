@@ -33,6 +33,27 @@ function normalizeCountry(v) {
   return code;
 }
 
+function parseCountryFromOrderRawJson(rawJson) {
+  if (!rawJson || typeof rawJson !== 'string') return 'XX';
+  let order = null;
+  try {
+    order = JSON.parse(rawJson);
+  } catch (_) {
+    order = null;
+  }
+  const ship = (order && (order.shipping_address || order.shippingAddress)) || null;
+  const bill = (order && (order.billing_address || order.billingAddress)) || null;
+  const candidates = [
+    ship && (ship.country_code || ship.countryCode),
+    bill && (bill.country_code || bill.countryCode),
+  ];
+  for (const c of candidates) {
+    const cc = normalizeCountry(c);
+    if (cc && cc !== 'XX') return cc;
+  }
+  return 'XX';
+}
+
 function parseTopProduct(rawJson) {
   if (!rawJson || typeof rawJson !== 'string') return { title: '', productId: null };
   let order = null;
@@ -116,7 +137,10 @@ async function getLatestSale(req, res) {
           `,
           [shop, row.order_id]
         );
-        row.country_code = linkRow && linkRow.country_code ? linkRow.country_code : 'XX';
+        const evidenceCc = linkRow && linkRow.country_code ? linkRow.country_code : 'XX';
+        const normalizedEvidence = normalizeCountry(evidenceCc);
+        const rawJsonCc = normalizedEvidence === 'XX' ? parseCountryFromOrderRawJson(row.raw_json) : 'XX';
+        row.country_code = rawJsonCc && rawJsonCc !== 'XX' ? rawJsonCc : normalizedEvidence;
       }
     }
 
@@ -133,12 +157,13 @@ async function getLatestSale(req, res) {
     const gbp = total == null ? null : fx.convertToGbp(total, currency, ratesToGbp);
 
     const topProduct = parseTopProduct(row.raw_json);
+    const countryCode = normalizeCountry(row.country_code);
     const sale = {
       source: source || null,
       orderId: safeStr(row.order_id, 64) || null,
       orderName: safeStr(row.order_name, 64) || null,
       createdAt: row.created_at != null ? Number(row.created_at) : null,
-      countryCode: normalizeCountry(row.country_code),
+      countryCode,
       amountGbp: gbp != null && Number.isFinite(gbp) ? Math.round(gbp * 100) / 100 : null,
       productTitle: topProduct && topProduct.title ? topProduct.title : '',
     };

@@ -6,6 +6,7 @@ const reportCache = require('../reportCache');
 const fx = require('../fx');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
+const BOT_FILTER_SQL = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
 
 function normalizeFinishKey(variantTitle) {
   const raw = typeof variantTitle === 'string' ? variantTitle.trim().toLowerCase() : '';
@@ -37,6 +38,39 @@ function labelForFinishKey(key) {
   if (key === 'vermeil') return 'Vermeil';
   if (key === 'solid_silver') return 'Solid Silver';
   return key;
+}
+
+async function getProductLandingSessionsCount(db, start, end) {
+  const row = config.dbUrl
+    ? await db.get(
+      `
+        SELECT COUNT(*) AS n
+        FROM sessions s
+        WHERE s.started_at >= $1 AND s.started_at < $2
+          ${BOT_FILTER_SQL}
+          AND (
+            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+          )
+      `,
+      [start, end]
+    )
+    : await db.get(
+      `
+        SELECT COUNT(*) AS n
+        FROM sessions s
+        WHERE s.started_at >= ? AND s.started_at < ?
+          ${BOT_FILTER_SQL}
+          AND (
+            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+          )
+      `,
+      [start, end]
+    );
+  return row && row.n != null ? Number(row.n) || 0 : 0;
 }
 
 async function getShopifyFinishes(req, res) {
@@ -73,12 +107,14 @@ async function getShopifyFinishes(req, res) {
           await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
         } catch (_) {}
 
+        const sessions = await getProductLandingSessionsCount(db, start, end);
         const rows = config.dbUrl
           ? await db.all(
             `
               SELECT
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
+                COALESCE(SUM(quantity), 0) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
@@ -95,6 +131,7 @@ async function getShopifyFinishes(req, res) {
               SELECT
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
+                COALESCE(SUM(quantity), 0) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
@@ -109,6 +146,7 @@ async function getShopifyFinishes(req, res) {
 
         const ratesToGbp = await fx.getRatesToGbp();
         const byFinish = new Map();
+        const ordersByFinish = new Map();
         for (const r of rows || []) {
           const finish = normalizeFinishKey(r && r.variant_title != null ? String(r.variant_title) : '');
           if (!finish) continue;
@@ -117,14 +155,24 @@ async function getShopifyFinishes(req, res) {
           const gbp = fx.convertToGbp(Number.isFinite(rev) ? rev : 0, cur, ratesToGbp);
           const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
           byFinish.set(finish, (byFinish.get(finish) || 0) + amt);
+          const oRaw = r && r.orders != null ? Number(r.orders) : 0;
+          const o = Number.isFinite(oRaw) ? Math.trunc(oRaw) : 0;
+          ordersByFinish.set(finish, (ordersByFinish.get(finish) || 0) + o);
         }
 
         const order = ['gold', 'silver', 'vermeil', 'solid_silver'];
-        const finishes = order.map((k) => ({
-          key: k,
-          label: labelForFinishKey(k),
-          revenueGbp: Math.round(((byFinish.get(k) || 0) * 100)) / 100,
-        }));
+        const finishes = order.map((k) => {
+          const orders = ordersByFinish.get(k) || 0;
+          const cr = sessions > 0 ? Math.round((orders / sessions) * 1000) / 10 : null;
+          return {
+            key: k,
+            label: labelForFinishKey(k),
+            revenueGbp: Math.round(((byFinish.get(k) || 0) * 100)) / 100,
+            orders,
+            sessions,
+            cr,
+          };
+        });
 
         return { ok: true, finishes };
       }

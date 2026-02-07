@@ -1145,7 +1145,7 @@
             <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Type</button>
           </div>
         </div>
-        <div class="aov-cards-title">7 Day Leaderboard</div>
+        <div class="aov-cards-title">Leaderboard</div>
       </div>
       <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title">
         <div class="aov-card aov-card-empty">—</div>
@@ -3250,6 +3250,12 @@
 
     function pct(v) { return v != null ? v.toFixed(1) + '%' : ''; }
 
+    function crPillHtml(v) {
+      const n = v != null ? Number(v) : NaN;
+      if (!Number.isFinite(n)) return '';
+      return '<span class="aov-card-cr-pill" title="Conversion rate">CR ' + escapeHtml(pct(n)) + '</span>';
+    }
+
     function formatRevenue(num) {
       if (num == null || typeof num !== 'number') return '';
       return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
@@ -3994,7 +4000,8 @@
       if (!leaderboardCache) renderProductsLeaderboard(null);
       let url = API + '/api/shopify-leaderboard?shop=' + encodeURIComponent(shop) +
         '&topProducts=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT)) +
-        '&topTypes=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT));
+        '&topTypes=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT)) +
+        '&range=' + encodeURIComponent(getStatsRange());
       if (force) url += '&_=' + Date.now();
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.ok ? r.json() : null; })
@@ -4069,9 +4076,10 @@
           const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
           const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
           const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+          const cr = crPillHtml(row && row.cr);
           return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-type">' +
               '<div class="aov-card-left"><span class="aov-card-name leaderboard-type-name">' + escapeHtml(label || 'Unknown') + '</span></div>' +
-              '<div class="aov-card-value">' + escapeHtml(value) + '</div>' +
+              '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
             '</div>';
         }).join('');
         return;
@@ -4085,6 +4093,7 @@
         const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+        const cr = crPillHtml(row && row.cr);
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const thumbInner = '<span class="leaderboard-thumb-wrap">' +
             '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
@@ -4100,7 +4109,7 @@
               img +
               '<span class="aov-card-name sr-only">' + escapeHtml(title || 'Product') + '</span>' +
             '</div>' +
-            '<div class="aov-card-value">' + escapeHtml(value) + '</div>' +
+            '<div class="aov-card-value"><span class="aov-card-value-main">' + escapeHtml(value) + '</span>' + cr + '</div>' +
           '</div>';
       }).join('');
     }
@@ -4577,9 +4586,10 @@
         const label = (r && r.label != null) ? String(r.label) : '';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
+        const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
           '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '—') + '</span></div>' +
-          '<div class="aov-card-value">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
     }
@@ -4603,11 +4613,12 @@
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
+        const cr = crPillHtml(r && r.cr);
         const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '—') + '</span></span>';
         const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '—') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
-          '<div class="aov-card-value">' + value + '</div>' +
+          '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
     }
