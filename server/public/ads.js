@@ -72,7 +72,7 @@
     return x.toFixed(1) + '%';
   }
 
-  function render(root, status, summary) {
+  function render(root, status, summary, refreshResult) {
     const providers = status && status.providers ? status.providers : [];
     const totals = summary && summary.totals ? summary.totals : {};
     const campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
@@ -150,6 +150,7 @@
                 '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
               '</div>' +
               (note ? ('<div class="muted" style="padding: 10px 12px;">' + esc(note) + '</div>') : '') +
+              (refreshResult ? ('<details style="padding: 10px 12px;"><summary class="muted" style="cursor:pointer;">Sync diagnostics</summary><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:8px 0 0;padding:8px;background:#f8f8f8;border-radius:6px;border:1px solid #e5e5e5;">' + esc(JSON.stringify(refreshResult, null, 2)) + '</pre></details>') : '') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -191,8 +192,10 @@
     var rangeKey = computeRangeKey();
 
     var preStep = isForce ? postRefresh(rangeKey) : Promise.resolve(null);
+    var refreshResult = null;
 
-    var p = preStep.then(function () {
+    var p = preStep.then(function (rr) {
+      refreshResult = rr;
       return Promise.all([
         fetchJson('/api/ads/status'),
         fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : '')),
@@ -200,7 +203,7 @@
     }).then(function (arr) {
       var status = arr && arr[0] ? arr[0] : null;
       var summary = arr && arr[1] ? arr[1] : null;
-      render(root, status, summary);
+      render(root, status, summary, isForce ? refreshResult : null);
 
       // Auto-sync once if the DB is empty (first visit after deploy)
       if (!isForce && !hasAutoSynced && summary && summary.note && (!summary.campaigns || !summary.campaigns.length)) {
