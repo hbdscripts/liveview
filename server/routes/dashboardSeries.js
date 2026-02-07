@@ -293,17 +293,16 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       const pool = adsDb.getAdsPool();
       if (pool) {
         const spendRows = await pool.query(
-          `SELECT date, SUM(cost_micros) AS cost_micros
-           FROM google_ads_spend
-           WHERE date >= $1 AND date <= $2
-           GROUP BY date
-           ORDER BY date`,
+          `SELECT (hour_ts AT TIME ZONE 'UTC')::date::text AS day, COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+           FROM google_ads_spend_hourly
+           WHERE (hour_ts AT TIME ZONE 'UTC')::date >= $1::date AND (hour_ts AT TIME ZONE 'UTC')::date <= $2::date
+           GROUP BY (hour_ts AT TIME ZONE 'UTC')::date
+           ORDER BY day`,
           [dayBounds[0].label, dayBounds[dayBounds.length - 1].label]
         );
         if (spendRows && spendRows.rows) {
           for (const r of spendRows.rows) {
-            const micros = Number(r.cost_micros) || 0;
-            adSpendPerDay[r.date] = Math.round((micros / 1000000) * 100) / 100;
+            adSpendPerDay[r.day] = Math.round((Number(r.spend_gbp) || 0) * 100) / 100;
           }
         }
       }

@@ -2,7 +2,7 @@
  * Cache Shopify product metadata (handle + main image URL + product_type) to avoid repeated Admin API calls
  * for best-sellers/best-variants tables.
  */
-const API_VERSION = '2024-01';
+const API_VERSION = '2025-01';
 
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_CACHE_KEYS = 500;

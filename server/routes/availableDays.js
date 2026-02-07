@@ -37,11 +37,13 @@ async function getAvailableDays(req, res) {
   const timeZone = store.resolveAdminTimeZone();
   const days = clampInt(req.query.days || '30', 30, 1, 30);
 
+  const PLATFORM_START = '2025-02-01';
   const dateList = [];
   const seen = new Set();
   for (let i = 0; i < days; i++) {
     const ms = nowMs - i * 24 * 60 * 60 * 1000;
     const ymd = ymdFromMs(ms, timeZone);
+    if (ymd < PLATFORM_START) continue;
     if (seen.has(ymd)) continue;
     seen.add(ymd);
     dateList.push(ymd);

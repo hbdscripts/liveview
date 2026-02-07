@@ -1499,6 +1499,16 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
   return { start: nowMs, end: nowMs };
 }
 
+// Platform start date: never return data before Feb 1 2025
+const PLATFORM_START_MS = zonedTimeToUtcMs(2025, 2, 1, 0, 0, 0, 'Europe/London');
+const _origGetRangeBounds = getRangeBounds;
+getRangeBounds = function(rangeKey, nowMs, timeZone) {
+  const bounds = _origGetRangeBounds(rangeKey, nowMs, timeZone);
+  if (bounds.start < PLATFORM_START_MS) bounds.start = PLATFORM_START_MS;
+  if (bounds.end < PLATFORM_START_MS) bounds.end = PLATFORM_START_MS;
+  return bounds;
+};
+
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
