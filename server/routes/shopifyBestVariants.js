@@ -7,6 +7,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
+const fx = require('../fx');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 
@@ -90,7 +91,6 @@ async function getShopifyBestVariants(req, res) {
       async () => {
         const t0 = Date.now();
         let msReconcile = 0;
-        let msDbCount = 0;
         let msDbAgg = 0;
         let msMeta = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
@@ -98,34 +98,16 @@ async function getShopifyBestVariants(req, res) {
         await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
         msReconcile = Date.now() - tReconcile0;
 
-        const tCount0 = Date.now();
-        const countRow = await db.get(
-          `
-            SELECT COUNT(DISTINCT variant_id) AS n
-            FROM orders_shopify_line_items
-            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
-              AND (order_test IS NULL OR order_test = 0)
-              AND order_cancelled_at IS NULL
-              AND order_financial_status = 'paid'
-              AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-          `,
-          [shop, start, end]
-        );
-        msDbCount = Date.now() - tCount0;
-        const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
-        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-        const page = clampInt(req.query.page, 1, 1, totalPages);
-        const offset = (page - 1) * pageSize;
-
         const tAgg0 = Date.now();
         const rows = await db.all(
           `
             SELECT
               variant_id,
+              COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
               MAX(product_id) AS product_id,
               MAX(title) AS title,
               MAX(variant_title) AS variant_title,
-              COALESCE(SUM(quantity), 0) AS orders,
+              COUNT(DISTINCT order_id) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
@@ -133,21 +115,50 @@ async function getShopifyBestVariants(req, res) {
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'
               AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-            GROUP BY variant_id
+            GROUP BY variant_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
             ORDER BY revenue DESC, orders DESC
-            LIMIT ? OFFSET ?
           `,
-          [shop, start, end, pageSize, offset]
+          [shop, start, end]
         );
         msDbAgg = Date.now() - tAgg0;
 
-        const pageItems = (rows || []).map((r) => ({
-          variant_id: r && r.variant_id != null ? String(r.variant_id) : '',
-          product_id: r && r.product_id != null ? String(r.product_id) : '',
-          title: r && r.title != null ? String(r.title) : 'Unknown',
-          variant_title: r && r.variant_title != null ? String(r.variant_title) : null,
-          orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
-          revenue: Math.round(((r && r.revenue != null ? Number(r.revenue) : 0) || 0) * 100) / 100,
+        // Aggregate multi-currency rows per variant into GBP
+        const ratesToGbp = await fx.getRatesToGbp();
+        const byVariant = new Map();
+        for (const r of rows || []) {
+          const vid = r && r.variant_id != null ? String(r.variant_id).trim() : '';
+          if (!vid) continue;
+          const cur = fx.normalizeCurrency(r && r.currency != null ? String(r.currency) : '') || 'GBP';
+          const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
+          const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
+          const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+          const ordersRaw = r && r.orders != null ? Number(r.orders) : 0;
+          const orders = Number.isFinite(ordersRaw) ? Math.trunc(ordersRaw) : 0;
+          const prev = byVariant.get(vid) || {
+            variant_id: vid,
+            product_id: r && r.product_id != null ? String(r.product_id) : '',
+            title: r && r.title != null ? String(r.title) : 'Unknown',
+            variant_title: r && r.variant_title != null ? String(r.variant_title) : null,
+            revenueGbp: 0,
+            orders: 0,
+          };
+          prev.revenueGbp += amt;
+          prev.orders += orders;
+          byVariant.set(vid, prev);
+        }
+        const allVariants = Array.from(byVariant.values());
+        allVariants.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
+        const totalCount = allVariants.length;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+        const page = clampInt(req.query.page, 1, 1, totalPages);
+        const offset = (page - 1) * pageSize;
+        const pageItems = allVariants.slice(offset, offset + pageSize).map((v) => ({
+          variant_id: v.variant_id,
+          product_id: v.product_id,
+          title: v.title,
+          variant_title: v.variant_title,
+          orders: v.orders,
+          revenue: Math.round((v.revenueGbp || 0) * 100) / 100,
         }));
 
         const tMeta0 = Date.now();
@@ -204,12 +215,11 @@ async function getShopifyBestVariants(req, res) {
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-best-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s',
+            '[shopify-best-variants] range=%s page=%s ms_total=%s ms_reconcile=%s ms_db_agg=%s ms_meta=%s',
             range,
             page,
             totalMs,
             msReconcile,
-            msDbCount,
             msDbAgg,
             msMeta
           );

@@ -11,6 +11,7 @@ const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
+const fx = require('../fx');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const MIN_LANDINGS = 3;
@@ -276,7 +277,8 @@ async function getShopifyWorstVariants(req, res) {
             `
               SELECT
                 TRIM(variant_id) AS variant_id,
-                COALESCE(SUM(quantity), 0) AS orders,
+                COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+                COUNT(DISTINCT order_id) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
@@ -284,25 +286,31 @@ async function getShopifyWorstVariants(req, res) {
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'
                 AND variant_id IS NOT NULL AND TRIM(variant_id) IN (${inSql})
-              GROUP BY TRIM(variant_id)
+              GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
             `,
             [shop, start, end, ...variantIds]
           );
+          const ratesToGbp = await fx.getRatesToGbp();
           for (const r of liRows || []) {
             const vid = r && r.variant_id != null ? String(r.variant_id).trim() : '';
             if (!vid) continue;
-            salesByVariantId.set(vid, {
-              orders: r && r.orders != null ? Number(r.orders) || 0 : 0,
-              revenue: r && r.revenue != null ? Number(r.revenue) || 0 : 0,
-            });
+            const cur = fx.normalizeCurrency(r && r.currency != null ? String(r.currency) : '') || 'GBP';
+            const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
+            const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
+            const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+            const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
+            const prev = salesByVariantId.get(vid) || { orders: 0, revenueGbp: 0 };
+            prev.orders += orders;
+            prev.revenueGbp += amt;
+            salesByVariantId.set(vid, prev);
           }
         }
 
         const list = variantCandidates.map((v) => {
           const vid = v && v.variant_id != null ? String(v.variant_id).trim() : '';
-          const sales = vid && salesByVariantId.has(vid) ? salesByVariantId.get(vid) : { orders: 0, revenue: 0 };
+          const sales = vid && salesByVariantId.has(vid) ? salesByVariantId.get(vid) : { orders: 0, revenueGbp: 0 };
           const orders = sales && sales.orders != null ? Number(sales.orders) || 0 : 0;
-          const revenue = Math.round((sales && sales.revenue != null ? Number(sales.revenue) : 0) * 100) / 100;
+          const revenue = Math.round((sales && sales.revenueGbp != null ? Number(sales.revenueGbp) : 0) * 100) / 100;
           const clicks = v && v.clicks != null ? Number(v.clicks) || 0 : 0;
           const cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
           return {

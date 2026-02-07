@@ -11,6 +11,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
+const fx = require('../fx');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 
@@ -88,7 +89,6 @@ async function getShopifyBestSellers(req, res) {
       async () => {
         const t0 = Date.now();
         let msReconcile = 0;
-        let msDbCount = 0;
         let msDbAgg = 0;
         let msMeta = 0;
         let msLandings = 0;
@@ -101,36 +101,16 @@ async function getShopifyBestSellers(req, res) {
         }
         const token = resolvedShop ? await salesTruth.getAccessToken(resolvedShop) : null;
 
-        const tCount0 = Date.now();
-        const countRow = resolvedShop ? await db.get(
-          `
-            SELECT COUNT(DISTINCT TRIM(product_id)) AS n
-            FROM orders_shopify_line_items
-            WHERE shop = ?
-              AND order_created_at >= ? AND order_created_at < ?
-              AND (order_test IS NULL OR order_test = 0)
-              AND order_cancelled_at IS NULL
-              AND order_financial_status = 'paid'
-              AND product_id IS NOT NULL AND TRIM(product_id) != ''
-          `,
-          [resolvedShop, start, end]
-        ) : { n: 0 };
-        msDbCount = Date.now() - tCount0;
-        const totalCount = countRow && countRow.n != null ? Number(countRow.n) || 0 : 0;
-        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-        const page = clampInt(req.query.page, 1, 1, totalPages);
-        const offset = (page - 1) * pageSize;
-
         // Orders + revenue from Shopify truth (line items). Sessions are computed separately from our sessions table.
-        const orderBy = `revenue DESC, orders DESC`;
 
         const tAgg0 = Date.now();
         const rows = resolvedShop ? await db.all(
           `
             SELECT
               TRIM(product_id) AS product_id,
+              COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
               MAX(title) AS title,
-              COALESCE(SUM(quantity), 0) AS orders,
+              COUNT(DISTINCT order_id) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?
@@ -140,15 +120,42 @@ async function getShopifyBestSellers(req, res) {
               AND order_financial_status = 'paid'
               AND product_id IS NOT NULL AND TRIM(product_id) != ''
               AND title IS NOT NULL AND TRIM(title) != ''
-            GROUP BY TRIM(product_id)
-            ORDER BY ${orderBy}
-            LIMIT ? OFFSET ?
+            GROUP BY TRIM(product_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+            ORDER BY revenue DESC, orders DESC
           `,
-          [resolvedShop, start, end, pageSize, offset]
+          [resolvedShop, start, end]
         ) : [];
         msDbAgg = Date.now() - tAgg0;
 
-        const productIds = Array.from(new Set((rows || []).map((r) => (r && r.product_id != null ? String(r.product_id).trim() : '')).filter(Boolean)));
+        // Aggregate multi-currency rows per product into GBP
+        const ratesToGbp = await fx.getRatesToGbp();
+        const byProduct = new Map();
+        for (const r of rows || []) {
+          const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+          if (!pid) continue;
+          const title = r && r.title != null ? String(r.title).trim() : '';
+          const cur = fx.normalizeCurrency(r && r.currency != null ? String(r.currency) : '') || 'GBP';
+          const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
+          const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
+          const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+          const ordersRaw = r && r.orders != null ? Number(r.orders) : 0;
+          const orders = Number.isFinite(ordersRaw) ? Math.trunc(ordersRaw) : 0;
+          const prev = byProduct.get(pid) || { product_id: pid, title: '', revenueGbp: 0, orders: 0 };
+          prev.revenueGbp += amt;
+          prev.orders += orders;
+          if (!prev.title && title) prev.title = title;
+          byProduct.set(pid, prev);
+        }
+        // Sort by GBP revenue and paginate
+        const allProducts = Array.from(byProduct.values());
+        allProducts.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
+        const totalCount = allProducts.length;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+        const page = clampInt(req.query.page, 1, 1, totalPages);
+        const offset = (page - 1) * pageSize;
+
+        const paginatedProducts = allProducts.slice(offset, offset + pageSize);
+        const productIds = Array.from(new Set(paginatedProducts.map((p) => p.product_id).filter(Boolean)));
         const metaByProductId = new Map();
         const handleByProductId = new Map();
         const thumbByProductId = new Map();
@@ -197,15 +204,14 @@ async function getShopifyBestSellers(req, res) {
           msLandings = Date.now() - tLand0;
         }
 
-        const bestSellers = (rows || []).map((r) => {
-          const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
-          const title = r && r.title != null ? String(r.title).trim() : '';
+        const bestSellers = paginatedProducts.map((p) => {
+          const pid = p.product_id || '';
+          const title = p.title || '';
           const handle = pid && handleByProductId.has(pid) ? handleByProductId.get(pid) : '';
           const thumbUrl = pid && thumbByProductId.has(pid) ? thumbByProductId.get(pid) : '';
           const clicks = handle ? (clicksByHandle.get(handle) || 0) : 0;
-          const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
-          const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
-          const revenue = Number.isFinite(revRaw) ? Math.round(revRaw * 100) / 100 : 0;
+          const orders = p.orders || 0;
+          const revenue = Math.round((p.revenueGbp || 0) * 100) / 100;
           const cr = clicks > 0 ? Math.round((orders / clicks) * 1000) / 10 : null;
           return {
             product_id: pid || null,
@@ -223,14 +229,13 @@ async function getShopifyBestSellers(req, res) {
         const totalMs = t1 - t0;
         if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
           console.log(
-            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_count=%s ms_db_agg=%s ms_meta=%s ms_landings=%s',
+            '[shopify-best-sellers] range=%s sort=%s dir=%s page=%s ms_total=%s ms_reconcile=%s ms_db_agg=%s ms_meta=%s ms_landings=%s',
             range,
             sort,
             dir,
             page,
             totalMs,
             msReconcile,
-            msDbCount,
             msDbAgg,
             msMeta,
             msLandings
