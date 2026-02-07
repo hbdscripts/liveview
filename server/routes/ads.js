@@ -64,6 +64,16 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+router.get('/refresh', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  res.status(405).json({
+    ok: false,
+    error: 'Method not allowed',
+    hint: 'Use POST /api/ads/refresh?range=7d (optionally JSON body: {"source":"googleads"}).',
+  });
+});
+
 router.post('/refresh', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');

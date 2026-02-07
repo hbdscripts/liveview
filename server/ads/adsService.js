@@ -1,5 +1,7 @@
 const store = require('../store');
+const config = require('../config');
 const { getAdsDb } = require('./adsDb');
+const { getGoogleAdsConfig } = require('./adsStore');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
 
@@ -13,14 +15,33 @@ function normalizeRangeKey(raw) {
 }
 
 async function getStatus() {
+  const adsDb = getAdsDb();
+  const providerCfg = await getGoogleAdsConfig();
+  const refreshToken = providerCfg && providerCfg.refresh_token ? String(providerCfg.refresh_token).trim() : '';
+
+  const customerIdRaw = config.googleAdsCustomerId != null ? String(config.googleAdsCustomerId) : '';
+  const loginCustomerIdRaw = config.googleAdsLoginCustomerId != null ? String(config.googleAdsLoginCustomerId) : '';
+  const developerToken = config.googleAdsDeveloperToken != null ? String(config.googleAdsDeveloperToken).trim() : '';
+
+  const customerId = customerIdRaw.replace(/[^0-9]/g, '').slice(0, 32);
+  const loginCustomerId = loginCustomerIdRaw.replace(/[^0-9]/g, '').slice(0, 32);
+
+  const configured = !!(adsDb && developerToken && customerId);
+  const connected = !!(configured && refreshToken);
+
   return {
     ok: true,
     providers: [
       {
         key: 'google_ads',
         label: 'Google Ads',
-        connected: false,
-        configured: false,
+        connected,
+        configured,
+        adsDb: !!adsDb,
+        customerId: customerId || null,
+        loginCustomerId: loginCustomerId || null,
+        hasRefreshToken: !!refreshToken,
+        hasDeveloperToken: !!developerToken,
       },
     ],
   };
