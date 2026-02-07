@@ -4,7 +4,7 @@
 name = "Liveview"
 client_id = "c1cd8f0e90ee42bf2bf9d8a8babd9561"
 application_url = "https://liveview-production.up.railway.app"
-embedded = true
+embedded = false
 
 [access_scopes]
 # write_pixels + read_customer_events required to set pixel settings via API (webPixelCreate/webPixelUpdate)

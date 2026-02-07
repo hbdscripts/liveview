@@ -78,9 +78,8 @@
     /* Traffic Type: device -> platform expandable tree */
     .traffic-type-toggle { display: inline-flex; align-items: center; gap: 0.35rem; border: none; background: none; padding: 0; margin: 0; cursor: pointer; color: var(--link-fg); font: inherit; font-size: var(--table-font-size); font-weight: 600; }
     .traffic-type-toggle:hover { color: var(--accent); }
-    .traffic-type-toggle .chev { width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
-    .traffic-type-toggle .chev::before { content: '▸'; line-height: 1; }
-    .traffic-type-toggle[aria-expanded="true"] .chev::before { content: '▾'; }
+    .traffic-type-toggle .chev { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.18s ease; }
+    .traffic-type-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
     .traffic-type-parent td:first-child { white-space: nowrap; }
     .traffic-type-child td:first-child { padding-left: calc(var(--table-cell-padding-x) + 18px); }
     .traffic-type-child td:first-child::before { content: '›'; display: inline-block; margin-right: 6px; color: var(--muted); }
@@ -1447,7 +1446,7 @@
     let sessionsLoadError = null;
     let statsCache = {};
     let trafficCache = null;
-    let trafficTypeExpanded = {}; // device -> boolean (Traffic Type tree)
+    let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
     let dateRange = 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
@@ -5879,8 +5878,17 @@
           body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyText || '—') + '</div></div>';
           return;
         }
+        var filtered = list.filter(function(r) {
+          var s = (r && typeof r.sessions === 'number') ? r.sessions : 0;
+          var o = (r && typeof r.orders === 'number') ? r.orders : 0;
+          return s >= 1 || o >= 1;
+        });
+        if (!filtered.length) {
+          body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyText || '—') + '</div></div>';
+          return;
+        }
         let html = '';
-        list.forEach(function(r) {
+        filtered.forEach(function(r) {
           const key = (r && r.key != null) ? String(r.key).trim().toLowerCase() : '';
           const labelText = (r && r.label) ? String(r.label) : (key || '—');
           const labelCell = trafficSourceIconHtml(key, labelText);
@@ -5929,10 +5937,19 @@
             cmpNullableText(typeLabel(a), typeLabel(b), 'asc');
         });
 
+        var filteredGroups = groups.filter(function(g) {
+          var s = (g && typeof g.sessions === 'number') ? g.sessions : 0;
+          var o = (g && typeof g.orders === 'number') ? g.orders : 0;
+          return s >= 1 || o >= 1;
+        });
+        if (!filteredGroups.length) {
+          body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No traffic types with sessions or sales.</div></div>';
+          return;
+        }
         let html = '';
-        groups.forEach(function(g) {
+        filteredGroups.forEach(function(g) {
           const device = (g && g.device != null) ? String(g.device).trim().toLowerCase() : '';
-          const open = !!(device && trafficTypeExpanded && trafficTypeExpanded[device]);
+          const open = trafficTypeExpanded === null ? true : !!(device && trafficTypeExpanded && trafficTypeExpanded[device]);
           const label = escapeHtml((g && g.label) ? String(g.label) : (g && g.key ? String(g.key) : '—'));
           const cr = (g && typeof g.conversionPct === 'number') ? pct(g.conversionPct) : '—';
           const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
@@ -5941,7 +5958,7 @@
           html += '<div class="grid-row traffic-type-parent" role="row" data-device="' + escapeHtml(device) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
-                '<span class="chev" aria-hidden="true"></span>' +
+                '<span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>' +
                 '<span>' + label + '</span>' +
               '</button>' +
             '</div>' +
@@ -6674,7 +6691,7 @@
                 out +=       '<div class="dm-def-details-name">' + escapeHtml(name) + '</div>';
                 out +=       '<div class="dm-def-details-sub">' + escapeHtml(summaryBits.join(' · ')) + '</div>';
                 out +=     '</div>';
-                out +=     '<div class="dm-def-details-chips">' + chips.join('') + '<span style="color:var(--muted);font-weight:900;padding:2px 6px;">▾</span></div>';
+                out +=     '<div class="dm-def-details-chips">' + chips.join('') + '</div>';
                 out +=   '</summary>';
 
                 out +=   '<div class="dm-def-details-body">';
@@ -7607,7 +7624,14 @@
         e.stopPropagation();
         const device = (btn.getAttribute('data-device') || '').trim().toLowerCase();
         if (!device) return;
-        if (!trafficTypeExpanded || typeof trafficTypeExpanded !== 'object') trafficTypeExpanded = {};
+        if (!trafficTypeExpanded || typeof trafficTypeExpanded !== 'object') {
+          // First click: snapshot current groups as all-open, then toggle the clicked one
+          trafficTypeExpanded = {};
+          document.querySelectorAll('.traffic-type-parent[data-device]').forEach(function(row) {
+            var d = (row.getAttribute('data-device') || '').trim().toLowerCase();
+            if (d) trafficTypeExpanded[d] = true;
+          });
+        }
         const nextOpen = !trafficTypeExpanded[device];
         trafficTypeExpanded[device] = nextOpen;
         btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
