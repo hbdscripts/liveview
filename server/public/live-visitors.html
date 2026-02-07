@@ -8471,7 +8471,7 @@
         });
       })();
       (function initMainTabs() {
-        const TAB_KEY = 'livevisitors-main-tab';
+        const TAB_KEY = 'kexo-main-tab';
         const VALID_TABS = ['dashboard', 'spy', 'stats', 'breakdown', 'products', 'traffic', 'ads'];
         const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', breakdown: 'Overview', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', overview: 'breakdown', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
@@ -9144,6 +9144,13 @@
           var days = parseInt(rangeSel.value, 10) || 30;
           fetchDashboardData(days, true);
         });
+      }
+
+      // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,
+      // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
+      var dashPanel = document.getElementById('tab-panel-dashboard');
+      if (dashPanel && dashPanel.classList.contains('active')) {
+        fetchDashboardData(parseInt((rangeSel && rangeSel.value) || '30', 10), false);
       }
     })();
   </script>

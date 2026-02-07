@@ -68,7 +68,7 @@ function verifySession(cookieValue) {
 }
 
 function isProtectedPath(pathname) {
-  if (pathname === '/app/live-visitors' || pathname === '/app/login' || pathname === '/app/logout') return true;
+  if (pathname === '/app/dashboard' || pathname === '/app/login' || pathname === '/app/logout') return true;
   if (pathname === '/') return true;
   if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
@@ -198,9 +198,9 @@ function isShopifySignedAppUrlReferer(req) {
     const reqHost = hostNoPort(req.get('host') || req.get('x-forwarded-host'));
     const refHost = hostNoPort(u.host);
     if (reqHost && refHost && reqHost !== refHost) return false;
-    // Most embedded loads use the signed App URL at "/", but allow "/app/live-visitors"
+    // Most embedded loads use the signed App URL at "/", but allow "/app/dashboard"
     // in case the App URL is configured with that path.
-    if (u.pathname !== '/' && u.pathname !== '/app/live-visitors') return false;
+    if (u.pathname !== '/' && u.pathname !== '/app/dashboard') return false;
     if (!u.search || u.search.length < 5) return false;
     const q = {};
     for (const [k, v] of u.searchParams.entries()) {

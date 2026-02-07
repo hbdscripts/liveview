@@ -180,10 +180,10 @@ app.get('/app.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.css'));
 });
 
-// Admin UI (embedded dashboard) - before / so /app/live-visitors is exact
+// Admin UI (embedded dashboard) - before / so /app/dashboard is exact
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
-app.get('/app/live-visitors', (req, res) => {
+app.get('/app/dashboard', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
 });
@@ -198,7 +198,7 @@ app.get('/', async (req, res, next) => {
       res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
       return;
     }
-    res.redirect(302, '/app/live-visitors');
+    res.redirect(302, '/app/dashboard');
   } catch (err) {
     next(err);
   }
@@ -319,8 +319,8 @@ async function migrateAndStart() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Live Visitors app listening on http://0.0.0.0:${PORT}`);
-    console.log('Dashboard: /app/live-visitors');
+    console.log(`Kexo app listening on http://0.0.0.0:${PORT}`);
+    console.log('Dashboard: /app/dashboard');
     console.log('Ingest: POST /api/ingest (header: X-Ingest-Secret or Authorization: Bearer <secret>)');
 
     // Restore correctness ASAP: reconcile today's Shopify orders into orders_shopify (fail-open; throttled).

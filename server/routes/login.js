@@ -70,7 +70,7 @@ function handleGetLogin(req, res) {
   const queryError = (req.query && req.query.error) || '';
   // Local dev: if Google isn't configured, just jump straight to the dashboard (auth middleware allows).
   if (!hasGoogle && process.env.NODE_ENV !== 'production') {
-    return res.redirect(302, '/app/live-visitors');
+    return res.redirect(302, '/app/dashboard');
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getLoginHtml(queryError));

@@ -27,7 +27,7 @@ router.get('/google/callback', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const result = await handleGoogleAdsCallback(req.query || {});
-    const redirect = result && result.redirect ? String(result.redirect) : '/app/live-visitors';
+    const redirect = result && result.redirect ? String(result.redirect) : '/app/dashboard';
     if (!result || !result.ok) {
       const e = result && result.error ? String(result.error) : 'oauth_failed';
       res.redirect(302, redirect + (redirect.includes('?') ? '&' : '?') + 'ads_oauth=' + encodeURIComponent(e));
