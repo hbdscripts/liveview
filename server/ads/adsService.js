@@ -96,7 +96,7 @@ async function getSummary(options = {}) {
     revParams
   );
 
-  // Spend (Google Ads rollups)
+  // Spend (Google Ads rollups) — now also includes Google conversion data
   const spendFilterSql = provider ? ' AND provider = ?' : '';
   const spendParams = provider ? [bounds.start, bounds.end, provider] : [bounds.start, bounds.end];
   const spendRows = await adsDb.all(
@@ -108,6 +108,8 @@ async function getSummary(options = {}) {
         COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
         COALESCE(SUM(clicks), 0) AS clicks,
         COALESCE(SUM(impressions), 0) AS impressions,
+        COALESCE(SUM(conversions), 0) AS conversions,
+        COALESCE(SUM(conversions_value_gbp), 0) AS conversions_value_gbp,
         MAX(campaign_name) AS campaign_name,
         MAX(adgroup_name) AS adgroup_name
       FROM google_ads_spend_hourly
@@ -173,7 +175,7 @@ async function getSummary(options = {}) {
     ag.orders += ord;
   }
 
-  // Apply spend
+  // Apply spend + Google conversion revenue (as fallback when bs_revenue_hourly is empty for a campaign)
   for (const r of spendRows || []) {
     const campaignId = r && r.campaign_id != null ? String(r.campaign_id) : '';
     const adgroupId = r && r.adgroup_id != null ? String(r.adgroup_id) : '';
@@ -184,6 +186,8 @@ async function getSummary(options = {}) {
     const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
     const clicks = r && r.clicks != null ? Number(r.clicks) : 0;
     const impressions = r && r.impressions != null ? Number(r.impressions) : 0;
+    const conv = r && r.conversions != null ? Number(r.conversions) : 0;
+    const convVal = r && r.conversions_value_gbp != null ? Number(r.conversions_value_gbp) : 0;
     const sp = Number.isFinite(spend) ? spend : 0;
     const cl = Number.isFinite(clicks) ? clicks : 0;
     const im = Number.isFinite(impressions) ? impressions : 0;
@@ -197,6 +201,16 @@ async function getSummary(options = {}) {
     ag.spend += sp;
     ag.clicks += cl;
     ag.impressions += im;
+
+    // Use Google conversion revenue if no Kexo-attributed revenue exists for this campaign
+    const gcv = Number.isFinite(convVal) ? convVal : 0;
+    const gc = Number.isFinite(conv) ? conv : 0;
+    if (gcv > 0 && camp.revenue === 0) {
+      camp.revenue += gcv;
+      camp.orders += Math.round(gc);
+      ag.revenue += gcv;
+      ag.orders += Math.round(gc);
+    }
   }
 
   // Finalize
@@ -252,7 +266,7 @@ async function getSummary(options = {}) {
       spend: Math.round(totalsSpend * 100) / 100,
       impressions: Math.floor(totalsImpressions || 0),
       clicks: Math.floor(totalsClicks || 0),
-      conversions: null,
+      conversions: Math.floor(totalsOrders || 0),
       revenue: Math.round(totalsRevenue * 100) / 100,
       profit: Math.round((totalsRevenue - totalsSpend) * 100) / 100,
       roas: totalsSpend > 0 ? (totalsRevenue / totalsSpend) : null,

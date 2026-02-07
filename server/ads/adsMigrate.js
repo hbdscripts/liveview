@@ -81,6 +81,13 @@ async function runAdsMigrations() {
         await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS adgroup_name TEXT`);
       },
     },
+    {
+      id: '003_ads_conversions_columns',
+      up: async () => {
+        await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS conversions DOUBLE PRECISION NOT NULL DEFAULT 0`);
+        await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS conversions_value_gbp DOUBLE PRECISION NOT NULL DEFAULT 0`);
+      },
+    },
   ];
 
   let applied = 0;

@@ -327,10 +327,13 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     const costMicros = metrics && metrics.costMicros != null ? Number(metrics.costMicros) : 0;
     const clicks = metrics && metrics.clicks != null ? Number(metrics.clicks) : 0;
     const impressions = metrics && metrics.impressions != null ? Number(metrics.impressions) : 0;
+    const conversions = metrics && metrics.conversions != null ? Number(metrics.conversions) : 0;
+    const conversionsValue = metrics && metrics.conversionsValue != null ? Number(metrics.conversionsValue) : 0;
 
     const cost = Number.isFinite(costMicros) ? costMicros : 0;
     const spend = cost / 1_000_000;
     const spendGbp = fx.convertToGbp(spend, accountCur, ratesToGbp);
+    const convValGbp = fx.convertToGbp(Number.isFinite(conversionsValue) ? conversionsValue : 0, accountCur, ratesToGbp);
 
     const key = String(hourUtcMs) + '\0' + campaignId + '\0' + adgroupId;
     const cur = grouped.get(key) || {
@@ -343,6 +346,8 @@ async function syncGoogleAdsSpendHourly(options = {}) {
       spendGbp: 0,
       clicks: 0,
       impressions: 0,
+      conversions: 0,
+      conversionsValueGbp: 0,
     };
     if (campaignName && !cur.campaignName) cur.campaignName = campaignName;
     if (adgroupName && !cur.adgroupName) cur.adgroupName = adgroupName;
@@ -350,6 +355,8 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     cur.spendGbp += (typeof spendGbp === 'number' && Number.isFinite(spendGbp)) ? spendGbp : 0;
     cur.clicks += Number.isFinite(clicks) ? clicks : 0;
     cur.impressions += Number.isFinite(impressions) ? impressions : 0;
+    cur.conversions += Number.isFinite(conversions) ? conversions : 0;
+    cur.conversionsValueGbp += (typeof convValGbp === 'number' && Number.isFinite(convValGbp)) ? convValGbp : 0;
     grouped.set(key, cur);
   }
 
@@ -360,11 +367,13 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     const clicks = Math.max(0, Math.floor(Number(v.clicks) || 0));
     const impressions = Math.max(0, Math.floor(Number(v.impressions) || 0));
     const costMicros = Math.max(0, Math.floor(Number(v.costMicros) || 0));
+    const conv = Math.round((Number(v.conversions) || 0) * 100) / 100;
+    const convVal = Math.round((Number(v.conversionsValueGbp) || 0) * 100) / 100;
 
     await adsDb.run(
       `
-        INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, adgroup_name, updated_at)
-        VALUES (?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, adgroup_name, conversions, conversions_value_gbp, updated_at)
+        VALUES (?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (provider, hour_ts, campaign_id, adgroup_id) DO UPDATE SET
           customer_id = EXCLUDED.customer_id,
           cost_micros = EXCLUDED.cost_micros,
@@ -373,9 +382,11 @@ async function syncGoogleAdsSpendHourly(options = {}) {
           impressions = EXCLUDED.impressions,
           campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_spend_hourly.campaign_name),
           adgroup_name = COALESCE(NULLIF(EXCLUDED.adgroup_name, ''), google_ads_spend_hourly.adgroup_name),
+          conversions = EXCLUDED.conversions,
+          conversions_value_gbp = EXCLUDED.conversions_value_gbp,
           updated_at = EXCLUDED.updated_at
       `,
-      ['google_ads', v.hourUtcMs, customerId, v.campaignId, v.adgroupId, costMicros, spendGbp, clicks, impressions, v.campaignName || '', v.adgroupName || '', now]
+      ['google_ads', v.hourUtcMs, customerId, v.campaignId, v.adgroupId, costMicros, spendGbp, clicks, impressions, v.campaignName || '', v.adgroupName || '', conv, convVal, now]
     );
     upserts++;
   }
