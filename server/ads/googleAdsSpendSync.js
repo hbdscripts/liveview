@@ -287,9 +287,9 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
 
     const query =
-      "SELECT segments.date, segments.hour, campaign.id, campaign.name, ad_group.id, ad_group.name, metrics.cost_micros, metrics.clicks, metrics.impressions " +
-      "FROM ad_group " +
-      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
+      "SELECT segments.date, segments.hour, campaign.id, campaign.name, campaign.advertising_channel_type, metrics.cost_micros, metrics.clicks, metrics.impressions, metrics.conversions, metrics.conversions_value " +
+      "FROM campaign " +
+      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}' AND campaign.status != 'REMOVED'`;
 
     const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint: meta.apiVersion || '' });
     if (!out || !out.ok) {
@@ -310,14 +310,14 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     const dateStr = seg && seg.date ? String(seg.date) : '';
     const hour = seg && seg.hour != null ? Number(seg.hour) : null;
     const camp = r && r.campaign ? r.campaign : null;
-    const ag = r && r.adGroup ? r.adGroup : null;
     const metrics = r && r.metrics ? r.metrics : null;
 
     const campaignId = camp && camp.id != null ? String(camp.id) : '';
     const campaignName = camp && camp.name != null ? String(camp.name) : '';
-    const adgroupId = ag && ag.id != null ? String(ag.id) : '';
-    const adgroupName = ag && ag.name != null ? String(ag.name) : '';
-    if (!dateStr || hour == null || !campaignId || !adgroupId) continue;
+    const channelType = camp && camp.advertisingChannelType ? String(camp.advertisingChannelType) : '';
+    const adgroupId = '_all_';
+    const adgroupName = '';
+    if (!dateStr || hour == null || !campaignId) continue;
 
     const hourUtcMs = localYmdHourToUtcMs(dateStr, hour, accountTz);
     if (!hourUtcMs || !Number.isFinite(hourUtcMs)) continue;

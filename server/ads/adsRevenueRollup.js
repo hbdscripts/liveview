@@ -59,7 +59,7 @@ async function rollupRevenueHourly(options = {}) {
         ${hourTsSql('p')} AS hour_ts,
         LOWER(TRIM(COALESCE(NULLIF(TRIM(s.bs_source), ''), ''))) AS source,
         TRIM(s.bs_campaign_id) AS campaign_id,
-        TRIM(s.bs_adgroup_id) AS adgroup_id,
+        COALESCE(NULLIF(TRIM(s.bs_adgroup_id), ''), '_all_') AS adgroup_id,
         COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
         COUNT(*) AS orders,
         COALESCE(SUM(p.order_total), 0) AS revenue
@@ -67,7 +67,6 @@ async function rollupRevenueHourly(options = {}) {
       INNER JOIN sessions s ON s.session_id = p.session_id
       WHERE p.purchased_at >= ? AND p.purchased_at < ?
         AND NULLIF(TRIM(s.bs_campaign_id), '') IS NOT NULL
-        AND NULLIF(TRIM(s.bs_adgroup_id), '') IS NOT NULL
         AND NULLIF(TRIM(s.bs_source), '') IS NOT NULL
         ${purchaseDedupWhere('p')}
         ${sourceClause}
