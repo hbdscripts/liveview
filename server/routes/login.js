@@ -53,7 +53,7 @@ function getLoginHtml(queryError) {
 <body class="page-login">
   <div class="shell">
     <div class="brand">
-      <img class="logo" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338&width=200" alt="Kexo" decoding="async" loading="eager" />
+      <img class="logo" src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" decoding="async" loading="eager" />
       <div class="brand-title">Kexo</div>
     </div>
     <div class="login-actions">

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="icon" type="image/png" href="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png" />
+  <link rel="icon" type="image/webp" href="/assets/kexo_logo_fullcolor.webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -954,13 +954,13 @@
     </div>
 
     <div class="main-tabs-center-logo" aria-hidden="true">
-      <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="30" height="30" alt="" decoding="async" />
+      <img src="/assets/kexo_logo_fullcolor.webp" width="30" height="30" alt="" decoding="async" />
     </div>
 
     <button type="button" role="tab" id="tab-dashboard" aria-label="Dashboard" aria-selected="true" aria-controls="tab-panel-dashboard" data-tab="dashboard">
       <span class="tab-icon-home-swap" aria-hidden="true">
-        <img class="tab-icon tab-icon-home tab-icon-home--inactive" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="25" height="25" alt="" decoding="async" />
-        <img class="tab-icon tab-icon-home tab-icon-home--active" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="25" height="25" alt="" decoding="async" />
+        <img class="tab-icon tab-icon-home tab-icon-home--inactive" src="/assets/kexo_logo_fullcolor.webp" width="25" height="25" alt="" decoding="async" />
+        <img class="tab-icon tab-icon-home tab-icon-home--active" src="/assets/kexo_logo_fullcolor.webp" width="25" height="25" alt="" decoding="async" />
       </span>
       <span class="tab-text">Dashboard</span>
     </button>
@@ -2000,7 +2000,7 @@
             if (sessions.length) renderTable();
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
-              if (link) link.href = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png';
+              if (link) link.href = '/assets/kexo_logo_fullcolor.webp';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
             if (shopForSalesFallback) {
@@ -7023,7 +7023,7 @@
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
 
           const SHOPIFY_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770259752';
-          const KEXO_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png?v=1770265338';
+          const KEXO_LOGO_URL = '/assets/kexo_logo_fullcolor.webp';
 
           const shopifySessionsToday = (traffic && typeof traffic.shopifySessionsToday === 'number') ? traffic.shopifySessionsToday : null;
           const shopifyConversionRateToday = (traffic && typeof traffic.shopifyConversionRateToday === 'number') ? traffic.shopifyConversionRateToday : null;
