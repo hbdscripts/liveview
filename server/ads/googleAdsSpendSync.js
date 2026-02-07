@@ -176,10 +176,21 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
           });
           if (isLikelyDeprecatedEndpoint404(res, errText)) {
             lastErr = new Error('Google Ads endpoint not found for ' + ver);
-            break;
+            break; // try next version
+          }
+          // 403 "API not enabled" — no point trying other versions
+          if (res.status === 403 && errText.includes('Enable it by visiting')) {
+            const m = errText.match(/https:\/\/console\.developers\.google\.com\/[^\s"]+/);
+            const enableUrl = m ? m[0] : 'https://console.developers.google.com/apis/api/googleads.googleapis.com/overview';
+            return {
+              ok: false,
+              apiVersion: null,
+              error: 'Google Ads API is not enabled in your Google Cloud project. Enable it at: ' + enableUrl,
+              attempts,
+            };
           }
           lastErr = new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + bodySnippet);
-          break;
+          break; // try next version
         }
 
         if (!attempts.some((a) => a && a.version === ver)) {
