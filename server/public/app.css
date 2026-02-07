@@ -51,6 +51,7 @@
     .breakdown-row .by-country-table .grid-body .grid-row { min-height: 50px; }
     /* Products tab: 2-col grid on all widths; type tables also 2-col */
     #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
+    #tab-panel-ads .stats-row { grid-template-columns: 1fr; }
     #products-type-tables-row { grid-template-columns: 1fr 1fr; }
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
     @media (max-width: 768px) { .traffic-grid { grid-template-columns: 1fr; } }

@@ -1220,6 +1220,39 @@
         <div class="report-build-step" id="products-build-step">—</div>
       </div>
     </div>
+
+  <div class="aov-cards-wrap" id="leaderboard-cards-wrap" aria-label="Products leaderboard">
+    <div class="aov-cards-header">
+      <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
+        <button type="button" class="aov-cards-title-btn" id="products-leaderboard-btn" aria-expanded="false" aria-haspopup="true">
+          <span class="aov-cards-title" id="products-leaderboard-label">Product Title</span>
+          <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="aov-cards-title-menu" id="products-leaderboard-menu" role="menu" aria-hidden="true">
+          <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Product Title</button>
+          <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Product Type</button>
+        </div>
+      </div>
+    </div>
+    <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title"></div>
+  </div>
+
+  <div class="aov-cards-wrap" id="finishes-cards-wrap" aria-label="Variant breakdown">
+    <div class="aov-cards-header">
+      <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
+        <button type="button" class="aov-cards-title-btn" id="products-variant-cards-btn" aria-expanded="false" aria-haspopup="true">
+          <span class="aov-cards-title" id="products-variant-cards-label">Finishes</span>
+          <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="aov-cards-title-menu" id="products-variant-cards-menu" role="menu" aria-hidden="true">
+          <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Finishes</button>
+          <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Lengths</button>
+        </div>
+      </div>
+    </div>
+    <div class="aov-cards-grid" id="finishes-cards-grid" data-cards-view="finishes"></div>
+  </div>
+
   <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
       <div class="country-table-wrap" id="best-sellers-wrap">
@@ -1271,10 +1304,11 @@
   <div class="stats-row" id="products-type-tables-row">
     <div class="stats-card" id="stats-type-necklaces">
       <div class="country-table-wrap">
-        <div id="type-necklaces-table" class="grid-table by-country-table" role="table" aria-label="Necklaces">
+        <div id="type-necklaces-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Necklaces">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Necklaces</span><span class="th-label-short">Necklaces</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Necklaces</span><span class="th-label-short">Necklaces</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -1285,10 +1319,11 @@
     </div>
     <div class="stats-card" id="stats-type-bracelets">
       <div class="country-table-wrap">
-        <div id="type-bracelets-table" class="grid-table by-country-table" role="table" aria-label="Bracelets">
+        <div id="type-bracelets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Bracelets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Bracelets</span><span class="th-label-short">Bracelets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Bracelets</span><span class="th-label-short">Bracelets</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -1299,10 +1334,11 @@
     </div>
     <div class="stats-card" id="stats-type-earrings">
       <div class="country-table-wrap">
-        <div id="type-earrings-table" class="grid-table by-country-table" role="table" aria-label="Earrings">
+        <div id="type-earrings-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Earrings">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Earrings</span><span class="th-label-short">Earrings</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Earrings</span><span class="th-label-short">Earrings</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -1313,10 +1349,11 @@
     </div>
     <div class="stats-card" id="stats-type-sets">
       <div class="country-table-wrap">
-        <div id="type-sets-table" class="grid-table by-country-table" role="table" aria-label="Sets">
+        <div id="type-sets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Sets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sets</span><span class="th-label-short">Sets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Sets</span><span class="th-label-short">Sets</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -1327,10 +1364,11 @@
     </div>
     <div class="stats-card" id="stats-type-charms">
       <div class="country-table-wrap">
-        <div id="type-charms-table" class="grid-table by-country-table" role="table" aria-label="Charms">
+        <div id="type-charms-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Charms">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Charms</span><span class="th-label-short">Charms</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Charms</span><span class="th-label-short">Charms</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -1341,10 +1379,11 @@
     </div>
     <div class="stats-card" id="stats-type-extras">
       <div class="country-table-wrap">
-        <div id="type-extras-table" class="grid-table by-country-table" role="table" aria-label="Extras">
+        <div id="type-extras-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Extras">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Extras</span><span class="th-label-short">Extras</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Extras</span><span class="th-label-short">Extras</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
@@ -4294,14 +4333,27 @@
       updateCardPagination('type-' + def.id, page, totalPages);
       var start = (page - 1) * TYPE_TABLE_PAGE_SIZE;
       var pageRows = rows.slice(start, start + TYPE_TABLE_PAGE_SIZE);
+      const mainBase = getMainBaseUrl();
       tbody.innerHTML = pageRows.map(function(r) {
         var title = r && r.title ? String(r.title) : '—';
         var orders = r && r.orders != null ? Number(r.orders) : 0;
+        var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
         var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '—';
         var cr = r && r.cr != null ? pct(r.cr) : '—';
+        var handle = r && r.handle ? String(r.handle) : '';
+        var thumb = r && r.thumb_url ? String(r.thumb_url) : '';
+        var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        var thumbUrl = thumb ? (hotImgSquare(thumb) || thumb) : '';
+        var thumbImg = '<span class="thumb-wrap">' +
+          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
+          (thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        '</span>';
+        var thumbHtml = productUrl ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>';
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell"><span class="aov-card-name">' + escapeHtml(title) + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + orders + '</div>' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumbHtml + ' ' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + formatSessions(orders) + '</div>' +
+          '<div class="grid-cell" role="cell">' + formatSessions(sessions) + '</div>' +
           '<div class="grid-cell" role="cell">' + rev + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
         '</div>';
@@ -4468,17 +4520,6 @@
         updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
         return;
       }
-      tbody.innerHTML = rows.map(function(v) {
-        const variantName = (v.variant_title && String(v.variant_title).trim()) ? String(v.variant_title).trim() : 'Default';
-        const productName = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
-        const displayName = variantName + (productName ? (' \u2014 ' + productName) : '');
-        const thumbUrl = v.thumb_url ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
-        const thumbImg = thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt=\"\" loading=\"lazy\">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
-        const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && v.handle) ? (mainBase + '/products/' + escapeHtml(v.handle) + (v.variant_id ? ('?variant=' + encodeURIComponent(String(v.variant_id))) : '')) : '';
-        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
-        const name = '<span class="bs-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</span>';
-        const ordersNum = v.orders != null ? (Number(v.orders) || 0) : 0;
         const sales = formatSessions(ordersNum);
         const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
         const revenue = formatRevenueTableHtml(v.revenue);
@@ -4534,7 +4575,10 @@
         const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">' : '<span class="bs-thumb bs-thumb-placeholder"></span>';
+        const thumbImg = '<span class="thumb-wrap">' +
+          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
+          (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        '</span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
@@ -4879,9 +4923,10 @@
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const placeholderSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
         const imgInner = '<span class="breakdown-thumb-wrap">' +
+          placeholderSvg +
           (thumb
             ? '<img class="breakdown-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
-            : placeholderSvg) +
+            : '') +
           '</span>';
         const img = productUrl
           ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '">' + imgInner + '</a>'
@@ -5578,7 +5623,12 @@
           try { fetchSessions(); } catch (_) {}
         }
         // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
-        try { refreshConfigStatus(); } catch (_) {}
+        // Don't refresh Diagnostics in the background while the modal is open (avoid disrupting viewing).
+        try {
+          if (!(typeof isConfigModalOpen === 'function' && isConfigModalOpen())) {
+            refreshConfigStatus();
+          }
+        } catch (_) {}
       }
       lastConvertedCountToday = conv.today;
       hasSeenConvertedCountToday = true;
@@ -6010,8 +6060,19 @@
       const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
       let bestP = null;
       let variantsP = null;
+      let leaderboardP = null;
+      let variantCardsP = null;
       try { bestP = fetchBestSellers({ force }); } catch (err) { console.error(err); bestP = Promise.resolve(null); }
       try { variantsP = fetchBestVariants({ force }); } catch (err) { console.error(err); variantsP = Promise.resolve(null); }
+      try { leaderboardP = fetchProductsLeaderboard({ force }); } catch (err) { console.error(err); leaderboardP = Promise.resolve(null); }
+      try {
+        variantCardsP = (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths')
+          ? fetchLengths({ force })
+          : fetchFinishes({ force });
+      } catch (err) {
+        console.error(err);
+        variantCardsP = Promise.resolve(null);
+      }
       function settled(p) {
         return Promise.resolve(p)
           .then(function(v) { return { ok: true, value: v }; })
@@ -6019,12 +6080,18 @@
       }
       const bestS = settled(bestP);
       const variantsS = settled(variantsP);
+      const leaderboardS = settled(leaderboardP);
+      const variantCardsS = settled(variantCardsP);
 
       productsRefreshInFlight = Promise.resolve()
         .then(function() { build.step('building best products...'); return bestS; })
         .then(function() { build.step('building best products... done'); return delay(180); })
         .then(function() { build.step('building best variants...'); return variantsS; })
         .then(function() { build.step('building best variants... done'); return delay(180); })
+        .then(function() { build.step('building leaderboard...'); return leaderboardS; })
+        .then(function() { build.step('building leaderboard... done'); return delay(140); })
+        .then(function() { build.step('building variants...'); return variantCardsS; })
+        .then(function() { build.step('building variants... done'); return delay(140); })
         .then(function() { lastProductsFetchedAt = Date.now(); })
         .catch(function(err) {
           console.error(err);
@@ -6640,7 +6707,7 @@
       })
         .then(r => r.json())
         .then(() => {
-          try { refreshConfigStatus({ force: true }); } catch (_) {}
+          try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
           try { fetchTrafficData({ force: true }); } catch (_) {}
         })
         .catch(() => {
@@ -6679,7 +6746,9 @@
       const preserveView = !!(options && options.preserveView);
       const modalCardEl = preserveView ? document.querySelector('#config-modal .config-modal-card') : null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
-      if (configStatusEl) configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
+      if (configStatusEl && !preserveView) {
+        configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
+      }
       if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
@@ -7799,21 +7868,24 @@
                     if (msgEl) msgEl.textContent = 'Saved. Applies on next page view.';
                   })
                   .catch(function(err) {
-                    toggle.checked = !enabled;
-                    if (msgEl) msgEl.textContent = 'Failed to save: ' + (err && err.message ? String(err.message) : 'error');
+                    if (msgEl) {
+                      msgEl.textContent = 'Save failed: ' + (err && err.message ? String(err.message).slice(0, 140) : 'error');
+                    }
                   })
                   .finally(function() {
                     toggle.disabled = false;
-                    setTimeout(function() { try { refreshConfigStatus(); } catch (_) {} }, 600);
+                    // If the modal is open, refresh diagnostics so the UI reflects the saved setting,
+                    // but preserve the current tab/scroll to avoid disrupting viewing.
+                    try {
+                      if (typeof isConfigModalOpen === 'function' && isConfigModalOpen()) {
+                        refreshConfigStatus({ force: true, preserveView: true });
+                      }
+                    } catch (_) {}
                   });
               };
             }
           } catch (_) {}
-
-          // Footer: keep "Last sale" accurate. Prefer Shopify truth order.created_at, else evidence last checkout_completed.
-          if (truthToday && typeof truthToday.lastOrderCreatedAt === 'number') {
-            setLastSaleAt(truthToday.lastOrderCreatedAt);
-          } else if (evidenceToday && typeof evidenceToday.lastOccurredAt === 'number') {
+          if (typeof evidenceToday !== 'undefined' && typeof evidenceToday.lastOccurredAt === 'number') {
             setLastSaleAt(evidenceToday.lastOccurredAt);
           }
           return c;
@@ -7848,7 +7920,8 @@
       return p;
     }
 
-    refreshConfigStatus();
+    // Best-effort: prime Diagnostics data in the background (modal is closed at load).
+    try { refreshConfigStatus(); } catch (_) {}
 
     updateLastSaleAgo();
     setInterval(updateLastSaleAgo, 10000);
@@ -7861,14 +7934,14 @@
       const closeBtn = document.getElementById('config-close-btn');
       if (!modal) return;
       function open() {
-        try { refreshConfigStatus({ force: true }); } catch (_) {}
+        try { refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
         try { fetchTrafficData({ force: true }); } catch (_) {}
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
       if (openBtn) openBtn.addEventListener('click', open);
-      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true }); } catch (_) {} });
+      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
@@ -7894,7 +7967,7 @@
         if (kickerEl) kickerEl.textContent = kickerForKey(activeKpiCompareKey);
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
-        try { refreshConfigStatus({ force: true }); } catch (_) {}
+        try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
 
@@ -7908,7 +7981,7 @@
         open(key || 'conv');
       });
 
-      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true }); } catch (_) {} });
+      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
       document.addEventListener('keydown', function(e) {

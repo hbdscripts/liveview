@@ -7,6 +7,7 @@ require('./instrument.js');
 
 const Sentry = require('@sentry/node');
 const config = require('./config');
+const salesTruth = require('./salesTruth');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -122,8 +123,17 @@ app.get('/api/store-base-url', (req, res) => {
   const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));
   const mainBaseUrl = config.storeMainDomain || baseUrl;
   const assetsBaseUrl = config.assetsBaseUrl || '';
-  const shopForSales = (config.shopDomain || config.allowedShopDomain || '').trim().toLowerCase();
-  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl, shopForSales: shopForSales && shopForSales.endsWith('.myshopify.com') ? shopForSales : '' });
+  const shopFromTruth = (() => {
+    try {
+      const s = salesTruth.resolveShopForSales('');
+      return s && s.endsWith('.myshopify.com') ? s : '';
+    } catch (_) {
+      return '';
+    }
+  })();
+  const shopForSalesRaw = (config.shopDomain || config.allowedShopDomain || '').trim().toLowerCase();
+  const shopForSales = shopFromTruth || (shopForSalesRaw && shopForSalesRaw.endsWith('.myshopify.com') ? shopForSalesRaw : '');
+  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl, shopForSales });
 });
 
 // Shopify OAuth (install flow)
