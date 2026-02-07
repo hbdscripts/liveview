@@ -1932,15 +1932,12 @@
               if (link) link.href = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/favicon_e309db0f-dddb-48bf-83f4-a602cc9834d6.png';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
-            if (activeMainTab === 'breakdown' && shopForSalesFallback && typeof fetchProductsLeaderboard === 'function') fetchProductsLeaderboard();
-            if (activeMainTab === 'breakdown' && shopForSalesFallback) {
-              try {
-                if (typeof fetchFinishes === 'function') fetchFinishes();
-                if (typeof fetchLengths === 'function') fetchLengths();
-              } catch (_) {}
+            if (shopForSalesFallback) {
+              if (activeMainTab === 'breakdown' && typeof refreshBreakdown === 'function') refreshBreakdown({ force: false });
+              if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
+              if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
+              if (activeMainTab === 'traffic' && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
             }
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
-            if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestVariants === 'function') fetchBestVariants();
           }
           storeBaseUrlLoaded = true;
           if (typeof renderSales === 'function') renderSales(statsCache);
@@ -6100,6 +6097,8 @@
     function refreshBreakdown(options = {}) {
       const force = !!options.force;
       if (breakdownRefreshInFlight) return breakdownRefreshInFlight;
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) return Promise.resolve(null);
 
       const build = startReportBuild({ key: 'breakdown', overlayId: 'breakdown-loading-overlay', stepId: 'breakdown-build-step' });
       build.step('Loading\u2026');
@@ -6134,6 +6133,8 @@
     function refreshProducts(options = {}) {
       const force = !!options.force;
       if (productsRefreshInFlight) return productsRefreshInFlight;
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) return Promise.resolve(null);
 
       const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
       let bestP = null;
