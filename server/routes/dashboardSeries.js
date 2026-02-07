@@ -145,6 +145,28 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     }
   }
 
+  // Fetch Shopify sessions per day (from shopify_sessions_snapshots)
+  const shopifySessionsPerDay = {};
+  if (shop) {
+    try {
+      const dayLabels = dayBounds.map(d => d.label);
+      const shopifyRows = await db.all(
+        config.dbUrl
+          ? `SELECT day_ymd, MAX(sessions_count) AS sessions_count
+             FROM shopify_sessions_snapshots
+             WHERE shop = $1 AND day_ymd >= $2 AND day_ymd <= $3
+             GROUP BY day_ymd`
+          : `SELECT day_ymd, MAX(sessions_count) AS sessions_count
+             FROM shopify_sessions_snapshots
+             WHERE shop = ? AND day_ymd >= ? AND day_ymd <= ?`,
+        [shop, dayLabels[0], dayLabels[dayLabels.length - 1]]
+      );
+      for (const r of shopifyRows) {
+        shopifySessionsPerDay[r.day_ymd] = Number(r.sessions_count) || 0;
+      }
+    } catch (_) {}
+  }
+
   // Build series
   const series = dayBounds.map(function(db_day) {
     const sessions = sessionsPerDay[db_day.label] || 0;
@@ -152,6 +174,9 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
     const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
     const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
+    const shopifySessions = shopifySessionsPerDay[db_day.label] || 0;
+    const rawShopifyConv = shopifySessions > 0 ? (orders / shopifySessions) * 100 : null;
+    const shopifyConvRate = rawShopifyConv != null ? Math.round(Math.min(rawShopifyConv, 100) * 10) / 10 : null;
     const aov = orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0;
     const bounced = bouncePerDay[db_day.label] || 0;
     const bounceRate = sessions > 0 ? Math.round((bounced / sessions) * 1000) / 10 : 0;
@@ -161,6 +186,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       orders,
       sessions,
       convRate,
+      shopifyConvRate,
       aov,
       bounceRate,
     };

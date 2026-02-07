@@ -9042,14 +9042,27 @@
           borderWidth: 2
         }]);
 
-        makeChart('dash-chart-conv', labels, [{
-          label: 'Conv Rate',
+        var hasShopifyConv = series.some(function(d) { return d.shopifyConvRate != null; });
+        var convDatasets = [{
+          label: 'Kexo Conv Rate',
           data: series.map(function(d) { return d.convRate; }),
           borderColor: DASH_PURPLE,
           backgroundColor: DASH_PURPLE_LIGHT,
           fill: true,
           borderWidth: 2
-        }], { pct: true });
+        }];
+        if (hasShopifyConv) {
+          convDatasets.push({
+            label: 'Shopify Conv Rate',
+            data: series.map(function(d) { return d.shopifyConvRate; }),
+            borderColor: '#5c6ac4',
+            backgroundColor: 'rgba(92,106,196,0.10)',
+            fill: false,
+            borderWidth: 2,
+            borderDash: [5, 3]
+          });
+        }
+        makeChart('dash-chart-conv', labels, convDatasets, { pct: true });
 
         makeChart('dash-chart-sessions', labels, [{
           label: 'Sessions',
