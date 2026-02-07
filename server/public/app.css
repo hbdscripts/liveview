@@ -54,6 +54,9 @@
     /* Products tab: 2-col grid; type tables also 2-col */
     #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
     #tab-panel-ads .stats-row { grid-template-columns: 1fr; }
+    .ads-campaign-table { --grid-cols: minmax(160px, 2fr) repeat(6, minmax(64px, 0.7fr)); }
+    .ads-campaign-table .ads-totals-row { background: var(--th-bg); font-weight: 600; }
+    .ads-campaign-table .ads-totals-row .grid-cell { border-bottom: 2px solid var(--border); }
     #products-type-tables-row { grid-template-columns: 1fr 1fr; }
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
     @media (max-width: 768px) { .traffic-grid { grid-template-columns: 1fr; } }

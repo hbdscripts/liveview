@@ -107,7 +107,9 @@ async function getSummary(options = {}) {
         adgroup_id,
         COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
         COALESCE(SUM(clicks), 0) AS clicks,
-        COALESCE(SUM(impressions), 0) AS impressions
+        COALESCE(SUM(impressions), 0) AS impressions,
+        MAX(campaign_name) AS campaign_name,
+        MAX(adgroup_name) AS adgroup_name
       FROM google_ads_spend_hourly
       WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)${spendFilterSql}
       GROUP BY provider, campaign_id, adgroup_id
@@ -121,6 +123,7 @@ async function getSummary(options = {}) {
     if (!campaignMap.has(key)) {
       campaignMap.set(key, {
         campaignId: key,
+        campaignName: '',
         revenue: 0,
         orders: 0,
         spend: 0,
@@ -138,6 +141,7 @@ async function getSummary(options = {}) {
     if (!camp.adgroups.has(key)) {
       camp.adgroups.set(key, {
         adgroupId: key,
+        adgroupName: '',
         revenue: 0,
         orders: 0,
         spend: 0,
@@ -184,6 +188,9 @@ async function getSummary(options = {}) {
     const cl = Number.isFinite(clicks) ? clicks : 0;
     const im = Number.isFinite(impressions) ? impressions : 0;
 
+    if (r.campaign_name && !camp.campaignName) camp.campaignName = String(r.campaign_name);
+    if (r.adgroup_name && !ag.adgroupName) ag.adgroupName = String(r.adgroup_name);
+
     camp.spend += sp;
     camp.clicks += cl;
     camp.impressions += im;
@@ -218,6 +225,7 @@ async function getSummary(options = {}) {
     adgroups.sort((a, b) => (b.spend || 0) - (a.spend || 0));
     campaigns.push({
       campaignId: c.campaignId,
+      campaignName: c.campaignName || '',
       revenue: Math.round(c.revenue * 100) / 100,
       orders: Math.floor(c.orders || 0),
       spend: Math.round(c.spend * 100) / 100,

@@ -74,6 +74,13 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_bsrh_adgroup ON bs_revenue_hourly(adgroup_id)');
       },
     },
+    {
+      id: '002_ads_name_columns',
+      up: async () => {
+        await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS campaign_name TEXT`);
+        await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS adgroup_name TEXT`);
+      },
+    },
   ];
 
   let applied = 0;

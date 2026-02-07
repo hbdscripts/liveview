@@ -60,9 +60,22 @@
     }).catch(function () { return null; });
   }
 
+  function fmtRoas(n) {
+    const x = n == null ? null : Number(n);
+    if (x == null || !Number.isFinite(x)) return '—';
+    return x.toFixed(2) + 'x';
+  }
+
+  function fmtPct(n) {
+    const x = n == null ? null : Number(n);
+    if (x == null || !Number.isFinite(x)) return '—';
+    return x.toFixed(1) + '%';
+  }
+
   function render(root, status, summary) {
     const providers = status && status.providers ? status.providers : [];
     const totals = summary && summary.totals ? summary.totals : {};
+    const campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
     const currency = (summary && summary.currency) || 'GBP';
     const note = (summary && summary.note) ? String(summary.note) : '';
 
@@ -74,35 +87,67 @@
         }).join(' · ')
       : '<span class="muted">No providers configured.</span>';
 
+    function gridRow(cells, isHeader, cssClass) {
+      const role = isHeader ? 'columnheader' : 'cell';
+      const cls = 'grid-row' + (isHeader ? ' grid-row--header' : '') + (cssClass ? ' ' + cssClass : '');
+      var h = '<div class="' + cls + '" role="row">';
+      for (var i = 0; i < cells.length; i++) {
+        h += '<div class="grid-cell" role="' + role + '">' + cells[i] + '</div>';
+      }
+      h += '</div>';
+      return h;
+    }
+
+    var headerCells = ['Campaign', 'Spend', 'Impr', 'Clicks', 'Revenue', 'Profit', 'ROAS'];
+
+    var bodyHtml = '';
+
+    // Totals row
+    bodyHtml += gridRow([
+      '<strong>Total</strong>',
+      esc(fmtMoney(totals.spend, currency)),
+      esc(fmtNum(totals.impressions)),
+      esc(fmtNum(totals.clicks)),
+      esc(fmtMoney(totals.revenue, currency)),
+      esc(fmtMoney(totals.profit, currency)),
+      esc(fmtRoas(totals.roas)),
+    ], false, 'ads-totals-row');
+
+    // Campaign rows
+    for (var ci = 0; ci < campaigns.length; ci++) {
+      var c = campaigns[ci];
+      if (!c) continue;
+      var cName = c.campaignName || c.campaignId || '—';
+      var ctr = (c.impressions > 0) ? (c.clicks / c.impressions * 100) : null;
+
+      bodyHtml += gridRow([
+        esc(cName),
+        esc(fmtMoney(c.spend, currency)),
+        esc(fmtNum(c.impressions)),
+        esc(fmtNum(c.clicks)),
+        esc(fmtMoney(c.revenue, currency)),
+        esc(fmtMoney(c.profit, currency)),
+        esc(fmtRoas(c.roas)),
+      ], false, '');
+    }
+
+    if (!campaigns.length && !note) {
+      bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="grid-column:1/-1;text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
+    }
+
     root.innerHTML =
       '<div class="stats-row-wrap">' +
         '<div class="stats-row">' +
           '<div class="stats-card">' +
             '<div class="traffic-card-header">' +
               '<h3 class="traffic-card-title">Ads</h3>' +
-              '<button type="button" class="config-btn" id="ads-refresh-btn" title="Refresh" aria-label="Refresh">↻</button>' +
+              '<button type="button" class="config-btn" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh">↻</button>' +
             '</div>' +
             '<div class="country-table-wrap">' +
               '<div class="muted" style="padding: 10px 12px;">' + providerLine + '</div>' +
-              '<div class="grid-table by-country-table" role="table" aria-label="Ads totals">' +
-                '<div class="grid-header" role="rowgroup">' +
-                  '<div class="grid-row grid-row--header" role="row">' +
-                    '<div class="grid-cell" role="columnheader">Spend</div>' +
-                    '<div class="grid-cell" role="columnheader">Impr</div>' +
-                    '<div class="grid-cell" role="columnheader">Clicks</div>' +
-                    '<div class="grid-cell" role="columnheader">Conv</div>' +
-                    '<div class="grid-cell" role="columnheader">Revenue</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="grid-body" role="rowgroup">' +
-                  '<div class="grid-row" role="row">' +
-                    '<div class="grid-cell" role="cell">' + esc(fmtMoney(totals.spend, currency)) + '</div>' +
-                    '<div class="grid-cell" role="cell">' + esc(fmtNum(totals.impressions)) + '</div>' +
-                    '<div class="grid-cell" role="cell">' + esc(fmtNum(totals.clicks)) + '</div>' +
-                    '<div class="grid-cell" role="cell">' + esc(fmtNum(totals.conversions)) + '</div>' +
-                    '<div class="grid-cell" role="cell">' + esc(fmtMoney(totals.revenue, currency)) + '</div>' +
-                  '</div>' +
-                '</div>' +
+              '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
+                '<div class="grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
+                '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
               '</div>' +
               (note ? ('<div class="muted" style="padding: 10px 12px;">' + esc(note) + '</div>') : '') +
             '</div>' +
