@@ -18,7 +18,7 @@
 function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
 function isTruthy(v) { const t = s(v).trim().toLowerCase(); return t === '1' || t === 'true' || t === 'yes'; }
 
-const ALLOWED_HOST = 'ingest.kexo.io';
+const ALLOWED_HOSTS = ['ingest.kexo.io', 'lv-ingest.hbdjewellery.com'];
 const EXPOSE = 'x-lv-edge-result,x-lv-blocked,x-cf-known-bot,x-cf-country,x-cf-colo,x-cf-asn,x-cf-verified-bot-category';
 
 function isAllowedOrigin(origin) {
@@ -101,7 +101,7 @@ export default { async fetch(request, env, ctx) {
   const method = (request.method || 'GET').toUpperCase();
 
   // Kill workers.dev + wrong-host bypass
-  if (host !== ALLOWED_HOST) {
+  if (ALLOWED_HOSTS.indexOf(host) === -1) {
     const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'host_denied', 'x-lv-blocked': 'host', 'x-cf-known-bot': '0', 'x-cf-country': '', 'x-cf-colo': '', 'x-cf-asn': '', 'x-cf-verified-bot-category': '' });
     return new Response(null, { status: 404, headers: h });
   }
