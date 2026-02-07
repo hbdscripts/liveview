@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 12;
+const DEFINITIONS_VERSION = 13;
 const LAST_UPDATED = '2026-02-07';
 
 /**
@@ -102,10 +102,104 @@ const TRACKER_TABLE_DEFINITIONS = [
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
+    id: 'overview_breakdown_products_table',
+    page: 'Overview',
+    name: 'Product breakdown table (Title)',
+    ui: { elementIds: ['breakdown-product-table', 'breakdown-title-body'] },
+    endpoint: { method: 'GET', path: '/api/shopify-leaderboard', params: ['shop=...', 'range=...', 'topProducts/topTypes (optional)', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by product_id (truth line items; rolling 7d in admin TZ)' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled for 7d)' },
+      { kind: 'shopify', note: 'Product metadata for product image + product_type (REST /products/{id}.json) when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Product', value: 'byTitle[]', formula: 'Top products by SUM(line_revenue) over rolling 7d (converted to GBP)' },
+      { name: 'Rev', value: 'revenueGbp' },
+      { name: 'CR%', value: 'cr' },
+    ],
+    math: [
+      { name: 'Range', value: 'Rolling 7d (startOfDay -6d → now) in admin time zone' },
+      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
+    id: 'overview_breakdown_types_table',
+    page: 'Overview',
+    name: 'Type breakdown table',
+    ui: { elementIds: ['breakdown-type-table', 'breakdown-type-body'] },
+    endpoint: { method: 'GET', path: '/api/shopify-leaderboard', params: ['shop=...', 'range=...', 'topProducts/topTypes (optional)', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by product_type via Shopify product metadata' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled for 7d)' },
+      { kind: 'shopify', note: 'Product metadata for product_type (REST /products/{id}.json) when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Type', value: 'byType[]' },
+      { name: 'Rev', value: 'revenueGbp' },
+      { name: 'CR%', value: 'cr' },
+    ],
+    math: [
+      { name: 'Range', value: 'Rolling 7d (startOfDay -6d → now) in admin time zone' },
+      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
+    id: 'overview_breakdown_finishes_table',
+    page: 'Overview',
+    name: 'Finish breakdown table',
+    ui: { elementIds: ['breakdown-finish-table', 'breakdown-finish-body'] },
+    endpoint: { method: 'GET', path: '/api/shopify-finishes', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred finish from variant_title' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
+      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, table relies on existing DB truth.' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Finish', value: 'Gold | Silver | Vermeil | Solid Silver' },
+      { name: 'Rev', value: 'revenueGbp' },
+      { name: 'CR%', value: 'cr' },
+    ],
+    math: [
+      { name: 'Finish inference', value: 'Derived from variant_title keywords (normalizeFinishKey in shopifyFinishes route)' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
+    id: 'overview_breakdown_lengths_table',
+    page: 'Overview',
+    name: 'Length breakdown table',
+    ui: { elementIds: ['breakdown-length-table', 'breakdown-length-body'] },
+    endpoint: { method: 'GET', path: '/api/shopify-lengths', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred length (inches) from variant_title' },
+      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
+      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, table relies on existing DB truth.' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Length', value: '12" | 13" | … | 21"' },
+      { name: 'Rev', value: 'revenueGbp' },
+      { name: 'CR%', value: 'cr' },
+    ],
+    math: [
+      { name: 'Length inference', value: 'Derived from variant_title (e.g. 15" Inches) using normalizeLengthInches in shopifyLengths route' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
     id: 'breakdown_aov_cards',
     page: 'Overview',
-    name: 'Average Order Value (AOV) cards (by country)',
-    ui: { elementIds: ['aov-cards-grid'] },
+    name: 'Average Order Value (AOV) table (by country)',
+    ui: { elementIds: ['breakdown-aov-table', 'breakdown-aov-body'] },
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=... (same picker as dashboard)'] },
     sources: [
       { kind: 'db', tables: ['sessions'], note: 'Country sessions (human-only) + attributed orders for that country' },
@@ -175,33 +269,6 @@ const TRACKER_TABLE_DEFINITIONS = [
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
-    id: 'products_worst_products',
-    page: 'Products',
-    name: 'Worst products table',
-    ui: { elementIds: ['worst-products-table'] },
-    endpoint: { method: 'GET', path: '/api/worst-products', params: ['range=...', 'page/pageSize'] },
-    sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions (first_path/entry_url → handle, fallback first_product_handle; human-only). Used for Sessions column + MIN_LANDINGS filter.' },
-      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth product orders/revenue from line items (paid only)' },
-      { kind: 'shopify', note: 'Maps product handle → product_id via Admin GraphQL productByHandle (cached) so truth line items can be joined' },
-      { kind: 'fx', note: 'Revenue converted to GBP for display' },
-    ],
-    columns: [
-      { name: 'Orders', value: 'converted', formula: 'SUM(quantity) for the product (truth line items)' },
-      { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) started_at in range (human-only)' },
-      { name: 'Rev', value: 'revenue', formula: 'Attributed revenue (GBP)' },
-      { name: 'CR%', value: 'conversion', formula: 'converted / sessions × 100' },
-    ],
-    math: [
-      { name: 'Minimum traffic', value: 'Only includes products with >= 3 product landings (MIN_LANDINGS) to avoid noise' },
-      { name: 'Note', value: 'Sessions is product landings (per row). Orders/Rev are Shopify truth for that product; CR% = Orders / Sessions.' },
-      { name: 'Filter', value: 'Only products with zero orders (converted = 0) are listed.' },
-      { name: 'Sort', value: 'Ordered by highest sessions (clicks) then lowest revenue.' },
-    ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
-  },
-  {
     id: 'products_best_variants',
     page: 'Products',
     name: 'Best variants table',
@@ -224,100 +291,6 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
-  },
-  {
-    id: 'products_worst_variants',
-    page: 'Products',
-    name: 'Worst variants table',
-    ui: { elementIds: ['worst-variants-table'] },
-    endpoint: { method: 'GET', path: '/api/shopify-worst-variants', params: ['shop=...', 'range=...', 'page/pageSize'] },
-    sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Product landing sessions for the parent product handle (first_path/entry_url → handle, fallback first_product_handle; human-only)' },
-      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Shopify truth variant orders/revenue from line items (paid only)' },
-      { kind: 'shopify', note: 'ProductByHandle GraphQL for product + variants (handle + thumb + variant list)' },
-    ],
-    columns: [
-      { name: 'Orders', value: 'orders', formula: 'SUM(quantity) for this variant (truth line items)' },
-      { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
-      { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant (truth)' },
-      { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
-    ],
-    math: [
-      { name: 'Note', value: 'Sessions is per parent product (variants of the same product share the same Sessions denominator).' },
-      { name: 'Filter', value: 'Only variants with zero orders are listed.' },
-      { name: 'Sort', value: 'Ordered by highest sessions (clicks) then lowest revenue.' },
-    ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
-  },
-  {
-    id: 'products_leaderboard_cards',
-    page: 'Products',
-    name: 'Leaderboard cards: Title / Type (7d)',
-    ui: { elementIds: ['leaderboard-cards-grid'] },
-    endpoint: { method: 'GET', path: '/api/shopify-leaderboard', params: ['shop=...', 'topProducts/topTypes (optional)', 'force=1 (optional)'] },
-    sources: [
-      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by product_id (truth line items; rolling 7d in admin TZ)' },
-      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled for 7d)' },
-      { kind: 'shopify', note: 'Product metadata for product image + product_type (REST /products/{id}.json) when token stored' },
-      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
-    ],
-    columns: [
-      { name: 'Title', value: 'byTitle[]', formula: 'Top products by SUM(line_revenue) over rolling 7d (converted to GBP); includes thumb_url for UI cards' },
-      { name: 'Type', value: 'byType[]', formula: 'Top product types by SUM(revenue of products in rolling 7d); type sourced from Shopify product_type' },
-    ],
-    math: [
-      { name: 'Range', value: 'Rolling 7d (startOfDay -6d → now) in admin time zone' },
-      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
-    ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
-  },
-  {
-    id: 'products_finishes_cards',
-    page: 'Products',
-    name: 'Variant cards: Finishes',
-    ui: { elementIds: ['finishes-cards-grid'] },
-    endpoint: { method: 'GET', path: '/api/shopify-finishes', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
-    sources: [
-      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred finish from variant_title' },
-      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
-      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, cards rely on existing DB truth.' },
-      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
-    ],
-    columns: [
-      { name: 'Finish', value: 'Gold | Silver | Vermeil | Solid Silver' },
-      { name: 'Revenue', value: 'revenueGbp', formula: 'SUM(line_revenue) by finish, converted to GBP' },
-    ],
-    math: [
-      { name: 'Finish inference', value: 'Derived from variant_title keywords (normalizeFinishKey in shopifyFinishes route)' },
-      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
-    ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
-  },
-  {
-    id: 'products_lengths_cards',
-    page: 'Products',
-    name: 'Variant cards: Lengths',
-    ui: { elementIds: ['finishes-cards-grid'] },
-    endpoint: { method: 'GET', path: '/api/shopify-lengths', params: ['shop=...', 'range=...', 'force=1 (optional)'] },
-    sources: [
-      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid line item revenue grouped by inferred length (inches) from variant_title' },
-      { kind: 'db', tables: ['reconcile_state', 'reconcile_snapshots'], note: 'Best-effort reconciliation state (route calls salesTruth.ensureReconciled)' },
-      { kind: 'shopify', note: 'Used to reconcile truth data when token stored (best results). Without token, cards rely on existing DB truth.' },
-      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
-    ],
-    columns: [
-      { name: 'Length', value: '12" | 13" | … | 21"' },
-      { name: 'Revenue', value: 'revenueGbp', formula: 'SUM(line_revenue) by length, converted to GBP' },
-    ],
-    math: [
-      { name: 'Length inference', value: 'Derived from variant_title (e.g. 15" Inches) using normalizeLengthInches in shopifyLengths route' },
-      { name: 'Truth basis', value: 'Paid, non-test, non-cancelled orders from orders_shopify_line_items' },
-    ],
-    respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
   },
   {
     id: 'traffic_channels',

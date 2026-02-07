@@ -106,7 +106,9 @@ The project runs **Shopify CLI directly** from scripts (like theme check in anot
 
 - `server/` – Config, DB, migrations, ingest, SSE, cleanup, API routes, static admin UI.
 - `server/public/live-visitors.html` – Dashboard (table, tabs, side panel, KPIs, config status).
-- `server/trackerDefinitions.js` – Metric/table definitions manifest for Diagnostics → Definitions (update when adding/changing dashboard tables or metric math).
+- `server/trackerDefinitions.js` – Metric/table definitions manifest for Diagnostics → Definitions.
+  - When you move/rename/remove a dashboard section/table/card, update this file (especially `ui.elementIds` + endpoint list) so Diagnostics doesn’t show stale “UI missing” items.
+  - Verify by opening the dashboard → Settings → Diagnostics → Definitions and confirming the moved items show **UI OK** (and removed items no longer appear).
 - `extensions/live-visitors-pixel/` – Web Pixel extension (`shopify.extension.toml` + `src/index.js`).
 - `.env.example` – All env vars with short descriptions.
 - `config/APP_CONFIG.md` – Where to get credentials, URLs, ingest secret, common mistakes.

@@ -9,6 +9,7 @@ IMPORTANT (for future agents)
 - This repo avoids creating new markdown docs; this handover is intentionally `HANDOVER.txt` (markdown-formatted text).
 - Multiple agents may be working on this repo in parallel. If “surprise” files/changes appear in your working tree, assume it may be other agent work and confirm with `git status`/`git log` before attributing changes.
 - UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
+- Diagnostics guardrail: whenever you add/move/remove a dashboard section/table/card, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate (elementIds + endpoint list). In the same commit, open the dashboard and confirm the moved items show **UI OK** (and removed items no longer appear).
 
 ---
 

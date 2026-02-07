@@ -102,6 +102,8 @@ Shopify exposes **orders** (and revenue) via the **Orders API** (REST, scope `re
 - **Sale sound:** MP3 at `assets/cash-register.mp3` is served at `/assets/cash-register.mp3` and plays once when a new sale is detected (today’s converted count increases). Use "Sound on" / "Muted" to toggle; choice is stored in sessionStorage.
 - **Assets (icons):** Files in `assets/` are served at `/assets/...`. To use a new file (e.g. `hicon.webp`), add it to `assets/`, commit, and push so the deploy includes it. The dashboard uses `checkout.webp` and og-thumb for landing/cart; switch to `hicon.webp` in `live-visitors.html` once the file is in the repo.
 
+**Diagnostics guardrail:** If you move/rename/remove a dashboard section/table/card or change which endpoints it loads, update `server/trackerDefinitions.js` (especially `ui.elementIds` + endpoint list) so Settings → Diagnostics → Definitions stays accurate. Verify in the same commit that moved items show **UI OK** and removed items no longer appear.
+
 ## Dashboard access (Google-only for direct visits)
 
 - **From Shopify Admin:** Opening the app from Admin (admin.shopify.com or *.myshopify.com) is always allowed; no login.
