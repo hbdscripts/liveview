@@ -55,7 +55,7 @@
 #config-modal .config-btn:focus-visible,
 #config-modal .config-refresh-btn:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
 #config-modal .config-refresh-btn svg { display: block; width: 16px; height: 16px; }
-#config-modal .config-refresh-btn.spinning svg { animation: dm-spin 0.7s linear infinite; }
+#config-modal .config-refresh-btn.spinning svg { animation: none; }
 @keyframes dm-spin { to { transform: rotate(360deg); } }
 
 #config-modal .config-close {
@@ -234,9 +234,7 @@
   display: flex; align-items: center; justify-content: center;
   padding: 80px 0; color: #94a3b8;
 }
-#config-modal .dm-loading-spinner svg {
-  width: 32px; height: 32px; animation: dm-spin 0.8s linear infinite;
-}
+
 
 /* Loading / error */
 #config-modal .dm-loading { font-size: 13px; color: #94a3b8; padding: 0.75rem 0; }
