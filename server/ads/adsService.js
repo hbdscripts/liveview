@@ -1,5 +1,7 @@
 const store = require('../store');
 const config = require('../config');
+const { getDb } = require('../db');
+const fx = require('../fx');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig } = require('./adsStore');
 
@@ -78,23 +80,51 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue (Kexo rollups)
-  const revFilterSql = source ? ' AND source = ?' : '';
-  const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
-  const revRows = await adsDb.all(
-    `
-      SELECT
-        source,
-        campaign_id,
-        adgroup_id,
-        COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
-        COALESCE(SUM(orders), 0) AS orders
-      FROM bs_revenue_hourly
-      WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)${revFilterSql}
-      GROUP BY source, campaign_id, adgroup_id
-    `,
-    revParams
-  );
+  // Revenue — live query on main DB (purchases → sessions with bs_campaign_id)
+  const mainDb = getDb();
+  let revRows = [];
+  if (mainDb) {
+    const sourceFilter = source ? ' AND LOWER(TRIM(s.bs_source)) = ?' : '';
+    const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
+    const rawRevRows = await mainDb.all(
+      `
+        SELECT
+          LOWER(TRIM(s.bs_source)) AS source,
+          TRIM(s.bs_campaign_id) AS campaign_id,
+          COALESCE(NULLIF(TRIM(s.bs_adgroup_id), ''), '_all_') AS adgroup_id,
+          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
+          COUNT(*) AS orders,
+          COALESCE(SUM(p.order_total), 0) AS revenue
+        FROM purchases p
+        INNER JOIN sessions s ON s.session_id = p.session_id
+        WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          AND NULLIF(TRIM(s.bs_campaign_id), '') IS NOT NULL
+          AND NULLIF(TRIM(s.bs_source), '') IS NOT NULL
+          AND (NULLIF(TRIM(p.checkout_token), '') IS NOT NULL OR NULLIF(TRIM(p.order_id), '') IS NOT NULL)
+          ${sourceFilter}
+        GROUP BY source, campaign_id, adgroup_id, currency
+      `,
+      revParams
+    );
+    // Convert each currency group to GBP
+    const ratesToGbp = await fx.getRatesToGbp();
+    const merged = new Map();
+    for (const r of rawRevRows || []) {
+      const campaignId = r && r.campaign_id ? String(r.campaign_id).trim() : '';
+      const adgroupId = r && r.adgroup_id ? String(r.adgroup_id).trim() : '';
+      if (!campaignId) continue;
+      const currency = fx.normalizeCurrency(r.currency) || 'GBP';
+      const rawRev = r && r.revenue != null ? Number(r.revenue) : 0;
+      const revGbp = fx.convertToGbp(Number.isFinite(rawRev) ? rawRev : 0, currency, ratesToGbp);
+      const orders = r && r.orders != null ? Number(r.orders) : 0;
+      const key = campaignId + '\0' + adgroupId;
+      const cur = merged.get(key) || { campaign_id: campaignId, adgroup_id: adgroupId, revenue_gbp: 0, orders: 0 };
+      cur.revenue_gbp += (typeof revGbp === 'number' && Number.isFinite(revGbp)) ? revGbp : 0;
+      cur.orders += Number.isFinite(orders) ? orders : 0;
+      merged.set(key, cur);
+    }
+    revRows = Array.from(merged.values());
+  }
 
   // Spend (Google Ads rollups) — now also includes Google conversion data
   const spendFilterSql = provider ? ' AND provider = ?' : '';
@@ -156,13 +186,13 @@ async function getSummary(options = {}) {
     return camp.adgroups.get(key);
   }
 
-  // Apply revenue
+  // Apply live revenue (from main DB purchases → sessions)
   for (const r of revRows || []) {
     const campaignId = r && r.campaign_id != null ? String(r.campaign_id) : '';
     const adgroupId = r && r.adgroup_id != null ? String(r.adgroup_id) : '';
-    if (!campaignId || !adgroupId) continue;
+    if (!campaignId) continue;
     const camp = ensureCampaign(campaignId);
-    const ag = ensureAdgroup(camp, adgroupId);
+    const ag = ensureAdgroup(camp, adgroupId || '_all_');
 
     const revenue = r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0;
     const orders = r && r.orders != null ? Number(r.orders) : 0;
@@ -253,7 +283,7 @@ async function getSummary(options = {}) {
   campaigns.sort((a, b) => (b.spend || 0) - (a.spend || 0));
 
   const note = (!revRows || !revRows.length) && (!spendRows || !spendRows.length)
-    ? 'No rollup/spend data yet. Run /api/ads/refresh to backfill revenue rollups.'
+    ? 'No spend data yet. Click ↻ to sync Google Ads. Revenue is attributed live via tracking params (bs_campaign_id).'
     : null;
 
   return {
