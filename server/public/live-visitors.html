@@ -4401,7 +4401,7 @@
           if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(data);
           return data;
         })
-        .catch(function() { finishesCache = null; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(null); return null; })
+        .catch(function() { finishesCache = null; finishesLoading = false; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'finishes') renderFinishes(null); return null; })
         .finally(function() { finishesLoading = false; });
     }
 
@@ -4426,7 +4426,7 @@
           if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(data);
           return data;
         })
-        .catch(function() { lengthsCache = null; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(null); return null; })
+        .catch(function() { lengthsCache = null; lengthsLoading = false; if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') renderLengths(null); return null; })
         .finally(function() { lengthsLoading = false; });
     }
 
@@ -4446,9 +4446,10 @@
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           chainStylesCache = data;
+          chainStylesLoading = false;
           return data;
         })
-        .catch(function() { chainStylesCache = null; return null; })
+        .catch(function() { chainStylesCache = null; chainStylesLoading = false; return null; })
         .finally(function() { chainStylesLoading = false; });
     }
 

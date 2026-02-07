@@ -166,6 +166,10 @@ async function getShopifyChainStyles(req, res) {
           ordersByStyle.set(style, (ordersByStyle.get(style) || 0) + o);
         }
 
+        // Debug: log sample variant_titles and match stats
+        const sampleTitles = (rows || []).slice(0, 10).map(r => r && r.variant_title ? String(r.variant_title).trim() : '');
+        console.log('[shopify-chain-styles] rows=%d matched=%d sample_titles=%s', (rows || []).length, byStyle.size, JSON.stringify(sampleTitles));
+
         const allKeys = Array.from(new Set([...byStyle.keys(), ...ordersByStyle.keys()]));
         allKeys.sort((a, b) => (byStyle.get(b) || 0) - (byStyle.get(a) || 0));
 
