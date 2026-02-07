@@ -444,3 +444,19 @@
 }
 .tsm-jump-btn{border:0;background:none;}
 .tsm-jump-btn img{width:20px;height:20px}
+
+ #config-modal .dm-json-pre {
+   margin: 0;
+   padding: 12px;
+   border-radius: 10px;
+   border: 1px solid rgba(0,0,0,0.08);
+   background: #ffffff;
+   color: #0f172a;
+   font-size: 12px;
+   line-height: 1.4;
+   white-space: pre-wrap;
+   word-break: break-word;
+   overflow: auto;
+   max-height: 420px;
+   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+ }

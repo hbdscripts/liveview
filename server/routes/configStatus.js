@@ -15,6 +15,7 @@ const {
 } = require('../trackerDefinitions');
 const pkg = require('../../package.json');
 const shopifyQl = require('../shopifyQl');
+const adsService = require('../ads/adsService');
 
 const PIXEL_API_VERSION = '2024-01';
 
@@ -528,6 +529,13 @@ async function configStatus(req, res, next) {
       'Update this manifest when adding/changing dashboard tables or metric math, so the diagnostics modal remains the single source of truth.',
   };
 
+  let adsStatus = null;
+  try {
+    adsStatus = await adsService.getStatus();
+  } catch (err) {
+    adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
+  }
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
   res.json({
@@ -582,6 +590,10 @@ async function configStatus(req, res, next) {
       },
     },
     pixel,
+    ads: {
+      status: adsStatus,
+      googleAdsApiVersion: config.googleAdsApiVersion || '',
+    },
     trackerDefinitions,
   });
 }

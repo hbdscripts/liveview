@@ -4520,14 +4520,33 @@
         updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
         return;
       }
-        const sales = formatSessions(ordersNum);
-        const clicks = (typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
-        const revenue = formatRevenueTableHtml(v.revenue);
+      tbody.innerHTML = rows.map(function(v) {
+        const mainBase = getMainBaseUrl();
+        const productUrl = (mainBase && v && v.handle) ? (mainBase + '/products/' + encodeURIComponent(String(v.handle))) : '';
+        const thumbUrl = (v && v.thumb_url) ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
+        const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
+        const thumbSrc = thumbUrl || ogThumb || '';
+        const thumbImg = '<span class="thumb-wrap">' +
+          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
+          (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        '</span>';
+        const thumb = productUrl
+          ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>'
+          : thumbImg;
+
+        const nameText = displayVariantName(v);
+        const name = '<span class="bs-name" title="' + escapeHtml(nameText) + '">' + escapeHtml(nameText) + '</span>';
+
+        const ordersNum = (v && typeof v.orders === 'number') ? v.orders : (v && v.orders != null ? Number(v.orders) : 0);
+        const orders = formatSessions(Number(ordersNum) || 0);
+        const clicks = (v && typeof v.clicks === 'number') ? formatSessions(v.clicks) : '\u2014';
+        const revenue = formatRevenueTableHtml(v && v.revenue != null ? v.revenue : null);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
+
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + sales + '</div>' +
+          '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
@@ -7258,6 +7277,7 @@
             compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
             traffic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
             pixel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            googleads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
             shopify: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
             sources: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
             system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
@@ -7517,6 +7537,59 @@
             '<div id="traffic-source-mapping-root"><div class="dm-loading">Loading…</div></div>'
           ));
 
+          // Google Ads
+          let googleAdsPanel = '';
+          try {
+            const ads = c && c.ads ? c.ads : {};
+            const adsStatus = ads && ads.status ? ads.status : null;
+            const providers = (adsStatus && Array.isArray(adsStatus.providers)) ? adsStatus.providers : [];
+            const g = providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || null;
+            const connected = g && g.connected === true;
+            const configured = g && g.configured === true;
+            const customerId = (g && g.customerId) ? String(g.customerId) : '';
+            const loginCustomerId = (g && g.loginCustomerId) ? String(g.loginCustomerId) : '';
+            const hasRefreshToken = g && g.hasRefreshToken === true;
+            const hasDeveloperToken = g && g.hasDeveloperToken === true;
+            const hasAdsDb = g && g.adsDb === true;
+            const apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
+
+            function prettyJson(obj) {
+              try { return JSON.stringify(obj, null, 2); } catch (_) { return String(obj || ''); }
+            }
+
+            googleAdsPanel += '<div class="dm-grid">';
+            googleAdsPanel += card('Connection', (
+              rowKV('Configured', configured ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
+              rowKV('Connected (refresh_token)', connected ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
+              rowKV('ADS DB', hasAdsDb ? pillInline('OK', 'ok') : pillInline('Missing', 'bad')) +
+              (customerId ? rowKV('Customer ID', codeInline(customerId)) : '') +
+              (loginCustomerId ? rowKV('Login Customer ID', codeInline(loginCustomerId)) : '') +
+              rowKV('Developer token', hasDeveloperToken ? pillInline('Set', 'ok') : pillInline('Missing', 'bad')) +
+              rowKV('Refresh token', hasRefreshToken ? pillInline('Present', 'ok') : pillInline('Missing', 'bad')) +
+              (apiVer ? rowKV('API version hint', codeInline(apiVer)) : rowKV('API version hint', pillInline('Auto', 'ok')))
+            ));
+
+            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/app/live-visitors');
+            googleAdsPanel += card('Actions', (
+              '<div class="dm-bar-actions" style="justify-content:flex-start;">' +
+                '<a class="dm-copy-btn" href="' + escapeHtml(connectUrl) + '" title="Connect Google Ads (OAuth)">' + copyIcon + '<span>Connect</span></a>' +
+                '<button type="button" id="ga-status-btn" class="dm-copy-btn" title="Fetch /api/ads/status">' + copyIcon + '<span>Status</span></button>' +
+                '<button type="button" id="ga-summary-btn" class="dm-copy-btn" title="Fetch /api/ads/summary?range=7d">' + copyIcon + '<span>Summary</span></button>' +
+                '<button type="button" id="ga-refresh-7d-btn" class="dm-copy-btn" title="POST /api/ads/refresh?range=7d">' + copyIcon + '<span>Refresh 7d</span></button>' +
+                '<button type="button" id="ga-refresh-month-btn" class="dm-copy-btn" title="POST /api/ads/refresh?range=month">' + copyIcon + '<span>Refresh month</span></button>' +
+                '<span id="ga-msg" class="dm-copy-msg"></span>' +
+              '</div>' +
+              '<div class="dm-hint">Refresh returns spend sync diagnostics including per-version attempts when Google Ads REST errors occur.</div>'
+            ));
+
+            googleAdsPanel += card('Output', (
+              '<pre id="ga-output" class="dm-json-pre">' + escapeHtml(prettyJson({ ads: adsStatus })) + '</pre>'
+            ));
+            googleAdsPanel += '</div>';
+          } catch (err) {
+            googleAdsPanel = '<div class="dm-error">' + pillInline('Error', 'bad') + '<span>Google Ads diagnostics failed to render.</span></div>';
+          }
+
           // System
           let systemPanel = '';
           systemPanel += '<div class="dm-grid">';
@@ -7568,6 +7641,7 @@
           html +=   diagTab('compare', 'Compare');
           html +=   diagTab('traffic', 'Traffic');
           html +=   diagTab('pixel', 'Pixel');
+          html +=   diagTab('googleads', 'Google Ads');
           html +=   diagTab('shopify', 'Shopify');
           html +=   diagTab('sources', 'Sources');
           html +=   diagTab('system', 'System');
@@ -7593,6 +7667,7 @@
           html += diagTabPanel('compare', compare);
           html += diagTabPanel('traffic', trafficPanel);
           html += diagTabPanel('pixel', pixelPanel);
+          html += diagTabPanel('googleads', googleAdsPanel);
           html += diagTabPanel('shopify', shopifyPanel);
           html += diagTabPanel('sources', sourcesPanel);
           html += diagTabPanel('system', systemPanel);
@@ -7831,6 +7906,83 @@
             }
           } catch (_) {}
           try { initTrafficSourceMappingPanel(); } catch (_) {}
+          try {
+            function setGaMsg(t, ok) {
+              const msgEl = document.getElementById('ga-msg');
+              if (!msgEl) return;
+              msgEl.textContent = t || '';
+              msgEl.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
+              msgEl.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
+            }
+            function setGaOutput(obj) {
+              const outEl = document.getElementById('ga-output');
+              if (!outEl) return;
+              try { outEl.textContent = JSON.stringify(obj, null, 2); }
+              catch (_) { outEl.textContent = String(obj || ''); }
+            }
+            function fetchJson(url, options) {
+              return fetch(url, options || { credentials: 'same-origin', cache: 'no-store' })
+                .then(function(r) {
+                  return r.text().then(function(t) {
+                    let j = null;
+                    try { j = t ? JSON.parse(t) : null; } catch (_) {}
+                    return { ok: r.ok, status: r.status, json: j, text: t };
+                  });
+                });
+            }
+            const statusBtn = document.getElementById('ga-status-btn');
+            const summaryBtn = document.getElementById('ga-summary-btn');
+            const refresh7dBtn = document.getElementById('ga-refresh-7d-btn');
+            const refreshMonthBtn = document.getElementById('ga-refresh-month-btn');
+            if (statusBtn) {
+              statusBtn.onclick = function() {
+                setGaMsg('Fetching status…', true);
+                fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
+                  .then(function(r) {
+                    setGaOutput({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
+                    setGaMsg(r.ok ? 'Status OK' : ('Status error ' + r.status), r.ok);
+                  })
+                  .catch(function(err) {
+                    setGaOutput({ endpoint: 'GET /api/ads/status', error: err && err.message ? String(err.message) : 'request_failed' });
+                    setGaMsg('Status request failed', false);
+                  });
+              };
+            }
+            if (summaryBtn) {
+              summaryBtn.onclick = function() {
+                setGaMsg('Fetching summary…', true);
+                fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
+                  .then(function(r) {
+                    setGaOutput({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
+                    setGaMsg(r.ok ? 'Summary OK' : ('Summary error ' + r.status), r.ok);
+                  })
+                  .catch(function(err) {
+                    setGaOutput({ endpoint: 'GET /api/ads/summary?range=7d', error: err && err.message ? String(err.message) : 'request_failed' });
+                    setGaMsg('Summary request failed', false);
+                  });
+              };
+            }
+            function doRefresh(rangeKey) {
+              setGaMsg('Refreshing ' + rangeKey + '…', true);
+              fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source: 'googleads' }),
+              })
+                .then(function(r) {
+                  setGaOutput({ endpoint: 'POST /api/ads/refresh?range=' + rangeKey, status: r.status, ok: r.ok, body: r.json || r.text });
+                  setGaMsg(r.ok ? ('Refresh ' + rangeKey + ' OK') : ('Refresh error ' + r.status), r.ok);
+                })
+                .catch(function(err) {
+                  setGaOutput({ endpoint: 'POST /api/ads/refresh?range=' + rangeKey, error: err && err.message ? String(err.message) : 'request_failed' });
+                  setGaMsg('Refresh request failed', false);
+                });
+            }
+            if (refresh7dBtn) refresh7dBtn.onclick = function() { doRefresh('7d'); };
+            if (refreshMonthBtn) refreshMonthBtn.onclick = function() { doRefresh('month'); };
+          } catch (_) {}
           try {
             const toggle = document.getElementById('pixel-session-mode-toggle');
             const msgEl = document.getElementById('pixel-session-mode-msg');

@@ -105,14 +105,35 @@ function isLikelyDeprecatedEndpoint404(res, bodyText) {
   return false;
 }
 
-async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize = 10000 }) {
+function normalizeApiVersion(raw) {
+  const s = raw != null ? String(raw).trim().toLowerCase() : '';
+  if (!s) return '';
+  if (/^v\d+$/.test(s)) return s;
+  if (/^\d+$/.test(s)) return 'v' + s;
+  return '';
+}
+
+function getApiVersionsToTry(options = {}) {
+  const hint = normalizeApiVersion(options.apiVersionHint);
+  const fromEnv = normalizeApiVersion(config.googleAdsApiVersion);
   const versionsRaw = [
-    (config.googleAdsApiVersion || '').trim(),
+    hint,
+    fromEnv,
+    'v25',
+    'v24',
+    'v23',
+    'v22',
+    'v21',
+    'v20',
     'v19',
     'v18',
     'v17',
   ].filter(Boolean);
-  const versions = Array.from(new Set(versionsRaw));
+  return Array.from(new Set(versionsRaw));
+}
+
+async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize = 10000, apiVersionHint = '' }) {
+  const versions = getApiVersionsToTry({ apiVersionHint });
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -121,6 +142,7 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
   };
   if (loginCustomerId) headers['login-customer-id'] = String(loginCustomerId);
 
+  const attempts = [];
   let lastErr = null;
   for (const ver of versions) {
     const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(customerId)}/googleAds:search`;
@@ -139,13 +161,29 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
           body: JSON.stringify(body),
         });
 
+        const contentType = String(res.headers && res.headers.get ? (res.headers.get('content-type') || '') : '');
+
         if (!res.ok) {
           const errText = await res.text();
+          const bodySnippet = String(errText || '').slice(0, 380);
+          attempts.push({
+            version: ver,
+            url,
+            ok: false,
+            status: res.status,
+            contentType,
+            bodySnippet,
+          });
           if (isLikelyDeprecatedEndpoint404(res, errText)) {
             lastErr = new Error('Google Ads endpoint not found for ' + ver);
             break;
           }
-          throw new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + errText);
+          lastErr = new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + bodySnippet);
+          break;
+        }
+
+        if (!attempts.some((a) => a && a.version === ver)) {
+          attempts.push({ version: ver, url, ok: true, status: res.status, contentType, bodySnippet: null });
         }
 
         const data = await res.json();
@@ -159,69 +197,109 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
         }
       }
 
-      if (completed) return results;
+      if (completed) return { ok: true, apiVersion: ver, results, attempts };
     } catch (e) {
+      const msg = e && e.message ? String(e.message) : 'request_failed';
+      attempts.push({
+        version: ver,
+        url,
+        ok: false,
+        status: null,
+        contentType: null,
+        bodySnippet: msg.slice(0, 380),
+      });
       lastErr = e;
     }
   }
 
-  throw (lastErr || new Error('Google Ads search failed'));
+  return {
+    ok: false,
+    apiVersion: null,
+    error: (lastErr && lastErr.message) ? String(lastErr.message).slice(0, 380) : 'Google Ads search failed',
+    attempts,
+  };
 }
 
 async function fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken }) {
   const query = 'SELECT customer.time_zone, customer.currency_code FROM customer LIMIT 1';
-  const rows = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 1 });
+  const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 1 });
+  if (!out || !out.ok) {
+    return { ok: false, error: (out && out.error) ? out.error : 'Google Ads customer meta query failed', attempts: out && out.attempts ? out.attempts : [] };
+  }
+  const rows = out.results;
   const first = rows && rows[0] ? rows[0] : null;
   const customer = first && first.customer ? first.customer : null;
   return {
+    ok: true,
+    apiVersion: out.apiVersion || null,
+    attempts: out.attempts || [],
     timeZone: customer && customer.timeZone ? String(customer.timeZone) : null,
     currencyCode: customer && customer.currencyCode ? String(customer.currencyCode) : null,
   };
 }
 
 async function syncGoogleAdsSpendHourly(options = {}) {
-  const rangeStartTs = options.rangeStartTs != null ? Number(options.rangeStartTs) : null;
-  const rangeEndTs = options.rangeEndTs != null ? Number(options.rangeEndTs) : null;
+  try {
+    const rangeStartTs = options.rangeStartTs != null ? Number(options.rangeStartTs) : null;
+    const rangeEndTs = options.rangeEndTs != null ? Number(options.rangeEndTs) : null;
 
-  if (!rangeStartTs || !rangeEndTs || !Number.isFinite(rangeStartTs) || !Number.isFinite(rangeEndTs)) {
-    return { ok: false, error: 'Missing rangeStartTs/rangeEndTs' };
-  }
+    if (!rangeStartTs || !rangeEndTs || !Number.isFinite(rangeStartTs) || !Number.isFinite(rangeEndTs)) {
+      return { ok: false, error: 'Missing rangeStartTs/rangeEndTs' };
+    }
 
-  const adsDb = getAdsDb();
-  if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+    const adsDb = getAdsDb();
+    if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
-  const developerToken = (config.googleAdsDeveloperToken || '').trim();
-  const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
-  const customerId = normalizeCustomerId(config.googleAdsCustomerId);
-  if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
-  if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
+    const developerToken = (config.googleAdsDeveloperToken || '').trim();
+    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
+    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
+    if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
 
-  if (!config.googleClientId || !config.googleClientSecret) {
-    return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
-  }
+    if (!config.googleClientId || !config.googleClientSecret) {
+      return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
+    }
 
-  const cfg = await getGoogleAdsConfig();
-  const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-  if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+    const cfg = await getGoogleAdsConfig();
+    const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
+    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
 
-  const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
+    const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
 
-  const meta = await fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken });
-  const accountTz = meta.timeZone || 'UTC';
-  const accountCur = fx.normalizeCurrency(meta.currencyCode) || 'GBP';
+    const meta = await fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken });
+    if (!meta || !meta.ok) {
+      return {
+        ok: false,
+        stage: 'customer_meta',
+        error: meta && meta.error ? String(meta.error) : 'Google Ads customer meta query failed',
+        attempts: meta && meta.attempts ? meta.attempts : [],
+      };
+    }
 
-  const startYmd = fmtYmdInTz(rangeStartTs, accountTz);
-  const endYmd = fmtYmdInTz(rangeEndTs - 1, accountTz);
-  if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
+    const accountTz = meta.timeZone || 'UTC';
+    const accountCur = fx.normalizeCurrency(meta.currencyCode) || 'GBP';
 
-  const query =
-    "SELECT segments.date, segments.hour, campaign.id, ad_group.id, metrics.cost_micros, metrics.clicks, metrics.impressions " +
-    "FROM ad_group " +
-    `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
+    const startYmd = fmtYmdInTz(rangeStartTs, accountTz);
+    const endYmd = fmtYmdInTz(rangeEndTs - 1, accountTz);
+    if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
 
-  const rows = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 10000 });
+    const query =
+      "SELECT segments.date, segments.hour, campaign.id, ad_group.id, metrics.cost_micros, metrics.clicks, metrics.impressions " +
+      "FROM ad_group " +
+      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
 
-  const ratesToGbp = await fx.getRatesToGbp();
+    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize: 10000, apiVersionHint: meta.apiVersion || '' });
+    if (!out || !out.ok) {
+      return {
+        ok: false,
+        stage: 'spend_query',
+        error: out && out.error ? String(out.error) : 'Google Ads spend query failed',
+        attempts: out && out.attempts ? out.attempts : [],
+      };
+    }
+    const rows = out.results;
+
+    const ratesToGbp = await fx.getRatesToGbp();
 
   const grouped = new Map();
   for (const r of rows || []) {
@@ -290,19 +368,23 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     upserts++;
   }
 
-  return {
-    ok: true,
-    rangeStartTs,
-    rangeEndTs,
-    provider: 'google_ads',
-    customerId,
-    loginCustomerId: loginCustomerId || null,
-    accountTimeZone: accountTz,
-    accountCurrency: accountCur,
-    scannedRows: Array.isArray(rows) ? rows.length : 0,
-    scannedGroups: grouped.size,
-    upserts,
-  };
+    return {
+      ok: true,
+      rangeStartTs,
+      rangeEndTs,
+      provider: 'google_ads',
+      apiVersion: out.apiVersion || meta.apiVersion || null,
+      customerId,
+      loginCustomerId: loginCustomerId || null,
+      accountTimeZone: accountTz,
+      accountCurrency: accountCur,
+      scannedRows: Array.isArray(rows) ? rows.length : 0,
+      scannedGroups: grouped.size,
+      upserts,
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 380) : 'spend_sync_failed' };
+  }
 }
 
 module.exports = {
