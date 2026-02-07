@@ -164,6 +164,7 @@
   }
 
   var inFlight = null;
+  var hasAutoSynced = false;
 
   function computeRangeKey() {
     try {
@@ -200,6 +201,14 @@
       var status = arr && arr[0] ? arr[0] : null;
       var summary = arr && arr[1] ? arr[1] : null;
       render(root, status, summary);
+
+      // Auto-sync once if the DB is empty (first visit after deploy)
+      if (!isForce && !hasAutoSynced && summary && summary.note && (!summary.campaigns || !summary.campaigns.length)) {
+        hasAutoSynced = true;
+        inFlight = null;
+        return refresh({ force: true });
+      }
+
       return { status: status, summary: summary };
     }).catch(function () {
       root.innerHTML = '<div class="muted">Could not load ads.</div>';

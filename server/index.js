@@ -377,7 +377,7 @@ setInterval(() => {
       if (!adsDb) return; // ADS_DB_URL not set — skip silently
       const now = Date.now();
       const timeZone = store.resolveAdminTimeZone();
-      const bounds = store.getRangeBounds('today', now, timeZone);
+      const bounds = store.getRangeBounds('7d', now, timeZone);
       const rangeStartTs = bounds.start;
       const rangeEndTs = bounds.end;
 
