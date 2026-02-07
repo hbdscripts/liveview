@@ -49,8 +49,10 @@
     .stats-row.breakdown-row { grid-template-columns: repeat(2, 1fr); align-items: start; }
     .breakdown-row .by-country-table tr { height: 50px; }
     .breakdown-row .by-country-table .grid-body .grid-row { min-height: 50px; }
-    /* Products tab: best-sellers full-width; type tables 2-col */
-    #tab-panel-products .stats-row { grid-template-columns: 1fr; }
+    /* Overview tab: 2-col grid */
+    #tab-panel-breakdown .stats-row { grid-template-columns: repeat(2, 1fr); }
+    /* Products tab: 2-col grid; type tables also 2-col */
+    #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
     #tab-panel-ads .stats-row { grid-template-columns: 1fr; }
     #products-type-tables-row { grid-template-columns: 1fr 1fr; }
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
