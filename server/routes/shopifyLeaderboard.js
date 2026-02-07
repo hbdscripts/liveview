@@ -317,7 +317,11 @@ async function getShopifyLeaderboard(req, res) {
         for (const [key, items] of productsByTypeMap.entries()) {
           productsByType[key] = items.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
         }
-        console.log('[shopify-leaderboard] productsByType keys:', Object.keys(productsByType));
+        const typeKeySummary = {};
+        for (const [k, items] of Object.entries(productsByType)) {
+          typeKeySummary[k] = items.length;
+        }
+        console.log('[shopify-leaderboard] productsByType keys:', JSON.stringify(typeKeySummary));
 
         return {
           ok: true,

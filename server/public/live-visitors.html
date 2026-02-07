@@ -4168,11 +4168,12 @@
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           leaderboardCache = data;
+          leaderboardLoading = false;
           renderProductsLeaderboard(data);
           renderAllTypeTables(data);
           return data;
         })
-        .catch(function() { leaderboardCache = null; renderProductsLeaderboard(null); renderAllTypeTables(null); return null; })
+        .catch(function() { leaderboardCache = null; leaderboardLoading = false; renderProductsLeaderboard(null); renderAllTypeTables(null); return null; })
         .finally(function() { leaderboardLoading = false; });
     }
 
