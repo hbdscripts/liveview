@@ -185,13 +185,13 @@ async function handleCallback(req, res) {
     } else {
       const base = (appUrl && appUrl.startsWith('http')) ? appUrl.replace(/\/$/, '') : null;
       if (base) {
-        redirectUrl = `${base}/app/dashboard`;
+        redirectUrl = `${base}/`;
       } else if (req.get('host') || req.get('x-forwarded-host')) {
         const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
         const h = req.get('x-forwarded-host') || req.get('host') || '';
-        redirectUrl = `${proto}://${h}/app/dashboard`;
+        redirectUrl = `${proto}://${h}/`;
       } else {
-        redirectUrl = '/app/dashboard';
+        redirectUrl = '/';
       }
     }
     res.redirect(302, redirectUrl);
@@ -219,7 +219,7 @@ async function isAccessTokenValid(shop, accessToken) {
 async function handleAppUrl(req, res, next) {
   const { shop, hmac, timestamp, code, host } = req.query;
   if (!apiKey || !apiSecret) {
-    return res.redirect(302, '/app/dashboard');
+    return res.redirect(302, '/');
   }
   if (shop && hmac && timestamp && !code) {
     if (!verifyHmac(req.query)) {
@@ -237,7 +237,7 @@ async function handleAppUrl(req, res, next) {
         } else {
           const tokenOk = await isAccessTokenValid(shopNorm, session.access_token);
           if (tokenOk) {
-            // Important: do NOT redirect internally to /app/dashboard here.
+            // Important: do NOT redirect internally to / here.
             // Inside Shopify admin this can cause auth loops when cookies are blocked or Referer is stripped.
             // Instead, let the caller render the dashboard on this signed App URL request.
             res.locals = res.locals || {};

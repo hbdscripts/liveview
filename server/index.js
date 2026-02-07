@@ -183,10 +183,8 @@ app.get('/app.css', (req, res) => {
 // Admin UI (embedded dashboard) - before / so /app/dashboard is exact
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
-app.get('/app/dashboard', (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
-});
+// Legacy path: redirect to root
+app.get('/app/dashboard', (req, res) => res.redirect(301, '/'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
 app.get('/', async (req, res, next) => {
@@ -198,7 +196,8 @@ app.get('/', async (req, res, next) => {
       res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
       return;
     }
-    res.redirect(302, '/app/dashboard');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
   } catch (err) {
     next(err);
   }

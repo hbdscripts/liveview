@@ -42,7 +42,7 @@ function stateDecode(str) {
 // ---- Google OAuth ----
 
 function handleGoogleRedirect(req, res) {
-  const redirect = (req.query && req.query.redirect) || '/app/dashboard';
+  const redirect = (req.query && req.query.redirect) || '/';
   if (!config.googleClientId || !config.googleClientSecret) {
     return res.redirect(302, '/app/login?error=google_not_configured');
   }
@@ -65,7 +65,7 @@ async function handleGoogleCallback(req, res) {
     return res.redirect(302, '/app/login?error=google_denied');
   }
   const decoded = stateDecode(state || '');
-  const redirect = (decoded && decoded.r) || '/app/dashboard';
+  const redirect = (decoded && decoded.r) || '/';
   if (!code || !decoded || !decoded.rnd) {
     return res.redirect(302, '/app/login?error=invalid_state');
   }
@@ -119,7 +119,7 @@ function handleShopifyLoginRedirect(req, res) {
   if (!apiKey || !apiSecret || !appUrl) {
     return res.redirect(302, '/app/login?error=app_not_configured');
   }
-  const redirect = (req.query && req.query.redirect) || '/app/dashboard';
+  const redirect = (req.query && req.query.redirect) || '/';
   const state = stateEncode({ rnd: crypto.randomBytes(16).toString('hex'), r: redirect });
   // Use the main OAuth callback (already whitelisted in Shopify app settings).
   // This avoids "redirect_uri not whitelisted" when /auth/shopify-login/callback isn't configured in Shopify.
@@ -131,7 +131,7 @@ function handleShopifyLoginRedirect(req, res) {
 async function handleShopifyLoginCallback(req, res) {
   const { code, shop, state, hmac, timestamp } = req.query;
   const decoded = stateDecode(state || '');
-  const redirect = (decoded && decoded.r) || '/app/dashboard';
+  const redirect = (decoded && decoded.r) || '/';
   if (!code || !shop || !decoded || !decoded.rnd) {
     return res.redirect(302, '/app/login?error=invalid_state');
   }

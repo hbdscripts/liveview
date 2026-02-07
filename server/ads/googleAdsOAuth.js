@@ -43,7 +43,7 @@ function buildGoogleAdsConnectUrl(options = {}) {
 
   const redirect = (options && options.redirect && isSafeRelativeRedirectPath(options.redirect))
     ? options.redirect
-    : '/app/dashboard';
+    : '/';
 
   const state = stateEncode({
     rnd: crypto.randomBytes(16).toString('hex'),
@@ -92,7 +92,7 @@ async function handleGoogleAdsCallback(query = {}) {
   if (error) return { ok: false, error: 'google_denied' };
 
   const decoded = stateDecode(state || '');
-  const redirect = (decoded && decoded.r && isSafeRelativeRedirectPath(decoded.r)) ? decoded.r : '/app/dashboard';
+  const redirect = (decoded && decoded.r && isSafeRelativeRedirectPath(decoded.r)) ? decoded.r : '/';
 
   if (!code || !decoded || !decoded.rnd) return { ok: false, error: 'invalid_state', redirect };
 
