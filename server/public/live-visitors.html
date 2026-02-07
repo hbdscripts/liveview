@@ -9102,7 +9102,9 @@
             countryTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
             countryTbody.innerHTML = countries.map(function(c) {
-              return '<tr><td>' + escapeHtml(c.country) + '</td><td>' + fmtGbp(c.revenue) + '</td><td>' + c.orders + '</td></tr>';
+              var cc = (c.country || 'XX').toUpperCase();
+              var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td>' + fmtGbp(c.revenue) + '</td><td>' + c.orders + '</td></tr>';
             }).join('');
           }
         }

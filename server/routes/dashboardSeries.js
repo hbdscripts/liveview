@@ -150,7 +150,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     const sessions = sessionsPerDay[db_day.label] || 0;
     const orders = ordersPerDay[db_day.label] || 0;
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
-    const convRate = sessions > 0 ? Math.round((orders / sessions) * 1000) / 10 : 0;
+    const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
+    const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
     const aov = orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0;
     const bounced = bouncePerDay[db_day.label] || 0;
     const bounceRate = sessions > 0 ? Math.round((bounced / sessions) * 1000) / 10 : 0;
@@ -171,27 +172,25 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT li.product_title, SUM(li.price_gbp * li.quantity) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             JOIN orders_shopify o ON o.order_id = li.order_id AND o.shop = li.shop
-             WHERE li.shop = $1 AND o.created_at >= $2 AND o.created_at < $3
-               AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'
-             GROUP BY li.product_title
+             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             GROUP BY li.product_id
              ORDER BY revenue DESC
              LIMIT 5`
-          : `SELECT li.product_title, SUM(li.price_gbp * li.quantity) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             JOIN orders_shopify o ON o.order_id = li.order_id AND o.shop = li.shop
-             WHERE li.shop = ? AND o.created_at >= ? AND o.created_at < ?
-               AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'
-             GROUP BY li.product_title
+             WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             GROUP BY li.product_id
              ORDER BY revenue DESC
              LIMIT 5`,
         [shop, overallStart, overallEnd]
       );
       topProducts = productRows.map(function(r) {
         return {
-          title: r.product_title || 'Unknown',
+          title: r.title || 'Unknown',
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
         };
@@ -279,7 +278,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     totalSessions += s.sessions;
     totalAdSpend += s.adSpend;
   }
-  const avgConvRate = totalSessions > 0 ? Math.round((totalOrders / totalSessions) * 1000) / 10 : 0;
+  const avgConvRate = totalSessions > 0 ? Math.round(Math.min((totalOrders / totalSessions) * 100, 100) * 10) / 10 : 0;
   const avgAov = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
   const roas = totalAdSpend > 0 ? Math.round((totalRevenue / totalAdSpend) * 100) / 100 : null;
 
