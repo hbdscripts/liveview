@@ -945,8 +945,8 @@
     </button>
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="breakdown">Overview</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Countries</button>
-      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="breakdown">Breakdown</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="ads">Ads</button>
@@ -963,8 +963,8 @@
       </span>
       <span class="tab-text">Home</span>
     </button>
+    <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Overview</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Countries</button>
-    <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Breakdown</button>
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
     <button type="button" role="tab" id="tab-ads" aria-selected="false" aria-controls="tab-panel-ads" data-tab="ads">Ads</button>
@@ -1084,14 +1084,6 @@
         <div class="report-build-step" id="stats-build-step">—</div>
       </div>
     </div>
-  <div class="aov-cards-wrap" id="aov-cards-wrap">
-    <div class="aov-cards-header">
-      <div class="aov-cards-title">Average Order Value</div>
-    </div>
-    <div class="aov-cards-grid" id="aov-cards-grid">
-      <div class="aov-card aov-card-empty">—</div>
-    </div>
-  </div>
   <div class="stats-row breakdown-row">
     <div class="stats-card" id="stats-country">
       <div class="country-table-wrap" id="country-table-wrap">
@@ -1148,13 +1140,21 @@
     <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="breakdown-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
-        <div class="report-build-title">Breakdown</div>
+        <div class="report-build-title">Overview</div>
         <div class="report-build-step" id="breakdown-build-step">—</div>
+      </div>
+    </div>
+    <div class="aov-cards-wrap" id="aov-cards-wrap">
+      <div class="aov-cards-header">
+        <div class="aov-cards-title">Average Order Value</div>
+      </div>
+      <div class="aov-cards-grid" id="aov-cards-grid">
+        <div class="aov-card aov-card-empty">—</div>
       </div>
     </div>
     <div class="aov-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Product Title</div>
+        <div class="aov-cards-title">Product</div>
       </div>
       <div class="aov-cards-grid" id="breakdown-title-grid">
         <div class="aov-card aov-card-empty">—</div>
@@ -1162,7 +1162,7 @@
     </div>
     <div class="aov-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Product Type</div>
+        <div class="aov-cards-title">Type</div>
       </div>
       <div class="aov-cards-grid" id="breakdown-type-grid">
         <div class="aov-card aov-card-empty">—</div>
@@ -1170,7 +1170,7 @@
     </div>
     <div class="aov-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Variant Finish</div>
+        <div class="aov-cards-title">Finish</div>
       </div>
       <div class="aov-cards-grid" id="breakdown-finish-grid">
         <div class="aov-card aov-card-empty">—</div>
@@ -1178,7 +1178,7 @@
     </div>
     <div class="aov-cards-wrap">
       <div class="aov-cards-header">
-        <div class="aov-cards-title">Variant Length</div>
+        <div class="aov-cards-title">Length</div>
       </div>
       <div class="aov-cards-grid" id="breakdown-length-grid">
         <div class="aov-card aov-card-empty">—</div>
@@ -6869,16 +6869,6 @@
             return pillInline(text, tone);
           }
 
-          function diagSection(title, innerHtml, options = {}) {
-            const open = options && options.open === true;
-            const safeTitle = escapeHtml(title || '');
-            return (
-              '<details class="dm-section-details"' + (open ? ' open' : '') + '>' +
-                '<summary class="dm-section-summary">' + safeTitle + '</summary>' +
-                '<div class="dm-section-body">' + (innerHtml || '') + '</div>' +
-              '</details>'
-            );
-          }
 
           const headerMetaBits = [];
           if (shopify && shopify.shop) headerMetaBits.push('Shop ' + codeInline(shopify.shop));
@@ -6977,62 +6967,63 @@
 
           const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
 
+          // SVG icons for tabs
+          var tabIcons = {
+            sales: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+            compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            traffic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+            pixel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            shopify: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+            sources: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+            system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+            defs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+          };
+
+          function diagTab(key, label) {
+            return '<button type="button" class="dm-tab-btn" data-diag-tab="' + escapeHtml(key) + '" aria-selected="false">' +
+              (tabIcons[key] ? tabIcons[key] : '') +
+              '<span>' + escapeHtml(label) + '</span>' +
+            '</button>';
+          }
+          function diagTabPanel(key, innerHtml) {
+            return '<div class="dm-tab-panel" data-diag-panel="' + escapeHtml(key) + '">' + (innerHtml || '') + '</div>';
+          }
+
           let html = '';
           html += '<div id="be-diag-root" class="dm-root">';
-          html += '<details class="dm-copy-dropdown">';
-          html += '<summary class="dm-copy-dropdown-summary">Advanced</summary>';
-          html += '<div class="dm-copy-dropdown-body"><div class="dm-bar-row">';
-          html +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
-          html +=   '<div class="dm-bar-actions">' +
-                       '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                       '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
-                       (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
-                       (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
-                     '</div>';
-          html += '</div></div></details>';
 
-          // Overview: bots at top, then Shopify/Birdseye cards, then Quick drift
-          let overview = '';
-          overview += '<div class="dm-hero-row">';
-          overview +=   '<span class="dm-hero-label">Bots blocked (today)</span>';
-          overview +=   '<span class="dm-hero-value">' + (botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') + '</span>';
-          overview += '</div>';
-          overview += '<div class="dm-grid">';
-          overview += card('', (
-            brandHeader('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate · truth orders', '149,191,71') +
-            '<div class="dm-metrics">' +
-              metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-              metric('CR% (Shopify)', fmtPct(shopifyCr)) +
-              metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
-              metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-            '</div>' +
-            '<div class="dm-card-note">' +
-              escapeHtml(
-                shopifyConversionRateToday != null
-                  ? 'CR% (Shopify) uses ShopifyQL conversion_rate (matches Shopify Admin).'
-                  : 'CR% (fallback) = paid truth orders / ShopifyQL sessions (conversion_rate unavailable).'
-              ) +
-              (shopifyConversionRateNote ? (' ' + escapeHtml(shopifyConversionRateNote)) : '') +
-            '</div>'
-          ));
-          overview += card('', (
-            brandHeader('Birdseye', BIRDSEYE_LOGO_URL, 'Human sessions · truth orders', '13,148,136') +
-            '<div class="dm-metrics">' +
-              metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
-              metric('CR% (truth)', fmtPct(birdseyeCr)) +
-              metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
-              metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-            '</div>' +
-            '<div class="dm-card-note">Birdseye reporting uses Shopify truth orders so it can never exceed Shopify. Pixel-derived purchases remain in Diagnostics for drift/debug only.</div>'
-          ));
-          overview += '</div>';
-          overview += '<div class="dm-grid dm-mt">';
-          overview += card('Quick drift', (
-            rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
-            rowKV('Pixel vs truth revenue', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue))) +
-            rowKV('Evidence vs checkout-token', driftEvidenceCheckoutOrders == null ? '\u2014' : codeInline((driftEvidenceCheckoutOrders >= 0 ? '+' : '') + String(driftEvidenceCheckoutOrders)))
-          ));
-          overview += '</div>';
+          // ── HERO SECTION: comparison cards + bots (outside tabs) ──
+          html += '<div class="dm-hero-section">';
+          html +=   '<div class="dm-compare-row">';
+          // Shopify card
+          html +=     '<div class="dm-compare-card">';
+          html +=       '<div class="dm-compare-card-head">';
+          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" alt="Shopify" />';
+          html +=         '<div><div class="dm-compare-card-title">Shopify</div></div>';
+          html +=       '</div>';
+          html +=       '<div class="dm-metrics">' +
+                            metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
+                            metric('CR%', fmtPct(shopifyCr)) +
+                            metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
+                            metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                          '</div>';
+          html +=     '</div>';
+          // Birdseye card
+          html +=     '<div class="dm-compare-card">';
+          html +=       '<div class="dm-compare-card-head">';
+          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(BIRDSEYE_LOGO_URL) + '" alt="Birdseye" />';
+          html +=         '<div><div class="dm-compare-card-title">Birdseye</div></div>';
+          html +=       '</div>';
+          html +=       '<div class="dm-metrics">' +
+                            metric('Sessions (human, today)', fmtSessions(birdseyeSessionsToday)) +
+                            metric('CR%', fmtPct(birdseyeCr)) +
+                            metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
+                            metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
+                          '</div>';
+          html +=       '<div class="dm-bots-stat">Bots blocked today: <span class="dm-bots-stat-value">' + (botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') + '</span></div>';
+          html +=     '</div>';
+          html +=   '</div>'; // dm-compare-row
+          html += '</div>'; // dm-hero-section
 
           // Compare
           let compare = '';
@@ -7070,6 +7061,11 @@
           // Sales
           let salesPanel = '';
           salesPanel += '<div class="dm-grid">';
+          salesPanel += card('Quick drift', (
+            rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
+            rowKV('Pixel vs truth revenue', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue))) +
+            rowKV('Evidence vs checkout-token', driftEvidenceCheckoutOrders == null ? '\u2014' : codeInline((driftEvidenceCheckoutOrders >= 0 ? '+' : '') + String(driftEvidenceCheckoutOrders)))
+          ));
           salesPanel += card('Truth (paid)', (
             rowKV('Orders', truthOrders != null ? codeInline(String(truthOrders)) : '\u2014') +
             rowKV('Revenue', truthRevenue != null ? codeInline(formatRevenue(truthRevenue)) : '\u2014') +
@@ -7281,20 +7277,63 @@
           let defsPanel = '';
           defsPanel += card('Metric + table definitions', renderTrackerDefinitions(trackerDefinitions));
 
-          html += diagSection('Overview', overview, { open: true });
-          html += diagSection('Sales', salesPanel, { open: true });
-          html += diagSection('Comparison', compare);
-          html += diagSection('Traffic', trafficPanel);
-          html += diagSection('Pixel', pixelPanel);
-          html += diagSection('Shopify', shopifyPanel);
-          html += diagSection('Sources', sourcesPanel);
-          html += diagSection('System', systemPanel);
-          html += diagSection('Definitions', defsPanel);
+          // ── TAB BAR ──
+          html += '<div class="dm-tabs-bar" id="be-diag-tabs">';
+          html +=   diagTab('sales', 'Sales');
+          html +=   diagTab('compare', 'Compare');
+          html +=   diagTab('traffic', 'Traffic');
+          html +=   diagTab('pixel', 'Pixel');
+          html +=   diagTab('shopify', 'Shopify');
+          html +=   diagTab('sources', 'Sources');
+          html +=   diagTab('system', 'System');
+          html +=   diagTab('defs', 'Definitions');
+          html += '</div>';
+
+          // Advanced copy dropdown — inside first tab panel but logically separate
+          var advancedDropdown = '<details class="dm-copy-dropdown">';
+          advancedDropdown += '<summary class="dm-copy-dropdown-summary">Advanced</summary>';
+          advancedDropdown += '<div class="dm-copy-dropdown-body"><div class="dm-bar-row">';
+          advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
+          advancedDropdown +=   '<div class="dm-bar-actions">' +
+                       '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
+                       '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
+                       (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
+                       (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
+                     '</div>';
+          advancedDropdown += '</div></div></details>';
+
+          // ── TAB PANELS ──
+          html += diagTabPanel('sales', advancedDropdown + salesPanel);
+          html += diagTabPanel('compare', compare);
+          html += diagTabPanel('traffic', trafficPanel);
+          html += diagTabPanel('pixel', pixelPanel);
+          html += diagTabPanel('shopify', shopifyPanel);
+          html += diagTabPanel('sources', sourcesPanel);
+          html += diagTabPanel('system', systemPanel);
+          html += diagTabPanel('defs', defsPanel);
 
           html += '</div>'; // be-diag-root
 
           const configStatusEl = document.getElementById('config-status');
           if (configStatusEl) configStatusEl.innerHTML = html;
+
+          // ── Wire up tab switching ──
+          (function initDiagTabs() {
+            var tabBar = document.getElementById('be-diag-tabs');
+            if (!tabBar) return;
+            var btns = tabBar.querySelectorAll('.dm-tab-btn[data-diag-tab]');
+            function activateTab(key) {
+              btns.forEach(function(b) { b.setAttribute('aria-selected', b.getAttribute('data-diag-tab') === key ? 'true' : 'false'); });
+              document.querySelectorAll('.dm-tab-panel[data-diag-panel]').forEach(function(p) {
+                p.classList.toggle('dm-tab-panel--active', p.getAttribute('data-diag-panel') === key);
+              });
+            }
+            btns.forEach(function(b) {
+              b.addEventListener('click', function() { activateTab(b.getAttribute('data-diag-tab')); });
+            });
+            // Default: first tab active
+            if (btns.length) activateTab(btns[0].getAttribute('data-diag-tab'));
+          })();
           try {
             const compareIsOpenNow = !!(compareModalEl && compareModalEl.classList.contains('open'));
             if (compareIsOpenNow && compareStatusEl) {
@@ -7894,7 +7933,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'stats' ? 'Countries' : (tab === 'breakdown' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
+            mobileCurrent.textContent = tab === 'breakdown' ? 'Overview' : (tab === 'stats' ? 'Countries' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -7947,6 +7986,9 @@
             ensureKpis();
           } else if (tab === 'breakdown') {
             refreshBreakdown({ force: false });
+            // AOV grid now lives on Overview tab; ensure stats data is loaded for it
+            if (statsCache && statsCache.country) renderAov(statsCache);
+            else refreshStats({ force: false });
             ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
