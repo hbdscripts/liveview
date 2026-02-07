@@ -1,6 +1,6 @@
 # Cloudflare Worker + Rules: Filter All Bots (Google, Bing, Merchant Center, etc.)
 
-The Live View ingest runs through a Cloudflare Worker (`workers/ingest-enrich.js`) that can **block known bots at the edge** so they never reach your app or DB. For that to work you need:
+The Kexo ingest runs through a Cloudflare Worker (`workers/ingest-enrich.js`) that can **block known bots at the edge** so they never reach your app or DB. For that to work you need:
 
 1. **Worker env:** `BLOCK_KNOWN_BOTS=1`
 2. **Cloudflare rule:** A Request Header Transform Rule that sets `x-lv-client-bot` when the request is from a known bot (so the Worker can block it).
@@ -11,7 +11,7 @@ Without the rule, the Worker only sees bot signals from `request.cf.botManagemen
 
 ## Step 1: Enable blocking and reporting in the Worker
 
-In **Cloudflare Dashboard → Workers & Pages → your Worker (e.g. liveview-ingest-enrich) → Settings → Variables**:
+In **Cloudflare Dashboard → Workers & Pages → your Worker (e.g. kexo-ingest-enrich) → Settings → Variables**:
 
 - Add or edit **BLOCK_KNOWN_BOTS** = **1** (plain text).
 - Add **INGEST_SECRET** = **same value as your app’s INGEST_SECRET** (use a **Secret** so it isn’t visible).  
@@ -25,10 +25,10 @@ Redeploy the Worker if you change env vars.
 
 This rule runs **before** the Worker. When Cloudflare identifies the request as a known (verified) bot, it sets a header the Worker reads.
 
-1. In **Cloudflare Dashboard** select your zone (e.g. **hbdjewellery.com**).
+1. In **Cloudflare Dashboard** select your zone (e.g. **kexo.io**).
 2. Go to **Rules** → **Transform Rules** → **Request Header Transform Rules**.
 3. **Create rule** → **Request Header Transform Rule**.
-4. **Rule name:** e.g. `Live View – mark bots for ingest`.
+4. **Rule name:** e.g. `Kexo – mark bots for ingest`.
 5. **When incoming requests match:**  
    - Choose **Custom filter expression** (Expression Editor).  
    - Use one of the following.
@@ -84,7 +84,7 @@ Adjust the threshold (e.g. `lt 30`) to taste. The Worker blocks any request that
   If your sessions still match Shopify’s after this, either:
   - The rule isn’t firing (e.g. `cf.client.bot` not available on your plan, or path/expression wrong), or  
   - `BLOCK_KNOWN_BOTS` isn’t set to `1` in the Worker, or  
-  - The Worker route isn’t attached to the hostname/path that receives the pixel (e.g. `lv-ingest.hbdjewellery.com/api/ingest`).
+  - The Worker route isn’t attached to the hostname/path that receives the pixel (e.g. `ingest.kexo.io/api/ingest`).
 
 - **Config panel:**  
   After blocking is working, “Bots blocked (est.)” in the dashboard config (click **i**) should be roughly **Shopify Sessions − Sessions (ours)** for today.
@@ -97,15 +97,15 @@ Adjust the threshold (e.g. `lt 30`) to taste. The Worker blocks any request that
 Blocking only happens when a request is marked as a bot. That needs the **Request Header Transform Rule** (Step 2 above) to set `x-lv-client-bot = 1` when `cf.client.bot eq true`. Without that rule, the Worker runs on every request but never sees a bot signal, so it never blocks.
 
 **2. Cloudflare Worker metrics**  
-- **Dashboard → Workers & Pages → liveview-ingest-enrich → Metrics**  
-  - **Requests** = total requests to `lv-ingest.hbdjewellery.com/api/ingest` (both forwarded and blocked).  
+- **Dashboard → Workers & Pages → kexo-ingest-enrich → Metrics**  
+  - **Requests** = total requests to `ingest.kexo.io/api/ingest` (both forwarded and blocked).  
   - **Errors** = failures (e.g. upstream down).  
   So you can see that the Worker is being hit; you can’t see “block count” there by default.
 
 **3. Workers Logs / Tail (see individual requests and blocks)**  
 - **Workers Logs** is already enabled for you. In the Worker page, open **Logs** (or **Real-time Logs**) to see recent requests.  
 - When the Worker **blocks** a bot it returns **204** and sets response header **`x-lv-blocked: bot`**. In logs/traces you’ll see that 204 response and can filter or spot blocked requests.  
-- For a live stream: from your machine run **`wrangler tail liveview-ingest-enrich`** (from the `workers/` directory, with Wrangler logged in). You’ll see each request; when a bot is blocked you’ll see the 204 and the `x-lv-blocked: bot` header in the response.
+- For a live stream: from your machine run **`wrangler tail kexo-ingest-enrich`** (from the `workers/` directory, with Wrangler logged in). You'll see each request; when a bot is blocked you'll see the 204 and the `x-lv-blocked: bot` header in the response.
 
 **4. Enable Workers Traces (optional)**  
 - In the Worker **Settings → Observability**, turn **Workers Traces** to **Enabled**. Then in Logs you get more detail per request (headers, etc.), which helps confirm that blocked requests have `x-lv-blocked: bot`.

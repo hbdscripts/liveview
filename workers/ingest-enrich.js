@@ -1,159 +1,204 @@
 /**
- * Cloudflare Worker: enrich ingest requests with CF metadata; optionally block all known bots at the edge.
- * Deploy on the ingest hostname/path so POST /api/ingest goes through CF.
+ * Cloudflare Worker: Kexo ingest edge proxy.
+ * Enriches ingest requests with CF metadata, blocks bots + junk at the edge,
+ * fire-and-forgets to origin so the shopper is never blocked.
  *
- * Env vars:
- * - ORIGIN_URL (required): e.g. https://your-app.up.railway.app
- * - BLOCK_KNOWN_BOTS (optional): "1" to block known/verified bots (Google, Bing, Merchant Center, etc.) at the edge so they never reach your app or DB.
+ * Deploy on the ingest hostname (e.g. ingest.kexo.io) in the kexo.io CF zone.
  *
- * To filter all bots you must also add a Cloudflare Request Header Transform Rule that sets
- * x-lv-client-bot = 1 when cf.client.bot eq true (and optionally scope to path /api/ingest).
- * Without that rule, request.cf.botManagement may be empty on some plans. See docs/CLOUDFLARE_INGEST_SETUP.md.
+ * Env vars (set in Worker Settings → Variables):
+ * - ORIGIN_URL (required): e.g. https://app.kexo.io
+ * - BLOCK_KNOWN_BOTS (optional): "1" to drop verified bots at the edge.
+ * - INGEST_SECRET (optional): same as app's INGEST_SECRET; used for /api/bot-blocked counter.
  *
- * Bot signal (in order of use):
- * 1. Header x-lv-client-bot (set by Transform Rule from cf.client.bot) – covers verified crawlers.
- * 2. request.cf.botManagement.verifiedBot and verifiedBotCategory – best-effort, may be empty.
+ * Also add a Cloudflare Request Header Transform Rule on the zone:
+ *   Set x-lv-client-bot = 1  when  cf.client.bot eq true
+ *   (scope to path /api/ingest if desired)
  */
 
-function str(v) {
-  try { return v == null ? '' : String(v); } catch (_) { return ''; }
+function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
+function isTruthy(v) { const t = s(v).trim().toLowerCase(); return t === '1' || t === 'true' || t === 'yes'; }
+
+const ALLOWED_HOST = 'ingest.kexo.io';
+const EXPOSE = 'x-lv-edge-result,x-lv-blocked,x-cf-known-bot,x-cf-country,x-cf-colo,x-cf-asn,x-cf-verified-bot-category';
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    const host = (u.hostname || '').toLowerCase();
+    if (u.protocol !== 'https:') return false;
+    // Kexo domains
+    if (host === 'kexo.io' || host === 'www.kexo.io') return true;
+    if (host.endsWith('.kexo.io')) return true;
+    // Client store domains
+    if (host === 'hbdjewellery.com' || host === 'www.hbdjewellery.com') return true;
+    if (host.endsWith('.hbdjewellery.com')) return true;
+    if (host === 'heybigday.com' || host === 'www.heybigday.com') return true;
+    if (host.endsWith('.heybigday.com')) return true;
+    // Shopify domains (pixel runs in sandbox on these)
+    if (host.endsWith('.myshopify.com')) return true;
+    if (host === 'checkout.shopify.com' || host.endsWith('.shopify.com')) return true;
+    return false;
+  } catch (_) { return false; }
 }
-function truthyHeader(v) {
-  const s = str(v).trim().toLowerCase();
-  return s === '1' || s === 'true' || s === 'yes';
+
+function cors(req, mode) {
+  const origin = s(req.headers.get('origin')).trim();
+  const allowOrigin = isAllowedOrigin(origin) ? origin : '*';
+  const h = { 'access-control-allow-origin': allowOrigin, 'access-control-expose-headers': EXPOSE, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
+  if (mode === 'preflight') {
+    const acrh = s(req.headers.get('access-control-request-headers')).trim();
+    h['access-control-allow-methods'] = 'POST, OPTIONS';
+    h['access-control-allow-headers'] = acrh ? acrh : 'content-type';
+    h['access-control-max-age'] = '86400';
+    h['vary'] = 'origin, access-control-request-method, access-control-request-headers';
+  } else {
+    h['vary'] = 'origin';
+  }
+  return h;
 }
 
-export default {
-  async fetch(request, env, ctx) {
-    const originUrl = str(env.ORIGIN_URL).trim();
-    if (!originUrl) return new Response('ORIGIN_URL not configured', { status: 500 });
+function cfDbg(request) {
+  const cf = request.cf || {};
+  const bm = cf.botManagement || {};
+  const verifiedBot = bm && bm.verifiedBot === true;
+  const verifiedBotCategory = s(cf.verifiedBotCategory || bm.verifiedBotCategory).trim();
+  const country = s(cf.country).trim();
+  const colo = s(cf.colo).trim();
+  const asn = s(cf.asn).trim();
+  return { verifiedBot, verifiedBotCategory, country: country.length === 2 ? country.toUpperCase() : '', colo: colo ? colo.slice(0, 32) : '', asn: asn ? asn.slice(0, 32) : '' };
+}
 
-    const url = new URL(request.url);
-    // Normalize trailing slashes so /api/ingest/ is treated the same as /api/ingest
-    const path = (url.pathname || '/').replace(/\/+$/, '') || '/';
-    const ingestPath = '/api/ingest';
-    const isIngest = path === ingestPath || path.endsWith(ingestPath);
+function isToolUa(ua) {
+  const u = ua.toLowerCase();
+  return u.includes('curl') || u.includes('wget') || u.includes('python-requests') || u.includes('python/') || u.includes('requests/') || u.includes('postman') || u.includes('insomnia') || u.includes('httpie') || u.includes('powershell') || u.includes('go-http-client') || u.includes('node-fetch') || u.includes('undici') || u.includes('okhttp');
+}
 
-    // Forward anything not ingest as-is (strip Host header).
-    if (!isIngest) {
-      const origin = originUrl.replace(/\/$/, '') + path + url.search;
-      const initHeaders = new Headers(request.headers);
-      initHeaders.delete('host');
+function withDbgHeaders(base, dbg) {
+  const h = new Headers(base);
+  for (const [k, v] of Object.entries(dbg || {})) h.set(k, s(v));
+  return h;
+}
 
-      const init = { method: request.method, headers: initHeaders };
-      if (request.body != null && request.method !== 'GET' && request.method !== 'HEAD') {
-        init.body = request.body;
-        init.duplex = 'half';
-      }
-      return fetch(new Request(origin, init));
+async function postToOrigin(url, headers, bodyBuf) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  try {
+    return await fetch(url, { method: 'POST', headers, body: bodyBuf, signal: ac.signal, duplex: 'half' });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+export default { async fetch(request, env, ctx) {
+  const originUrl = s(env.ORIGIN_URL).trim();
+  if (!originUrl) return new Response('ORIGIN_URL not configured', { status: 500 });
+
+  const ingestSecret = s(env.INGEST_SECRET).trim();
+  const url = new URL(request.url);
+  const host = (url.hostname || '').toLowerCase();
+  const path = url.pathname || '';
+  const method = (request.method || 'GET').toUpperCase();
+
+  // Kill workers.dev + wrong-host bypass
+  if (host !== ALLOWED_HOST) {
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'host_denied', 'x-lv-blocked': 'host', 'x-cf-known-bot': '0', 'x-cf-country': '', 'x-cf-colo': '', 'x-cf-asn': '', 'x-cf-verified-bot-category': '' });
+    return new Response(null, { status: 404, headers: h });
+  }
+
+  // Strict ingest path only
+  const isIngest = (path === '/api/ingest' || path.startsWith('/api/ingest/'));
+  if (!isIngest) {
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'bad_path', 'x-lv-blocked': 'path', 'x-cf-known-bot': '0', 'x-cf-country': '', 'x-cf-colo': '', 'x-cf-asn': '', 'x-cf-verified-bot-category': '' });
+    return new Response(null, { status: 404, headers: h });
+  }
+
+  // Preflight
+  if (method === 'OPTIONS') {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'preflight'), { 'x-lv-edge-result': 'preflight', 'x-lv-blocked': '', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 204, headers: h });
+  }
+
+  // POST only
+  if (method !== 'POST') {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'bad_method', 'x-lv-blocked': 'method', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 405, headers: h });
+  }
+
+  // Junk gating
+  const ua = s(request.headers.get('user-agent')).trim();
+  if (!ua) {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'dropped_junk', 'x-lv-blocked': 'no_ua', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 403, headers: h });
+  }
+  if (isToolUa(ua)) {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'dropped_junk', 'x-lv-blocked': 'ua', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 403, headers: h });
+  }
+
+  // Offsite gate only when Origin exists (fail-open)
+  const origin = s(request.headers.get('origin')).trim();
+  if (origin && !isAllowedOrigin(origin)) {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'dropped_offsite', 'x-lv-blocked': 'origin', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 403, headers: h });
+  }
+
+  // Size cap
+  const cl = parseInt(s(request.headers.get('content-length')).trim(), 10);
+  if (Number.isFinite(cl) && cl > 256 * 1024) {
+    const d = cfDbg(request);
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'dropped_junk', 'x-lv-blocked': 'payload_too_large', 'x-cf-known-bot': '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 413, headers: h });
+  }
+
+  // Bot signal (fail-open)
+  const d = cfDbg(request);
+  const clientBot = isTruthy(request.headers.get('x-lv-client-bot'));
+  const knownBot = clientBot || d.verifiedBot || !!d.verifiedBotCategory;
+
+  // Bot drop at edge
+  if (isTruthy(env.BLOCK_KNOWN_BOTS) && knownBot) {
+    if (ingestSecret) {
+      ctx.waitUntil(fetch(originUrl.replace(/\/$/, '') + '/api/bot-blocked', { method: 'POST', headers: { 'X-Internal-Secret': ingestSecret } }).catch(() => {}));
     }
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'dropped_bot', 'x-lv-blocked': 'bot', 'x-cf-known-bot': '1', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 202, headers: h });
+  }
 
-    // Handle preflight at the edge to avoid silent pixel failures.
-    if (request.method === 'OPTIONS') {
-      const reqHdrs = request.headers.get('access-control-request-headers') || 'content-type';
-      const reqMeth = request.headers.get('access-control-request-method') || 'POST';
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'access-control-allow-origin': '*',
-          'access-control-allow-methods': `${reqMeth}, OPTIONS`,
-          'access-control-allow-headers': reqHdrs,
-          'access-control-max-age': '86400',
-          'vary': 'origin, access-control-request-method, access-control-request-headers',
-        },
-      });
-    }
+  // Read body once so we can send it in background
+  let bodyBuf;
+  try {
+    bodyBuf = await request.arrayBuffer();
+  } catch (_) {
+    const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'accepted_body_read_error', 'x-lv-blocked': '', 'x-cf-known-bot': knownBot ? '1' : '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+    return new Response(null, { status: 200, headers: h });
+  }
 
-    // Build CF enrichment headers (fail-open).
-    let enrich = {};
-    let knownBot = false;
+  // Build origin request headers (auth + enrichment)
+  const upstreamUrl = originUrl.replace(/\/$/, '') + path + url.search;
+  const newHeaders = new Headers(request.headers);
+  newHeaders.delete('host');
+  newHeaders.set('x-cf-known-bot', knownBot ? '1' : '0');
+  if (d.verifiedBotCategory) newHeaders.set('x-cf-verified-bot-category', d.verifiedBotCategory);
+  if (d.country) newHeaders.set('x-cf-country', d.country);
+  if (d.colo) newHeaders.set('x-cf-colo', d.colo);
+  if (d.asn) newHeaders.set('x-cf-asn', d.asn);
+  if (ingestSecret) newHeaders.set('X-Internal-Secret', ingestSecret);
 
+  // Fire-and-forget to origin; never block the shopper
+  ctx.waitUntil((async () => {
     try {
-      // Preferred bot signal - injected by a Cloudflare Request Header Transform Rule from cf.client.bot.
-      // CF does not allow setting x-cf-* or cf-* headers, so the rule uses x-lv-client-bot (see CLOUDFLARE_INGEST_SETUP.md).
-      const clientBotHeader =
-        request.headers.get('x-lv-client-bot') ||
-        request.headers.get('x-cf-client-bot') ||
-        request.headers.get('cf-client-bot') ||
-        '';
+      const r = await postToOrigin(upstreamUrl, newHeaders, bodyBuf);
+      void r;
+    } catch (_) {}
+  })());
 
-      const clientBot = truthyHeader(clientBotHeader);
-
-      // Secondary best-effort signal (may be empty on your plan):
-      const cf = request.cf || {};
-      const botManagement = cf.botManagement || {};
-      const verifiedBot = botManagement && botManagement.verifiedBot === true;
-      const verifiedBotCategory = str(cf.verifiedBotCategory || botManagement.verifiedBotCategory).trim();
-
-      knownBot = clientBot || verifiedBot || !!verifiedBotCategory;
-
-      const country = str(cf.country).trim();
-      const colo = str(cf.colo).trim();
-      const asn = str(cf.asn).trim();
-
-      enrich = {
-        'x-cf-client-bot': clientBotHeader ? (truthyHeader(clientBotHeader) ? '1' : '0') : '',
-        'x-cf-known-bot': knownBot ? '1' : '0',
-        'x-cf-verified-bot-category': verifiedBotCategory || '',
-        'x-cf-country': country.length === 2 ? country.toUpperCase() : '',
-        'x-cf-colo': colo ? colo.slice(0, 32) : '',
-        'x-cf-asn': asn ? asn.slice(0, 32) : '',
-      };
-    } catch (_) {
-      enrich = { 'x-cf-known-bot': '0' };
-      knownBot = false;
-    }
-
-    // Optional: block known bots at ingest so they never enter your DB.
-    if (str(env.BLOCK_KNOWN_BOTS).trim() === '1' && knownBot) {
-      const botBlockSecret = str(env.INGEST_SECRET).trim();
-      if (botBlockSecret) {
-        ctx.waitUntil(
-          fetch(originUrl.replace(/\/$/, '') + '/api/bot-blocked', {
-            method: 'POST',
-            headers: { 'X-Internal-Secret': botBlockSecret },
-          }).catch(() => {})
-        );
-      }
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'access-control-allow-origin': '*',
-          'vary': 'origin',
-          'x-lv-blocked': 'bot', // visible in Workers Logs / Tail so you can see blocks
-        },
-      });
-    }
-
-    // Forward ingest to origin with enrichment headers.
-    const origin = originUrl.replace(/\/$/, '') + path + url.search;
-    const newHeaders = new Headers(request.headers);
-    newHeaders.delete('host');
-
-    for (const [k, v] of Object.entries(enrich)) {
-      if (v !== undefined && v !== null && String(v).length) newHeaders.set(k, String(v));
-    }
-
-    try {
-      const upstream = await fetch(
-        new Request(origin, {
-          method: request.method,
-          headers: newHeaders,
-          body: request.body,
-          duplex: 'half',
-        })
-      );
-
-      // Make sure the browser can read the response.
-      const out = new Response(upstream.body, upstream);
-      out.headers.set('access-control-allow-origin', '*');
-      out.headers.set('vary', 'origin');
-      return out;
-    } catch (_) {
-      return new Response('Upstream fetch failed', {
-        status: 502,
-        headers: { 'access-control-allow-origin': '*', 'vary': 'origin' },
-      });
-    }
-  },
-};
+  // Immediate success response to browser
+  const h = withDbgHeaders(cors(request, 'normal'), { 'x-lv-edge-result': 'accepted', 'x-lv-blocked': '', 'x-cf-known-bot': knownBot ? '1' : '0', 'x-cf-country': d.country, 'x-cf-colo': d.colo, 'x-cf-asn': d.asn, 'x-cf-verified-bot-category': d.verifiedBotCategory || '' });
+  return new Response(null, { status: 200, headers: h });
+} };

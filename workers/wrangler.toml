@@ -9,8 +9,8 @@ name = "kexo-ingest-enrich"
 main = "ingest-enrich.js"
 compatibility_date = "2024-01-01"
 
-# Route this Worker to your CF-proxied ingest hostname (this project: lv-ingest.hbdjewellery.com)
-# routes = [{ pattern = "lv-ingest.hbdjewellery.com/api/ingest*", zone_name = "hbdjewellery.com" }]
+# Route this Worker to your CF-proxied ingest hostname
+# routes = [{ pattern = "ingest.kexo.io/api/ingest*", zone_name = "kexo.io" }]
 
 [vars]
 # ORIGIN_URL must be set in Worker Settings -> Variables (secret or plain)
