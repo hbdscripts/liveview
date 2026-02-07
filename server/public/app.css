@@ -608,9 +608,7 @@
     .main-tab-panel { display: none; }
     .main-tab-panel.active { display: block; }
     .stats-row-wrap { position: relative; }
-    .report-building .stats-row,
-    .report-building .traffic-grid,
-    .report-building .aov-cards-wrap { visibility: hidden; }
+    .stats-row-wrap.report-building > :not(.report-loading-overlay) { display: none !important; }
     .sessions-table-wrap { position: relative; }
     .live-kpi-grid { --kpi-gap: 1rem; display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: var(--kpi-gap); }
     .live-kpi-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 10px 30px; text-align: center; box-shadow: var(--shadow); position: relative; }

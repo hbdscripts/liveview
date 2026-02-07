@@ -237,8 +237,11 @@ const { up: up027 } = require('./migrations/027_traffic_source_maps');
 const { up: up028 } = require('./migrations/028_backfill_purchases_from_evidence');
 const { up: up029 } = require('./migrations/029_dedupe_traffic_source_meta_labels');
 const { up: up030 } = require('./migrations/030_canonicalize_built_in_traffic_sources');
+const { up: up031 } = require('./migrations/031_orders_shopify_line_items_variant_title_index');
+const { up: up032 } = require('./migrations/032_sessions_bs_ads_fields');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
+const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function migrateAndStart() {
   // Open DB early so backups can inspect/operate.
@@ -277,6 +280,16 @@ async function migrateAndStart() {
   await up028();
   await up029();
   await up030();
+  await up031();
+  await up032();
+
+  try {
+    const r = await runAdsMigrations();
+    if (r && r.skipped) console.log('[ads.migrate] skipped:', r.reason);
+    else console.log('[ads.migrate] applied:', r && r.applied != null ? r.applied : 0);
+  } catch (e) {
+    console.error('[ads.migrate] failed (continuing):', e);
+  }
 
   if (preBackup) {
     await writeAudit('system', 'backup', {
