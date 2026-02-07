@@ -80,6 +80,9 @@
     .traffic-type-toggle:hover { color: var(--accent); }
     .traffic-type-toggle .chev { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.18s ease; }
     .traffic-type-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+    .tt-device-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
+    .tt-platform-cell { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .tt-platform-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
     .traffic-type-parent td:first-child { white-space: nowrap; }
     .traffic-type-child td:first-child { padding-left: calc(var(--table-cell-padding-x) + 18px); }
     .traffic-type-child td:first-child::before { content: '›'; display: inline-block; margin-right: 6px; color: var(--muted); }
@@ -5908,6 +5911,25 @@
       }
 
       renderRows('traffic-sources-body', sources ? sources.rows : [], 'Open Settings (footer) → Traffic to choose channels.');
+
+      function trafficTypeDeviceIcon(device) {
+        var d = (device || '').trim().toLowerCase();
+        var s = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        if (d === 'desktop') return '<svg ' + s + '><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+        if (d === 'mobile') return '<svg ' + s + '><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>';
+        if (d === 'tablet') return '<svg ' + s + '><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>';
+        return '<svg ' + s + '><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+      }
+
+      function trafficTypePlatformIcon(platform) {
+        var p = (platform || '').trim().toLowerCase();
+        if (p === 'ios' || p === 'mac') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>';
+        if (p === 'android') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.27-.86-.31-.16-.69-.04-.86.27l-1.87 3.23C14.83 8.34 13.45 8.01 12 8.01s-2.83.33-4.44.93L5.69 5.71c-.16-.31-.54-.43-.86-.27-.31.16-.43.55-.27.86l1.84 3.18C3.39 11.13 1.43 14.08 1 17.5h22c-.43-3.42-2.39-6.37-5.4-8.02zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>';
+        if (p === 'windows') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.5l8-1.1V12H3zm0 .5h8v6.6l-8-1.1V12.5zm9 0h9V21l-9-1.2V12.5zm0-.5V4l9-1.2V12h-9z"/></svg>';
+        if (p === 'linux') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 2C10 2 8.2 4.1 8.2 6.6c0 1.4.5 2.6.9 3.8.4 1.2.6 2.3.4 3-.5 1.2-2 2-2.4 3.3-.2.7-.1 1.5.5 2.1.7.7 1.6.6 2.2.4.6-.2 1.1-.5 1.7-.5s1.1.3 1.7.5c.6.2 1.5.3 2.2-.4.6-.6.7-1.4.5-2.1-.4-1.3-1.9-2.1-2.4-3.3-.2-.7 0-1.8.4-3 .4-1.2.9-2.4.9-3.8C14.8 4.1 15 2 12.5 2z"/></svg>';
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+      }
+
       (function renderTypeTree() {
         const body = document.getElementById('traffic-types-body');
         if (!body) return;
@@ -5959,6 +5981,7 @@
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
                 '<span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>' +
+                '<span class="tt-device-icon" aria-hidden="true">' + trafficTypeDeviceIcon(device) + '</span>' +
                 '<span>' + label + '</span>' +
               '</button>' +
             '</div>' +
@@ -5983,13 +6006,14 @@
               cmpNullableText(typeLabel(a), typeLabel(b), 'asc');
           });
           kids.forEach(function(c) {
+            const platformKey = (c && c.platform) ? String(c.platform).trim().toLowerCase() : ((c && c.key) ? String(c.key).trim().toLowerCase() : '');
             const clabel = escapeHtml((c && c.label) ? String(c.label) : (c && c.platform ? String(c.platform) : (c && c.key ? String(c.key) : '—')));
             const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
             const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
             const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
             const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTableHtml(c.revenueGbp) : '—';
             html += '<div class="grid-row traffic-type-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(device) + '">' +
-              '<div class="grid-cell" role="cell">' + clabel + '</div>' +
+              '<div class="grid-cell" role="cell"><span class="tt-platform-cell"><span class="tt-platform-icon" aria-hidden="true">' + trafficTypePlatformIcon(platformKey) + '</span>' + clabel + '</span></div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +
