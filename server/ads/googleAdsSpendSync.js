@@ -95,7 +95,7 @@ async function fetchAccessTokenFromRefreshToken(refreshToken) {
 }
 
 async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize = 10000 }) {
-  const url = `https://googleads.googleapis.com/v16/customers/${encodeURIComponent(customerId)}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v17/customers/${encodeURIComponent(customerId)}/googleAds:search`;
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     'developer-token': developerToken,
