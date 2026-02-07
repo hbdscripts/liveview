@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 11;
-const LAST_UPDATED = '2026-02-06';
+const DEFINITIONS_VERSION = 12;
+const LAST_UPDATED = '2026-02-07';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -79,7 +79,7 @@ const TRACKER_TABLE_DEFINITIONS = [
   },
   {
     id: 'breakdown_country',
-    page: 'Breakdown',
+    page: 'Countries',
     name: 'Country table',
     ui: { elementIds: ['country-table'] },
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=... (same picker as dashboard)'] },
@@ -103,7 +103,7 @@ const TRACKER_TABLE_DEFINITIONS = [
   },
   {
     id: 'breakdown_aov_cards',
-    page: 'Breakdown',
+    page: 'Overview',
     name: 'Average Order Value (AOV) cards (by country)',
     ui: { elementIds: ['aov-cards-grid'] },
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=... (same picker as dashboard)'] },
@@ -114,18 +114,20 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
-      { name: 'Country', value: 'country_code' },
-      { name: 'AOV', value: 'aov (GBP)', formula: 'Revenue / Orders' },
+      { name: 'Country (left)', value: 'Flag + country name (left-aligned)' },
+      { name: 'AOV (middle)', value: 'aov (GBP)', formula: 'Revenue / Orders, shown in center column' },
+      { name: 'Revenue (right)', value: 'revenue (GBP)', formula: 'SUM(order_total) converted to GBP, shown in right column' },
     ],
     math: [
-      { name: 'Important', value: 'This is derived from the same country rows as the Country table (uses the country.aov field returned by /api/stats).' },
+      { name: 'Layout', value: '3-column card: Flag+Country | AOV | Revenue. Sorted by revenue desc. Mobile: swipe pages of 5.' },
+      { name: 'Important', value: 'This is derived from the same country rows as the Country table (uses the country.aov and country.revenue fields returned by /api/stats).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
     id: 'breakdown_best_geo_products',
-    page: 'Breakdown',
+    page: 'Countries',
     name: 'Best by GEO table',
     ui: { elementIds: ['best-geo-products-table'] },
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=...'] },
