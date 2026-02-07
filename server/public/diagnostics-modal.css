@@ -69,6 +69,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: none;
 }
 
 #config-modal .config-modal-actions {
@@ -160,6 +161,46 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+#config-modal .dm-section-details {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+}
+
+#config-modal .dm-section-details:last-child {
+  border-bottom: none;
+}
+
+#config-modal .dm-section-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#config-modal .dm-section-summary::-webkit-details-marker {
+  display: none;
+}
+
+#config-modal .dm-section-summary::after {
+  content: '▾';
+  color: rgba(15, 23, 42, 0.55);
+  font-weight: 700;
+}
+
+#config-modal .dm-section-details[open] > .dm-section-summary::after {
+  content: '▴';
+}
+
+#config-modal .dm-section-body {
+  padding: 0 20px 18px;
 }
 
 /* Section: dropdown (under header) */
@@ -328,8 +369,8 @@
 }
 
 #config-modal .dm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 0;
 }
 
@@ -397,15 +438,17 @@
 }
 
 #config-modal .dm-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 #config-modal .dm-metric {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -420,8 +463,8 @@
 }
 
 #config-modal .dm-metric-value {
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 650;
   color: var(--text, #334155);
   line-height: 1.1;
   white-space: nowrap;
@@ -821,7 +864,11 @@
   padding: 0;
 }
 
-@media (max-width: 640px) {
+#config-modal .dm-copy-dropdown {
+  margin-top: 0;
+}
+
+@media (max-width: 768px) {
   #config-modal .config-modal-card {
     max-height: 100%;
   }
@@ -837,10 +884,6 @@
 
   #config-modal .dm-panel.dm-panel--active {
     padding: 14px 16px 20px;
-  }
-
-  #config-modal .dm-grid {
-    grid-template-columns: 1fr;
   }
 
   #config-modal .dm-table {
