@@ -6,7 +6,7 @@
  * - byType: top product types (e.g. Necklace, Bracelet) + revenue + orders + sessions + CR
  *
  * Definitions:
- * - Orders: sum(line-item quantity) from Shopify truth orders
+ * - Orders: COUNT(DISTINCT order_id) from Shopify truth orders
  * - Sessions: product landings from our sessions table (human-only)
  * - CR%: Orders / Sessions × 100
  *
@@ -146,7 +146,7 @@ async function getShopifyLeaderboard(req, res) {
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 TRIM(product_id) AS product_id,
                 MAX(title) AS title,
-                COALESCE(SUM(quantity), 0) AS orders,
+                COUNT(DISTINCT order_id) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
@@ -164,7 +164,7 @@ async function getShopifyLeaderboard(req, res) {
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 TRIM(product_id) AS product_id,
                 MAX(title) AS title,
-                COALESCE(SUM(quantity), 0) AS orders,
+                COUNT(DISTINCT order_id) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
@@ -317,6 +317,7 @@ async function getShopifyLeaderboard(req, res) {
         for (const [key, items] of productsByTypeMap.entries()) {
           productsByType[key] = items.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
         }
+        console.log('[shopify-leaderboard] productsByType keys:', Object.keys(productsByType));
 
         return {
           ok: true,
