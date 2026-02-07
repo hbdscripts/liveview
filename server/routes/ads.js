@@ -64,6 +64,48 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+router.get('/debug-landing-sites', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const mainDb = require('../db').getDb();
+    if (!mainDb) return res.json({ ok: false, error: 'No main DB' });
+    const rows = await mainDb.all(
+      `SELECT order_id, order_name, total_price, currency, created_at, raw_json
+       FROM orders_shopify
+       WHERE financial_status IN ('paid', 'partially_refunded')
+         AND cancelled_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 20`
+    );
+    const samples = (rows || []).map(r => {
+      let landingSite = '', referringSite = '';
+      try {
+        const json = typeof r.raw_json === 'string' ? JSON.parse(r.raw_json) : null;
+        landingSite = (json && (json.landing_site || json.landingSite)) || '';
+        referringSite = (json && (json.referring_site || json.referringSite)) || '';
+      } catch (_) {}
+      const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
+      const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
+      return {
+        orderId: r.order_id,
+        orderName: r.order_name,
+        totalPrice: r.total_price,
+        currency: r.currency,
+        createdAt: r.created_at,
+        landingSite,
+        referringSite,
+        extractedBsIds: bsIds,
+        hasGclid: !!gclidMatch,
+        gclid: gclidMatch ? decodeURIComponent(gclidMatch[1]).slice(0, 20) + '...' : null,
+      };
+    });
+    res.json({ ok: true, count: samples.length, samples });
+  } catch (err) {
+    console.error('[ads.debug-landing-sites]', err);
+    res.status(500).json({ ok: false, error: String(err.message).slice(0, 200) });
+  }
+});
+
 router.get('/campaign-detail', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=15');
   res.setHeader('Vary', 'Cookie');

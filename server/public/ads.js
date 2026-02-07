@@ -242,8 +242,8 @@
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
-      '.ads-campaign-link{color:var(--text,#333);text-decoration:none;cursor:pointer;border-bottom:1px dashed var(--border,#ccc);}' +
-      '.ads-campaign-link:hover{color:var(--accent,#0d9488);border-bottom-color:var(--accent,#0d9488);}';
+      '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +
+      '.ads-campaign-row:hover{background:rgba(13,148,136,0.04);}';
     document.head.appendChild(style);
   }
 
@@ -320,14 +320,14 @@
       var pr = c.profit != null ? Number(c.profit) : 0;
 
       bodyHtml += gridRow([
-        { html: '<a class="ads-campaign-link" data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '" href="#">' + esc(cName) + '</a>' },
+        { html: esc(cName) },
         { html: esc(fmtMoney(c.spend, currency)) },
         { html: esc(fmtNum(c.impressions)) },
         { html: esc(fmtNum(c.clicks)) },
         { html: esc(fmtMoney(pr, currency)), cls: ' ' + profitClass(pr) },
         { html: esc(fmtRoas(c.roas)) },
         { html: esc(fmtMoney(c.revenue, currency)) },
-      ], false, '');
+      ], false, 'ads-campaign-row', ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
     }
 
     if (!campaigns.length && !note) {
@@ -374,14 +374,13 @@
       });
     }
 
-    // Bind campaign links (open modal)
-    var links = root.querySelectorAll('.ads-campaign-link');
-    for (var li = 0; li < links.length; li++) {
-      links[li].addEventListener('click', function (e) {
-        e.preventDefault();
+    // Bind campaign rows (open modal on click)
+    var rows = root.querySelectorAll('.ads-campaign-row');
+    for (var li = 0; li < rows.length; li++) {
+      rows[li].addEventListener('click', function (e) {
         var id = e.currentTarget.getAttribute('data-campaign-id');
         var name = e.currentTarget.getAttribute('data-campaign-name');
-        openCampaignModal(id, name);
+        if (id) openCampaignModal(id, name);
       });
     }
   }
