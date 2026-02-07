@@ -1193,6 +1193,7 @@
           <div id="breakdown-finish-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
+      <div class="card-pagination is-hidden" id="breakdown-finish-pagination" aria-label="Finish pagination"><button type="button" id="breakdown-finish-prev">Prev</button><span class="page-label" id="breakdown-finish-label">1 of 1</span><button type="button" id="breakdown-finish-next">Next</button></div>
     </div>
     <div class="stats-card">
       <div class="country-table-wrap">
@@ -1205,6 +1206,7 @@
           <div id="breakdown-length-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
+      <div class="card-pagination is-hidden" id="breakdown-length-pagination" aria-label="Length pagination"><button type="button" id="breakdown-length-prev">Prev</button><span class="page-label" id="breakdown-length-label">1 of 1</span><button type="button" id="breakdown-length-next">Next</button></div>
     </div>
     <div class="stats-card">
       <div class="country-table-wrap">
@@ -1217,6 +1219,7 @@
           <div id="breakdown-chainstyle-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
+      <div class="card-pagination is-hidden" id="breakdown-chainstyle-pagination" aria-label="Chain Style pagination"><button type="button" id="breakdown-chainstyle-prev">Prev</button><span class="page-label" id="breakdown-chainstyle-label">1 of 1</span><button type="button" id="breakdown-chainstyle-next">Next</button></div>
     </div>
   </div>
   </div>
@@ -1569,8 +1572,9 @@
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
-    const TOP_TABLE_PAGE_SIZE = 5;
-    const COUNTRY_PAGE_SIZE = 11;
+    const TOP_TABLE_PAGE_SIZE = 10;
+    const COUNTRY_PAGE_SIZE = 10;
+    const BREAKDOWN_PAGE_SIZE = 4;
     const ROWS_PER_PAGE_DEFAULT = 25;
     function loadRowsPerPage() {
       return ROWS_PER_PAGE_DEFAULT;
@@ -4286,7 +4290,7 @@
       { id: 'charms',    keys: ['charms', 'charm'] },
       { id: 'extras',    keys: ['extras', 'extra'] },
     ];
-    var TYPE_TABLE_PAGE_SIZE = 5;
+    var TYPE_TABLE_PAGE_SIZE = 4;
     var typeTablePages = {};
     TYPE_TABLE_DEFS.forEach(function(d) { typeTablePages[d.id] = 1; });
 
@@ -4986,12 +4990,14 @@
       }).join('');
     }
 
+    var breakdownFinishPage = 1;
     function renderBreakdownFinishes(data) {
       const tbody = document.getElementById('breakdown-finish-body');
       if (!tbody) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (!rows.length) {
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (finishesLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        updateCardPagination('breakdown-finish', 1, 1);
         return;
       }
       function iconFor(key) {
@@ -5004,7 +5010,12 @@
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
-      tbody.innerHTML = ordered.map(function(r) {
+      var totalPages = Math.max(1, Math.ceil(ordered.length / BREAKDOWN_PAGE_SIZE));
+      breakdownFinishPage = clampPage(breakdownFinishPage, totalPages);
+      updateCardPagination('breakdown-finish', breakdownFinishPage, totalPages);
+      var start = (breakdownFinishPage - 1) * BREAKDOWN_PAGE_SIZE;
+      var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
@@ -5017,12 +5028,14 @@
       }).join('');
     }
 
+    var breakdownLengthPage = 1;
     function renderBreakdownLengths(data) {
       const tbody = document.getElementById('breakdown-length-body');
       if (!tbody) return;
       const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
       if (!rows.length) {
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (lengthsLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        updateCardPagination('breakdown-length', 1, 1);
         return;
       }
       var ordered = rows.slice();
@@ -5030,8 +5043,13 @@
         return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
           cmpNullableNumber(a && a.inches, b && b.inches, 'asc');
       });
+      var totalPages = Math.max(1, Math.ceil(ordered.length / BREAKDOWN_PAGE_SIZE));
+      breakdownLengthPage = clampPage(breakdownLengthPage, totalPages);
+      updateCardPagination('breakdown-length', breakdownLengthPage, totalPages);
+      var start = (breakdownLengthPage - 1) * BREAKDOWN_PAGE_SIZE;
+      var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
       const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M6 7v10"></path><path d="M10 7v6"></path><path d="M14 7v6"></path><path d="M18 7v10"></path></svg></span>';
-      tbody.innerHTML = ordered.map(function(r) {
+      tbody.innerHTML = pageRows.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -5045,18 +5063,25 @@
       }).join('');
     }
 
+    var breakdownChainStylePage = 1;
     function renderBreakdownChainStyles(data) {
       const tbody = document.getElementById('breakdown-chainstyle-body');
       if (!tbody) return;
       const rows = (data && Array.isArray(data.chainStyles)) ? data.chainStyles : [];
       if (!rows.length) {
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (chainStylesLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        updateCardPagination('breakdown-chainstyle', 1, 1);
         return;
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
+      var totalPages = Math.max(1, Math.ceil(ordered.length / BREAKDOWN_PAGE_SIZE));
+      breakdownChainStylePage = clampPage(breakdownChainStylePage, totalPages);
+      updateCardPagination('breakdown-chainstyle', breakdownChainStylePage, totalPages);
+      var start = (breakdownChainStylePage - 1) * BREAKDOWN_PAGE_SIZE;
+      var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
       const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>';
-      tbody.innerHTML = ordered.map(function(r) {
+      tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
         const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
@@ -6711,6 +6736,18 @@
       bind('breakdown-title',
         function() { breakdownTitlePage = Math.max(1, breakdownTitlePage - 1); renderBreakdownTitles(leaderboardCache); },
         function() { breakdownTitlePage = breakdownTitlePage + 1; renderBreakdownTitles(leaderboardCache); }
+      );
+      bind('breakdown-finish',
+        function() { breakdownFinishPage = Math.max(1, breakdownFinishPage - 1); renderBreakdownFinishes(finishesCache); },
+        function() { breakdownFinishPage = breakdownFinishPage + 1; renderBreakdownFinishes(finishesCache); }
+      );
+      bind('breakdown-length',
+        function() { breakdownLengthPage = Math.max(1, breakdownLengthPage - 1); renderBreakdownLengths(lengthsCache); },
+        function() { breakdownLengthPage = breakdownLengthPage + 1; renderBreakdownLengths(lengthsCache); }
+      );
+      bind('breakdown-chainstyle',
+        function() { breakdownChainStylePage = Math.max(1, breakdownChainStylePage - 1); renderBreakdownChainStyles(chainStylesCache); },
+        function() { breakdownChainStylePage = breakdownChainStylePage + 1; renderBreakdownChainStyles(chainStylesCache); }
       );
     })();
 
