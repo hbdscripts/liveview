@@ -947,7 +947,7 @@
     </button>
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
-      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Geos</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Countries</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="breakdown">Breakdown</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
@@ -965,7 +965,7 @@
       </span>
       <span class="tab-text">Home</span>
     </button>
-    <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Geos</button>
+    <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Countries</button>
     <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Breakdown</button>
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
     <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
@@ -1150,43 +1150,34 @@
     <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="breakdown-loading-overlay">
       <div class="report-build-wrap">
         <div class="spinner"></div>
-        <div class="report-build-title">building reports</div>
+        <div class="report-build-title">Breakdown</div>
         <div class="report-build-step" id="breakdown-build-step">—</div>
       </div>
     </div>
-    <div class="aov-cards-wrap" id="leaderboard-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
-          <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-leaderboard-btn" aria-haspopup="true" aria-expanded="false">
-            <span id="products-leaderboard-label">Product Title</span>
-            <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-          <div class="aov-cards-title-menu" id="products-leaderboard-menu" role="menu" aria-hidden="true">
-            <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Product Title</button>
-            <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Product Type</button>
-          </div>
-        </div>
-        <div class="aov-cards-title">Leaderboard</div>
-      </div>
-      <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title">
-        <div class="aov-card aov-card-empty">—</div>
-      </div>
-    </div>
-    <div class="aov-cards-wrap" id="finishes-cards-wrap">
-      <div class="aov-cards-header">
-        <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
-          <button type="button" class="aov-cards-title aov-cards-title-btn" id="products-variant-cards-btn" aria-haspopup="true" aria-expanded="false">
-            <span id="products-variant-cards-label">Variant Finish</span>
-            <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-          <div class="aov-cards-title-menu" id="products-variant-cards-menu" role="menu" aria-hidden="true">
-            <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Variant Finish</button>
-            <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Variant Length</button>
-          </div>
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-card-header">Product Title</div>
+        <div class="breakdown-card-body" id="breakdown-title-grid">
+          <div class="bd-item bd-item--empty">—</div>
         </div>
       </div>
-      <div class="aov-cards-grid" id="finishes-cards-grid" data-cards-view="finishes">
-        <div class="aov-card aov-card-empty">—</div>
+      <div class="breakdown-card">
+        <div class="breakdown-card-header">Product Type</div>
+        <div class="breakdown-card-body" id="breakdown-type-grid">
+          <div class="bd-item bd-item--empty">—</div>
+        </div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-card-header">Variant Finish</div>
+        <div class="breakdown-card-body" id="breakdown-finish-grid">
+          <div class="bd-item bd-item--empty">—</div>
+        </div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-card-header">Variant Length</div>
+        <div class="breakdown-card-body" id="breakdown-length-grid">
+          <div class="bd-item bd-item--empty">—</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1807,11 +1798,8 @@
             if (activeMainTab === 'breakdown' && shopForSalesFallback && typeof fetchProductsLeaderboard === 'function') fetchProductsLeaderboard();
             if (activeMainTab === 'breakdown' && shopForSalesFallback) {
               try {
-                if (normalizeProductsVariantCardsView(productsVariantCardsView) === 'lengths') {
-                  if (typeof fetchLengths === 'function') fetchLengths();
-                } else {
-                  if (typeof fetchFinishes === 'function') fetchFinishes();
-                }
+                if (typeof fetchFinishes === 'function') fetchFinishes();
+                if (typeof fetchLengths === 'function') fetchLengths();
               } catch (_) {}
             }
             if (activeMainTab === 'products' && shopForSalesFallback && typeof fetchBestSellers === 'function') fetchBestSellers();
@@ -4664,6 +4652,118 @@
       }).join('');
     }
 
+    function renderBreakdownTitles(data) {
+      const grid = document.getElementById('breakdown-title-grid');
+      if (!grid) return;
+      const hasData = !!(data && data.ok);
+      const list = hasData ? (data.byTitle || []).slice(0, 10) : [];
+      if (!list.length) {
+        grid.innerHTML = '<div class="bd-item bd-item--empty">' + (leaderboardLoading ? '<span class="inline-spinner" aria-hidden="true"></span> Loading\u2026' : 'No data') + '</div>';
+        return;
+      }
+      const mainBase = getMainBaseUrl();
+      grid.innerHTML = list.map(function(row) {
+        const title = row && row.title != null ? String(row.title) : 'Product';
+        const handle = row && row.handle ? String(row.handle) : '';
+        const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
+        const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
+        const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+        const cr = crPillHtml(row && row.cr);
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const thumbHtml = thumb
+          ? '<img class="bd-item-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+          : '<span class="bd-item-thumb-placeholder"></span>';
+        const thumbWrap = productUrl
+          ? '<a class="bd-item-thumb-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbHtml + '</a>'
+          : '<span class="bd-item-thumb-wrap">' + thumbHtml + '</span>';
+        return '<div class="bd-item bd-item--title">' +
+          thumbWrap +
+          '<div class="bd-item-meta">' +
+            '<span class="bd-item-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>' +
+            '<div class="bd-item-value"><span class="bd-item-rev">' + escapeHtml(value) + '</span>' + cr + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderBreakdownTypes(data) {
+      const grid = document.getElementById('breakdown-type-grid');
+      if (!grid) return;
+      const hasData = !!(data && data.ok);
+      const list = hasData ? (data.byType || []).slice(0, 10) : [];
+      if (!list.length) {
+        grid.innerHTML = '<div class="bd-item bd-item--empty">' + (leaderboardLoading ? '<span class="inline-spinner" aria-hidden="true"></span> Loading\u2026' : 'No data') + '</div>';
+        return;
+      }
+      grid.innerHTML = list.map(function(row) {
+        const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
+        const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
+        const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
+        const cr = crPillHtml(row && row.cr);
+        return '<div class="bd-item bd-item--type">' +
+          '<div class="bd-item-left"><span class="bd-item-name">' + escapeHtml(label) + '</span></div>' +
+          '<div class="bd-item-value"><span class="bd-item-rev">' + escapeHtml(value) + '</span>' + cr + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderBreakdownFinishes(data) {
+      const grid = document.getElementById('breakdown-finish-grid');
+      if (!grid) return;
+      const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
+      if (!rows.length) {
+        grid.innerHTML = '<div class="bd-item bd-item--empty">' + (finishesLoading ? '<span class="inline-spinner" aria-hidden="true"></span> Loading\u2026' : 'No data') + '</div>';
+        return;
+      }
+      function iconFor(key) {
+        const k = (key || '').toString().trim().toLowerCase();
+        if (k === 'gold') return '<span class="finish-icon finish-icon-gold" aria-hidden="true"></span>';
+        if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
+        if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
+        if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
+        return '<span class="finish-icon" aria-hidden="true"></span>';
+      }
+      var ordered = rows.slice();
+      ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
+      grid.innerHTML = ordered.map(function(r) {
+        const label = (r && r.label != null) ? String(r.label) : '';
+        const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
+        const cr = crPillHtml(r && r.cr);
+        return '<div class="bd-item bd-item--finish">' +
+          '<div class="bd-item-left">' + iconFor(r && r.key) + '<span class="bd-item-name">' + escapeHtml(label || '\u2014') + '</span></div>' +
+          '<div class="bd-item-value"><span class="bd-item-rev">' + value + '</span>' + cr + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderBreakdownLengths(data) {
+      const grid = document.getElementById('breakdown-length-grid');
+      if (!grid) return;
+      const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
+      if (!rows.length) {
+        grid.innerHTML = '<div class="bd-item bd-item--empty">' + (lengthsLoading ? '<span class="inline-spinner" aria-hidden="true"></span> Loading\u2026' : 'No data') + '</div>';
+        return;
+      }
+      var ordered = rows.slice();
+      ordered.sort(function(a, b) {
+        return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc') ||
+          cmpNullableNumber(a && a.inches, b && b.inches, 'asc');
+      });
+      grid.innerHTML = ordered.map(function(r) {
+        const inches = (r && r.inches != null) ? Number(r.inches) : null;
+        const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
+        const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
+        const cr = crPillHtml(r && r.cr);
+        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '\u2014') + '</span></span>';
+        return '<div class="bd-item bd-item--length">' +
+          '<div class="bd-item-left">' + icon + '<span class="bd-item-name sr-only">' + escapeHtml((label || '\u2014') + ' Inches') + '</span></div>' +
+          '<div class="bd-item-value"><span class="bd-item-rev">' + value + '</span>' + cr + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
     function renderCountry(data) {
       const c = data.country || {};
       const rows = c[getStatsRange()] || [];
@@ -5665,26 +5765,27 @@
       if (breakdownRefreshInFlight) return breakdownRefreshInFlight;
 
       const build = startReportBuild({ key: 'breakdown', overlayId: 'breakdown-loading-overlay', stepId: 'breakdown-build-step' });
+      build.step('Loading\u2026');
       let leaderboardP = null;
-      let cardsP = null;
-      const cardsView = normalizeProductsVariantCardsView(productsVariantCardsView);
-      const cardsLabel = cardsView === 'lengths' ? 'lengths' : 'finishes';
+      let finishesP = null;
+      let lengthsP = null;
       try { leaderboardP = fetchProductsLeaderboard({ force }); } catch (err) { console.error(err); leaderboardP = Promise.resolve(null); }
-      try { cardsP = (cardsView === 'lengths' ? fetchLengths : fetchFinishes)({ force }); } catch (err) { console.error(err); cardsP = Promise.resolve(null); }
+      try { finishesP = fetchFinishes({ force }); } catch (err) { console.error(err); finishesP = Promise.resolve(null); }
+      try { lengthsP = fetchLengths({ force }); } catch (err) { console.error(err); lengthsP = Promise.resolve(null); }
       function settled(p) {
         return Promise.resolve(p)
           .then(function(v) { return { ok: true, value: v }; })
           .catch(function(err) { console.error(err); return { ok: false, error: err }; });
       }
-      const leaderboardS = settled(leaderboardP);
-      const cardsS = settled(cardsP);
 
-      breakdownRefreshInFlight = Promise.resolve()
-        .then(function() { build.step('building leaderboard...'); return leaderboardS; })
-        .then(function() { build.step('building leaderboard... done'); return delay(180); })
-        .then(function() { build.step('building ' + cardsLabel + '...'); return cardsS; })
-        .then(function() { build.step('building ' + cardsLabel + '... done'); return delay(180); })
-        .then(function() { lastBreakdownFetchedAt = Date.now(); })
+      breakdownRefreshInFlight = Promise.all([settled(leaderboardP), settled(finishesP), settled(lengthsP)])
+        .then(function() {
+          renderBreakdownTitles(leaderboardCache);
+          renderBreakdownTypes(leaderboardCache);
+          renderBreakdownFinishes(finishesCache);
+          renderBreakdownLengths(lengthsCache);
+          lastBreakdownFetchedAt = Date.now();
+        })
         .catch(function(err) { console.error(err); return null; })
         .finally(function() { breakdownRefreshInFlight = null; build.finish(); });
       return breakdownRefreshInFlight;
@@ -7731,7 +7832,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'stats' ? 'Geos' : (tab === 'breakdown' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
+            mobileCurrent.textContent = tab === 'stats' ? 'Countries' : (tab === 'breakdown' ? 'Breakdown' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
