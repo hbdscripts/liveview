@@ -93,6 +93,7 @@ const config = {
   googleAdsDeveloperToken: getEnv('GOOGLE_ADS_DEVELOPER_TOKEN', ''),
   googleAdsLoginCustomerId: getEnv('GOOGLE_ADS_LOGIN_CUSTOMER_ID', ''),
   googleAdsCustomerId: getEnv('GOOGLE_ADS_CUSTOMER_ID', ''),
+  googleAdsApiVersion: getEnv('GOOGLE_ADS_API_VERSION', ''),
   /** Single allowed shop domain for "Login with Shopify" (e.g. mystore.myshopify.com) */
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
   /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */

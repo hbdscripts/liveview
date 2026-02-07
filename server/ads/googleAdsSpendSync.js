@@ -94,8 +94,26 @@ async function fetchAccessTokenFromRefreshToken(refreshToken) {
   return accessToken;
 }
 
+function isLikelyDeprecatedEndpoint404(res, bodyText) {
+  if (!res || res.status !== 404) return false;
+  const ct = String(res.headers && res.headers.get ? (res.headers.get('content-type') || '') : '').toLowerCase();
+  if (ct.includes('text/html')) return true;
+  const t = String(bodyText || '').trim().toLowerCase();
+  if (!t) return false;
+  if (t.startsWith('<!doctype html') || t.startsWith('<html')) return true;
+  if (t.includes('error 404') && t.includes('not found')) return true;
+  return false;
+}
+
 async function googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, pageSize = 10000 }) {
-  const url = `https://googleads.googleapis.com/v17/customers/${encodeURIComponent(customerId)}/googleAds:search`;
+  const versionsRaw = [
+    (config.googleAdsApiVersion || '').trim(),
+    'v19',
+    'v18',
+    'v17',
+  ].filter(Boolean);
+  const versions = Array.from(new Set(versionsRaw));
+
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     'developer-token': developerToken,
@@ -103,32 +121,51 @@ async function googleAdsSearch({ customerId, loginCustomerId, developerToken, ac
   };
   if (loginCustomerId) headers['login-customer-id'] = String(loginCustomerId);
 
-  let pageToken = null;
-  const results = [];
-  while (true) {
-    const body = { query, pageSize };
-    if (pageToken) body.pageToken = pageToken;
+  let lastErr = null;
+  for (const ver of versions) {
+    const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(customerId)}/googleAds:search`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    try {
+      let completed = false;
+      let pageToken = null;
+      const results = [];
+      while (true) {
+        const body = { query, pageSize };
+        if (pageToken) body.pageToken = pageToken;
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error('Google Ads search failed: ' + res.status + ' ' + errText);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          if (isLikelyDeprecatedEndpoint404(res, errText)) {
+            lastErr = new Error('Google Ads endpoint not found for ' + ver);
+            break;
+          }
+          throw new Error('Google Ads search failed (' + ver + '): ' + res.status + ' ' + errText);
+        }
+
+        const data = await res.json();
+        const rows = data && Array.isArray(data.results) ? data.results : [];
+        for (const r of rows) results.push(r);
+
+        pageToken = data && data.nextPageToken ? String(data.nextPageToken) : '';
+        if (!pageToken) {
+          completed = true;
+          break;
+        }
+      }
+
+      if (completed) return results;
+    } catch (e) {
+      lastErr = e;
     }
-
-    const data = await res.json();
-    const rows = data && Array.isArray(data.results) ? data.results : [];
-    for (const r of rows) results.push(r);
-
-    pageToken = data && data.nextPageToken ? String(data.nextPageToken) : '';
-    if (!pageToken) break;
   }
 
-  return results;
+  throw (lastErr || new Error('Google Ads search failed'));
 }
 
 async function fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken }) {
