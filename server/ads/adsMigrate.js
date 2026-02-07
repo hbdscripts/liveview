@@ -88,6 +88,20 @@ async function runAdsMigrations() {
         await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS conversions_value_gbp DOUBLE PRECISION NOT NULL DEFAULT 0`);
       },
     },
+    {
+      id: '004_gclid_campaign_cache',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS gclid_campaign_cache (
+            gclid TEXT PRIMARY KEY,
+            campaign_id TEXT NOT NULL,
+            adgroup_id TEXT,
+            cached_at BIGINT NOT NULL
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gcc_campaign ON gclid_campaign_cache(campaign_id)');
+      },
+    },
   ];
 
   let applied = 0;

@@ -510,6 +510,19 @@ async function backfillCampaignIdsFromGclid(options = {}) {
       if (gclid && campId) gclidCampaignMap.set(gclid, { campaignId: campId, adgroupId: agId });
     }
 
+    // Step 4b: Persist gclid→campaign mappings to ads DB cache for order attribution
+    const cacheNow = Date.now();
+    for (const [gclid, mapping] of gclidCampaignMap) {
+      try {
+        await adsDb.run(
+          `INSERT INTO gclid_campaign_cache (gclid, campaign_id, adgroup_id, cached_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT (gclid) DO UPDATE SET campaign_id = EXCLUDED.campaign_id, adgroup_id = EXCLUDED.adgroup_id, cached_at = EXCLUDED.cached_at`,
+          [gclid, mapping.campaignId, mapping.adgroupId, cacheNow]
+        );
+      } catch (_) {}
+    }
+
     // Step 5: Update sessions
     let updated = 0;
     for (const [gclid, sessionIds] of gclidToSessions) {

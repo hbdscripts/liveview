@@ -80,47 +80,72 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue — live query on main DB (purchases → sessions with bs_campaign_id)
+  // Revenue — match confirmed Shopify orders to campaigns via landing_site URL
   const mainDb = getDb();
   let revRows = [];
   if (mainDb) {
-    const sourceFilter = source ? ' AND LOWER(TRIM(s.bs_source)) = ?' : '';
-    const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
-    const rawRevRows = await mainDb.all(
-      `
-        SELECT
-          LOWER(TRIM(s.bs_source)) AS source,
-          TRIM(s.bs_campaign_id) AS campaign_id,
-          COALESCE(NULLIF(TRIM(s.bs_adgroup_id), ''), '_all_') AS adgroup_id,
-          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS currency,
-          COUNT(*) AS orders,
-          COALESCE(SUM(p.order_total), 0) AS revenue
-        FROM purchases p
-        INNER JOIN sessions s ON s.session_id = p.session_id
-        WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          AND NULLIF(TRIM(s.bs_campaign_id), '') IS NOT NULL
-          AND NULLIF(TRIM(s.bs_source), '') IS NOT NULL
-          AND (NULLIF(TRIM(p.checkout_token), '') IS NOT NULL OR NULLIF(TRIM(p.order_id), '') IS NOT NULL)
-          ${sourceFilter}
-        GROUP BY source, campaign_id, adgroup_id, currency
-      `,
-      revParams
+    // Fetch confirmed orders with their raw_json (contains landing_site)
+    const orders = await mainDb.all(
+      `SELECT order_id, total_price, currency, raw_json
+       FROM orders_shopify
+       WHERE created_at >= ? AND created_at < ?
+         AND financial_status IN ('paid', 'partially_refunded')
+         AND cancelled_at IS NULL`,
+      [bounds.start, bounds.end]
     );
-    // Convert each currency group to GBP
+
+    // Load gclid→campaign cache from ads DB
+    let gclidCache = new Map();
+    try {
+      const cacheRows = await adsDb.all('SELECT gclid, campaign_id, adgroup_id FROM gclid_campaign_cache');
+      for (const cr of cacheRows || []) {
+        if (cr.gclid && cr.campaign_id) gclidCache.set(cr.gclid, { campaignId: String(cr.campaign_id), adgroupId: cr.adgroup_id || '_all_' });
+      }
+    } catch (_) {}
+
+    // Match each order to a campaign via landing_site
     const ratesToGbp = await fx.getRatesToGbp();
     const merged = new Map();
-    for (const r of rawRevRows || []) {
-      const campaignId = r && r.campaign_id ? String(r.campaign_id).trim() : '';
-      const adgroupId = r && r.adgroup_id ? String(r.adgroup_id).trim() : '';
+    const seenOrderIds = new Set();
+    for (const o of orders || []) {
+      const oid = o && o.order_id ? String(o.order_id) : '';
+      if (!oid || seenOrderIds.has(oid)) continue;
+
+      let landingSite = '';
+      try {
+        const json = typeof o.raw_json === 'string' ? JSON.parse(o.raw_json) : null;
+        landingSite = (json && (json.landing_site || json.landingSite)) || '';
+      } catch (_) {}
+      if (!landingSite) continue;
+
+      // Try direct bs_campaign_id from landing URL
+      const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
+      let campaignId = bsIds.bsCampaignId || '';
+      let adgroupId = bsIds.bsAdgroupId || '_all_';
+
+      // Fallback: extract gclid and look up in cache
+      if (!campaignId) {
+        const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
+        const gclid = gclidMatch ? decodeURIComponent(gclidMatch[1]).trim() : '';
+        if (gclid) {
+          const mapping = gclidCache.get(gclid);
+          if (mapping) {
+            campaignId = mapping.campaignId;
+            adgroupId = mapping.adgroupId || '_all_';
+          }
+        }
+      }
       if (!campaignId) continue;
-      const currency = fx.normalizeCurrency(r.currency) || 'GBP';
-      const rawRev = r && r.revenue != null ? Number(r.revenue) : 0;
-      const revGbp = fx.convertToGbp(Number.isFinite(rawRev) ? rawRev : 0, currency, ratesToGbp);
-      const orders = r && r.orders != null ? Number(r.orders) : 0;
+
+      seenOrderIds.add(oid);
+      const currency = fx.normalizeCurrency(o.currency) || 'GBP';
+      const rawPrice = o.total_price != null ? Number(o.total_price) : 0;
+      const priceGbp = fx.convertToGbp(Number.isFinite(rawPrice) ? rawPrice : 0, currency, ratesToGbp);
+
       const key = campaignId + '\0' + adgroupId;
       const cur = merged.get(key) || { campaign_id: campaignId, adgroup_id: adgroupId, revenue_gbp: 0, orders: 0 };
-      cur.revenue_gbp += (typeof revGbp === 'number' && Number.isFinite(revGbp)) ? revGbp : 0;
-      cur.orders += Number.isFinite(orders) ? orders : 0;
+      cur.revenue_gbp += (typeof priceGbp === 'number' && Number.isFinite(priceGbp)) ? priceGbp : 0;
+      cur.orders += 1;
       merged.set(key, cur);
     }
     revRows = Array.from(merged.values());

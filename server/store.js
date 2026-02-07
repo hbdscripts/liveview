@@ -2800,4 +2800,5 @@ module.exports = {
   purchaseFilterExcludeDuplicateH,
   validateEventType,
   ALLOWED_EVENT_TYPES,
+  extractBsAdsIdsFromEntryUrl,
 };
