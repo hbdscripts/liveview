@@ -78,11 +78,7 @@
     /* Traffic Type: device -> platform expandable tree */
     .traffic-type-toggle { display: inline-flex; align-items: center; gap: 0.35rem; border: none; background: none; padding: 0; margin: 0; cursor: pointer; color: var(--link-fg); font: inherit; font-size: var(--table-font-size); font-weight: 600; }
     .traffic-type-toggle:hover { color: var(--accent); }
-    .traffic-type-toggle .chev { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.18s ease; }
-    .traffic-type-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
     .tt-device-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
-    .tt-platform-cell { display: inline-flex; align-items: center; gap: 0.4rem; }
-    .tt-platform-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
     .traffic-type-parent td:first-child { white-space: nowrap; }
     .traffic-type-child td:first-child { padding-left: calc(var(--table-cell-padding-x) + 18px); }
     .traffic-type-child td:first-child::before { content: '›'; display: inline-block; margin-right: 6px; color: var(--muted); }
@@ -6000,7 +5996,6 @@
           html += '<div class="grid-row traffic-type-parent" role="row" data-device="' + escapeHtml(device) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle" data-device="' + escapeHtml(device) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
-                '<span class="chev" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg></span>' +
                 '<span class="tt-device-icon" aria-hidden="true">' + trafficTypeDeviceIcon(device) + '</span>' +
                 '<span>' + label + '</span>' +
               '</button>' +
@@ -6026,14 +6021,13 @@
               cmpNullableText(typeLabel(a), typeLabel(b), 'asc');
           });
           kids.forEach(function(c) {
-            const platformKey = (c && c.platform) ? String(c.platform).trim().toLowerCase() : ((c && c.key) ? String(c.key).trim().toLowerCase() : '');
             const clabel = escapeHtml((c && c.label) ? String(c.label) : (c && c.platform ? String(c.platform) : (c && c.key ? String(c.key) : '—')));
             const ccr = (c && typeof c.conversionPct === 'number') ? pct(c.conversionPct) : '—';
             const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
             const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
             const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTableHtml(c.revenueGbp) : '—';
             html += '<div class="grid-row traffic-type-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(device) + '">' +
-              '<div class="grid-cell" role="cell"><span class="tt-platform-cell"><span class="tt-platform-icon" aria-hidden="true">' + trafficTypePlatformIcon(platformKey) + '</span>' + clabel + '</span></div>' +
+              '<div class="grid-cell" role="cell">' + clabel + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +

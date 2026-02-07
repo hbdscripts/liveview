@@ -29,6 +29,7 @@
   overflow: hidden;
   border: none;
   background: #ffffff;
+  padding: 18px 20px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
 }
 
@@ -41,7 +42,7 @@
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  padding: 14px 20px;
+  padding: 0;
   background: #ffffff;
   border-bottom: none;
 }
@@ -150,9 +151,13 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 18px 20px;
+  padding: 0;
   background: #ffffff;
   -webkit-overflow-scrolling: touch;
+}
+
+#config-modal #config-reconcile-btn {
+  border-color: rgba(13, 148, 136, 0.35);
 }
 
 /* ----- Dynamic content (classes used by JS) ----- */
@@ -175,7 +180,8 @@
 #config-modal .dm-section-summary {
   list-style: none;
   cursor: pointer;
-  padding: 12px 0;
+  padding: 0;
+  min-height: 40px;
   font-size: 13px;
   font-weight: 600;
   color: #0f172a;
@@ -207,6 +213,7 @@
 
 #config-modal .dm-section-body {
   padding: 0;
+  margin-top: 10px;
 }
 
 /* Section: dropdown (under header) */
@@ -232,7 +239,8 @@
 
 #config-modal .dm-copy-dropdown-summary {
   list-style: none;
-  padding: 12px 0;
+  padding: 0;
+  min-height: 40px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
@@ -391,7 +399,8 @@
 }
 
 #config-modal .dm-card {
-  padding: 14px 0;
+  padding: 0;
+  margin: 14px 0;
   border-bottom: none;
   background: transparent;
 }
@@ -721,6 +730,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -862,7 +872,7 @@
 
 #config-modal #traffic-source-mapping-root .tsm-btn {
   border-radius: 0;
-  background: #e2e8f0;
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   font-weight: 500;
 }
@@ -875,34 +885,34 @@
 #config-modal #traffic-source-mapping-root .tsm-table-scroll {
   border-radius: 0;
   border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: none;
   background: transparent;
 }
 
 #config-modal #traffic-source-mapping-root .tsm-table .grid-cell {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: none;
   background: transparent;
   font-weight: 500;
 }
 
 #config-modal #traffic-source-mapping-root .tsm-table .grid-body .grid-row:nth-child(odd) .grid-cell {
-  background: #e2e8f0;
+  background: transparent;
 }
 
 #config-modal #traffic-source-mapping-root .tsm-table .grid-body .grid-row:nth-child(even) .grid-cell {
-  background: #f1f5f9;
+  background: transparent;
 }
 
 #config-modal #traffic-source-mapping-root .tsm-input {
   border-radius: 0;
-  background: #e2e8f0;
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   font-weight: 500;
 }
 
 #config-modal #traffic-source-mapping-root .tsm-mapped-pill {
   border-radius: 0;
-  background: #e2e8f0;
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   font-weight: 500;
 }
@@ -916,9 +926,9 @@
 #config-modal #traffic-source-mapping-root .diag-tech,
 #config-modal #traffic-source-mapping-root .diag-details-body {
   border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: none;
   background: transparent;
-  padding: 12px 0;
+  padding: 0;
 }
 
 #config-modal #traffic-source-mapping-root .diag-tech summary {
@@ -935,7 +945,7 @@
   }
 
   #config-modal .config-modal-header {
-    padding: 14px 16px;
+    padding: 0;
   }
 
   #config-modal .dm-section-nav,
