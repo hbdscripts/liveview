@@ -1573,7 +1573,8 @@
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
-    const COUNTRY_PAGE_SIZE = 10;
+    const COUNTRY_PAGE_SIZE = 11;
+    const COUNTRY_PRODUCTS_PAGE_SIZE = 10;
     const BREAKDOWN_PAGE_SIZE = 4;
     const ROWS_PER_PAGE_DEFAULT = 25;
     function loadRowsPerPage() {
@@ -5180,11 +5181,11 @@
         return 0;
       });
 
-      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
+      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PRODUCTS_PAGE_SIZE));
       bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
       updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
-      const start = (bestGeoProductsPage - 1) * COUNTRY_PAGE_SIZE;
-      const pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
+      const start = (bestGeoProductsPage - 1) * COUNTRY_PRODUCTS_PAGE_SIZE;
+      const pageRows = list.slice(start, start + COUNTRY_PRODUCTS_PAGE_SIZE);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
