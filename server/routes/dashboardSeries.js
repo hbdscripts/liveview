@@ -109,6 +109,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   }
 
   // Fetch orders + revenue per day from Shopify truth
+  const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
   if (shop) {
@@ -137,7 +138,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       if (!dayLabel) continue;
       const price = parseFloat(row.total_price);
       const currency = (row.currency || 'GBP').toUpperCase();
-      const gbp = Number.isFinite(price) ? fx.toGbp(price, currency) : 0;
+      const gbpVal = Number.isFinite(price) ? fx.convertToGbp(price, currency, ratesToGbp) : 0;
+      const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
       revenuePerDay[dayLabel] = (revenuePerDay[dayLabel] || 0) + gbp;
       ordersPerDay[dayLabel] = (ordersPerDay[dayLabel] || 0) + 1;
     }
@@ -224,7 +226,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         cc = String(cc).toUpperCase().slice(0, 2) || 'XX';
         const price = parseFloat(r.total_price);
         const currency = (r.currency || 'GBP').toUpperCase();
-        const gbp = Number.isFinite(price) ? fx.toGbp(price, currency) : 0;
+        const gbpVal = Number.isFinite(price) ? fx.convertToGbp(price, currency, ratesToGbp) : 0;
+        const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
         if (!countryMap[cc]) countryMap[cc] = { revenue: 0, orders: 0 };
         countryMap[cc].revenue += gbp;
         countryMap[cc].orders += 1;
