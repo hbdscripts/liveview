@@ -34,6 +34,7 @@ const shopifyBestVariants = require('./routes/shopifyBestVariants');
 const shopifyLeaderboard = require('./routes/shopifyLeaderboard');
 const shopifyFinishes = require('./routes/shopifyFinishes');
 const shopifyLengths = require('./routes/shopifyLengths');
+const shopifyChainStyles = require('./routes/shopifyChainStyles');
 const shopifyWorstVariants = require('./routes/shopifyWorstVariants');
 const worstProducts = require('./routes/worstProducts');
 const adsRouter = require('./routes/ads');
@@ -110,6 +111,7 @@ app.get('/api/shopify-best-variants', shopifyBestVariants.getShopifyBestVariants
 app.get('/api/shopify-leaderboard', shopifyLeaderboard.getShopifyLeaderboard);
 app.get('/api/shopify-finishes', shopifyFinishes.getShopifyFinishes);
 app.get('/api/shopify-lengths', shopifyLengths.getShopifyLengths);
+app.get('/api/shopify-chain-styles', shopifyChainStyles.getShopifyChainStyles);
 app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVariants);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
@@ -361,3 +363,40 @@ migrateAndStart().catch(err => {
 setInterval(() => {
   cleanup.run().catch(err => console.error('Cleanup error:', err));
 }, 2 * 60 * 1000);
+
+// Ads spend sync every 30 minutes (Google Ads → google_ads_spend_hourly + bs_revenue_hourly)
+(function scheduleAdsSync() {
+  const store = require('./store');
+  const { rollupRevenueHourly } = require('./ads/adsRevenueRollup');
+  const { syncGoogleAdsSpendHourly } = require('./ads/googleAdsSpendSync');
+  const { getAdsDb } = require('./ads/adsDb');
+
+  async function runAdsSync() {
+    try {
+      const adsDb = getAdsDb();
+      if (!adsDb) return; // ADS_DB_URL not set — skip silently
+      const now = Date.now();
+      const timeZone = store.resolveAdminTimeZone();
+      const bounds = store.getRangeBounds('today', now, timeZone);
+      const rangeStartTs = bounds.start;
+      const rangeEndTs = bounds.end;
+
+      const rollup = await rollupRevenueHourly({ rangeStartTs, rangeEndTs, source: 'googleads' });
+      console.log('[ads-sync] Revenue rollup:', rollup && rollup.ok ? `${rollup.upserts} upserts` : (rollup && rollup.error || 'failed'));
+
+      let spend = null;
+      try {
+        spend = await syncGoogleAdsSpendHourly({ rangeStartTs, rangeEndTs });
+      } catch (e) {
+        spend = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'spend_sync_failed' };
+      }
+      console.log('[ads-sync] Spend sync:', spend && spend.ok ? `${spend.upserts} upserts (${spend.apiVersion})` : (spend && spend.error || 'failed'));
+    } catch (err) {
+      console.error('[ads-sync] Error:', err);
+    }
+  }
+
+  // First run 30s after boot, then every 30 minutes
+  setTimeout(() => { runAdsSync().catch(() => {}); }, 30 * 1000);
+  setInterval(() => { runAdsSync().catch(() => {}); }, 30 * 60 * 1000);
+})();

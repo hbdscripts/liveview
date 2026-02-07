@@ -38,11 +38,25 @@
     }
   }
 
-  function fetchJson(path) {
+  function fetchJson(path, options) {
     const url = baseApi() + path;
-    return fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+    const opts = options || { credentials: 'same-origin', cache: 'no-store' };
+    return fetch(url, opts).then(function (r) {
       if (!r || !r.ok) return null;
       return r.json().catch(function () { return null; });
+    }).catch(function () { return null; });
+  }
+
+  function postRefresh(rangeKey) {
+    const url = baseApi() + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey || 'today');
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'googleads' }),
+    }).then(function (r) {
+      return r && r.ok ? r.json().catch(function () { return null; }) : null;
     }).catch(function () { return null; });
   }
 
@@ -126,13 +140,18 @@
 
     if (inFlight) return inFlight;
 
-    root.innerHTML = '<div class="muted">Loading…</div>';
+    var isForce = !!(options && options.force);
+    root.innerHTML = '<div class="muted">' + (isForce ? 'Syncing Google Ads spend…' : 'Loading…') + '</div>';
     var rangeKey = computeRangeKey();
 
-    var p = Promise.all([
-      fetchJson('/api/ads/status'),
-      fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + ((options && options.force) ? ('&_=' + Date.now()) : '')),
-    ]).then(function (arr) {
+    var preStep = isForce ? postRefresh(rangeKey) : Promise.resolve(null);
+
+    var p = preStep.then(function () {
+      return Promise.all([
+        fetchJson('/api/ads/status'),
+        fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : '')),
+      ]);
+    }).then(function (arr) {
       var status = arr && arr[0] ? arr[0] : null;
       var summary = arr && arr[1] ? arr[1] : null;
       render(root, status, summary);
