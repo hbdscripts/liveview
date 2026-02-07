@@ -60,10 +60,7 @@
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
     .stats-row.breakdown-row { grid-template-columns: repeat(2, 1fr); align-items: start; }
     .breakdown-row .by-country-table tr { height: 50px; }
-    /* Products tab has 4 cards; keep a balanced 2x2 grid on wide screens. */
-    @media (min-width: 1801px) {
-      #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
-    }
+    /* Products tab: best-sellers full-width; type tables stay 2-col via #products-type-tables-row. */
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
     @media (max-width: 768px) { .traffic-grid { grid-template-columns: 1fr; } }
     .stats-card { background: var(--card); padding: 0; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; box-sizing: border-box; margin-right: -1px; }
@@ -169,7 +166,9 @@
       font-weight: 400;
       font-size: var(--table-font-size);
     }
-    .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
+    .best-sellers-table .thumb-wrap { width: 36px; height: 36px; }
+    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
+    .best-sellers-table .product-cell .bs-thumb { position: absolute; inset: 0; }
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
     .by-country-table th.sortable:hover { color: var(--accent); }
     .by-country-table th.th-sort-asc::after,
@@ -1237,22 +1236,6 @@
     <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title"></div>
   </div>
 
-  <div class="aov-cards-wrap" id="finishes-cards-wrap" aria-label="Variant breakdown">
-    <div class="aov-cards-header">
-      <div class="aov-cards-title-dropdown" id="products-variant-cards-dropdown">
-        <button type="button" class="aov-cards-title-btn" id="products-variant-cards-btn" aria-expanded="false" aria-haspopup="true">
-          <span class="aov-cards-title" id="products-variant-cards-label">Finishes</span>
-          <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="aov-cards-title-menu" id="products-variant-cards-menu" role="menu" aria-hidden="true">
-          <button type="button" class="aov-cards-title-option" data-view="finishes" role="menuitem" aria-current="true">Finishes</button>
-          <button type="button" class="aov-cards-title-option" data-view="lengths" role="menuitem" aria-current="false">Lengths</button>
-        </div>
-      </div>
-    </div>
-    <div class="aov-cards-grid" id="finishes-cards-grid" data-cards-view="finishes"></div>
-  </div>
-
   <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
       <div class="country-table-wrap" id="best-sellers-wrap">
@@ -1275,29 +1258,6 @@
         <button type="button" id="best-sellers-prev">Prev</button>
         <span class="page-label" id="best-sellers-label">1 of 1</span>
         <button type="button" id="best-sellers-next">Next</button>
-      </div>
-    </div>
-    <div class="stats-card" id="stats-best-variants">
-      <div class="country-table-wrap" id="best-variants-wrap">
-        <div id="best-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best variants">
-          <div class="grid-header" role="rowgroup">
-            <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="by Variant"><span class="th-label-long">by Variant</span><span class="th-label-short">Variant</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-            </div>
-          </div>
-          <div id="best-variants-body" class="grid-body" role="rowgroup">
-            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card-pagination is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
-        <button type="button" id="best-variants-prev">Prev</button>
-        <span class="page-label" id="best-variants-label">1 of 1</span>
-        <button type="button" id="best-variants-next">Next</button>
       </div>
     </div>
   </div>

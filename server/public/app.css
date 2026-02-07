@@ -49,8 +49,8 @@
     .stats-row.breakdown-row { grid-template-columns: repeat(2, 1fr); align-items: start; }
     .breakdown-row .by-country-table tr { height: 50px; }
     .breakdown-row .by-country-table .grid-body .grid-row { min-height: 50px; }
-    /* Products tab: 2-col grid on all widths; type tables also 2-col */
-    #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
+    /* Products tab: best-sellers full-width; type tables 2-col */
+    #tab-panel-products .stats-row { grid-template-columns: 1fr; }
     #tab-panel-ads .stats-row { grid-template-columns: 1fr; }
     #products-type-tables-row { grid-template-columns: 1fr 1fr; }
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
@@ -168,7 +168,9 @@
       font-weight: 400;
       font-size: var(--table-font-size);
     }
-    .best-sellers-table .bs-thumb-placeholder { display: inline-block; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
+    .best-sellers-table .thumb-wrap { width: 36px; height: 36px; }
+    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
+    .best-sellers-table .product-cell .bs-thumb { position: absolute; inset: 0; }
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
     .by-country-table th.sortable:hover { color: var(--accent); }
     .by-country-table th.th-sort-asc::after,
