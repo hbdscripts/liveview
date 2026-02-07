@@ -244,7 +244,7 @@ async function getTraffic(req, res) {
           WHERE last_seen >= ?
             AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
             ${humanOnlyClause('sessions')}
-          GROUP BY ${sourceKeyExpr}
+          GROUP BY key
           ORDER BY sessions DESC
         `,
         [since30d]
@@ -289,7 +289,7 @@ async function getTraffic(req, res) {
           WHERE started_at >= ? AND started_at < ?
             AND traffic_source_key IS NOT NULL AND TRIM(traffic_source_key) != ''
             ${humanOnlyClause('sessions')}
-          GROUP BY ${rangeSourceKeyExpr}
+          GROUP BY key
         `,
         [bounds.start, bounds.end]
       );

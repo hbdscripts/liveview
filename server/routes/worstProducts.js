@@ -30,6 +30,43 @@ const PRODUCT_BY_HANDLE_TTL_MS = 6 * 60 * 60 * 1000;
 const productByHandleCache = new Map(); // key -> { fetchedAt, ttlMs, inflight, productId }
 const PRODUCT_HANDLE_BATCH_SIZE = 20;
 
+const PRODUCT_HANDLE_CACHE_MAX_KEYS = 5000;
+const PRODUCT_HANDLE_CACHE_DROP_AFTER_MS = 48 * 60 * 60 * 1000;
+const PRODUCT_HANDLE_CACHE_PRUNE_MIN_INTERVAL_MS = 60 * 1000;
+let lastProductHandleCachePruneAt = 0;
+
+function maybePruneProductByHandleCache(now = Date.now()) {
+  if (!productByHandleCache.size) return;
+  if ((now - lastProductHandleCachePruneAt) < PRODUCT_HANDLE_CACHE_PRUNE_MIN_INTERVAL_MS && productByHandleCache.size <= PRODUCT_HANDLE_CACHE_MAX_KEYS) return;
+  lastProductHandleCachePruneAt = now;
+  try {
+    for (const [k, v] of productByHandleCache) {
+      if (v && v.inflight) continue;
+      const fetchedAt = v && v.fetchedAt != null ? Number(v.fetchedAt) : 0;
+      if (fetchedAt && (now - fetchedAt) > PRODUCT_HANDLE_CACHE_DROP_AFTER_MS) {
+        productByHandleCache.delete(k);
+      }
+    }
+    if (productByHandleCache.size > PRODUCT_HANDLE_CACHE_MAX_KEYS) {
+      const entries = Array.from(productByHandleCache.entries());
+      entries.sort((a, b) => (a[1]?.fetchedAt || 0) - (b[1]?.fetchedAt || 0));
+      let toDrop = productByHandleCache.size - PRODUCT_HANDLE_CACHE_MAX_KEYS;
+      for (let i = 0; i < entries.length && toDrop > 0; i++) {
+        const [key, entry] = entries[i];
+        if (entry && entry.inflight) continue;
+        productByHandleCache.delete(key);
+        toDrop -= 1;
+      }
+      if (toDrop > 0) {
+        for (let i = 0; i < entries.length && toDrop > 0; i++) {
+          productByHandleCache.delete(entries[i][0]);
+          toDrop -= 1;
+        }
+      }
+    }
+  } catch (_) {}
+}
+
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
   if (!Number.isFinite(n)) return fallback;
@@ -152,6 +189,7 @@ async function getProductIdByHandleCached(shop, token, handle, { ttlMs = PRODUCT
   const ttl = typeof ttlMs === 'number' && Number.isFinite(ttlMs) ? Math.max(60 * 1000, Math.min(48 * 60 * 60 * 1000, Math.trunc(ttlMs))) : PRODUCT_BY_HANDLE_TTL_MS;
   const k = cacheKeyForProductHandle(shop, handle);
   const now = Date.now();
+  maybePruneProductByHandleCache(now);
   const entry = productByHandleCache.get(k);
   if (!force && entry && entry.productId && (now - (entry.fetchedAt || 0)) < ttl) return entry.productId;
   if (!force && entry && entry.inflight) return entry.inflight;
@@ -160,6 +198,7 @@ async function getProductIdByHandleCached(shop, token, handle, { ttlMs = PRODUCT
     .then((pid) => {
       const safePid = pid != null && String(pid).trim() ? String(pid).trim() : null;
       productByHandleCache.set(k, { fetchedAt: Date.now(), ttlMs: ttl, inflight: null, productId: safePid });
+      maybePruneProductByHandleCache();
       return safePid;
     })
     .catch(() => {
@@ -173,6 +212,7 @@ async function getProductIdByHandleCached(shop, token, handle, { ttlMs = PRODUCT
     });
 
   productByHandleCache.set(k, { fetchedAt: entry ? entry.fetchedAt : 0, ttlMs: ttl, inflight, productId: entry ? entry.productId : null });
+  maybePruneProductByHandleCache(now);
   return inflight;
 }
 
@@ -183,6 +223,7 @@ async function getProductIdsByHandleCached(shop, token, handles, { ttlMs = PRODU
   const out = new Map();
   const missing = [];
   const now = Date.now();
+  maybePruneProductByHandleCache(now);
 
   for (const h of list) {
     const ck = cacheKeyForProductHandle(safeShop, h);
@@ -213,6 +254,7 @@ async function getProductIdsByHandleCached(shop, token, handles, { ttlMs = PRODU
   }
 
   for (const h of list) if (!out.has(h)) out.set(h, null);
+  maybePruneProductByHandleCache(now);
   return out;
 }
 
@@ -341,7 +383,7 @@ async function getWorstProducts(req, res) {
             SELECT
               TRIM(product_id) AS product_id,
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
-              COALESCE(SUM(quantity), 0) AS orders,
+              COUNT(DISTINCT order_id) AS orders,
               COALESCE(SUM(line_revenue), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?

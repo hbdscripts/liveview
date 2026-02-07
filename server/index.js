@@ -252,6 +252,8 @@ const { up: up030 } = require('./migrations/030_canonicalize_built_in_traffic_so
 const { up: up031 } = require('./migrations/031_orders_shopify_line_items_variant_title_index');
 const { up: up032 } = require('./migrations/032_sessions_bs_ads_fields');
 const { up: up033 } = require('./migrations/033_sessions_landing_composite_index');
+const { up: up034 } = require('./migrations/034_perf_indexes_more');
+const { up: up035 } = require('./migrations/035_growth_retention_indexes');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -296,6 +298,8 @@ async function migrateAndStart() {
   await up031();
   await up032();
   await up033();
+  await up034();
+  await up035();
 
   try {
     const r = await runAdsMigrations();

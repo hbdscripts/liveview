@@ -9,6 +9,41 @@ const reportCache = require('../reportCache');
 const STATS_MEMO_TTL_MS = 30 * 1000;
 const statsMemoByKey = new Map(); // rangeKey -> { at, data, inflight }
 
+const STATS_MEMO_MAX_KEYS = 500;
+const STATS_MEMO_DROP_AFTER_MS = 10 * 60 * 1000;
+const STATS_MEMO_PRUNE_MIN_INTERVAL_MS = 60 * 1000;
+let lastStatsMemoPruneAt = 0;
+
+function maybePruneStatsMemo(now) {
+  if (!statsMemoByKey.size) return;
+  if ((now - lastStatsMemoPruneAt) < STATS_MEMO_PRUNE_MIN_INTERVAL_MS && statsMemoByKey.size <= STATS_MEMO_MAX_KEYS) return;
+  lastStatsMemoPruneAt = now;
+  try {
+    for (const [k, v] of statsMemoByKey) {
+      if (v && v.inflight) continue;
+      const at = v && v.at != null ? Number(v.at) : 0;
+      if (at && (now - at) > STATS_MEMO_DROP_AFTER_MS) statsMemoByKey.delete(k);
+    }
+    if (statsMemoByKey.size > STATS_MEMO_MAX_KEYS) {
+      const entries = Array.from(statsMemoByKey.entries());
+      entries.sort((a, b) => (a[1]?.at || 0) - (b[1]?.at || 0));
+      let toDrop = statsMemoByKey.size - STATS_MEMO_MAX_KEYS;
+      for (let i = 0; i < entries.length && toDrop > 0; i++) {
+        const [k, v] = entries[i];
+        if (v && v.inflight) continue;
+        statsMemoByKey.delete(k);
+        toDrop -= 1;
+      }
+      if (toDrop > 0) {
+        for (let i = 0; i < entries.length && toDrop > 0; i++) {
+          statsMemoByKey.delete(entries[i][0]);
+          toDrop -= 1;
+        }
+      }
+    }
+  } catch (_) {}
+}
+
 function getStats(req, res, next) {
   const trafficMode = 'human_only';
   // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
@@ -20,6 +55,7 @@ function getStats(req, res, next) {
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
   const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
   const now = Date.now();
+  maybePruneStatsMemo(now);
   const memoKey = rangeKey || '';
   const memo = statsMemoByKey.get(memoKey) || { at: 0, data: null, inflight: null };
   if (!force && memo.data && (now - (memo.at || 0)) < STATS_MEMO_TTL_MS) {

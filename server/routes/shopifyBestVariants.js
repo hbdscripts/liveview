@@ -102,7 +102,7 @@ async function getShopifyBestVariants(req, res) {
         const rows = await db.all(
           `
             SELECT
-              variant_id,
+              TRIM(variant_id) AS variant_id,
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
               MAX(product_id) AS product_id,
               MAX(title) AS title,
@@ -115,12 +115,26 @@ async function getShopifyBestVariants(req, res) {
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'
               AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-            GROUP BY variant_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+            GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
             ORDER BY revenue DESC, orders DESC
           `,
           [shop, start, end]
         );
         msDbAgg = Date.now() - tAgg0;
+
+        const tCount0 = Date.now();
+        const countRow = await db.get(
+          `
+            SELECT COUNT(DISTINCT TRIM(variant_id)) AS n
+            FROM orders_shopify_line_items
+            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+          `,
+          [shop, start, end]
+        );
 
         // Aggregate multi-currency rows per variant into GBP
         const ratesToGbp = await fx.getRatesToGbp();
@@ -148,7 +162,7 @@ async function getShopifyBestVariants(req, res) {
         }
         const allVariants = Array.from(byVariant.values());
         allVariants.sort((a, b) => (b.revenueGbp || 0) - (a.revenueGbp || 0));
-        const totalCount = allVariants.length;
+        const totalCount = countRow && countRow.n != null ? (Number(countRow.n) || 0) : allVariants.length;
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
         const page = clampInt(req.query.page, 1, 1, totalPages);
         const offset = (page - 1) * pageSize;

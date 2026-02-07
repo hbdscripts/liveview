@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 13;
+const DEFINITIONS_VERSION = 14;
 const LAST_UPDATED = '2026-02-07';
 
 /**
@@ -256,7 +256,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'SUM(quantity) for the product (truth line items)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing the product (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(sessions) that landed on this product (human-only)' },
       { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for the product (truth)' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },
@@ -280,7 +280,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
     ],
     columns: [
-      { name: 'Orders', value: 'orders', formula: 'SUM(quantity) for this variant (truth line items)' },
+      { name: 'Orders', value: 'orders', formula: 'COUNT(DISTINCT order_id) containing this variant (truth line items)' },
       { name: 'Sessions', value: 'clicks', formula: 'COUNT(product landing sessions for the parent product)' },
       { name: 'Rev', value: 'revenue', formula: 'SUM(line_revenue) for this variant (truth)' },
       { name: 'CR%', value: 'cr', formula: 'orders / sessions × 100' },

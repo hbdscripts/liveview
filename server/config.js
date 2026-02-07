@@ -114,6 +114,10 @@ const config = {
   oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
   /** Traffic mode for stats: all | human_only (default all). When human_only, exclude cf_known_bot=1. */
   trafficMode: (getEnv('TRAFFIC_MODE', 'all') === 'human_only' ? 'human_only' : 'all'),
+  enableGrowthTableRetention: getBool('ENABLE_GROWTH_TABLE_RETENTION', false),
+  reportCacheRetentionDays: getInt('REPORT_CACHE_RETENTION_DAYS', 30),
+  auditLogRetentionDays: getInt('AUDIT_LOG_RETENTION_DAYS', 90),
+  reconcileSnapshotsRetentionDays: getInt('RECONCILE_SNAPSHOTS_RETENTION_DAYS', 365),
 };
 
 module.exports = config;

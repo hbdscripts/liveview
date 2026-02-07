@@ -37,6 +37,9 @@ const { up: up029 } = require('./migrations/029_dedupe_traffic_source_meta_label
 const { up: up030 } = require('./migrations/030_canonicalize_built_in_traffic_sources');
 const { up: up031 } = require('./migrations/031_orders_shopify_line_items_variant_title_index');
 const { up: up032 } = require('./migrations/032_sessions_bs_ads_fields');
+const { up: up033 } = require('./migrations/033_sessions_landing_composite_index');
+const { up: up034 } = require('./migrations/034_perf_indexes_more');
+const { up: up035 } = require('./migrations/035_growth_retention_indexes');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -74,6 +77,9 @@ async function main() {
   await up030();
   await up031();
   await up032();
+  await up033();
+  await up034();
+  await up035();
 
   try {
     const r = await runAdsMigrations();

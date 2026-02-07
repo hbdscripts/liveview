@@ -114,7 +114,7 @@ async function getShopifyLengths(req, res) {
               SELECT
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
-                COALESCE(SUM(quantity), 0) AS orders,
+                COUNT(DISTINCT order_id) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
@@ -131,7 +131,7 @@ async function getShopifyLengths(req, res) {
               SELECT
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
-                COALESCE(SUM(quantity), 0) AS orders,
+                COUNT(DISTINCT order_id) AS orders,
                 COALESCE(SUM(line_revenue), 0) AS revenue
               FROM orders_shopify_line_items
               WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
