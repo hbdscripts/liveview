@@ -818,6 +818,8 @@
     .table-pagination .pagination-segments > * + * { border-left: none; }
     .table-pagination .pagination-segments > :first-child { border-radius: 4px 0 0 4px; }
     .table-pagination .pagination-segments > :last-child { border-radius: 0 4px 4px 0; }
+    .table-pagination button#pagination-prev { border-right: none; border-radius: 4px 0 0 4px; }
+    .table-pagination button#pagination-next { border-radius: 0 4px 4px 0; }
     .table-pagination button {
       display: inline-flex;
       align-items: center;
@@ -1025,15 +1027,16 @@
       .main { padding: 20px; }
       .stats-card { padding: 0; }
     }
-    .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: var(--muted); background: #eee; }
+    .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: #fff; background: #333; }
     body { padding-bottom: 52px; }
+    .dashboard-footer svg{color:#fff;}
     .dashboard-footer .footer-last-sale {
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding-right: 12px;
-      border-right: 1px solid #e1e1e1;
+      border-right: 1px solid #555;
     }
     .dashboard-footer .footer-last-sale-toggle {
       border: none;
