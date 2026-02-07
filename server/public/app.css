@@ -432,30 +432,35 @@
     #breakdown-product-table,
     #breakdown-type-table,
     #breakdown-finish-table,
-    #breakdown-length-table { --grid-cols: minmax(180px, 1.4fr) repeat(2, minmax(64px, 0.65fr)); }
+    #breakdown-length-table,
+    #breakdown-chainstyle-table { --grid-cols: minmax(180px, 1.4fr) repeat(2, minmax(64px, 0.65fr)); }
 
     /* Breakdown: first-column icon + label layout (SVG or gradient swatches). */
     #breakdown-product-table .grid-body .grid-cell:first-child,
     #breakdown-type-table .grid-body .grid-cell:first-child,
     #breakdown-finish-table .grid-body .grid-cell:first-child,
-    #breakdown-length-table .grid-body .grid-cell:first-child { min-width: 0; }
+    #breakdown-length-table .grid-body .grid-cell:first-child,
+    #breakdown-chainstyle-table .grid-body .grid-cell:first-child { min-width: 0; }
     #breakdown-product-table .breakdown-cell,
     #breakdown-type-table .breakdown-cell,
     #breakdown-finish-table .breakdown-cell,
-    #breakdown-length-table .breakdown-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+    #breakdown-length-table .breakdown-cell,
+    #breakdown-chainstyle-table .breakdown-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
     #breakdown-product-table .breakdown-cell > *:first-child,
     #breakdown-type-table .breakdown-cell > *:first-child,
     #breakdown-finish-table .breakdown-cell > *:first-child,
-    #breakdown-length-table .breakdown-cell > *:first-child { flex-shrink: 0; }
+    #breakdown-length-table .breakdown-cell > *:first-child,
+    #breakdown-chainstyle-table .breakdown-cell > *:first-child { flex-shrink: 0; }
     #breakdown-product-table .breakdown-label,
     #breakdown-type-table .breakdown-label,
     #breakdown-finish-table .breakdown-label,
-    #breakdown-length-table .breakdown-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #breakdown-length-table .breakdown-label,
+    #breakdown-chainstyle-table .breakdown-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Breakdown: product thumb + name */
     #breakdown-product-table .breakdown-thumb-wrap {
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       border-radius: 100%;
       overflow: hidden;
       border: 1px solid rgba(15, 23, 42, 0.12);

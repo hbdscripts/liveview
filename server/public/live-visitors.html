@@ -1196,13 +1196,25 @@
     </div>
     <div class="stats-card">
       <div class="country-table-wrap">
-        <div id="breakdown-length-table" class="grid-table by-country-table" role="table" aria-label="Length breakdown">
+        <div id="breakdown-length-table" class="grid-table by-country-table" role="table" aria-label="Chain Length breakdown">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Length</span><span class="th-label-short">Length</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Chain Length</span><span class="th-label-short">Length</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
           </div></div>
           <div id="breakdown-length-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="stats-card">
+      <div class="country-table-wrap">
+        <div id="breakdown-chainstyle-table" class="grid-table by-country-table" role="table" aria-label="Chain Styles breakdown">
+          <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Chain Style</span><span class="th-label-short">Chain</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
+            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
+          </div></div>
+          <div id="breakdown-chainstyle-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
     </div>
@@ -1219,22 +1231,6 @@
         <div class="report-build-step" id="products-build-step">—</div>
       </div>
     </div>
-
-  <div class="aov-cards-wrap" id="leaderboard-cards-wrap" aria-label="Products leaderboard">
-    <div class="aov-cards-header">
-      <div class="aov-cards-title-dropdown" id="products-leaderboard-dropdown">
-        <button type="button" class="aov-cards-title-btn" id="products-leaderboard-btn" aria-expanded="false" aria-haspopup="true">
-          <span class="aov-cards-title" id="products-leaderboard-label">Product Title</span>
-          <svg class="aov-cards-title-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="aov-cards-title-menu" id="products-leaderboard-menu" role="menu" aria-hidden="true">
-          <button type="button" class="aov-cards-title-option" data-view="title" role="menuitem" aria-current="true">Product Title</button>
-          <button type="button" class="aov-cards-title-option" data-view="type" role="menuitem" aria-current="false">Product Type</button>
-        </div>
-      </div>
-    </div>
-    <div class="aov-cards-grid" id="leaderboard-cards-grid" data-leaderboard-view="title"></div>
-  </div>
 
   <div class="stats-row">
     <div class="stats-card" id="stats-best-sellers">
@@ -1620,6 +1616,8 @@
     let finishesLoading = false;
     let lengthsCache = null;
     let lengthsLoading = false;
+    let chainStylesCache = null;
+    let chainStylesLoading = false;
     let bestSellersCache = null;
     let bestVariantsCache = null;
     let countryPage = 1;
@@ -4408,6 +4406,28 @@
         .finally(function() { lengthsLoading = false; });
     }
 
+    function fetchChainStyles(options = {}) {
+      const force = !!options.force;
+      var shop = getShopParam() || shopForSalesFallback || null;
+      if (!shop) {
+        chainStylesLoading = false;
+        chainStylesCache = null;
+        return Promise.resolve(null);
+      }
+      chainStylesLoading = true;
+      let url = API + '/api/shopify-chain-styles?shop=' + encodeURIComponent(shop) +
+          '&range=' + encodeURIComponent(getStatsRange());
+      if (force) url += '&_=' + Date.now();
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          chainStylesCache = data;
+          return data;
+        })
+        .catch(function() { chainStylesCache = null; return null; })
+        .finally(function() { chainStylesLoading = false; });
+    }
+
     function fetchBestVariants(options = {}) {
       const force = !!options.force;
       var shop = getShopParam() || shopForSalesFallback || null;
@@ -5000,6 +5020,30 @@
       }).join('');
     }
 
+    function renderBreakdownChainStyles(data) {
+      const tbody = document.getElementById('breakdown-chainstyle-body');
+      if (!tbody) return;
+      const rows = (data && Array.isArray(data.chainStyles)) ? data.chainStyles : [];
+      if (!rows.length) {
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (chainStylesLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
+        return;
+      }
+      var ordered = rows.slice();
+      ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>';
+      tbody.innerHTML = ordered.map(function(r) {
+        const label = (r && r.label != null) ? String(r.label) : '\u2014';
+        const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
+        const cr = r && r.cr != null ? pct(r.cr) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="breakdown-cell">' + iconSvg + '<span class="breakdown-label">' + escapeHtml(label) + '</span></span></div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+          '<div class="grid-cell" role="cell">' + cr + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
     function renderCountry(data) {
       const c = data.country || {};
       const rows = c[getStatsRange()] || [];
@@ -5435,6 +5479,7 @@
       leaderboardCache = null;
       finishesCache = null;
       lengthsCache = null;
+      chainStylesCache = null;
       bestSellersCache = null;
       bestVariantsCache = null;
       trafficCache = null;
@@ -6010,21 +6055,24 @@
       let leaderboardP = null;
       let finishesP = null;
       let lengthsP = null;
+      let chainStylesP = null;
       try { leaderboardP = fetchProductsLeaderboard({ force }); } catch (err) { console.error(err); leaderboardP = Promise.resolve(null); }
       try { finishesP = fetchFinishes({ force }); } catch (err) { console.error(err); finishesP = Promise.resolve(null); }
       try { lengthsP = fetchLengths({ force }); } catch (err) { console.error(err); lengthsP = Promise.resolve(null); }
+      try { chainStylesP = fetchChainStyles({ force }); } catch (err) { console.error(err); chainStylesP = Promise.resolve(null); }
       function settled(p) {
         return Promise.resolve(p)
           .then(function(v) { return { ok: true, value: v }; })
           .catch(function(err) { console.error(err); return { ok: false, error: err }; });
       }
 
-      breakdownRefreshInFlight = Promise.all([settled(leaderboardP), settled(finishesP), settled(lengthsP)])
+      breakdownRefreshInFlight = Promise.all([settled(leaderboardP), settled(finishesP), settled(lengthsP), settled(chainStylesP)])
         .then(function() {
           renderBreakdownTitles(leaderboardCache);
           renderBreakdownTypes(leaderboardCache);
           renderBreakdownFinishes(finishesCache);
           renderBreakdownLengths(lengthsCache);
+          renderBreakdownChainStyles(chainStylesCache);
           lastBreakdownFetchedAt = Date.now();
         })
         .catch(function(err) { console.error(err); return null; })
