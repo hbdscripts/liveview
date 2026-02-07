@@ -1,11 +1,11 @@
 # Deploy: wrangler deploy (from workers/ or with name workers/ingest-enrich.js)
-# Set ORIGIN_URL in Cloudflare Worker settings (e.g. https://your-app.up.railway.app)
+# Set ORIGIN_URL in Cloudflare Worker settings (e.g. https://app.kexo.io)
 #
 # To filter all bots (Google, Bing, Merchant Center, etc.): set BLOCK_KNOWN_BOTS = "1"
 # AND add a Request Header Transform Rule that sets x-lv-client-bot = 1 when cf.client.bot eq true.
 # See docs/CLOUDFLARE_INGEST_SETUP.md.
 
-name = "liveview-ingest-enrich"
+name = "kexo-ingest-enrich"
 main = "ingest-enrich.js"
 compatibility_date = "2024-01-01"
 

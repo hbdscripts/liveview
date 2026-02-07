@@ -11,6 +11,7 @@
   <title>Birdseye Tracker</title>
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script type="text/plain" id="inline-css-deprecated">
     :root {
       --bg: #fafafa;
@@ -358,12 +359,12 @@
 .main-tabs [role="tab"] .tab-icon-home { width: 25px; height: 25px; object-fit: contain; }
 .main-tabs [role="tab"] .tab-icon-home-swap { position: relative; width: 25px; height: 25px; display: inline-block; flex-shrink: 0; }
 .main-tabs [role="tab"] .tab-icon-home-swap img { position: absolute; inset: 0; width: 25px; height: 25px; object-fit: contain; display: block; }
-#tab-spy .tab-icon-home--inactive { opacity: 1; }
-#tab-spy .tab-icon-home--active { opacity: 0; }
-#tab-spy[aria-selected="true"] .tab-icon-home--inactive { opacity: 0; }
-#tab-spy[aria-selected="true"] .tab-icon-home--active { opacity: 1; }
+#tab-dashboard .tab-icon-home--inactive { opacity: 1; }
+#tab-dashboard .tab-icon-home--active { opacity: 0; }
+#tab-dashboard[aria-selected="true"] .tab-icon-home--inactive { opacity: 0; }
+#tab-dashboard[aria-selected="true"] .tab-icon-home--active { opacity: 1; }
 .main-tabs [role="tab"] .tab-text { display: inline; }
-@media (min-width: 769px) { #tab-spy .tab-text { display: none; } }
+@media (min-width: 769px) { #tab-dashboard .tab-text { display: none; } }
 .main-tabs-center-logo { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 2; }
 .main-tabs-center-logo img { width: 30px; height: 30px; margin: 0 0 10px; display: block; object-fit: contain; }
 .main-tabs-spacer { flex: 1; min-width: 0; }
@@ -940,10 +941,11 @@
   <div class="main-tabs" role="tablist" aria-label="View">
     <button type="button" id="mobile-tabs-btn" class="mobile-tabs-btn" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      <span id="mobile-tabs-current">Home</span>
+      <span id="mobile-tabs-current">Dashboard</span>
     </button>
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
-      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Home</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="dashboard">Dashboard</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Live View</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="breakdown">Overview</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="stats">Countries</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
@@ -955,13 +957,14 @@
       <img src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="30" height="30" alt="" decoding="async" />
     </div>
 
-    <button type="button" role="tab" id="tab-spy" aria-label="Home" aria-selected="true" aria-controls="tab-panel-spy" data-tab="spy">
+    <button type="button" role="tab" id="tab-dashboard" aria-label="Dashboard" aria-selected="true" aria-controls="tab-panel-dashboard" data-tab="dashboard">
       <span class="tab-icon-home-swap" aria-hidden="true">
         <img class="tab-icon tab-icon-home tab-icon-home--inactive" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="25" height="25" alt="" decoding="async" />
         <img class="tab-icon tab-icon-home tab-icon-home--active" src="https://cdn.shopify.com/s/files/1/0847/7261/8587/files/birdseyegreen.webp?v=1770250895" width="25" height="25" alt="" decoding="async" />
       </span>
-      <span class="tab-text">Home</span>
+      <span class="tab-text">Dashboard</span>
     </button>
+    <button type="button" role="tab" id="tab-spy" aria-label="Live View" aria-selected="false" aria-controls="tab-panel-spy" data-tab="spy">Live View</button>
     <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Overview</button>
     <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Countries</button>
     <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
@@ -1010,7 +1013,74 @@
     </button>
     </div>
   </div>
-  <div id="tab-panel-spy" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-spy">
+  <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
+    <div class="dash-header">
+      <h2 class="dash-title">Dashboard</h2>
+      <div class="dash-range-wrap">
+        <select id="dash-range-select" class="stats-select" aria-label="Dashboard range">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+      </div>
+    </div>
+    <div class="dash-kpi-row" id="dash-kpi-row">
+      <div class="dash-kpi-card"><div class="dash-kpi-label">Revenue</div><div class="dash-kpi-value" id="dash-kpi-revenue">&mdash;</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-label">Orders</div><div class="dash-kpi-value" id="dash-kpi-orders">&mdash;</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-label">Sessions</div><div class="dash-kpi-value" id="dash-kpi-sessions">&mdash;</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-label">Conv Rate</div><div class="dash-kpi-value" id="dash-kpi-conv">&mdash;</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-label">AOV</div><div class="dash-kpi-value" id="dash-kpi-aov">&mdash;</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-label">Ad Spend</div><div class="dash-kpi-value" id="dash-kpi-adspend">&mdash;</div></div>
+    </div>
+    <div class="dash-charts-row">
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">Revenue</div>
+        <div class="dash-chart-wrap"><canvas id="dash-chart-revenue"></canvas></div>
+      </div>
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">Orders</div>
+        <div class="dash-chart-wrap"><canvas id="dash-chart-orders"></canvas></div>
+      </div>
+    </div>
+    <div class="dash-charts-row">
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">Conversion Rate</div>
+        <div class="dash-chart-wrap"><canvas id="dash-chart-conv"></canvas></div>
+      </div>
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">Sessions</div>
+        <div class="dash-chart-wrap"><canvas id="dash-chart-sessions"></canvas></div>
+      </div>
+    </div>
+    <div class="dash-charts-row dash-charts-row--single" id="dash-adspend-row" style="display:none">
+      <div class="dash-chart-card dash-chart-card--wide">
+        <div class="dash-chart-title">Revenue vs Ad Spend</div>
+        <div class="dash-chart-wrap"><canvas id="dash-chart-adspend"></canvas></div>
+      </div>
+    </div>
+    <div class="dash-tables-row">
+      <div class="dash-table-card">
+        <div class="dash-table-title">Top Products</div>
+        <table class="dash-table" id="dash-top-products">
+          <thead><tr><th>Product</th><th>Revenue</th><th>Orders</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="dash-table-card">
+        <div class="dash-table-title">Top Countries</div>
+        <table class="dash-table" id="dash-top-countries">
+          <thead><tr><th>Country</th><th>Revenue</th><th>Orders</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="dash-roas-row" id="dash-roas-row" style="display:none">
+      <div class="dash-kpi-card dash-kpi-card--accent"><div class="dash-kpi-label">ROAS</div><div class="dash-kpi-value" id="dash-kpi-roas">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
     <h2 class="table-title" id="table-title">
       <span id="table-title-tabs" class="table-title-tabs is-hidden" role="tablist" aria-label="Time window">
@@ -5311,6 +5381,7 @@
     function syncDateSelectOptions() {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
+      if (activeMainTab === 'dashboard') return;
       const hasLive = sel.querySelector('option[value="live"]');
       if (hasLive) hasLive.remove();
       // Keep the "Custom" option stable, and create a dynamic option for the currently applied custom range.
@@ -8401,12 +8472,18 @@
       })();
       (function initMainTabs() {
         const TAB_KEY = 'livevisitors-main-tab';
+        const VALID_TABS = ['dashboard', 'spy', 'stats', 'breakdown', 'products', 'traffic', 'ads'];
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', breakdown: 'Overview', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', overview: 'breakdown', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', breakdown: 'overview', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const tabDashboard = document.getElementById('tab-dashboard');
         const tabSpy = document.getElementById('tab-spy');
         const tabStats = document.getElementById('tab-stats');
         const tabBreakdown = document.getElementById('tab-breakdown');
         const tabProducts = document.getElementById('tab-products');
         const tabTraffic = document.getElementById('tab-traffic');
         const tabAds = document.getElementById('tab-ads');
+        const panelDashboard = document.getElementById('tab-panel-dashboard');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
         const panelBreakdown = document.getElementById('tab-panel-breakdown');
@@ -8457,7 +8534,7 @@
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = tab === 'breakdown' ? 'Overview' : (tab === 'stats' ? 'Countries' : (tab === 'products' ? 'Products' : (tab === 'traffic' ? 'Traffic' : (tab === 'ads' ? 'Ads' : 'Home'))));
+            mobileCurrent.textContent = TAB_LABELS[tab] || 'Dashboard';
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -8474,37 +8551,63 @@
           mobileBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
         }
 
+        function tabFromHash() {
+          var h = location.hash ? location.hash.replace(/^#/, '').toLowerCase() : '';
+          return HASH_TO_TAB[h] || null;
+        }
+
+        var hashUpdateInProgress = false;
+        function setHash(tab) {
+          var h = TAB_TO_HASH[tab] || 'dashboard';
+          if (location.hash === '#' + h) return;
+          hashUpdateInProgress = true;
+          try { history.replaceState(null, '', '#' + h); } catch (_) {}
+          hashUpdateInProgress = false;
+        }
+
         function setTab(tab) {
-          const isSpy = tab === 'spy';
-          const isStats = tab === 'stats';
-          const isBreakdown = tab === 'breakdown';
-          const isProducts = tab === 'products';
-          const isTraffic = tab === 'traffic';
-          const isAds = tab === 'ads';
+          var isDashboard = tab === 'dashboard';
+          var isSpy = tab === 'spy';
+          var isStats = tab === 'stats';
+          var isBreakdown = tab === 'breakdown';
+          var isProducts = tab === 'products';
+          var isTraffic = tab === 'traffic';
+          var isAds = tab === 'ads';
           activeMainTab = tab;
           syncMobileMenu(tab);
           closeMobileMenu();
+          setHash(tab);
+          if (tabDashboard) tabDashboard.setAttribute('aria-selected', isDashboard ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
           if (tabBreakdown) tabBreakdown.setAttribute('aria-selected', isBreakdown ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', isAds ? 'true' : 'false');
+          if (panelDashboard) panelDashboard.classList.toggle('active', isDashboard);
           if (panelSpy) panelSpy.classList.toggle('active', isSpy);
           if (panelStats) panelStats.classList.toggle('active', isStats);
           if (panelBreakdown) panelBreakdown.classList.toggle('active', isBreakdown);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
           if (panelAds) panelAds.classList.toggle('active', isAds);
+          var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
+          if (sharedKpiWrap) sharedKpiWrap.style.display = isDashboard ? 'none' : '';
+          var globalDateSel = document.getElementById('global-date-select');
+          if (globalDateSel) globalDateSel.style.display = isDashboard ? 'none' : '';
+          var mobileDateBtn = document.getElementById('mobile-date-btn');
+          if (mobileDateBtn) mobileDateBtn.style.display = isDashboard ? 'none' : '';
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
           function ensureKpis() {
-            const staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
+            var staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
             if (staleKpis) refreshKpis({ force: false });
             else renderLiveKpis(getKpiData());
           }
-          if (tab === 'stats') {
+          if (tab === 'dashboard') {
+            try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
+          } else if (tab === 'stats') {
             // Always refresh when entering Geos so tables are never stuck on "Loading..."
             refreshStats({ force: false });
             ensureKpis();
@@ -8530,18 +8633,33 @@
               } catch (_) {}
             });
           } else {
-            const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
-            const staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
+            var sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
+            var staleSessions = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
             if (staleSessions) fetchSessions();
             ensureKpis();
           }
         }
-        let initialTab = 'spy';
-        try {
-          const saved = sessionStorage.getItem(TAB_KEY);
-          if (saved === 'stats' || saved === 'breakdown' || saved === 'spy' || saved === 'products' || saved === 'traffic' || saved === 'ads') initialTab = saved;
-        } catch (_) {}
+
+        // Hash-based routing: hash overrides sessionStorage
+        var initialTab = 'dashboard';
+        var hashTab = tabFromHash();
+        if (hashTab && VALID_TABS.indexOf(hashTab) !== -1) {
+          initialTab = hashTab;
+        } else {
+          try {
+            var saved = sessionStorage.getItem(TAB_KEY);
+            if (saved && VALID_TABS.indexOf(saved) !== -1) initialTab = saved;
+          } catch (_) {}
+        }
         setTab(initialTab);
+
+        window.addEventListener('hashchange', function() {
+          if (hashUpdateInProgress) return;
+          var t = tabFromHash();
+          if (t && VALID_TABS.indexOf(t) !== -1 && t !== activeMainTab) setTab(t);
+        });
+
+        if (tabDashboard) tabDashboard.addEventListener('click', function() { setTab('dashboard'); });
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
         if (tabBreakdown) tabBreakdown.addEventListener('click', function() { setTab('breakdown'); });
@@ -8557,13 +8675,13 @@
           mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
               e.preventDefault();
-              const t = btn.getAttribute('data-tab') || 'spy';
+              var t = btn.getAttribute('data-tab') || 'dashboard';
               setTab(t);
             });
           });
           document.addEventListener('click', function(e) {
             if (!mobileMenu.classList.contains('open')) return;
-            const target = e.target;
+            var target = e.target;
             if (mobileMenu.contains(target) || mobileBtn.contains(target)) return;
             closeMobileMenu();
           });
@@ -8585,7 +8703,8 @@
                 refreshConfigStatus({ force: true, preserveView: true });
               }
             } catch (_) {}
-            if (activeMainTab === 'stats') refreshStats({ force: true });
+            if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
+            else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'breakdown') refreshBreakdown({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
@@ -8814,6 +8933,219 @@
         }
       } catch (_) {}
     };
+    // ── Dashboard tab logic ──────────────────────────────────────────────
+    (function initDashboard() {
+      var dashCache = null;
+      var dashLoading = false;
+      var dashLastDays = 30;
+      var dashCharts = {};
+      var DASH_ACCENT = '#0d9488';
+      var DASH_ACCENT_LIGHT = 'rgba(13,148,136,0.12)';
+      var DASH_ORANGE = '#f59e0b';
+      var DASH_ORANGE_LIGHT = 'rgba(245,158,11,0.10)';
+      var DASH_BLUE = '#3b82f6';
+      var DASH_BLUE_LIGHT = 'rgba(59,130,246,0.10)';
+      var DASH_PURPLE = '#8b5cf6';
+      var DASH_PURPLE_LIGHT = 'rgba(139,92,246,0.10)';
+
+      function fmtGbp(n) { return '\u00A3' + (n % 1 === 0 ? n.toLocaleString() : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
+      function fmtNum(n) { return n != null ? n.toLocaleString() : '\u2014'; }
+      function fmtPct(n) { return n != null ? n.toFixed(1) + '%' : '\u2014'; }
+      function shortDate(ymd) {
+        var parts = ymd.split('-');
+        var d = parseInt(parts[2], 10);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var m = months[parseInt(parts[1], 10) - 1] || '';
+        return d + ' ' + m;
+      }
+
+      function makeChart(canvasId, labels, datasets, opts) {
+        if (typeof Chart === 'undefined') return null;
+        var ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        if (dashCharts[canvasId]) { try { dashCharts[canvasId].destroy(); } catch (_) {} }
+        var yType = (opts && opts.pct) ? {
+          ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 } },
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        } : (opts && opts.currency) ? {
+          ticks: { callback: function(v) { return '\u00A3' + v.toLocaleString(); }, font: { size: 11 } },
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        } : {
+          ticks: { font: { size: 11 } },
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        };
+        var chart = new Chart(ctx, {
+          type: 'line',
+          data: { labels: labels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: { display: datasets.length > 1, position: 'top', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { size: 12 },
+                bodyFont: { size: 12 },
+                padding: 10,
+                cornerRadius: 6,
+                callbacks: (opts && opts.pct) ? {
+                  label: function(ctx2) { return (ctx2.dataset.label || '') + ': ' + (ctx2.parsed.y != null ? ctx2.parsed.y.toFixed(1) + '%' : '\u2014'); }
+                } : (opts && opts.currency) ? {
+                  label: function(ctx2) { return (ctx2.dataset.label || '') + ': \u00A3' + (ctx2.parsed.y != null ? ctx2.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'); }
+                } : {}
+              }
+            },
+            scales: {
+              x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 }, grid: { display: false } },
+              y: yType
+            },
+            elements: { point: { radius: 2, hoverRadius: 5 }, line: { tension: 0.3 } }
+          }
+        });
+        dashCharts[canvasId] = chart;
+        return chart;
+      }
+
+      function renderDashboard(data) {
+        if (!data) return;
+        var s = data.summary || {};
+        var el = function(id) { return document.getElementById(id); };
+        if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = s.revenue != null ? fmtGbp(s.revenue) : '\u2014';
+        if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = s.orders != null ? fmtNum(s.orders) : '\u2014';
+        if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = s.sessions != null ? fmtNum(s.sessions) : '\u2014';
+        if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = s.convRate != null ? fmtPct(s.convRate) : '\u2014';
+        if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = s.aov != null ? fmtGbp(s.aov) : '\u2014';
+        if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = s.adSpend != null && s.adSpend > 0 ? fmtGbp(s.adSpend) : '\u2014';
+
+        var series = data.series || [];
+        var labels = series.map(function(d) { return shortDate(d.date); });
+
+        makeChart('dash-chart-revenue', labels, [{
+          label: 'Revenue',
+          data: series.map(function(d) { return d.revenue; }),
+          borderColor: DASH_ACCENT,
+          backgroundColor: DASH_ACCENT_LIGHT,
+          fill: true,
+          borderWidth: 2
+        }], { currency: true });
+
+        makeChart('dash-chart-orders', labels, [{
+          label: 'Orders',
+          data: series.map(function(d) { return d.orders; }),
+          borderColor: DASH_BLUE,
+          backgroundColor: DASH_BLUE_LIGHT,
+          fill: true,
+          borderWidth: 2
+        }]);
+
+        makeChart('dash-chart-conv', labels, [{
+          label: 'Conv Rate',
+          data: series.map(function(d) { return d.convRate; }),
+          borderColor: DASH_PURPLE,
+          backgroundColor: DASH_PURPLE_LIGHT,
+          fill: true,
+          borderWidth: 2
+        }], { pct: true });
+
+        makeChart('dash-chart-sessions', labels, [{
+          label: 'Sessions',
+          data: series.map(function(d) { return d.sessions; }),
+          borderColor: DASH_ORANGE,
+          backgroundColor: DASH_ORANGE_LIGHT,
+          fill: true,
+          borderWidth: 2
+        }]);
+
+        var hasAdSpend = series.some(function(d) { return d.adSpend > 0; });
+        var adRow = el('dash-adspend-row');
+        var roasRow = el('dash-roas-row');
+        if (adRow) adRow.style.display = hasAdSpend ? '' : 'none';
+        if (roasRow) roasRow.style.display = (hasAdSpend && s.roas != null) ? '' : 'none';
+        if (hasAdSpend) {
+          makeChart('dash-chart-adspend', labels, [{
+            label: 'Revenue',
+            data: series.map(function(d) { return d.revenue; }),
+            borderColor: DASH_ACCENT,
+            backgroundColor: 'transparent',
+            borderWidth: 2
+          }, {
+            label: 'Ad Spend',
+            data: series.map(function(d) { return d.adSpend; }),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.08)',
+            fill: true,
+            borderWidth: 2
+          }], { currency: true });
+          if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = s.roas != null ? s.roas.toFixed(2) + 'x' : '\u2014';
+        }
+
+        var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
+        if (prodTbody) {
+          var products = data.topProducts || [];
+          if (!products.length) {
+            prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
+          } else {
+            prodTbody.innerHTML = products.map(function(p) {
+              return '<tr><td>' + escapeHtml(p.title) + '</td><td>' + fmtGbp(p.revenue) + '</td><td>' + p.orders + '</td></tr>';
+            }).join('');
+          }
+        }
+
+        var countryTbody = el('dash-top-countries') ? el('dash-top-countries').querySelector('tbody') : null;
+        if (countryTbody) {
+          var countries = data.topCountries || [];
+          if (!countries.length) {
+            countryTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
+          } else {
+            countryTbody.innerHTML = countries.map(function(c) {
+              return '<tr><td>' + escapeHtml(c.country) + '</td><td>' + fmtGbp(c.revenue) + '</td><td>' + c.orders + '</td></tr>';
+            }).join('');
+          }
+        }
+      }
+
+      function fetchDashboardData(days, force) {
+        if (dashLoading && !force) return;
+        dashLoading = true;
+        var url = API + '/api/dashboard-series?days=' + days + (force ? '&_=' + Date.now() : '');
+        fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(data) {
+            dashLoading = false;
+            if (data) {
+              dashCache = data;
+              dashLastDays = days;
+              renderDashboard(data);
+            }
+          })
+          .catch(function() {
+            dashLoading = false;
+          });
+      }
+
+      window.refreshDashboard = function(opts) {
+        var force = opts && opts.force;
+        var days = dashLastDays || 30;
+        try { days = parseInt(document.getElementById('dash-range-select').value, 10) || 30; } catch (_) {}
+        if (!force && dashCache && dashCache.days === days) {
+          renderDashboard(dashCache);
+          return;
+        }
+        fetchDashboardData(days, force);
+      };
+
+      var rangeSel = document.getElementById('dash-range-select');
+      if (rangeSel) {
+        rangeSel.addEventListener('change', function() {
+          var days = parseInt(rangeSel.value, 10) || 30;
+          fetchDashboardData(days, true);
+        });
+      }
+    })();
   </script>
 </body>
 </html>

@@ -8,12 +8,12 @@
 
 | Use | URL |
 |-----|-----|
-| App root / dashboard | `https://liveview-production.up.railway.app` |
-| Login (Google) | `https://liveview-production.up.railway.app/app/login` |
-| Ingest (pixel POST) | `https://liveview-production.up.railway.app/api/ingest` |
-| Shopify OAuth callback | `https://liveview-production.up.railway.app/auth/callback` |
-| Shopify OAuth (alt) | `https://liveview-production.up.railway.app/auth/shopify/callback` |
-| Google OAuth callback | `https://liveview-production.up.railway.app/auth/google/callback` |
+| App root / dashboard | `https://app.kexo.io` |
+| Login (Google) | `https://app.kexo.io/app/login` |
+| Ingest (pixel POST) | `https://app.kexo.io/api/ingest` |
+| Shopify OAuth callback | `https://app.kexo.io/auth/callback` |
+| Shopify OAuth (alt) | `https://app.kexo.io/auth/shopify/callback` |
+| Google OAuth callback | `https://app.kexo.io/auth/google/callback` |
 
 **Railway Variables** (service that runs the app): set `SHOPIFY_APP_URL`, `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `INGEST_SECRET`, `DB_URL` (Postgres), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH_COOKIE_SECRET`. See `.env.example` for the full list.
 
@@ -30,17 +30,17 @@
    - **Client secret** (click “Show”) → `SHOPIFY_API_SECRET`.
 
 2. **App URL and redirect URLs**
-   - **App URL:** `https://liveview-production.up.railway.app` (no trailing slash).
+   - **App URL:** `https://app.kexo.io` (no trailing slash).
    - **Allowed redirection URL(s)** in Shopify app settings – add:
-     - `https://liveview-production.up.railway.app/auth/callback`
-     - `https://liveview-production.up.railway.app/auth/shopify/callback`
-   - In `.env` and Railway: `SHOPIFY_APP_URL=https://liveview-production.up.railway.app`.
+     - `https://app.kexo.io/auth/callback`
+     - `https://app.kexo.io/auth/shopify/callback`
+   - In `.env` and Railway: `SHOPIFY_APP_URL=https://app.kexo.io`.
 
 3. **Ingest secret and pixel**
    - Run: `node scripts/generate-ingest-secret.js` → copy output.
    - Set in `.env` and Railway: `INGEST_SECRET=<paste>`.
    - Pixel is an **app extension**; settings (Ingest URL, Ingest Secret) are set via **GraphQL Admin API** (`webPixelCreate` / `webPixelUpdate`). After `npm run deploy`, run `node scripts/configure-pixel.js` and use the mutation in GraphiQL, or use the app’s “Configure pixel” if available. See [docs/PIXEL_CONFIG.md](../docs/PIXEL_CONFIG.md).
-   - **Ingest URL** in pixel config: `https://liveview-production.up.railway.app/api/ingest`.
+   - **Ingest URL** in pixel config: `https://app.kexo.io/api/ingest`.
    - **Ingest Secret:** same value as `INGEST_SECRET`.
 
 ---
@@ -113,7 +113,7 @@ Shopify exposes **orders** (and revenue) via the **Orders API** (REST, scope `re
 
 1. **GOOGLE_CLIENT_ID** and **GOOGLE_CLIENT_SECRET**
    - [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client ID (Web application).
-   - **Authorized redirect URI:** `https://liveview-production.up.railway.app/auth/google/callback`.
+   - **Authorized redirect URI:** `https://app.kexo.io/auth/google/callback`.
 2. **OAUTH_COOKIE_SECRET**
    - Any random string. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
    - Used only to sign the session cookie.
@@ -127,7 +127,7 @@ Shopify exposes **orders** (and revenue) via the **Orders API** (REST, scope `re
 Revenue appears when (1) data is in a **persistent DB**, and (2) the pixel sends **checkout_completed** (thank-you page).
 
 1. **Railway:** Add **PostgreSQL** service → in the **app service** Variables set `DB_URL` to the Postgres connection string (e.g. from Postgres service → Connect → `DATABASE_URL`). Redeploy.
-2. **Pixel:** Ingest URL = `https://liveview-production.up.railway.app/api/ingest`, Ingest Secret = same as `INGEST_SECRET`. Redeploy extension if needed.
+2. **Pixel:** Ingest URL = `https://app.kexo.io/api/ingest`, Ingest Secret = same as `INGEST_SECRET`. Redeploy extension if needed.
 3. **Test:** Place a test order and complete checkout. Check Railway logs for `POST /api/ingest` after checkout.
 
 ---

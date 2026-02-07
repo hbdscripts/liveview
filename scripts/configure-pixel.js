@@ -13,7 +13,7 @@ const ingestPublicUrl = (process.env.INGEST_PUBLIC_URL || '').replace(/\/$/, '')
 const ingestSecret = process.env.INGEST_SECRET || '';
 
 if (!appUrl || !appUrl.startsWith('http')) {
-  console.error('Set SHOPIFY_APP_URL in .env (e.g. https://liveview-production.up.railway.app)');
+  console.error('Set SHOPIFY_APP_URL in .env (e.g. https://app.kexo.io)');
   process.exit(1);
 }
 if (!ingestSecret) {

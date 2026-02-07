@@ -1,9 +1,9 @@
 # Shopify app config – fill client_id after creating app in Partner/custom app
 # https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "Liveview"
+name = "Kexo"
 client_id = "c1cd8f0e90ee42bf2bf9d8a8babd9561"
-application_url = "https://liveview-production.up.railway.app"
+application_url = "https://app.kexo.io"
 embedded = false
 
 [access_scopes]
@@ -12,8 +12,8 @@ scopes = "read_products,read_orders,read_all_orders,write_pixels,read_customer_e
 
 [auth]
 redirect_urls = [
-  "https://liveview-production.up.railway.app/auth/callback",
-  "https://liveview-production.up.railway.app/auth/shopify/callback"
+  "https://app.kexo.io/auth/callback",
+  "https://app.kexo.io/auth/shopify/callback"
 ]
 
 [webhooks]

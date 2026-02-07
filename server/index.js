@@ -44,6 +44,7 @@ const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
 const settings = require('./routes/settings');
+const dashboardSeries = require('./routes/dashboardSeries');
 const dashboardAuth = require('./middleware/dashboardAuth');
 
 const app = express();
@@ -116,6 +117,7 @@ app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVaria
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
+app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
