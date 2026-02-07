@@ -431,6 +431,12 @@ async function backfillCampaignIdsFromGclid(options = {}) {
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
     const apiVersion = options.apiVersion || '';
 
+    // Step 0: Repair any sessions previously backfilled with bs_source='google' (should be 'googleads')
+    await db.run(
+      `UPDATE sessions SET bs_source = ? WHERE LOWER(TRIM(bs_source)) = ? AND NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL`,
+      ['googleads', 'google']
+    );
+
     // Step 1: Find sessions with gclid in entry_url but no bs_campaign_id
     const sessions = await db.all(
       `SELECT session_id, entry_url FROM sessions
@@ -506,7 +512,7 @@ async function backfillCampaignIdsFromGclid(options = {}) {
              bs_campaign_id = ?,
              bs_adgroup_id = COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), ?)
            WHERE session_id = ? AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')`,
-          ['google', mapping.campaignId, mapping.adgroupId, sessionId]
+          ['googleads', mapping.campaignId, mapping.adgroupId, sessionId]
         );
         updated++;
       }
