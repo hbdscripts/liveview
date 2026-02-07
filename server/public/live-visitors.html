@@ -1649,6 +1649,7 @@
     let bestSellersCache = null;
     let bestVariantsCache = null;
     let countryPage = 1;
+    let lastCountryRowCount = 0;
     let bestGeoProductsPage = 1;
     let bestSellersPage = 1;
     let bestVariantsPage = 1;
@@ -5119,12 +5120,9 @@
         return 0;
       });
 
-      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
-      countryPage = clampPage(countryPage, totalPages);
-      updateCardPagination('country', countryPage, totalPages);
-      const start = (countryPage - 1) * COUNTRY_PAGE_SIZE;
-      const pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
-      tbody.innerHTML = pageRows.map(r => {
+      lastCountryRowCount = list.length;
+      updateCardPagination('country', 1, 1);
+      tbody.innerHTML = list.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
@@ -5178,11 +5176,12 @@
         return 0;
       });
 
-      const totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PRODUCTS_PAGE_SIZE));
+      const geoPageSize = Math.max(1, (lastCountryRowCount || COUNTRY_PAGE_SIZE) - 1);
+      const totalPages = Math.max(1, Math.ceil(list.length / geoPageSize));
       bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
       updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
-      const start = (bestGeoProductsPage - 1) * COUNTRY_PRODUCTS_PAGE_SIZE;
-      const pageRows = list.slice(start, start + COUNTRY_PRODUCTS_PAGE_SIZE);
+      const start = (bestGeoProductsPage - 1) * geoPageSize;
+      const pageRows = list.slice(start, start + geoPageSize);
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
