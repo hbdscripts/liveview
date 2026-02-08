@@ -6979,7 +6979,8 @@ const API = '';
             syncDateSelectOptions();
             return;
           }
-          if (next === 'today' || next === 'yesterday') {
+          // Handle standard date ranges
+          if (next === 'today' || next === 'yesterday' || next === '7days' || next === '14days' || next === '30days') {
             dateRange = next;
             applyDateRangeChange();
             return;
