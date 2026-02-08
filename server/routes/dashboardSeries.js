@@ -60,7 +60,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const filter = sessionFilterForTraffic(trafficMode);
 
   // Platform start date: never show data before Feb 1 2025
-  const PLATFORM_START = '2025-02-01';
+  const PLATFORM_START = '2026-02-08';
 
   // Build day boundaries
   const fmt = new Intl.DateTimeFormat('en-GB', {

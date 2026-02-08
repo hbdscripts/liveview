@@ -11,6 +11,7 @@
   <title>Kexo</title>
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="/nav.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script type="text/plain" id="inline-css-deprecated">
     :root {
@@ -927,22 +928,62 @@
     .tsm-token-other { flex: 1 1 180px; min-width: 160px; }
     .tsm-token-icon { flex: 2 1 240px; min-width: 200px; }
     .tsm-mapped-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.5rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.65); font-size: 0.75rem; font-weight: 750; margin: 0.15rem 0.35rem 0 0; }
-    .tsm-icon-preview { width: 18px; height: 18px; border-radius: 5px; object-fit: contain; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
-    .tsm-jump-row { display: flex; gap: 8px; align-items: center; overflow: auto; padding: 6px 2px 8px; margin: 0 0 8px; }
-    .tsm-jump-btn { border: none; background: none; padding: 0; cursor: pointer; line-height: 0; opacity: 0.9; }
-    .tsm-jump-btn:hover { opacity: 1; }
-    .tsm-jump-btn img { width: 20px; height: 20px; object-fit: contain; display: block; }
-    .tsm-token-row.tsm-flash { animation: tsmFlash 1200ms ease; }
-    @keyframes tsmFlash { 0% { background: rgba(13, 148, 136, 0.14); } 100% { background: transparent; } }
-  </script>
 </head>
 <body class="page-dashboard">
   <main class="main">
-  <div class="main-tabs" role="tablist" aria-label="View">
-    <button type="button" id="mobile-tabs-btn" class="mobile-tabs-btn" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
+  <nav class="top-nav" aria-label="Main Navigation">
+    <button type="button" class="mobile-tabs-btn" id="mobile-tabs-btn" aria-label="Menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-tabs-menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      <span id="mobile-tabs-current">Dashboard</span>
     </button>
+    
+    <div class="desktop-only nav-group">
+      <button type="button" class="nav-item" role="tab" id="nav-tab-dashboard" aria-label="Dashboard" onclick="setTab('dashboard')" title="Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-spy" aria-label="Live View" onclick="setTab('spy')" title="Live View">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-breakdown" aria-label="Overview" onclick="setTab('breakdown')" title="Overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-stats" aria-label="Countries" onclick="setTab('stats')" title="Countries">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+      </button>
+    </div>
+
+    <div class="nav-logo">
+      <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="40" height="40" />
+    </div>
+
+    <div class="desktop-only nav-group">
+      <button type="button" class="nav-item" role="tab" id="nav-tab-products" aria-label="Products" onclick="setTab('products')" title="Products">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-traffic" aria-label="Traffic" onclick="setTab('traffic')" title="Traffic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-ads" aria-label="Ads" onclick="setTab('ads')" title="Ads">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V7h-2v9.93A5 5 0 0 1 7.1 12a5 5 0 1 1 9.8 0 5 5 0 0 1-1.9 4.93z"/></svg>
+      </button>
+      <button type="button" class="nav-item" role="tab" id="nav-tab-tools" aria-label="Tools" onclick="setTab('tools')" title="Tools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L2 19v3h3l6.3-6.3a5 5 0 0 0 6.4-6.4L14 9l-2-2 2.7-0.7z"/></svg>
+      </button>
+    </div>
+
+    <div class="nav-extras">
+      <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="custom" id="date-opt-custom">Custom</option>
+      </select>
+      <button type="button" class="refresh-btn" id="refresh-btn" aria-label="Refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button type="button" class="config-btn" id="config-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
     <div id="mobile-tabs-menu" class="mobile-tabs-menu" role="menu" aria-label="View menu">
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="dashboard">Dashboard</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="spy">Live View</button>
@@ -951,45 +992,9 @@
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="products">Products</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="traffic">Traffic</button>
       <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="ads">Ads</button>
+      <button type="button" class="mobile-tabs-item" role="menuitem" data-tab="tools">Tools</button>
     </div>
-
-    <div class="main-tabs-center-logo" aria-hidden="true">
-      <img src="/assets/kexo_logo_fullcolor.webp" width="30" height="30" alt="" decoding="async" />
-    </div>
-
-    <button type="button" role="tab" id="tab-dashboard" aria-label="Dashboard" aria-selected="true" aria-controls="tab-panel-dashboard" data-tab="dashboard">
-      <span class="tab-icon-home-swap" aria-hidden="true">
-        <img class="tab-icon tab-icon-home tab-icon-home--inactive" src="/assets/kexo_logo_fullcolor.webp" width="25" height="25" alt="" decoding="async" />
-        <img class="tab-icon tab-icon-home tab-icon-home--active" src="/assets/kexo_logo_fullcolor.webp" width="25" height="25" alt="" decoding="async" />
-      </span>
-      <span class="tab-text">Dashboard</span>
-    </button>
-    <button type="button" role="tab" id="tab-spy" aria-label="Live View" aria-selected="false" aria-controls="tab-panel-spy" data-tab="spy">Live View</button>
-    <button type="button" role="tab" id="tab-breakdown" aria-selected="false" aria-controls="tab-panel-breakdown" data-tab="breakdown">Overview</button>
-    <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="tab-panel-stats" data-tab="stats">Countries</button>
-    <button type="button" role="tab" id="tab-products" aria-selected="false" aria-controls="tab-panel-products" data-tab="products">Products</button>
-    <button type="button" role="tab" id="tab-traffic" aria-selected="false" aria-controls="tab-panel-traffic" data-tab="traffic">Traffic</button>
-    <button type="button" role="tab" id="tab-ads" aria-selected="false" aria-controls="tab-panel-ads" data-tab="ads">Ads</button>
-    <span class="main-tabs-spacer" aria-hidden="true"></span>
-    <button type="button" id="mobile-date-btn" class="mobile-date-btn" aria-label="Date range" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-date-menu">
-      <span>Date</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="4" width="18" height="18" rx="3"></rect>
-        <path d="M16 2v4M8 2v4M3 10h18"></path>
-      </svg>
-    </button>
-    <div id="mobile-date-menu" class="mobile-date-menu" role="menu" aria-label="Date range menu">
-      <button type="button" class="mobile-date-item" role="menuitem" data-value="today">Today</button>
-      <button type="button" class="mobile-date-item" role="menuitem" data-value="yesterday">Yesterday</button>
-      <button type="button" class="mobile-date-item" role="menuitem" data-value="custom">Custom</button>
-    </div>
-    <select id="global-date-select" class="main-tabs-date-select" aria-label="Date range">
-      <!-- Date range Today: table tabs Today | Sales | Now above table -->
-      <option value="today">Today</option>
-      <option value="yesterday">Yesterday</option>
-      <option value="custom" id="date-opt-custom">Custom</option>
-    </select>
-  </div>
+  </nav>
   <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
     <div class="kpi-mobile-pager">
     <div class="live-kpi-grid" id="live-kpi-grid">
@@ -1013,6 +1018,11 @@
     </button>
     </div>
   </div>
+
+  <div class="page-title-wrap">
+    <h1 class="page-title" id="page-title">Dashboard</h1>
+  </div>
+
   <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
     <div class="dash-header">
       <h2 class="dash-title">Dashboard</h2>
@@ -1797,6 +1807,15 @@
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
+    const MIN_YMD = '2026-02-08';
+
+    function floorAllowsYesterday() {
+      try {
+        return ymdNowInTz() > MIN_YMD;
+      } catch (_) {
+        return true;
+      }
+    }
 
     function updateServerTimeDisplay() {
       const el = document.getElementById('server-time-msg');
@@ -5429,13 +5448,29 @@
     function applyRangeAvailable(available) {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
-      const opts = sel.querySelectorAll('option');
       const keys = ['today', 'yesterday'];
-      const start = 0;
-      keys.forEach((key, i) => {
-        const o = opts[start + i];
-        if (o) o.disabled = !available[key];
+      const allowYesterday = floorAllowsYesterday();
+      if (dateRange === 'yesterday' && !allowYesterday) {
+        dateRange = 'today';
+        customRangeStartYmd = null;
+        customRangeEndYmd = null;
+        syncDateSelectOptions();
+      }
+      keys.forEach((key) => {
+        const o = sel.querySelector('option[value="' + key + '"]');
+        if (!o) return;
+        const ok = key === 'yesterday' ? (allowYesterday && !!(available && available[key])) : !!(available && available[key]);
+        o.disabled = !ok;
+        try { o.hidden = (key === 'yesterday' && !allowYesterday); } catch (_) {}
       });
+
+      try {
+        const menu = document.getElementById('mobile-date-menu');
+        if (menu) {
+          const item = menu.querySelector('.mobile-date-item[data-value="yesterday"]');
+          if (item) item.style.display = allowYesterday ? '' : 'none';
+        }
+      } catch (_) {}
       if (dateRange !== 'live' && !isCustomDayRangeKey(dateRange) && !isCustomRangeKey(dateRange) && available && available[dateRange] === false) {
         dateRange = 'today';
         customRangeStartYmd = null;
@@ -5504,6 +5539,14 @@
       }
       const timeZone = data.timeZone || undefined;
       const list = data.days.slice(); // { date, hasSessions } (today -> older)
+      let anySelectable = false;
+      for (const it of list) {
+        if (it && it.date && it.hasSessions) { anySelectable = true; break; }
+      }
+      if (!anySelectable) {
+        container.innerHTML = '<div class="muted">Please select a supported date range (no dates found).</div>';
+        return;
+      }
       const availableByYmd = new Map();
       const ymdSet = new Set();
       for (const it of list) {
@@ -5633,8 +5676,8 @@
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       const applied = appliedYmdRangeFromDateRange();
-      pendingCustomRangeStartYmd = applied && applied.startYmd ? applied.startYmd : null;
-      pendingCustomRangeEndYmd = applied && applied.endYmd ? applied.endYmd : null;
+      pendingCustomRangeStartYmd = applied && applied.startYmd && applied.startYmd >= MIN_YMD ? applied.startYmd : null;
+      pendingCustomRangeEndYmd = applied && applied.endYmd && applied.endYmd >= MIN_YMD ? applied.endYmd : null;
       customCalendarLastPayload = null;
       updateCustomDateFooter();
       cal.innerHTML = '<div class="muted">Loading…</div>';
@@ -5707,6 +5750,7 @@
           if (!a || !b) return;
           const startYmd = a <= b ? a : b;
           const endYmd = a <= b ? b : a;
+          if (startYmd < MIN_YMD || endYmd < MIN_YMD) return;
           const rk = makeRangeKeyFromYmds(startYmd, endYmd);
           if (!rk) return;
           customRangeStartYmd = startYmd;
@@ -5726,6 +5770,7 @@
           if (btn.disabled) return;
           const ymd = btn.getAttribute('data-ymd') || '';
           if (!ymd) return;
+          if (ymd < MIN_YMD) return;
           if (!pendingCustomRangeStartYmd || (pendingCustomRangeStartYmd && pendingCustomRangeEndYmd)) {
             pendingCustomRangeStartYmd = ymd;
             pendingCustomRangeEndYmd = null;
@@ -8363,10 +8408,18 @@
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         syncDateSelectOptions();
+        applyRangeAvailable({ today: true, yesterday: true });
         updateLiveViewTitle();
         updateRowsPerPageVisibility();
         dateSelect.addEventListener('change', function() {
           const next = String(this.value || '').trim().toLowerCase();
+          try {
+            const opt = this.querySelector('option[value="' + next + '"]');
+            if (opt && opt.disabled) {
+              this.value = 'today';
+              return;
+            }
+          } catch (_) {}
           if (next === 'custom') {
             openCustomDateModal();
             // Revert the select so "Custom" can be selected again.
@@ -8424,6 +8477,10 @@
             e.preventDefault();
             const v = String(it.getAttribute('data-value') || '').trim().toLowerCase();
             if (!v) return;
+            try {
+              const opt = sel.querySelector('option[value="' + v + '"]');
+              if (opt && opt.disabled) return;
+            } catch (_) {}
             sel.value = v;
             try {
               sel.dispatchEvent(new Event('change', { bubbles: true }));
@@ -8476,13 +8533,14 @@
         const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', breakdown: 'Overview', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', overview: 'breakdown', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', breakdown: 'overview', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
-        const tabDashboard = document.getElementById('tab-dashboard');
-        const tabSpy = document.getElementById('tab-spy');
-        const tabStats = document.getElementById('tab-stats');
-        const tabBreakdown = document.getElementById('tab-breakdown');
-        const tabProducts = document.getElementById('tab-products');
-        const tabTraffic = document.getElementById('tab-traffic');
-        const tabAds = document.getElementById('tab-ads');
+        const tabDashboard = document.getElementById('nav-tab-dashboard');
+        const tabSpy = document.getElementById('nav-tab-spy');
+        const tabStats = document.getElementById('nav-tab-stats');
+        const tabBreakdown = document.getElementById('nav-tab-breakdown');
+        const tabProducts = document.getElementById('nav-tab-products');
+        const tabTraffic = document.getElementById('nav-tab-traffic');
+        const tabAds = document.getElementById('nav-tab-ads');
+        const tabTools = document.getElementById('nav-tab-tools');
         const panelDashboard = document.getElementById('tab-panel-dashboard');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
@@ -8493,6 +8551,7 @@
         const mobileBtn = document.getElementById('mobile-tabs-btn');
         const mobileMenu = document.getElementById('mobile-tabs-menu');
         const mobileCurrent = document.getElementById('mobile-tabs-current');
+        const pageTitleEl = document.getElementById('page-title');
 
         // Ads tab: lazy-load /ads.js only when Ads is opened.
         let adsLoading = null;
@@ -8573,10 +8632,27 @@
           var isProducts = tab === 'products';
           var isTraffic = tab === 'traffic';
           var isAds = tab === 'ads';
+          var isTools = tab === 'tools';
+          if (isTools) {
+            try {
+              var qs = window.location && window.location.search ? String(window.location.search) : '';
+              window.location.href = '/tools' + (qs || '');
+              return;
+            } catch (_) {
+              window.location.href = '/tools';
+              return;
+            }
+          }
           activeMainTab = tab;
           syncMobileMenu(tab);
           closeMobileMenu();
           setHash(tab);
+
+          // Update page title
+          if (pageTitleEl) {
+            pageTitleEl.textContent = TAB_LABELS[tab] || 'Dashboard';
+          }
+
           if (tabDashboard) tabDashboard.setAttribute('aria-selected', isDashboard ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', isSpy ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', isStats ? 'true' : 'false');
@@ -8584,6 +8660,7 @@
           if (tabProducts) tabProducts.setAttribute('aria-selected', isProducts ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', isTraffic ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', isAds ? 'true' : 'false');
+          if (tabTools) tabTools.setAttribute('aria-selected', 'false');
           if (panelDashboard) panelDashboard.classList.toggle('active', isDashboard);
           if (panelSpy) panelSpy.classList.toggle('active', isSpy);
           if (panelStats) panelStats.classList.toggle('active', isStats);
@@ -8597,6 +8674,7 @@
           if (globalDateSel) globalDateSel.style.display = isDashboard ? 'none' : '';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
           if (mobileDateBtn) mobileDateBtn.style.display = isDashboard ? 'none' : '';
+
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           syncDateSelectOptions();
           updateNextUpdateUi();
@@ -8640,6 +8718,8 @@
           }
         }
 
+        try { window.setTab = setTab; } catch (_) {}
+
         // Hash-based routing: hash overrides sessionStorage
         var initialTab = 'dashboard';
         var hashTab = tabFromHash();
@@ -8666,6 +8746,7 @@
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
+        if (tabTools) tabTools.addEventListener('click', function() { setTab('tools'); });
         if (mobileBtn && mobileMenu) {
           mobileBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -9128,6 +9209,20 @@
 
       function fetchDashboardData(days, force) {
         if (dashLoading && !force) return;
+        try {
+          var n = parseInt(days, 10);
+          if (!Number.isFinite(n) || n <= 0) n = 30;
+          var todayYmd = ymdNowInTz();
+          if (todayYmd && todayYmd >= MIN_YMD) {
+            var a = new Date(MIN_YMD + 'T00:00:00.000Z');
+            var b = new Date(todayYmd + 'T00:00:00.000Z');
+            var maxDays = Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
+            if (Number.isFinite(maxDays) && maxDays > 0) n = Math.min(n, maxDays);
+          } else {
+            n = 1;
+          }
+          days = n;
+        } catch (_) {}
         dashLoading = true;
         var url = API + '/api/dashboard-series?days=' + days + (force ? '&_=' + Date.now() : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
@@ -9158,6 +9253,42 @@
 
       var rangeSel = document.getElementById('dash-range-select');
       if (rangeSel) {
+        (function syncDashRangeOptions() {
+          try {
+            var todayYmd = ymdNowInTz();
+            var maxDays = 1;
+            if (todayYmd && todayYmd >= MIN_YMD) {
+              var a = new Date(MIN_YMD + 'T00:00:00.000Z');
+              var b = new Date(todayYmd + 'T00:00:00.000Z');
+              var diff = Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
+              if (Number.isFinite(diff) && diff > 0) maxDays = diff;
+            }
+
+            var hadOk = false;
+            for (var i = 0; i < rangeSel.options.length; i++) {
+              var opt = rangeSel.options[i];
+              var v = parseInt(opt.value, 10);
+              var ok = Number.isFinite(v) && v > 0 && v <= maxDays;
+              opt.disabled = !ok;
+              try { opt.hidden = !ok; } catch (_) {}
+              if (ok) hadOk = true;
+            }
+            if (!hadOk) {
+              var o = document.createElement('option');
+              o.value = String(maxDays);
+              o.textContent = 'Since ' + formatYmdLabel(MIN_YMD);
+              o.selected = true;
+              rangeSel.insertBefore(o, rangeSel.firstChild);
+            } else {
+              var selOpt = rangeSel.options[rangeSel.selectedIndex];
+              if (selOpt && selOpt.disabled) {
+                for (var j = 0; j < rangeSel.options.length; j++) {
+                  if (!rangeSel.options[j].disabled) { rangeSel.selectedIndex = j; break; }
+                }
+              }
+            }
+          } catch (_) {}
+        })();
         rangeSel.addEventListener('change', function() {
           var days = parseInt(rangeSel.value, 10) || 30;
           fetchDashboardData(days, true);

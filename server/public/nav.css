@@ -1,0 +1,183 @@
+/* Navigation & Page Layout Updates */
+body {
+  padding-top: 80px; /* Space for fixed nav */
+}
+
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  z-index: 1000;
+  padding: 0 2rem;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 1rem;
+}
+
+.nav-logo img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+  transition: stroke 0.2s ease;
+}
+
+.nav-item:hover {
+  color: var(--text);
+}
+
+.nav-item:hover::after {
+  background: linear-gradient(90deg, #3b82f6, #0d9488, #f97316);
+  opacity: 0.7;
+}
+
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #0d9488, #f97316);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Adjusting for flex centering */
+.nav-item {
+  height: 64px; /* Full height for hit area */
+}
+
+.nav-item[aria-selected="true"] {
+  color: var(--text);
+}
+
+.nav-item[aria-selected="true"]::after {
+  opacity: 1;
+}
+
+.nav-item[aria-selected="true"] svg {
+  color: var(--accent); /* Fallback tint if SVG uses currentColor */
+}
+
+/* Dynamic Page Title */
+.page-title-wrap {
+  margin: 1.5rem 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Hide old headers if redundant */
+.dash-title,
+.table-title {
+  display: none !important;
+}
+
+/* Adjust responsive for mobile if needed, though user asked for specific desktop layout */
+@media (max-width: 768px) {
+  .top-nav {
+    justify-content: space-between;
+    padding: 0 1rem;
+    gap: 0.5rem;
+  }
+  .nav-group {
+    gap: 0.5rem;
+  }
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+  .nav-logo img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.nav-extras {
+  position: absolute;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.desktop-only {
+  display: flex;
+}
+
+.mobile-tabs-btn {
+  display: none; /* Hidden on desktop */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: var(--text);
+}
+.mobile-tabs-btn svg { width: 24px; height: 24px; }
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+  .mobile-tabs-btn {
+    display: inline-flex;
+  }
+  .nav-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+  }
+  .nav-extras {
+    right: 1rem;
+  }
+}

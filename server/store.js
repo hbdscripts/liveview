@@ -1500,7 +1500,7 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
 }
 
 // Platform start date: never return data before Feb 1 2025
-const PLATFORM_START_MS = zonedTimeToUtcMs(2025, 2, 1, 0, 0, 0, 'Europe/London');
+const PLATFORM_START_MS = zonedTimeToUtcMs(2026, 2, 8, 0, 0, 0, 'Europe/London');
 const _origGetRangeBounds = getRangeBounds;
 getRangeBounds = function(rangeKey, nowMs, timeZone) {
   const bounds = _origGetRangeBounds(rangeKey, nowMs, timeZone);

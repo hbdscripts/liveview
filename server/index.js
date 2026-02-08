@@ -38,6 +38,7 @@ const shopifyChainStyles = require('./routes/shopifyChainStyles');
 const shopifyWorstVariants = require('./routes/shopifyWorstVariants');
 const worstProducts = require('./routes/worstProducts');
 const adsRouter = require('./routes/ads');
+const toolsRouter = require('./routes/tools');
 const ogThumb = require('./routes/ogThumb');
 const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
@@ -120,6 +121,7 @@ app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
+app.use('/api/tools', toolsRouter);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 app.get('/api/store-base-url', (req, res) => {
@@ -185,6 +187,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 // Legacy path: redirect to root
 app.get('/app/dashboard', (req, res) => res.redirect(301, '/'));
+app.get('/tools', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'tools.html'));
+});
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
 app.get('/', async (req, res, next) => {
@@ -255,6 +261,7 @@ const { up: up032 } = require('./migrations/032_sessions_bs_ads_fields');
 const { up: up033 } = require('./migrations/033_sessions_landing_composite_index');
 const { up: up034 } = require('./migrations/034_perf_indexes_more');
 const { up: up035 } = require('./migrations/035_growth_retention_indexes');
+const { up: up036 } = require('./migrations/036_tools_compare_cr_indexes');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -301,6 +308,7 @@ async function migrateAndStart() {
   await up033();
   await up034();
   await up035();
+  await up036();
 
   try {
     const r = await runAdsMigrations();
