@@ -68,8 +68,8 @@
     <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
     <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
   </div>
-  <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  <button type="button" class="btn btn-icon btn-outline-secondary kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
+    <i class="ti ti-chevron-right" aria-hidden="true"></i>
   </button>
   </div>
 </div>
@@ -113,18 +113,18 @@
             <div class="card-body">
               <div class="tools-grid">
                 <div class="tools-row">
-                  <div class="tools-label">Select Event Date</div>
+                  <div class="tools-label form-label">Select Event Date</div>
                   <div>
-                    <input class="tools-input" type="date" id="event-date" name="event_date" min="2026-02-01" />
+                    <input class="form-control" type="date" id="event-date" name="event_date" min="2026-02-01" />
                     <div class="tools-note tools-note--tight" id="date-note"></div>
                   </div>
                 </div>
 
                 <div class="tools-row">
-                  <div class="tools-label">Product or Collection</div>
+                  <div class="tools-label form-label">Product or Collection</div>
                   <div>
                     <div class="tools-suggest">
-                      <input class="tools-input" type="text" id="catalog-search" placeholder="Search products or collections" autocomplete="off" disabled />
+                      <input class="form-control" type="text" id="catalog-search" placeholder="Search products or collections" autocomplete="off" disabled />
                       <div class="tools-suggest-menu" id="suggest-menu"></div>
                     </div>
                     <div class="tools-selected-target" id="selected-target"></div>
@@ -132,29 +132,29 @@
                 </div>
 
                 <div class="tools-row" id="product-mode-row" style="display:none">
-                  <div class="tools-label">Mode</div>
+                  <div class="tools-label form-label">Mode</div>
                   <div class="tools-radio-row">
-                    <label><input type="radio" name="product_mode" value="product" checked /> Compare whole product</label>
-                    <label><input type="radio" name="product_mode" value="variants" /> Drill into variants</label>
+                    <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="product" checked /> Compare whole product</label>
+                    <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="variants" /> Drill into variants</label>
                   </div>
                 </div>
 
                 <div class="tools-row" id="variants-row" style="display:none">
-                  <div class="tools-label">Variants</div>
+                  <div class="tools-label form-label">Variants</div>
                   <div>
                     <div class="tools-actions tools-actions--spaced">
-                      <button class="tools-btn" type="button" id="variants-refresh">Load variants</button>
-                      <button class="tools-btn" type="button" id="variants-select-all" disabled>Select all</button>
-                      <button class="tools-btn" type="button" id="variants-clear" disabled>Clear</button>
+                      <button class="btn btn-outline-primary btn-sm" type="button" id="variants-refresh">Load variants</button>
+                      <button class="btn btn-outline-primary btn-sm" type="button" id="variants-select-all" disabled>Select all</button>
+                      <button class="btn btn-outline-primary btn-sm" type="button" id="variants-clear" disabled>Clear</button>
                     </div>
                     <div id="variants-list"></div>
                   </div>
                 </div>
 
                 <div class="tools-row">
-                  <div class="tools-label">Compare</div>
+                  <div class="tools-label form-label">Compare</div>
                   <div class="tools-actions">
-                    <button class="tools-btn" type="button" id="compare-btn" disabled>Compare</button>
+                    <button class="btn btn-outline-primary btn-sm" type="button" id="compare-btn" disabled>Compare</button>
                     <div class="tools-note" id="compare-note"></div>
                   </div>
                 </div>

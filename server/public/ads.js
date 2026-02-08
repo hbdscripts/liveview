@@ -340,7 +340,7 @@
           '<div class="stats-card">' +
             '<div class="traffic-card-header">' +
               '<h3 class="traffic-card-title">Ads</h3>' +
-              '<button type="button" class="config-btn" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh">↻</button>' +
+              '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh"><i class="ti ti-refresh"></i></button>' +
             '</div>' +
             '<div class="country-table-wrap">' +
               '<div class="muted" style="padding: 10px 12px;">' + providerLine + '</div>' +
