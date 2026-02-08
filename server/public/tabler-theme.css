@@ -14,61 +14,59 @@ body {
 }
 
 .nav-link[aria-current="page"] {
-  color: var(--tblr-primary);
+  color: var(--tblr-primary) !important;
 }
 
-.navbar-overlap-page .navbar {
-  position: sticky;
-  top: 0;
-  z-index: 1030;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-}
-
-.navbar-overlap-page .page-wrapper {
-  margin-top: -24px;
-  padding-top: 24px;
-}
-
-.navbar-overlap-page .page-header {
-  padding-top: 1.5rem;
-}
-
-.navbar-overlap-page .kexo-page-header {
-  background: #1f2937;
-  border-radius: 14px;
-  padding: 1.25rem 1.25rem 4.25rem;
-  margin-bottom: 0;
-}
-
-.navbar-overlap-page .kexo-page-header .page-pretitle {
+/* Page header sits inside the dark navbar-overlap zone */
+.page-header .page-pretitle {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.navbar-overlap-page .kexo-page-header .page-title {
+.page-header .page-title {
   color: #fff;
+  letter-spacing: -0.02em;
 }
 
-.navbar-overlap-page .shared-kpi-wrap {
-  margin-top: -2.75rem;
+/* KPI strip overhangs the dark overlap area */
+.shared-kpi-wrap {
   position: relative;
   z-index: 2;
-}
-
-.page-title {
-  letter-spacing: -0.02em;
 }
 
 .card {
   border-radius: 14px;
 }
 
-/* Dashboard footer — fixed bottom bar inside Tabler layout */
-.navbar-overlap-page .page {
-  padding-bottom: 52px;
+/* Make custom grid-tables render like Tabler tables */
+.grid-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
 }
-
-.navbar-overlap-page .dashboard-footer {
-  z-index: 1020;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+.grid-header,
+.grid-body {
+  display: table-row-group;
+}
+.grid-row {
+  display: table-row;
+}
+.grid-row--header .grid-cell {
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--tblr-secondary, #626976);
+  padding: .5rem .75rem;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+  background: transparent;
+}
+.grid-cell {
+  display: table-cell;
+  padding: .5rem .75rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+}
+.grid-body .grid-row:hover {
+  background: rgba(var(--tblr-primary-rgb), .024);
 }
