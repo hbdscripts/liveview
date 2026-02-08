@@ -162,7 +162,7 @@ const API = '';
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
-    const MIN_YMD = '2026-02-08';
+    const MIN_YMD = '2026-02-01';
 
     function floorAllowsYesterday() {
       try {
@@ -7008,13 +7008,13 @@ const API = '';
         }
 
         function runTabWork(tab) {
-          var isDashboard = tab === 'dashboard';
+          var isLive = tab === 'spy';
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
-          if (sharedKpiWrap) sharedKpiWrap.style.display = isDashboard ? 'none' : '';
+          if (sharedKpiWrap) sharedKpiWrap.style.display = isLive ? '' : 'none';
           var globalDateSel = document.getElementById('global-date-select');
-          if (globalDateSel) globalDateSel.style.display = isDashboard ? 'none' : '';
+          if (globalDateSel) globalDateSel.style.display = isLive ? '' : 'none';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
-          if (mobileDateBtn) mobileDateBtn.style.display = isDashboard ? 'none' : '';
+          if (mobileDateBtn) mobileDateBtn.style.display = isLive ? '' : 'none';
 
           syncDateSelectOptions();
           updateNextUpdateUi();
@@ -7026,9 +7026,6 @@ const API = '';
           }
 
           if (tab === 'tools') {
-            if (sharedKpiWrap) sharedKpiWrap.style.display = 'none';
-            if (globalDateSel) globalDateSel.style.display = 'none';
-            if (mobileDateBtn) mobileDateBtn.style.display = 'none';
             return;
           }
           if (tab === 'dashboard') {

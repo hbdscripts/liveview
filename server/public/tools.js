@@ -78,7 +78,7 @@
     variantSelected: new Set(),
   };
 
-  var MIN_YMD = '2026-02-08';
+  var MIN_YMD = '2026-02-01';
 
   function setNote(el, msg) {
     if (!el) return;
