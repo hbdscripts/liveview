@@ -4,7 +4,7 @@
  * Optionally verify by calling /api/pixel/status to show what URL is stored in Shopify.
  *
  * Prerequisites:
- * - Set INGEST_PUBLIC_URL in Railway (e.g. https://lv-ingest.hbdjewellery.com), redeploy.
+ * - Set INGEST_PUBLIC_URL in Railway (e.g. https://ingest.kexo.io), redeploy.
  * - App must have an access token for the shop (install/OAuth done).
  *
  * Usage:
@@ -119,7 +119,7 @@ function main() {
         console.log('\nVerified – current pixel ingest URL in Shopify:', current);
         if (expectedIngestUrl && current !== expectedIngestUrl && current !== '(none)') {
           console.warn('\nMismatch: server said it would push', expectedIngestUrl, 'but Shopify has', current);
-          console.warn('Set ALLOWED_INGEST_ORIGINS=https://lv-ingest.hbdjewellery.com in Railway Variables so every replica accepts the override, then run this again.');
+          console.warn('Set ALLOWED_INGEST_ORIGINS=https://ingest.kexo.io in Railway Variables so every replica accepts the override, then run this again.');
         }
       }
     })

@@ -53,7 +53,7 @@ Breakdown of technologies used in this project.
 
 | Tech | Purpose |
 |------|--------|
-| **Cloudflare** | Proxy in front of ingest (e.g. `lv-ingest.hbdjewellery.com`); provides `CF-IPCountry`, bot signals. |
+| **Cloudflare** | Proxy in front of ingest (e.g. `ingest.kexo.io`); provides `CF-IPCountry`, bot signals. |
 | **Cloudflare Worker** | `workers/ingest-enrich.js` – runs on ingest path; enriches requests with CF headers; can block known bots (`BLOCK_KNOWN_BOTS`). Deploy with Wrangler. |
 | **Wrangler** | Cloudflare Workers CLI; config in `workers/wrangler.toml`. |
 

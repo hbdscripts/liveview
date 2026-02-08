@@ -18,7 +18,7 @@
 function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
 function isTruthy(v) { const t = s(v).trim().toLowerCase(); return t === '1' || t === 'true' || t === 'yes'; }
 
-const ALLOWED_HOSTS = ['ingest.kexo.io', 'lv-ingest.hbdjewellery.com'];
+const ALLOWED_HOSTS = ['ingest.kexo.io'];
 const EXPOSE = 'x-lv-edge-result,x-lv-blocked,x-cf-known-bot,x-cf-country,x-cf-colo,x-cf-asn,x-cf-verified-bot-category';
 
 function isAllowedOrigin(origin) {

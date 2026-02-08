@@ -51,7 +51,7 @@ const config = {
     scopes: getEnv('SHOPIFY_SCOPES', 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports'),
   },
   ingestSecret: getEnv('INGEST_SECRET', ''),
-  /** If set, pixel Ingest URL uses this (e.g. https://lv-ingest.hbdjewellery.com) so traffic goes through Cloudflare. Otherwise SHOPIFY_APP_URL + /api/ingest. */
+  /** If set, pixel Ingest URL uses this (e.g. https://ingest.kexo.io) so traffic goes through Cloudflare. Otherwise SHOPIFY_APP_URL + /api/ingest. */
   ingestPublicUrl: getEnv('INGEST_PUBLIC_URL', '').replace(/\/$/, ''),
   /** Allowed origins for ?ingestUrl= on ensure (INGEST_PUBLIC_URL + ALLOWED_INGEST_ORIGINS). Used so script can pass URL and replicas without env still accept it. */
   allowedIngestOrigins: (function () {
@@ -98,7 +98,7 @@ const config = {
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
   /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */
   shopDomain: getEnv('SHOP_DOMAIN', '').trim().toLowerCase() || (getEnv('ALLOWED_SHOP_DOMAIN', '') || '').trim().toLowerCase(),
-  /** Main/public store URL for product images and links (e.g. https://www.hbdjewellery.com). When set, dashboard uses this for og-thumb and last-action links. */
+  /** Main/public store URL for product images and links (e.g. https://www.hbdjewellery.com or STORE_MAIN_DOMAIN env). When set, dashboard uses this for og-thumb and last-action links. */
   storeMainDomain: (function() {
     const v = (getEnv('STORE_MAIN_DOMAIN', '') || '').trim();
     if (!v) return '';
