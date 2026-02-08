@@ -4142,107 +4142,99 @@ const API = '';
 
     function pad2(n) { return String(n).padStart(2, '0'); }
 
-    function weekdayMon0(year, month, day, timeZone) {
-      const dt = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-      try {
-        const wd = new Intl.DateTimeFormat('en-US', { timeZone: timeZone || undefined, weekday: 'short' }).format(dt);
-        const map = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-        if (map[wd] != null) return map[wd];
-      } catch (_) {}
-      const dow = dt.getUTCDay(); // 0=Sun..6=Sat
-      return (dow + 6) % 7; // Mon=0..Sun=6
-    }
+    // Flatpickr instance for custom date picker
+    let flatpickrInstance = null;
+    let availableDatesSet = new Set();
 
-    function daysInMonth(year, month) {
-      // month: 1-12
-      return new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
-    }
+    function initFlatpickrDatePicker(payload) {
+      const input = document.getElementById('date-range-picker');
+      if (!input) return;
 
-    function renderCustomCalendar(container, payload) {
-      if (!container) return;
+      // Destroy existing instance
+      if (flatpickrInstance) {
+        flatpickrInstance.destroy();
+        flatpickrInstance = null;
+      }
+
+      // Parse available days from API
       const data = payload && payload.ok ? payload : null;
-      if (!data || !Array.isArray(data.days)) {
-        container.innerHTML = '<div class="muted">Could not load calendar.</div>';
+      if (data && Array.isArray(data.days)) {
+        availableDatesSet = new Set(
+          data.days
+            .filter(function(d) { return d && d.date && d.hasSessions; })
+            .map(function(d) { return String(d.date); })
+        );
+      }
+
+      // Wait for flatpickr to be available
+      if (typeof flatpickr === 'undefined') {
+        setTimeout(function() { initFlatpickrDatePicker(payload); }, 200);
         return;
       }
-      const timeZone = data.timeZone || undefined;
-      const list = data.days.slice(); // { date, hasSessions } (today -> older)
-      let anySelectable = false;
-      for (const it of list) {
-        if (it && it.date && it.hasSessions) { anySelectable = true; break; }
-      }
-      if (!anySelectable) {
-        container.innerHTML = '<div class="muted">Please select a supported date range (no dates found).</div>';
-        return;
-      }
-      const availableByYmd = new Map();
-      const ymdSet = new Set();
-      for (const it of list) {
-        if (!it || !it.date) continue;
-        const ymd = String(it.date);
-        ymdSet.add(ymd);
-        availableByYmd.set(ymd, !!it.hasSessions);
-      }
-      const months = [];
-      for (let i = list.length - 1; i >= 0; i--) {
-        const ymd = list[i] && list[i].date ? String(list[i].date) : '';
-        const key = ymd.slice(0, 7);
-        if (key && (months.length === 0 || months[months.length - 1] !== key)) months.push(key);
-      }
-      const partsToMonthTitle = (year, month) => {
-        const dt = new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
-        try {
-          return new Intl.DateTimeFormat('en-GB', { timeZone: timeZone || undefined, month: 'long', year: 'numeric' }).format(dt);
-        } catch (_) {
-          return year + '-' + pad2(month);
-        }
-      };
-      let startSel = pendingCustomRangeStartYmd;
-      let endSel = pendingCustomRangeEndYmd;
-      if (startSel && endSel && startSel > endSel) {
-        const tmp = startSel;
-        startSel = endSel;
-        endSel = tmp;
-      }
-      const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      container.innerHTML = months.map((mk) => {
-        const y = parseInt(mk.slice(0, 4), 10);
-        const m = parseInt(mk.slice(5, 7), 10);
-        if (!Number.isFinite(y) || !Number.isFinite(m)) return '';
-        const firstOffset = weekdayMon0(y, m, 1, timeZone);
-        const dim = daysInMonth(y, m);
-        const title = partsToMonthTitle(y, m);
-        const weekdayRow = '<div class="date-cal-weekdays">' + weekdayLabels.map((w) => '<div class="date-cal-weekday">' + w + '</div>').join('') + '</div>';
-        let cells = '';
-        for (let i = 0; i < firstOffset; i++) cells += '<div class="date-cal-spacer"></div>';
-        for (let d = 1; d <= dim; d++) {
-          const ymd = y + '-' + pad2(m) + '-' + pad2(d);
-          if (!ymdSet.has(ymd)) {
-            cells += '<div class="date-cal-spacer"></div>';
-            continue;
+
+      // Initialize flatpickr
+      flatpickrInstance = flatpickr(input, {
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        maxDate: 'today',
+        minDate: MIN_YMD || '2026-02-01',
+        disable: [
+          function(date) {
+            const y = date.getFullYear();
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const ymd = y + '-' + pad2(m) + '-' + pad2(d);
+            return !availableDatesSet.has(ymd);
           }
-          const has = !!availableByYmd.get(ymd);
-          const isStart = startSel && ymd === startSel;
-          const isEnd = endSel && ymd === endSel;
-          const inRange = startSel && endSel && ymd > startSel && ymd < endSel;
-          const isToday = list[0] && String(list[0].date) === ymd;
-          const cls = [
-            'date-cal-day',
-            has ? '' : 'disabled',
-            inRange ? 'in-range' : '',
-            isStart ? 'range-start' : '',
-            isEnd ? 'range-end' : '',
-            isToday ? 'today' : '',
-          ].filter(Boolean).join(' ');
-          const disabledAttr = has ? '' : ' disabled';
-          cells += '<button type="button" class="' + cls + '" data-ymd="' + ymd + '"' + disabledAttr + '>' + d + '</button>';
+        ],
+        onChange: function(selectedDates) {
+          if (selectedDates.length === 0) {
+            pendingCustomRangeStartYmd = null;
+            pendingCustomRangeEndYmd = null;
+            updateCustomDateFooter();
+            return;
+          }
+          if (selectedDates.length === 1) {
+            const d = selectedDates[0];
+            const ymd = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+            pendingCustomRangeStartYmd = ymd;
+            pendingCustomRangeEndYmd = null;
+            updateCustomDateFooter();
+            return;
+          }
+          if (selectedDates.length === 2) {
+            const d1 = selectedDates[0];
+            const d2 = selectedDates[1];
+            const ymd1 = d1.getFullYear() + '-' + pad2(d1.getMonth() + 1) + '-' + pad2(d1.getDate());
+            const ymd2 = d2.getFullYear() + '-' + pad2(d2.getMonth() + 1) + '-' + pad2(d2.getDate());
+
+            // Check 30-day limit
+            const diffMs = Math.abs(d2 - d1);
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            if (diffDays > 30) {
+              // Exceeded limit - reset
+              flatpickrInstance.clear();
+              pendingCustomRangeStartYmd = null;
+              pendingCustomRangeEndYmd = null;
+              updateCustomDateFooter();
+              const summaryEl = document.getElementById('date-custom-summary');
+              if (summaryEl) summaryEl.textContent = 'Range exceeds 30 days. Please select a shorter period.';
+              return;
+            }
+
+            pendingCustomRangeStartYmd = ymd1 <= ymd2 ? ymd1 : ymd2;
+            pendingCustomRangeEndYmd = ymd1 <= ymd2 ? ymd2 : ymd1;
+            updateCustomDateFooter();
+          }
         }
-        return '<div class="date-cal-month">' +
-          '<div class="date-cal-month-title">' + title + '</div>' +
-          weekdayRow +
-          '<div class="date-cal-grid">' + cells + '</div>' +
-        '</div>';
-      }).join('');
+      });
+
+      // Set initial dates if already selected
+      if (pendingCustomRangeStartYmd && pendingCustomRangeEndYmd) {
+        flatpickrInstance.setDate([pendingCustomRangeStartYmd, pendingCustomRangeEndYmd]);
+      } else if (pendingCustomRangeStartYmd) {
+        flatpickrInstance.setDate(pendingCustomRangeStartYmd);
+      }
     }
 
     function closeCustomDateModal() {
@@ -4252,6 +4244,10 @@ const API = '';
       modal.setAttribute('aria-hidden', 'true');
       pendingCustomRangeStartYmd = null;
       pendingCustomRangeEndYmd = null;
+      if (flatpickrInstance) {
+        flatpickrInstance.destroy();
+        flatpickrInstance = null;
+      }
       syncDateSelectOptions();
     }
 
@@ -4299,8 +4295,8 @@ const API = '';
 
     function openCustomDateModal() {
       const modal = document.getElementById('date-custom-modal');
-      const cal = document.getElementById('date-custom-calendar');
-      if (!modal || !cal) return;
+      const input = document.getElementById('date-range-picker');
+      if (!modal || !input) return;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       const applied = appliedYmdRangeFromDateRange();
@@ -4308,10 +4304,13 @@ const API = '';
       pendingCustomRangeEndYmd = applied && applied.endYmd && applied.endYmd >= MIN_YMD ? applied.endYmd : null;
       customCalendarLastPayload = null;
       updateCustomDateFooter();
-      cal.innerHTML = '<div class="muted">Loading…</div>';
+      input.placeholder = 'Loading...';
+      input.disabled = true;
       fetchAvailableDays(30).then((payload) => {
         customCalendarLastPayload = payload;
-        renderCustomCalendar(cal, payload);
+        initFlatpickrDatePicker(payload);
+        input.placeholder = 'Select dates...';
+        input.disabled = false;
         updateCustomDateFooter();
       });
     }
@@ -4365,8 +4364,7 @@ const API = '';
           e.preventDefault();
           pendingCustomRangeStartYmd = null;
           pendingCustomRangeEndYmd = null;
-          const cal = document.getElementById('date-custom-calendar');
-          if (cal) renderCustomCalendar(cal, customCalendarLastPayload || availableDaysMemo);
+          if (flatpickrInstance) flatpickrInstance.clear();
           updateCustomDateFooter();
         });
       }
@@ -4388,27 +4386,7 @@ const API = '';
           applyDateRangeChange();
         });
       }
-      const cal = document.getElementById('date-custom-calendar');
-      if (cal) {
-        cal.addEventListener('click', function(e) {
-          const t = e && e.target ? e.target : null;
-          if (!t) return;
-          const btn = t.closest ? t.closest('button.date-cal-day') : null;
-          if (!btn) return;
-          if (btn.disabled) return;
-          const ymd = btn.getAttribute('data-ymd') || '';
-          if (!ymd) return;
-          if (ymd < MIN_YMD) return;
-          if (!pendingCustomRangeStartYmd || (pendingCustomRangeStartYmd && pendingCustomRangeEndYmd)) {
-            pendingCustomRangeStartYmd = ymd;
-            pendingCustomRangeEndYmd = null;
-          } else {
-            pendingCustomRangeEndYmd = ymd;
-          }
-          renderCustomCalendar(cal, customCalendarLastPayload || availableDaysMemo);
-          updateCustomDateFooter();
-        });
-      }
+      // Flatpickr handles date selection via its own UI
     }
 
     function maybeTriggerSaleToastFromStatsLikeData(data) {

@@ -291,12 +291,17 @@
         <h3 class="config-modal-title">Choose dates</h3>
         <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="date-custom-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
       </div>
-      <div class="muted u-mb-sm">Click a start date, then an end date (last 30 days). Grey dates have no data.</div>
-      <div id="date-custom-calendar" class="date-cal"></div>
-      <div class="date-cal-footer">
-        <div class="date-cal-summary" id="date-custom-summary">Select a start date.</div>
-        <div class="date-cal-actions">
-          <button type="button" class="btn btn-secondary btn-sm" id="date-custom-clear" disabled>Clear</button>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <label class="form-label">Date Range (max 30 days)</label>
+        <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly style="background: white; cursor: pointer;">
+        <div class="text-muted small mt-2">
+          <i class="ti ti-info-circle"></i> Dates without data will be disabled
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.25rem; border-top: 1px solid var(--tblr-border-color); display: flex; justify-content: space-between; align-items: center;">
+        <div class="text-muted small" id="date-custom-summary"></div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="date-custom-clear">Clear</button>
           <button type="button" class="btn btn-primary btn-sm" id="date-custom-apply" disabled>Apply</button>
         </div>
       </div>
