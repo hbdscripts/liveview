@@ -13,10 +13,10 @@
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
-  <title>Kexo · Countries</title>
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
+  <title>Kexo · Date</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 </head>
-<body class="layout-fluid" data-page="countries">
+<body class="layout-fluid" data-page="date">
   <div class="page">
     
     <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
@@ -61,7 +61,7 @@
     <div class="page-wrapper">
       <div class="page-header d-print-none">
         <div class="container-fluid">
-          <div class="shared-kpi-wrap" aria-label="KPIs for selected date range" style="display:none">
+          <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
   <div class="kpi-mobile-pager">
   <div class="live-kpi-grid" id="live-kpi-grid">
     <div class="live-kpi-cell" id="live-kpi-sales-cell">
@@ -86,8 +86,8 @@
 </div>
           <div class="row align-items-center">
             <div class="col-auto">
-              <div class="page-pretitle">Reports</div>
-              <h2 class="page-title" id="page-title">Countries</h2>
+              <div class="page-pretitle">Tables</div>
+              <h2 class="page-title" id="page-title">Today</h2>
             </div>
             <div class="col-auto ms-auto d-print-none">
               <div class="d-flex align-items-center gap-2">
@@ -114,65 +114,58 @@
       </div>
       <div class="page-body">
         <div class="container-fluid">
-<div id="tab-panel-stats" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-stats">
-  <div class="dash-chart-card card mb-3">
-    <div class="dash-chart-title">Revenue by Country</div>
-    <div class="dash-chart-wrap" id="countries-chart" style="min-height:280px"></div>
+<div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
+  <div class="live-view-header">
+    <h2 class="table-title" id="table-title">
+      <span id="table-title-text" class="table-title-label">Today</span>
+    </h2>
+    <span class="next-update-block live-view-next-update-center" id="next-update-block">
+      <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
+      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"></span>
+    </span>
+    <div class="live-view-online">
+      <i class="ti ti-user online-user-icon" aria-hidden="true"></i>
+      Online:
+      <span class="online-count-wrap">
+        <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
+        <strong id="online-count" class="is-hidden">0</strong>
+      </span>
+    </div>
   </div>
-  <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="stats-loading-overlay">
-      <div class="report-build-wrap">
-        <div class="spinner"></div>
-        <div class="report-build-title">building reports</div>
-        <div class="report-build-step" id="stats-build-step">—</div>
+  <div class="sessions-table-wrap">
+    <div class="table-loading-overlay sessions-loading-overlay is-hidden" id="sessions-loading-overlay"><div class="spinner"></div></div>
+  <div class="table-scroll-wrap">
+  <div id="sessions-table" class="grid-table sessions-table" role="table" aria-label="Sessions">
+    <div class="grid-header" role="rowgroup">
+      <div class="grid-row grid-row--header" role="row">
+        <div class="grid-cell sortable" role="columnheader" data-sort="landing" aria-sort="none" tabindex="0" aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></div>
+        <div class="grid-cell source-cell sortable" role="columnheader" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="device" aria-sort="none" tabindex="0" aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></div>
+        <div class="grid-cell cart-value-cell sortable" role="columnheader" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="history" aria-sort="none" tabindex="0" aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></div>
+        <div class="grid-cell consent-col is-hidden" role="columnheader" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></div>
       </div>
     </div>
-  <div class="stats-row breakdown-row">
-    <div class="stats-card card" id="stats-country">
-      <div class="country-table-wrap" id="country-table-wrap">
-        <div id="country-table" class="grid-table by-country-table" role="table" aria-label="Country">
-          <div class="grid-header" role="rowgroup">
-            <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
-            </div>
-          </div>
-          <div id="by-country-body" class="grid-body" role="rowgroup">
-            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card-pagination is-hidden" id="country-pagination" aria-label="Country pagination">
-        <button type="button" id="country-prev">Prev</button>
-        <span class="page-label" id="country-label">1 of 1</span>
-        <button type="button" id="country-next">Next</button>
-      </div>
-    </div>
-    <div class="stats-card card" id="stats-best-geo-products">
-      <div class="country-table-wrap" id="best-geo-products-wrap">
-        <div id="best-geo-products-table" class="grid-table by-country-table geo-products-table" role="table" aria-label="Best/Geo products">
-          <div class="grid-header" role="rowgroup">
-            <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Best/Geo"><span class="th-label-long">Best/Geo</span><span class="th-label-short">Best/Geo</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
-            </div>
-          </div>
-          <div id="best-geo-products-body" class="grid-body" role="rowgroup">
-            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card-pagination is-hidden" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
-        <button type="button" id="best-geo-products-prev">Prev</button>
-        <span class="page-label" id="best-geo-products-label">1 of 1</span>
-        <button type="button" id="best-geo-products-next">Next</button>
-      </div>
+    <div id="table-body" class="grid-body" role="rowgroup"></div>
+  </div>
+  </div>
+  <div class="table-pagination" id="table-pagination">
+    <div class="pagination-segments" role="group" aria-label="Pagination">
+      <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
+      <span id="pagination-label">1 of 1</span>
+      <button type="button" id="pagination-next" aria-label="Next page">Next</button>
+      <span id="rows-per-page-wrap"><span class="muted">Rows</span>
+      <select id="rows-per-page-select" class="form-select form-select-sm" style="width:auto" aria-label="Rows per page">
+      <option value="15">15</option>
+      <option value="25" selected>25</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+      <option value="75">75</option>
+      <option value="100">100</option>
+      </select></span>
     </div>
   </div>
   </div>
@@ -186,6 +179,30 @@
           </div>
         </div>
       </footer>
+      <div id="side-panel" class="side-panel is-hidden">
+    <header class="side-panel-header">
+      <h3 class="side-panel-title">Session</h3>
+      <button type="button" class="side-panel-close" id="side-close" aria-label="Close">
+        <i class="ti ti-x" style="font-size:20px"></i>
+      </button>
+    </header>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-list side-panel-icon"></i>Activity</h4>
+      <ul class="side-panel-events" id="side-events"></ul>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-user side-panel-icon"></i>Details</h4>
+      <div class="side-panel-meta" id="side-meta"></div>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-link side-panel-icon"></i>Source</h4>
+      <div class="side-panel-source" id="side-source"></div>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-cloud side-panel-icon"></i>Network</h4>
+      <div id="side-cf" class="side-panel-cf"></div>
+    </section>
+  </div>
     </div>
   </div>
   <div class="config-modal" id="config-modal" aria-hidden="true">

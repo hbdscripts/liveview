@@ -29,7 +29,17 @@
         <div class="collapse navbar-collapse" id="sidebar-menu">
           <ul class="navbar-nav pt-lg-3">
             <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><span class="nav-link-icon"><i class="ti ti-dashboard"></i></span><span class="nav-link-title">Dashboard</span></a></li>
-            <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live"><span class="nav-link-icon"><i class="ti ti-live-photo"></i></span><span class="nav-link-title">Live</span></a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#navbar-tables" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                <span class="nav-link-icon"><i class="ti ti-table"></i></span>
+                <span class="nav-link-title">Tables</span>
+              </a>
+              <div class="dropdown-menu">
+                <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a>
+                <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a>
+                <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Date</a>
+              </div>
+            </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
                 <span class="nav-link-icon"><i class="ti ti-chart-pie"></i></span>

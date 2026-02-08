@@ -21,7 +21,7 @@ const API = '';
     let statsCache = {};
     let trafficCache = null;
     let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
-    let dateRange = 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
@@ -3726,18 +3726,26 @@ const API = '';
     }
 
     function updateLiveViewTitle() {
-      const tabsWrap = document.getElementById('table-title-tabs');
       const textEl = document.getElementById('table-title-text');
       const sel = document.getElementById('global-date-select');
-      const showTabs = (dateRange === 'live' || dateRange === 'sales' || dateRange === 'today');
-      if (tabsWrap) tabsWrap.classList.toggle('is-hidden', !showTabs);
-      if (textEl) textEl.classList.toggle('is-hidden', showTabs);
-      if (showTabs && tabsWrap) {
-        ['today', 'sales', 'live'].forEach(function(r) {
-          const btn = document.getElementById('table-tab-' + r);
-          if (btn) btn.setAttribute('aria-selected', dateRange === r ? 'true' : 'false');
-        });
-      } else {
+      // Date page: sync page title with the selected range
+      if (PAGE === 'date') {
+        const pageTitleEl = document.getElementById('page-title');
+        if (pageTitleEl) {
+          let label = null;
+          const applied = appliedYmdRangeFromDateRange();
+          if (applied && applied.startYmd && applied.endYmd) {
+            label = formatYmdRangeLabel(applied.startYmd, applied.endYmd);
+          } else if (sel) {
+            const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
+            label = opt && opt.textContent ? String(opt.textContent).trim() : null;
+          }
+          const fallback = { today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
+          pageTitleEl.textContent = label || fallback[dateRange] || 'Today';
+        }
+      }
+      // Text element (if present) for non-tabbed display
+      if (textEl) {
         let label = null;
         const applied = appliedYmdRangeFromDateRange();
         if (applied && applied.startYmd && applied.endYmd) {
@@ -3747,7 +3755,7 @@ const API = '';
           label = opt && opt.textContent ? String(opt.textContent).trim() : null;
         }
         const fallback = { live: 'Now', today: 'Today', sales: 'Sales', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
-        if (textEl) textEl.textContent = label || fallback[dateRange] || 'Today';
+        textEl.textContent = label || fallback[dateRange] || 'Today';
       }
     }
 
@@ -3788,8 +3796,8 @@ const API = '';
         if (customOpt && customOpt.parentNode === sel) sel.insertBefore(opt, customOpt);
         else sel.appendChild(opt);
         sel.value = String(dateRange);
-      } else if (activeMainTab === 'spy') {
-        // Spy supports live/sales table tabs; dropdown stays on Today/Yesterday/Custom.
+      } else if (activeMainTab === 'spy' || activeMainTab === 'sales' || activeMainTab === 'date') {
+        // Table pages: dropdown stays on Today/Yesterday/Custom.
         sel.value = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       } else {
         // Other tabs only use day/range ranges; if somehow on live, treat as Today.
@@ -6898,16 +6906,18 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'stats', 'products', 'traffic', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'traffic', 'ads'];
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
         const tabProducts = document.getElementById('nav-tab-products');
         const tabTraffic = document.getElementById('nav-tab-traffic');
         const tabAds = document.getElementById('nav-tab-ads');
+        const tabSales = document.getElementById('nav-tab-sales');
+        const tabDate = document.getElementById('nav-tab-date');
         const tabTools = document.getElementById('nav-tab-tools');
         const panelDashboard = document.getElementById('tab-panel-dashboard');
         const panelSpy = document.getElementById('tab-panel-spy');
@@ -7007,7 +7017,23 @@ const API = '';
           if (tabProducts) tabProducts.setAttribute('aria-selected', tab === 'products' ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', tab === 'traffic' ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', tab === 'ads' ? 'true' : 'false');
+          if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
+          if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
+          // Tables dropdown
+          var isTablesChild = (tab === 'spy' || tab === 'sales' || tab === 'date');
+          var tablesDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tables"]');
+          if (tablesDropdown) {
+            var tddMenu = tablesDropdown.nextElementSibling;
+            if (isTablesChild) {
+              tablesDropdown.classList.add('active');
+              tablesDropdown.setAttribute('aria-expanded', 'true');
+              if (tddMenu) tddMenu.classList.add('show');
+            } else {
+              tablesDropdown.classList.remove('active');
+            }
+          }
+          // Overview dropdown
           var isOverviewChild = (tab === 'stats' || tab === 'products');
           var overviewDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
           if (overviewDropdown) {
@@ -7023,13 +7049,14 @@ const API = '';
         }
 
         function runTabWork(tab) {
-          var isLive = tab === 'spy';
+          var isTablePage = (tab === 'spy' || tab === 'sales' || tab === 'date');
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
-          if (sharedKpiWrap) sharedKpiWrap.style.display = isLive ? '' : 'none';
+          if (sharedKpiWrap) sharedKpiWrap.style.display = isTablePage ? '' : 'none';
+          var showDateSel = (tab === 'sales' || tab === 'date');
           var globalDateSel = document.getElementById('global-date-select');
-          if (globalDateSel) globalDateSel.style.display = isLive ? '' : 'none';
+          if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
-          if (mobileDateBtn) mobileDateBtn.style.display = isLive ? '' : 'none';
+          if (mobileDateBtn) mobileDateBtn.style.display = showDateSel ? '' : 'none';
 
           syncDateSelectOptions();
           updateNextUpdateUi();
@@ -7091,7 +7118,9 @@ const API = '';
 
           updateNavSelection(tab);
           if (panelDashboard) panelDashboard.classList.toggle('active', isDashboard);
-          if (panelSpy) panelSpy.classList.toggle('active', isSpy);
+          var isSales = tab === 'sales';
+          var isDate = tab === 'date';
+          if (panelSpy) panelSpy.classList.toggle('active', isSpy || isSales || isDate);
           if (panelStats) panelStats.classList.toggle('active', isStats);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
@@ -7104,7 +7133,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : PAGE;
           setTab(pageTab);
           return;
         }

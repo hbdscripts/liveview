@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
-  <title>Kexo · Live View</title>
+  <title>Kexo · Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 </head>
 <body class="layout-fluid" data-page="live">
@@ -30,7 +30,17 @@
         <div class="collapse navbar-collapse" id="sidebar-menu">
           <ul class="navbar-nav pt-lg-3">
             <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><span class="nav-link-icon"><i class="ti ti-dashboard"></i></span><span class="nav-link-title">Dashboard</span></a></li>
-            <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live"><span class="nav-link-icon"><i class="ti ti-live-photo"></i></span><span class="nav-link-title">Live</span></a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#navbar-tables" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                <span class="nav-link-icon"><i class="ti ti-table"></i></span>
+                <span class="nav-link-title">Tables</span>
+              </a>
+              <div class="dropdown-menu">
+                <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a>
+                <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a>
+                <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Date</a>
+              </div>
+            </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
                 <span class="nav-link-icon"><i class="ti ti-chart-pie"></i></span>
@@ -76,8 +86,8 @@
 </div>
           <div class="row align-items-center">
             <div class="col-auto">
-              <div class="page-pretitle">Visitors</div>
-              <h2 class="page-title" id="page-title">Live View</h2>
+              <div class="page-pretitle">Tables</div>
+              <h2 class="page-title" id="page-title">Live</h2>
             </div>
             <div class="col-auto ms-auto d-print-none">
               <div class="d-flex align-items-center gap-2">
@@ -107,14 +117,7 @@
 <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
   <div class="live-view-header">
     <h2 class="table-title" id="table-title">
-      <span id="table-title-tabs" class="table-title-tabs is-hidden" role="tablist" aria-label="Time window">
-        <button type="button" role="tab" id="table-tab-today" data-range="today" aria-selected="false">Today</button>
-        <span class="table-title-tabs-sep" id="table-tab-sep-today-sales" aria-hidden="true">|</span>
-        <button type="button" role="tab" id="table-tab-sales" data-range="sales" aria-selected="false">Sales</button>
-        <span class="table-title-tabs-sep" id="table-tab-sep-sales-live" aria-hidden="true">|</span>
-        <button type="button" role="tab" id="table-tab-live" data-range="live" aria-selected="false"><span class="live-tab-dot"></span>Live</button>
-      </span>
-      <span id="table-title-text" class="table-title-label">Today</span>
+      <span id="table-title-text" class="table-title-label">Live</span>
     </h2>
     <span class="next-update-block live-view-next-update-center" id="next-update-block">
       <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
