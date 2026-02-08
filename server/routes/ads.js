@@ -1,6 +1,7 @@
 const express = require('express');
 const adsService = require('../ads/adsService');
 const store = require('../store');
+const salesTruth = require('../salesTruth');
 const { rollupRevenueHourly } = require('../ads/adsRevenueRollup');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
 const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
@@ -56,6 +57,14 @@ router.get('/summary', async (req, res) => {
   res.setHeader('Vary', 'Cookie');
   try {
     const rangeKey = req && req.query ? req.query.range : '';
+    // Ensure Shopify orders are reconciled before building the summary
+    try {
+      const rangeNorm = adsService.normalizeRangeKey(rangeKey);
+      const timeZone = store.resolveAdminTimeZone();
+      const bounds = store.getRangeBounds(rangeNorm, Date.now(), timeZone);
+      const shop = salesTruth.resolveShopForSales('');
+      if (shop) await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, rangeNorm);
+    } catch (_) {}
     const out = await adsService.getSummary({ rangeKey });
     res.json(out);
   } catch (err) {
@@ -154,6 +163,16 @@ router.post('/refresh', async (req, res) => {
 
     const body = req && req.body && typeof req.body === 'object' ? req.body : {};
     const source = body && body.source != null ? String(body.source).trim().toLowerCase() : 'googleads';
+
+    // 0. Reconcile Shopify orders so fresh sales appear in ads attribution
+    try {
+      const shop = salesTruth.resolveShopForSales('');
+      if (shop) {
+        await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, rangeNorm);
+      }
+    } catch (e) {
+      console.warn('[ads.refresh] order reconcile failed (non-fatal):', e && e.message ? e.message : e);
+    }
 
     // 1. Sync spend from Google Ads API
     let spend = null;
