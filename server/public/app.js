@@ -7425,9 +7425,17 @@ const API = '';
         return d + ' ' + m;
       }
 
+      function waitForApexCharts(cb, retries) {
+        if (typeof ApexCharts !== 'undefined') { cb(); return; }
+        if (!retries) retries = 0;
+        if (retries >= 15) { console.error('[dashboard] ApexCharts failed to load after retries'); return; }
+        setTimeout(function() { waitForApexCharts(cb, retries + 1); }, 200);
+      }
+
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
-          console.warn('[dashboard] ApexCharts not loaded, skipping chart:', chartId);
+          console.warn('[dashboard] ApexCharts not loaded yet, will retry for:', chartId);
+          waitForApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
           return null;
         }
         var el = document.getElementById(chartId);

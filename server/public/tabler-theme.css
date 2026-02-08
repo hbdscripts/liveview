@@ -90,6 +90,9 @@ body {
   padding: 1rem 1.25rem !important;
   text-align: center;
 }
+.dash-kpi-card.card {
+  margin-bottom: 0 !important;
+}
 .dash-kpi-card--accent {
   border-color: var(--tblr-primary) !important;
   background: rgba(13, 148, 136, 0.04) !important;
@@ -114,6 +117,7 @@ body {
 /* Dashboard chart cards */
 .dash-charts-row { gap: 1rem; margin-bottom: 1rem; }
 .dash-chart-card { padding: 1rem 1.25rem !important; }
+.dash-chart-card.card { margin-bottom: 0 !important; }
 .dash-chart-title {
   font-size: .6875rem;
   text-transform: uppercase;
@@ -128,6 +132,7 @@ body {
 .dash-table-card {
   overflow: hidden;
 }
+.dash-table-card.card { margin-bottom: 0 !important; padding: 0 !important; }
 .dash-table-title {
   font-size: .6875rem;
   text-transform: uppercase;
@@ -176,6 +181,14 @@ body {
 .stats-card {
   margin-right: 0 !important;
 }
+.stats-card.card {
+  padding: 0 !important;
+  margin-bottom: 0 !important;
+}
+.stats-card.card > .country-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 /* Traffic card headers → Tabler card-header style */
 .traffic-card-header {
@@ -199,16 +212,23 @@ body {
   font-size: .8125rem;
 }
 .card-pagination button {
-  background: transparent;
+  background: #fff;
   border: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-radius: .375rem;
+  border-radius: var(--tblr-border-radius, .375rem);
   padding: .25rem .75rem;
   font-size: .8125rem;
   cursor: pointer;
   color: var(--tblr-body-color, #1e293b);
+  transition: color .15s, border-color .15s, background .15s;
 }
 .card-pagination button:hover {
   background: var(--row-hover);
+  border-color: var(--tblr-primary);
+  color: var(--tblr-primary);
+}
+.card-pagination button:disabled {
+  opacity: .5;
+  pointer-events: none;
 }
 
 /* ── Grid-table: Tabler table rendering (override old app.css) ──── */
@@ -301,15 +321,23 @@ body {
   font-size: .8125rem;
 }
 .pagination-segments button {
-  background: transparent;
+  background: #fff;
   border: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-radius: .375rem;
+  border-radius: var(--tblr-border-radius, .375rem);
   padding: .25rem .75rem;
   font-size: .8125rem;
   cursor: pointer;
+  color: var(--tblr-body-color, #1e293b);
+  transition: color .15s, border-color .15s, background .15s;
 }
 .pagination-segments button:hover {
   background: var(--row-hover);
+  border-color: var(--tblr-primary);
+  color: var(--tblr-primary);
+}
+.pagination-segments button:disabled {
+  opacity: .5;
+  pointer-events: none;
 }
 
 /* ── Loading overlays ────────────────────────────────────────────── */
