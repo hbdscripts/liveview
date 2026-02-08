@@ -81,6 +81,29 @@ These rules prevent the stats from drifting or looking wrong over time:
 - **Country stats** use `sessions.country_code` captured at event time, not `visitors.last_country` (which changes later and can skew historical reports).
 - **Migration `004_session_stats_fields`** backfills `sessions.country_code` and `purchased_at` for old rows and adds indexes. Older data is approximate until new purchase events arrive.
 
+## Brand Colors
+
+The app uses a modern gradient-based color scheme:
+
+### Primary Colors
+- **Blue 1**: `#4592e9` (Sky blue)
+- **Blue 2**: `#1673b4` (Deep blue, primary accent)
+- **Green 1**: `#32bdb0` (Turquoise)
+- **Green 2**: `#179ea8` (Teal)
+- **Orange**: `#fa9f2e` (Vibrant orange)
+
+### Gradient
+- **Main Gradient**: Horizontal blend of all brand colors (blue → green → orange)
+- Used for: Footer, sale notifications, KPI sales value, and accent highlights
+
+### Backgrounds
+- **Main body**: Light pastel gradient mixing blues, greens, and warm tones
+- **Table cells**: `#fafcff` (extremely light blue-tinted white)
+- **Cards**: Pure white `#ffffff`
+
+### Usage
+All colors are defined as CSS variables in `server/public/app.css` at the `:root` level. The primary accent color is Blue 2 (`#1673b4`), with the gradient used for high-impact UI elements.
+
 ## Privacy
 
 - The app does not collect PII (no email, phone, name, address, IP, full user agent, or full referrer).
