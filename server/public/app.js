@@ -7,10 +7,10 @@ const API = '';
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
-    const TOP_TABLE_PAGE_SIZE = 10;
-    const COUNTRY_PAGE_SIZE = 11;
-    const COUNTRY_PRODUCTS_PAGE_SIZE = 10;
-    const BREAKDOWN_PAGE_SIZE = 4;
+    const TOP_TABLE_PAGE_SIZE = 25;
+    const COUNTRY_PAGE_SIZE = 25;
+    const COUNTRY_PRODUCTS_PAGE_SIZE = 25;
+    const BREAKDOWN_PAGE_SIZE = 25;
     const ROWS_PER_PAGE_DEFAULT = 25;
     function loadRowsPerPage() {
       return ROWS_PER_PAGE_DEFAULT;
@@ -2733,7 +2733,7 @@ const API = '';
       { id: 'charms',    keys: ['charms', 'charm'] },
       { id: 'extras',    keys: ['extras', 'extra'] },
     ];
-    var TYPE_TABLE_PAGE_SIZE = 5;
+    var TYPE_TABLE_PAGE_SIZE = 25;
     var typeTablePages = {};
     TYPE_TABLE_DEFS.forEach(function(d) { typeTablePages[d.id] = 1; });
 
@@ -3565,8 +3565,12 @@ const API = '';
       });
 
       lastCountryRowCount = list.length;
-      updateCardPagination('country', 1, 1);
-      tbody.innerHTML = list.map(r => {
+      var totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
+      countryPage = clampPage(countryPage, totalPages);
+      updateCardPagination('country', countryPage, totalPages);
+      var start = (countryPage - 1) * COUNTRY_PAGE_SIZE;
+      var pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
+      tbody.innerHTML = pageRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
@@ -6894,14 +6898,13 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'stats', 'breakdown', 'products', 'traffic', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', breakdown: 'Overview', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', overview: 'breakdown', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', breakdown: 'overview', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const VALID_TABS = ['dashboard', 'spy', 'stats', 'products', 'traffic', 'ads'];
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live View', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
-        const tabBreakdown = document.getElementById('nav-tab-breakdown');
         const tabProducts = document.getElementById('nav-tab-products');
         const tabTraffic = document.getElementById('nav-tab-traffic');
         const tabAds = document.getElementById('nav-tab-ads');
@@ -6909,7 +6912,6 @@ const API = '';
         const panelDashboard = document.getElementById('tab-panel-dashboard');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
-        const panelBreakdown = document.getElementById('tab-panel-breakdown');
         const panelProducts = document.getElementById('tab-panel-products');
         const panelTraffic = document.getElementById('tab-panel-traffic');
         const panelAds = document.getElementById('tab-panel-ads');
@@ -6991,20 +6993,33 @@ const API = '';
           hashUpdateInProgress = false;
         }
 
-        var TAB_TO_NAV = { spy: 'live', breakdown: 'overview', stats: 'countries' };
+        var TAB_TO_NAV = { spy: 'live', stats: 'countries' };
         function updateNavSelection(tab) {
           var navKey = TAB_TO_NAV[tab] || tab;
           navLinks.forEach(function(link) {
-            link.setAttribute('aria-current', link.getAttribute('data-nav') === navKey ? 'page' : 'false');
+            var isActive = link.getAttribute('data-nav') === navKey;
+            link.setAttribute('aria-current', isActive ? 'page' : 'false');
+            if (isActive) link.classList.add('active'); else link.classList.remove('active');
           });
           if (tabDashboard) tabDashboard.setAttribute('aria-selected', tab === 'dashboard' ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', tab === 'stats' ? 'true' : 'false');
-          if (tabBreakdown) tabBreakdown.setAttribute('aria-selected', tab === 'breakdown' ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', tab === 'products' ? 'true' : 'false');
           if (tabTraffic) tabTraffic.setAttribute('aria-selected', tab === 'traffic' ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', tab === 'ads' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
+          var isOverviewChild = (tab === 'stats' || tab === 'products');
+          var overviewDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
+          if (overviewDropdown) {
+            var ddMenu = overviewDropdown.nextElementSibling;
+            if (isOverviewChild) {
+              overviewDropdown.classList.add('active');
+              overviewDropdown.setAttribute('aria-expanded', 'true');
+              if (ddMenu) ddMenu.classList.add('show');
+            } else {
+              overviewDropdown.classList.remove('active');
+            }
+          }
         }
 
         function runTabWork(tab) {
@@ -7032,11 +7047,8 @@ const API = '';
             try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
           } else if (tab === 'stats') {
             refreshStats({ force: false });
-            ensureKpis();
-          } else if (tab === 'breakdown') {
             refreshBreakdown({ force: false });
             if (statsCache && statsCache.country) renderAov(statsCache);
-            else refreshStats({ force: false });
             ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
@@ -7065,7 +7077,6 @@ const API = '';
           var isDashboard = tab === 'dashboard';
           var isSpy = tab === 'spy';
           var isStats = tab === 'stats';
-          var isBreakdown = tab === 'breakdown';
           var isProducts = tab === 'products';
           var isTraffic = tab === 'traffic';
           var isAds = tab === 'ads';
@@ -7082,7 +7093,6 @@ const API = '';
           if (panelDashboard) panelDashboard.classList.toggle('active', isDashboard);
           if (panelSpy) panelSpy.classList.toggle('active', isSpy);
           if (panelStats) panelStats.classList.toggle('active', isStats);
-          if (panelBreakdown) panelBreakdown.classList.toggle('active', isBreakdown);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
           if (panelAds) panelAds.classList.toggle('active', isAds);
@@ -7094,7 +7104,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'overview' ? 'breakdown' : PAGE === 'countries' ? 'stats' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE;
           setTab(pageTab);
           return;
         }
@@ -7121,7 +7131,6 @@ const API = '';
         if (tabDashboard) tabDashboard.addEventListener('click', function() { setTab('dashboard'); });
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
-        if (tabBreakdown) tabBreakdown.addEventListener('click', function() { setTab('breakdown'); });
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });

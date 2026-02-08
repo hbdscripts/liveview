@@ -30,7 +30,7 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
    npm run dev
    ```
 
-4. Open the dashboard: [http://localhost:3000/app/live-visitors](http://localhost:3000/app/live-visitors)
+4. Open the dashboard: [http://localhost:3000/](http://localhost:3000/) (redirects to `/dashboard` after login)
 
 5. To test ingest locally, send a POST to `http://localhost:3000/api/ingest` with header `X-Ingest-Secret: <your-secret>` and a JSON body (see pixel payload shape). The admin UI and SSE stream work without Shopify OAuth in this minimal setup.
 
@@ -128,7 +128,11 @@ The project runs **Shopify CLI directly** from scripts (like theme check in anot
 ## Main files and folders
 
 - `server/` – Config, DB, migrations, ingest, SSE, cleanup, API routes, static admin UI.
-- `server/public/live-visitors.html` – Dashboard (table, tabs, side panel, KPIs, config status).
+- `server/public/*.html` – Tabler UI pages (`dashboard`, `live`, `overview`, `countries`, `products`, `traffic`, `ads`, `tools`).
+- `server/public/app.js` – Shared frontend bundle with per-page bootstraps.
+- `server/public/tabler-theme.css` – Tabler theme overrides + sticky navbar overlap.
+- `server/public/tools.css` – Tools page styling.
+- `server/public/live-visitors.html` – Legacy monolithic dashboard (kept as backup).
 - `server/trackerDefinitions.js` – Metric/table definitions manifest for Diagnostics → Definitions.
   - When you move/rename/remove a dashboard section/table/card, update this file (especially `ui.elementIds` + endpoint list) so Diagnostics doesn’t show stale “UI missing” items.
   - Verify by opening the dashboard → Settings → Diagnostics → Definitions and confirming the moved items show **UI OK** (and removed items no longer appear).
@@ -147,9 +151,17 @@ Minimum for a working install:
 
 Optional: `DB_URL` (Postgres), time windows, rate limits (see `.env.example`).
 
-## Admin route
+## Admin routes
 
-- Dashboard: `https://<your-app-url>/app/live-visitors` (or `/` redirects there).
+- Login: `https://<your-app-url>/` (redirects to `/dashboard` when authenticated).
+- Dashboard: `https://<your-app-url>/dashboard`
+- Live: `https://<your-app-url>/live`
+- Overview: `https://<your-app-url>/overview`
+- Countries: `https://<your-app-url>/countries`
+- Products: `https://<your-app-url>/products`
+- Traffic: `https://<your-app-url>/traffic`
+- Ads: `https://<your-app-url>/ads`
+- Tools: `https://<your-app-url>/tools`
 
 ## Pixel ingest URL and secret
 

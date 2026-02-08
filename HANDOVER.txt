@@ -1,515 +1,157 @@
-Live Visitors / AI ENGINE — HANDOVER (keep current)
-Last updated: 2026-02-06 (Fix: sale toast country no longer flashes “Unknown” (ingest country uses x-cf-country + SSE fallback to cf_country); Home: replace “Last Hour” quick-tab with “Sales” (converted-only); KPI: compact padding on non-today ranges; UI: pagination labels/buttons (no “Page”, no bold, disabled doesn’t fade); Products: framed divider grids for AOV/Leaderboard/Finishes (subtle shadow, leaderboard title right, hidden during report-build overlay); Products: Finishes/Lengths cards now sort by revenue; DB: add line-items variant_title index for finishes/lengths; Products: 7 Day Leaderboard dropdown cards polish (clickable thumbs, compact teal revenue, even responsive counts, spinner) + /api/shopify-leaderboard; UI: Geos tab rename; UI: Conv rate KPI Shopify compare modal (3px radii, max font-weight 500, diagnostics palette); UI: lengths icon padding tweak; Ads: scaffold tab + /api/ads/*; API: /api/shopify-lengths; Products: Finishes/Lengths dropdown cards; UI: sale toast sound unlock; Traffic settings centralized in footer Settings modal; Diagnostics: tracker definitions refreshed)
+KEXO Liveview — HANDOVER (keep current)
+Last updated: 2026-02-08 (Tabler UI + split pages, sticky navbar overlap, tools page rebuild, per-page routing)
 
-This repo ships a private Shopify app that shows a near-real-time Live Visitors dashboard inside Shopify admin.
-The dashboard is a single vanilla HTML page and the backend is a Node/Express server with SQLite/Postgres support.
+This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend now uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
 IMPORTANT (for future agents)
-- Keep this file accurate. If you change core paths (routes, schema, ingest fields, dashboard UX/auth/deploy), update this file in the SAME commit.
-- This repo avoids creating new markdown docs; this handover is intentionally `HANDOVER.txt` (markdown-formatted text).
-- Multiple agents may be working on this repo in parallel. If “surprise” files/changes appear in your working tree, assume it may be other agent work and confirm with `git status`/`git log` before attributing changes.
+- Keep this file accurate. If you change core paths (routes, auth, dashboard UX, deploy), update this file in the SAME commit.
+- This repo avoids new markdown docs; this handover is intentionally `HANDOVER.txt`.
 - UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
-- Diagnostics guardrail: whenever you add/move/remove a dashboard section/table/card, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate (elementIds + endpoint list). In the same commit, open the dashboard and confirm the moved items show **UI OK** (and removed items no longer appear).
+- Diagnostics guardrail: when adding/moving/removing dashboard sections, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate.
 
 ---
 
-## What the app looks like today (user-facing)
+## Current UI structure (Tabler)
 
-Dashboard URL:
-- `/app/live-visitors` (also `/` typically redirects here after app URL handling)
+Pages (new, Tabler layout):
+- `server/public/dashboard.html`
+- `server/public/live.html`
+- `server/public/overview.html`
+- `server/public/countries.html`
+- `server/public/products.html`
+- `server/public/traffic.html`
+- `server/public/ads.html`
+- `server/public/tools.html`
 
-Main tabs (top row):
-- Home: live visitors table + top KPI grid
-  - KPI grid refreshes independently every ~60s via `GET /api/kpis` (shows a small spinner in each KPI while refreshing)
-  - KPI grid: mobile is swipeable; desktop pages only when KPI labels wrap
-  - KPI diff compare: tiny inline icon in the “yesterday” subline for **Sessions / Conv rate / AOV** opens a reusable “Shopify vs Birdseye” KPI diff modal (styled to match Diagnostics palette; 3px radii; max font-weight 500) using `GET /api/config-status` (manual Refresh inside modal). Sessions + AOV are simplified (only those values); Conv rate keeps the richer bot/CR view.
-  - SSE drives live session updates + sale toast (desktop: Home shows as the birdseye PNG icon; mobile: tabs collapse into a hamburger menu with the birdseye logo centered between hamburger + date picker)
-  - Mobile-only: hide “Sales” quick-tab; “Next update” shows icon only (Live + pulse unchanged)
-- Home “Landing Page” cell:
-  - If both entry + exit pages are known, shows two overlapping thumbnails and two lines:
-    - Entry line: green “<” + page name (screen-reader text includes “Entry:”)
-    - Exit line: red “>” + page name (screen-reader text includes “Exit:”)
-    - Exit thumbnail is smaller than entry (visual hierarchy)
-  - Otherwise, shows the single thumbnail + label (existing behaviour)
-- Geos: Countries + Best GEO Products + Average Order Value tables for selected date range
-- Products: Best / Worst / Variants tables for selected date range
-  - Best sellers: Orders / Sessions / Rev / CR%
-  - Worst products: Orders / Sessions / Rev / CR%
-  - Best variants + Worst variants: Orders / Sessions / Rev / CR%
-  - Sessions is per-row product landings (variants use parent product landings as the Sessions denominator)
-- Traffic: two tables (Channels + Traffic Type)
-  - Channels table renders source icons + labels
-  - Home table “Source” column shows icons from `sessions.traffic_source_key` (mapping rules configurable in Settings → Sources)
-- Ads: placeholder Ads panel (lazy-loads `/ads.js`)
-  - API: `GET /api/ads/status` and `GET /api/ads/summary?range=...`
+Shared assets:
+- `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
+- `server/public/tabler-theme.css`: Tabler theme tokens + sticky navbar overlap styling.
+- `server/public/tools.css`: tools page styles extracted from inline HTML.
+- `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
 
-Global date range picker (applies to Geos + Products + Traffic):
-- Today / Yesterday / Choose dates…
-  - Choose dates opens a calendar popup (last 30 days). Grey dates have no session data.
-  - Range selection: click a start day then an end day, preview highlights, then press Apply (Clear resets).
-  - Custom ranges are represented as `r:YYYY-MM-DD:YYYY-MM-DD` (admin timezone). Legacy single-day keys `d:YYYY-MM-DD` are still accepted.
-  - After applying, the dropdown shows the chosen date label (not “Custom”).
-  - UX fix: “Choose dates…” remains re-selectable (dropdown resets after opening the modal, so you don’t have to click Today/Yesterday first).
-  - Supported across: `/api/stats`, `/api/kpis`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`, `/api/shopify-best-variants`, `/api/shopify-worst-variants` (and `server/store.js#getRangeBounds`).
-
-Traffic tab (new)
-- Layout:
-  - Desktop: 2-column grid (50% / 50%) with two cards
-  - Mobile: stacked (100% each)
-- Tables:
-  - Channels table: “Google Ads”, “Google Organic”, “Bing Ads”, “Bing Organic”, “Facebook Ads/Organic”, “Omnisend”, “Direct”, etc.
-  - Traffic table: device → platform breakdown (expandable): Desktop/Mobile/Tablet parents with OS children (Windows/Mac/Linux/Chrome OS/iOS/Android/Unknown)
-- Settings:
-  - Footer Settings modal → Traffic:
-    - Shows every *detected* source/type (last ~30 days)
-    - Tick which ones should appear in the tables
-    - Selections persist across visits
-  - Footer Settings modal → Sources (Source mapping):
-    - Shows unmapped UTM tokens detected in session entry URLs
-    - Lets you map tokens → Sources (reuses built-in keys like `google_ads`/`bing_ads` when labels match; otherwise creates `custom_...`)
-    - Token editor uses an existing-source dropdown + bulk “Save mappings” (inputs don’t wipe when saving/refreshing)
-    - Source labels are deduped (case/spacing/punctuation-insensitive): identical names map to the same Source key; duplicates are merged on startup and prevented from reappearing
-    - Built-in sources (including `direct`) are shown in the sources list so you can set a custom icon even without a token mapping
-    - If a token is mapped again, the newest mapping wins (overrides earlier rules)
-    - Icon previews fall back to built-in source icons when no custom icon URL is set
+Legacy/backup:
+- `server/public/live-visitors.html` kept as backup of the monolithic page.
 
 ---
 
-## Requested next work (not shipped yet)
+## Routing + auth
 
-- Google Ads API integration for Ads tab:
-  - OAuth connect + callback, store refresh token in settings
-  - Fetch spend/clicks/impressions/conversions/conversion value for selected range and render in Ads tab
-  - Env vars (server):
-    - `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET` (or reuse `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`)
-    - `GOOGLE_ADS_DEVELOPER_TOKEN`
-    - Optional: `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `GOOGLE_ADS_API_VERSION`
-  - Endpoints:
-    - `GET /api/ads/google/connect`
-    - `GET /api/ads/google/callback`
-    - `POST /api/ads/google/config`
-    - `POST /api/ads/google/disconnect`
+Server routing (Express):
+- Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
+- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/overview`, `/countries`, `/products`, `/traffic`, `/ads`, `/tools`.
+- See: `server/index.js`.
 
+Auth protection:
+- `server/middleware/dashboardAuth.js` updated to include the new per-page routes.
+- Login flow redirects to `/dashboard` after OAuth (`server/routes/login.js`).
+
+---
+
+## Per-page bootstrapping behavior
+
+`server/public/app.js`:
+- Uses `document.body.dataset.page` to decide which page to bootstrap.
+- Highlights nav by setting `aria-current="page"`.
+- Ads page lazily loads `/ads.js` when needed.
+- Tools page hides shared KPI/date controls and skips auto-refresh.
+
+---
+
+## Tools page
+
+- Rebuilt as Tabler layout (`server/public/tools.html`).
+- All inline styles moved to `server/public/tools.css`.
+- Back link points to `/dashboard`.
+- `server/public/tools.js` uses class toggles instead of inline styles.
+
+---
+
+## Sticky navbar overlap
+
+Tabler “navbar-overlap” layout applied:
+- All new pages include `class="navbar-overlap-page"` on `<body>`.
+- Sticky overlap styling lives in `server/public/tabler-theme.css`.
+
+---
+
+## Diagnostics modal
+
+- Still uses `server/public/diagnostics-modal.css` and existing HTML hooks.
+- If restyling is requested, update the modal markup + CSS to match Tabler components.
+
+---
+
+## Scripts
+
+- `scripts/split-pages.js`: Node script used to split `live-visitors.html` into per-page Tabler templates.
+
+---
+
+## Deployment
+
+- Pushes to `main` trigger deploy (GitHub Actions + Railway).
+
+---
+
+## Pending follow-ups (if requested)
+
+- Full Tabler restyle of the Diagnostics modal.
+- UI polish pass across new pages (align cards, spacing, cards in overview/countries/products/traffic).
 ## High-level architecture
 
 Backend:
-- `server/index.js`: Express app, routes, startup migrations, SSE wiring, cleanup timer
-- DB: SQLite by default (local) or Postgres when `DB_URL` is set (production recommended)
-- Migrations: `server/migrations/*.js` (run on startup and via `npm run migrate`)
+- `server/index.js`: Express app, routes, startup migrations, SSE wiring.
+- DB: SQLite by default (local) or Postgres when `DB_URL` is set (production recommended).
+- Migrations: `server/migrations/*.js`.
 
 Frontend:
-- `server/public/live-visitors.html`: single-page dashboard (vanilla JS + Fetch + SSE)
+- `server/public/*`: multiple HTML pages (Tabler UI).
+- Shared JS: `server/public/app.js`.
 
 Shopify:
-- Pixel extension: `extensions/live-visitors-pixel/` (Shopify Web Pixels)
-- Shopify Admin APIs used for sales/sessions/best-sellers endpoints
+- Pixel extension: `extensions/live-visitors-pixel/`.
+- Shopify Admin APIs for sales/sessions/best-sellers endpoints.
 
-Edge (optional but used for better bot signals):
-- Cloudflare Worker: `workers/ingest-enrich.js`
-  - Enriches ingest requests with CF headers (country/colo/asn + bot signals)
-  - Optional bot blocking at the edge (see `docs/CLOUDFLARE_INGEST_SETUP.md`)
+Edge (optional):
+- Cloudflare Worker: `workers/ingest-enrich.js`.
 
 ---
 
 ## Data flow (end-to-end)
 
 1) Storefront events
-- Shopify Web Pixel sends events to `POST /api/ingest`
-- Ingest requires `INGEST_SECRET` (header `X-Ingest-Secret` or Bearer auth)
-- Cloudflare (optional) adds bot/geo signals via headers
+- Shopify Web Pixel sends events to `POST /api/ingest` (requires `INGEST_SECRET`).
 
 2) Ingest processing
-- `server/routes/ingest.js` parses request, applies whitelist, adds derived fields, writes events + session updates
+- `server/routes/ingest.js` parses requests, derives fields, writes events + sessions.
 
 3) Storage
-- Central store logic in `server/store.js`
-- Session upsert writes to `sessions` table (and related tables as needed)
+- `server/store.js` is the central store logic (sessions + stats queries).
 
 4) Dashboard queries
-- Home uses SSE: `GET /api/stream`
-- Geos uses: `GET /api/stats`
-- Traffic uses: `GET /api/traffic`
-- Traffic prefs saved via: `POST /api/traffic-prefs`
-
----
-
-## Traffic feature (what was implemented)
-
-### Schema
-Migration added:
-- `server/migrations/021_sessions_traffic_fields.js`
-
-New `sessions` columns (both SQLite + Postgres):
-- `traffic_source_key` (TEXT): normalized marketing/source category (e.g. `google_ads`, `direct`)
-- `ua_device_type` (TEXT): `desktop | mobile | tablet`
-- `ua_platform` (TEXT): `windows | mac | ios | android | chromeos | linux | other`
-- `ua_model` (TEXT, optional): e.g. `iphone`, `ipad` when detected
-
-Indexes added for the above fields.
-
-### Derivation + storage
-Ingest UA parsing:
-- `server/routes/ingest.js` derives `ua_device_type`, `ua_platform`, `ua_model` from the User-Agent string
-
-Traffic source classification:
-- `server/store.js` derives `traffic_source_key` using a “smart” cascade:
-  - UTMs: `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`
-  - Click IDs in entry URL: `gclid`, `fbclid`, `msclkid`, etc.
-  - Referrer host + internal-host detection
-  - Fallback: `direct` when zero referrer + no UTMs/click IDs; otherwise `other` (so sessions are never dropped from Traffic)
-
-Custom source mapping (new):
-- Migration: `server/migrations/027_traffic_source_maps.js`
-  - Tables:
-    - `traffic_source_tokens`: distinct UTM tokens observed from `sessions.entry_url` (+ counts + timestamps)
-    - `traffic_source_rules`: mapping rules from `utm_param` + `utm_value` → `source_key` (supports multiple keys per token)
-    - `traffic_source_meta`: per-source label + optional icon URL
-- Store logic: `server/store.js`
-  - On first capture of `sessions.entry_url`, extract allowed UTM params and upsert into `traffic_source_tokens` (for UI discovery)
-  - `traffic_source_key` derivation consults `traffic_source_rules` first; if matched, the mapped `source_key` wins
-  - When a new mapping rule is added, we backfill `traffic_source_key` for matching sessions (last ~30d) so the new source appears in Traffic immediately
-- Endpoints (admin UI):
-  - `GET /api/traffic-source-meta` (meta + rules for icon rendering)
-  - `GET /api/traffic-source-maps` (tokens + rules + sources for config UI)
-  - `POST /api/traffic-source-maps/map` (create mapping + source meta + backfill)
-  - `POST /api/traffic-source-maps/meta` (update label/icon URL)
-  - `POST /api/traffic-source-maps/backfill` (scan recent sessions to populate tokens table)
-
-Session upsert:
-- `server/store.js` `upsertSession` writes the derived fields into `sessions`
-- UA fields are normalized (only allowed values) before write
-
-### Traffic API
-New module:
-- `server/routes/traffic.js`
-
-Endpoints:
-- `GET /api/traffic?range=today|yesterday|d:YYYY-MM-DD` (legacy `3d`/`7d` still accepted)
-  - Returns:
-    - available sources/types (detected over recent window)
-    - enabled sources/types (from settings)
-    - breakdown rows for enabled items: sessions, orders, revenue (GBP), conversion rate
-- `POST /api/traffic-prefs`
-  - Body can include `sourcesEnabled` and/or `typesEnabled`
-  - Persists to `settings` keys:
-    - `traffic_sources_enabled`
-    - `traffic_types_enabled`
-
-### Traffic UI
-File:
-- `server/public/live-visitors.html`
-
-Additions:
-- New “Traffic” tab + panel
-- Two responsive cards (Source / Traffic Type) with tables
-- Traffic settings pickers live in the footer Settings modal → Traffic (single source of truth)
-- Auto-refresh integration (same cadence as Geos)
-
----
-
-## Auth / access model (important)
-
-Dashboard access:
-- Requests originating from Shopify admin (Referer/Origin) are allowed (embedded app UX)
-- Direct visits can require Google OAuth cookie when configured
-- Middleware: `server/middleware/dashboardAuth.js`
-
-API routes:
-- Most `/api/*` routes are currently registered BEFORE `app.use(dashboardAuth.middleware)` in `server/index.js`,
-  so they are effectively NOT protected by that middleware.
-- The Traffic endpoints (`/api/traffic`, `/api/traffic-prefs`) intentionally follow this pattern so embedded usage works.
-  (A previous route-level auth check was removed to prevent 401s in embedded contexts.)
-
-If you decide to secure API routes:
-- Be careful not to break embedded Shopify admin fetches
-- Apply a consistent auth strategy (e.g. signed token / session that works in iframes)
+- Live/SSE: `GET /api/stream`.
+- Reports: `GET /api/kpis`, `/api/stats`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`.
 
 ---
 
 ## Deployment + ops notes
 
-Deploy model:
-- Push to `main` triggers deploy (Railway + GitHub Actions)
-- The repo also uses `railway up` for manual deploys
-
-Production pruning:
-- `npm start` runs `scripts/prune-runtime-files.js` to remove non-runtime files from the runtime image
-  (docs, scripts, workers, extensions, .cursor, .github, etc.)
-
-DB persistence:
-- SQLite is ephemeral on many hosts (Railway filesystem is ephemeral)
-- Use Postgres (`DB_URL`) for persistence in production
+- Pushes to `main` trigger deploy (GitHub Actions + Railway).
+- `npm start` runs `scripts/prune-runtime-files.js` (removes non-runtime files from the runtime image).
+- SQLite is ephemeral on Railway; use Postgres (`DB_URL`) for persistence.
 
 ---
 
-## Guardrails / project conventions
+## Guardrails
 
-- Do not delete rows from app tables (especially `purchases`). Handle over-reporting via dedupe in stats queries.
-- Never delete or truncate `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to “fix” mismatches vs Shopify. Fix mismatches by changing reporting sources, improving reconciliation, or using snapshots/backups.
-- When adding/changing dashboard tables or metric math, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate (and can surface drift/missing dependencies).
-- When making code/config changes: commit + push (deploys are push-driven).
-- “Sentry” checks should be done via the `user-sentry` MCP tools (project: Node, org: lee-cooper, region: de).
+- Do not delete rows from `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to fix data drift.
+- When changing dashboard sections, update `server/trackerDefinitions.js`.
 
 ---
 
-## Sales, sessions, backups (non-destructive)
+## Changelog (summary)
 
-Core rule:
-- **We never delete/truncate rows** in `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to make numbers “match Shopify”.
-- If numbers differ, we **change reporting sources** (truth vs pixel; our sessions vs Shopify sessions), run reconciliation, or add snapshots — we do **not** remove data.
-
-Reporting source config (settings table):
-- Orders source (`settings.key = reporting_orders_source`):
-  - `orders_shopify` (default): report using Shopify Orders truth cached in `orders_shopify`
-  - `pixel`: report using pixel-derived orders in `purchases` (deduped in queries; no deletes)
-- Sessions source (`settings.key = reporting_sessions_source`):
-  - `sessions` (default): report using our `sessions` table
-  - `shopify_sessions`: report using `shopify_sessions_snapshots` (ShopifyQL snapshots)
-
-Append-only audit tables:
-- `reconcile_snapshots`: appended after every successful `salesTruth.reconcileRange` (shop/scope/range + Shopify orderCount/revenueGbp + fetched_at)
-- `shopify_sessions_snapshots`: appended whenever we fetch Shopify sessions (and on-demand when using Shopify sessions reporting)
-
-Verify vs reconcile:
-- `GET /api/verify-sales`: **verify-only** drift (no reconciliation, no writes to `orders_shopify`). Optional: `?source=snapshot` uses latest `reconcile_snapshots`.
-- `POST/GET /api/reconcile-sales`: reconciliation (Shopify → `orders_shopify`) and snapshot append.
-
-Backups + recovery:
-- Daily backups run in-process (fail-open) and keep the **last 7** backups.
-- Manual/cron backup command: `npm run backup:daily` (runs `server/runDailyBackup.js`).
-- SQLite backups:
-  - Location: `server/backups/` (files like `live_visitors_daily_YYYYMMDD_HHMMSS.sqlite`)
-  - Restore: stop the server and replace `live_visitors.sqlite` with a chosen backup file.
-- Postgres backups:
-  - Stored as backup tables (e.g. `orders_shopify_backup_daily_YYYYMMDD_HHMMSS`)
-  - Restore: copy data from backup tables back into the live tables (do this carefully; prefer restoring to a new DB then switching `DB_URL`).
-- Disable in-process scheduled backups with `DISABLE_SCHEDULED_BACKUPS=1`.
-
----
-
-## Direction (where the app is heading)
-
-Near-term direction:
-- Build richer attribution + breakdowns without collecting PII:
-  - More traffic sources (TikTok/Pinterest/Snap/Klaviyo/etc.)
-  - Better device/platform splits (and optionally browser family later)
-  - Use CF country/colo/asn for geo + network breakdowns
-- Keep embedded Shopify admin experience smooth (avoid auth strategies that break iframe fetches)
-- Keep stats “truthy” by relying on Shopify Orders truth/reconciliation where appropriate
-
-Performance direction:
-- If Traffic queries become heavy, consider:
-  - caching by range
-  - pre-aggregation tables for daily breakdowns
-
----
-
-## Known weaknesses + remedies (high priority)
-
-Report load speed (biggest pain):
-- **Symptoms**: “Products” / “Geos” / “Traffic” reports can feel slow or appear stuck (client uses long fetches + overlays; server work can exceed client timeouts on large datasets).
-- **Root causes** (current):
-  - “Geos” + “Traffic” endpoints do multiple DB queries + joins; large `sessions` tables and wide ranges amplify this.
-  - Shopify reconciliation (Orders API fetch) can still dominate first-run latency for a range (network + rate limiting).
-  - Some caches are still **in-memory** (e.g. Shopify product metadata); persisted caching now exists for report payloads (see below).
-  - SQLite in production is slow/ephemeral; Postgres is recommended for real shops.
-- **Implemented (non-destructive)**:
-  - **Persisted line-item facts**: `orders_shopify_line_items` (migration 025) populated during `server/salesTruth.js` reconciliation (UPSERT). Product reports are now SQL `GROUP BY` (no `orders_shopify.raw_json` parsing in request path).
-  - **Persistent caching**: `report_cache` (migration 026) stores precomputed report payloads with TTL; used by `/api/shopify-best-sellers`, `/api/shopify-best-variants`, `/api/worst-products`, `/api/traffic`, `/api/stats`.
-  - **Instrumentation**: lightweight per-endpoint timing logs (trigger with `?timing=1`, and also logs when slow).
-- **Still recommended**:
-  - **Daily rollups**: maintain `daily_stats` tables (orders/revenue/sessions by day + channel/device/etc.) and serve report ranges by summing days.
-  - **More targeted indexes**: keep adding composite indexes matching the most expensive query patterns (especially for joined report queries).
-
-Shopify sessions snapshots (new capability, still limited):
-- Currently we snapshot Shopify “today” sessions in `shopify_sessions_snapshots` when fetched.
-- For range reporting with Shopify sessions, we need either:
-  - scheduled daily snapshots for every day, or
-  - on-demand backfill (ShopifyQL `DURING YYYY-MM-DD`) with caching and rate-limit handling.
-
-Backups durability:
-- SQLite backups live in `server/backups/` (on-disk). On Railway ephemeral storage, this is **not durable**.
-- For production, prefer:
-  - Postgres with backup tables, plus a **real** external backup/export (or use managed Postgres backups),
-  - or upload SQLite backups to durable storage (S3/R2) from a cron job.
-
----
-
-## Changelog (high level)
-
-2026-02-06
-- Fix: restore server startup by shipping missing `server/routes/shopifyFinishes.js` (was required by `server/index.js`).
-- Ads: scaffold tab + API (`/api/ads/status`, `/api/ads/summary`) and lazy-loaded frontend (`/ads.js`).
-- Products: add rolling 7d Leaderboard cards above variant cards, with a dropdown (Title / Type) powered by `GET /api/shopify-leaderboard` (Title shows product image + revenue; Type shows Shopify product_type + revenue).
-- Home: replace Home table “Last Hour” quick-tab with “Sales” (shows only converted sessions in today’s date bounds; `GET /api/sessions?range=sales`).
-- KPI UI: when range isn’t Today, KPI cards use compact padding (no extra bottom space when the subline is hidden).
-- Fix: ingest now derives visitor/session `country_code` from Cloudflare Worker `x-cf-country` (and SSE session updates fall back to `sessions.cf_country`) so sale-toast (and session updates) don’t briefly show “Unknown” before truth enrichment lands.
-- UI: pagination labels no longer include “Page”; pagination text isn’t bold; disabled Prev/Next buttons don’t fade.
-- Products: Leaderboard polish: header is now “7 Day Leaderboard”; product thumbs link to `/products/<handle>`; revenue is compact (e.g. `£3.1k`) and teal; responsive render keeps full rows (mobile max 4, desktop up to 12); loading state uses spinner + “Building leaderboards...”.
-- UI: AOV + Products card grids (AOV/Leaderboard/Finishes/Lengths) now use a framed grid with internal dividers (no card gaps), with a subtle container shadow; the leaderboard dropdown is left with the “7 Day Leaderboard” label right-aligned; and the framed grids are hidden while the report-build overlay is showing (prevents frames appearing over the loading screen).
-- Products: Finishes + Lengths cards are now ordered by revenue (highest first).
-- DB: add index `idx_osli_shop_created_at_variant_title` to speed variant_title-based product cards (`/api/shopify-finishes`, `/api/shopify-lengths`).
-- Products: add “Finishes” revenue cards (Gold / Silver / Vermeil / Solid Silver) powered by `GET /api/shopify-finishes` (Shopify truth line items, grouped by variant title finish mapping).
-- Products: Finishes cards keep a single 4-up row on desktop; 2-up on smaller screens; 1-up on mobile, with stronger metal swatch gradients for quick scanning.
-- Products: Finishes header is now a dropdown (Finishes / Lengths). Lengths cards (12"–21") are powered by `GET /api/shopify-lengths` and render as big inch labels (no gradients).
-- API: add `GET /api/shopify-lengths` (Shopify truth line items grouped by inferred length from variant_title).
-- UI: restore sale toast chime (Shopify CDN MP3) by priming audio on first interaction and retrying on click when autoplay is blocked (embedded Shopify admin). Keep this remote (do not add/replace with a local MP3 file).
-- Truth sync: add an in-flight gate to prevent duplicate concurrent reconciles; unify product-report reconciliation scope to `products_${range}` so Products endpoints share one truth sync.
-- Settings modal: modal and open button labelled "Settings"; Copy/meta bar (Shop · TZ · Updated, Copy AI debug, pills) moved into collapsible "Copy / meta" dropdown; AUTH + SCOPES / TRUTH SYNC HEALTH tables use grid (minmax 200px + 1fr) for consistent alignment; dm-def-details use odd/even backgrounds (#e2e8f0 / #f1f5f9), no border-bottom; Sources tab (#traffic-source-mapping-root) forced to modal design (tsm-* overrides in diagnostics-modal.css).
-- Traffic: remove per-table ⚙ buttons on the Traffic tab and centralize channel/device settings inside the footer Settings modal → Traffic.
-- Diagnostics modal: single background (#f1f5f9), sections separated by border-bottom only; dropdown directly under header, Copy Debug in its own section; Bots blocked (today) hero on first page (Overview); dm-brand-sub, dm-card-note, dm-hint hidden for quick scan; no white card/box backgrounds.
-- Diagnostics modal (footer settings icon): new `server/public/diagnostics-modal.css`; all inline styles removed from modal HTML and from JS-rendered content; class-based layout (dm-*), full-screen–friendly, mobile-responsive; tab/panel and copy-msg use classList.
-- Reporting guardrail: sales/orders in all tables are Shopify truth (`orders_shopify` / `orders_shopify_line_items`). Pixel `purchases` remain drift/debug only.
-- Products: Best tables ordered by revenue; Worst products/variants now list zero-order items sorted by highest clicks then lowest revenue.
-- Products: Orders columns now sum line-item quantities (units sold) instead of distinct order counts; unknown country flags now use a placeholder instead of 404.
-- Geos/Traffic/Products: removed reliance on `purchase_events` evidence linkage for Orders/Rev so reports can’t undercount due to blocked checkout events and can’t exceed Shopify.
-- Conversion: standardised to **Orders / Sessions × 100** across KPI + Geos/Traffic/Products tables (truth numerator).
-- Diagnostics: Overview now displays Birdseye truth orders/revenue; pixel-derived numbers are shown only in drift/debug panels.
-- Diagnostics: Shopify CR uses ShopifyQL conversion_rate (matches Shopify Admin) and modal now has a refresh button.
-- UI: KPI grid: tiny inline compare icon on Sessions/Conv rate/AOV opens a reusable “Shopify vs Birdseye” KPI diff modal (manual refresh; Sessions + AOV simplified, Conv rate keeps the richer bot/CR view).
-- UI: rename Breakdown tab to Geos; add reusable KPI diff modal opened from tiny inline compare icon on Sessions/Conv rate/AOV yesterday sublines (3px radii, max font-weight 500, Diagnostics palette); `.length-icon` padding reset to 0.
-- Diagnostics: ShopifyQL row parsing now handles object-form rows (prevents 0 sessions/CR when ShopifyQL returns keyed rows).
-- Diagnostics: tracker definitions (`server/trackerDefinitions.js`) updated to include Products “Finishes” cards and to document Traffic settings sources (settings.traffic_sources_enabled / settings.traffic_types_enabled).
-- Products: Sessions for Best/Worst/Variants now derive product handles from `sessions.first_path` or `entry_url` (fallback `first_product_handle`) so CR uses true product landings.
-- Latest sale: removed last-resort fallback to `purchases` (never show a non-truth sale).
-- Worst products: maps product handle → product_id via Admin GraphQL `productByHandle` (cached) to join truth line-item sales.
-- UI: Sale toast is now rendered as a `body` overlay (not inside the KPI grid). Desktop is centered and capped at 500px; mobile is full-viewport width; toast slides down/up. Sales KPI animations are no longer blocked while the toast is visible.
-- UI: Diagnostics / config modal uses modern inline styles and responsive layout (auto-stacking grids on mobile, improved header/actions, better scrolling).
-- UI: KPI delta arrow SVGs now inherit red/green via `currentColor` (icon tints while KPI values stay black).
-- UI: Home sessions rows are solid white (no zebra); converted rows always show the hover highlight; landing entry/exit stack is vertically centered.
-- UI: KPI deltas now appear for any non-zero change; next-update timer uses a pie fill; date select label is “Custom” (100px width); sale-toast product font is 13px on desktop; Diagnostics logos are 20px with no padding.
-- UI: Footer last-sale toggle spacing is tightened with a divider; KPI down icons now use a true down-right SVG with a 0.5% delta threshold; mobile KPIs show two cards per viewport.
-- UI: Mobile KPI cards fit two-per-view with unified gap spacing (matches table gap).
-- UI: KPI delta badges use white backgrounds and good/bad border tints (bounce inverted).
-- UI: Sales KPI odometer now settles to plain text after animating.
-- UI: KPI labels/subtext refreshed (11px label, top divider and spacing for subline).
-- UI: KPI subline is now an anchored bottom bar on each KPI card (absolute footer).
-- UI: Footer “Last sale” toggle now refreshes toast content when cached data is stale.
-- UI: Mobile sale toast no longer forces `.sale-toast-host` to static positioning.
-- UI: Sales KPI odometer finalize preserves the delta icon.
-- UI: Stats tables (BEST/Worst/Variants etc.): removed “border within a border” (table border dropped inside cards so only card border shows); removed extra whitespace above pagination; single separator above pagination (no double line).
-- API: `/api/latest-sale` now returns the chronologically latest paid order (orders_shopify by created_at DESC), then enriches country from purchase_events/sessions when evidence exists. Previously it returned "latest order that has a purchase_events link", so when the true latest order had no link yet the footer "last sale" time (from SSE) was correct but the eye-toast showed the 2nd latest.
-
-2026-02-05
-- UI: sale toast title now shows full country name; time moved under amount (12px, #e7db75) with clock icon and tighter spacing; product title set to 11px; footer “Last sale” adds Show/Hide to pin latest toast until the next sale.
-- UI: mobile sale toast overlays full viewport width (fixed top slide-down/up) with squared corners (except product image).
-- KPI: Sales value uses an odometer-style digit roll on toast-triggered updates.
-- KPI: labels are normal-weight, values are black except Sales (green); delta icons use new arrows and only color the SVGs (red/green).
-- KPI: when range is Today, show yesterday values under each KPI in small grey text.
-- UI: sale toast forces Home table refresh for Today/Last Hour/Live and updates footer “Last sale” from toast payload.
-- Date picker: redesign “Custom” into “Choose dates…” range picker (two-click selection + highlight + Clear/Apply). Custom ranges use `r:YYYY-MM-DD:YYYY-MM-DD` (admin TZ), are accepted by all report endpoints (`/api/stats`, `/api/kpis`, products, traffic), and the dropdown displays the chosen dates (not “Custom”).
-- Ingest/Sales evidence: on checkout_completed append purchase_events evidence (append-only), link to Shopify orders when possible (order_id / checkout_token), and also insert into `purchases` (pixel-derived “Birdseye” drift/debug).
-- Ingest/Sales evidence: also capture checkout_started `checkout_token` into purchase_events so truth orders can still be linked/attributed when checkout_completed evidence is missing (reduces Shopify vs Birdseye order gaps without deleting data).
-- Fix: harden purchase dedupe keys to **ignore non-string checkout_token / order_id** (avoid `"[object Object]"` collapsing all purchases into one) and normalize order_id to stable numeric ids when possible.
-- Ops: added migration `028_backfill_purchases_from_evidence` (one-time, idempotent) to backfill `purchases` from recent `purchase_events` using the original occurred_at timestamps (backdated). This is debug-only unless reporting source is switched to `pixel`.
-- Edge: Worker ingest matcher now normalizes trailing slashes so `/api/ingest/` is treated as ingest (enrichment/bot handling applies consistently).
-- Pixel: added a dashboard toggle (stored in DB setting `pixel_session_mode`) to switch the pixel’s session_id strategy:
-  - `legacy` (default): session_id in sessionStorage (tab-scoped; can inflate sessions)
-  - `shared_ttl`: session_id shared via localStorage with a 30m inactivity TTL (reduces Birdseye sessions vs Shopify).
-- KPI grid: independent ~60s refresh via `GET /api/kpis` with mini spinners while updating (no longer tied to Geos/Products/Traffic refresh cadence)
-- Auto-refresh: non-live tables now refresh every 5 minutes (Today/Last Hour, Geos/Products/Traffic); Live remains 60s.
-- UI: update Online user icon + standardise SVG icon colouring (match footer icons).
-- Geos: add “Best GEO Products” card (top 3 products per country) powered by `/api/stats` (`bestGeoProducts` truth query: purchase_events → sessions.country_code + orders_shopify_line_items revenue).
-- UI: fix product table names disappearing on large screens (product name cell no longer inherits country-table flex rules; name now reliably ellipsizes instead of collapsing).
-- UI: browser tab title is now “Birdseye Tracker”.
-- UI: restyle `/app/login` (Birdseye logo + green primary Google sign-in button).
-- UI: sale toast (2-KPI overlay) restyled (green bg, bird icon, inline country flag, gold amount) + debug trigger `?birdseye_sale=1`.
-- UI: dashboard + login favicon now uses `/assets/favicon.png` (local).
-- UI: Home tab icon swaps to green image when active.
-- UI: add vertical margin to Landing Page entry/exit lines block.
-- UI: Entry/Exit labels use directional arrows in the Landing Page details.
-- KPI grid: mobile swipe horizontally (no pager); desktop pager appears only if KPI labels wrap. KPI mini-spinners only show on first load (silent refreshes after).
-- Mobile: centered birdseye logo in main tabs bar + green logo header; hide “Last Hour”; “Next update” label hidden (icon only)
-- Mobile: table headers use icon abbreviations (Geo text) to avoid overlaps
-- KPIs: Returning revenue (Shopify truth) uses Shopify returning-customer signal (`orders_shopify.customer_orders_count >= 2`) rather than session “returning” heuristics
-- Products: CR% is per-row (orders ÷ product landing sessions). Orders/Rev are attributed to the same landing-session cohort where possible so denominators aren’t global site sessions.
-- Products: product title column is responsive (more width + larger titles on desktop; clamped multi-line on smaller screens)
-- Products: rename Variants → Best Variants and add Worst Variants (new endpoint `GET /api/shopify-worst-variants`)
-- Traffic: Channels table renders source icons (same icon set as Home table Source column)
-- Home table: when Entry+Exit are present, Exit thumbnail is smaller; cart value shown as whole £ (no decimals)
-- Home table: conversion badge on the landing thumbnail uses a green SVG icon (replaces the dollar image).
-- UI: converted row highlight uses bg `#f6fefd`; table cells use font-weight 500
-- Home table: Landing Page thumbs no longer use the `checkout.webp` placeholder (checkouts fall back to product thumb or icon)
-- Diagnostics: redesigned config/diagnostics modal into a Shopify vs Birdseye grid + side-by-side diff table, with collapsible technical tabs (SVG icons)
-- Diagnostics: add checkout-token truth order/revenue breakdown (proxy for online-store checkouts); CR% uses **sessions that completed checkout** (distinct `checkout_completed` sessions) / Sessions (Shopify definition), so it stays correct even when orders > sessions
-- Diagnostics: flatten to a single top tab bar (no nested tabs) and rebuild the modal content with inline styling + clearer “CR% (sessions)” vs “Orders/session%” so the definition change is obvious
-- Diagnostics: add Shopify/Birdseye icons + a “Copy AI debug” button that copies a detailed structured diagnostics payload (raw `/api/config-status` + computed CR math) for pasting into AI chats when diagnosing inconsistencies
-- Diagnostics: add Sales drift “AI notes” + missing-evidence sample (truth orders missing checkout_completed evidence) and include AI notes in the copy payload so big Shopify vs Birdseye sales gaps are diagnosable
-- Diagnostics: standardise all border radii inside the Diagnostics modal to 3px
-- Traffic: treat store self-referrers (`heybigday.com`, `hbdjewellery.com`) as internal → Direct (prevents these referrers appearing under Other in Traffic + Source icons)
-- Traffic: Source mapping panel UX: widen source dropdown and add an inline mapped-token icon jump row (click icon → scroll to token row)
-- Diagnostics: Definitions tab is powered by `server/trackerDefinitions.js` and includes runtime checks (DB tables present, token stored, UI ids present).
-- KPIs/Stats: conversion rate is session-based (sessions-with-purchase / sessions), not raw order-count / sessions (matches Shopify analytics definition)
-- UI: make all dashboard table headers sortable on click (Home sessions + Geos/Products/Traffic tables), with sort arrows + keyboard (Enter/Space)
-- UI: prevent duplicate “cha-ching” for a single sale (avoid double-trigger when order totals arrive later / KPI refresh drift)
-- UI: sale toast: newest sale wins (no stale latest-sale overwrite) + add dismiss (×) button for faster clear
-- UI: modernise pagination styling across all tables (pill buttons, chevrons, better disabled/hover, compact rows selector)
-- UI: if a card has its own header bar (e.g. Traffic), only that bar is grey; table header row is white
-- Traffic: add Direct + Other handling and a configurable “Source mapping” UI (map UTM tokens → custom sources + icon URLs); mapping affects Traffic picker, Traffic channels icons, and Home table source icons
-  - Home table “Source” column uses mapped icons only (no legacy UTM/referrer icon stacking) to prevent duplicate icons
-- UI: remove duplicate mobile top-bar logo and update the centered tabs logo to the green Birdseye mark
-- UI: landing thumbnails framed + stacked overlap tweak; hide purchase overlay and instead show a 3px green left bar on converted rows; update link colour (`--link-fg`)
-- UI: update the Home tab active icon to use the latest green Birdseye asset
-- UI: Landing Page entry/exit arrows now text “< >” (green/red) and mobile keeps entry/exit lines visible
-- UI: table header abbreviations replaced with icons (country uses “Geo” text)
-- UI: Best GEO Products now shows product thumbnails (flag + thumb; no country name)
-- KPI grid: default value color is grey, with green/red highlight when ≥10% vs same time yesterday; mobile swipe, desktop pager when labels wrap
-- UI: sale toast typography/amount styling refreshed (smaller product title, amount pill)
-- UI: font-weight 500 only on converted row cells (not all tds)
-- UI: dashboard favicon now uses the CDN asset
-- UI: tables use green outer borders with zebra striping (no inner borders)
-- UI: Geos AOV now renders as a card strip above the country/geo tables, and pagination only shows to balance table heights
-- UI: Best-by-GEO row pill styling added around product thumbs
-- UI: mobile icon headers shift sort arrows up for clearer alignment
-- UI: icon-mode tables round revenue values to whole pounds
-- UI: desktop tables render revenue decimals smaller than the whole-pound value
-- UI: table borders reverted to neutral; converted row accent sits on the table edge
-- UI: Landing Page entry/exit arrows now use SVG chevrons (entry →, exit ←); /pages/contact shows as “Contact”
-- UI: hide “Rows” label in mobile pagination to prevent line wrapping
-- UI: KPI neutral color set to #444 (red/green thresholds unchanged)
-- Mobile: replace the date range select with a compact “Date” button (calendar icon) that opens a small menu (Today/Yesterday/Choose dates…)
-- UI: Best-by-GEO first column no longer forces white backgrounds; row striping stays consistent
-- Mobile: product names in product tables truncate to a single line with ellipsis (no 3-line wraps)
-- UI: product name styling uses normal font-weight (400) and no clamp-based sizing/line-clamping
-- UI: pagination controls are now joined (segmented) and hover no longer lifts buttons
-- UI: AOV cards use neutral border + subtle shadow (matches table card styling)
-- UI: breakdown table zebra striping applies cleanly across first column (flag/thumb) without white blocks
-- UI: Live table pagination is a single joined control (Prev / page / Next / Rows) without hover lift
-- UI: rows-per-page selector removed; Live sessions pagination defaults to 25 rows
-- UI: sessions table now expands to fill the card width (prevents blank white area to the right on wide screens)
-- UI: tweak landing entry/exit stack spacing (landing-lines margin + remove gap)
-- UI: map `/account/login` to “Login” in Landing Page entry/exit labels
-- UI: widen Landing Page column + remove max-width clamp to prevent entry/exit layout spilling into adjacent columns
-- Mobile: Geos tables stack 100% width (override `.stats-row.breakdown-row` two-column grid on small screens)
-- Mobile: date button width tightened to 55px
-- UI: card pagination controls use a 30px tall segmented style (tighter padding/gaps)
-- UI: removed the converted-row left accent pseudo-element (`::before`) in the sessions table
-- UI: KPI grid shows green up-arrow / red down-arrow SVG at end of value when better/worse vs yesterday
-- Traffic: Source mapping panel opens full-screen from the Traffic · Sources modal and uses larger input boxes for faster mapping
-- Traffic: Source mapping token editor now supports an existing-source dropdown + bulk “Save mappings” (preserves in-progress edits across refresh)
-- Traffic: source labels are now unique (case/spacing/punctuation-insensitive). Startup migration `029_dedupe_traffic_source_meta_labels` merges duplicate labels by repointing `sessions.traffic_source_key` + `traffic_source_rules.source_key`, backs up deleted rows, and adds a unique `label_norm` constraint to prevent duplicates reappearing
-- Traffic: built-in channels are canonicalized. Startup migration `030_canonicalize_built_in_traffic_sources` merges any custom key whose label matches a built-in (e.g. Bing Ads) into the built-in key (so click-id derived sessions and mapped sessions group together)
-- Traffic: mapping now prefers built-in keys/icons (e.g. Google/Bing) and remapping a token overrides older rules (newest wins)
-
-2026-02-04
-- Added Traffic tab (Source + Traffic Type) with persistent pickers
-- Added derived traffic fields to `sessions` via migration 021
-- Added `/api/traffic` + `/api/traffic-prefs`
-- Date picker: change dropdown to Today / Yesterday / Custom (calendar for last 30 days)
-  - Added `GET /api/available-days` and custom day keys `d:YYYY-MM-DD` across report endpoints
-- Sales/sessions non-destructive foundations:
-  - Added `reconcile_snapshots` + `shopify_sessions_snapshots` (append-only)
-  - Added reporting source settings (`reporting_orders_source`, `reporting_sessions_source`) and wired stats/traffic/worst-products to use them
-  - Made `/api/verify-sales` verify-only (no reconcile first), with optional snapshot compare
-  - Added daily backup scheduling + `npm run backup:daily` (retain last 7)
-- Dashboard: use footer settings SVG on Traffic pickers; show purchased badge as a tiny overlay on the landing thumbnail (and avoid the checkout placeholder for purchased sessions)
-- Dashboard: make footer “Last sale” use authoritative truth/evidence timestamps (avoid “page load” false positives)
-- Dashboard: mobile hamburger menu for main tabs; rename “Live” to “Now”; Live “Next update” becomes a pulsing dot + “Live”; Online indicator uses a user icon + spinner until real count is known
-- Dashboard: add “Products” tab and move Best/Worst/Variants tables out of Geos
-- Dashboard: show Entry + Exit pages in Home table when available (two thumbs, two-line label)
-- Traffic: make “Traffic Type” hierarchical (Device → OS children with expand/collapse)
-- Dashboard: Geos/Products/Traffic show a “building reports” overlay (with step text) until all tables are ready
-- Performance: add persisted Shopify line-item facts (`orders_shopify_line_items`) + DB-backed report caching (`report_cache`) to make product/traffic reports fast and avoid cold-start “stuck building reports”
-- Dashboard: replace Home tab SVG icon with birdseye PNG (25x25)
-- Fix embedded app load loop (“cookies” error): render dashboard on the signed App URL request (avoid internal redirect) and allow signed `GET /` even if Referer is stripped
-- Dashboard: sale toast overlays Sales+Sessions KPIs with product thumb + vertical HH:MM time + inline flag + order £ for ~10s (no manual dismiss); footer “Last sale” has Show/Hide to pin the latest toast until next sale; Sales/Orders KPI ticks up after fade using a ticker animation (`/api/latest-sale`)
+2026-02-08
+- Tabler UI rollout and split-page architecture (per-page HTML routes).
+- Sticky navbar overlap layout and shared theme config (`tabler-theme.css`).
+- Tools page rebuilt + styles moved to `tools.css`.

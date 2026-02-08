@@ -33,10 +33,12 @@
       --link-fg: #222;
       --top-bar-divider: #eee;
     }
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; line-height: 1.5; }
-    /* SVG icons: keep a consistent icon colour (match footer icons). */
-    svg { color: var(--text); }
+    /* box-sizing and body font handled by Tabler — no global override needed */
+    /* SVG icons: scoped to custom elements only (Tabler manages its own icon colours) */
+    .sale-toast svg,
+    .side-panel svg,
+    .live-view-header svg,
+    .online-user-icon { color: var(--text); }
     /* Let interactive elements tint icons via their own `color` (hover/active/focus). */
     button:hover svg,
     button:focus-visible svg,
@@ -506,15 +508,14 @@
     }
     .breakdown-icon svg { width: 16px; height: 16px; color: rgba(15, 23, 42, 0.65); }
 
-    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
-    th, td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: none; vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
-    tr:last-child td { border-bottom: none; }
-    th:not(:first-child), td:not(:first-child) { text-align: center; }
-    th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-    th:first-child, td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
-    tr:hover { background: inherit; }
-    table tbody tr:nth-child(odd) td { background: #ffffff; }
-    table tbody tr:nth-child(even) td { background: #f8f8f8; }
+    /* Scoped table styles — only for legacy non-Tabler tables (grid-table handled by tabler-theme.css) */
+    .sessions-table-wrap table { width: 100%; border-collapse: collapse; }
+    .sessions-table-wrap th, .sessions-table-wrap td { padding: var(--table-cell-padding-y) var(--table-cell-padding-x); text-align: left; border-bottom: none; vertical-align: middle; font-size: var(--table-font-size); line-height: 1.4; }
+    .sessions-table-wrap tr:last-child td { border-bottom: none; }
+    .sessions-table-wrap th:not(:first-child), .sessions-table-wrap td:not(:first-child) { text-align: center; }
+    .sessions-table-wrap th { background: var(--th-bg); font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .sessions-table-wrap th:first-child, .sessions-table-wrap td:first-child { min-width: 80px; padding-left: var(--table-cell-padding-x); }
+    .sessions-table-wrap tr:hover { background: inherit; }
     tr.returning { background: var(--returning-bg); }
     tr.returning td { background: var(--returning-bg); }
     tr.converted { background: var(--converted-bg); }

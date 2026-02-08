@@ -30,9 +30,16 @@
           <ul class="navbar-nav pt-lg-3">
             <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><span class="nav-link-icon"><i class="ti ti-dashboard"></i></span><span class="nav-link-title">Dashboard</span></a></li>
             <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live"><span class="nav-link-icon"><i class="ti ti-live-photo"></i></span><span class="nav-link-title">Live</span></a></li>
-            <li class="nav-item"><a class="nav-link" id="nav-tab-breakdown" data-nav="overview" href="/overview"><span class="nav-link-icon"><i class="ti ti-chart-pie"></i></span><span class="nav-link-title">Overview</span></a></li>
-            <li class="nav-item"><a class="nav-link" id="nav-tab-stats" data-nav="countries" href="/countries"><span class="nav-link-icon"><i class="ti ti-world"></i></span><span class="nav-link-title">Countries</span></a></li>
-            <li class="nav-item"><a class="nav-link" id="nav-tab-products" data-nav="products" href="/products"><span class="nav-link-icon"><i class="ti ti-package"></i></span><span class="nav-link-title">Products</span></a></li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                <span class="nav-link-icon"><i class="ti ti-chart-pie"></i></span>
+                <span class="nav-link-title">Overview</span>
+              </a>
+              <div class="dropdown-menu">
+                <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2"></i>Countries</a>
+                <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="ti ti-package me-2"></i>Products</a>
+              </div>
+            </li>
             <li class="nav-item"><a class="nav-link" id="nav-tab-traffic" data-nav="traffic" href="/traffic"><span class="nav-link-icon"><i class="ti ti-arrows-split-2"></i></span><span class="nav-link-title">Traffic</span></a></li>
             <li class="nav-item"><a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads"><span class="nav-link-icon"><i class="ti ti-ad-2"></i></span><span class="nav-link-title">Ads</span></a></li>
             <li class="nav-item"><a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools"><span class="nav-link-icon"><i class="ti ti-tool"></i></span><span class="nav-link-title">Tools</span></a></li>

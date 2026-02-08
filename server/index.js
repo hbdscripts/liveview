@@ -223,7 +223,7 @@ function sendPage(res, filename) {
 
 app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));
 app.get('/live', (req, res) => sendPage(res, 'live.html'));
-app.get('/overview', (req, res) => sendPage(res, 'overview.html'));
+app.get('/overview', (req, res) => res.redirect(301, '/countries'));
 app.get('/countries', (req, res) => sendPage(res, 'countries.html'));
 app.get('/products', (req, res) => sendPage(res, 'products.html'));
 app.get('/traffic', (req, res) => sendPage(res, 'traffic.html'));

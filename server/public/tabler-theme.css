@@ -53,22 +53,14 @@ body {
   height: 28px;
 }
 
-/* ── Unified Tabler card look for all wrapper elements ───────────── */
-.stats-card,
-.dash-kpi-card,
-.dash-chart-card,
-.dash-table-card {
-  background: #fff !important;
-  border: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  border-radius: .75rem !important;
-  box-shadow: rgba(35,46,60,.04) 0 2px 4px 0 !important;
-}
-.dash-table-card { overflow: hidden; }
-
-/* Tabler card styling for native .card */
+/* ── Unified Tabler card look ────────────────────────────────────── */
+/* .card class on HTML elements now provides base Tabler card styling.
+   These rules only supplement Tabler's defaults where needed. */
 .card {
   border-radius: .75rem;
+  box-shadow: rgba(35,46,60,.04) 0 2px 4px 0;
 }
+.dash-table-card { overflow: hidden; }
 
 /* ── Dashboard: remove duplicate title ───────────────────────────── */
 .dash-title { display: none; }
@@ -87,15 +79,15 @@ body {
   margin-bottom: 1rem;
 }
 .dash-kpi-card {
-  padding: 1rem 1.25rem !important;
+  padding: 1rem 1.25rem;
   text-align: center;
 }
 .dash-kpi-card.card {
-  margin-bottom: 0 !important;
+  margin-bottom: 0;
 }
 .dash-kpi-card--accent {
-  border-color: var(--tblr-primary) !important;
-  background: rgba(13, 148, 136, 0.04) !important;
+  border-color: var(--tblr-primary);
+  background: rgba(13, 148, 136, 0.04);
 }
 .dash-kpi-label {
   font-size: .6875rem;
@@ -116,8 +108,8 @@ body {
 
 /* Dashboard chart cards */
 .dash-charts-row { gap: 1rem; margin-bottom: 1rem; }
-.dash-chart-card { padding: 1rem 1.25rem !important; }
-.dash-chart-card.card { margin-bottom: 0 !important; }
+.dash-chart-card { padding: 1rem 1.25rem; }
+.dash-chart-card.card { margin-bottom: 0; }
 .dash-chart-title {
   font-size: .6875rem;
   text-transform: uppercase;
@@ -132,7 +124,7 @@ body {
 .dash-table-card {
   overflow: hidden;
 }
-.dash-table-card.card { margin-bottom: 0 !important; padding: 0 !important; }
+.dash-table-card.card { margin-bottom: 0; padding: 0; }
 .dash-table-title {
   font-size: .6875rem;
   text-transform: uppercase;
@@ -174,16 +166,16 @@ body {
 /* ── Stats/report cards (countries, overview, products, traffic) ── */
 .stats-row,
 .traffic-grid {
-  gap: 1rem !important;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
 .stats-card {
-  margin-right: 0 !important;
+  margin-right: 0;
 }
 .stats-card.card {
-  padding: 0 !important;
-  margin-bottom: 0 !important;
+  padding: 0;
+  margin-bottom: 0;
 }
 .stats-card.card > .country-table-wrap {
   flex: 1 1 auto;
@@ -192,8 +184,8 @@ body {
 
 /* Traffic card headers → Tabler card-header style */
 .traffic-card-header {
-  background: transparent !important;
-  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  background: transparent;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
   padding: .75rem 1rem;
 }
 .traffic-card-title {
@@ -382,9 +374,9 @@ body {
 }
 
 @media (max-width: 768px) {
-  .dash-kpi-row { grid-template-columns: repeat(3, 1fr) !important; }
+  .dash-kpi-row { grid-template-columns: repeat(3, 1fr); }
   .dash-charts-row,
-  .dash-tables-row { grid-template-columns: 1fr !important; }
-  .stats-row { grid-template-columns: 1fr !important; }
-  .traffic-grid { grid-template-columns: 1fr !important; }
+  .dash-tables-row { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr; }
+  .traffic-grid { grid-template-columns: 1fr; }
 }
