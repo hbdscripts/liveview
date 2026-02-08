@@ -1970,9 +1970,7 @@ const API = '';
       });
       setTimeout(function() {
         if (!el || !el.contains(wrap)) return;
-        const icon = el.querySelector('.kpi-delta-icon');
         el.textContent = next;
-        if (icon) el.appendChild(icon);
       }, 460);
     }
 
@@ -4227,29 +4225,26 @@ const API = '';
       return diff / base;
     }
 
-    var KPI_DELTA_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20.684 4.042A1.029 1.029 0 0 1 22 5.03l-.001 5.712a1.03 1.03 0 0 1-1.647.823L18.71 10.33l-4.18 5.568a1.647 1.647 0 0 1-2.155.428l-.15-.1-3.337-2.507-4.418 5.885c-.42.56-1.185.707-1.777.368l-.144-.095a1.372 1.372 0 0 1-.368-1.776l.095-.144 5.077-6.762a1.646 1.646 0 0 1 2.156-.428l.149.1 3.336 2.506 3.522-4.69-1.647-1.237a1.03 1.03 0 0 1 .194-1.76l.137-.05 5.485-1.595-.001.001z"/></svg>';
-    var KPI_DELTA_SVG_DOWN = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 12a1 1 0 0 0-2 0v2.3l-4.24-5a1 1 0 0 0-1.27-.21L9.22 11.7 4.77 6.36a1 1 0 1 0-1.54 1.28l5 6a1 1 0 0 0 1.28.22l4.28-2.57 4 4.71H15a1 1 0 0 0 0 2h5a1.1 1.1 0 0 0 .36-.07l.14-.08a1.19 1.19 0 0 0 .15-.09.75.75 0 0 0 .14-.17 1.1 1.1 0 0 0 .09-.14.64.64 0 0 0 .05-.17A.78.78 0 0 0 21 17z"/></svg>';
     function applyKpiDeltaColor(el, current, baseline, invert) {
       if (!el) return;
-      var icon = el.querySelector && el.querySelector('.kpi-delta-icon');
-      if (icon) icon.remove();
+      var wrapper = el.closest('.d-flex.align-items-baseline');
+      if (wrapper) {
+        var old = wrapper.querySelector('.kpi-delta-indicator');
+        if (old) old.remove();
+      }
       const delta = kpiDelta(current, baseline);
       if (delta == null) return;
       if (Math.abs(delta) < 0.005) return;
+      const pct = Math.round(Math.abs(delta) * 100);
       const toneDelta = invert ? -delta : delta;
-      const toneClass = toneDelta > 0 ? 'kpi-delta-good' : 'kpi-delta-bad';
-      if (delta > 0) {
-        var span = document.createElement('span');
-        span.className = 'kpi-delta-icon kpi-delta-icon-up ' + toneClass;
-        span.setAttribute('aria-hidden', 'true');
-        span.innerHTML = KPI_DELTA_SVG;
-        el.appendChild(span);
-      } else if (delta < 0) {
-        var spanDown = document.createElement('span');
-        spanDown.className = 'kpi-delta-icon kpi-delta-icon-down ' + toneClass;
-        spanDown.setAttribute('aria-hidden', 'true');
-        spanDown.innerHTML = KPI_DELTA_SVG_DOWN;
-        el.appendChild(spanDown);
+      const colorClass = toneDelta > 0 ? 'text-green' : 'text-red';
+      const iconClass = delta > 0 ? 'ti ti-trending-up' : 'ti ti-trending-down';
+      var indicator = document.createElement('div');
+      indicator.className = 'kpi-delta-indicator me-auto ' + colorClass;
+      indicator.setAttribute('aria-hidden', 'true');
+      indicator.innerHTML = '<i class="' + iconClass + '"></i> ' + pct + '%';
+      if (wrapper) {
+        wrapper.appendChild(indicator);
       }
     }
 
@@ -4316,8 +4311,6 @@ const API = '';
       applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
 
       const showYesterday = kpiRange === 'today';
-      const kpiGrid = document.getElementById('live-kpi-grid');
-      if (kpiGrid) kpiGrid.classList.toggle('kpi-not-today', !showYesterday);
       function setSub(el, text) {
         if (!el) return;
         if (!showYesterday || text === '' || text == null) {
