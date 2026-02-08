@@ -44,9 +44,31 @@
     <div class="page-wrapper">
       <div class="page-header d-print-none">
         <div class="container-fluid">
+          <div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
+  <div class="kpi-mobile-pager">
+  <div class="live-kpi-grid" id="live-kpi-grid">
+    <div class="live-kpi-cell" id="live-kpi-sales-cell">
+      <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
+      <div class="live-kpi-value" id="live-kpi-sales">—</div>
+      <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
+    </div>
+    <div class="live-kpi-cell" id="live-kpi-conv-cell">
+      <div class="live-kpi-label">Conv rate</div>
+      <div class="live-kpi-value" id="live-kpi-conv">—</div>
+      <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
+    </div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
+  </div>
+  <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  </div>
+</div>
           <div class="row align-items-center">
             <div class="col-auto">
-              <div class="page-pretitle">Overview</div>
               <h2 class="page-title" id="page-title">Ads</h2>
             </div>
             <div class="col-auto ms-auto d-print-none">
@@ -74,30 +96,7 @@
       </div>
       <div class="page-body">
         <div class="container-fluid">
-<div class="shared-kpi-wrap" aria-label="KPIs for selected date range">
-  <div class="kpi-mobile-pager">
-  <div class="live-kpi-grid" id="live-kpi-grid">
-    <div class="live-kpi-cell" id="live-kpi-sales-cell">
-      <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
-      <div class="live-kpi-value" id="live-kpi-sales">—</div>
-      <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
-    </div>
-    <div class="live-kpi-cell" id="live-kpi-conv-cell">
-      <div class="live-kpi-label">Conv rate</div>
-      <div class="live-kpi-value" id="live-kpi-conv">—</div>
-      <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
-    </div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
-  </div>
-  <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-  </button>
-  </div>
-</div>
-          <div id="tab-panel-ads" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-ads">
+<div id="tab-panel-ads" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-ads">
     <div id="ads-root"></div>
   </div>
         </div>

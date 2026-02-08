@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/app.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <title>Kexo · Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js" defer></script>
 </head>
 <body class="layout-fluid" data-page="dashboard">
   <div class="page">
@@ -44,9 +44,31 @@
     <div class="page-wrapper">
       <div class="page-header d-print-none">
         <div class="container-fluid">
+          <div class="shared-kpi-wrap" aria-label="KPIs for selected date range" style="display:none">
+  <div class="kpi-mobile-pager">
+  <div class="live-kpi-grid" id="live-kpi-grid">
+    <div class="live-kpi-cell" id="live-kpi-sales-cell">
+      <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
+      <div class="live-kpi-value" id="live-kpi-sales">—</div>
+      <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
+    </div>
+    <div class="live-kpi-cell" id="live-kpi-conv-cell">
+      <div class="live-kpi-label">Conv rate</div>
+      <div class="live-kpi-value" id="live-kpi-conv">—</div>
+      <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
+    </div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
+    <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
+  </div>
+  <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  </div>
+</div>
           <div class="row align-items-center">
             <div class="col-auto">
-              <div class="page-pretitle">Overview</div>
               <h2 class="page-title" id="page-title">Dashboard</h2>
             </div>
             <div class="col-auto ms-auto d-print-none">
@@ -74,33 +96,9 @@
       </div>
       <div class="page-body">
         <div class="container-fluid">
-<div class="shared-kpi-wrap" aria-label="KPIs for selected date range" style="display:none">
-  <div class="kpi-mobile-pager">
-  <div class="live-kpi-grid" id="live-kpi-grid">
-    <div class="live-kpi-cell" id="live-kpi-sales-cell">
-      <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
-      <div class="live-kpi-value" id="live-kpi-sales">—</div>
-      <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
-    </div>
-    <div class="live-kpi-cell" id="live-kpi-conv-cell">
-      <div class="live-kpi-label">Conv rate</div>
-      <div class="live-kpi-value" id="live-kpi-conv">—</div>
-      <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
-    </div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
-    <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
-  </div>
-  <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-  </button>
-  </div>
-</div>
-          <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
+<div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
     <div class="dash-header">
-      <h2 class="dash-title">Dashboard</h2>
-      <div class="dash-range-wrap">
+<div class="dash-range-wrap">
         <select id="dash-range-select" class="stats-select" aria-label="Dashboard range">
           <option value="7">Last 7 days</option>
           <option value="14">Last 14 days</option>
@@ -120,27 +118,27 @@
     <div class="dash-charts-row">
       <div class="dash-chart-card">
         <div class="dash-chart-title">Revenue</div>
-        <div class="dash-chart-wrap"><canvas id="dash-chart-revenue"></canvas></div>
+        <div class="dash-chart-wrap" id="dash-chart-revenue"></div>
       </div>
       <div class="dash-chart-card">
         <div class="dash-chart-title">Orders</div>
-        <div class="dash-chart-wrap"><canvas id="dash-chart-orders"></canvas></div>
+        <div class="dash-chart-wrap" id="dash-chart-orders"></div>
       </div>
     </div>
     <div class="dash-charts-row">
       <div class="dash-chart-card">
         <div class="dash-chart-title">Conversion Rate</div>
-        <div class="dash-chart-wrap"><canvas id="dash-chart-conv"></canvas></div>
+        <div class="dash-chart-wrap" id="dash-chart-conv"></div>
       </div>
       <div class="dash-chart-card">
         <div class="dash-chart-title">Sessions</div>
-        <div class="dash-chart-wrap"><canvas id="dash-chart-sessions"></canvas></div>
+        <div class="dash-chart-wrap" id="dash-chart-sessions"></div>
       </div>
     </div>
     <div class="dash-charts-row dash-charts-row--single" id="dash-adspend-row" style="display:none">
       <div class="dash-chart-card dash-chart-card--wide">
         <div class="dash-chart-title">Revenue vs Ad Spend</div>
-        <div class="dash-chart-wrap"><canvas id="dash-chart-adspend"></canvas></div>
+        <div class="dash-chart-wrap" id="dash-chart-adspend"></div>
       </div>
     </div>
     <div class="dash-tables-row">
@@ -159,8 +157,6 @@
         </table>
       </div>
     </div>
-    <div class="dash-roas-row" id="dash-roas-row" style="display:none">
-      <div class="dash-kpi-card dash-kpi-card--accent"><div class="dash-kpi-label">ROAS</div><div class="dash-kpi-value" id="dash-kpi-roas">&mdash;</div></div>
     </div>
   </div>
         </div>

@@ -7425,54 +7425,38 @@ const API = '';
         return d + ' ' + m;
       }
 
-      function makeChart(canvasId, labels, datasets, opts) {
-        if (typeof Chart === 'undefined') return null;
-        var ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
-        if (dashCharts[canvasId]) { try { dashCharts[canvasId].destroy(); } catch (_) {} }
-        var yType = (opts && opts.pct) ? {
-          ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 } },
-          beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.04)' }
-        } : (opts && opts.currency) ? {
-          ticks: { callback: function(v) { return '\u00A3' + v.toLocaleString(); }, font: { size: 11 } },
-          beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.04)' }
-        } : {
-          ticks: { font: { size: 11 } },
-          beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.04)' }
+      function makeChart(chartId, labels, datasets, opts) {
+        if (typeof ApexCharts === 'undefined') return null;
+        var el = document.getElementById(chartId);
+        if (!el) return null;
+        if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
+        el.innerHTML = '';
+
+        var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data }; });
+        var colors = datasets.map(function(ds) { return ds.borderColor; });
+        var yFmt = (opts && opts.pct) ? function(v) { return v != null ? v.toFixed(1) + '%' : '\u2014'; }
+          : (opts && opts.currency) ? function(v) { return v != null ? '\u00A3' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'; }
+          : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
+        var dashArrays = datasets.map(function(ds) { return ds.borderDash ? ds.borderDash[0] : 0; });
+
+        var apexOpts = {
+          chart: { type: 'area', height: 200, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: true, easing: 'easeinout', speed: 300 } },
+          series: apexSeries,
+          colors: colors,
+          stroke: { width: 2, curve: 'smooth', dashArray: dashArrays },
+          fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } },
+          xaxis: { categories: labels, labels: { style: { fontSize: '10px', colors: '#626976' }, rotate: 0 }, axisBorder: { show: false }, axisTicks: { show: false } },
+          yaxis: { labels: { style: { fontSize: '11px', colors: '#626976' }, formatter: yFmt }, min: 0 },
+          grid: { borderColor: 'rgba(0,0,0,0.06)', strokeDashArray: 3 },
+          tooltip: { y: { formatter: yFmt } },
+          legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px', labels: { colors: '#626976' } },
+          dataLabels: { enabled: false },
+          markers: { size: 0, hover: { size: 4 } }
         };
-        var chart = new Chart(ctx, {
-          type: 'line',
-          data: { labels: labels, datasets: datasets },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-              legend: { display: datasets.length > 1, position: 'top', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
-              tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.8)',
-                titleFont: { size: 12 },
-                bodyFont: { size: 12 },
-                padding: 10,
-                cornerRadius: 6,
-                callbacks: (opts && opts.pct) ? {
-                  label: function(ctx2) { return (ctx2.dataset.label || '') + ': ' + (ctx2.parsed.y != null ? ctx2.parsed.y.toFixed(1) + '%' : '\u2014'); }
-                } : (opts && opts.currency) ? {
-                  label: function(ctx2) { return (ctx2.dataset.label || '') + ': \u00A3' + (ctx2.parsed.y != null ? ctx2.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'); }
-                } : {}
-              }
-            },
-            scales: {
-              x: { ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 }, grid: { display: false } },
-              y: yType
-            },
-            elements: { point: { radius: 2, hoverRadius: 5 }, line: { tension: 0.3 } }
-          }
-        });
-        dashCharts[canvasId] = chart;
+
+        var chart = new ApexCharts(el, apexOpts);
+        chart.render();
+        dashCharts[chartId] = chart;
         return chart;
       }
 
@@ -7541,9 +7525,7 @@ const API = '';
 
         var hasAdSpend = series.some(function(d) { return d.adSpend > 0; });
         var adRow = el('dash-adspend-row');
-        var roasRow = el('dash-roas-row');
         if (adRow) adRow.style.display = hasAdSpend ? '' : 'none';
-        if (roasRow) roasRow.style.display = (hasAdSpend && s.roas != null) ? '' : 'none';
         if (hasAdSpend) {
           makeChart('dash-chart-adspend', labels, [{
             label: 'Revenue',
@@ -7559,7 +7541,6 @@ const API = '';
             fill: true,
             borderWidth: 2
           }], { currency: true });
-          if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = s.roas != null ? s.roas.toFixed(2) + 'x' : '\u2014';
         }
 
         var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
