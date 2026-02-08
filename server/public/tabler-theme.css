@@ -34,10 +34,41 @@ body {
   padding-top: 1.5rem;
 }
 
+.navbar-overlap-page .kexo-page-header {
+  background: #1f2937;
+  border-radius: 14px;
+  padding: 1.25rem 1.25rem 4.25rem;
+  margin-bottom: 0;
+}
+
+.navbar-overlap-page .kexo-page-header .page-pretitle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.navbar-overlap-page .kexo-page-header .page-title {
+  color: #fff;
+}
+
+.navbar-overlap-page .shared-kpi-wrap {
+  margin-top: -2.75rem;
+  position: relative;
+  z-index: 2;
+}
+
 .page-title {
   letter-spacing: -0.02em;
 }
 
 .card {
   border-radius: 14px;
+}
+
+/* Dashboard footer — fixed bottom bar inside Tabler layout */
+.navbar-overlap-page .page {
+  padding-bottom: 52px;
+}
+
+.navbar-overlap-page .dashboard-footer {
+  z-index: 1020;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }

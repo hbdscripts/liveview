@@ -5156,23 +5156,33 @@ const API = '';
         });
     }
 
-    document.getElementById('side-close').addEventListener('click', () => {
-      document.getElementById('side-panel').classList.add('is-hidden');
-    });
+    const sideCloseBtn = document.getElementById('side-close');
+    if (sideCloseBtn) {
+      sideCloseBtn.addEventListener('click', () => {
+        const panel = document.getElementById('side-panel');
+        if (panel) panel.classList.add('is-hidden');
+      });
+    }
 
-    document.getElementById('pagination-prev').addEventListener('click', function() {
-      if (currentPage <= 1) return;
-      currentPage--;
-      if (sessionsTotal != null) fetchSessions(); else renderTable();
-    });
-    document.getElementById('pagination-next').addEventListener('click', function() {
-      const totalPages = sessionsTotal != null
-        ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
-        : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
-      if (currentPage >= totalPages) return;
-      currentPage++;
-      if (sessionsTotal != null) fetchSessions(); else renderTable();
-    });
+    const paginationPrev = document.getElementById('pagination-prev');
+    if (paginationPrev) {
+      paginationPrev.addEventListener('click', function() {
+        if (currentPage <= 1) return;
+        currentPage--;
+        if (sessionsTotal != null) fetchSessions(); else renderTable();
+      });
+    }
+    const paginationNext = document.getElementById('pagination-next');
+    if (paginationNext) {
+      paginationNext.addEventListener('click', function() {
+        const totalPages = sessionsTotal != null
+          ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
+          : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
+        if (currentPage >= totalPages) return;
+        currentPage++;
+        if (sessionsTotal != null) fetchSessions(); else renderTable();
+      });
+    }
 
     setupSortableHeaders();
     setupBestSellersSort();
@@ -6973,6 +6983,7 @@ const API = '';
 
         var hashUpdateInProgress = false;
         function setHash(tab) {
+          if (PAGE) return;
           var h = TAB_TO_HASH[tab] || 'dashboard';
           if (location.hash === '#' + h) return;
           hashUpdateInProgress = true;
@@ -6980,9 +6991,11 @@ const API = '';
           hashUpdateInProgress = false;
         }
 
+        var TAB_TO_NAV = { spy: 'live', breakdown: 'overview', stats: 'countries' };
         function updateNavSelection(tab) {
+          var navKey = TAB_TO_NAV[tab] || tab;
           navLinks.forEach(function(link) {
-            link.setAttribute('aria-current', link.getAttribute('data-nav') === tab ? 'page' : 'false');
+            link.setAttribute('aria-current', link.getAttribute('data-nav') === navKey ? 'page' : 'false');
           });
           if (tabDashboard) tabDashboard.setAttribute('aria-selected', tab === 'dashboard' ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
@@ -7064,7 +7077,7 @@ const API = '';
           closeMobileMenu();
           setHash(tab);
 
-          if (pageTitleEl) {
+          if (pageTitleEl && !PAGE) {
             pageTitleEl.textContent = TAB_LABELS[tab] || 'Dashboard';
           }
 
@@ -7084,10 +7097,8 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          activeMainTab = PAGE === 'live' ? 'spy' : PAGE === 'overview' ? 'breakdown' : PAGE === 'countries' ? 'stats' : PAGE;
-          updateNavSelection(activeMainTab);
-          syncMobileMenu(activeMainTab);
-          runTabWork(activeMainTab);
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'overview' ? 'breakdown' : PAGE === 'countries' ? 'stats' : PAGE;
+          setTab(pageTab);
           return;
         }
 
@@ -7216,6 +7227,7 @@ const API = '';
 
     function onKpisAutoRefreshTick() {
       if (document.visibilityState !== 'visible') return;
+      if (activeMainTab === 'dashboard' || activeMainTab === 'tools') return;
       refreshKpis({ force: false });
     }
 
@@ -7270,8 +7282,10 @@ const API = '';
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
       updateNextUpdateUi();
-      refreshKpis({ force: false });
-      if (activeMainTab === 'stats') {
+      if (activeMainTab !== 'dashboard' && activeMainTab !== 'tools') refreshKpis({ force: false });
+      if (activeMainTab === 'dashboard') {
+        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
+      } else if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
       } else if (activeMainTab === 'breakdown') {
