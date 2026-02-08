@@ -62,8 +62,8 @@ body {
   border: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   border-radius: .75rem !important;
   box-shadow: rgba(35,46,60,.04) 0 2px 4px 0 !important;
-  overflow: hidden;
 }
+.dash-table-card { overflow: hidden; }
 
 /* Tabler card styling for native .card */
 .card {

@@ -1658,8 +1658,7 @@
     .dash-chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; box-shadow: var(--shadow); }
     .dash-chart-card--wide { grid-column: 1 / -1; }
     .dash-chart-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; margin-bottom: 0.5rem; }
-    .dash-chart-wrap { position: relative; width: 100%; height: 200px; }
-    .dash-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+    .dash-chart-wrap { position: relative; width: 100%; min-height: 200px; }
 
     .dash-tables-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 0.75rem; }
     .dash-table-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }

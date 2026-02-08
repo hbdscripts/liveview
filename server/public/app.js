@@ -7426,42 +7426,69 @@ const API = '';
       }
 
       function makeChart(chartId, labels, datasets, opts) {
-        if (typeof ApexCharts === 'undefined') return null;
+        if (typeof ApexCharts === 'undefined') {
+          console.warn('[dashboard] ApexCharts not loaded, skipping chart:', chartId);
+          return null;
+        }
         var el = document.getElementById(chartId);
-        if (!el) return null;
+        if (!el) { console.warn('[dashboard] chart element not found:', chartId); return null; }
         if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
         el.innerHTML = '';
 
-        var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data }; });
-        var colors = datasets.map(function(ds) { return ds.borderColor; });
-        var yFmt = (opts && opts.pct) ? function(v) { return v != null ? v.toFixed(1) + '%' : '\u2014'; }
-          : (opts && opts.currency) ? function(v) { return v != null ? '\u00A3' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'; }
-          : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
-        var dashArrays = datasets.map(function(ds) { return ds.borderDash ? ds.borderDash[0] : 0; });
+        try {
+          var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data || [] }; });
+          var colors = datasets.map(function(ds) { return ds.borderColor || DASH_ACCENT; });
+          var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
+            : (opts && opts.currency) ? function(v) { return v != null ? '\u00A3' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'; }
+            : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
-        var apexOpts = {
-          chart: { type: 'area', height: 200, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: true, easing: 'easeinout', speed: 300 } },
-          series: apexSeries,
-          colors: colors,
-          stroke: { width: 2, curve: 'smooth', dashArray: dashArrays },
-          fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } },
-          xaxis: { categories: labels, labels: { style: { fontSize: '10px', colors: '#626976' }, rotate: 0 }, axisBorder: { show: false }, axisTicks: { show: false } },
-          yaxis: { labels: { style: { fontSize: '11px', colors: '#626976' }, formatter: yFmt }, min: 0 },
-          grid: { borderColor: 'rgba(0,0,0,0.06)', strokeDashArray: 3 },
-          tooltip: { y: { formatter: yFmt } },
-          legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px', labels: { colors: '#626976' } },
-          dataLabels: { enabled: false },
-          markers: { size: 0, hover: { size: 4 } }
-        };
+          var apexOpts = {
+            chart: {
+              type: 'area',
+              height: 200,
+              fontFamily: 'Inter, sans-serif',
+              toolbar: { show: false },
+              animations: { enabled: true, easing: 'easeinout', speed: 300 },
+              zoom: { enabled: false }
+            },
+            series: apexSeries,
+            colors: colors,
+            stroke: { width: 2, curve: 'smooth' },
+            fill: {
+              type: 'gradient',
+              gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] }
+            },
+            xaxis: {
+              categories: labels || [],
+              labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
+              axisBorder: { show: false },
+              axisTicks: { show: false }
+            },
+            yaxis: {
+              labels: { style: { fontSize: '11px', cssClass: 'apexcharts-yaxis-label' }, formatter: yFmt },
+              min: 0
+            },
+            grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+            tooltip: { y: { formatter: yFmt } },
+            legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px' },
+            dataLabels: { enabled: false },
+            markers: { size: 0, hover: { size: 4 } },
+            noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
+          };
 
-        var chart = new ApexCharts(el, apexOpts);
-        chart.render();
-        dashCharts[chartId] = chart;
-        return chart;
+          var chart = new ApexCharts(el, apexOpts);
+          chart.render();
+          dashCharts[chartId] = chart;
+          return chart;
+        } catch (err) {
+          console.error('[dashboard] chart render error:', chartId, err);
+          return null;
+        }
       }
 
       function renderDashboard(data) {
         if (!data) return;
+        console.log('[dashboard] renderDashboard called, series count:', (data.series || []).length, 'ApexCharts loaded:', typeof ApexCharts !== 'undefined');
         var s = data.summary || {};
         var el = function(id) { return document.getElementById(id); };
         if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = s.revenue != null ? fmtGbp(s.revenue) : '\u2014';
