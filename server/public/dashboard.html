@@ -200,98 +200,372 @@
       <div class="page-body">
         <div class="container-fluid">
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
-    <div class="row g-3 mb-3" id="dash-kpi-row">
-      <div class="col-sm-4 col-lg-2">
+
+    <!-- Enhanced KPI Cards Row 1 -->
+    <div class="row g-3 mb-3">
+      <!-- Revenue Card with Trend -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
-            <div class="subheader">Revenue</div>
-            <div class="h1 mb-0" id="dash-kpi-revenue">&mdash;</div>
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Total Revenue</div>
+            </div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-revenue">&mdash;</div>
+              <div id="dash-kpi-revenue-change" class="ms-auto">
+                <span class="text-muted">&mdash;</span>
+              </div>
+            </div>
+            <div class="mt-2">
+              <canvas id="dash-revenue-sparkline" style="height:40px"></canvas>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-lg-2">
+
+      <!-- Orders Card with Progress -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
-            <div class="subheader">Orders</div>
-            <div class="h1 mb-0" id="dash-kpi-orders">&mdash;</div>
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Orders</div>
+              <div class="ms-auto lh-1">
+                <div class="dropdown">
+                  <a class="dropdown-toggle text-secondary" href="#" data-bs-toggle="dropdown" aria-label="Order details">
+                    <i class="ti ti-dots-vertical"></i>
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-end">
+                    <span class="dropdown-header">Order Breakdown</span>
+                    <a class="dropdown-item" href="/sales">View All Orders</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-orders">&mdash;</div>
+              <div id="dash-kpi-orders-change" class="text-muted">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="row">
+                <div class="col">
+                  <div class="text-muted small">Today</div>
+                  <div class="fw-bold" id="dash-orders-today">&mdash;</div>
+                </div>
+                <div class="col">
+                  <div class="text-muted small">Avg/Day</div>
+                  <div class="fw-bold" id="dash-orders-avg">&mdash;</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-lg-2">
+
+      <!-- Conversion Rate Card with Gauge -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
+          <div class="card-body">
+            <div class="subheader">Conversion Rate</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-conv">&mdash;</div>
+              <div id="dash-kpi-conv-change" class="text-muted">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="progress progress-sm">
+                <div class="progress-bar bg-primary" id="dash-conv-progress" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">Target: 2.5%</small>
+                <small class="text-muted" id="dash-conv-target-diff">&mdash;</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AOV Card with Stats -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Average Order Value</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-aov">&mdash;</div>
+              <div id="dash-kpi-aov-change" class="text-muted">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="text-muted small">Highest</div>
+                  <div class="text-success fw-bold" id="dash-aov-high">&mdash;</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted small">Lowest</div>
+                  <div class="text-warning fw-bold" id="dash-aov-low">&mdash;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced KPI Cards Row 2 -->
+    <div class="row g-3 mb-3">
+      <!-- Sessions Card with Device Breakdown -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
             <div class="subheader">Sessions</div>
             <div class="h1 mb-0" id="dash-kpi-sessions">&mdash;</div>
+            <div class="mt-2">
+              <div class="row g-2">
+                <div class="col">
+                  <div class="text-muted small"><i class="ti ti-device-desktop me-1"></i>Desktop</div>
+                  <div class="fw-bold" id="dash-sessions-desktop">&mdash;</div>
+                </div>
+                <div class="col">
+                  <div class="text-muted small"><i class="ti ti-device-mobile me-1"></i>Mobile</div>
+                  <div class="fw-bold" id="dash-sessions-mobile">&mdash;</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-lg-2">
+
+      <!-- Bounce Rate Card -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
-            <div class="subheader">Conv Rate</div>
-            <div class="h1 mb-0" id="dash-kpi-conv">&mdash;</div>
+          <div class="card-body">
+            <div class="subheader">Bounce Rate</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-bounce">&mdash;</div>
+              <div id="dash-kpi-bounce-change" class="text-muted">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="progress progress-sm">
+                <div class="progress-bar bg-danger" id="dash-bounce-progress" style="width: 0%" role="progressbar"></div>
+              </div>
+              <small class="text-muted">Lower is better</small>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-lg-2">
+
+      <!-- Customer Return Rate -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
-            <div class="subheader">AOV</div>
-            <div class="h1 mb-0" id="dash-kpi-aov">&mdash;</div>
+          <div class="card-body">
+            <div class="subheader">Returning Customers</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-returning">&mdash;</div>
+              <div id="dash-kpi-returning-change" class="text-muted">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="row g-2">
+                <div class="col">
+                  <div class="text-muted small">New</div>
+                  <div id="dash-customers-new">&mdash;</div>
+                </div>
+                <div class="col">
+                  <div class="text-muted small">Return</div>
+                  <div id="dash-customers-return">&mdash;</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-lg-2">
+
+      <!-- Ad Spend & ROAS -->
+      <div class="col-sm-6 col-lg-3">
         <div class="card">
-          <div class="card-body p-3">
-            <div class="subheader">Ad Spend</div>
-            <div class="h1 mb-0" id="dash-kpi-adspend">&mdash;</div>
+          <div class="card-body">
+            <div class="subheader">Ad Spend & ROAS</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h2 mb-0 me-2" id="dash-kpi-adspend">&mdash;</div>
+            </div>
+            <div class="mt-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">ROAS</span>
+                <span class="badge bg-primary" id="dash-roas-badge">&mdash;</span>
+              </div>
+              <div class="progress progress-sm mt-2">
+                <div class="progress-bar bg-success" id="dash-roas-progress" style="width: 0%" role="progressbar"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="dash-charts-row">
-      <div class="dash-chart-card card">
-        <div class="dash-chart-title">Revenue</div>
-        <div class="dash-chart-wrap" id="dash-chart-revenue"></div>
+
+    <!-- Main Charts Row -->
+    <div class="row g-3 mb-3">
+      <!-- Revenue & Orders Combined Chart -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Revenue & Orders Trend</h3>
+            <div class="card-actions">
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="dash-revenue-period" id="rev-7d" autocomplete="off" checked>
+                <label for="rev-7d" class="btn btn-sm">7D</label>
+                <input type="radio" class="btn-check" name="dash-revenue-period" id="rev-14d" autocomplete="off">
+                <label for="rev-14d" class="btn btn-sm">14D</label>
+                <input type="radio" class="btn-check" name="dash-revenue-period" id="rev-30d" autocomplete="off">
+                <label for="rev-30d" class="btn btn-sm">30D</label>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-revenue-orders" style="height:300px"></div>
+          </div>
+        </div>
       </div>
-      <div class="dash-chart-card card">
-        <div class="dash-chart-title">Orders</div>
-        <div class="dash-chart-wrap" id="dash-chart-orders"></div>
-      </div>
-    </div>
-    <div class="dash-charts-row">
-      <div class="dash-chart-card card">
-        <div class="dash-chart-title">Conversion Rate</div>
-        <div class="dash-chart-wrap" id="dash-chart-conv"></div>
-      </div>
-      <div class="dash-chart-card card">
-        <div class="dash-chart-title">Sessions</div>
-        <div class="dash-chart-wrap" id="dash-chart-sessions"></div>
-      </div>
-    </div>
-    <div class="dash-charts-row dash-charts-row--single" id="dash-adspend-row" style="display:none">
-      <div class="dash-chart-card dash-chart-card--wide card">
-        <div class="dash-chart-title">Revenue vs Ad Spend</div>
-        <div class="dash-chart-wrap" id="dash-chart-adspend"></div>
-      </div>
-    </div>
-    <div class="dash-tables-row">
-      <div class="dash-table-card card">
-        <div class="dash-table-title">Top Products</div>
-        <table class="table table-vcenter card-table table-striped" id="dash-top-products">
-          <thead><tr><th>Product</th><th>Revenue</th><th>Orders</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="dash-table-card card">
-        <div class="dash-table-title">Top Countries</div>
-        <table class="table table-vcenter card-table table-striped" id="dash-top-countries">
-          <thead><tr><th>Country</th><th>Revenue</th><th>Orders</th></tr></thead>
-          <tbody></tbody>
-        </table>
+
+      <!-- Conversion Funnel -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Conversion Funnel</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-funnel" style="height:300px"></div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- Secondary Charts Row -->
+    <div class="row g-3 mb-3">
+      <!-- Traffic Sources Donut -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Traffic Sources</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-traffic-sources" style="height:280px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Products Bar Chart -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top 5 Products</h3>
+            <div class="card-actions">
+              <a href="/products" class="btn btn-sm">View All</a>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-top-products" style="height:280px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geographic Sales Map -->
+      <div class="col-lg-4">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Sales by Country</h3>
+            <div class="card-actions">
+              <a href="/countries" class="btn btn-sm">View All</a>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-geo" style="height:280px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity & Performance Indicators -->
+    <div class="row g-3 mb-3">
+      <!-- Recent Orders Timeline -->
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Recent Orders</h3>
+            <div class="card-actions">
+              <a href="/sales" class="btn btn-sm">View All</a>
+            </div>
+          </div>
+          <div class="card-body" style="max-height:350px;overflow-y:auto">
+            <div class="list-group list-group-flush" id="dash-recent-orders">
+              <div class="text-center text-muted py-3">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Metrics -->
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Performance Metrics</h3>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body p-3">
+                    <div class="text-muted small">Cart Abandonment</div>
+                    <div class="h3 mb-0" id="dash-cart-abandon">&mdash;</div>
+                    <div class="progress progress-sm mt-2">
+                      <div class="progress-bar bg-warning" id="dash-cart-abandon-bar" style="width:0%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body p-3">
+                    <div class="text-muted small">Avg Session Duration</div>
+                    <div class="h3 mb-0" id="dash-session-duration">&mdash;</div>
+                    <small class="text-muted" id="dash-session-duration-change">&mdash;</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body p-3">
+                    <div class="text-muted small">Pages per Session</div>
+                    <div class="h3 mb-0" id="dash-pages-per-session">&mdash;</div>
+                    <small class="text-muted" id="dash-pages-change">&mdash;</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body p-3">
+                    <div class="text-muted small">Product Views</div>
+                    <div class="h3 mb-0" id="dash-product-views">&mdash;</div>
+                    <small class="text-muted" id="dash-views-change">&mdash;</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hourly Performance Heatmap -->
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Sales Activity Heatmap (Hourly)</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-heatmap" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     </div>
   </div>
         </div>
