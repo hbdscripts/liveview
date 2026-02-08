@@ -2389,6 +2389,7 @@ const API = '';
         .then(function(result) {
           if (result.ok) {
             bestSellersCache = result.data;
+            renderProductsChart(result.data);
             renderBestSellers(result.data);
             return result.data;
           }
@@ -3003,6 +3004,87 @@ const API = '';
         '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
+    }
+
+    let productsChartInstance = null;
+
+    function renderProductsChart(data) {
+      const el = document.getElementById('products-chart');
+      if (!el) return;
+
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderProductsChart(data); }, 200);
+        return;
+      }
+
+      if (productsChartInstance) {
+        productsChartInstance.destroy();
+        productsChartInstance = null;
+      }
+
+      if (!data || !Array.isArray(data.bestSellers) || data.bestSellers.length === 0) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        return;
+      }
+
+      const products = data.bestSellers.slice().sort(function(a, b) {
+        return (b.revenue || 0) - (a.revenue || 0);
+      }).slice(0, 10);
+
+      const categories = products.map(function(p) {
+        const title = p.title || 'Unknown Product';
+        return title.length > 30 ? title.substring(0, 27) + '...' : title;
+      });
+      const revenues = products.map(function(p) { return p.revenue || 0; });
+
+      const options = {
+        chart: {
+          type: 'bar',
+          height: 280,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false }
+        },
+        series: [{
+          name: 'Revenue',
+          data: revenues
+        }],
+        colors: ['#0d9488'],
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            borderRadius: 4,
+            barHeight: '70%'
+          }
+        },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: categories,
+          labels: {
+            formatter: function(value) {
+              return '£' + Number(value).toLocaleString();
+            }
+          }
+        },
+        yaxis: {
+          labels: {
+            style: { fontSize: '11px' }
+          }
+        },
+        tooltip: {
+          y: {
+            formatter: function(value) {
+              return '£' + Number(value).toFixed(2);
+            }
+          }
+        },
+        grid: {
+          borderColor: '#f1f1f1',
+          padding: { left: 0, right: 0 }
+        }
+      };
+
+      productsChartInstance = new ApexCharts(el, options);
+      productsChartInstance.render();
     }
 
     function renderBestSellers(data, errorMessage) {
@@ -4431,6 +4513,73 @@ const API = '';
       }
     }
 
+    const kpiSparklines = {};
+
+    function renderKpiSparkline(kpiKey, dataPoints) {
+      const canvas = document.getElementById('kpi-sparkline-' + kpiKey);
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      if (kpiSparklines[kpiKey]) {
+        kpiSparklines[kpiKey].destroy();
+        kpiSparklines[kpiKey] = null;
+      }
+
+      if (typeof Chart === 'undefined') {
+        setTimeout(function() { renderKpiSparkline(kpiKey, dataPoints); }, 200);
+        return;
+      }
+
+      const data = Array.isArray(dataPoints) ? dataPoints.slice(-7) : [];
+      if (data.length === 0) return;
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(13, 148, 136, 0.4)');
+      gradient.addColorStop(1, 'rgba(13, 148, 136, 0.01)');
+
+      kpiSparklines[kpiKey] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(function() { return ''; }),
+          datasets: [{
+            data: data,
+            borderColor: 'rgba(13, 148, 136, 0.6)',
+            backgroundColor: gradient,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          },
+          animation: { duration: 300 },
+          interaction: { mode: null }
+        }
+      });
+    }
+
+    function generateMockSparklineData(baseValue, variance) {
+      const data = [];
+      const v = variance || (baseValue * 0.2);
+      for (let i = 0; i < 7; i++) {
+        data.push(Math.max(0, baseValue + (Math.random() - 0.5) * v));
+      }
+      return data;
+    }
+
     // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
     // numbers were over- or under-reporting. To restore real values: in renderLiveKpis below, remove the
     // "N/A" block and uncomment the "Real values (when fixed)" block so KPIs use data again.
@@ -4492,6 +4641,14 @@ const API = '';
       applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
       applyKpiDeltaColor(aovEl, aovVal, compareAovVal, false);
       applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
+
+      // Render sparklines (mock data for now - will use real data from backend later)
+      if (salesVal != null) renderKpiSparkline('sales', generateMockSparklineData(salesVal, salesVal * 0.3));
+      if (convVal != null) renderKpiSparkline('conv', generateMockSparklineData(convVal, convVal * 0.2));
+      if (sessionsVal != null) renderKpiSparkline('sessions', generateMockSparklineData(sessionsVal, sessionsVal * 0.15));
+      if (returningVal != null) renderKpiSparkline('returning', generateMockSparklineData(returningVal, returningVal * 0.25));
+      if (aovVal != null) renderKpiSparkline('aov', generateMockSparklineData(aovVal, aovVal * 0.2));
+      if (bounceVal != null) renderKpiSparkline('bounce', generateMockSparklineData(bounceVal, bounceVal * 0.15));
 
       const showYesterday = kpiRange === 'today';
       function setSub(el, text) {

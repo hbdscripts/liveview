@@ -377,6 +377,20 @@
   color: #fff;
 }
 
+/* KPI Sparklines */
+.kpi-sparkline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* Utility classes */
 .u-mb-sm {
   margin-bottom: .5rem;
