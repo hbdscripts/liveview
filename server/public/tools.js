@@ -52,7 +52,7 @@
   }
 
   var back = qs('#tools-back');
-  try { if (back) back.href = '/' + (window.location.search || ''); } catch (_) {}
+  try { if (back) back.href = '/dashboard' + (window.location.search || ''); } catch (_) {}
 
   var eventDateEl = qs('#event-date');
   var dateNote = qs('#date-note');
@@ -124,8 +124,8 @@
     if (!selectedTargetEl) return;
     if (!state.target) {
       selectedTargetEl.innerHTML = '';
-      if (productModeRow) productModeRow.style.display = 'none';
-      if (variantsRow) variantsRow.style.display = 'none';
+      if (productModeRow) productModeRow.classList.add('is-hidden');
+      if (variantsRow) variantsRow.classList.add('is-hidden');
       return;
     }
     var t = state.target;
@@ -146,11 +146,11 @@
     }
 
     if (t.type === 'product') {
-      if (productModeRow) productModeRow.style.display = '';
+      if (productModeRow) productModeRow.classList.remove('is-hidden');
     } else {
-      if (productModeRow) productModeRow.style.display = 'none';
+      if (productModeRow) productModeRow.classList.add('is-hidden');
       state.mode = 'collection';
-      if (variantsRow) variantsRow.style.display = 'none';
+      if (variantsRow) variantsRow.classList.add('is-hidden');
     }
   }
 
@@ -163,13 +163,13 @@
   function renderVariants() {
     if (!variantsRow || !variantsList) return;
     if (!state.target || state.target.type !== 'product' || currentProductMode() !== 'variants') {
-      variantsRow.style.display = 'none';
+      variantsRow.classList.add('is-hidden');
       variantsList.innerHTML = '';
       if (variantsSelectAll) variantsSelectAll.disabled = true;
       if (variantsClear) variantsClear.disabled = true;
       return;
     }
-    variantsRow.style.display = '';
+    variantsRow.classList.remove('is-hidden');
 
     if (!state.variants || !state.variants.length) {
       variantsList.innerHTML = '<div class="tools-note">No variants loaded.</div>';
@@ -187,7 +187,7 @@
       var vid = v.variant_id;
       var name = v.title || vid;
       var checked = state.variantSelected.has(String(vid)) ? ' checked' : '';
-      html += '<label style="display:flex;align-items:center;gap:10px;margin:6px 0">' +
+      html += '<label class="tools-variant-label">' +
         '<input type="checkbox" data-vid="' + esc(vid) + '"' + checked + ' />' +
         '<span>' + esc(name) + '</span>' +
       '</label>';
@@ -217,7 +217,7 @@
     }
 
     if (mode === 'variants') {
-      if (variantsRow) variantsRow.style.display = '';
+      if (variantsRow) variantsRow.classList.remove('is-hidden');
     }
 
     if (hasDate && !hasTarget) setNote(compareNote, 'Select a product or collection.');
@@ -228,23 +228,22 @@
   function renderResults(data) {
     if (!resultsEl) return;
     if (!data) {
-      resultsEl.style.display = 'none';
+      resultsEl.classList.add('is-hidden');
       resultsEl.innerHTML = '';
       return;
     }
     if (!data.ok) {
-      resultsEl.style.display = '';
-      resultsEl.innerHTML = '<div class="tools-note" style="margin-top:12px">' + esc(data.error || 'Failed') + '</div>';
+      resultsEl.classList.remove('is-hidden');
+      resultsEl.innerHTML = '<div class="tools-note tools-note--spaced">' + esc(data.error || 'Failed') + '</div>';
       return;
     }
-
     if (data.insufficient) {
-      resultsEl.style.display = '';
-      resultsEl.innerHTML = '<div class="tools-note" style="margin-top:12px">Insufficient data for comparison</div>';
+      resultsEl.classList.remove('is-hidden');
+      resultsEl.innerHTML = '<div class="tools-note tools-note--spaced">Insufficient data for comparison</div>';
       return;
     }
 
-    var notice = data.notice ? '<div class="tools-note" style="margin-top:10px">' + esc(data.notice) + '</div>' : '';
+    var notice = data.notice ? '<div class="tools-note tools-note--spaced">' + esc(data.notice) + '</div>' : '';
 
     var s = data.summary || {};
     var before = s.before || {};
@@ -257,7 +256,7 @@
         '<div class="tools-metric"><div class="k">Absolute change</div><div class="v">' + (s.abs_change == null ? '—' : (s.abs_change > 0 ? '+' : '') + s.abs_change.toFixed(1) + '%') + '</div></div>' +
         '<div class="tools-metric"><div class="k">Percentage change</div><div class="v">' + fmtDeltaPct(s.pct_change) + '</div></div>' +
       '</div>' +
-      '<div class="tools-note" style="margin-top:10px">Before: ' + fmtNum(before.sessions) + ' sessions, ' + fmtNum(before.orders) + ' orders. After: ' + fmtNum(after.sessions) + ' sessions, ' + fmtNum(after.orders) + ' orders.</div>' +
+      '<div class="tools-note tools-note--spaced">Before: ' + fmtNum(before.sessions) + ' sessions, ' + fmtNum(before.orders) + ' orders. After: ' + fmtNum(after.sessions) + ' sessions, ' + fmtNum(after.orders) + ' orders.</div>' +
       notice;
 
     var variantsHtml = '';
@@ -292,7 +291,7 @@
       variantsHtml += '</tbody></table></div>';
     }
 
-    resultsEl.style.display = '';
+    resultsEl.classList.remove('is-hidden');
     resultsEl.innerHTML = summaryHtml + variantsHtml;
   }
 

@@ -69,7 +69,6 @@ function verifySession(cookieValue) {
 
 function isProtectedPath(pathname) {
   if (pathname === '/app/login' || pathname === '/app/logout') return true;
-  if (pathname === '/') return true;
   if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
@@ -78,6 +77,16 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
       pathname === '/api/available-days') return true;
+  if (
+    pathname === '/dashboard' ||
+    pathname === '/live' ||
+    pathname === '/overview' ||
+    pathname === '/countries' ||
+    pathname === '/products' ||
+    pathname === '/traffic' ||
+    pathname === '/ads' ||
+    pathname === '/tools'
+  ) return true;
   return false;
 }
 

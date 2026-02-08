@@ -187,10 +187,37 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 // Legacy path: redirect to root
 app.get('/app/dashboard', (req, res) => res.redirect(301, '/'));
-app.get('/tools', (req, res) => {
+
+function getCookie(req, name) {
+  const raw = req.get('Cookie') || req.get('cookie') || '';
+  const parts = raw.split(';').map((s) => s.trim());
+  for (const p of parts) {
+    const eq = p.indexOf('=');
+    if (eq > 0 && p.slice(0, eq).trim() === name) {
+      return decodeURIComponent(p.slice(eq + 1).trim().replace(/^"(.*)"$/, '$1'));
+    }
+  }
+  return undefined;
+}
+
+function isLoggedIn(req) {
+  const oauthCookie = getCookie(req, dashboardAuth.OAUTH_COOKIE_NAME);
+  return !!(oauthCookie && dashboardAuth.verifyOauthSession(oauthCookie));
+}
+
+function sendPage(res, filename) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public', 'tools.html'));
-});
+  res.sendFile(path.join(__dirname, 'public', filename));
+}
+
+app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));
+app.get('/live', (req, res) => sendPage(res, 'live.html'));
+app.get('/overview', (req, res) => sendPage(res, 'overview.html'));
+app.get('/countries', (req, res) => sendPage(res, 'countries.html'));
+app.get('/products', (req, res) => sendPage(res, 'products.html'));
+app.get('/traffic', (req, res) => sendPage(res, 'traffic.html'));
+app.get('/ads', (req, res) => sendPage(res, 'ads.html'));
+app.get('/tools', (req, res) => sendPage(res, 'tools.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
 app.get('/', async (req, res, next) => {
@@ -198,12 +225,12 @@ app.get('/', async (req, res, next) => {
     await auth.handleAppUrl(req, res, next);
     if (res.headersSent) return;
     if (res.locals && res.locals.renderEmbeddedDashboard) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-      res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
-      return;
+      return sendPage(res, 'dashboard.html');
     }
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.sendFile(path.join(__dirname, 'public', 'live-visitors.html'));
+    if (isLoggedIn(req)) {
+      return res.redirect(302, '/dashboard');
+    }
+    return res.redirect(302, '/app/login');
   } catch (err) {
     next(err);
   }

@@ -3,114 +3,124 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <title>Kexo – Tools</title>
+  <link rel="stylesheet" href="https://unpkg.com/@tabler/core@1.0.0-beta22/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/app.css" />
-  <style>
-    body { background: var(--bg); }
-    .tools-wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .tools-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 18px; }
-    .tools-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.2px; margin: 0; }
-    .tools-back { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.9rem; color: var(--text); text-decoration: none; }
-    .tools-card { background: var(--card); border: 1px solid rgba(0,0,0,0.06); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
-    .tools-card h2 { margin: 0 0 10px; font-size: 1rem; }
-    .tools-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
-    .tools-row { display: grid; grid-template-columns: 220px 1fr; gap: 12px; align-items: start; }
-    .tools-label { font-size: 0.85rem; color: var(--muted); padding-top: 10px; }
-    .tools-input { width: 100%; min-height: 40px; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem; background: rgba(255,255,255,0.9); color: var(--text); font-size: 0.92rem; box-sizing: border-box; }
-    .tools-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .tools-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 999px; border: 1px solid rgba(13, 148, 136, 0.55); background: rgba(13, 148, 136, 0.08); color: var(--accent); cursor: pointer; font-weight: 600; }
-    .tools-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-    .tools-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.03); font-size: 0.85rem; }
-    .tools-pill button { border: none; background: none; cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px; color: var(--muted); }
-    .tools-suggest { position: relative; }
-    .tools-suggest-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: none; }
-    .tools-suggest-menu.open { display: block; }
-    .tools-suggest-item { width: 100%; text-align: left; padding: 10px 12px; border: none; background: none; cursor: pointer; font-size: 0.9rem; color: var(--text); }
-    .tools-suggest-item:hover { background: rgba(0,0,0,0.04); }
-    .tools-suggest-kind { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .tools-radio-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-    .tools-note { font-size: 0.85rem; color: var(--muted); }
-    .tools-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
-    .tools-metric { border: 1px solid rgba(0,0,0,0.06); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,0.6); }
-    .tools-metric .k { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .tools-metric .v { font-size: 1.05rem; font-weight: 700; margin-top: 2px; }
-    .tools-table-wrap { overflow: auto; border-radius: 14px; border: 1px solid rgba(0,0,0,0.06); margin-top: 12px; }
-    .tools-table { width: 100%; border-collapse: collapse; min-width: 820px; }
-    .tools-table th, .tools-table td { padding: 10px 10px; border-bottom: 1px dashed rgba(0,0,0,0.08); font-size: 0.86rem; text-align: left; }
-    .tools-table th { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .tools-table tr:last-child td { border-bottom: none; }
-    @media (max-width: 720px) {
-      .tools-wrap { padding: 18px; }
-      .tools-row { grid-template-columns: 1fr; }
-      .tools-label { padding-top: 0; }
-      .tools-summary { grid-template-columns: repeat(2, 1fr); }
-    }
-  </style>
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="/tools.css" />
+  <title>Kexo · Tools</title>
 </head>
-<body>
-  <div class="tools-wrap">
-    <div class="tools-top">
-      <h1 class="tools-title">Tools</h1>
-      <a class="tools-back" id="tools-back" href="/">Back to Dashboard</a>
-    </div>
-
-    <div class="tools-card" id="tool-compare-cr">
-      <h2>Compare Conversion Rate</h2>
-      <div class="tools-grid">
-        <div class="tools-row">
-          <div class="tools-label">Select Event Date</div>
-          <div>
-            <input class="tools-input" type="date" id="event-date" name="event_date" min="2026-02-08" />
-            <div class="tools-note" id="date-note" style="margin-top:8px"></div>
+<body data-page="tools" class="navbar-overlap-page">
+  <div class="page">
+    <header class="navbar navbar-expand-md navbar-light d-print-none">
+      <div class="container-xl">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <a class="navbar-brand" href="/dashboard">
+          <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" />
+        </a>
+        <div class="collapse navbar-collapse" id="navbar-menu">
+          <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live">Live</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-breakdown" data-nav="overview" href="/overview">Overview</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-stats" data-nav="countries" href="/countries">Countries</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-products" data-nav="products" href="/products">Products</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-traffic" data-nav="traffic" href="/traffic">Traffic</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads">Ads</a></li>
+            <li class="nav-item"><a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools">Tools</a></li>
+          </ul>
+          <div class="ms-auto d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-icon btn-sm" id="config-open-btn" aria-label="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
           </div>
         </div>
-
-        <div class="tools-row">
-          <div class="tools-label">Product or Collection</div>
+      </div>
+    </header>
+    <div class="page-wrapper">
+      <div class="container-xl">
+        <div class="page-header d-flex align-items-center justify-content-between">
           <div>
-            <div class="tools-suggest">
-              <input class="tools-input" type="text" id="catalog-search" placeholder="Search products or collections" autocomplete="off" disabled />
-              <div class="tools-suggest-menu" id="suggest-menu"></div>
+            <div class="page-pretitle">Diagnostics</div>
+            <h2 class="page-title">Tools</h2>
+          </div>
+          <a class="btn btn-outline-primary" id="tools-back" href="/dashboard">Back to Dashboard</a>
+        </div>
+        <div class="page-body">
+          <div class="card tools-card" id="tool-compare-cr">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Compare Conversion Rate</h3>
+                <div class="card-subtitle">Pick an event date and compare before vs after performance.</div>
+              </div>
             </div>
-            <div style="margin-top:10px" id="selected-target"></div>
-          </div>
-        </div>
+            <div class="card-body">
+              <div class="tools-grid">
+                <div class="tools-row">
+                  <div class="tools-label">Select Event Date</div>
+                  <div>
+                    <input class="tools-input" type="date" id="event-date" name="event_date" min="2026-02-08" />
+                    <div class="tools-note tools-note--tight" id="date-note"></div>
+                  </div>
+                </div>
 
-        <div class="tools-row" id="product-mode-row" style="display:none">
-          <div class="tools-label">Mode</div>
-          <div class="tools-radio-row">
-            <label><input type="radio" name="product_mode" value="product" checked /> Compare whole product</label>
-            <label><input type="radio" name="product_mode" value="variants" /> Drill into variants</label>
-          </div>
-        </div>
+                <div class="tools-row">
+                  <div class="tools-label">Product or Collection</div>
+                  <div>
+                    <div class="tools-suggest">
+                      <input class="tools-input" type="text" id="catalog-search" placeholder="Search products or collections" autocomplete="off" disabled />
+                      <div class="tools-suggest-menu" id="suggest-menu"></div>
+                    </div>
+                    <div class="tools-selected-target" id="selected-target"></div>
+                  </div>
+                </div>
 
-        <div class="tools-row" id="variants-row" style="display:none">
-          <div class="tools-label">Variants</div>
-          <div>
-            <div class="tools-actions" style="margin-bottom:10px">
-              <button class="tools-btn" type="button" id="variants-refresh">Load variants</button>
-              <button class="tools-btn" type="button" id="variants-select-all" disabled>Select all</button>
-              <button class="tools-btn" type="button" id="variants-clear" disabled>Clear</button>
+                <div class="tools-row" id="product-mode-row" style="display:none">
+                  <div class="tools-label">Mode</div>
+                  <div class="tools-radio-row">
+                    <label><input type="radio" name="product_mode" value="product" checked /> Compare whole product</label>
+                    <label><input type="radio" name="product_mode" value="variants" /> Drill into variants</label>
+                  </div>
+                </div>
+
+                <div class="tools-row" id="variants-row" style="display:none">
+                  <div class="tools-label">Variants</div>
+                  <div>
+                    <div class="tools-actions tools-actions--spaced">
+                      <button class="tools-btn" type="button" id="variants-refresh">Load variants</button>
+                      <button class="tools-btn" type="button" id="variants-select-all" disabled>Select all</button>
+                      <button class="tools-btn" type="button" id="variants-clear" disabled>Clear</button>
+                    </div>
+                    <div id="variants-list"></div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label">Compare</div>
+                  <div class="tools-actions">
+                    <button class="tools-btn" type="button" id="compare-btn" disabled>Compare</button>
+                    <div class="tools-note" id="compare-note"></div>
+                  </div>
+                </div>
+
+                <div id="results" class="tools-results is-hidden"></div>
+              </div>
             </div>
-            <div id="variants-list"></div>
           </div>
         </div>
-
-        <div class="tools-row">
-          <div class="tools-label">Compare</div>
-          <div class="tools-actions">
-            <button class="tools-btn" type="button" id="compare-btn" disabled>Compare</button>
-            <div class="tools-note" id="compare-note"></div>
-          </div>
-        </div>
-
-        <div id="results" style="display:none"></div>
       </div>
     </div>
   </div>
 
+  <script src="https://unpkg.com/@tabler/core@1.0.0-beta22/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/tools.js" defer></script>
 </body>
 </html>
