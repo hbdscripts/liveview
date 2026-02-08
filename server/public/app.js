@@ -3589,6 +3589,187 @@ const API = '';
       scheduleBreakdownSync();
     }
 
+    // Countries pie chart
+    let countriesPieChartInstance = null;
+    function renderCountriesPieChart(data) {
+      const el = document.getElementById('countries-pie-chart');
+      if (!el) return;
+
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderCountriesPieChart(data); }, 200);
+        return;
+      }
+
+      if (countriesPieChartInstance) {
+        try {
+          countriesPieChartInstance.destroy();
+        } catch (_) {}
+        countriesPieChartInstance = null;
+      }
+
+      const c = data.country || {};
+      const rows = c[getStatsRange()] || [];
+
+      if (rows.length === 0) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);">No data</div>';
+        return;
+      }
+
+      // Sort by revenue and take top 10
+      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 10);
+      const labels = sortedRows.map(r => {
+        const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
+        return countryLabel(code);
+      });
+      const revenues = sortedRows.map(r => r.revenue || 0);
+
+      const options = {
+        chart: {
+          type: 'donut',
+          height: 320,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false }
+        },
+        series: revenues,
+        labels: labels,
+        colors: ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4', '#ccfbf1', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5'],
+        plotOptions: {
+          pie: {
+            donut: {
+              size: '65%',
+              labels: {
+                show: true,
+                total: {
+                  show: true,
+                  label: 'Total Revenue',
+                  fontSize: '14px',
+                  formatter: function(w) {
+                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                    return '£' + Number(total).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                  }
+                }
+              }
+            }
+          }
+        },
+        dataLabels: {
+          enabled: true,
+          formatter: function(val) {
+            return val.toFixed(1) + '%';
+          }
+        },
+        legend: {
+          position: 'bottom',
+          fontSize: '12px'
+        },
+        tooltip: {
+          y: {
+            formatter: function(value) {
+              return '£' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+          }
+        }
+      };
+
+      try {
+        countriesPieChartInstance = new ApexCharts(el, options);
+        countriesPieChartInstance.render();
+      } catch (err) {
+        console.error('[countries-pie] Chart render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Chart rendering failed</div>';
+      }
+    }
+
+    // Countries map chart
+    let countriesMapChartInstance = null;
+    function renderCountriesMapChart(data) {
+      const el = document.getElementById('countries-map-chart');
+      if (!el) return;
+
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderCountriesMapChart(data); }, 200);
+        return;
+      }
+
+      if (countriesMapChartInstance) {
+        try {
+          countriesMapChartInstance.destroy();
+        } catch (_) {}
+        countriesMapChartInstance = null;
+      }
+
+      const c = data.country || {};
+      const rows = c[getStatsRange()] || [];
+
+      if (rows.length === 0) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);">No data</div>';
+        return;
+      }
+
+      // Create a treemap as a geographical visualization alternative
+      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 15);
+      const chartData = sortedRows.map(r => {
+        const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
+        return {
+          x: countryLabel(code),
+          y: r.revenue || 0
+        };
+      });
+
+      const options = {
+        chart: {
+          type: 'treemap',
+          height: 320,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false }
+        },
+        series: [{
+          data: chartData
+        }],
+        colors: ['#0d9488'],
+        plotOptions: {
+          treemap: {
+            distributed: true,
+            enableShades: true,
+            shadeIntensity: 0.5,
+            colorScale: {
+              ranges: [
+                { from: 0, to: 0, color: '#f1f5f9' }
+              ]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: true,
+          style: {
+            fontSize: '12px',
+            fontWeight: 600
+          },
+          formatter: function(text, op) {
+            return [text, '£' + Number(op.value).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })];
+          }
+        },
+        legend: {
+          show: false
+        },
+        tooltip: {
+          y: {
+            formatter: function(value) {
+              return '£' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+          }
+        }
+      };
+
+      try {
+        countriesMapChartInstance = new ApexCharts(el, options);
+        countriesMapChartInstance.render();
+      } catch (err) {
+        console.error('[countries-map] Chart render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Chart rendering failed</div>';
+      }
+    }
+
     function renderBestGeoProducts(data) {
       const map = data && data.bestGeoProducts ? data.bestGeoProducts : {};
       const rows = map[getStatsRange()] || [];
@@ -4208,6 +4389,8 @@ const API = '';
       }
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
+      renderCountriesPieChart(statsCache);
+      renderCountriesMapChart(statsCache);
       renderCountry(statsCache);
       renderBestGeoProducts(statsCache);
       renderAov(statsCache);

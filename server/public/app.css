@@ -639,19 +639,18 @@
     @keyframes modern-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .table-loading-overlay.report-loading-overlay {
       position: fixed;
-      inset: auto;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: auto;
-      height: auto;
-      padding: 0;
-      border-radius: 12px;
-      background: transparent;
-      border: none;
-      box-shadow: none;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.95);
       z-index: 200;
       pointer-events: none;
+    }
+    .table-loading-overlay.report-loading-overlay .report-build-wrap {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .table-loading-overlay.report-loading-overlay .report-build-wrap { padding: 0.9rem 1rem; gap: 0.25rem; }
     @media (max-width: 768px) {
@@ -738,8 +737,17 @@
     .main-tab-panel { display: none; }
     .main-tab-panel.active { display: block; }
     .stats-row-wrap { position: relative; }
-    .stats-row-wrap.report-building > :not(.report-loading-overlay) { display: none !important; }
     .sessions-table-wrap { position: relative; }
+
+    /* Hide all content during loading/building - show only the loading overlay */
+    .report-building > :not(.report-loading-overlay):not(.stats-loading-overlay):not(.table-loading-overlay) {
+      display: none !important;
+    }
+    .dash-charts-row.report-building > *,
+    .dash-tables-row.report-building > *,
+    #tab-panel-dashboard.report-building > :not(.report-loading-overlay) {
+      display: none !important;
+    }
     /* KPI sub-text (comparison to yesterday) */
     .live-kpi-sub { font-size: .6875rem; font-weight: 500; color: var(--tblr-secondary); margin-top: .25rem; }
     .live-kpi-sub.is-hidden { display: none; }
