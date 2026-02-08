@@ -86,6 +86,17 @@ router.get('/debug-landing-sites', async (req, res) => {
       } catch (_) {}
       const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
       const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
+      // Also try the broader campaign extraction (utm_id, utm_campaign)
+      let utmCampaignId = null;
+      try {
+        let params = null;
+        try { params = new URL(landingSite).searchParams; } catch (_) {
+          try { params = new URL(landingSite, 'https://x.local').searchParams; } catch (_) {}
+        }
+        if (params) {
+          utmCampaignId = (params.get('utm_id') || '').trim() || (params.get('utm_campaign') || '').trim() || null;
+        }
+      } catch (_) {}
       return {
         orderId: r.order_id,
         orderName: r.order_name,
@@ -95,6 +106,7 @@ router.get('/debug-landing-sites', async (req, res) => {
         landingSite,
         referringSite,
         extractedBsIds: bsIds,
+        utmCampaignId,
         hasGclid: !!gclidMatch,
         gclid: gclidMatch ? decodeURIComponent(gclidMatch[1]).slice(0, 20) + '...' : null,
       };

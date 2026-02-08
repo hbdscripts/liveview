@@ -7,6 +7,28 @@ const { getGoogleAdsConfig } = require('./adsStore');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
 
+// Extract campaign ID from a landing_site URL using multiple strategies
+function extractCampaignFromUrl(landingSite) {
+  if (!landingSite) return null;
+  // 1. Try bs_campaign_id (direct tracking param from our pixel URL template)
+  const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
+  if (bsIds.bsCampaignId) return { campaignId: bsIds.bsCampaignId, adgroupId: bsIds.bsAdgroupId || '_all_' };
+
+  // 2. Try utm_id / utm_campaign (Google Ads often puts campaign ID here)
+  let params = null;
+  try { params = new URL(landingSite).searchParams; } catch (_) {
+    try { params = new URL(landingSite, 'https://x.local').searchParams; } catch (_) { return null; }
+  }
+  // utm_id is reliably the campaign ID when numeric
+  const utmId = (params.get('utm_id') || '').trim();
+  if (utmId && /^\d{4,}$/.test(utmId)) return { campaignId: utmId, adgroupId: '_all_' };
+  // utm_campaign is sometimes the numeric campaign ID
+  const utmCampaign = (params.get('utm_campaign') || '').trim();
+  if (utmCampaign && /^\d{4,}$/.test(utmCampaign)) return { campaignId: utmCampaign, adgroupId: '_all_' };
+
+  return null;
+}
+
 function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';
   if (!r) return 'today';
@@ -118,10 +140,10 @@ async function getSummary(options = {}) {
       } catch (_) {}
       if (!landingSite) continue;
 
-      // Try direct bs_campaign_id from landing URL
-      const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
-      let campaignId = bsIds.bsCampaignId || '';
-      let adgroupId = bsIds.bsAdgroupId || '_all_';
+      // Try bs_campaign_id, utm_id, or utm_campaign from landing URL
+      const extracted = extractCampaignFromUrl(landingSite);
+      let campaignId = extracted ? extracted.campaignId : '';
+      let adgroupId = extracted ? extracted.adgroupId : '_all_';
 
       // Fallback: extract gclid and look up in cache
       if (!campaignId) {
@@ -399,9 +421,11 @@ async function getCampaignDetail(options = {}) {
       } catch (_) {}
       if (!landingSite) continue;
 
-      const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
-      let matchedCampaignId = bsIds.bsCampaignId || '';
+      // Try bs_campaign_id, utm_id, or utm_campaign from landing URL
+      const extracted = extractCampaignFromUrl(landingSite);
+      let matchedCampaignId = extracted ? extracted.campaignId : '';
 
+      // Fallback: extract gclid and look up in cache
       if (!matchedCampaignId) {
         const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
         const gclid = gclidMatch ? decodeURIComponent(gclidMatch[1]).trim() : '';
