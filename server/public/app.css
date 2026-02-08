@@ -127,23 +127,43 @@
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
     .by-country-table th { font-size: var(--table-th-font-size); color: #fff; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--th-bg); }
     
-    /* Table header color variants - each table gets a random color */
-    #stats-country .by-country-table thead th { background: var(--th-blue-1); }
-    #stats-best-sellers .by-country-table thead th { background: var(--th-green-1); }
-    #stats-worst-products .by-country-table thead th { background: var(--th-orange); }
-    #stats-best-variants .by-country-table thead th { background: var(--th-blue-2); }
-    #stats-worst-variants .by-country-table thead th { background: var(--th-green-2); }
-    #stats-best-geo-products .by-country-table thead th { background: var(--th-orange-2); }
-    #stats-aov .by-country-table thead th { background: var(--th-blue-1); }
-    #breakdown-aov-table .grid-row--header .grid-cell { background: var(--th-green-1); color: #fff; }
-    #breakdown-product-table .grid-row--header .grid-cell { background: var(--th-blue-2); color: #fff; }
-    #breakdown-type-table .grid-row--header .grid-cell { background: var(--th-orange); color: #fff; }
-    #breakdown-finish-table .grid-row--header .grid-cell { background: var(--th-green-2); color: #fff; }
-    #breakdown-length-table .grid-row--header .grid-cell { background: var(--th-blue-1); color: #fff; }
-    #breakdown-chainstyle-table .grid-row--header .grid-cell { background: var(--th-orange-2); color: #fff; }
-    #sessions-table .grid-row--header .grid-cell { background: var(--th-blue-2); color: #fff; }
-    .ads-campaign-table .grid-row--header .grid-cell { background: var(--th-green-1); color: #fff; }
-    .traffic-card-header { background: var(--th-blue-1); }
+    /* Modern table header design - gradient overlays with subtle patterns */
+    .by-country-table th,
+    .grid-row--header .grid-cell,
+    .traffic-card-header {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .by-country-table th::before,
+    .grid-row--header .grid-cell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    
+    /* Individual table header colors */
+    #stats-country .by-country-table thead th { background: linear-gradient(135deg, var(--th-blue-1) 0%, #3a7ed4 100%); }
+    #stats-best-sellers .by-country-table thead th { background: linear-gradient(135deg, var(--th-green-1) 0%, #289e92 100%); }
+    #stats-worst-products .by-country-table thead th { background: linear-gradient(135deg, var(--th-orange) 0%, #e18a26 100%); }
+    #stats-best-variants .by-country-table thead th { background: linear-gradient(135deg, var(--th-blue-2) 0%, #125d96 100%); }
+    #stats-worst-variants .by-country-table thead th { background: linear-gradient(135deg, var(--th-green-2) 0%, #13808a 100%); }
+    #stats-best-geo-products .by-country-table thead th { background: linear-gradient(135deg, var(--th-orange-2) 0%, #f59e0b 100%); }
+    #stats-aov .by-country-table thead th { background: linear-gradient(135deg, var(--th-blue-1) 0%, #3a7ed4 100%); }
+    #breakdown-aov-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-green-1) 0%, #289e92 100%); color: #fff; }
+    #breakdown-product-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-blue-2) 0%, #125d96 100%); color: #fff; }
+    #breakdown-type-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-orange) 0%, #e18a26 100%); color: #fff; }
+    #breakdown-finish-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-green-2) 0%, #13808a 100%); color: #fff; }
+    #breakdown-length-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-blue-1) 0%, #3a7ed4 100%); color: #fff; }
+    #breakdown-chainstyle-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-orange-2) 0%, #f59e0b 100%); color: #fff; }
+    .by-country-table.traffic-type-table thead th { background: linear-gradient(135deg, var(--th-green-2) 0%, #13808a 100%); }
+    .by-country-table.traffic-source-table thead th { background: linear-gradient(135deg, var(--th-blue-2) 0%, #125d96 100%); }
+    .by-country-table.traffic-country-table thead th { background: linear-gradient(135deg, var(--th-orange) 0%, #e18a26 100%); }
+    #sessions-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-blue-2) 0%, #125d96 100%); color: #fff; }
+    .ads-campaign-table .grid-row--header .grid-cell { background: linear-gradient(135deg, var(--th-green-1) 0%, #289e92 100%); color: #fff; }
+    .traffic-card-header { background: linear-gradient(135deg, var(--th-blue-1) 0%, #3a7ed4 100%); border: none; }
     .traffic-card-title { color: #fff; }
     /* Table header abbreviations/icons on small screens (avoid overlaps). */
     .th-label-long { display: inline; }
@@ -708,25 +728,26 @@
     .report-build-step { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
     /* Tab switch: Home (main table) vs Breakdown (cards); date range shared on same row */
     .main-tabs { display: flex; align-items: stretch; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); position: relative; }
-    .main-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; position: relative; overflow: hidden; }
-    .main-tabs [role="tab"]::before {
+    .main-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; position: relative; }
+    .main-tabs [role="tab"]::after {
       content: '';
       position: absolute;
-      inset: 0;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
       background: linear-gradient(90deg, #4592e9 0%, #1673b4 20%, #32bdb0 40%, #179ea8 60%, #fa9f2e 80%, #fab05d 100%);
       background-size: 200% 100%;
       background-position: 100% 0;
       opacity: 0;
-      transition: opacity 0.3s ease;
-      z-index: -1;
+      transition: opacity 0.2s ease;
     }
-    .main-tabs [role="tab"]:hover::before {
-      opacity: 0.08;
-      animation: gradient-slide 2s ease-in-out;
+    .main-tabs [role="tab"]:hover::after {
+      opacity: 1;
+      animation: gradient-slide 1.5s ease-in-out forwards;
     }
     @keyframes gradient-slide {
       0% { background-position: 100% 0; }
-      50% { background-position: 0% 0; }
       100% { background-position: 0% 0; }
     }
     .main-tabs [role="tab"]:hover { color: var(--text); }
@@ -1224,7 +1245,33 @@
       .main { padding: 20px; }
       .stats-card { padding: 0; }
     }
-    .dashboard-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 10px 20px; font-size: 0.8125rem; color: #fff; background: var(--gradient); }
+    .dashboard-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding: 14px 24px;
+      font-size: 0.8125rem;
+      color: #fff;
+      background: #1a1f2e;
+      border-top: 3px solid transparent;
+      border-image: linear-gradient(90deg, #4592e9 0%, #1673b4 25%, #32bdb0 50%, #179ea8 75%, #fa9f2e 100%) 1;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .dashboard-footer::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(69, 146, 233, 0.05) 0%, rgba(50, 189, 176, 0.05) 50%, rgba(250, 159, 46, 0.05) 100%);
+      pointer-events: none;
+    }
     body { padding-bottom: 52px; }
     .dashboard-footer svg{color:#fff;}
     .dashboard-footer .footer-last-sale {
