@@ -124,6 +124,17 @@ app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
+app.get('/api/me', (req, res) => {
+  const raw = (req.get('Cookie') || '').split(';').map(s => s.trim());
+  const oauthPart = raw.find(p => p.startsWith(dashboardAuth.OAUTH_COOKIE_NAME + '='));
+  if (!oauthPart) return res.json({ email: null });
+  try {
+    const val = decodeURIComponent(oauthPart.split('=').slice(1).join('=').replace(/^"(.*)"$/, '$1'));
+    const data = JSON.parse(Buffer.from(val, 'base64url').toString('utf8'));
+    const email = (data.email || '').trim();
+    res.json({ email, initial: email ? email[0].toUpperCase() : 'K' });
+  } catch (_) { res.json({ email: null }); }
+});
 app.get('/api/store-base-url', (req, res) => {
   const domain = (config.shopDomain || '').trim().toLowerCase();
   const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));

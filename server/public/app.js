@@ -7687,5 +7687,18 @@ const API = '';
         fetchDashboardData(parseInt((rangeSel && rangeSel.value) || '30', 10), false);
       }
     })();
+
+    // ── User avatar: fetch /api/me and populate ────────────────────────
+    (function initUserAvatar() {
+      try {
+        fetch('/api/me').then(function(r) { return r.json(); }).then(function(d) {
+          if (!d || !d.email) return;
+          var avatarEl = document.getElementById('user-avatar');
+          var emailEl = document.getElementById('user-email');
+          if (avatarEl && d.initial) avatarEl.textContent = d.initial;
+          if (emailEl) emailEl.textContent = d.email;
+        }).catch(function() {});
+      } catch (_) {}
+    })();
   
 })();
