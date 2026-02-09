@@ -10,6 +10,7 @@ const fx = require('./fx');
 const salesTruth = require('./salesTruth');
 const productMetaCache = require('./shopifyProductMetaCache');
 const shopifyQl = require('./shopifyQl');
+const reportCache = require('./reportCache');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -2641,6 +2642,7 @@ async function getStats(options = {}) {
  */
 async function getKpis(options = {}) {
   const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
+  const force = !!options.force;
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
   const reporting = await getReportingConfig();
@@ -2658,6 +2660,23 @@ async function getKpis(options = {}) {
     : 'today';
 
   const bounds = getRangeBounds(rangeKey, now, timeZone);
+
+  function cacheSlowMetric(metricKey, start, end, cacheRangeKey, computeFn) {
+    const rk = typeof cacheRangeKey === 'string' ? cacheRangeKey : rangeKey;
+    return reportCache.getOrComputeJson(
+      {
+        shop: '',
+        endpoint: 'kpis_slow_' + String(metricKey || 'metric'),
+        rangeKey: rk,
+        rangeStartTs: start,
+        rangeEndTs: end,
+        params: { trafficMode, rangeKey: rk },
+        ttlMs: 10 * 60 * 1000,
+        force,
+      },
+      computeFn
+    ).then((r) => (r && r.ok ? r.data : null));
+  }
 
   // Guardrail: ensure Shopify truth cache is fresh for this range.
   const salesShop = salesTruth.resolveShopForSales('');
@@ -2678,7 +2697,6 @@ async function getKpis(options = {}) {
     returningRevenueVal,
     returningOrderCountVal,
     returningCustomerCountVal,
-    conversionVal,
     convertedCountVal,
     trafficBreakdownVal,
     bounceVal,
@@ -2688,14 +2706,34 @@ async function getKpis(options = {}) {
     getSalesTotal(bounds.start, bounds.end, { ...opts, rangeKey }),
     getReturningRevenue(bounds.start, bounds.end, { ...opts, rangeKey }),
     getReturningOrderCount(bounds.start, bounds.end, { ...opts, rangeKey }),
-    getReturningCustomerCount(bounds.start, bounds.end, { ...opts, rangeKey }),
-    getConversionRate(bounds.start, bounds.end, { ...opts, rangeKey }),
+    cacheSlowMetric(
+      'returningCustomerCount',
+      bounds.start,
+      bounds.end,
+      rangeKey,
+      () => getReturningCustomerCount(bounds.start, bounds.end, { ...opts, rangeKey })
+    ),
     getConvertedCount(bounds.start, bounds.end, { ...opts, rangeKey }),
     getSessionCounts(bounds.start, bounds.end, { ...opts, rangeKey }),
-    getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey }),
+    cacheSlowMetric(
+      'bounce',
+      bounds.start,
+      bounds.end,
+      rangeKey,
+      () => getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey })
+    ),
     rangeHasSessions(yesterdayBounds.start, yesterdayBounds.end, opts),
     (salesShop ? salesTruth.getTruthHealth(salesShop || '', 'today') : Promise.resolve(null)),
   ]);
+
+  // Avoid duplicate work: conversion rate is derived from already-fetched orders + session counts.
+  const sessionsForConv = trafficBreakdownVal && typeof trafficBreakdownVal.human_sessions === 'number'
+    ? trafficBreakdownVal.human_sessions
+    : null;
+  const ordersForConv = (typeof convertedCountVal === 'number' && Number.isFinite(convertedCountVal)) ? convertedCountVal : null;
+  const conversionVal = (sessionsForConv != null && Number.isFinite(sessionsForConv) && sessionsForConv > 0 && ordersForConv != null)
+    ? (Math.round((ordersForConv / sessionsForConv) * 1000) / 10)
+    : null;
 
   let compare = null;
   // Compute previous-period comparison for all date ranges
@@ -2728,7 +2766,6 @@ async function getKpis(options = {}) {
         compareReturning,
         compareReturningOrderCount,
         compareReturningCustomerCount,
-        compareConversion,
         compareConvertedCount,
         compareBreakdown,
         compareBounce,
@@ -2736,12 +2773,32 @@ async function getKpis(options = {}) {
         getSalesTotal(compareStart, compareEnd, compareOpts),
         getReturningRevenue(compareStart, compareEnd, compareOpts),
         getReturningOrderCount(compareStart, compareEnd, compareOpts),
-        getReturningCustomerCount(compareStart, compareEnd, compareOpts),
-        getConversionRate(compareStart, compareEnd, compareOpts),
+        cacheSlowMetric(
+          'returningCustomerCount',
+          compareStart,
+          compareEnd,
+          compareOpts.rangeKey,
+          () => getReturningCustomerCount(compareStart, compareEnd, compareOpts)
+        ),
         getConvertedCount(compareStart, compareEnd, compareOpts),
         getSessionCounts(compareStart, compareEnd, compareOpts),
-        getBounceRate(compareStart, compareEnd, compareOpts),
+        cacheSlowMetric(
+          'bounce',
+          compareStart,
+          compareEnd,
+          compareOpts.rangeKey,
+          () => getBounceRate(compareStart, compareEnd, compareOpts)
+        ),
       ]);
+
+      const compareSessionsForConv = compareBreakdown && typeof compareBreakdown.human_sessions === 'number'
+        ? compareBreakdown.human_sessions
+        : null;
+      const compareOrdersForConv = (typeof compareConvertedCount === 'number' && Number.isFinite(compareConvertedCount)) ? compareConvertedCount : null;
+      const compareConversion = (compareSessionsForConv != null && Number.isFinite(compareSessionsForConv) && compareSessionsForConv > 0 && compareOrdersForConv != null)
+        ? (Math.round((compareOrdersForConv / compareSessionsForConv) * 1000) / 10)
+        : null;
+
       compare = {
         sales: compareSales,
         returningRevenue: compareReturning,

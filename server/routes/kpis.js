@@ -18,8 +18,8 @@ function normalizeRangeKey(raw) {
 
 async function getKpis(req, res) {
   const trafficMode = 'human_only';
-  // Polled every minute; keep it cheap and cacheable.
-  res.setHeader('Cache-Control', 'private, max-age=60');
+  // Polled frequently; keep it cheap and cacheable.
+  res.setHeader('Cache-Control', 'private, max-age=120');
   res.setHeader('Vary', 'Cookie');
 
   const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '');
@@ -40,10 +40,10 @@ async function getKpis(req, res) {
         rangeStartTs: bounds.start,
         rangeEndTs: bounds.end,
         params: { trafficMode, rangeKey },
-        ttlMs: 60 * 1000,
+        ttlMs: 120 * 1000,
         force,
       },
-      async () => store.getKpis({ trafficMode, rangeKey })
+      async () => store.getKpis({ trafficMode, rangeKey, force })
     );
     const totalMs = Date.now() - t0;
     if (timing || totalMs > 1200) {

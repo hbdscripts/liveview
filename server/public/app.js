@@ -44,6 +44,15 @@ const API = '';
     const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
+    const KPI_REFRESH_MS = 120000; // 2 min: reduce repeated KPI queries during fast nav
+    const KPI_CACHE_TTL_MS = KPI_REFRESH_MS;
+    const KPI_CACHE_STALE_OK_MS = 30 * 60 * 1000; // paint stale values while revalidating
+    const KPI_EXTRAS_CACHE_TTL_MS = 10 * 60 * 1000;
+    const KPI_EXTRAS_CACHE_STALE_OK_MS = 60 * 60 * 1000;
+    const KPI_CACHE_LS_KEY = 'kexo-kpis-cache-v1';
+    const KPI_EXTRAS_CACHE_LS_KEY = 'kexo-kpis-expanded-extra-cache-v1';
+    const KPI_SPINNER_MIN_MS = 800;
+    let kpisSpinnerShownOnce = false;
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
     const COUNTRY_PAGE_SIZE = 25;
@@ -2195,6 +2204,23 @@ const API = '';
       setTimeout(function() {
         saleToastActive = false;
         saleToastSessionId = null;
+
+        // Sale toast indicates KPIs are about to change. Reset caches once the toast disappears.
+        try { clearKpiLocalStorageCaches(); } catch (_) {}
+        try { lastKpisFetchedAt = 0; } catch (_) {}
+        try { kpiExpandedExtrasFetchedAt = 0; } catch (_) {}
+
+        // Pull fresh KPI data (fast metrics) immediately after cache reset.
+        try { refreshKpis({ force: true }); } catch (_) {}
+        // If expanded KPIs are visible, refresh the extras too.
+        try {
+          if (typeof isKpisExpanded === 'function' && isKpisExpanded()) {
+            fetchExpandedKpiExtras({ force: true }).then(function(extras) {
+              renderExpandedKpiExtras(extras);
+              scheduleKpiPagerUpdate();
+            });
+          }
+        } catch (_) {}
       }, 320);
     }
 
@@ -5242,7 +5268,17 @@ const API = '';
       const force = !!options.force;
       const rangeKey = getStatsRange();
       if (!rangeKey) return Promise.resolve(null);
-      const stale = !kpiExpandedExtrasFetchedAt || (Date.now() - kpiExpandedExtrasFetchedAt) > KPI_REFRESH_MS;
+      // Paint from localStorage first to avoid empty KPI boxes on fast navigation.
+      if (!force) {
+        try {
+          const wantHydrate =
+            (!kpiExpandedExtrasCache || kpiExpandedExtrasRange !== rangeKey) ||
+            (!kpiExpandedExtrasFetchedAt || (Date.now() - kpiExpandedExtrasFetchedAt) > KPI_EXTRAS_CACHE_TTL_MS);
+          if (wantHydrate) hydrateExpandedExtrasFromLocalStorage(rangeKey, true);
+        } catch (_) {}
+      }
+
+      const stale = !kpiExpandedExtrasFetchedAt || (Date.now() - kpiExpandedExtrasFetchedAt) > KPI_EXTRAS_CACHE_TTL_MS;
       if (!force && !stale && kpiExpandedExtrasCache && kpiExpandedExtrasRange === rangeKey) {
         return Promise.resolve(kpiExpandedExtrasCache);
       }
@@ -5256,6 +5292,7 @@ const API = '';
         .then(function(extras) {
           kpiExpandedExtrasCache = extras || null;
           kpiExpandedExtrasFetchedAt = Date.now();
+          try { setRangeCacheEntry(KPI_EXTRAS_CACHE_LS_KEY, rangeKey, kpiExpandedExtrasCache, 12); } catch (_) {}
           return kpiExpandedExtrasCache;
         })
         .catch(function() { return null; })
@@ -5398,9 +5435,94 @@ const API = '';
         });
     }
 
-    const KPI_REFRESH_MS = 60000;
-    const KPI_SPINNER_MIN_MS = 800;
-    let kpisSpinnerShownOnce = false;
+    // ── KPI local cache (prevents empty KPI boxes during fast navigation) ──
+    function safeReadLocalStorageJson(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function safeWriteLocalStorageJson(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (_) {}
+    }
+
+    function getRangeCacheEntry(lsKey, rangeKey) {
+      if (!lsKey || !rangeKey) return null;
+      const root = safeReadLocalStorageJson(lsKey);
+      const byRange = root && typeof root === 'object' && root.byRange && typeof root.byRange === 'object' ? root.byRange : null;
+      if (!byRange) return null;
+      const entry = byRange[rangeKey];
+      if (!entry || typeof entry !== 'object') return null;
+      const at = entry.at != null ? Number(entry.at) : NaN;
+      if (!Number.isFinite(at) || at <= 0) return null;
+      return { at, data: entry.data };
+    }
+
+    function setRangeCacheEntry(lsKey, rangeKey, data, maxEntries) {
+      if (!lsKey || !rangeKey) return;
+      let root = safeReadLocalStorageJson(lsKey);
+      if (!root || typeof root !== 'object') root = { v: 1, byRange: {} };
+      if (!root.byRange || typeof root.byRange !== 'object') root.byRange = {};
+      root.byRange[rangeKey] = { at: Date.now(), data: data == null ? null : data };
+
+      const cap = (typeof maxEntries === 'number' && Number.isFinite(maxEntries) && maxEntries > 0) ? Math.trunc(maxEntries) : 12;
+      try {
+        const keys = Object.keys(root.byRange);
+        if (keys.length > cap) {
+          keys.sort(function(a, b) {
+            const ta = root.byRange[a] && root.byRange[a].at != null ? Number(root.byRange[a].at) : 0;
+            const tb = root.byRange[b] && root.byRange[b].at != null ? Number(root.byRange[b].at) : 0;
+            return ta - tb;
+          });
+          while (keys.length > cap) {
+            const k = keys.shift();
+            if (k) delete root.byRange[k];
+          }
+        }
+      } catch (_) {}
+
+      safeWriteLocalStorageJson(lsKey, root);
+    }
+
+    function hydrateKpisFromLocalStorage(rangeKey, allowStale) {
+      const entry = getRangeCacheEntry(KPI_CACHE_LS_KEY, rangeKey);
+      if (!entry) return false;
+      const age = Date.now() - entry.at;
+      if (!Number.isFinite(age) || age < 0) return false;
+      const maxAge = allowStale ? KPI_CACHE_STALE_OK_MS : KPI_CACHE_TTL_MS;
+      if (age > maxAge) return false;
+      if (!entry.data || typeof entry.data !== 'object') return false;
+      if (lastKpisFetchedAt && entry.at <= lastKpisFetchedAt) return false;
+      kpiCache = entry.data;
+      lastKpisFetchedAt = entry.at;
+      // If we can paint real numbers immediately, don't flash KPI spinners.
+      kpisSpinnerShownOnce = true;
+      return true;
+    }
+
+    function hydrateExpandedExtrasFromLocalStorage(rangeKey, allowStale) {
+      const entry = getRangeCacheEntry(KPI_EXTRAS_CACHE_LS_KEY, rangeKey);
+      if (!entry) return false;
+      const age = Date.now() - entry.at;
+      if (!Number.isFinite(age) || age < 0) return false;
+      const maxAge = allowStale ? KPI_EXTRAS_CACHE_STALE_OK_MS : KPI_EXTRAS_CACHE_TTL_MS;
+      if (age > maxAge) return false;
+      kpiExpandedExtrasCache = entry.data || null;
+      kpiExpandedExtrasRange = rangeKey;
+      kpiExpandedExtrasFetchedAt = entry.at;
+      return true;
+    }
+
+    function clearKpiLocalStorageCaches() {
+      try { localStorage.removeItem(KPI_CACHE_LS_KEY); } catch (_) {}
+      try { localStorage.removeItem(KPI_EXTRAS_CACHE_LS_KEY); } catch (_) {}
+    }
 
     function fetchKpisData(options = {}) {
       const force = !!options.force;
@@ -5415,10 +5537,35 @@ const API = '';
 
     function refreshKpis(options = {}) {
       const force = !!options.force;
+      const rangeKey = getStatsRange();
+      if (!rangeKey) return Promise.resolve(null);
+
+      // Hydrate from localStorage so KPI boxes render instantly on fast nav.
+      if (!force) {
+        try { hydrateKpisFromLocalStorage(rangeKey, true); } catch (_) {}
+      }
+
+      const stale = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_CACHE_TTL_MS;
+
+      // If cache is still fresh, avoid refetching.
+      if (!force && !stale && kpiCache) {
+        try { renderLiveKpis(getKpiData()); } catch (_) {}
+        try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
+        return Promise.resolve(kpiCache);
+      }
+
       if (kpisRefreshInFlight) return kpisRefreshInFlight;
 
-      // Only show the KPI mini spinners on the very first load (avoid visual noise on minute refreshes).
-      const showSpinner = !kpisSpinnerShownOnce;
+      // Stale-while-revalidate: keep showing last known values while we refresh.
+      try {
+        if (kpiCache) {
+          renderLiveKpis(getKpiData());
+          if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData());
+        }
+      } catch (_) {}
+
+      // Only show the KPI mini spinners on the very first load (avoid visual noise on refreshes).
+      const showSpinner = !kpisSpinnerShownOnce && !kpiCache;
       if (showSpinner) {
         kpisSpinnerShownOnce = true;
         setLiveKpisLoading();
@@ -5430,17 +5577,20 @@ const API = '';
           const data = showSpinner
             ? (partsOrData && partsOrData[0] && typeof partsOrData[0] === 'object' ? partsOrData[0] : null)
             : (partsOrData && typeof partsOrData === 'object' ? partsOrData : null);
-          lastKpisFetchedAt = Date.now();
           if (data) {
+            lastKpisFetchedAt = Date.now();
             kpiCache = data;
             maybeTriggerSaleToastFromStatsLikeData(kpiCache);
+            try { setRangeCacheEntry(KPI_CACHE_LS_KEY, rangeKey, kpiCache, 12); } catch (_) {}
           }
           renderLiveKpis(getKpiData());
+          try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
           return data;
         })
         .catch(function(err) {
           console.error(err);
           renderLiveKpis(getKpiData());
+          try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
           return null;
         })
         .finally(function() {

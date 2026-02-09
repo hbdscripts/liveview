@@ -76,7 +76,8 @@ async function computeExpandedExtras(bounds, timeZone) {
 }
 
 async function getKpisExpandedExtra(req, res) {
-  res.setHeader('Cache-Control', 'private, max-age=60');
+  // Not polled frequently; OK to keep cached longer.
+  res.setHeader('Cache-Control', 'private, max-age=600');
   res.setHeader('Vary', 'Cookie');
 
   const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '');
@@ -94,7 +95,7 @@ async function getKpisExpandedExtra(req, res) {
         rangeStartTs: bounds.start,
         rangeEndTs: bounds.end,
         params: { rangeKey, timeZone },
-        ttlMs: 5 * 60 * 1000,
+        ttlMs: 10 * 60 * 1000,
         force,
       },
       async () => {

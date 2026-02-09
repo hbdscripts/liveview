@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Fix dashboard-series 500 on Postgres)
+Last updated: 2026-02-09 (KPIs: 2m cache + localStorage paint + sale toast invalidation)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -93,6 +93,11 @@ Expanded KPI grid (all pages, hidden by default):
 - All pages include it under the nav bar; visibility is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
 - Extra KPIs (Items sold / Orders fulfilled / Returns) are fetched only when expanded is shown:
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
+
+KPI caching (perf + UX):
+- `/api/kpis` is cached (server-side) for 2 minutes and also painted from `localStorage` on navigation to avoid empty KPI boxes.
+- Slow KPI fields (bounce + returning customers) are cached longer server-side; expanded extras are cached 10 minutes.
+- When the sale toast closes, KPI caches are invalidated and KPIs are force-refreshed.
 
 ---
 
@@ -198,6 +203,7 @@ Edge (optional):
 - Nav highlight: active top-level item is bold and dropdown caret spacing is increased for readability.
 - DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
 - Header UX: global date selector is visible on Tools (same behavior as other pages).
+- KPI UX/perf: add 2-minute caching + localStorage warm-paint; reduce duplicate conversion/session work; invalidate KPI caches after the sale toast hides.
 - Header actions: desktop topbar now shows a single Settings button with a Tabler dropdown for Refresh/Sound/Theme/Diagnostics/Sign out (mobile still uses the settings dropdown).
 - Topbar quick KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
 - Dashboard-series: include per-day returning-customer counts so the “Returning” sparkline can render (with a one-time forced refresh if an older cached payload is detected).
@@ -210,6 +216,7 @@ Edge (optional):
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
+  - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure, connection/refresh/errors live in a real `card-footer`, loading is centered, and non-forced refreshes update silently (small spinning refresh icon) instead of wiping the table.
   - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
   - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
   - Fix `/api/dashboard-series` 500 on Postgres: reorder params for conditional-aggregate queries so BIGINT columns don’t receive `shop` string params (affects Units Sold + session/bounce aggregation).
