@@ -2837,7 +2837,11 @@ const API = '';
               : '') +
           '</span>';
         const img = productUrl
-          ? '<a class="leaderboard-thumb-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '">' + thumbInner + '</a>'
+          ? '<a class="leaderboard-thumb-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '"' +
+            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+            (thumb ? (' data-product-thumb="' + escapeHtml(thumb) + '"') : '') +
+          '>' + thumbInner + '</a>'
           : thumbInner;
         return '<div class="aov-card aov-card--leaderboard aov-card--leaderboard-title">' +
             '<div class="aov-card-left">' +
@@ -2901,7 +2905,13 @@ const API = '';
         var thumbImg = '<span class="thumb-wrap">' +
           (thumbUrl ? '<img class="landing-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
-        var thumbHtml = productUrl ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        var thumbHtml = productUrl
+          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+            (thumb ? (' data-product-thumb="' + escapeHtml(thumb) + '"') : '') +
+          '>' + thumbImg + '</a>'
+          : thumbImg;
         var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumbHtml + ' ' + name + '</div></div>' +
@@ -3107,8 +3117,14 @@ const API = '';
         const thumbImg = '<span class="thumb-wrap">' +
           (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
+        const handle = (v && v.handle) ? String(v.handle).trim().toLowerCase() : '';
+        const title = (v && v.title) ? String(v.title).trim() : '';
         const thumb = productUrl
-          ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>'
+          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+            (thumbSrc ? (' data-product-thumb="' + escapeHtml(thumbSrc) + '"') : '') +
+          '>' + thumbImg + '</a>'
           : thumbImg;
 
         const nameText = displayVariantName(v);
@@ -3310,7 +3326,15 @@ const API = '';
         const thumbImg = '<span class="thumb-wrap">' +
           (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
-        const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
+        const handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+        const title = (p && p.title) ? String(p.title).trim() : '';
+        const thumb = productUrl
+          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+            (thumbSrc ? (' data-product-thumb="' + escapeHtml(thumbSrc) + '"') : '') +
+          '>' + thumbImg + '</a>'
+          : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
@@ -8562,6 +8586,447 @@ const API = '';
       proxyClick('.footer-audio-btn', 'audio-mute-btn');
       proxyClick('.footer-theme-btn', 'theme-settings-btn');
       proxyClick('.footer-diagnostics-btn', 'config-open-btn');
+    })();
+
+    // ── Shared Product Insights modal ───────────────────────────────────
+    (function initProductInsightsModal() {
+      if (window.__productInsightsModalInit) return;
+      window.__productInsightsModalInit = true;
+
+      var modalEl = null;
+      var currentHandle = null;
+      var currentTitle = null;
+      var currentProductUrl = null;
+      var currentRangeKey = 'today'; // modal-local range; default Today regardless of page range
+      var charts = { revenue: null, activity: null };
+      var apexLoading = false;
+      var apexWaiters = [];
+
+      function isModifiedClick(e) {
+        if (!e) return false;
+        if (e.defaultPrevented) return true;
+        if (e.button != null && e.button !== 0) return true; // only left click
+        return !!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+      }
+
+      function normalizeHandle(h) {
+        if (!h) return '';
+        return String(h).trim().toLowerCase().slice(0, 128);
+      }
+
+      function parseHandleFromHref(href) {
+        if (!href) return '';
+        try {
+          var u = new URL(String(href), window.location.origin);
+          var p = String(u.pathname || '');
+          var m = p.match(/^\/products\/([^/?#]+)/i);
+          if (m && m[1]) return normalizeHandle(decodeURIComponent(m[1]));
+        } catch (_) {}
+        var raw = String(href);
+        var m2 = raw.match(/\/products\/([^/?#]+)/i);
+        return m2 && m2[1] ? normalizeHandle(m2[1]) : '';
+      }
+
+      function ensureApexCharts(cb) {
+        if (typeof ApexCharts !== 'undefined') { cb(); return; }
+        apexWaiters.push(cb);
+        if (apexLoading) return;
+        apexLoading = true;
+        try {
+          var s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js';
+          s.defer = true;
+          s.onload = function() {
+            apexLoading = false;
+            var q = apexWaiters.slice();
+            apexWaiters = [];
+            q.forEach(function(fn) { try { fn(); } catch (_) {} });
+          };
+          s.onerror = function() { apexLoading = false; apexWaiters = []; };
+          document.head.appendChild(s);
+        } catch (_) {
+          apexLoading = false;
+          apexWaiters = [];
+        }
+      }
+
+      function destroyCharts() {
+        try { if (charts.revenue) charts.revenue.destroy(); } catch (_) {}
+        try { if (charts.activity) charts.activity.destroy(); } catch (_) {}
+        charts.revenue = null;
+        charts.activity = null;
+      }
+
+      function ensureDom() {
+        if (modalEl) return modalEl;
+        modalEl = document.getElementById('product-insights-modal');
+        if (modalEl) return modalEl;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'modal modal-blur';
+        wrap.id = 'product-insights-modal';
+        wrap.tabIndex = -1;
+        wrap.style.display = 'none';
+        wrap.innerHTML =
+          '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog">' +
+            '<div class="modal-content">' +
+              '<div class="modal-header">' +
+                '<div class="d-flex flex-column">' +
+                  '<h5 class="modal-title" id="product-insights-title">Product</h5>' +
+                  '<div class="text-muted small" id="product-insights-subtitle">Today</div>' +
+                '</div>' +
+                '<div class="ms-auto d-flex align-items-center gap-2">' +
+                  '<select class="form-select form-select-sm" id="product-insights-range" aria-label="Date range">' +
+                    '<option value="today" selected>Today</option>' +
+                    '<option value="yesterday">Yesterday</option>' +
+                    '<option value="3d">Last 3 days</option>' +
+                    '<option value="7d">Last 7 days</option>' +
+                    '<option value="month">Last 30 days</option>' +
+                  '</select>' +
+                  '<a class="btn btn-ghost-secondary btn-sm" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product</a>' +
+                  '<button type="button" class="btn-close" id="product-insights-close" aria-label="Close"></button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="modal-body">' +
+                '<div id="product-insights-status" class="text-muted">Loading…</div>' +
+                '<div id="product-insights-body" style="display:none">' +
+                  '<div class="row g-3">' +
+                    '<div class="col-12 col-lg-5">' +
+                      '<div class="card">' +
+                        '<div class="card-body">' +
+                          '<div class="d-flex gap-3 align-items-start">' +
+                            '<div class="product-insights-main-img-wrap">' +
+                              '<img id="product-insights-main-img" class="img-fluid rounded border" alt="" style="width:140px;height:140px;object-fit:cover;background:var(--tblr-bg-surface)">' +
+                            '</div>' +
+                            '<div class="flex-fill min-w-0">' +
+                              '<div class="fw-semibold text-truncate" id="product-insights-title-inline">—</div>' +
+                              '<div class="text-muted small text-truncate" id="product-insights-type">—</div>' +
+                              '<div class="mt-2 d-flex flex-wrap gap-2" id="product-insights-thumbs"></div>' +
+                            '</div>' +
+                          '</div>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="card mt-3">' +
+                        '<div class="card-header"><h3 class="card-title">Revenue</h3></div>' +
+                        '<div class="card-body"><div id="product-insights-chart-revenue" style="min-height:240px"></div></div>' +
+                      '</div>' +
+                    '</div>' +
+                    '<div class="col-12 col-lg-7">' +
+                      '<div class="card">' +
+                        '<div class="card-header"><h3 class="card-title">Performance</h3></div>' +
+                        '<div class="table-responsive">' +
+                          '<table class="table table-vcenter card-table table-sm">' +
+                            '<tbody id="product-insights-metrics-table"></tbody>' +
+                          '</table>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="card mt-3">' +
+                        '<div class="card-header"><h3 class="card-title">Demand signals</h3></div>' +
+                        '<div class="card-body"><div id="product-insights-chart-activity" style="min-height:240px"></div></div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        document.body.appendChild(wrap);
+        modalEl = wrap;
+
+        var closeBtn = document.getElementById('product-insights-close');
+        if (closeBtn) closeBtn.addEventListener('click', function() { close(); });
+        modalEl.addEventListener('click', function(e) { if (e && e.target === modalEl) close(); });
+        document.addEventListener('keydown', function(e) {
+          if (!modalEl || !modalEl.classList.contains('show')) return;
+          var key = e && (e.key || e.code) ? String(e.key || e.code) : '';
+          if (key === 'Escape') close();
+        });
+
+        var sel = document.getElementById('product-insights-range');
+        if (sel) {
+          sel.addEventListener('change', function() {
+            var v = sel.value || 'today';
+            currentRangeKey = v;
+            load();
+          });
+        }
+
+        return modalEl;
+      }
+
+      function show() {
+        ensureDom();
+        modalEl.style.display = 'block';
+        modalEl.classList.add('show');
+        document.body.classList.add('modal-open');
+      }
+
+      function close() {
+        if (!modalEl) return;
+        modalEl.style.display = 'none';
+        modalEl.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        destroyCharts();
+        currentHandle = null;
+        currentTitle = null;
+        currentProductUrl = null;
+      }
+
+      function setStatus(msg) {
+        var s = document.getElementById('product-insights-status');
+        var b = document.getElementById('product-insights-body');
+        if (s) s.textContent = msg || '';
+        if (b) b.style.display = 'none';
+        if (s) s.style.display = msg ? 'block' : 'none';
+      }
+
+      function fmtNum(n) {
+        var x = (typeof n === 'number') ? n : Number(n);
+        if (!isFinite(x)) return '—';
+        try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
+      }
+
+      function fmtMoneyGbp(n) {
+        var x = (typeof n === 'number') ? n : Number(n);
+        if (!isFinite(x)) return '—';
+        try { return '£' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '£' + x.toFixed(2); }
+      }
+
+      function fmtPct(n) {
+        var x = (typeof n === 'number') ? n : Number(n);
+        if (!isFinite(x)) return '—';
+        return x.toFixed(2) + '%';
+      }
+
+      function labelForTs(ts, isHourly) {
+        try {
+          var d = new Date(Number(ts));
+          if (isHourly) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        } catch (_) {
+          return '';
+        }
+      }
+
+      function renderCharts(payload) {
+        if (!payload || !payload.series || !payload.series.points) return;
+        var points = payload.series.points || [];
+        var isHourly = !!(payload.series && payload.series.isHourly);
+        var labels = points.map(function(p) { return labelForTs(p.ts, isHourly); });
+        var rev = points.map(function(p) { return (p && p.revenueGbp) ? Number(p.revenueGbp) : 0; });
+        var ord = points.map(function(p) { return (p && p.orders) ? Number(p.orders) : 0; });
+        var clicks = points.map(function(p) { return (p && p.clicks) ? Number(p.clicks) : 0; });
+        var views = points.map(function(p) { return (p && p.views) ? Number(p.views) : 0; });
+        var atc = points.map(function(p) { return (p && p.addToCart) ? Number(p.addToCart) : 0; });
+
+        ensureApexCharts(function() {
+          destroyCharts();
+          var revEl = document.getElementById('product-insights-chart-revenue');
+          var actEl = document.getElementById('product-insights-chart-activity');
+          if (!revEl || !actEl || typeof ApexCharts === 'undefined') return;
+
+          // Revenue chart (GBP + Orders)
+          charts.revenue = new ApexCharts(revEl, {
+            chart: { type: 'area', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+            series: [
+              { name: 'Revenue (GBP)', data: rev },
+              { name: 'Orders', data: ord },
+            ],
+            colors: ['#0d9488', '#3b82f6'],
+            stroke: { width: 2, curve: 'smooth' },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.16, opacityTo: 0.04, stops: [0, 100] } },
+            dataLabels: { enabled: false },
+            xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
+            yaxis: [
+              { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtMoneyGbp(v).replace('.00', ''); } } },
+              { opposite: true, labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } } },
+            ],
+            tooltip: { y: { formatter: function(v, o) { return o && o.seriesIndex === 0 ? fmtMoneyGbp(v) : fmtNum(v); } } },
+            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
+            legend: { position: 'top', fontSize: '11px' },
+          });
+          revEl.innerHTML = '';
+          charts.revenue.render();
+
+          // Activity chart (Clicks / Views / Add to cart)
+          charts.activity = new ApexCharts(actEl, {
+            chart: { type: 'line', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+            series: [
+              { name: 'Clicks (landings)', data: clicks },
+              { name: 'Views', data: views },
+              { name: 'Add to cart', data: atc },
+            ],
+            colors: ['#6366f1', '#f59e0b', '#ef4444'],
+            stroke: { width: 2, curve: 'smooth' },
+            markers: { size: 2, hover: { size: 5 } },
+            dataLabels: { enabled: false },
+            xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
+            yaxis: { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } }, min: 0 },
+            tooltip: { y: { formatter: function(v) { return fmtNum(v); } } },
+            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
+            legend: { position: 'top', fontSize: '11px' },
+          });
+          actEl.innerHTML = '';
+          charts.activity.render();
+        });
+      }
+
+      function render(payload) {
+        var status = document.getElementById('product-insights-status');
+        var body = document.getElementById('product-insights-body');
+        if (status) status.style.display = 'none';
+        if (body) body.style.display = 'block';
+
+        var titleEl = document.getElementById('product-insights-title');
+        var titleInline = document.getElementById('product-insights-title-inline');
+        var typeEl = document.getElementById('product-insights-type');
+        var subtitleEl = document.getElementById('product-insights-subtitle');
+        var openLink = document.getElementById('product-insights-open-store');
+        var mainImg = document.getElementById('product-insights-main-img');
+        var thumbsEl = document.getElementById('product-insights-thumbs');
+
+        var prod = payload && payload.product ? payload.product : null;
+        var metrics = payload && payload.metrics ? payload.metrics : {};
+
+        var title = (prod && prod.title) ? String(prod.title) : (currentTitle || currentHandle || 'Product');
+        if (titleEl) titleEl.textContent = title;
+        if (titleInline) titleInline.textContent = title;
+        if (typeEl) typeEl.textContent = (prod && prod.productType) ? String(prod.productType) : '—';
+
+        if (subtitleEl) {
+          var rk = (payload && payload.rangeKey) ? String(payload.rangeKey) : currentRangeKey;
+          subtitleEl.textContent = rk;
+        }
+
+        if (openLink) {
+          var href = currentProductUrl || '#';
+          openLink.href = href;
+          openLink.style.display = href && href !== '#' ? 'inline-flex' : 'none';
+        }
+
+        // Images
+        var images = (prod && Array.isArray(prod.images)) ? prod.images : [];
+        var first = images && images[0] ? images[0] : null;
+        if (mainImg) {
+          mainImg.src = (first && first.url) ? String(first.url) : '';
+          mainImg.alt = title;
+          if (!mainImg.src) mainImg.style.opacity = '0.35';
+          else mainImg.style.opacity = '1';
+        }
+        if (thumbsEl) {
+          thumbsEl.innerHTML = (images || []).slice(0, 10).map(function(img, i) {
+            var u = img && img.url ? String(img.url) : '';
+            var t = img && img.thumb ? String(img.thumb) : u;
+            if (!u) return '';
+            return '<a href="#" class="product-insights-thumb btn btn-ghost-secondary btn-sm p-0' + (i === 0 ? ' active' : '') + '" data-img="' + escapeHtml(u) + '" aria-label="Image ' + (i + 1) + '">' +
+              '<img src="' + escapeHtml(t) + '" alt="" style="width:46px;height:46px;object-fit:cover;border-radius:6px">' +
+            '</a>';
+          }).join('');
+
+          thumbsEl.querySelectorAll('[data-img]').forEach(function(a) {
+            a.addEventListener('click', function(e) {
+              e.preventDefault();
+              var u = a.getAttribute('data-img') || '';
+              if (!u || !mainImg) return;
+              thumbsEl.querySelectorAll('.product-insights-thumb').forEach(function(x) { x.classList.remove('active'); });
+              a.classList.add('active');
+              mainImg.src = u;
+            });
+          });
+        }
+
+        // Metrics table
+        var mt = document.getElementById('product-insights-metrics-table');
+        if (mt) {
+          function row(label, value) {
+            return '<tr><td class="text-muted" style="width:44%">' + escapeHtml(label) + '</td><td class="text-end fw-semibold">' + escapeHtml(value) + '</td></tr>';
+          }
+          var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
+          var orders = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
+          var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
+          var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
+          var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
+          var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
+          var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
+          var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
+          var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
+          var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
+          var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
+          mt.innerHTML =
+            row('Revenue (GBP)', revenue) +
+            row('Orders', orders) +
+            row('Units sold', units) +
+            '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+            row('Clicks (landings)', clicks) +
+            row('Product views', views) +
+            row('Add to cart', atc) +
+            row('Checkout started', cs) +
+            '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+            row('Conversion rate (Orders / Clicks)', cr) +
+            row('View → Cart rate', atcRate) +
+            row('Revenue / Click', rpc) +
+            row('Revenue / View', rpv);
+        }
+
+        renderCharts(payload);
+      }
+
+      function load() {
+        if (!currentHandle) return;
+        ensureDom();
+        setStatus('Loading…');
+
+        var shop = null;
+        try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
+        var url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) +
+          '&range=' + encodeURIComponent(currentRangeKey || 'today') +
+          (shop ? ('&shop=' + encodeURIComponent(shop)) : '') +
+          '&_=' + Date.now();
+
+        fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
+          .then(function(r) { return r && r.ok ? r.json() : null; })
+          .then(function(data) {
+            if (!data || !data.ok) {
+              setStatus('No data available for this product.');
+              return;
+            }
+            render(data);
+          })
+          .catch(function() { setStatus('Could not load product insights.'); });
+      }
+
+      function open(handle, options) {
+        currentHandle = normalizeHandle(handle);
+        if (!currentHandle) return;
+        options = options || {};
+        currentTitle = options.title ? String(options.title) : null;
+        currentProductUrl = options.productUrl ? String(options.productUrl) : null;
+        currentRangeKey = 'today';
+        ensureDom();
+        var sel = document.getElementById('product-insights-range');
+        if (sel) sel.value = 'today';
+        show();
+        load();
+      }
+
+      // Delegate clicks from product thumbnail links
+      document.addEventListener('click', function(e) {
+        var a = e && e.target && e.target.closest ? e.target.closest('a.js-product-modal-link') : null;
+        if (!a) return;
+        if (isModifiedClick(e)) return;
+        var h = normalizeHandle(a.getAttribute('data-product-handle') || '');
+        if (!h) h = parseHandleFromHref(a.getAttribute('href') || '');
+        if (!h) return;
+        e.preventDefault();
+        open(h, {
+          title: a.getAttribute('data-product-title') || '',
+          productUrl: a.getAttribute('href') || '',
+        });
+      });
+
+      // Expose for debugging / future use
+      window.__openProductInsights = open;
     })();
 
 })();

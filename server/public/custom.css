@@ -126,6 +126,14 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
   background: rgba(var(--tblr-primary-rgb), .09);
 }
 
+.product-insights-thumb {
+  border: 1px solid transparent;
+}
+.product-insights-thumb.active {
+  border-color: rgba(var(--tblr-primary-rgb), .45);
+  box-shadow: 0 0 0 2px rgba(var(--tblr-primary-rgb), .12);
+}
+
 .th-label-short {
   display: none;
   align-items: center;
