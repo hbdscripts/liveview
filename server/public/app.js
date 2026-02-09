@@ -5016,6 +5016,7 @@ const API = '';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condBounceEl) condBounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+      try { updateCondensedKpiOverflow(); } catch (_) {}
 
       applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
       applyKpiDeltaColor(revenueEl, revenueVal, compareRevenueVal, false);
@@ -5352,7 +5353,7 @@ const API = '';
 
       const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
       const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
-      const returnsCount = extras && typeof extras.returns === 'number' ? extras.returns : null;
+      const returnsAmount = extras && typeof extras.returns === 'number' ? extras.returns : null;
       const compare = extras && extras.compare ? extras.compare : null;
       const itemsSoldCompare = compare && typeof compare.itemsSold === 'number' ? compare.itemsSold : null;
       const ordersFulfilledCompare = compare && typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null;
@@ -5360,10 +5361,17 @@ const API = '';
 
       if (itemsEl) itemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (fulfilledEl) fulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
-      if (returnsEl) returnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
+      function formatReturns(v) {
+        const n = (typeof v === 'number' && Number.isFinite(v)) ? Math.abs(v) : null;
+        if (n == null) return '\u2014';
+        const s = formatRevenue(n);
+        if (!s) return '\u2014';
+        return '-' + s;
+      }
+      if (returnsEl) returnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
       if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
-      if (condReturnsEl) condReturnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
+      if (condReturnsEl) condReturnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
 
       function setSub(el, text) {
         if (!el) return;
@@ -5378,11 +5386,11 @@ const API = '';
 
       setSub(itemsSubEl, itemsSoldCompare != null ? formatSessions(itemsSoldCompare) : '\u2014');
       setSub(fulfilledSubEl, ordersFulfilledCompare != null ? formatSessions(ordersFulfilledCompare) : '\u2014');
-      setSub(returnsSubEl, returnsCompare != null ? formatSessions(returnsCompare) : '\u2014');
+      setSub(returnsSubEl, returnsCompare != null ? formatReturns(returnsCompare) : '\u2014');
 
       applyKpiDeltaColor(itemsEl, itemsSold, itemsSoldCompare, false);
       applyKpiDeltaColor(fulfilledEl, ordersFulfilled, ordersFulfilledCompare, false);
-      applyKpiDeltaColor(returnsEl, returnsCount, returnsCompare, true);
+      applyKpiDeltaColor(returnsEl, returnsAmount, returnsCompare, true);
 
       try { updateCondensedKpiOverflow(); } catch (_) {}
     }
@@ -5407,6 +5415,10 @@ const API = '';
       }
       if (kpiExpandedExtrasInFlight && !force && kpiExpandedExtrasRange === rangeKey) return kpiExpandedExtrasInFlight;
       let url = API + '/api/kpis-expanded-extra?range=' + encodeURIComponent(rangeKey);
+      try {
+        const shop = getShopForSales();
+        if (shop) url += '&shop=' + encodeURIComponent(shop);
+      } catch (_) {}
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
       kpiExpandedExtrasRange = rangeKey;

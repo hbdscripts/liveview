@@ -221,6 +221,8 @@ async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today'
 }
 
 module.exports = {
+  // Low-level helper (used by KPI routes as well as diagnostics)
+  fetchShopifyQlTable,
   fetchShopifySessionsCount,
   fetchShopifySessionsMetrics,
 };

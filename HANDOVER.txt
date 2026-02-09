@@ -99,8 +99,9 @@ KPI component (top-of-content, every page):
 - Markup lives in ONE include: `server/public/partials/kpis-expanded.html`.
 - Condensed KPI strip is shown by default; expanded KPI grid toggles via chevrons.
 - State is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
-- Extra KPIs (Items sold / Orders fulfilled / Returns):
+- Extra KPIs (Items ordered / Orders fulfilled / Returns value):
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
+  - Computed from Shopify Orders API (not KEXO tables): items ordered = line-item qty (orders created in range), orders fulfilled = distinct orders with fulfillments created in range, returns = refund transaction value (shown as negative in UI).
   - Warmed in the background so condensed + expanded can both render without blanks.
 
 KPI caching (perf + UX):
@@ -212,6 +213,7 @@ Edge (optional):
 - DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
 - Date control: sidebar date dropdown is visible on all pages (including Tools).
 - KPI UX/perf: add 2-minute caching + localStorage warm-paint; reduce duplicate conversion/session work; invalidate KPI caches after the sale toast hides.
+- KPI extras: Items ordered / Orders fulfilled / Returns now map directly to Shopify truth (Orders API) so the expanded KPI set matches Shopify (returns renders as negative currency).
 - Header actions: desktop topbar now shows a single Settings button with a Tabler dropdown for Refresh/Sound/Theme/Diagnostics/Sign out (mobile still uses the settings dropdown).
 - Condensed KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
 - Dashboard-series: include per-day returning-customer counts so the “Returning” sparkline can render (with a one-time forced refresh if an older cached payload is detected).
