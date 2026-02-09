@@ -7462,9 +7462,9 @@ const API = '';
         }
 
         function runTabWork(tab) {
-          var isTablePage = (tab === 'spy' || tab === 'sales' || tab === 'date');
+          var showKpis = (tab !== 'dashboard' && tab !== 'tools');
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
-          if (sharedKpiWrap) sharedKpiWrap.style.display = isTablePage ? '' : 'none';
+          if (sharedKpiWrap) sharedKpiWrap.style.display = showKpis ? '' : 'none';
           var showDateSel = (tab === 'sales' || tab === 'date');
           var globalDateSel = document.getElementById('global-date-select');
           if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
@@ -7945,23 +7945,44 @@ const API = '';
 
       function renderDashboard(data) {
         if (!data) return;
-        console.log('[dashboard] renderDashboard called, series count:', (data.series || []).length, 'ApexCharts loaded:', typeof ApexCharts !== 'undefined');
-        var s = data.summary || {};
+        var allSeries = data.series || [];
+        var displayDays = dashLastDays || Math.ceil(allSeries.length / 2) || 1;
+        // Split into current and previous periods
+        var series = allSeries.slice(-displayDays);
+        var prevSeries = allSeries.slice(0, allSeries.length - displayDays);
+        console.log('[dashboard] renderDashboard called, current:', series.length, 'prev:', prevSeries.length);
+
         var el = function(id) { return document.getElementById(id); };
-        if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = s.revenue != null ? fmtGbp(s.revenue) : '\u2014';
-        if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = s.orders != null ? fmtNum(s.orders) : '\u2014';
-        if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = s.sessions != null ? fmtNum(s.sessions) : '\u2014';
-        if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = s.convRate != null ? fmtPct(s.convRate) : '\u2014';
-        if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = s.aov != null ? fmtGbp(s.aov) : '\u2014';
-        if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = s.adSpend != null && s.adSpend > 0 ? fmtGbp(s.adSpend) : '\u2014';
-        if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = s.bounceRate != null ? fmtPct(s.bounceRate) : '\u2014';
+        // Recompute summary from current period only
+        function sumField(arr, field) { var t = 0; for (var i = 0; i < arr.length; i++) t += (arr[i][field] || 0); return t; }
+        function avgField(arr, field) { if (!arr.length) return 0; return sumField(arr, field) / arr.length; }
+
+        var curRevenue = sumField(series, 'revenue');
+        var curOrders = sumField(series, 'orders');
+        var curSessions = sumField(series, 'sessions');
+        var curConvRate = avgField(series, 'convRate');
+        var curAov = avgField(series, 'aov');
+        var curBounceRate = avgField(series, 'bounceRate');
+        var curReturning = sumField(series, 'returningCustomerOrders');
+        var curNewCustomers = sumField(series, 'newCustomerOrders');
+        var curAdSpend = sumField(series, 'adSpend');
+        var curDesktop = sumField(series, 'desktopSessions');
+        var curMobile = sumField(series, 'mobileSessions');
+        var s = data.summary || {};
+
+        if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = fmtGbp(curRevenue);
+        if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = fmtNum(curOrders);
+        if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = fmtNum(curSessions);
+        if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = fmtPct(curConvRate);
+        if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = fmtGbp(curAov);
+        if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = curAdSpend > 0 ? fmtGbp(curAdSpend) : '\u2014';
+        if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = fmtPct(curBounceRate);
         if (el('dash-kpi-returning')) {
-          var retPct = (s.orders > 0 && s.returningCustomerOrders != null) ? Math.round((s.returningCustomerOrders / s.orders) * 1000) / 10 : null;
+          var retPct = curOrders > 0 ? Math.round((curReturning / curOrders) * 1000) / 10 : null;
           el('dash-kpi-returning').textContent = retPct != null ? fmtPct(retPct) : '\u2014';
         }
 
         // Secondary stats
-        var series = data.series || [];
         var numDays = series.length || 1;
 
         // Orders: Today + Avg/Day
@@ -7970,17 +7991,17 @@ const API = '';
           el('dash-orders-today').textContent = fmtNum(todayOrders);
         }
         if (el('dash-orders-avg')) {
-          var avgOrders = numDays > 0 ? Math.round((s.orders || 0) / numDays * 10) / 10 : 0;
+          var avgOrders = numDays > 0 ? Math.round(curOrders / numDays * 10) / 10 : 0;
           el('dash-orders-avg').textContent = avgOrders % 1 === 0 ? fmtNum(avgOrders) : avgOrders.toFixed(1);
         }
 
         // Conversion Rate: progress bar + target diff
         if (el('dash-conv-progress')) {
-          var convPct = Math.min((s.convRate || 0) / 2.5 * 100, 100);
+          var convPct = Math.min(curConvRate / 2.5 * 100, 100);
           el('dash-conv-progress').style.width = convPct.toFixed(1) + '%';
         }
         if (el('dash-conv-target-diff')) {
-          var diff = (s.convRate || 0) - 2.5;
+          var diff = curConvRate - 2.5;
           el('dash-conv-target-diff').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%';
           el('dash-conv-target-diff').className = diff >= 0 ? 'text-success' : 'text-danger';
         }
@@ -7990,71 +8011,80 @@ const API = '';
         if (el('dash-aov-low')) el('dash-aov-low').textContent = s.aovLow != null ? fmtGbp(s.aovLow) : '\u2014';
 
         // Sessions: Desktop / Mobile
-        if (el('dash-sessions-desktop')) el('dash-sessions-desktop').textContent = s.desktopSessions != null ? fmtNum(s.desktopSessions) : '\u2014';
-        if (el('dash-sessions-mobile')) el('dash-sessions-mobile').textContent = s.mobileSessions != null ? fmtNum(s.mobileSessions) : '\u2014';
+        if (el('dash-sessions-desktop')) el('dash-sessions-desktop').textContent = fmtNum(curDesktop);
+        if (el('dash-sessions-mobile')) el('dash-sessions-mobile').textContent = fmtNum(curMobile);
 
         // Bounce Rate: progress bar
         if (el('dash-bounce-progress')) {
-          el('dash-bounce-progress').style.width = Math.min(s.bounceRate || 0, 100).toFixed(1) + '%';
+          el('dash-bounce-progress').style.width = Math.min(curBounceRate, 100).toFixed(1) + '%';
         }
 
         // Returning Customers: New / Return split
-        if (el('dash-customers-new')) el('dash-customers-new').textContent = s.newCustomerOrders != null ? fmtNum(s.newCustomerOrders) : '\u2014';
-        if (el('dash-customers-return')) el('dash-customers-return').textContent = s.returningCustomerOrders != null ? fmtNum(s.returningCustomerOrders) : '\u2014';
+        if (el('dash-customers-new')) el('dash-customers-new').textContent = fmtNum(curNewCustomers);
+        if (el('dash-customers-return')) el('dash-customers-return').textContent = fmtNum(curReturning);
 
         // ROAS badge + progress
-        if (el('dash-roas-badge')) el('dash-roas-badge').textContent = s.roas != null ? s.roas.toFixed(2) + 'x' : '\u2014';
+        var curRoas = curAdSpend > 0 ? curRevenue / curAdSpend : null;
+        if (el('dash-roas-badge')) el('dash-roas-badge').textContent = curRoas != null ? curRoas.toFixed(2) + 'x' : '\u2014';
         if (el('dash-roas-progress')) {
-          var roasPct = s.roas != null ? Math.min(s.roas / 5 * 100, 100) : 0;
+          var roasPct = curRoas != null ? Math.min(curRoas / 5 * 100, 100) : 0;
           el('dash-roas-progress').style.width = roasPct.toFixed(1) + '%';
         }
 
-        // Change indicators (compare first half vs second half of period)
-        if (series.length >= 2) {
-          var mid = Math.floor(series.length / 2);
-          var firstHalf = series.slice(0, mid);
-          var secondHalf = series.slice(mid);
-          function sumField(arr, field) { var t = 0; for (var i = 0; i < arr.length; i++) t += (arr[i][field] || 0); return t; }
-          function avgField(arr, field) { if (!arr.length) return 0; return sumField(arr, field) / arr.length; }
-          function changeBadge(curr, prev) {
-            if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
-            var pct = ((curr - prev) / Math.abs(prev)) * 100;
-            var sign = pct >= 0 ? '+' : '';
-            var cls = pct >= 0 ? 'text-green' : 'text-red';
-            var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
-            return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
-          }
-          function changeBadgeInvert(curr, prev) {
-            if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
-            var pct = ((curr - prev) / Math.abs(prev)) * 100;
-            var sign = pct >= 0 ? '+' : '';
-            var cls = pct <= 0 ? 'text-green' : 'text-red';
-            var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
-            return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
-          }
-          if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(sumField(secondHalf, 'revenue'), sumField(firstHalf, 'revenue'));
-          if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(sumField(secondHalf, 'orders'), sumField(firstHalf, 'orders'));
-          if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(avgField(secondHalf, 'convRate'), avgField(firstHalf, 'convRate'));
-          if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(avgField(secondHalf, 'aov'), avgField(firstHalf, 'aov'));
-          if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadgeInvert(avgField(secondHalf, 'bounceRate'), avgField(firstHalf, 'bounceRate'));
-          if (el('dash-kpi-returning-change')) el('dash-kpi-returning-change').innerHTML = changeBadge(sumField(secondHalf, 'orders'), sumField(firstHalf, 'orders'));
+        // Change indicators — compare current period vs previous period
+        function changeBadge(curr, prev) {
+          if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
+          var pct = ((curr - prev) / Math.abs(prev)) * 100;
+          var sign = pct >= 0 ? '+' : '';
+          var cls = pct >= 0 ? 'text-green' : 'text-red';
+          var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
+          return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
+        }
+        function changeBadgeInvert(curr, prev) {
+          if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
+          var pct = ((curr - prev) / Math.abs(prev)) * 100;
+          var sign = pct >= 0 ? '+' : '';
+          var cls = pct <= 0 ? 'text-green' : 'text-red';
+          var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
+          return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
+        }
+        if (prevSeries.length > 0) {
+          var prevRevenue = sumField(prevSeries, 'revenue');
+          var prevOrders = sumField(prevSeries, 'orders');
+          var prevConvRate = avgField(prevSeries, 'convRate');
+          var prevAov = avgField(prevSeries, 'aov');
+          var prevBounceRate = avgField(prevSeries, 'bounceRate');
+          var prevReturningOrders = sumField(prevSeries, 'returningCustomerOrders');
+          var prevTotalOrders = sumField(prevSeries, 'orders');
+          var prevRetPct = prevTotalOrders > 0 ? (prevReturningOrders / prevTotalOrders) * 100 : 0;
+          var curRetPct = curOrders > 0 ? (curReturning / curOrders) * 100 : 0;
+          if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(curRevenue, prevRevenue);
+          if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(curOrders, prevOrders);
+          if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(curConvRate, prevConvRate);
+          if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(curAov, prevAov);
+          if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadgeInvert(curBounceRate, prevBounceRate);
+          if (el('dash-kpi-returning-change')) el('dash-kpi-returning-change').innerHTML = changeBadge(curRetPct, prevRetPct);
         }
 
-        // Revenue sparkline (mini chart in KPI card)
-        if (el('dash-revenue-sparkline') && series.length > 1 && typeof ApexCharts !== 'undefined') {
-          var sparkData = series.map(function(d) { return d.revenue; });
-          var sparkEl = el('dash-revenue-sparkline');
+        // Sparklines in KPI cards (current period only)
+        function renderSparkline(elId, dataArr, color) {
+          var sparkEl = el(elId);
+          if (!sparkEl || dataArr.length < 2 || typeof ApexCharts === 'undefined') return;
           sparkEl.innerHTML = '';
-          var sparkChart = new ApexCharts(sparkEl, {
+          var chart = new ApexCharts(sparkEl, {
             chart: { type: 'area', height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: [{ data: sparkData }],
+            series: [{ data: dataArr }],
             stroke: { width: 2, curve: 'smooth' },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
-            colors: [DASH_ACCENT],
+            colors: [color],
             tooltip: { enabled: false }
           });
-          sparkChart.render();
+          chart.render();
         }
+        renderSparkline('dash-revenue-sparkline', series.map(function(d) { return d.revenue; }), DASH_ACCENT);
+        renderSparkline('dash-sessions-sparkline', series.map(function(d) { return d.sessions; }), DASH_ORANGE);
+        renderSparkline('dash-orders-sparkline', series.map(function(d) { return d.orders; }), DASH_BLUE);
+        renderSparkline('dash-returning-sparkline', series.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
 
         var labels = series.map(function(d) { return shortDate(d.date); });
 
@@ -8175,7 +8205,8 @@ const API = '';
         } catch (_) {}
         dashLoading = true;
         showPageProgress();
-        var url = API + '/api/dashboard-series?days=' + days + (force ? '&_=' + Date.now() : '');
+        var fetchDays = days * 2; // Request double for "vs previous period" comparison
+        var url = API + '/api/dashboard-series?days=' + fetchDays + (force ? '&_=' + Date.now() : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -8245,5 +8276,24 @@ const API = '';
         }).catch(function() {});
       } catch (_) {}
     })();
-  
+
+    // ── Back to top button ────────────────────────────────────────────
+    (function initBackToTop() {
+      var btn = document.getElementById('back-to-top-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    })();
+
+    // ── Footer settings button → opens theme offcanvas ────────────────
+    (function initFooterSettings() {
+      document.querySelectorAll('.footer-settings-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var headerBtn = document.getElementById('theme-settings-btn');
+          if (headerBtn) headerBtn.click();
+        });
+      });
+    })();
+
 })();

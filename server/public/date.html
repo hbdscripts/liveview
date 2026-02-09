@@ -43,7 +43,7 @@
             </div>
             <div class="nav-item dropdown d-none d-md-flex">
               <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-                <i class="ti ti-settings me-1"></i><span>Settings</span>
+                <i class="ti ti-settings"></i>
               </a>
               <div class="dropdown-menu dropdown-menu-end">
                 <div class="dropdown-item d-flex align-items-center gap-2">
@@ -291,8 +291,10 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-xl">
-          <div class="d-flex justify-content-center py-3">
+          <div class="d-flex align-items-center justify-content-between py-3">
+            <button type="button" class="btn btn-icon btn-ghost-secondary footer-settings-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
             <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80">
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="ti ti-arrow-up"></i></button>
           </div>
         </div>
       </footer>

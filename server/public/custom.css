@@ -458,8 +458,34 @@
 
 /* ── Footer ────────────────────────────────────────────── */
 .footer {
-  border-top: 1px solid var(--tblr-border-color, #e6e7e9);
+  position: static;
+  border: none;
+  padding: 0;
+  background: transparent;
 }
+.footer-settings-btn { cursor: pointer; }
+
+/* ── Back to top button ── */
+#back-to-top-btn { cursor: pointer; }
+
+/* ── Fix double border: remove border from top navbar, keep on nav menu ── */
+.sticky-top .navbar.sticky-top { border-bottom: none; }
+.sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
+
+/* ── Nav active state ── */
+.navbar-nav .nav-link.active {
+  color: var(--tblr-primary) !important;
+  border-bottom: 2px solid var(--tblr-primary);
+}
+
+/* ── Toast dark-mode support ── */
+body.theme-dark .sale-toast {
+  background: var(--tblr-bg-surface, #1e293b);
+  border-color: var(--tblr-border-color, #2d3748);
+  color: var(--tblr-body-color, #e2e8f0);
+}
+body.theme-dark .sale-toast-title { color: var(--tblr-body-color, #e2e8f0); }
+body.theme-dark .sale-toast-close { filter: invert(1); }
 
 /* Sale-toast toggle eye icon states */
 #last-sale-toggle .ti-eye { display: inline; }
