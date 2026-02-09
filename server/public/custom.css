@@ -556,7 +556,19 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
   flex-shrink: 0;
 }
 
-/* Stacked entry/exit thumbnails */
+/* Base thumbnail style — all product/landing images share this look */
+.landing-thumb {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: var(--tblr-border-radius, 4px);
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+/* Stacked entry/exit thumbnails (only when 2 images overlap) */
 .thumb-wrap.thumb-stack {
   display: inline-block;
   position: relative;
@@ -567,12 +579,6 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
 
 .thumb-stack .landing-thumb {
   position: absolute;
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.12);
 }
 
 .thumb-stack .landing-thumb:first-child {
@@ -590,16 +596,6 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
 
 .thumb-overlay {
   display: none !important;
-}
-
-/* Landing page thumbnails */
-.landing-thumb {
-  width: 50px;
-  height: 50px;
-  min-width: 50px;
-  min-height: 50px;
-  border-radius: var(--tblr-border-radius, 4px);
-  object-fit: cover;
 }
 
 .landing-lines {

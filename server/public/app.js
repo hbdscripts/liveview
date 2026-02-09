@@ -668,7 +668,9 @@ const API = '';
         var overlay = isPurchasedDual
           ? '<span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span>'
           : '';
-        var thumbs = thumbsInner ? ('<span class="thumb-wrap thumb-stack">' + thumbsInner + overlay + '</span>') : '';
+        var hasBoth = entryImg && exitImg;
+        var wrapClass = hasBoth ? 'thumb-wrap thumb-stack' : 'thumb-wrap';
+        var thumbs = thumbsInner ? ('<span class="' + wrapClass + '">' + thumbsInner + overlay + '</span>') : '';
 
         function dirArrowSvg(kind) {
           var isExit = kind === 'exit';
@@ -2819,7 +2821,7 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbInner = '<span class="thumb-wrap thumb-stack">' +
+        const thumbInner = '<span class="thumb-wrap">' +
             (thumb
               ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
               : '') +
@@ -2886,7 +2888,7 @@ const API = '';
         var thumb = r && r.thumb_url ? String(r.thumb_url) : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         var thumbUrl = thumb ? (hotImgSquare(thumb) || thumb) : '';
-        var thumbImg = '<span class="thumb-wrap thumb-stack">' +
+        var thumbImg = '<span class="thumb-wrap">' +
           (thumbUrl ? '<img class="landing-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         var thumbHtml = productUrl ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
@@ -3092,7 +3094,7 @@ const API = '';
         const thumbUrl = (v && v.thumb_url) ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap thumb-stack">' +
+        const thumbImg = '<span class="thumb-wrap">' +
           (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         const thumb = productUrl
@@ -3295,7 +3297,7 @@ const API = '';
         const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap thumb-stack">' +
+        const thumbImg = '<span class="thumb-wrap">' +
           (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
@@ -3671,7 +3673,7 @@ const API = '';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const placeholderSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
-        const imgInner = '<span class="thumb-wrap thumb-stack">' +
+        const imgInner = '<span class="thumb-wrap">' +
           (thumb
             ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
             : '') +
@@ -8396,7 +8398,7 @@ const API = '';
             prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
             prodTbody.innerHTML = products.map(function(p) {
-              var thumbHtml = '<span class="thumb-wrap thumb-stack">' +
+              var thumbHtml = '<span class="thumb-wrap">' +
                 (p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
               '</span>';
               return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
