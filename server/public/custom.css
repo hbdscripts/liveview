@@ -611,6 +611,49 @@
   border: 0;
 }
 
+/* Card sprinkles decoration */
+.card-sprinkles {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-sprinkles::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 1.5px, var(--tblr-primary) 100%, transparent 100%),
+    radial-gradient(circle 2px, var(--tblr-primary) 100%, transparent 100%);
+  background-size: 4px 4px;
+  background-position:
+    8% 12%, 85% 8%, 72% 78%, 15% 85%, 45% 5%,
+    92% 45%, 30% 55%, 60% 92%, 5% 50%, 78% 35%,
+    50% 70%, 25% 30%, 88% 65%, 38% 88%, 65% 20%, 18% 68%;
+  background-repeat: no-repeat;
+  opacity: 0.10;
+}
+
+.card-sprinkles > * {
+  position: relative;
+  z-index: 1;
+}
+
 .text-accent {
   color: var(--tblr-primary);
 }
