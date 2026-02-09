@@ -4518,6 +4518,12 @@ const API = '';
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: true });
+      try {
+        if (typeof isKpisExpanded === 'function' && isKpisExpanded()) {
+          // Extras depend on range too.
+          fetchExpandedKpiExtras({ force: true }).then(function(extras) { renderExpandedKpiExtras(extras); scheduleKpiPagerUpdate(); });
+        }
+      } catch (_) {}
 
       if (activeMainTab === 'dashboard') {
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
@@ -4672,7 +4678,17 @@ const API = '';
 
     function setLiveKpisLoading() {
       const spinner = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
-      const ids = ['live-kpi-sales', 'live-kpi-sessions', 'live-kpi-conv', 'live-kpi-returning', 'live-kpi-aov', 'live-kpi-bounce'];
+      const ids = [
+        'live-kpi-orders',
+        'live-kpi-sessions',
+        'live-kpi-conv',
+        'live-kpi-returning',
+        'live-kpi-aov',
+        'live-kpi-bounce',
+        'live-kpi-items-sold',
+        'live-kpi-orders-fulfilled',
+        'live-kpi-returns',
+      ];
       ids.forEach(function(id) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -4774,7 +4790,7 @@ const API = '';
     function fetchSparklineData() {
       if (sparklineSeriesFetched || PAGE === 'dashboard') return;
       sparklineSeriesFetched = true;
-      var url = API + '/api/dashboard-series?days=14';
+      var url = API + '/api/dashboard-series?range=14d';
       fetchWithTimeout(url, { credentials: 'same-origin' }, 15000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
@@ -4789,7 +4805,7 @@ const API = '';
     function renderSparklineFromCache() {
       if (!sparklineSeriesCache || sparklineSeriesCache.length < 2) return;
       var s = sparklineSeriesCache;
-      renderKpiSparkline('sales', s.map(function(d) { return d.revenue || 0; }));
+      renderKpiSparkline('orders', s.map(function(d) { return d.orders || 0; }));
       renderKpiSparkline('conv', s.map(function(d) { return d.convRate || 0; }));
       renderKpiSparkline('sessions', s.map(function(d) { return d.sessions || 0; }));
       renderKpiSparkline('returning', s.map(function(d) { return d.returningCustomerOrders || 0; }));
@@ -4798,67 +4814,75 @@ const API = '';
     }
 
     function renderLiveKpis(data) {
-      const salesEl = document.getElementById('live-kpi-sales');
+      const ordersEl = document.getElementById('live-kpi-orders');
       const sessionsEl = document.getElementById('live-kpi-sessions');
       const convEl = document.getElementById('live-kpi-conv');
       const returningEl = document.getElementById('live-kpi-returning');
       const aovEl = document.getElementById('live-kpi-aov');
       const bounceEl = document.getElementById('live-kpi-bounce');
-      const salesSubEl = document.getElementById('live-kpi-sales-sub');
+      const ordersSubEl = document.getElementById('live-kpi-orders-sub');
       const sessionsSubEl = document.getElementById('live-kpi-sessions-sub');
       const convSubEl = document.getElementById('live-kpi-conv-sub');
       const returningSubEl = document.getElementById('live-kpi-returning-sub');
       const aovSubEl = document.getElementById('live-kpi-aov-sub');
       const bounceSubEl = document.getElementById('live-kpi-bounce-sub');
-      const salesLabelEl = document.getElementById('live-kpi-sales-label');
-      const sales = data && data.sales ? data.sales : {};
       const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
-      const returningRevenue = data && data.returningRevenue ? data.returningRevenue : {};
+      const returningCustomerCountMap = data && data.returningCustomerCount ? data.returningCustomerCount : {};
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const conv = data && data.conversion ? data.conversion : {};
       const aovMap = data && data.aov ? data.aov : {};
       const bounceMap = data && data.bounce ? data.bounce : {};
+      const itemsSoldEl = document.getElementById('live-kpi-items-sold');
+      const ordersFulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
+      const returnsEl = document.getElementById('live-kpi-returns');
+      const topbarOrdersEl = document.getElementById('topbar-kpi-orders');
+      const topbarClicksEl = document.getElementById('topbar-kpi-clicks');
+      const topbarConvEl = document.getElementById('topbar-kpi-conv');
       const kpiRange = getStatsRange();
       const forRange = breakdown[kpiRange];
       const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
-      const salesVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       const orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
-      const returningVal = typeof returningRevenue[kpiRange] === 'number' ? returningRevenue[kpiRange] : null;
+      const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
       const compare = data && data.compare ? data.compare : null;
       const compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
       const compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
-      const compareSalesVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
-      const compareReturningVal = compare && typeof compare.returningRevenue === 'number' ? compare.returningRevenue : null;
+      const compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
+      const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
-      if (salesLabelEl) {
-        salesLabelEl.textContent = orderCountVal != null ? (Math.round(orderCountVal) + ' Orders') : 'Orders';
-        salesLabelEl.title = '';
-      }
-      if (salesEl) {
-        salesEl.textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
-      }
+      if (ordersEl) ordersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (returningEl) returningEl.textContent = returningVal != null ? formatRevenue(returningVal) : '\u2014';
+      if (returningEl) returningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
 
-      applyKpiDeltaColor(salesEl, salesVal, compareSalesVal, false);
+      applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
       applyKpiDeltaColor(sessionsEl, sessionsVal, compareSessionsVal, false);
       applyKpiDeltaColor(convEl, convVal, compareConvVal, false);
       applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
       applyKpiDeltaColor(aovEl, aovVal, compareAovVal, false);
       applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
 
+      // Header quick KPIs (compact)
+      if (topbarOrdersEl) topbarOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
+      if (topbarClicksEl) topbarClicksEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
+      if (topbarConvEl) topbarConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
+
       // Render sparklines from real dashboard-series data
       if (!sparklineSeriesFetched) fetchSparklineData();
       else renderSparklineFromCache();
+
+      // Expanded KPIs: leave these as-is until /api/kpis-expanded-extra fills them.
+      // If they haven't been populated yet, keep them as "—" rather than spinners forever.
+      if (itemsSoldEl && itemsSoldEl.querySelector && itemsSoldEl.querySelector('.kpi-mini-spinner')) itemsSoldEl.textContent = '\u2014';
+      if (ordersFulfilledEl && ordersFulfilledEl.querySelector && ordersFulfilledEl.querySelector('.kpi-mini-spinner')) ordersFulfilledEl.textContent = '\u2014';
+      if (returnsEl && returnsEl.querySelector && returnsEl.querySelector('.kpi-mini-spinner')) returnsEl.textContent = '\u2014';
 
       function setSub(el, text) {
         if (!el) return;
@@ -4895,10 +4919,10 @@ const API = '';
         }
         el.classList.remove('is-hidden');
       }
-      setSub(salesSubEl, compareSalesVal != null ? formatRevenueSub(compareSalesVal) : '\u2014');
+      setSub(ordersSubEl, compareOrdersVal != null ? formatSessions(compareOrdersVal) : '\u2014');
       setSub(sessionsSubEl, compareSessionsVal != null ? formatSessions(compareSessionsVal) : '\u2014');
       setSub(convSubEl, compareConvVal != null ? pct(compareConvVal) : '\u2014');
-      setSub(returningSubEl, compareReturningVal != null ? formatRevenueSub(compareReturningVal) : '\u2014');
+      setSub(returningSubEl, compareReturningVal != null ? formatSessions(compareReturningVal) : '\u2014');
       setSub(aovSubEl, compareAovVal != null ? formatRevenueSub(compareAovVal) : '\u2014');
       setSub(bounceSubEl, compareBounceVal != null ? pct(compareBounceVal) : '\u2014');
       scheduleKpiPagerUpdate();
@@ -5003,38 +5027,164 @@ const API = '';
       return rect.height > lineHeight * 1.4;
     }
     function applyKpiPager() {
-      const grid = document.getElementById('live-kpi-grid');
-      const btn = document.getElementById('kpi-mobile-next');
-      const wrap = document.querySelector('.kpi-mobile-pager');
-      if (!grid || !btn) return;
-      const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
-      if (isMobile) {
-        btn.classList.add('is-hidden');
-        btn.disabled = true;
-        if (wrap) wrap.classList.remove('kpi-pager-active');
+      const wrap = document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
+      const btnNext = document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
+      const btnPrev = document.getElementById('kpi-pager-prev');
+      if (!wrap || !btnNext) return;
+      const hasOverflow = wrap.scrollWidth > (wrap.clientWidth + 2);
+      const atStart = wrap.scrollLeft <= 2;
+      const atEnd = (wrap.scrollLeft + wrap.clientWidth) >= (wrap.scrollWidth - 2);
+
+      if (!hasOverflow) {
+        btnNext.classList.add('is-hidden');
+        btnNext.disabled = true;
+        if (btnPrev) { btnPrev.classList.add('is-hidden'); btnPrev.disabled = true; }
         return;
       }
-      const hasOverflow = wrap && wrap.scrollWidth > wrap.clientWidth;
-      btn.classList.toggle('is-hidden', !hasOverflow);
-      btn.disabled = !hasOverflow;
-      btn.setAttribute('aria-label', hasOverflow ? 'Scroll KPIs right' : 'KPIs');
-      if (wrap) {
-        if (hasOverflow) wrap.classList.add('kpi-pager-active');
-        else wrap.classList.remove('kpi-pager-active');
+
+      btnNext.classList.toggle('is-hidden', atEnd);
+      btnNext.disabled = atEnd;
+      btnNext.setAttribute('aria-label', 'Next KPIs');
+      if (btnPrev) {
+        btnPrev.classList.toggle('is-hidden', atStart);
+        btnPrev.disabled = atStart;
+        btnPrev.setAttribute('aria-label', 'Previous KPIs');
       }
     }
     (function initKpiPager() {
-      const btn = document.getElementById('kpi-mobile-next');
-      const wrap = document.querySelector('.kpi-mobile-pager');
-      if (btn && wrap) {
-        btn.addEventListener('click', function() {
+      const wrap = document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
+      const btnNext = document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
+      const btnPrev = document.getElementById('kpi-pager-prev');
+      if (wrap && btnNext) {
+        btnNext.addEventListener('click', function() {
           if (wrap.scrollWidth > wrap.clientWidth) {
-            wrap.scrollLeft += Math.min(wrap.clientWidth * 0.75, wrap.scrollWidth - wrap.scrollLeft - wrap.clientWidth);
+            const delta = Math.min(wrap.clientWidth * 0.85, wrap.scrollWidth - wrap.scrollLeft - wrap.clientWidth);
+            wrap.scrollLeft += Math.max(0, delta);
+            scheduleKpiPagerUpdate();
           }
         });
       }
+      if (wrap && btnPrev) {
+        btnPrev.addEventListener('click', function() {
+          if (wrap.scrollWidth > wrap.clientWidth) {
+            const delta = Math.min(wrap.clientWidth * 0.85, wrap.scrollLeft);
+            wrap.scrollLeft -= Math.max(0, delta);
+            scheduleKpiPagerUpdate();
+          }
+        });
+      }
+      if (wrap) {
+        wrap.addEventListener('scroll', function() { scheduleKpiPagerUpdate(); }, { passive: true });
+      }
       scheduleKpiPagerUpdate();
       window.addEventListener('resize', function() { scheduleKpiPagerUpdate(); scheduleBreakdownSync(); });
+    })();
+
+    // Expanded KPI strip (hidden by default; toggled from header)
+    const KPI_EXPANDED_LS_KEY = 'kexo-kpis-expanded';
+    let _kpisExpanded = null;
+    function isKpisExpanded() {
+      if (_kpisExpanded != null) return !!_kpisExpanded;
+      try { _kpisExpanded = (localStorage.getItem(KPI_EXPANDED_LS_KEY) === '1'); }
+      catch (_) { _kpisExpanded = false; }
+      return !!_kpisExpanded;
+    }
+
+    let kpiExpandedExtrasCache = null;
+    let kpiExpandedExtrasRange = null;
+    let kpiExpandedExtrasFetchedAt = 0;
+    let kpiExpandedExtrasInFlight = null;
+
+    function renderExpandedKpiExtras(extras) {
+      const itemsEl = document.getElementById('live-kpi-items-sold');
+      const fulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
+      const returnsEl = document.getElementById('live-kpi-returns');
+      if (!itemsEl && !fulfilledEl && !returnsEl) return;
+
+      const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
+      const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
+      const returnsCount = extras && typeof extras.returns === 'number' ? extras.returns : null;
+
+      if (itemsEl) itemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
+      if (fulfilledEl) fulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
+      if (returnsEl) returnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
+    }
+
+    function fetchExpandedKpiExtras(options = {}) {
+      const force = !!options.force;
+      const rangeKey = getStatsRange();
+      if (!rangeKey) return Promise.resolve(null);
+      const stale = !kpiExpandedExtrasFetchedAt || (Date.now() - kpiExpandedExtrasFetchedAt) > KPI_REFRESH_MS;
+      if (!force && !stale && kpiExpandedExtrasCache && kpiExpandedExtrasRange === rangeKey) {
+        return Promise.resolve(kpiExpandedExtrasCache);
+      }
+      if (kpiExpandedExtrasInFlight && !force && kpiExpandedExtrasRange === rangeKey) return kpiExpandedExtrasInFlight;
+      let url = API + '/api/kpis-expanded-extra?range=' + encodeURIComponent(rangeKey);
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      kpiExpandedExtrasRange = rangeKey;
+      kpiExpandedExtrasInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(extras) {
+          kpiExpandedExtrasCache = extras || null;
+          kpiExpandedExtrasFetchedAt = Date.now();
+          return kpiExpandedExtrasCache;
+        })
+        .catch(function() { return null; })
+        .finally(function() { kpiExpandedExtrasInFlight = null; });
+      return kpiExpandedExtrasInFlight;
+    }
+
+    function applyKpisExpandedUi() {
+      const expanded = isKpisExpanded();
+      const wrap = document.getElementById('kexo-expanded-kpis') || document.querySelector('.shared-kpi-wrap');
+      if (wrap) wrap.style.display = expanded ? '' : 'none';
+
+      const btn = document.getElementById('kexo-kpis-toggle');
+      if (btn) {
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const label = btn.querySelector('.kexo-topbar-kpis-more-label');
+        if (label) label.textContent = expanded ? 'Hide' : 'Show more';
+      }
+      const btnMobile = document.getElementById('kexo-kpis-toggle-mobile');
+      if (btnMobile) {
+        btnMobile.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const label = btnMobile.querySelector('.kexo-kpis-toggle-mobile-label');
+        if (label) label.textContent = expanded ? 'Hide KPIs' : 'Show KPIs';
+      }
+
+      if (expanded) {
+        try {
+          var staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
+          if (staleKpis) refreshKpis({ force: false });
+          else renderLiveKpis(getKpiData());
+        } catch (_) {}
+        fetchExpandedKpiExtras({ force: false }).then(function(extras) { renderExpandedKpiExtras(extras); scheduleKpiPagerUpdate(); });
+      }
+
+      scheduleKpiPagerUpdate();
+    }
+
+    function setKpisExpanded(nextExpanded) {
+      _kpisExpanded = !!nextExpanded;
+      try { localStorage.setItem(KPI_EXPANDED_LS_KEY, _kpisExpanded ? '1' : '0'); } catch (_) {}
+      applyKpisExpandedUi();
+    }
+
+    (function initKpisExpandedToggle() {
+      const btn = document.getElementById('kexo-kpis-toggle');
+      if (btn) {
+        btn.addEventListener('click', function() {
+          setKpisExpanded(!isKpisExpanded());
+        });
+      }
+      const btnMobile = document.getElementById('kexo-kpis-toggle-mobile');
+      if (btnMobile) {
+        btnMobile.addEventListener('click', function() {
+          setKpisExpanded(!isKpisExpanded());
+        });
+      }
+      applyKpisExpandedUi();
     })();
 
     function delay(ms) {
@@ -7876,9 +8026,8 @@ const API = '';
         }
 
         function runTabWork(tab) {
-          var showKpis = (tab !== 'dashboard' && tab !== 'tools');
-          var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
-          if (sharedKpiWrap) sharedKpiWrap.style.display = showKpis ? '' : 'none';
+          // Expanded KPI strip visibility is controlled by the header toggle.
+          try { if (typeof applyKpisExpandedUi === 'function') applyKpisExpandedUi(); } catch (_) {}
           // Keep the global date selector visible on ALL pages (including Tools) for consistent header UX.
           var showDateSel = true;
           var globalDateSel = document.getElementById('global-date-select');
@@ -7896,6 +8045,7 @@ const API = '';
           }
 
           if (tab === 'tools') {
+            ensureKpis();
             return;
           }
           if (tab === 'dashboard') {

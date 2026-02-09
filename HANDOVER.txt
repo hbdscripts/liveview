@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Tools keeps global date selector)
+Last updated: 2026-02-09 (KPIs moved into header with “Show more” expandable grid)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -55,7 +55,7 @@ Auth protection:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
 - Ads page lazily loads `/ads.js` when needed.
-- Tools page hides shared KPI/date controls and skips auto-refresh.
+- Shared KPI grid is now hidden by default and only shown when the header “Show more” (or mobile “Show KPIs”) toggle is enabled.
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -80,6 +80,19 @@ Platform start/min date clamp:
 - All inline styles moved to `server/public/tools.css`.
 - Back link points to `/dashboard`.
 - `server/public/tools.js` uses class toggles instead of inline styles.
+
+---
+
+## KPI system (global, every page)
+
+Header quick KPIs (desktop):
+- `server/public/partials/header.html`: compact “Orders / Clicks / Conv” in the top bar center + “Show more” toggle.
+
+Expanded KPI grid (all pages, hidden by default):
+- Markup lives in ONE include: `server/public/partials/kpis-expanded.html`.
+- All pages include it under the nav bar; visibility is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
+- Extra KPIs (Items sold / Orders fulfilled / Returns) are fetched only when expanded is shown:
+  - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
 
 ---
 

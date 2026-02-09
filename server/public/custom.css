@@ -346,17 +346,45 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 /* KPI bar: contain overflow, allow horizontal swipe inside */
 .shared-kpi-wrap {
   overflow: hidden;
+  position: relative;
+}
+.kexo-kpi-pager-shell {
+  position: relative;
 }
 .kpi-mobile-pager {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  scroll-behavior: smooth;
 }
 .kpi-mobile-pager::-webkit-scrollbar { display: none; }
 
-/* Hide KPI mobile pager button */
-#kpi-mobile-next {
-  display: none !important;
+/* KPI pager buttons (show only when needed) */
+.kexo-kpi-pager-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  background: rgba(0,0,0,0.10);
+  backdrop-filter: blur(6px);
+}
+.kexo-kpi-pager-prev { left: 0; }
+.kexo-kpi-pager-next { right: 0; }
+
+@media (max-width: 991.98px) {
+  /* On small resolutions: keep KPIs on one row and scroll horizontally. */
+  .kpi-mobile-pager { padding: 0 2.5rem; }
+  #live-kpi-grid { flex-wrap: nowrap !important; }
+  #live-kpi-grid > [class*="col-"] {
+    flex: 0 0 auto !important;
+    width: 220px !important;
+    max-width: none !important;
+  }
 }
 
 /* Loading states */
@@ -513,17 +541,52 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 .sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
-/* ── Centered header logo ── */
-.navbar-dark .container-xl {
-  position: relative;
+/* ── Header: brand left + compact KPI strip center ── */
+.kexo-navbar-brand {
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-right: 0;
 }
-.navbar-brand-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+.kexo-navbar-brand img { display: block; }
+
+.kexo-topbar-kpis {
+  gap: 0.85rem;
 }
-.navbar-brand-center img {
-  display: block;
+.kexo-topbar-kpi {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.kexo-topbar-kpi-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+.kexo-topbar-kpi-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--tblr-body-color);
+}
+.kexo-topbar-kpis-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  white-space: nowrap;
+}
+.kexo-topbar-kpis-more i {
+  transition: transform 0.15s ease;
+}
+.kexo-topbar-kpis-more[aria-expanded="true"] i {
+  transform: rotate(180deg);
+}
+
+#kexo-kpis-toggle-mobile i {
+  transition: transform 0.15s ease;
+}
+#kexo-kpis-toggle-mobile[aria-expanded="true"] i {
+  transform: rotate(180deg);
 }
 
 /* ── Top nav: remove rounded nav items, center nav links ── */

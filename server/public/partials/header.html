@@ -13,7 +13,10 @@
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
             <span class="navbar-toggler-icon"></span>
           </button>
-          <div class="d-none d-md-flex align-items-center" id="kexo-date-wrap">
+          <a href="/dashboard" class="navbar-brand d-none d-md-flex kexo-navbar-brand" aria-label="Kexo dashboard">
+            <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
+          </a>
+          <div class="d-none d-md-flex align-items-center ms-2" id="kexo-date-wrap">
             <select id="global-date-select" class="form-select" aria-label="Date range">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
@@ -23,9 +26,24 @@
               <option value="custom" id="date-opt-custom">Custom</option>
             </select>
           </div>
-          <a href="/dashboard" class="navbar-brand-center d-none d-md-flex" aria-label="Kexo dashboard">
-            <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30">
-          </a>
+          <div class="d-none d-md-flex align-items-center kexo-topbar-kpis mx-md-auto" id="kexo-topbar-kpis" aria-label="Quick KPIs">
+            <div class="kexo-topbar-kpi">
+              <div class="kexo-topbar-kpi-label">Orders</div>
+              <div class="kexo-topbar-kpi-value" id="topbar-kpi-orders">&mdash;</div>
+            </div>
+            <div class="kexo-topbar-kpi">
+              <div class="kexo-topbar-kpi-label">Clicks</div>
+              <div class="kexo-topbar-kpi-value" id="topbar-kpi-clicks">&mdash;</div>
+            </div>
+            <div class="kexo-topbar-kpi">
+              <div class="kexo-topbar-kpi-label">Conv</div>
+              <div class="kexo-topbar-kpi-value" id="topbar-kpi-conv">&mdash;</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost-secondary kexo-topbar-kpis-more" id="kexo-kpis-toggle" aria-expanded="false" aria-controls="kexo-expanded-kpis">
+              <span class="kexo-topbar-kpis-more-label">Show more</span>
+              <i class="ti ti-chevron-down" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
             <div class="dropdown d-md-none">
               <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-mobile-topmenu-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
@@ -33,6 +51,12 @@
               </button>
               <div class="dropdown-menu dropdown-menu-end p-2 kexo-mobile-topmenu" id="kexo-mobile-topmenu">
                 <div id="kexo-mobile-date-slot"></div>
+                <div class="mt-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1" id="kexo-kpis-toggle-mobile" aria-expanded="false" aria-controls="kexo-expanded-kpis">
+                    <span class="kexo-kpis-toggle-mobile-label">Show KPIs</span>
+                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                  </button>
+                </div>
                 <div class="dropdown-divider my-2"></div>
                 <div id="kexo-mobile-actions-slot" class="d-flex flex-wrap gap-1 justify-content-end"></div>
               </div>

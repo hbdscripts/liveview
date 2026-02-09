@@ -408,6 +408,19 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
   return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
 }
 
+function ordersApiUrlForFinancialStatus(shop, createdMinIso, createdMaxIso, financialStatus, fieldsCsv) {
+  const fs = (fieldsCsv && String(fieldsCsv).trim()) ? String(fieldsCsv).trim() : 'id,created_at,financial_status,cancelled_at,test,fulfillment_status';
+  const status = (financialStatus && String(financialStatus).trim()) ? String(financialStatus).trim() : 'any';
+  const qs =
+    'status=any' +
+    '&financial_status=' + encodeURIComponent(status) +
+    '&created_at_min=' + encodeURIComponent(createdMinIso) +
+    '&created_at_max=' + encodeURIComponent(createdMaxIso) +
+    '&limit=250' +
+    '&fields=' + encodeURIComponent(fs);
+  return `https://${shop}/admin/api/${API_VERSION}/orders.json?${qs}`;
+}
+
 function priorPaidOrderForCustomerBeforeApiUrl(shop, customerId, beforeIso) {
   const fields = [
     'id',
@@ -967,6 +980,69 @@ async function fetchShopifyOrdersSummary(shop, startMs, endMs) {
   }
 }
 
+/**
+ * On-demand (cached by callers): compute fulfillment + returns counts for a range.
+ * - ordersFulfilled: count of paid orders where fulfillment_status === 'fulfilled'
+ * - returns: count of orders in refunded/partially_refunded status
+ *
+ * These are not used for Sales truth calculations (which remain paid-only).
+ */
+async function fetchShopifyFulfillmentAndReturnsCounts(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return { ok: false, error: 'No shop configured', ordersFulfilled: 0, returns: 0, fetched: 0 };
+  const token = await getAccessToken(safeShop);
+  if (!token) return { ok: false, error: 'No access token for shop', ordersFulfilled: 0, returns: 0, fetched: 0 };
+
+  const startIso = new Date(startMs).toISOString();
+  const endIso = new Date(endMs).toISOString();
+  const fields = 'id,created_at,financial_status,cancelled_at,test,fulfillment_status';
+
+  async function countForFinancialStatus(financialStatus, predicate) {
+    let fetched = 0;
+    let count = 0;
+    let nextUrl = ordersApiUrlForFinancialStatus(safeShop, startIso, endIso, financialStatus, fields);
+    while (nextUrl) {
+      const res = await shopifyFetchWithRetry(nextUrl, token, { maxRetries: 6 });
+      const text = await res.text();
+      if (!res.ok) {
+        const err = { status: res.status, body: text ? String(text).slice(0, 500) : '' };
+        throw Object.assign(new Error(`Shopify Orders API error (HTTP ${res.status})`), { details: err });
+      }
+      let json;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      const orders = json && Array.isArray(json.orders) ? json.orders : [];
+      for (const order of orders) {
+        fetched += 1;
+        const row = orderToRow(safeShop, order, Date.now());
+        if (!(row.test == null || Number(row.test) === 0)) continue;
+        if (row.cancelled_at != null) continue;
+        if (predicate && !predicate(order, row)) continue;
+        count += 1;
+      }
+      nextUrl = parseNextPageUrl(res.headers.get('link'));
+    }
+    return { fetched, count };
+  }
+
+  try {
+    const fulfilled = await countForFinancialStatus('paid', (order) => {
+      const s = order && order.fulfillment_status != null ? String(order.fulfillment_status).trim().toLowerCase() : '';
+      return s === 'fulfilled';
+    });
+    const refunded = await countForFinancialStatus('refunded', () => true);
+    const partially = await countForFinancialStatus('partially_refunded', () => true);
+    return {
+      ok: true,
+      fetched: (fulfilled.fetched || 0) + (refunded.fetched || 0) + (partially.fetched || 0),
+      ordersFulfilled: fulfilled.count || 0,
+      returns: (refunded.count || 0) + (partially.count || 0),
+    };
+  } catch (err) {
+    const msg = err && err.message ? String(err.message) : 'Fetch failed';
+    return { ok: false, error: msg, ordersFulfilled: 0, returns: 0, fetched: 0 };
+  }
+}
+
 function safeJson(value, maxLen = 5000) {
   try {
     const s = JSON.stringify(value ?? null);
@@ -1387,6 +1463,7 @@ module.exports = {
   ensureReconciled,
   reconcileRange,
   fetchShopifyOrdersSummary,
+  fetchShopifyFulfillmentAndReturnsCounts,
   shouldReconcile,
   getTruthOrderCount,
   getTruthCheckoutOrderCount,
