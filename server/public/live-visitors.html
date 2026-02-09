@@ -446,7 +446,7 @@
 .sale-toast .sale-toast-flag .sale-toast-bird-icon { width: 30px; height: 100%; object-fit: contain; border-radius: 6px; display: block; margin: 0 0 5px; }
 .sale-toast .sale-toast-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; }
     .sale-toast .sale-toast-title { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; font-weight: 500; line-height: 1.1; }
-.sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 0 0; flex-shrink: 0; }
+.sale-toast .sale-toast-inline-flag-img { width: 20px; height: 15px; object-fit: cover; border-radius: 4px; display: block; margin: -1px 6px 0 0; flex-shrink: 0; }
     .sale-toast .sale-toast-product { font-size: 0.86rem; font-weight: 300; color: #fff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 0 0 0; }
     .sale-toast .sale-toast-amount-wrap { min-width: 90px; display: flex; align-items: center; justify-content: flex-end; background: #088378; padding: 0 15px 0 0; border-radius: 4px; position: absolute; top: 0; right: 0; height: -webkit-fill-available; }
     .sale-toast .sale-toast-amount { display: inline-flex; align-items: center; justify-content: flex-end; font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -0.2px; }
@@ -943,18 +943,18 @@
     <div class="live-kpi-grid" id="live-kpi-grid">
       <div class="live-kpi-cell" id="live-kpi-sales-cell">
         <div class="live-kpi-label" id="live-kpi-sales-label">Sales</div>
-        <div class="live-kpi-value" id="live-kpi-sales">—</div>
+        <div class="live-kpi-value" id="live-kpi-sales"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
         <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
       </div>
       <div class="live-kpi-cell" id="live-kpi-conv-cell">
         <div class="live-kpi-label">Conv rate</div>
-        <div class="live-kpi-value" id="live-kpi-conv">—</div>
+        <div class="live-kpi-value" id="live-kpi-conv"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
         <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
       </div>
-      <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
-      <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
-      <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
-      <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce">—</div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Sessions</div><div class="live-kpi-value" id="live-kpi-sessions"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div><div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Returning</div><div class="live-kpi-value" id="live-kpi-returning"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div><div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">AOV</div><div class="live-kpi-value" id="live-kpi-aov"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div><div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div></div>
+      <div class="live-kpi-cell"><div class="live-kpi-label">Bounce</div><div class="live-kpi-value" id="live-kpi-bounce"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div><div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div></div>
     </div>
     <button type="button" class="kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs" title="Next KPIs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1495,7 +1495,7 @@
   </div>
   </main>
   <footer class="dashboard-footer" id="dashboard-footer">
-    <span class="footer-last-sale">Last sale: <span id="last-sale-ago">—</span> <button type="button" id="last-sale-toggle" class="footer-last-sale-toggle" aria-pressed="false" aria-label="Show last sale toast">
+    <span class="footer-last-sale">Last sale: <span class="last-sale-ago">—</span> <button type="button" id="last-sale-toggle" class="footer-last-sale-toggle" aria-pressed="false" aria-label="Show last sale toast">
       <svg class="toggle-icon toggle-icon-show" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M15.0007 12C15.0007 13.6569 13.6576 15 12.0007 15C10.3439 15 9.00073 13.6569 9.00073 12C9.00073 10.3431 10.3439 9 12.0007 9C13.6576 9 15.0007 10.3431 15.0007 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12.0012 5C7.52354 5 3.73326 7.94288 2.45898 12C3.73324 16.0571 7.52354 19 12.0012 19C16.4788 19 20.2691 16.0571 21.5434 12C20.2691 7.94291 16.4788 5 12.0012 5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       <svg class="toggle-icon toggle-icon-hide" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.99902 3L20.999 21M9.8433 9.91364C9.32066 10.4536 8.99902 11.1892 8.99902 12C8.99902 13.6569 10.3422 15 11.999 15C12.8215 15 13.5667 14.669 14.1086 14.133M6.49902 6.64715C4.59972 7.90034 3.15305 9.78394 2.45703 12C3.73128 16.0571 7.52159 19 11.9992 19C13.9881 19 15.8414 18.4194 17.3988 17.4184M10.999 5.04939C11.328 5.01673 11.6617 5 11.9992 5C16.4769 5 20.2672 7.94291 21.5414 12C21.2607 12.894 20.8577 13.7338 20.3522 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
     </button></span>

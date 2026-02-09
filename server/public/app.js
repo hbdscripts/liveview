@@ -355,10 +355,10 @@ const API = '';
     }
 
     function updateLastSaleAgo() {
-      const el = document.getElementById('last-sale-ago');
-      if (!el) return;
-      if (lastSaleAt == null) { el.textContent = '\u2014'; return; }
-      el.textContent = formatRelative(lastSaleAt);
+      var els = document.querySelectorAll('.last-sale-ago');
+      if (!els.length) return;
+      var text = lastSaleAt == null ? '\u2014' : formatRelative(lastSaleAt);
+      els.forEach(function(el) { el.textContent = text; });
     }
 
     function setLastSaleAt(ms) {
@@ -7489,7 +7489,7 @@ const API = '';
           var showKpis = (tab !== 'dashboard' && tab !== 'tools');
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
           if (sharedKpiWrap) sharedKpiWrap.style.display = showKpis ? '' : 'none';
-          var showDateSel = (tab === 'sales' || tab === 'date');
+          var showDateSel = (tab !== 'dashboard' && tab !== 'tools');
           var globalDateSel = document.getElementById('global-date-select');
           if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
@@ -8325,23 +8325,20 @@ const API = '';
       } catch (_) {}
     })();
 
-    // ── Back to top button ────────────────────────────────────────────
-    (function initBackToTop() {
-      var btn = document.getElementById('back-to-top-btn');
-      if (!btn) return;
-      btn.addEventListener('click', function() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    })();
-
-    // ── Footer settings button → opens theme offcanvas ────────────────
-    (function initFooterSettings() {
-      document.querySelectorAll('.footer-settings-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var headerBtn = document.getElementById('theme-settings-btn');
-          if (headerBtn) headerBtn.click();
+    // ── Footer action buttons ──────────────────────────────────────────
+    (function initFooterActions() {
+      function proxyClick(footerSel, headerId) {
+        document.querySelectorAll(footerSel).forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var h = document.getElementById(headerId);
+            if (h) h.click();
+          });
         });
-      });
+      }
+      proxyClick('.footer-refresh-btn', 'refresh-btn');
+      proxyClick('.footer-audio-btn', 'audio-mute-btn');
+      proxyClick('.footer-theme-btn', 'theme-settings-btn');
+      proxyClick('.footer-diagnostics-btn', 'config-open-btn');
     })();
 
 })();

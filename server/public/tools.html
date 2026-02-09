@@ -47,7 +47,7 @@
               </a>
               <div class="dropdown-menu dropdown-menu-end">
                 <div class="dropdown-item d-flex align-items-center gap-2">
-                  <span class="text-secondary" style="font-size:.8125rem">Last sale: <span id="last-sale-ago">&mdash;</span></span>
+                  <span class="text-secondary" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span></span>
                   <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary ms-auto" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
                 </div>
                 <div class="dropdown-divider"></div>
@@ -132,66 +132,66 @@
   <div class="kpi-mobile-pager">
     <div class="row g-3" id="live-kpi-grid">
       <div class="col-sm-4 col-lg-2" id="live-kpi-sales-cell">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader" id="live-kpi-sales-label">Sales</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-sales">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-sales"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
           </div>
         </div>
       </div>
       <div class="col-sm-4 col-lg-2" id="live-kpi-conv-cell">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader">Conv rate</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-conv">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-conv"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
           </div>
         </div>
       </div>
       <div class="col-sm-4 col-lg-2">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader">Sessions</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-sessions">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-sessions"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div>
           </div>
         </div>
       </div>
       <div class="col-sm-4 col-lg-2">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader">Returning</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-returning">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-returning"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div>
           </div>
         </div>
       </div>
       <div class="col-sm-4 col-lg-2">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader">AOV</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-aov">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-aov"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div>
           </div>
         </div>
       </div>
       <div class="col-sm-4 col-lg-2">
-        <div class="card">
+        <div class="card card-sprinkles">
           <div class="card-body p-3">
             <div class="subheader">Bounce</div>
             <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="live-kpi-bounce">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="live-kpi-bounce"><span class="spinner-border spinner-border-sm text-primary" role="status"></span></div>
             </div>
             <div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div>
           </div>
@@ -278,9 +278,15 @@
       <footer class="footer footer-transparent d-print-none">
         <div class="container-xl">
           <div class="d-flex align-items-center justify-content-between py-3">
-            <button type="button" class="btn btn-icon btn-ghost-secondary footer-settings-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80">
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="ti ti-arrow-up"></i></button>
+            <div class="d-flex align-items-center gap-1">
+              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-audio-btn" aria-label="Sound"><i class="ti ti-volume"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-theme-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
+              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+            </div>
+            <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="60">
+            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span></span>
           </div>
         </div>
       </footer>
