@@ -671,7 +671,11 @@ body.theme-dark .landing-thumb {
   bottom: 0;
   right: 0;
   z-index: 2;
-  opacity: 0.9;
+  opacity: 0.92;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
 }
 
 .thumb-overlay {

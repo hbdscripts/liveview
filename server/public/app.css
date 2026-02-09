@@ -149,7 +149,7 @@
     .best-sellers-table .product-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; width: 100%; }
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
     /* Product thumbnails: shared styling (prevents "thin line" aspect ratios). */
-    .bs-thumb, .landing-thumb { border-radius: 100%; object-fit: cover; object-position: center; flex-shrink: 0; display: block; }
+    .bs-thumb, .landing-thumb { border-radius: 8px; object-fit: cover; object-position: center; flex-shrink: 0; display: block; }
     .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .best-sellers-table .product-cell .bs-name {
       flex: 1;
@@ -163,7 +163,7 @@
       font-size: var(--table-font-size);
     }
     .best-sellers-table .thumb-wrap { width: 36px; height: 36px; }
-    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 100%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 8px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .best-sellers-table .product-cell .bs-thumb { position: absolute; inset: 0; }
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
     .by-country-table th.sortable:hover { color: var(--accent); }
@@ -532,11 +532,13 @@
     .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; }
     .table-scroll-wrap .last-action-cell .landing-thumb { width: 50px; height: 50px; min-width: 50px; min-height: 50px; border: 1px solid #e1e1e1; padding: 3px; }
     .thumb-wrap { position: relative; display: inline-block; flex-shrink: 0; }
-    .thumb-wrap.thumb-stack { display: inline-flex; align-items: center; }
-    .thumb-wrap.thumb-stack .landing-thumb { position: relative; }
-    .thumb-wrap.thumb-stack .landing-thumb + .landing-thumb { margin: 20px 0 0 -20px; box-sizing: content-box; z-index: 2; background: #fff; border: 0; }
-    .thumb-wrap.thumb-stack .landing-thumb:first-child { z-index: 1; }
-    .thumb-wrap.thumb-stack .landing-thumb-exit { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+    /* Stacked entry/exit thumbnails: overlapping squares (not 50/50 circles). */
+    .thumb-wrap.thumb-stack { display: inline-block; position: relative; width: 62px; height: 62px; }
+    .thumb-wrap.thumb-stack .landing-thumb { position: absolute; inset: auto; width: 44px; height: 44px; min-width: 44px; min-height: 44px; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); background: #fff; }
+    .thumb-wrap.thumb-stack .landing-thumb:first-child { top: 0; left: 0; z-index: 1; }
+    .thumb-wrap.thumb-stack .landing-thumb-exit { width: 36px; height: 36px; min-width: 36px; min-height: 36px; bottom: 0; right: 0; z-index: 2; }
+    /* Ensure stack thumbs aren't affected by generic table thumb padding/borders */
+    .table-scroll-wrap .thumb-wrap.thumb-stack .landing-thumb { padding: 0; box-sizing: border-box; border: 2px solid #fff; }
 
     .thumb-overlay {
         display: none !important;

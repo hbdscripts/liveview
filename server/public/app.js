@@ -688,7 +688,7 @@ const API = '';
           var inner = dirArrowSvg(kind) +
             '<span class="landing-line-text"><span class="sr-only">' + prefix + ': </span>' + escapeHtml(label) + '</span>';
           if (meta && meta.fullUrl) {
-            return '<a class="landing-line" href="' + escapeHtml(meta.fullUrl) + '" target="_blank" rel="noopener">' + inner + '</a>';
+            return '<a class="landing-line js-landing-insights-link" data-landing-kind="' + escapeHtml(kind) + '" href="' + escapeHtml(meta.fullUrl) + '" target="_blank" rel="noopener">' + inner + '</a>';
           }
           return '<span class="landing-line">' + inner + '</span>';
         }
@@ -8594,9 +8594,12 @@ const API = '';
       window.__productInsightsModalInit = true;
 
       var modalEl = null;
+      var currentMode = 'product'; // product | page
       var currentHandle = null;
       var currentTitle = null;
       var currentProductUrl = null;
+      var currentPageUrl = null;
+      var currentLandingKind = null; // entry | exit (when opened from sessions table)
       var currentRangeKey = 'today'; // modal-local range; default Today regardless of page range
       var charts = { revenue: null, activity: null };
       var apexLoading = false;
@@ -8768,9 +8771,12 @@ const API = '';
         modalEl.classList.remove('show');
         document.body.classList.remove('modal-open');
         destroyCharts();
+        currentMode = 'product';
         currentHandle = null;
         currentTitle = null;
         currentProductUrl = null;
+        currentPageUrl = null;
+        currentLandingKind = null;
       }
 
       function setStatus(msg) {
@@ -8888,34 +8894,53 @@ const API = '';
 
         var prod = payload && payload.product ? payload.product : null;
         var metrics = payload && payload.metrics ? payload.metrics : {};
+        var isPage = payload && payload.kind === 'page';
+        var page = payload && payload.page ? payload.page : null;
 
-        var title = (prod && prod.title) ? String(prod.title) : (currentTitle || currentHandle || 'Product');
+        var title = isPage
+          ? (page && page.path ? (friendlyLabelFromPath(page.path) || page.path) : (currentPageUrl || 'Page'))
+          : ((prod && prod.title) ? String(prod.title) : (currentTitle || currentHandle || 'Product'));
         if (titleEl) titleEl.textContent = title;
         if (titleInline) titleInline.textContent = title;
-        if (typeEl) typeEl.textContent = (prod && prod.productType) ? String(prod.productType) : '—';
+        if (typeEl) {
+          if (isPage) {
+            var lk = (page && page.landingKind) ? String(page.landingKind) : (currentLandingKind || '');
+            typeEl.textContent = lk ? ((lk === 'exit' ? 'Exit page' : 'Entry page') + ' • ' + (page && page.path ? String(page.path) : '')) : (page && page.path ? String(page.path) : '—');
+          } else {
+            typeEl.textContent = (prod && prod.productType) ? String(prod.productType) : '—';
+          }
+        }
 
         if (subtitleEl) {
           var rk = (payload && payload.rangeKey) ? String(payload.rangeKey) : currentRangeKey;
-          subtitleEl.textContent = rk;
+          var lk2 = isPage ? (page && page.landingKind ? String(page.landingKind) : (currentLandingKind || '')) : (currentLandingKind || '');
+          var prefix = lk2 ? (lk2 === 'exit' ? 'Exit' : 'Entry') + ' · ' : '';
+          subtitleEl.textContent = prefix + rk;
         }
 
         if (openLink) {
-          var href = currentProductUrl || '#';
+          var href = isPage ? (currentPageUrl || '#') : (currentProductUrl || '#');
           openLink.href = href;
           openLink.style.display = href && href !== '#' ? 'inline-flex' : 'none';
+          openLink.textContent = isPage ? 'Open page' : 'Open product';
         }
 
         // Images
-        var images = (prod && Array.isArray(prod.images)) ? prod.images : [];
+        var images = (!isPage && prod && Array.isArray(prod.images)) ? prod.images : [];
         var first = images && images[0] ? images[0] : null;
         if (mainImg) {
-          mainImg.src = (first && first.url) ? String(first.url) : '';
+          if (isPage) {
+            var u = currentPageUrl || (page && page.url ? String(page.url) : '');
+            mainImg.src = u ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(u) + '&width=1000') : '';
+          } else {
+            mainImg.src = (first && first.url) ? String(first.url) : '';
+          }
           mainImg.alt = title;
           if (!mainImg.src) mainImg.style.opacity = '0.35';
           else mainImg.style.opacity = '1';
         }
         if (thumbsEl) {
-          thumbsEl.innerHTML = (images || []).slice(0, 10).map(function(img, i) {
+          thumbsEl.innerHTML = isPage ? '' : (images || []).slice(0, 10).map(function(img, i) {
             var u = img && img.url ? String(img.url) : '';
             var t = img && img.thumb ? String(img.thumb) : u;
             if (!u) return '';
@@ -8942,66 +8967,116 @@ const API = '';
           function row(label, value) {
             return '<tr><td class="text-muted" style="width:44%">' + escapeHtml(label) + '</td><td class="text-end fw-semibold">' + escapeHtml(value) + '</td></tr>';
           }
-          var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
-          var orders = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
-          var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
-          var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
-          var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
-          var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
-          var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
-          var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
-          var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
-          var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
-          var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
-          mt.innerHTML =
-            row('Revenue (GBP)', revenue) +
-            row('Orders', orders) +
-            row('Units sold', units) +
-            '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-            row('Clicks (landings)', clicks) +
-            row('Product views', views) +
-            row('Add to cart', atc) +
-            row('Checkout started', cs) +
-            '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-            row('Conversion rate (Orders / Clicks)', cr) +
-            row('View → Cart rate', atcRate) +
-            row('Revenue / Click', rpc) +
-            row('Revenue / View', rpv);
+          if (isPage) {
+            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '—';
+            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '—';
+            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '—';
+            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '—';
+            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
+            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
+            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '—';
+            mt.innerHTML =
+              row('Revenue (GBP) (local)', revenue2) +
+              row('Purchased sessions', purchasedSessions) +
+              row('Checkout started sessions', checkoutStartedSessions) +
+              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+              row('Sessions', sessions) +
+              row('Page views', pageViews) +
+              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+              row('Purchase rate (Purchased / Sessions)', cr2) +
+              row('Revenue / Session', rps);
+          } else {
+            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
+            var orders = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
+            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
+            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
+            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
+            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
+            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
+            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
+            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
+            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
+            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
+            mt.innerHTML =
+              row('Revenue (GBP)', revenue) +
+              row('Orders', orders) +
+              row('Units sold', units) +
+              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+              row('Clicks (landings)', clicks) +
+              row('Product views', views) +
+              row('Add to cart', atc) +
+              row('Checkout started', cs) +
+              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
+              row('Conversion rate (Orders / Clicks)', cr) +
+              row('View → Cart rate', atcRate) +
+              row('Revenue / Click', rpc) +
+              row('Revenue / View', rpv);
+          }
         }
 
         renderCharts(payload);
       }
 
       function load() {
-        if (!currentHandle) return;
         ensureDom();
         setStatus('Loading…');
 
         var shop = null;
         try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
-        var url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) +
-          '&range=' + encodeURIComponent(currentRangeKey || 'today') +
-          (shop ? ('&shop=' + encodeURIComponent(shop)) : '') +
-          '&_=' + Date.now();
+        var url = '';
+        if (currentMode === 'page') {
+          if (!currentPageUrl) { setStatus('No page selected.'); return; }
+          url = (API || '') + '/api/page-insights?url=' + encodeURIComponent(currentPageUrl) +
+            '&kind=' + encodeURIComponent(currentLandingKind || 'entry') +
+            '&range=' + encodeURIComponent(currentRangeKey || 'today') +
+            '&_=' + Date.now();
+        } else {
+          if (!currentHandle) { setStatus('No product selected.'); return; }
+          url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) +
+            '&range=' + encodeURIComponent(currentRangeKey || 'today') +
+            (shop ? ('&shop=' + encodeURIComponent(shop)) : '') +
+            '&_=' + Date.now();
+        }
 
         fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
           .then(function(r) { return r && r.ok ? r.json() : null; })
           .then(function(data) {
             if (!data || !data.ok) {
-              setStatus('No data available for this product.');
+              setStatus(currentMode === 'page' ? 'No data available for this page.' : 'No data available for this product.');
               return;
             }
             render(data);
           })
-          .catch(function() { setStatus('Could not load product insights.'); });
+          .catch(function() { setStatus(currentMode === 'page' ? 'Could not load page insights.' : 'Could not load product insights.'); });
       }
 
-      function open(handle, options) {
+      function openProduct(handle, options) {
         currentHandle = normalizeHandle(handle);
         if (!currentHandle) return;
         options = options || {};
+        currentMode = 'product';
+        currentPageUrl = null;
         currentTitle = options.title ? String(options.title) : null;
         currentProductUrl = options.productUrl ? String(options.productUrl) : null;
+        currentLandingKind = options.landingKind ? String(options.landingKind) : null;
+        currentRangeKey = 'today';
+        ensureDom();
+        var sel = document.getElementById('product-insights-range');
+        if (sel) sel.value = 'today';
+        show();
+        load();
+      }
+
+      function openPage(url, options) {
+        var u = url != null ? String(url).trim() : '';
+        if (!u) return;
+        currentMode = 'page';
+        currentPageUrl = u;
+        currentHandle = null;
+        options = options || {};
+        currentTitle = options.title ? String(options.title) : null;
+        currentProductUrl = null;
+        currentLandingKind = options.landingKind ? String(options.landingKind) : null;
         currentRangeKey = 'today';
         ensureDom();
         var sel = document.getElementById('product-insights-range');
@@ -9019,14 +9094,30 @@ const API = '';
         if (!h) h = parseHandleFromHref(a.getAttribute('href') || '');
         if (!h) return;
         e.preventDefault();
-        open(h, {
+        openProduct(h, {
           title: a.getAttribute('data-product-title') || '',
           productUrl: a.getAttribute('href') || '',
         });
       });
 
+      // Delegate clicks from Entry/Exit links in the sessions table.
+      document.addEventListener('click', function(e) {
+        var a = e && e.target && e.target.closest ? e.target.closest('a.js-landing-insights-link') : null;
+        if (!a) return;
+        if (isModifiedClick(e)) return;
+        var href = a.getAttribute('href') || '';
+        var kind = (a.getAttribute('data-landing-kind') || 'entry').toLowerCase();
+        var h = parseHandleFromHref(href);
+        e.preventDefault();
+        if (h) {
+          openProduct(h, { productUrl: href, landingKind: kind });
+          return;
+        }
+        openPage(href, { landingKind: kind });
+      });
+
       // Expose for debugging / future use
-      window.__openProductInsights = open;
+      window.__openProductInsights = openProduct;
     })();
 
 })();

@@ -378,6 +378,7 @@ async function getProductInsights(req, res) {
 
   return res.json({
     ok: true,
+    kind: 'product',
     handle,
     rangeKey,
     rangeStartTs: start,

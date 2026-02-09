@@ -190,6 +190,7 @@ Edge (optional):
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
   - Ads profit now uses KEXO-attributed sales (purchases→sessions rollup); Google conversion value is not used for Sales/profit.
   - Shared Product Insights modal: clicking product thumbnails opens a Tabler modal with image gallery, Today-by-default range selector, KPI table, and charts powered by `/api/product-insights`.
+  - Sessions table entry/exit links open the same modal, loading either product insights (for `/products/...`) or page insights (for non-product URLs) via `/api/page-insights`.
   - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.
   - De-duplicated grid-table CSS (kept definitions in `custom.css`).
   - Legacy `live-visitors.html` no longer references missing `/nav.css`.
