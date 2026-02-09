@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Expanded KPIs: add Revenue + move Bounce row)
+Last updated: 2026-02-09 (Header actions dropdown + topbar KPI deltas + Returning sparkline)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -198,6 +198,9 @@ Edge (optional):
 - Nav highlight: active top-level item is bold and dropdown caret spacing is increased for readability.
 - DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
 - Header UX: global date selector is visible on Tools (same behavior as other pages).
+- Header actions: desktop topbar now shows a single Settings button with a Tabler dropdown for Refresh/Sound/Theme/Diagnostics/Sign out (mobile still uses the settings dropdown).
+- Topbar quick KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
+- Dashboard-series: include per-day returning-customer counts so the “Returning” sparkline can render (with a one-time forced refresh if an older cached payload is detected).
 - Dashboard KPI correctness + consistency:
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.

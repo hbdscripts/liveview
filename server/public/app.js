@@ -4742,11 +4742,13 @@ const API = '';
       const pct = Math.round(Math.abs(delta) * 100);
       const toneDelta = invert ? -delta : delta;
       const colorClass = toneDelta > 0 ? 'text-green' : 'text-red';
+      const bgClass = toneDelta > 0 ? 'bg-green-lt' : 'bg-red-lt';
       const iconClass = delta > 0 ? 'ti ti-trending-up' : 'ti ti-trending-down';
       var indicator = document.createElement('div');
-      indicator.className = 'kpi-delta-indicator me-auto ' + colorClass;
+      // Tabler-style delta pill (subtle background)
+      indicator.className = 'kpi-delta-indicator badge ' + bgClass + ' ' + colorClass + ' ms-auto';
       indicator.setAttribute('aria-hidden', 'true');
-      indicator.innerHTML = '<i class="' + iconClass + '"></i> ' + pct + '%';
+      indicator.innerHTML = '<i class="' + iconClass + ' me-1" aria-hidden="true"></i>' + pct + '%';
       if (wrapper) {
         wrapper.appendChild(indicator);
       }
@@ -4787,6 +4789,7 @@ const API = '';
 
     var sparklineSeriesCache = null;
     var sparklineSeriesFetched = false;
+    var sparklineSeriesForceAttempted = false;
 
     function fetchSparklineData() {
       if (sparklineSeriesFetched) return;
@@ -4798,6 +4801,25 @@ const API = '';
           if (data && Array.isArray(data.series) && data.series.length > 0) {
             sparklineSeriesCache = data.series.slice(-7);
             renderSparklineFromCache();
+            // Back-compat: older cached dashboard-series payloads didn't include returningCustomerOrders.
+            // If we detect that, force a one-time recompute so the Returning sparkline doesn't stay flat until reload.
+            try {
+              var first = sparklineSeriesCache && sparklineSeriesCache[0] ? sparklineSeriesCache[0] : null;
+              var missingReturning = !(first && typeof first.returningCustomerOrders === 'number');
+              if (missingReturning && !sparklineSeriesForceAttempted) {
+                sparklineSeriesForceAttempted = true;
+                var bust = API + '/api/dashboard-series?range=14d&force=1&_=' + Date.now();
+                fetchWithTimeout(bust, { credentials: 'same-origin', cache: 'no-store' }, 15000)
+                  .then(function(r2) { return (r2 && r2.ok) ? r2.json() : null; })
+                  .then(function(data2) {
+                    if (data2 && Array.isArray(data2.series) && data2.series.length > 0) {
+                      sparklineSeriesCache = data2.series.slice(-7);
+                      renderSparklineFromCache();
+                    }
+                  })
+                  .catch(function() {});
+              }
+            } catch (_) {}
           }
         })
         .catch(function() {});
@@ -4893,14 +4915,30 @@ const API = '';
       function deltaPct(curr, prev) {
         const c = (typeof curr === 'number' && Number.isFinite(curr)) ? curr : null;
         const p = (typeof prev === 'number' && Number.isFinite(prev)) ? prev : null;
-        if (c == null || p == null || p === 0) return null;
+        if (c == null || p == null) return null;
+        // Avoid divide-by-zero: show "new" when baseline is 0 and current is non-zero.
+        if (p === 0) return (c === 0) ? 0 : Infinity;
         return ((c - p) / p) * 100;
       }
       function applyTopbarDelta(deltaWrap, deltaTextEl, pctVal) {
         if (!deltaWrap || !deltaTextEl) return;
+        const iconEl = deltaWrap.querySelector ? deltaWrap.querySelector('.kexo-topbar-delta-icon') : null;
         if (pctVal == null || !Number.isFinite(pctVal)) {
+          if (pctVal === Infinity) {
+            deltaWrap.classList.remove('is-hidden');
+            deltaWrap.classList.add('is-up');
+            deltaWrap.classList.remove('is-down', 'is-flat');
+            deltaTextEl.textContent = 'new';
+            if (iconEl) {
+              iconEl.classList.remove('is-hidden');
+              iconEl.className = 'ti ti-trending-up kexo-topbar-delta-icon';
+              iconEl.setAttribute('aria-hidden', 'true');
+            }
+            return;
+          }
           deltaWrap.classList.add('is-hidden');
           deltaWrap.classList.remove('is-up', 'is-down', 'is-flat');
+          if (iconEl) iconEl.classList.add('is-hidden');
           return;
         }
         const p = Math.round(pctVal * 10) / 10;
@@ -4911,6 +4949,14 @@ const API = '';
         deltaWrap.classList.toggle('is-down', down);
         deltaWrap.classList.toggle('is-flat', !up && !down);
         deltaTextEl.textContent = (p > 0 ? '' : '') + Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
+        // Only show arrows when movement is meaningful.
+        if (iconEl) {
+          iconEl.classList.toggle('is-hidden', !up && !down);
+          if (up) iconEl.className = 'ti ti-trending-up kexo-topbar-delta-icon';
+          else if (down) iconEl.className = 'ti ti-trending-down kexo-topbar-delta-icon';
+          else iconEl.className = 'ti ti-minus kexo-topbar-delta-icon';
+          iconEl.setAttribute('aria-hidden', 'true');
+        }
       }
 
       applyTopbarDelta(

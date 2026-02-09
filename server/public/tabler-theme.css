@@ -126,7 +126,7 @@ body {
 .sticky-top header.navbar-expand-md .navbar {
   border-top: 0 !important;
   border-bottom: 0 !important;
-  box-shadow: none !important;
+  box-shadow: rgba(35, 46, 60, .04) 0 2px 4px 0 !important;
 }
 
 /* ── Nav menu item spacing ── */

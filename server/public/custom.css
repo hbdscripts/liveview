@@ -600,6 +600,8 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 }
 .kexo-date-wrap .form-select {
   padding-right: 2rem !important;
+  /* Use our custom chevron; hide the native caret to avoid misalignment/outside rendering. */
+  background-image: none !important;
 }
 .kexo-date-chevron {
   position: absolute;
@@ -636,6 +638,11 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 /* Top menu active underline (flush to outside/bottom edge) */
 #navbar-menu .navbar-nav .nav-link {
   position: relative;
+  border-bottom: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#navbar-menu .navbar-nav .nav-link.active {
   border-bottom: none !important;
   background: transparent !important;
   box-shadow: none !important;

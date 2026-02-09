@@ -223,14 +223,16 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
+  // Returning customers per day (unique customer_id where customer_orders_count > 1)
+  const returningCustomersSetByDay = {};
   if (shop) {
     const orderRows = await db.all(
       config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at
+        ? `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
            FROM orders_shopify
            WHERE shop = $1 AND created_at >= $2 AND created_at < $3
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at
+        : `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
            FROM orders_shopify
            WHERE shop = ? AND created_at >= ? AND created_at < ?
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
@@ -253,6 +255,12 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
       revenuePerDay[dayLabel] = (revenuePerDay[dayLabel] || 0) + gbp;
       ordersPerDay[dayLabel] = (ordersPerDay[dayLabel] || 0) + 1;
+      const coc = row && row.customer_orders_count != null ? Number(row.customer_orders_count) : 1;
+      const cid = row && row.customer_id != null ? String(row.customer_id).trim() : '';
+      if (Number.isFinite(coc) && coc > 1 && cid) {
+        if (!returningCustomersSetByDay[dayLabel]) returningCustomersSetByDay[dayLabel] = new Set();
+        returningCustomersSetByDay[dayLabel].add(cid);
+      }
     }
   }
 
@@ -298,6 +306,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       sessions,
       convRate,
       shopifyConvRate,
+      returningCustomerOrders: returningCustomersSetByDay[db_day.label] ? returningCustomersSetByDay[db_day.label].size : 0,
       aov,
       bounceRate,
     };
@@ -593,14 +602,16 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
+  // Returning customers per day (unique customer_id where customer_orders_count > 1)
+  const returningCustomersSetByDay = {};
   if (shop) {
     const orderRows = await db.all(
       config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at
+        ? `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
            FROM orders_shopify
            WHERE shop = $1 AND created_at >= $2 AND created_at < $3
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at
+        : `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
            FROM orders_shopify
            WHERE shop = ? AND created_at >= ? AND created_at < ?
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
@@ -622,6 +633,12 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
       revenuePerDay[dayLabel] = (revenuePerDay[dayLabel] || 0) + gbp;
       ordersPerDay[dayLabel] = (ordersPerDay[dayLabel] || 0) + 1;
+      const coc = row && row.customer_orders_count != null ? Number(row.customer_orders_count) : 1;
+      const cid = row && row.customer_id != null ? String(row.customer_id).trim() : '';
+      if (Number.isFinite(coc) && coc > 1 && cid) {
+        if (!returningCustomersSetByDay[dayLabel]) returningCustomersSetByDay[dayLabel] = new Set();
+        returningCustomersSetByDay[dayLabel].add(cid);
+      }
     }
   }
 
@@ -668,6 +685,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       sessions,
       convRate,
       shopifyConvRate,
+      returningCustomerOrders: returningCustomersSetByDay[db_day.label] ? returningCustomersSetByDay[db_day.label].size : 0,
       aov,
       bounceRate,
     };
