@@ -12,6 +12,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
+const { sanitizeThumbUrl } = require('../shopifyProductMetaCache');
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const MIN_LANDINGS = 3;
@@ -121,7 +122,8 @@ async function fetchProductsByHandleBatch(shop, token, handles) {
       extractGidId(node.id, 'Product');
     const handleOut = normalizeHandle(node.handle) || handle;
     const title = normalizeTitle(node.title);
-    const thumb = node.featuredImage && node.featuredImage.url ? String(node.featuredImage.url).trim() : null;
+    const rawThumb = node.featuredImage && node.featuredImage.url ? String(node.featuredImage.url).trim() : null;
+    const thumb = rawThumb ? sanitizeThumbUrl(rawThumb) : null;
     const variantsRaw = node.variants && Array.isArray(node.variants.nodes) ? node.variants.nodes : [];
     const variants = [];
     for (const v of variantsRaw) {

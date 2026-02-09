@@ -11,12 +11,13 @@
   --online-dot-color: #22c55e;
 }
 
-/* Grid table system (custom implementation) */
+/* Grid table system — Tabler invoice style */
 .grid-table {
   display: table !important;
   width: 100% !important;
   border-collapse: collapse !important;
   font-size: .8125rem !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .grid-header,
@@ -34,17 +35,19 @@
   text-transform: uppercase !important;
   letter-spacing: .04em !important;
   color: var(--tblr-secondary, #626976) !important;
-  padding: .5rem .75rem !important;
-  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  padding: .625rem 1rem !important;
+  border-bottom: 2px solid var(--tblr-border-color, #e6e7e9) !important;
   background: transparent !important;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .grid-cell {
   display: table-cell !important;
-  padding: .5rem .75rem !important;
+  padding: .625rem 1rem !important;
   vertical-align: middle !important;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  line-height: 1.4;
 }
 
 .grid-body .grid-row:last-child .grid-cell {
@@ -72,6 +75,29 @@
 
 .grid-cell.span-all {
   grid-column: 1 / -1;
+}
+
+/* Numeric/currency columns — right-align */
+.grid-cell.text-end,
+.grid-cell[data-sort="rev"],
+.grid-cell[data-sort="orders"],
+.grid-cell[data-sort="sales"],
+.grid-cell[data-sort="clicks"],
+.grid-cell[data-sort="sessions"],
+.grid-cell[data-sort="cr"],
+.grid-cell[data-sort="aov"] {
+  text-align: right;
+}
+
+/* Numeric cells in grid body inherit right-alignment from header sort key */
+.grid-body .grid-row .grid-cell:not(:first-child) {
+  text-align: right;
+}
+
+/* But keep product/name columns left-aligned */
+.grid-body .grid-row .grid-cell.bs-product-col,
+.grid-body .grid-row .grid-cell:first-child {
+  text-align: left;
 }
 
 /* Table header abbreviations on mobile */
@@ -390,6 +416,30 @@
   pointer-events: none;
   z-index: 0;
 }
+
+/* ── Footer controls ────────────────────────────────────────────── */
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1020;
+  background: var(--tblr-bg-surface, #fff);
+  border-top: 1px solid var(--tblr-border-color, #e6e7e9);
+}
+
+.footer-last-sale {
+  white-space: nowrap;
+}
+
+/* Sale-toast toggle eye icon states */
+#last-sale-toggle .ti-eye { display: inline; }
+#last-sale-toggle .ti-eye-off { display: none; }
+#last-sale-toggle.is-on .ti-eye { display: none; }
+#last-sale-toggle.is-on .ti-eye-off { display: inline; }
+
+/* Mute button icon states */
+#audio-mute-btn .sound-icon-off { display: none; }
+#audio-mute-btn.muted .sound-icon-on { display: none; }
+#audio-mute-btn.muted .sound-icon-off { display: inline; }
 
 /* Utility classes */
 .u-mb-sm {

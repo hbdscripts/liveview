@@ -40,19 +40,6 @@
                 <option value="custom" id="date-opt-custom">Custom</option>
               </select>
             </div>
-            <div class="d-none d-md-flex me-2">
-              <button type="button" class="btn btn-icon" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-              <button type="button" class="btn btn-icon" id="config-open-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            </div>
-            <div class="nav-item dropdown">
-              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
-                <span class="avatar avatar-sm" id="user-avatar">K</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end">
-                <span class="dropdown-header" id="user-email"></span>
-                <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -291,8 +278,25 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-fluid">
-          <div class="text-secondary text-center">
-            Kexo Analytics
+          <div class="d-flex align-items-center justify-content-center gap-3 text-secondary" style="font-size:.8125rem">
+            <span class="footer-last-sale d-flex align-items-center gap-1">Last sale: <span id="last-sale-ago">&mdash;</span>
+              <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
+            </span>
+            <button type="button" id="refresh-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+            <button type="button" id="audio-mute-btn" class="btn btn-icon btn-sm btn-ghost-secondary" title="Toggle sale sound" aria-label="Toggle sale sound">
+              <i class="ti ti-volume sound-icon-on"></i>
+              <i class="ti ti-volume-off sound-icon-off is-hidden"></i>
+            </button>
+            <button type="button" id="config-open-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Settings"><i class="ti ti-settings"></i></button>
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
+                <span class="avatar avatar-sm" id="user-avatar">K</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                <span class="dropdown-header" id="user-email"></span>
+                <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

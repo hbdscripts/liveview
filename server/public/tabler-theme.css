@@ -216,12 +216,13 @@ body:has(.navbar.sticky-top) .navbar-vertical {
   pointer-events: none;
 }
 
-/* ── Grid-table: Tabler table rendering (override old app.css) ──── */
+/* ── Grid-table: Tabler invoice rendering ──────────────────────── */
 .grid-table {
   display: table !important;
   width: 100% !important;
   border-collapse: collapse !important;
   font-size: .8125rem !important;
+  font-variant-numeric: tabular-nums;
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
@@ -240,22 +241,34 @@ body:has(.navbar.sticky-top) .navbar-vertical {
   text-transform: uppercase !important;
   letter-spacing: .04em !important;
   color: var(--tblr-secondary, #626976) !important;
-  padding: .5rem .75rem !important;
-  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  padding: .625rem 1rem !important;
+  border-bottom: 2px solid var(--tblr-border-color, #e6e7e9) !important;
   background: transparent !important;
   vertical-align: middle;
+  white-space: nowrap;
 }
 .grid-cell {
   display: table-cell !important;
-  padding: .5rem .75rem !important;
+  padding: .625rem 1rem !important;
   vertical-align: middle !important;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  line-height: 1.4;
 }
 .grid-body .grid-row:last-child .grid-cell {
   border-bottom: none !important;
 }
 .grid-body .grid-row:hover {
   background: var(--row-hover) !important;
+}
+
+/* Invoice-style: right-align numeric columns */
+.grid-row--header .grid-cell:not(:first-child),
+.grid-body .grid-row .grid-cell:not(:first-child):not(.bs-product-col) {
+  text-align: right;
+}
+.grid-body .grid-row .grid-cell.bs-product-col,
+.grid-body .grid-row .grid-cell:first-child {
+  text-align: left;
 }
 
 /* by-country-table overrides — make sure Tabler wins */

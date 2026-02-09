@@ -98,5 +98,5 @@ async function getProductMeta(shop, token, productId, { ttlMs = DEFAULT_TTL_MS, 
   return inflight;
 }
 
-module.exports = { getProductMeta };
+module.exports = { getProductMeta, sanitizeThumbUrl };
 

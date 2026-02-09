@@ -7996,7 +7996,7 @@ const API = '';
               var thumbHtml = p.thumb_url
                 ? '<img src="' + escapeHtml(hotImg(p.thumb_url)) + '" width="32" height="32" style="border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:0.5rem" loading="lazy" alt="">'
                 : '';
-              return '<tr><td><span style="display:inline-flex;align-items:center">' + thumbHtml + escapeHtml(p.title) + '</span></td><td>' + fmtGbp(p.revenue) + '</td><td>' + p.orders + '</td></tr>';
+              return '<tr><td><span style="display:inline-flex;align-items:center">' + thumbHtml + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
             }).join('');
           }
         }
@@ -8010,7 +8010,7 @@ const API = '';
             countryTbody.innerHTML = countries.map(function(c) {
               var cc = (c.country || 'XX').toUpperCase();
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td>' + fmtGbp(c.revenue) + '</td><td>' + c.orders + '</td></tr>';
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td></tr>';
             }).join('');
           }
         }

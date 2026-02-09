@@ -40,19 +40,6 @@
                 <option value="custom" id="date-opt-custom">Custom</option>
               </select>
             </div>
-            <div class="d-none d-md-flex me-2">
-              <button type="button" class="btn btn-icon" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-              <button type="button" class="btn btn-icon" id="config-open-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            </div>
-            <div class="nav-item dropdown">
-              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
-                <span class="avatar avatar-sm" id="user-avatar">K</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end">
-                <span class="dropdown-header" id="user-email"></span>
-                <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -241,10 +228,10 @@
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
               <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Country"><span class="th-label-long">Country</span><span class="th-label-short">Geo</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><i class="ti ti-percentage" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="ti ti-package" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="ti ti-users" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="ti ti-currency-pound" aria-hidden="true"></i></span></div>
             </div>
           </div>
           <div id="by-country-body" class="grid-body" role="rowgroup">
@@ -264,10 +251,10 @@
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
               <div class="grid-cell sortable" role="columnheader" data-sort="country" aria-sort="none" tabindex="0" aria-label="Best/Geo"><span class="th-label-long">Best/Geo</span><span class="th-label-short">Best/Geo</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR"><span class="th-label-long">CR</span><span class="th-label-short"><i class="ti ti-percentage" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="ti ti-package" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="ti ti-users" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="ti ti-currency-pound" aria-hidden="true"></i></span></div>
             </div>
           </div>
           <div id="best-geo-products-body" class="grid-body" role="rowgroup">
@@ -288,8 +275,25 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-fluid">
-          <div class="text-secondary text-center">
-            Kexo Analytics
+          <div class="d-flex align-items-center justify-content-center gap-3 text-secondary" style="font-size:.8125rem">
+            <span class="footer-last-sale d-flex align-items-center gap-1">Last sale: <span id="last-sale-ago">&mdash;</span>
+              <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
+            </span>
+            <button type="button" id="refresh-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+            <button type="button" id="audio-mute-btn" class="btn btn-icon btn-sm btn-ghost-secondary" title="Toggle sale sound" aria-label="Toggle sale sound">
+              <i class="ti ti-volume sound-icon-on"></i>
+              <i class="ti ti-volume-off sound-icon-off is-hidden"></i>
+            </button>
+            <button type="button" id="config-open-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Settings"><i class="ti ti-settings"></i></button>
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
+                <span class="avatar avatar-sm" id="user-avatar">K</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                <span class="dropdown-header" id="user-email"></span>
+                <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
