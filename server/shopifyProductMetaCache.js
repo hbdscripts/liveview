@@ -3,6 +3,7 @@
  * for best-sellers/best-variants tables.
  */
 const API_VERSION = '2025-01';
+const { URL } = require('url');
 
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_CACHE_KEYS = 500;
@@ -29,6 +30,25 @@ function cleanupIfNeeded() {
   for (let i = 0; i < toDrop; i++) cache.delete(entries[i][0]);
 }
 
+function sanitizeThumbUrl(rawUrl) {
+  if (!rawUrl) return rawUrl;
+  const trimmed = String(rawUrl).trim();
+  if (!trimmed) return trimmed;
+  const extraParams = ['width=100', 'height=100'];
+  try {
+    const parsed = new URL(trimmed);
+    parsed.searchParams.set('width', '100');
+    parsed.searchParams.set('height', '100');
+    if (parsed.hostname && parsed.hostname.toLowerCase().includes('shopify.com')) {
+      parsed.searchParams.set('crop', 'center');
+    }
+    return parsed.toString();
+  } catch (_) {
+    const sep = trimmed.includes('?') ? '&' : '?';
+    return trimmed + sep + extraParams.join('&');
+  }
+}
+
 async function fetchProductMeta(shop, token, productId) {
   const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
   const pid = productId != null ? String(productId).trim() : '';
@@ -39,7 +59,8 @@ async function fetchProductMeta(shop, token, productId) {
   const json = await res.json().catch(() => ({}));
   const prod = json && json.product ? json.product : {};
   const img = prod.image || (Array.isArray(prod.images) && prod.images[0]) || null;
-  const thumbUrl = img && (img.src || img.url) ? (img.src || img.url) : null;
+  const rawThumbUrl = img && (img.src || img.url) ? String(img.src || img.url) : '';
+  const thumbUrl = rawThumbUrl ? sanitizeThumbUrl(rawThumbUrl) : null;
   const handle = (prod.handle && String(prod.handle).trim()) || null;
   const productType = (prod.product_type && String(prod.product_type).trim()) || null;
   return { ok: true, handle, thumb_url: thumbUrl, product_type: productType };
