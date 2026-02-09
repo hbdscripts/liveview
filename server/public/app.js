@@ -8181,7 +8181,8 @@ const API = '';
         var displayDays = dashLastDays || Math.ceil(allSeries.length / 2) || 1;
         // Split into current and previous periods (for KPIs)
         var series = allSeries.slice(-displayDays);
-        var prevSeries = allSeries.slice(0, allSeries.length - displayDays);
+        var prevStart = Math.max(0, allSeries.length - displayDays * 2);
+        var prevSeries = allSeries.slice(prevStart, allSeries.length - displayDays);
         // Charts always show at least 7 data points for meaningful display
         var chartDays = Math.max(displayDays, 7);
         var chartSeries = allSeries.slice(-Math.min(chartDays, allSeries.length));
