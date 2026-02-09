@@ -482,18 +482,22 @@
 .sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
-/* ── Nav link separators + padding (desktop only) ── */
+/* ── Nav link separators (desktop only) ── */
 @media (min-width: 769px) {
-  .navbar .navbar-nav .nav-item + .nav-item > .nav-link {
-    /* Use Tabler theme token so it adapts to dark mode. */
-    border-left: 1px solid var(--tblr-border-color, #e6e7e9);
-    padding-left: .75rem;
+  /* Insert a real 1px separator between nav items */
+  .navbar .navbar-nav .nav-item + .nav-item::before {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 1rem;
+    background: #eeeeee;
+    vertical-align: middle;
+    align-self: center;
   }
-  /* Explicit dark-mode tuning (Tabler token may still be light depending on theme). */
-  body.theme-dark .navbar .navbar-nav .nav-item + .nav-item > .nav-link {
-    border-left-color: rgba(255, 255, 255, 0.12);
+  body.theme-dark .navbar .navbar-nav .nav-item + .nav-item::before {
+    background: rgba(255, 255, 255, 0.12);
   }
-  /* Active bottom border spans full width up to the separator */
+  /* Active bottom border */
   .navbar .navbar-nav .nav-item.active > .nav-link,
   .navbar .navbar-nav .nav-item > .nav-link.active {
     box-shadow: inset 0 -2px 0 var(--tblr-primary);
