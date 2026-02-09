@@ -2142,12 +2142,18 @@ const API = '';
     }
 
     function updateSaleToastToggle() {
-      const btn = document.getElementById('last-sale-toggle');
-      if (!btn) return;
-      const isPinned = !!saleToastPinned;
-      btn.classList.toggle('is-on', isPinned);
-      btn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
-      btn.setAttribute('aria-label', isPinned ? 'Hide last sale toast' : 'Show last sale toast');
+      var isPinned = !!saleToastPinned;
+      ['last-sale-toggle', 'footer-last-sale-toggle'].forEach(function(id) {
+        var btn = document.getElementById(id);
+        if (!btn) return;
+        btn.classList.toggle('is-on', isPinned);
+        btn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
+        btn.setAttribute('aria-label', isPinned ? 'Hide last sale toast' : 'Show last sale toast');
+        var eyeOn = btn.querySelector('.ti-eye');
+        var eyeOff = btn.querySelector('.ti-eye-off');
+        if (eyeOn) eyeOn.style.display = isPinned ? 'none' : '';
+        if (eyeOff) eyeOff.style.display = isPinned ? '' : 'none';
+      });
     }
 
     function showSaleToast() {
@@ -2393,10 +2399,7 @@ const API = '';
     }
 
     (function initSaleToastToggle() {
-      const btn = document.getElementById('last-sale-toggle');
-      if (!btn) return;
-      updateSaleToastToggle();
-      btn.addEventListener('click', function(e) {
+      function handleToggle(e) {
         if (e && typeof e.preventDefault === 'function') e.preventDefault();
         if (saleToastPinned) {
           saleToastPinned = false;
@@ -2405,7 +2408,12 @@ const API = '';
         } else {
           triggerManualSaleToast(true);
         }
+      }
+      ['last-sale-toggle', 'footer-last-sale-toggle'].forEach(function(id) {
+        var btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', handleToggle);
       });
+      updateSaleToastToggle();
     })();
 
     (function initSaleToastCloseBtn() {
@@ -2815,10 +2823,9 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbInner = '<span class="avatar avatar-sm leaderboard-thumb-wrap">' +
-            '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
+        const thumbInner = '<span class="thumb-wrap thumb-stack">' +
             (thumb
-              ? '<img class="leaderboard-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
+              ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
               : '') +
           '</span>';
         const img = productUrl
@@ -2883,9 +2890,8 @@ const API = '';
         var thumb = r && r.thumb_url ? String(r.thumb_url) : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         var thumbUrl = thumb ? (hotImgSquare(thumb) || thumb) : '';
-        var thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
-          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
-          (thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        var thumbImg = '<span class="thumb-wrap thumb-stack">' +
+          (thumbUrl ? '<img class="landing-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         var thumbHtml = productUrl ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>';
@@ -3088,9 +3094,8 @@ const API = '';
         const thumbUrl = (v && v.thumb_url) ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
-          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
-          (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        const thumbImg = '<span class="thumb-wrap thumb-stack">' +
+          (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         const thumb = productUrl
           ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + thumbImg + '</a>'
@@ -3237,9 +3242,8 @@ const API = '';
         const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
-          '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
-          (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        const thumbImg = '<span class="thumb-wrap thumb-stack">' +
+          (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
         const thumb = productUrl ? '<a href="' + productUrl + '" target="_blank" rel="noopener">' + thumbImg + '</a>' : thumbImg;
         const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
@@ -3589,10 +3593,9 @@ const API = '';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const placeholderSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
-        const imgInner = '<span class="avatar avatar-sm breakdown-thumb-wrap">' +
-          placeholderSvg +
+        const imgInner = '<span class="thumb-wrap thumb-stack">' +
           (thumb
-            ? '<img class="breakdown-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
+            ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
             : '') +
           '</span>';
         const img = productUrl
@@ -4093,8 +4096,30 @@ const API = '';
 
     function formatYmdRangeLabel(startYmd, endYmd) {
       if (!startYmd || !endYmd) return '';
-      if (startYmd === endYmd) return formatYmdLabel(startYmd);
-      return formatYmdLabel(startYmd) + ' – ' + formatYmdLabel(endYmd);
+      if (startYmd === endYmd) return formatYmdShort(startYmd);
+      // Same month? Compact as "5–7 Feb"
+      if (startYmd.slice(0, 7) === endYmd.slice(0, 7)) {
+        var d1 = parseInt(startYmd.slice(8, 10), 10);
+        var d2 = parseInt(endYmd.slice(8, 10), 10);
+        var suffix = formatYmdShort(endYmd);
+        // suffix is "7 Feb" — replace the day part
+        return d1 + '–' + suffix;
+      }
+      return formatYmdShort(startYmd) + ' – ' + formatYmdShort(endYmd);
+    }
+
+    function formatYmdShort(ymd) {
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return String(ymd || '');
+      var y = parseInt(String(ymd).slice(0, 4), 10);
+      var m = parseInt(String(ymd).slice(5, 7), 10);
+      var d = parseInt(String(ymd).slice(8, 10), 10);
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(ymd || '');
+      var dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      try {
+        return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(dt);
+      } catch (_) {
+        return String(ymd || '');
+      }
     }
 
     function makeRangeKeyFromYmds(startYmd, endYmd) {
@@ -4347,8 +4372,9 @@ const API = '';
     function closeCustomDateModal() {
       const modal = document.getElementById('date-custom-modal');
       if (!modal) return;
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
+      modal.style.display = '';
+      modal.classList.remove('show');
+      document.body.classList.remove('modal-open');
       pendingCustomRangeStartYmd = null;
       pendingCustomRangeEndYmd = null;
       if (flatpickrInstance) {
@@ -4406,8 +4432,9 @@ const API = '';
       const modal = document.getElementById('date-custom-modal');
       const input = document.getElementById('date-range-picker');
       if (!modal || !input) return;
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
+      modal.style.display = 'block';
+      modal.classList.add('show');
+      document.body.classList.add('modal-open');
       const applied = appliedYmdRangeFromDateRange();
       pendingCustomRangeStartYmd = applied && applied.startYmd && applied.startYmd >= MIN_YMD ? applied.startYmd : null;
       pendingCustomRangeEndYmd = applied && applied.endYmd && applied.endYmd >= MIN_YMD ? applied.endYmd : null;
@@ -4462,7 +4489,7 @@ const API = '';
         if (e && e.target === modal) closeCustomDateModal();
       });
       document.addEventListener('keydown', function(e) {
-        if (!modal.classList.contains('open')) return;
+        if (!modal.classList.contains('show')) return;
         const key = e && (e.key || e.code) ? String(e.key || e.code) : '';
         if (key === 'Escape') closeCustomDateModal();
       });
@@ -8211,10 +8238,10 @@ const API = '';
             prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
             prodTbody.innerHTML = products.map(function(p) {
-              var thumbHtml = p.thumb_url
-                ? '<span class="avatar avatar-sm me-2"><img src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt=""></span>'
-                : '';
-              return '<tr><td><span style="display:inline-flex;align-items:center">' + thumbHtml + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
+              var thumbHtml = '<span class="thumb-wrap thumb-stack">' +
+                (p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
+              '</span>';
+              return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
             }).join('');
           }
         }

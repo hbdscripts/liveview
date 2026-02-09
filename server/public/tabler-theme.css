@@ -54,8 +54,22 @@ body {
   position: sticky;
   top: 0;
   z-index: 1030;
-  background: var(--tblr-bg-surface, #fff);
-  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-bottom: none;
+}
+
+/* ── Dark navbar (Tabler layout-navbar-dark) ── */
+.sticky-top > header.navbar[data-bs-theme="dark"] {
+  background: #1b2434;
+}
+.sticky-top .navbar-expand-md .navbar[data-bs-theme="dark"] {
+  background: #1b2434;
+  border-bottom-color: rgba(255, 255, 255, .1);
+}
+
+/* ── Nav link icons: match Tabler SVG sizing ── */
+.nav-link-icon .ti {
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
 .navbar-nav .dropdown-menu {
@@ -148,8 +162,55 @@ body:has(.navbar.sticky-top) .navbar-vertical {
 /* ── Stats/report cards (countries, overview, products, traffic) ── */
 .stats-row,
 .traffic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
+  align-items: start;
+}
+
+/* ── Product thumbs: unified .thumb-stack .landing-thumb in tables ── */
+/* Product cell baseline flex layout (shared across all pages) */
+.product-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+/* Single-image: no absolute positioning */
+.thumb-stack .landing-thumb:only-child {
+  position: static;
+}
+/* In-table: 36px circular with white border + shadow on container */
+.grid-table .thumb-wrap.thumb-stack,
+.product-cell .thumb-wrap.thumb-stack,
+.breakdown-cell .thumb-wrap.thumb-stack,
+.aov-card .thumb-wrap.thumb-stack {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--tblr-bg-surface-secondary, #f8f9fa);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.grid-table .thumb-stack .landing-thumb,
+.product-cell .thumb-stack .landing-thumb,
+.breakdown-cell .thumb-stack .landing-thumb,
+.aov-card .thumb-stack .landing-thumb {
+  position: static;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  object-fit: cover;
 }
 
 .stats-card {

@@ -468,8 +468,8 @@
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
-/* ── Fix double border: remove border from top navbar, keep on nav menu ── */
-.sticky-top .navbar.sticky-top { border-bottom: none; }
+/* ── Single border: only on nav menu bar, not on logo bar ── */
+.sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
 /* ── Nav active state (Tabler handles .nav-item.active styling) ── */

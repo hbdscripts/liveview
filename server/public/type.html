@@ -22,7 +22,7 @@
 </head>
 <body class="" data-page="type">
     <div class="sticky-top">
-      <header class="navbar navbar-expand-md navbar-dark sticky-top d-print-none">
+      <header class="navbar navbar-expand-md navbar-dark sticky-top d-print-none" data-bs-theme="dark">
         <div class="container-xl">
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
             <span class="navbar-toggler-icon"></span>
@@ -31,17 +31,7 @@
             <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" class="navbar-brand-image">
           </a>
 
-          <div class="navbar-nav flex-row order-md-last">
-            <div class="nav-item d-none d-md-flex me-3">
-              <select id="global-date-select" class="form-select form-select-sm" aria-label="Date range">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="7days">Last 7 days</option>
-                <option value="14days">Last 14 days</option>
-                <option value="30days">Last 30 days</option>
-                <option value="custom" id="date-opt-custom">Custom</option>
-              </select>
-            </div>
+          <div class="navbar-nav flex-row order-md-last align-items-center">
             <div class="nav-item dropdown d-none d-md-flex">
               <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
                 <i class="ti ti-settings"></i>
@@ -60,13 +50,23 @@
                 <a href="/app/logout" class="dropdown-item text-danger"><i class="ti ti-logout me-2"></i>Sign out</a>
               </div>
             </div>
+            <div class="nav-item d-flex ms-2">
+              <select id="global-date-select" class="form-select" aria-label="Date range">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 days</option>
+                <option value="14days">Last 14 days</option>
+                <option value="30days">Last 30 days</option>
+                <option value="custom" id="date-opt-custom">Custom</option>
+              </select>
+            </div>
           </div>
         </div>
       </header>
 
       <header class="navbar-expand-md d-print-none">
         <div class="collapse navbar-collapse" id="navbar-menu">
-          <div class="navbar">
+          <div class="navbar" data-bs-theme="dark">
             <div class="container-xl">
               <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
                 <ul class="navbar-nav">
@@ -271,7 +271,7 @@
               <a href="/app/logout" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Sign out"><i class="ti ti-logout"></i></a>
             </div>
             <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="60">
-            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span></span>
+            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary btn-sm" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
           </div>
         </div>
       </footer>
@@ -318,24 +318,24 @@
     </div>
   </div>
 
-  <div class="config-modal" id="date-custom-modal" aria-hidden="true">
-    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Choose dates">
-      <div class="config-modal-header">
-        <h3 class="config-modal-title">Choose dates</h3>
-        <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="date-custom-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <label class="form-label">Date Range (max 30 days)</label>
-        <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly style="background: white; cursor: pointer;">
-        <div class="text-muted small mt-2">
-          <i class="ti ti-info-circle"></i> Dates without data will be disabled
+  <div class="modal modal-blur" id="date-custom-modal" tabindex="-1" style="display:none">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose dates</h5>
+          <button type="button" class="btn-close" id="date-custom-close-btn" aria-label="Close"></button>
         </div>
-      </div>
-      <div class="modal-footer" style="padding: 1rem 1.25rem; border-top: 1px solid var(--tblr-border-color); display: flex; justify-content: space-between; align-items: center;">
-        <div class="text-muted small" id="date-custom-summary"></div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" class="btn btn-secondary btn-sm" id="date-custom-clear">Clear</button>
-          <button type="button" class="btn btn-primary btn-sm" id="date-custom-apply" disabled>Apply</button>
+        <div class="modal-body">
+          <label class="form-label">Date Range (max 30 days)</label>
+          <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly>
+          <div class="text-muted small mt-2">
+            <i class="ti ti-info-circle"></i> Dates without data will be disabled
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small" id="date-custom-summary"></div>
+          <button type="button" class="btn btn-ghost-secondary" id="date-custom-clear">Clear</button>
+          <button type="button" class="btn btn-primary" id="date-custom-apply" disabled>Apply</button>
         </div>
       </div>
     </div>
