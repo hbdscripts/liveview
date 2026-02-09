@@ -7879,7 +7879,8 @@ const API = '';
           var showKpis = (tab !== 'dashboard' && tab !== 'tools');
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
           if (sharedKpiWrap) sharedKpiWrap.style.display = showKpis ? '' : 'none';
-          var showDateSel = (tab !== 'tools');
+          // Keep the global date selector visible on ALL pages (including Tools) for consistent header UX.
+          var showDateSel = true;
           var globalDateSel = document.getElementById('global-date-select');
           if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
