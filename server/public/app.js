@@ -4807,7 +4807,7 @@ const API = '';
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
       if (salesLabelEl) {
-        salesLabelEl.textContent = orderCountVal != null ? (orderCountVal + ' Orders') : 'Orders';
+        salesLabelEl.textContent = orderCountVal != null ? (Math.round(orderCountVal) + ' Orders') : 'Orders';
         salesLabelEl.title = '';
       }
       if (salesEl) {
