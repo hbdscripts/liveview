@@ -280,6 +280,12 @@ body:has(.navbar.sticky-top) .navbar-vertical {
   border-radius: .75rem;
 }
 
+/* Dark mode: avoid white flash while reports load */
+html[data-bs-theme="dark"] .stats-loading-overlay,
+html[data-bs-theme="dark"] .sessions-loading-overlay {
+  background: rgba(26, 34, 52, 0.88);
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 
 /* Mobile: center logo in collapsed sidebar header */

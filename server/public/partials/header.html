@@ -1,3 +1,12 @@
+    <script>
+      // Prevent light-theme flash: Tabler beta22 relies on body.theme-dark.
+      (function () {
+        try {
+          var t = localStorage.getItem('tabler-theme');
+          if (t === 'dark') document.body.classList.add('theme-dark');
+        } catch (e) {}
+      })();
+    </script>
     <div class="sticky-top">
       <header class="navbar navbar-expand-md navbar-dark sticky-top d-print-none" data-bs-theme="dark">
         <div class="container-xl">

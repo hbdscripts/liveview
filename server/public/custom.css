@@ -20,6 +20,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* jsVectorMap tooltip should match Tabler theme (avoid white tooltip in dark mode). */
+.jvm-container { background: transparent !important; }
+.jvm-tooltip {
+  background: var(--tblr-bg-surface, #fff) !important;
+  color: var(--tblr-body-color, #1e293b) !important;
+  border: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  box-shadow: rgba(35, 46, 60, .12) 0 8px 24px;
+  border-radius: .5rem !important;
+  padding: .5rem .65rem !important;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: .8125rem !important;
+}
+
 .grid-header,
 .grid-body {
   display: table-row-group !important;
