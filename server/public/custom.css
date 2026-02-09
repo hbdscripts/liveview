@@ -228,7 +228,7 @@
 
 .sale-toast {
   pointer-events: auto;
-  background: #fff;
+  background: var(--tblr-bg-surface, #fff);
   border: 1px solid var(--tblr-border-color);
   border-radius: var(--tblr-border-radius);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1);
@@ -285,7 +285,7 @@
 
 .sale-toast-amount {
   font-weight: 700;
-  color: var(--tblr-primary);
+  color: var(--tblr-green, #2fb344);
 }
 
 .sale-toast-time {
@@ -299,6 +299,22 @@
 .sale-toast-time-icon {
   width: 12px;
   height: 12px;
+}
+
+.sale-toast-close {
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.sale-toast-close:hover {
+  opacity: 1;
+}
+
+/* Hide KPI mobile pager button */
+#kpi-mobile-next {
+  display: none !important;
 }
 
 /* Loading states */
@@ -343,7 +359,7 @@
 }
 
 .config-modal-card {
-  background: #fff;
+  background: var(--tblr-bg-surface, #fff);
   border-radius: var(--tblr-border-radius-lg, .5rem);
   max-width: 600px;
   width: 100%;
@@ -407,17 +423,9 @@
   z-index: 0;
 }
 
-/* ── Footer controls ────────────────────────────────────────────── */
+/* ── Footer ────────────────────────────────────────────── */
 .footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 1020;
-  background: var(--tblr-bg-surface, #fff);
   border-top: 1px solid var(--tblr-border-color, #e6e7e9);
-}
-
-.footer-last-sale {
-  white-space: nowrap;
 }
 
 /* Sale-toast toggle eye icon states */
@@ -487,9 +495,36 @@
   flex-shrink: 0;
 }
 
+/* Stacked entry/exit thumbnails */
 .thumb-wrap.thumb-stack {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+
+.thumb-stack .landing-thumb {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+.thumb-stack .landing-thumb:first-child {
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.thumb-stack .landing-thumb-exit {
+  bottom: 0;
+  right: 0;
+  z-index: 2;
+  opacity: 0.9;
 }
 
 .thumb-overlay {

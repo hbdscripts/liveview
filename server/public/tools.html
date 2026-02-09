@@ -41,6 +41,24 @@
                 <option value="custom" id="date-opt-custom">Custom</option>
               </select>
             </div>
+            <div class="nav-item dropdown d-none d-md-flex">
+              <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="ti ti-settings me-1"></i><span>Settings</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <div class="dropdown-item d-flex align-items-center gap-2">
+                  <span class="text-secondary" style="font-size:.8125rem">Last sale: <span id="last-sale-ago">&mdash;</span></span>
+                  <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary ms-auto" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
+                </div>
+                <div class="dropdown-divider"></div>
+                <button type="button" id="refresh-btn" class="dropdown-item"><i class="ti ti-refresh me-2"></i>Refresh</button>
+                <button type="button" id="audio-mute-btn" class="dropdown-item"><i class="ti ti-volume sound-icon-on me-2"></i><i class="ti ti-volume-off sound-icon-off is-hidden me-2"></i>Sound</button>
+                <button type="button" id="theme-settings-btn" class="dropdown-item"><i class="ti ti-palette me-2"></i>Theme</button>
+                <button type="button" id="config-open-btn" class="dropdown-item"><i class="ti ti-settings me-2"></i>Diagnostics</button>
+                <div class="dropdown-divider"></div>
+                <a href="/app/logout" class="dropdown-item text-danger"><i class="ti ti-logout me-2"></i>Sign out</a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -259,18 +277,8 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-xl">
-          <div class="d-flex align-items-center justify-content-center gap-3 text-secondary" style="font-size:.8125rem">
-            <span class="footer-last-sale d-flex align-items-center gap-1">Last sale: <span id="last-sale-ago">&mdash;</span>
-              <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
-            </span>
-            <button type="button" id="refresh-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" id="audio-mute-btn" class="btn btn-icon btn-sm btn-ghost-secondary" title="Toggle sale sound" aria-label="Toggle sale sound">
-              <i class="ti ti-volume sound-icon-on"></i>
-              <i class="ti ti-volume-off sound-icon-off is-hidden"></i>
-            </button>
-            <button type="button" id="theme-settings-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Theme settings"><i class="ti ti-palette"></i></button>
-            <button type="button" id="config-open-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+          <div class="d-flex justify-content-center py-3">
+            <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80">
           </div>
         </div>
       </footer>

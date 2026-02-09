@@ -41,6 +41,24 @@
                 <option value="custom" id="date-opt-custom">Custom</option>
               </select>
             </div>
+            <div class="nav-item dropdown d-none d-md-flex">
+              <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="ti ti-settings me-1"></i><span>Settings</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <div class="dropdown-item d-flex align-items-center gap-2">
+                  <span class="text-secondary" style="font-size:.8125rem">Last sale: <span id="last-sale-ago">&mdash;</span></span>
+                  <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary ms-auto" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
+                </div>
+                <div class="dropdown-divider"></div>
+                <button type="button" id="refresh-btn" class="dropdown-item"><i class="ti ti-refresh me-2"></i>Refresh</button>
+                <button type="button" id="audio-mute-btn" class="dropdown-item"><i class="ti ti-volume sound-icon-on me-2"></i><i class="ti ti-volume-off sound-icon-off is-hidden me-2"></i>Sound</button>
+                <button type="button" id="theme-settings-btn" class="dropdown-item"><i class="ti ti-palette me-2"></i>Theme</button>
+                <button type="button" id="config-open-btn" class="dropdown-item"><i class="ti ti-settings me-2"></i>Diagnostics</button>
+                <div class="dropdown-divider"></div>
+                <a href="/app/logout" class="dropdown-item text-danger"><i class="ti ti-logout me-2"></i>Sign out</a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -196,9 +214,13 @@
       <div class="page-body">
         <div class="container-xl">
 <div id="tab-panel-products" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-products">
-  <div class="dash-chart-card card mb-3">
-    <div class="dash-chart-title">Revenue by Product</div>
-    <div class="dash-chart-wrap" id="products-chart" style="min-height:280px"></div>
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title">Revenue by Product</h3>
+    </div>
+    <div class="card-body">
+      <div class="dash-chart-wrap" id="products-chart" style="min-height:280px"></div>
+    </div>
   </div>
   <div class="stats-row-wrap">
     <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="products-loading-overlay">
@@ -211,6 +233,9 @@
 
   <div class="stats-row">
     <div class="stats-card card" id="stats-best-sellers">
+      <div class="card-header">
+        <h3 class="card-title">Best Sellers</h3>
+      </div>
       <div class="country-table-wrap" id="best-sellers-wrap">
         <div id="best-sellers-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best sellers">
           <div class="grid-header" role="rowgroup">
@@ -234,6 +259,9 @@
       </div>
     </div>
     <div class="stats-card card" id="stats-best-variants">
+      <div class="card-header">
+        <h3 class="card-title">by Variant</h3>
+      </div>
       <div class="country-table-wrap" id="best-variants-wrap">
         <div id="best-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best variants">
           <div class="grid-header" role="rowgroup">
@@ -259,6 +287,9 @@
   </div>
   <div class="stats-row" id="products-type-tables-row">
     <div class="stats-card card" id="stats-type-necklaces">
+      <div class="card-header">
+        <h3 class="card-title">Necklaces</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-necklaces-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Necklaces">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -274,6 +305,9 @@
       <div class="card-pagination is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><button type="button" id="type-necklaces-prev">Prev</button><span class="page-label" id="type-necklaces-label">1 of 1</span><button type="button" id="type-necklaces-next">Next</button></div>
     </div>
     <div class="stats-card card" id="stats-type-bracelets">
+      <div class="card-header">
+        <h3 class="card-title">Bracelets</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-bracelets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Bracelets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -289,6 +323,9 @@
       <div class="card-pagination is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><button type="button" id="type-bracelets-prev">Prev</button><span class="page-label" id="type-bracelets-label">1 of 1</span><button type="button" id="type-bracelets-next">Next</button></div>
     </div>
     <div class="stats-card card" id="stats-type-earrings">
+      <div class="card-header">
+        <h3 class="card-title">Earrings</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-earrings-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Earrings">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -304,6 +341,9 @@
       <div class="card-pagination is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><button type="button" id="type-earrings-prev">Prev</button><span class="page-label" id="type-earrings-label">1 of 1</span><button type="button" id="type-earrings-next">Next</button></div>
     </div>
     <div class="stats-card card" id="stats-type-sets">
+      <div class="card-header">
+        <h3 class="card-title">Jewelry Sets</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-sets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Sets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -319,6 +359,9 @@
       <div class="card-pagination is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><button type="button" id="type-sets-prev">Prev</button><span class="page-label" id="type-sets-label">1 of 1</span><button type="button" id="type-sets-next">Next</button></div>
     </div>
     <div class="stats-card card" id="stats-type-charms">
+      <div class="card-header">
+        <h3 class="card-title">Charms</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-charms-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Charms">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -334,6 +377,9 @@
       <div class="card-pagination is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><button type="button" id="type-charms-prev">Prev</button><span class="page-label" id="type-charms-label">1 of 1</span><button type="button" id="type-charms-next">Next</button></div>
     </div>
     <div class="stats-card card" id="stats-type-extras">
+      <div class="card-header">
+        <h3 class="card-title">Extras</h3>
+      </div>
       <div class="country-table-wrap">
         <div id="type-extras-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Extras">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
@@ -355,18 +401,8 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-xl">
-          <div class="d-flex align-items-center justify-content-center gap-3 text-secondary" style="font-size:.8125rem">
-            <span class="footer-last-sale d-flex align-items-center gap-1">Last sale: <span id="last-sale-ago">&mdash;</span>
-              <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
-            </span>
-            <button type="button" id="refresh-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" id="audio-mute-btn" class="btn btn-icon btn-sm btn-ghost-secondary" title="Toggle sale sound" aria-label="Toggle sale sound">
-              <i class="ti ti-volume sound-icon-on"></i>
-              <i class="ti ti-volume-off sound-icon-off is-hidden"></i>
-            </button>
-            <button type="button" id="theme-settings-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Theme settings"><i class="ti ti-palette"></i></button>
-            <button type="button" id="config-open-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+          <div class="d-flex justify-content-center py-3">
+            <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80">
           </div>
         </div>
       </footer>
@@ -453,6 +489,7 @@
           <span id="sale-toast-time">—</span>
         </div>
       </div>
+      <button type="button" class="btn-close sale-toast-close" id="sale-toast-close" aria-label="Close"></button>
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta22/dist/js/tabler.min.js" defer></script>

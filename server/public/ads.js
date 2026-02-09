@@ -80,7 +80,7 @@
     { key: 'sales',    label: 'Sales',    get: function (c) { return c.revenue || 0; },      fmt: function (v, cur) { return fmtMoney(v, cur); } },
   ];
 
-  var sortKey = 'profit';
+  var sortKey = 'sales';
   var sortDesc = true;
 
   function sortCampaigns(campaigns) {

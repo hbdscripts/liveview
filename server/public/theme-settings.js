@@ -3,12 +3,36 @@
 
   var DEFAULTS = {
     theme: 'light',
-    'theme-base': '',
     'theme-primary': '',
     'theme-radius': '1'
   };
 
   var KEYS = Object.keys(DEFAULTS);
+
+  // Primary color map: name → [hex, r, g, b]
+  var PRIMARY_COLORS = {
+    blue:   ['#206bc4', '32,107,196'],
+    azure:  ['#4299e1', '66,153,225'],
+    indigo: ['#4263eb', '66,99,235'],
+    purple: ['#ae3ec9', '174,62,201'],
+    pink:   ['#d6336c', '214,51,108'],
+    red:    ['#d63939', '214,57,57'],
+    orange: ['#f76707', '247,103,7'],
+    yellow: ['#f59f00', '245,159,0'],
+    lime:   ['#74b816', '116,184,22'],
+    green:  ['#2fb344', '47,179,68'],
+    teal:   ['#0ca678', '12,166,120'],
+    cyan:   ['#17a2b8', '23,162,184']
+  };
+
+  // Border radius scale → CSS value
+  var RADIUS_MAP = {
+    '0': '0',
+    '0.5': '.25rem',
+    '1': '.375rem',
+    '1.5': '.5rem',
+    '2': '2rem'
+  };
 
   function getStored(key) {
     try { return localStorage.getItem('tabler-' + key); } catch (_) { return null; }
@@ -21,13 +45,32 @@
   }
 
   function applyTheme(key, value) {
+    var root = document.documentElement;
     if (key === 'theme') {
-      document.documentElement.setAttribute('data-bs-theme', value || 'light');
-    } else {
-      if (value) {
-        document.documentElement.setAttribute('data-bs-' + key, value);
+      // Tabler beta22 uses body class for dark mode
+      document.body.classList.toggle('theme-dark', value === 'dark');
+      root.setAttribute('data-bs-theme', value || 'light');
+    } else if (key === 'theme-primary') {
+      var color = PRIMARY_COLORS[value];
+      if (color) {
+        root.style.setProperty('--tblr-primary', color[0]);
+        root.style.setProperty('--tblr-primary-rgb', color[1]);
       } else {
-        document.documentElement.removeAttribute('data-bs-' + key);
+        root.style.removeProperty('--tblr-primary');
+        root.style.removeProperty('--tblr-primary-rgb');
+      }
+    } else if (key === 'theme-radius') {
+      var r = RADIUS_MAP[value];
+      if (r != null) {
+        root.style.setProperty('--tblr-border-radius', r);
+        root.style.setProperty('--tblr-border-radius-sm', r === '0' ? '0' : 'calc(' + r + ' * .75)');
+        root.style.setProperty('--tblr-border-radius-lg', r === '0' ? '0' : 'calc(' + r + ' * 1.5)');
+        root.style.setProperty('--tblr-border-radius-xl', r === '0' ? '0' : 'calc(' + r + ' * 3)');
+      } else {
+        root.style.removeProperty('--tblr-border-radius');
+        root.style.removeProperty('--tblr-border-radius-sm');
+        root.style.removeProperty('--tblr-border-radius-lg');
+        root.style.removeProperty('--tblr-border-radius-xl');
       }
     }
   }
@@ -110,21 +153,9 @@
 
           '<div class="mb-4">' +
             '<label class="form-label">Color mode</label>' +
-            '<div class="row g-2">' +
+            '<div class="form-selectgroup">' +
               radioCard('theme', 'light', 'Light') +
               radioCard('theme', 'dark', 'Dark') +
-            '</div>' +
-          '</div>' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Color scheme</label>' +
-            '<div class="row g-2">' +
-              radioCard('theme-base', '', 'Default') +
-              radioCard('theme-base', 'slate', 'Slate') +
-              radioCard('theme-base', 'gray', 'Gray') +
-              radioCard('theme-base', 'zinc', 'Zinc') +
-              radioCard('theme-base', 'neutral', 'Neutral') +
-              radioCard('theme-base', 'stone', 'Stone') +
             '</div>' +
           '</div>' +
 
@@ -149,7 +180,7 @@
 
           '<div class="mb-4">' +
             '<label class="form-label">Border radius</label>' +
-            '<div class="row g-2">' +
+            '<div class="form-selectgroup">' +
               radioCard('theme-radius', '0', 'None') +
               radioCard('theme-radius', '0.5', 'Small') +
               radioCard('theme-radius', '1', 'Default') +
@@ -168,7 +199,7 @@
 
     document.body.insertAdjacentHTML('beforeend', html);
 
-    // Bind form changes
+    // Bind form changes — apply immediately on selection
     var form = document.getElementById('theme-settings-form');
     form.addEventListener('change', function (e) {
       var name = e.target.name;
@@ -182,7 +213,11 @@
       saveToServer();
       var btn = this;
       btn.textContent = 'Saved!';
-      setTimeout(function () { btn.textContent = 'Save as default'; }, 1500);
+      btn.classList.replace('btn-primary', 'btn-success');
+      setTimeout(function () {
+        btn.textContent = 'Save as default';
+        btn.classList.replace('btn-success', 'btn-primary');
+      }, 1500);
     });
 
     // Reset
@@ -199,18 +234,17 @@
 
   function radioCard(name, value, label) {
     var id = 'theme-opt-' + name + '-' + (value || 'default');
-    return '<div class="col-6">' +
-      '<label class="form-selectgroup-item flex-fill">' +
-        '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
-        '<div class="form-selectgroup-label d-flex align-items-center p-2">' +
-          '<span class="form-selectgroup-label-content">' + label + '</span>' +
-        '</div>' +
-      '</label>' +
-    '</div>';
+    return '<label class="form-selectgroup-item flex-fill">' +
+      '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
+      '<div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">' +
+        '<span class="form-selectgroup-label-content">' + label + '</span>' +
+      '</div>' +
+    '</label>';
   }
 
   function colorCard(name, value, label) {
-    var swatch = value ? '<span class="avatar avatar-xs rounded-circle me-2" style="background:var(--tblr-' + (value || 'primary') + ')"></span>' : '';
+    var color = PRIMARY_COLORS[value];
+    var swatch = color ? '<span class="avatar avatar-xs rounded-circle me-2" style="background:' + color[0] + '"></span>' : '';
     var id = 'theme-opt-' + name + '-' + (value || 'default');
     return '<div class="col-4">' +
       '<label class="form-selectgroup-item flex-fill">' +

@@ -2367,6 +2367,17 @@ const API = '';
       });
     })();
 
+    (function initSaleToastCloseBtn() {
+      var btn = document.getElementById('sale-toast-close');
+      if (!btn) return;
+      btn.addEventListener('click', function(e) {
+        if (e) e.preventDefault();
+        saleToastPinned = false;
+        updateSaleToastToggle();
+        hideSaleToast();
+      });
+    })();
+
     function getShopParam() {
       var p = new URLSearchParams(window.location.search);
       var shop = p.get('shop') || '';
@@ -4068,19 +4079,7 @@ const API = '';
           pageTitleEl.textContent = label || fallback[dateRange] || 'Today';
         }
       }
-      // Text element (if present) for non-tabbed display
-      if (textEl) {
-        let label = null;
-        const applied = appliedYmdRangeFromDateRange();
-        if (applied && applied.startYmd && applied.endYmd) {
-          label = formatYmdRangeLabel(applied.startYmd, applied.endYmd);
-        } else if (sel) {
-          const opt = sel.querySelector('option[value="' + dateRange + '"]') || sel.options[sel.selectedIndex];
-          label = opt && opt.textContent ? String(opt.textContent).trim() : null;
-        }
-        const fallback = { live: 'Now', today: 'Today', sales: 'Sales', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
-        textEl.textContent = label || fallback[dateRange] || 'Today';
-      }
+      // Table title text stays as the page name (set in HTML) — date range shown in global selector
     }
 
     function updateRowsPerPageVisibility() {

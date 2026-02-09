@@ -41,6 +41,24 @@
                 <option value="custom" id="date-opt-custom">Custom</option>
               </select>
             </div>
+            <div class="nav-item dropdown d-none d-md-flex">
+              <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                <i class="ti ti-settings me-1"></i><span>Settings</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <div class="dropdown-item d-flex align-items-center gap-2">
+                  <span class="text-secondary" style="font-size:.8125rem">Last sale: <span id="last-sale-ago">&mdash;</span></span>
+                  <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary ms-auto" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
+                </div>
+                <div class="dropdown-divider"></div>
+                <button type="button" id="refresh-btn" class="dropdown-item"><i class="ti ti-refresh me-2"></i>Refresh</button>
+                <button type="button" id="audio-mute-btn" class="dropdown-item"><i class="ti ti-volume sound-icon-on me-2"></i><i class="ti ti-volume-off sound-icon-off is-hidden me-2"></i>Sound</button>
+                <button type="button" id="theme-settings-btn" class="dropdown-item"><i class="ti ti-palette me-2"></i>Theme</button>
+                <button type="button" id="config-open-btn" class="dropdown-item"><i class="ti ti-settings me-2"></i>Diagnostics</button>
+                <div class="dropdown-divider"></div>
+                <a href="/app/logout" class="dropdown-item text-danger"><i class="ti ti-logout me-2"></i>Sign out</a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -214,24 +232,24 @@
       <div class="page-body">
         <div class="container-xl">
 <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
-  <div class="live-view-header">
-    <h2 class="table-title" id="table-title">
-      <span id="table-title-text" class="table-title-label">Today</span>
-    </h2>
-    <span class="next-update-block live-view-next-update-center" id="next-update-block">
-      <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
-      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"></span>
-    </span>
-    <div class="live-view-online">
-      <i class="ti ti-user online-user-icon" aria-hidden="true"></i>
-      Online:
-      <span class="online-count-wrap">
-        <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
-        <strong id="online-count" class="is-hidden">0</strong>
-      </span>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title" id="table-title"><span id="table-title-text">Date</span></h3>
+      <div class="card-actions d-flex align-items-center gap-3">
+        <span class="next-update-block" id="next-update-block">
+          <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
+          <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"></span>
+        </span>
+        <div class="live-view-online">
+          <i class="ti ti-user online-user-icon" aria-hidden="true"></i>
+          Online:
+          <span class="online-count-wrap">
+            <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
+            <strong id="online-count" class="is-hidden">0</strong>
+          </span>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="sessions-table-wrap">
     <div class="table-loading-overlay sessions-loading-overlay is-hidden" id="sessions-loading-overlay"><div class="spinner-border text-primary" role="status"></div></div>
   <div class="table-scroll-wrap">
   <div id="sessions-table" class="grid-table sessions-table" role="table" aria-label="Sessions">
@@ -273,18 +291,8 @@
       </div>
       <footer class="footer footer-transparent d-print-none">
         <div class="container-xl">
-          <div class="d-flex align-items-center justify-content-center gap-3 text-secondary" style="font-size:.8125rem">
-            <span class="footer-last-sale d-flex align-items-center gap-1">Last sale: <span id="last-sale-ago">&mdash;</span>
-              <button type="button" id="last-sale-toggle" class="btn btn-icon btn-sm btn-ghost-secondary" aria-pressed="false" aria-label="Show last sale toast"><i class="ti ti-eye"></i></button>
-            </span>
-            <button type="button" id="refresh-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" id="audio-mute-btn" class="btn btn-icon btn-sm btn-ghost-secondary" title="Toggle sale sound" aria-label="Toggle sale sound">
-              <i class="ti ti-volume sound-icon-on"></i>
-              <i class="ti ti-volume-off sound-icon-off is-hidden"></i>
-            </button>
-            <button type="button" id="theme-settings-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Theme settings"><i class="ti ti-palette"></i></button>
-            <button type="button" id="config-open-btn" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Settings"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-sm btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+          <div class="d-flex justify-content-center py-3">
+            <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80">
           </div>
         </div>
       </footer>
@@ -395,6 +403,7 @@
           <span id="sale-toast-time">—</span>
         </div>
       </div>
+      <button type="button" class="btn-close sale-toast-close" id="sale-toast-close" aria-label="Close"></button>
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta22/dist/js/tabler.min.js" defer></script>
