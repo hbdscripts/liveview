@@ -50,7 +50,15 @@ async function postSettings(req, res) {
 }
 
 // ── Theme defaults (shared across all logins) ──────────────────────────────
-const THEME_KEYS = ['theme', 'theme_base', 'theme_primary', 'theme_radius'];
+// Must match the keys used by `server/public/theme-settings.js` (hyphens converted to underscores).
+const THEME_KEYS = [
+  'theme',
+  'theme_primary',
+  'theme_radius',
+  // KEXO extensions (optional)
+  'kexo_topbar',
+  'kexo_nav_active',
+];
 
 async function getThemeDefaults(req, res) {
   const result = { ok: true };

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (KPIs moved into header with “Show more” expandable grid)
+Last updated: 2026-02-09 (Gradient top bar + theme overrides)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -218,3 +218,4 @@ Edge (optional):
   - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
   - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.
 - Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
+- Theme: sticky top bar now uses a default KEXO gradient background (icons/controls styled for contrast) and active-nav underline supports a gradient; both are overridable via Theme Settings.

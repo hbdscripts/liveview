@@ -4,7 +4,10 @@
   var DEFAULTS = {
     theme: 'light',
     'theme-primary': '',
-    'theme-radius': '1'
+    'theme-radius': '1',
+    // KEXO UI defaults (overridable)
+    'kexo-topbar': '',        // '' = default gradient
+    'kexo-nav-active': ''     // '' = default gradient underline
   };
 
   var KEYS = Object.keys(DEFAULTS);
@@ -72,6 +75,47 @@
         root.style.removeProperty('--tblr-border-radius-sm');
         root.style.removeProperty('--tblr-border-radius-lg');
         root.style.removeProperty('--tblr-border-radius-xl');
+      }
+    } else if (key === 'kexo-topbar') {
+      // '' => use CSS defaults from tabler-theme.css
+      var v = (value || '').toString().trim().toLowerCase();
+      if (!v) {
+        root.style.removeProperty('--kexo-topbar-bg');
+        root.style.removeProperty('--kexo-topbar-fg');
+        root.style.removeProperty('--kexo-topbar-fg-strong');
+        root.style.removeProperty('--kexo-topbar-shadow');
+        root.style.removeProperty('--kexo-topbar-control-bg');
+        root.style.removeProperty('--kexo-topbar-control-border');
+        root.style.removeProperty('--kexo-topbar-control-border-focus');
+        return;
+      }
+      if (v === 'primary') {
+        root.style.setProperty('--kexo-topbar-bg', 'var(--tblr-primary)');
+      } else if (v === 'dark') {
+        root.style.setProperty('--kexo-topbar-bg', '#1b2434');
+      } else {
+        // Unknown -> fall back to defaults
+        root.style.removeProperty('--kexo-topbar-bg');
+      }
+      // Ensure readable foreground against non-light backgrounds
+      root.style.setProperty('--kexo-topbar-fg', 'rgba(255,255,255,0.92)');
+      root.style.setProperty('--kexo-topbar-fg-strong', 'rgba(255,255,255,0.98)');
+      root.style.setProperty('--kexo-topbar-shadow', '0 1px 2px rgba(0,0,0,0.28)');
+      root.style.setProperty('--kexo-topbar-control-bg', 'rgba(255,255,255,0.08)');
+      root.style.setProperty('--kexo-topbar-control-border', 'rgba(255,255,255,0.18)');
+      root.style.setProperty('--kexo-topbar-control-border-focus', 'rgba(255,255,255,0.28)');
+    } else if (key === 'kexo-nav-active') {
+      var a = (value || '').toString().trim().toLowerCase();
+      if (!a) {
+        root.style.removeProperty('--kexo-nav-active-underline');
+        return;
+      }
+      if (a === 'primary') {
+        root.style.setProperty('--kexo-nav-active-underline', 'var(--tblr-primary)');
+      } else if (a === 'none') {
+        root.style.setProperty('--kexo-nav-active-underline', 'transparent');
+      } else {
+        root.style.removeProperty('--kexo-nav-active-underline');
       }
     }
   }
@@ -187,6 +231,24 @@
               radioCard('theme-radius', '1', 'Default') +
               radioCard('theme-radius', '1.5', 'Large') +
               radioCard('theme-radius', '2', 'Pill') +
+            '</div>' +
+          '</div>' +
+
+          '<div class="mb-4">' +
+            '<label class="form-label">Top bar background</label>' +
+            '<div class="form-selectgroup">' +
+              radioCard('kexo-topbar', '', 'KEXO gradient') +
+              radioCard('kexo-topbar', 'primary', 'Primary') +
+              radioCard('kexo-topbar', 'dark', 'Dark') +
+            '</div>' +
+          '</div>' +
+
+          '<div class="mb-4">' +
+            '<label class="form-label">Active menu underline</label>' +
+            '<div class="form-selectgroup">' +
+              radioCard('kexo-nav-active', '', 'KEXO gradient') +
+              radioCard('kexo-nav-active', 'primary', 'Primary') +
+              radioCard('kexo-nav-active', 'none', 'None') +
             '</div>' +
           '</div>' +
 
