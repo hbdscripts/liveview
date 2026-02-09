@@ -530,6 +530,20 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 .sticky-top .navbar .navbar-nav .nav-link {
   border-radius: 0 !important;
 }
+
+/* Top nav: make current parent/link bold (no page titles). */
+#navbar-menu .navbar-nav .nav-item.active > .nav-link,
+#navbar-menu .navbar-nav .nav-link[aria-current="page"] {
+  font-weight: 600;
+}
+
+/* Top nav: add more gap before the dropdown chevron/caret. */
+#navbar-menu .navbar-nav .nav-link.dropdown-toggle::after {
+  margin-left: 0.6rem;
+}
+#navbar-menu .navbar-nav .nav-item.active > .nav-link.dropdown-toggle::after {
+  margin-left: 0.75rem;
+}
 @media (min-width: 769px) {
   #navbar-menu .navbar .container-xl {
     justify-content: center;
