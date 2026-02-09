@@ -62,11 +62,8 @@ body {
   background: #1b2434;
 }
 
-/* ── Nav link icons: match Tabler SVG sizing ── */
-.nav-link-icon .ti {
-  font-size: 1.5rem;
-  line-height: 1;
-}
+/* ── Nav menu item spacing ── */
+.navbar-nav { gap: .25rem; }
 
 .navbar-nav .dropdown-menu {
   margin-top: 0.5rem;

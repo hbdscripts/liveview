@@ -333,26 +333,19 @@
     var connBadge = isConnected ? '<span class="badge bg-green"></span>' : '<span class="badge bg-secondary"></span>';
 
     root.innerHTML =
-      '<div class="stats-row-wrap">' +
-        '<div class="stats-row">' +
-          '<div class="stats-card card">' +
-            '<div class="traffic-card-header">' +
-              '<span class="traffic-card-title d-flex align-items-center gap-2"><i class="ti ti-brand-google" style="font-size:1.25rem"></i> Google Ads</span>' +
-            '</div>' +
-            '<div class="country-table-wrap">' +
-              '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
-                '<div class="grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
-                '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
-              '</div>' +
-              '<div class="d-flex align-items-center gap-2" style="padding:10px 12px;">' +
-                connBadge +
-                '<span class="muted small">' + esc(connLabel) + '</span>' +
-                '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm ms-auto" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh"><i class="ti ti-refresh"></i></button>' +
-              '</div>' +
-              (note ? ('<div class="muted" style="padding: 10px 12px;">' + esc(note) + '</div>') : '') +
-              (_lastRefreshResult ? ('<details style="padding: 10px 12px;"><summary class="muted" style="cursor:pointer;">Sync diagnostics</summary><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:8px 0 0;padding:8px;background:#f8f8f8;border-radius:6px;border:1px solid #e5e5e5;">' + esc(JSON.stringify(_lastRefreshResult, null, 2)) + '</pre></details>') : '') +
-            '</div>' +
+      '<div class="stats-card card">' +
+        '<div class="country-table-wrap">' +
+          '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
+            '<div class="grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
+            '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
           '</div>' +
+          '<div class="d-flex align-items-center gap-2" style="padding:10px 12px;">' +
+            connBadge +
+            '<span class="muted small">' + esc(connLabel) + '</span>' +
+            '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm ms-auto" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh"><i class="ti ti-refresh"></i></button>' +
+          '</div>' +
+          (note ? ('<div class="muted" style="padding: 10px 12px;">' + esc(note) + '</div>') : '') +
+          (_lastRefreshResult ? ('<details style="padding: 10px 12px;"><summary class="muted" style="cursor:pointer;">Sync diagnostics</summary><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:8px 0 0;padding:8px;background:#f8f8f8;border-radius:6px;border:1px solid #e5e5e5;">' + esc(JSON.stringify(_lastRefreshResult, null, 2)) + '</pre></details>') : '') +
         '</div>' +
       '</div>';
 
