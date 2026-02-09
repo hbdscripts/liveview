@@ -4846,13 +4846,10 @@ const API = '';
       const topbarConvEl = document.getElementById('topbar-kpi-conv');
       const topbarOrdersDeltaEl = document.getElementById('topbar-kpi-orders-delta');
       const topbarOrdersDeltaTextEl = document.getElementById('topbar-kpi-orders-delta-text');
-      const topbarOrdersBarEl = document.getElementById('topbar-kpi-orders-bar');
       const topbarClicksDeltaEl = document.getElementById('topbar-kpi-clicks-delta');
       const topbarClicksDeltaTextEl = document.getElementById('topbar-kpi-clicks-delta-text');
-      const topbarClicksBarEl = document.getElementById('topbar-kpi-clicks-bar');
       const topbarConvDeltaEl = document.getElementById('topbar-kpi-conv-delta');
       const topbarConvDeltaTextEl = document.getElementById('topbar-kpi-conv-delta-text');
-      const topbarConvBarEl = document.getElementById('topbar-kpi-conv-bar');
       const kpiRange = getStatsRange();
       const forRange = breakdown[kpiRange];
       const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
@@ -4899,13 +4896,11 @@ const API = '';
         if (c == null || p == null || p === 0) return null;
         return ((c - p) / p) * 100;
       }
-      function applyTopbarDelta(deltaWrap, deltaTextEl, barEl, pctVal) {
-        if (!deltaWrap || !deltaTextEl || !barEl) return;
+      function applyTopbarDelta(deltaWrap, deltaTextEl, pctVal) {
+        if (!deltaWrap || !deltaTextEl) return;
         if (pctVal == null || !Number.isFinite(pctVal)) {
           deltaWrap.classList.add('is-hidden');
           deltaWrap.classList.remove('is-up', 'is-down', 'is-flat');
-          barEl.style.width = '50%';
-          barEl.setAttribute('aria-valuenow', '50');
           return;
         }
         const p = Math.round(pctVal * 10) / 10;
@@ -4916,29 +4911,21 @@ const API = '';
         deltaWrap.classList.toggle('is-down', down);
         deltaWrap.classList.toggle('is-flat', !up && !down);
         deltaTextEl.textContent = (p > 0 ? '' : '') + Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
-
-        // Progress: center at 50% (flat), shift by delta magnitude.
-        const width = Math.max(0, Math.min(100, 50 + p));
-        barEl.style.width = width.toFixed(1) + '%';
-        barEl.setAttribute('aria-valuenow', String(Math.round(width)));
       }
 
       applyTopbarDelta(
         topbarOrdersDeltaEl,
         topbarOrdersDeltaTextEl,
-        topbarOrdersBarEl,
         deltaPct(orderCountVal, compareOrdersVal)
       );
       applyTopbarDelta(
         topbarClicksDeltaEl,
         topbarClicksDeltaTextEl,
-        topbarClicksBarEl,
         deltaPct(sessionsVal, compareSessionsVal)
       );
       applyTopbarDelta(
         topbarConvDeltaEl,
         topbarConvDeltaTextEl,
-        topbarConvBarEl,
         deltaPct(convVal, compareConvVal)
       );
 
