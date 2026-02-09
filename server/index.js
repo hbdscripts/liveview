@@ -11,6 +11,7 @@ const salesTruth = require('./salesTruth');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { getDb } = require('./db');
 const cleanup = require('./cleanup');
 
@@ -218,9 +219,22 @@ function isLoggedIn(req) {
   return !!(oauthCookie && dashboardAuth.verifyOauthSession(oauthCookie));
 }
 
+// Simple server-side include: <!--#include partials/header.html-->
+const _includeCache = {};
+function resolveIncludes(html) {
+  return html.replace(/<!--#include\s+([\w./%-]+)\s*-->/g, (_, file) => {
+    if (!_includeCache[file]) {
+      _includeCache[file] = fs.readFileSync(path.join(__dirname, 'public', file), 'utf8');
+    }
+    return _includeCache[file];
+  });
+}
+
 function sendPage(res, filename) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public', filename));
+  const filePath = path.join(__dirname, 'public', filename);
+  const raw = fs.readFileSync(filePath, 'utf8');
+  res.type('html').send(resolveIncludes(raw));
 }
 
 app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));

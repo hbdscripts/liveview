@@ -16,89 +16,11 @@
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
-  <title>Kexo · Dashboard</title>
+  <title>Kexo Â· Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
 <body class="" data-page="dashboard">
-    <div class="sticky-top">
-      <header class="navbar navbar-expand-md navbar-dark sticky-top d-print-none" data-bs-theme="dark">
-        <div class="container-xl">
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="d-flex align-items-center">
-            <select id="global-date-select" class="form-select" aria-label="Date range">
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="7days">Last 7 days</option>
-              <option value="14days">Last 14 days</option>
-              <option value="30days">Last 30 days</option>
-              <option value="custom" id="date-opt-custom">Custom</option>
-            </select>
-          </div>
-          <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="theme-settings-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-open-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
-          </div>
-        </div>
-      </header>
-
-      <header class="navbar-expand-md d-print-none">
-        <div class="collapse navbar-collapse" id="navbar-menu">
-          <div class="navbar">
-            <div class="container-xl">
-              <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
-                <ul class="navbar-nav">
-                  <li class="nav-item">
-                    <a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="70">
-                    </a>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-tables" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Tables</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a>
-                      <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a>
-                      <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Date</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Overview</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2"></i>Countries</a>
-                      <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="ti ti-package me-2"></i>Products</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Traffic</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2"></i>Channels</a>
-                      <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Integrations</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="ti ti-brand-google me-2"></i>Google Ads</a>
-                    </div>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools"><span class="nav-link-title">Tools</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-    </div>
+    <!--#include partials/header.html-->
     <div class="page">
       <div class="page-header d-print-none">
         <div class="container-xl">
@@ -519,7 +441,7 @@
           <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
         </div>
       </div>
-      <div id="config-status"><div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div></div>
+      <div id="config-status"><div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">â€”</div></div></div></div>
     </div>
   </div>
 
@@ -529,7 +451,7 @@
         <div class="kpi-compare-modal-header-left">
           <div class="kpi-compare-kicker" id="kpi-compare-kicker">KPI</div>
           <h3 class="kpi-compare-title">Shopify vs Kexo</h3>
-          <div class="kpi-compare-meta" id="kpi-compare-updated">Updated —</div>
+          <div class="kpi-compare-meta" id="kpi-compare-updated">Updated â€”</div>
         </div>
         <div class="kpi-compare-modal-actions">
           <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh comparison" aria-label="Refresh comparison">
@@ -539,7 +461,7 @@
         </div>
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
-        <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>
+        <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">â€”</div></div></div>
       </div>
     </div>
   </div>
@@ -571,17 +493,17 @@
     <div class="sale-toast" id="sale-toast" aria-hidden="true">
       <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
       <div class="sale-toast-mid">
-        <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">—</span></div>
-        <div class="sale-toast-product" id="sale-toast-product">—</div>
+        <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">â€”</span></div>
+        <div class="sale-toast-product" id="sale-toast-product">â€”</div>
       </div>
       <div class="sale-toast-amount-wrap">
-        <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+        <div class="sale-toast-amount" id="sale-toast-amount">Â£â€”</div>
         <div class="sale-toast-time">
           <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <title>time</title>
             <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
           </svg>
-          <span id="sale-toast-time">—</span>
+          <span id="sale-toast-time">â€”</span>
         </div>
       </div>
       <button type="button" class="btn-close sale-toast-close" id="sale-toast-close" aria-label="Close"></button>
