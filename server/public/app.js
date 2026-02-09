@@ -4735,13 +4735,33 @@ const API = '';
       kpiSparklines[kpiKey].render();
     }
 
-    function generateMockSparklineData(baseValue, variance) {
-      const data = [];
-      const v = variance || (baseValue * 0.2);
-      for (let i = 0; i < 7; i++) {
-        data.push(Math.max(0, baseValue + (Math.random() - 0.5) * v));
-      }
-      return data;
+    var sparklineSeriesCache = null;
+    var sparklineSeriesFetched = false;
+
+    function fetchSparklineData() {
+      if (sparklineSeriesFetched || PAGE === 'dashboard') return;
+      sparklineSeriesFetched = true;
+      var url = API + '/api/dashboard-series?days=14';
+      fetchWithTimeout(url, { credentials: 'same-origin' }, 15000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          if (data && Array.isArray(data.series) && data.series.length > 0) {
+            sparklineSeriesCache = data.series.slice(-7);
+            renderSparklineFromCache();
+          }
+        })
+        .catch(function() {});
+    }
+
+    function renderSparklineFromCache() {
+      if (!sparklineSeriesCache || sparklineSeriesCache.length < 2) return;
+      var s = sparklineSeriesCache;
+      renderKpiSparkline('sales', s.map(function(d) { return d.revenue || 0; }));
+      renderKpiSparkline('conv', s.map(function(d) { return d.convRate || 0; }));
+      renderKpiSparkline('sessions', s.map(function(d) { return d.sessions || 0; }));
+      renderKpiSparkline('returning', s.map(function(d) { return d.returningCustomerOrders || 0; }));
+      renderKpiSparkline('aov', s.map(function(d) { return d.aov || 0; }));
+      renderKpiSparkline('bounce', s.map(function(d) { return d.bounceRate || 0; }));
     }
 
     // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
@@ -4806,13 +4826,9 @@ const API = '';
       applyKpiDeltaColor(aovEl, aovVal, compareAovVal, false);
       applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
 
-      // Render sparklines (mock data for now - will use real data from backend later)
-      if (salesVal != null) renderKpiSparkline('sales', generateMockSparklineData(salesVal, salesVal * 0.3));
-      if (convVal != null) renderKpiSparkline('conv', generateMockSparklineData(convVal, convVal * 0.2));
-      if (sessionsVal != null) renderKpiSparkline('sessions', generateMockSparklineData(sessionsVal, sessionsVal * 0.15));
-      if (returningVal != null) renderKpiSparkline('returning', generateMockSparklineData(returningVal, returningVal * 0.25));
-      if (aovVal != null) renderKpiSparkline('aov', generateMockSparklineData(aovVal, aovVal * 0.2));
-      if (bounceVal != null) renderKpiSparkline('bounce', generateMockSparklineData(bounceVal, bounceVal * 0.15));
+      // Render sparklines from real dashboard-series data
+      if (!sparklineSeriesFetched) fetchSparklineData();
+      else renderSparklineFromCache();
 
       function setSub(el, text) {
         if (!el) return;
@@ -5374,10 +5390,122 @@ const API = '';
       );
     }
 
+    var channelsChartInstance = null;
+    var channelsChartData = null;
+    var channelsChartType = 'bar';
+
+    function renderChannelsChart(data, chartType) {
+      var el = document.getElementById('channels-chart');
+      if (!el) return;
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderChannelsChart(data, chartType); }, 200);
+        return;
+      }
+      if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
+      if (data) channelsChartData = data;
+      if (chartType) channelsChartType = chartType;
+      var d = channelsChartData;
+      var rows = d && d.sources && Array.isArray(d.sources.rows) ? d.sources.rows.slice() : [];
+      rows = rows.filter(function(r) { return r && (r.revenueGbp > 0 || r.sessions > 0); });
+      rows.sort(function(a, b) { return (b.revenueGbp || 0) - (a.revenueGbp || 0); });
+      rows = rows.slice(0, 10);
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
+        return;
+      }
+      var categories = rows.map(function(r) {
+        var lbl = r.label || r.key || '—';
+        return lbl.length > 25 ? lbl.substring(0, 22) + '...' : lbl;
+      });
+      var revenues = rows.map(function(r) { return r.revenueGbp || 0; });
+      var ct = channelsChartType;
+      var isBar = ct === 'bar';
+      var fillConfig = ct === 'line' ? { type: 'solid', opacity: 0 }
+        : ct === 'area' ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } }
+        : { type: 'solid', opacity: 1 };
+      el.innerHTML = '';
+      channelsChartInstance = new ApexCharts(el, {
+        chart: { type: isBar ? 'bar' : ct, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: [{ name: 'Revenue', data: revenues }],
+        colors: ['#4592e9'],
+        plotOptions: isBar ? { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } } : {},
+        stroke: { width: isBar ? 0 : 2, curve: 'smooth' },
+        fill: fillConfig,
+        markers: { size: ct === 'line' ? 3 : 0, hover: { size: 5 } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: categories, labels: { style: { fontSize: '11px' }, formatter: isBar ? function(v) { return '\u00A3' + Number(v).toLocaleString(); } : undefined } },
+        yaxis: { labels: { style: { fontSize: '11px' }, formatter: !isBar ? function(v) { return '\u00A3' + Number(v).toLocaleString(); } : undefined } },
+        tooltip: { y: { formatter: function(v) { return '\u00A3' + Number(v).toFixed(2); } } },
+        grid: { borderColor: '#f1f1f1', padding: { left: 0, right: 0 } }
+      });
+      channelsChartInstance.render();
+      initChannelsChartSwitcher();
+    }
+
+    function initChannelsChartSwitcher() {
+      var el = document.getElementById('channels-chart');
+      if (!el) return;
+      var card = el.closest('.card');
+      if (!card) return;
+      var header = card.querySelector('.card-header');
+      if (!header || header.querySelector('.chart-type-switcher')) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
+      [{ type: 'bar', icon: 'ti-chart-bar', label: 'Bar' }, { type: 'area', icon: 'ti-chart-area-line', label: 'Area' }, { type: 'line', icon: 'ti-chart-line', label: 'Line' }].forEach(function(t) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === channelsChartType ? ' active' : '');
+        btn.setAttribute('aria-label', t.label);
+        btn.innerHTML = '<i class="ti ' + t.icon + '"></i>';
+        btn.addEventListener('click', function() {
+          wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          renderChannelsChart(null, t.type);
+        });
+        wrap.appendChild(btn);
+      });
+      header.appendChild(wrap);
+    }
+
+    var typeChartInstance = null;
+
+    function renderTypeChart(data) {
+      var el = document.getElementById('type-chart');
+      if (!el) return;
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderTypeChart(data); }, 200);
+        return;
+      }
+      if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
+      var rows = data && data.types && Array.isArray(data.types.rows) ? data.types.rows.slice() : [];
+      rows = rows.filter(function(r) { return r && r.sessions > 0; });
+      rows.sort(function(a, b) { return (b.sessions || 0) - (a.sessions || 0); });
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
+        return;
+      }
+      var labels = rows.map(function(r) { return r.label || r.key || '—'; });
+      var sessions = rows.map(function(r) { return r.sessions || 0; });
+      el.innerHTML = '';
+      typeChartInstance = new ApexCharts(el, {
+        chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: sessions,
+        labels: labels,
+        colors: ['#4592e9', '#1673b4', '#32bdb0', '#179ea8', '#fa9f2e', '#fab05d', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'],
+        plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total Sessions', fontSize: '14px', formatter: function(w) { return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0).toLocaleString(); } } } } } },
+        dataLabels: { enabled: true, formatter: function(val) { return val.toFixed(1) + '%'; } },
+        legend: { position: 'bottom', fontSize: '12px' },
+        tooltip: { y: { formatter: function(v) { return v.toLocaleString() + ' sessions'; } } }
+      });
+      typeChartInstance.render();
+    }
+
     function renderTraffic(data) {
       trafficCache = data || trafficCache || null;
       renderTrafficTables(trafficCache);
       renderTrafficPickers(trafficCache);
+      renderChannelsChart(trafficCache);
+      renderTypeChart(trafficCache);
     }
 
     function fetchTrafficData(options = {}) {

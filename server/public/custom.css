@@ -347,8 +347,7 @@
   transition: width 0.5s ease;
 }
 
-/* Hide old spinner/loading icons everywhere */
-.spinner-border,
+/* Hide spinner icons in report/modal contexts (KPI card spinners remain visible) */
 .report-build-wrap .spinner-border,
 .dm-loading-spinner .spinner-border,
 .table-loading-overlay > .spinner-border {
@@ -471,6 +470,13 @@
 /* ── Single border: only on nav menu bar, not on logo bar ── */
 .sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
+
+/* ── Nav link separators (desktop only) ── */
+@media (min-width: 769px) {
+  .navbar .navbar-nav .nav-item + .nav-item .nav-link {
+    border-left: 1px solid #eeeeee;
+  }
+}
 
 /* ── Nav active state (Tabler handles .nav-item.active styling) ── */
 
@@ -771,10 +777,23 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
   /* Footer: stack on mobile */
   .footer .d-flex { flex-wrap: wrap; justify-content: center !important; gap: .5rem; }
 
-  /* Navbar: tighter spacing */
+  /* Navbar: tighter spacing + mobile alignment */
   .navbar .container-xl { padding-left: .5rem; padding-right: .5rem; }
   .navbar-nav .nav-link { padding: .25rem .4rem; font-size: .8125rem; }
-  #global-date-select { font-size: .75rem; max-width: 140px; }
+  #global-date-select { font-size: .75rem; max-width: 120px; }
+
+  /* Fix mobile header: distribute space evenly so logo/date box centers */
+  .sticky-top > header .container-xl {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sticky-top > header .container-xl > .d-flex { flex: 0 0 auto; }
+  .sticky-top > header .container-xl > .navbar-nav { flex: 0 0 auto; }
+
+  /* Second navbar (nav menu) on mobile: center the logo */
+  #navbar-menu .navbar-nav { align-items: center; }
+  #navbar-menu .navbar-nav .nav-link img[alt="Kexo"] { width: 50px; height: auto; }
 
   /* Chart type switcher: smaller */
   .chart-type-switcher .btn { width: 1.5rem; height: 1.5rem; }
