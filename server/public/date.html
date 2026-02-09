@@ -81,9 +81,12 @@
                       <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a>
                     </div>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads"><span class="nav-link-title">Ads</span>
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Integrations</span>
                     </a>
+                    <div class="dropdown-menu">
+                      <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="ti ti-brand-google me-2"></i>Google Ads</a>
+                    </div>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools"><span class="nav-link-title">Tools</span>
@@ -192,11 +195,6 @@
     </button>
   </div>
 </div>
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <h2 class="page-title" id="page-title">Today</h2>
-            </div>
-          </div>
         </div>
       </div>
       <div class="page-body">
@@ -204,7 +202,7 @@
 <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title" id="table-title"><span id="table-title-text">Date</span></h3>
+      <h3 class="card-title" id="table-title"><span id="table-title-text">Today</span></h3>
       <div class="card-actions d-flex align-items-center gap-3">
         <span class="next-update-block" id="next-update-block">
           <span class="next-update-label is-hidden" id="next-update-label">Next update</span>

@@ -4212,12 +4212,11 @@ const API = '';
     }
 
     function updateLiveViewTitle() {
-      const textEl = document.getElementById('table-title-text');
       const sel = document.getElementById('global-date-select');
-      // Date page: sync page title with the selected range
+      // Date page: sync the table card title with the selected range
       if (PAGE === 'date') {
-        const pageTitleEl = document.getElementById('page-title');
-        if (pageTitleEl) {
+        const titleEl = document.getElementById('table-title-text');
+        if (titleEl) {
           let label = null;
           const applied = appliedYmdRangeFromDateRange();
           if (applied && applied.startYmd && applied.endYmd) {
@@ -4227,10 +4226,9 @@ const API = '';
             label = opt && opt.textContent ? String(opt.textContent).trim() : null;
           }
           const fallback = { today: 'Today', yesterday: 'Yesterday', '3d': 'Last 3 Days', '7d': 'Last 7 Days', '1h': 'Last Hour', custom: 'Custom' };
-          pageTitleEl.textContent = label || fallback[dateRange] || 'Today';
+          titleEl.textContent = label || fallback[dateRange] || 'Today';
         }
       }
-      // Table title text stays as the page name (set in HTML) — date range shown in global selector
     }
 
     function updateRowsPerPageVisibility() {
