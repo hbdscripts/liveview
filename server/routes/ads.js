@@ -2,9 +2,9 @@ const express = require('express');
 const adsService = require('../ads/adsService');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
-const { rollupRevenueHourly } = require('../ads/adsRevenueRollup');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
 const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
+const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
 
 const router = express.Router();
 
@@ -163,10 +163,10 @@ router.post('/refresh', async (req, res) => {
 
     const body = req && req.body && typeof req.body === 'object' ? req.body : {};
     const source = body && body.source != null ? String(body.source).trim().toLowerCase() : 'googleads';
+    const shop = salesTruth.resolveShopForSales('');
 
     // 0. Reconcile Shopify orders so fresh sales appear in ads attribution
     try {
-      const shop = salesTruth.resolveShopForSales('');
       if (shop) {
         await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, rangeNorm);
       }
@@ -194,10 +194,20 @@ router.post('/refresh', async (req, res) => {
       gclidBackfill = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'gclid_backfill_failed' };
     }
 
-    // 3. Revenue rollup (now picks up sessions with newly-backfilled campaign IDs)
-    const rollup = await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
+    // 3. Attribute Shopify truth orders -> Ads DB (so Ads summary can be served without main DB joins)
+    let orderAttribution = null;
+    try {
+      orderAttribution = await syncAttributedOrdersToAdsDb({
+        shop,
+        rangeStartTs: bounds.start,
+        rangeEndTs: bounds.end,
+        source,
+      });
+    } catch (e) {
+      orderAttribution = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'order_attribution_failed' };
+    }
 
-    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, gclidBackfill, rollup });
+    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, gclidBackfill, orderAttribution });
   } catch (err) {
     console.error('[ads.refresh]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });

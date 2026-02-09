@@ -102,6 +102,36 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_gcc_campaign ON gclid_campaign_cache(campaign_id)');
       },
     },
+    {
+      id: '005_ads_orders_attributed',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS ads_orders_attributed (
+            shop TEXT NOT NULL,
+            order_id TEXT NOT NULL,
+            created_at_ms BIGINT NOT NULL,
+            currency TEXT,
+            total_price DOUBLE PRECISION,
+            revenue_gbp DOUBLE PRECISION NOT NULL DEFAULT 0,
+            source TEXT,
+            campaign_id TEXT,
+            adgroup_id TEXT,
+            ad_id TEXT,
+            gclid TEXT,
+            country_code TEXT,
+            attribution_method TEXT,
+            landing_site TEXT,
+            updated_at BIGINT,
+            PRIMARY KEY (shop, order_id)
+          )
+        `);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_created_at_ms ON ads_orders_attributed(source, created_at_ms)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_campaign ON ads_orders_attributed(source, campaign_id)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_campaign_created ON ads_orders_attributed(source, campaign_id, created_at_ms)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_gclid ON ads_orders_attributed(gclid)');
+      },
+    },
   ];
 
   let applied = 0;

@@ -1,34 +1,9 @@
 const store = require('../store');
 const config = require('../config');
-const { getDb } = require('../db');
-const fx = require('../fx');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig } = require('./adsStore');
-const { rollupRevenueHourly } = require('./adsRevenueRollup');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
-
-// Extract campaign ID from a landing_site URL using multiple strategies
-function extractCampaignFromUrl(landingSite) {
-  if (!landingSite) return null;
-  // 1. Try bs_campaign_id (direct tracking param from our pixel URL template)
-  const bsIds = store.extractBsAdsIdsFromEntryUrl(landingSite);
-  if (bsIds.bsCampaignId) return { campaignId: bsIds.bsCampaignId, adgroupId: bsIds.bsAdgroupId || '_all_' };
-
-  // 2. Try utm_id / utm_campaign (Google Ads often puts campaign ID here)
-  let params = null;
-  try { params = new URL(landingSite).searchParams; } catch (_) {
-    try { params = new URL(landingSite, 'https://x.local').searchParams; } catch (_) { return null; }
-  }
-  // utm_id is reliably the campaign ID when numeric
-  const utmId = (params.get('utm_id') || '').trim();
-  if (utmId && /^\d{4,}$/.test(utmId)) return { campaignId: utmId, adgroupId: '_all_' };
-  // utm_campaign is sometimes the numeric campaign ID
-  const utmCampaign = (params.get('utm_campaign') || '').trim();
-  if (utmCampaign && /^\d{4,}$/.test(utmCampaign)) return { campaignId: utmCampaign, adgroupId: '_all_' };
-
-  return null;
-}
 
 function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';
@@ -103,16 +78,7 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue — live KEXO purchases attributed via sessions.bs_campaign_id (NOT Google conversion value).
-  //
-  // We keep a rollup in ads DB (`bs_revenue_hourly`) derived from `purchases` + `sessions` so the
-  // dashboard can show near-real-time profit (Sales - Spend) without relying on delayed Google conversions.
-  try {
-    await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
-  } catch (e) {
-    console.warn('[ads.summary] revenue rollup failed (non-fatal):', e && e.message ? e.message : e);
-  }
-
+  // Revenue — Shopify truth orders attributed into Ads DB (no main DB joins at query time).
   let revRows = [];
   try {
     const revFilterSql = source ? ' AND source = ?' : '';
@@ -121,17 +87,18 @@ async function getSummary(options = {}) {
       `
         SELECT
           campaign_id,
-          adgroup_id,
+          COALESCE(NULLIF(TRIM(adgroup_id), ''), '_all_') AS adgroup_id,
           COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
-          COALESCE(SUM(orders), 0) AS orders
-        FROM bs_revenue_hourly
-        WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)${revFilterSql}
-        GROUP BY campaign_id, adgroup_id
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?${revFilterSql}
+          AND campaign_id IS NOT NULL AND TRIM(campaign_id) != ''
+        GROUP BY campaign_id, COALESCE(NULLIF(TRIM(adgroup_id), ''), '_all_')
       `,
       revParams
     );
   } catch (e) {
-    console.warn('[ads.summary] failed to read bs_revenue_hourly (non-fatal):', e && e.message ? e.message : e);
+    console.warn('[ads.summary] failed to read ads_orders_attributed (non-fatal):', e && e.message ? e.message : e);
     revRows = [];
   }
 
@@ -280,9 +247,9 @@ async function getSummary(options = {}) {
   campaigns.sort((a, b) => (b.spend || 0) - (a.spend || 0));
 
   const note = (!revRows || !revRows.length) && (!spendRows || !spendRows.length)
-    ? 'No spend data yet. Click ↻ to sync Google Ads. Sales are attributed live from KEXO purchases via tracking params (bs_campaign_id).'
+    ? 'No spend data yet. Click ↻ to sync Google Ads. Sales are attributed from Shopify truth orders via tracking params (bs_campaign_id/utm_id/gclid).'
     : ((!revRows || !revRows.length) && (spendRows && spendRows.length)
-      ? 'Spend is synced from Google Ads. No KEXO-attributed sales found for this range yet — check that your ads land on URLs with bs_campaign_id (or gclid backfill is working).'
+      ? 'Spend is synced from Google Ads. No attributed Shopify orders found for this range yet — check landing_site has bs_campaign_id/utm_id or gclid cache is working.'
       : null);
 
   return {
@@ -320,13 +287,6 @@ async function getCampaignDetail(options = {}) {
   const adsDb = getAdsDb();
   if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
-  // Best-effort: keep revenue rollup fresh for this range.
-  try {
-    await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
-  } catch (e) {
-    console.warn('[ads.campaign-detail] revenue rollup failed (non-fatal):', e && e.message ? e.message : e);
-  }
-
   // Hourly spend for this campaign
   const spendHourly = await adsDb.all(
     `SELECT
@@ -342,75 +302,62 @@ async function getCampaignDetail(options = {}) {
     [bounds.start, bounds.end, campaignId]
   );
 
-  // Revenue series for this campaign: from KEXO purchases rollup (NOT Google conversion value).
+  // Revenue series for this campaign: Shopify truth orders attributed into Ads DB.
   let revenueHourly = new Map();
   try {
     const rows = await adsDb.all(
       `SELECT
-         EXTRACT(EPOCH FROM hour_ts)::bigint * 1000 AS ts,
+         EXTRACT(EPOCH FROM DATE_TRUNC('hour', TO_TIMESTAMP(created_at_ms/1000.0)))::bigint * 1000 AS ts,
          COALESCE(SUM(revenue_gbp), 0) AS revenue
-       FROM bs_revenue_hourly
-       WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+       FROM ads_orders_attributed
+       WHERE created_at_ms >= ? AND created_at_ms < ?
          AND source = ?
          AND campaign_id = ?
-       GROUP BY hour_ts
-       ORDER BY hour_ts ASC`,
+       GROUP BY DATE_TRUNC('hour', TO_TIMESTAMP(created_at_ms/1000.0))
+       ORDER BY ts ASC`,
       [bounds.start, bounds.end, source, campaignId]
     );
     for (const r of rows || []) {
       if (r && r.ts) revenueHourly.set(Number(r.ts), Number(r.revenue) || 0);
     }
   } catch (e) {
-    console.warn('[ads.campaign-detail] failed to read bs_revenue_hourly (non-fatal):', e && e.message ? e.message : e);
+    console.warn('[ads.campaign-detail] failed to read ads_orders_attributed (non-fatal):', e && e.message ? e.message : e);
   }
 
-  // Recent attributed sales list: live purchases joined to sessions (best-effort; display only).
-  const mainDb = getDb();
+  // Recent attributed sales list: Shopify truth orders attributed into Ads DB.
   let recentSales = [];
-  if (mainDb) {
-    try {
-      const rows = await mainDb.all(
-        `SELECT
-           p.purchased_at AS purchased_at,
-           p.order_total AS order_total,
-           p.order_currency AS order_currency,
-           p.order_id AS order_id,
-           p.checkout_token AS checkout_token,
-           s.country_code AS country_code
-         FROM purchases p
-         INNER JOIN sessions s ON s.session_id = p.session_id
-         WHERE p.purchased_at >= ? AND p.purchased_at < ?
-           AND NULLIF(TRIM(s.bs_campaign_id), '') IS NOT NULL
-           AND TRIM(s.bs_campaign_id) = ?
-           AND LOWER(TRIM(COALESCE(NULLIF(TRIM(s.bs_source), ''), ''))) = ?
-         ORDER BY p.purchased_at DESC
-         LIMIT 30`,
-        [bounds.start, bounds.end, campaignId, source]
-      );
-
-      const ratesToGbp = await fx.getRatesToGbp();
-      for (const r of rows || []) {
-        const ts = r && r.purchased_at != null ? Number(r.purchased_at) : 0;
-        const raw = r && r.order_total != null ? Number(r.order_total) : 0;
-        const cur = fx.normalizeCurrency(r && r.order_currency != null ? r.order_currency : '') || 'GBP';
-        const gbp = fx.convertToGbp(Number.isFinite(raw) ? raw : 0, cur, ratesToGbp);
-        const value = (typeof gbp === 'number' && Number.isFinite(gbp)) ? Math.round(gbp * 100) / 100 : 0;
-        const oid = r && r.order_id ? String(r.order_id) : '';
-        const token = r && r.checkout_token ? String(r.checkout_token) : '';
-        const id = oid || token || '';
-        recentSales.push({
-          orderId: id,
-          orderName: id,
-          country: r && r.country_code ? String(r.country_code).toUpperCase() : '',
-          value,
-          currency,
-          time: ts,
-        });
-      }
-    } catch (e) {
-      console.warn('[ads.campaign-detail] failed to fetch recent purchases (non-fatal):', e && e.message ? e.message : e);
-      recentSales = [];
+  try {
+    const rows = await adsDb.all(
+      `SELECT
+         order_id,
+         created_at_ms,
+         revenue_gbp,
+         country_code
+       FROM ads_orders_attributed
+       WHERE created_at_ms >= ? AND created_at_ms < ?
+         AND source = ?
+         AND campaign_id = ?
+       ORDER BY created_at_ms DESC
+       LIMIT 30`,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+    for (const r of rows || []) {
+      const ts = r && r.created_at_ms != null ? Number(r.created_at_ms) : 0;
+      const value = r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0;
+      const oid = r && r.order_id ? String(r.order_id) : '';
+      const id = oid || '';
+      recentSales.push({
+        orderId: id,
+        orderName: id,
+        country: r && r.country_code ? String(r.country_code).toUpperCase() : '',
+        value: Number.isFinite(value) ? Math.round(value * 100) / 100 : 0,
+        currency,
+        time: Number.isFinite(ts) ? ts : 0,
+      });
     }
+  } catch (e) {
+    console.warn('[ads.campaign-detail] failed to fetch recent orders (non-fatal):', e && e.message ? e.message : e);
+    recentSales = [];
   }
 
   // Build aligned hourly arrays for chart

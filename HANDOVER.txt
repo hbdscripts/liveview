@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Ingest: preserve pixel entry_url for ads attribution)
+Last updated: 2026-02-09 (Ads: Shopify truth attribution into Ads DB)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,7 +210,7 @@ Edge (optional):
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
-  - Ads profit now uses KEXO-attributed sales (purchases→sessions rollup); Google conversion value is not used for Sales/profit.
+  - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
   - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
   - Grid-table headers use shared `kexo-grid-header` styling so headers match across pages.
   - Dashboard overview charts + top tables now respect the header date range (dashboard-series supports `range=` keys).
