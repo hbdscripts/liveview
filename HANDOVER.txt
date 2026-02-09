@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Ads: Shopify truth attribution into Ads DB)
+Last updated: 2026-02-09 (Fix dashboard-series 500 on Postgres)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -212,6 +212,7 @@ Edge (optional):
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
   - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
   - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
+  - Fix `/api/dashboard-series` 500 on Postgres: reorder params for conditional-aggregate queries so BIGINT columns don’t receive `shop` string params (affects Units Sold + session/bounce aggregation).
   - Grid-table headers use shared `kexo-grid-header` styling so headers match across pages.
   - Dashboard overview charts + top tables now respect the header date range (dashboard-series supports `range=` keys).
   - Shared Product Insights modal: clicking product thumbnails opens a Tabler modal with image gallery, Today-by-default range selector, KPI table, and charts powered by `/api/product-insights`.

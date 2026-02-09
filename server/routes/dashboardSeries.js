@@ -40,15 +40,19 @@ async function fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, o
 
   // Single-pass conditional aggregation across all day bounds.
   const cols = [];
-  const params = [
-    overallStart, overallEnd, ...filterParams, // pv subquery range
-    overallStart, overallEnd, ...filterParams, // outer sessions range
-  ];
+  // IMPORTANT: parameter order must match placeholder order.
+  // The CASE WHEN aggregates in SELECT come BEFORE the subquery/WHERE placeholders.
+  const params = [];
   for (let i = 0; i < dayBounds.length; i++) {
     cols.push(`COALESCE(SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? THEN 1 ELSE 0 END), 0) AS sessions_${i}`);
     cols.push(`COALESCE(SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? AND COALESCE(pv.pv, 0) = 1 THEN 1 ELSE 0 END), 0) AS bounces_${i}`);
     params.push(dayBounds[i].start, dayBounds[i].end, dayBounds[i].start, dayBounds[i].end);
   }
+  // pv subquery range, then outer sessions range (and any filter params for each scope).
+  params.push(
+    overallStart, overallEnd, ...filterParams,
+    overallStart, overallEnd, ...filterParams
+  );
 
   const row = await db.get(
     `
@@ -86,11 +90,14 @@ async function fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, over
 
   // Single-pass conditional aggregation across all day bounds.
   const cols = [];
-  const params = [shop, overallStart, overallEnd];
+  // IMPORTANT: parameter order must match placeholder order.
+  // The CASE WHEN aggregates in SELECT come BEFORE the WHERE placeholders.
+  const params = [];
   for (let i = 0; i < dayBounds.length; i++) {
     cols.push(`COALESCE(SUM(CASE WHEN li.order_created_at >= ? AND li.order_created_at < ? THEN li.quantity ELSE 0 END), 0) AS units_${i}`);
     params.push(dayBounds[i].start, dayBounds[i].end);
   }
+  params.push(shop, overallStart, overallEnd);
 
   const row = await db.get(
     `
