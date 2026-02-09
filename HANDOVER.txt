@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Dashboard data fixes + Shopify embedded auth hardening + navbar-sticky rollout)
+Last updated: 2026-02-09 (Products page UX fixes: loader + pagination + spacing)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -176,3 +176,4 @@ Edge (optional):
 - Fix “no data” on homepage: range-key normalization, correct min/platform-start clamps, and dashboard chart/table ID wiring.
 - Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
 - Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.
+- Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
