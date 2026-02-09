@@ -197,7 +197,12 @@ function ingestRouter(req, res, next) {
   }
   // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
   const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
-  if (requestReferer) payload.entry_url = requestReferer;
+  // IMPORTANT: do not overwrite the pixel-provided entry_url.
+  // Browsers commonly send only the origin (no path/query) as Referer on cross-origin requests,
+  // which would drop tracking params like bs_campaign_id / gclid and break ads attribution.
+  if ((!payload.entry_url || !String(payload.entry_url).trim()) && requestReferer) {
+    payload.entry_url = requestReferer;
+  }
   // Fallback referrer from CF/Worker (request Referer) when pixel referrer is stripped (e.g. by Shopify).
   if ((!payload.referrer || !String(payload.referrer).trim()) && requestReferer) {
     payload.referrer = requestReferer;
