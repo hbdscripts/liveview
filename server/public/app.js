@@ -7438,7 +7438,12 @@ const API = '';
           navLinks.forEach(function(link) {
             var isActive = link.getAttribute('data-nav') === navKey;
             link.setAttribute('aria-current', isActive ? 'page' : 'false');
-            if (isActive) link.classList.add('active'); else link.classList.remove('active');
+            // Apply active to the parent li.nav-item (Tabler pattern), not the link itself
+            var parentItem = link.closest('.nav-item');
+            if (parentItem) {
+              if (isActive) parentItem.classList.add('active'); else parentItem.classList.remove('active');
+            }
+            link.classList.remove('active');
           });
           if (tabDashboard) tabDashboard.setAttribute('aria-selected', tab === 'dashboard' ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
@@ -7449,26 +7454,29 @@ const API = '';
           if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
           if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
-          // Tables dropdown — highlight parent when a child page is active
+          // Tables dropdown — highlight parent li.nav-item when a child page is active
           var isTablesChild = (tab === 'spy' || tab === 'sales' || tab === 'date');
-          var tablesDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tables"]');
-          if (tablesDropdown) {
-            if (isTablesChild) tablesDropdown.classList.add('active');
-            else tablesDropdown.classList.remove('active');
+          var tablesToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tables"]');
+          var tablesDropdownItem = tablesToggle ? tablesToggle.closest('.nav-item') : null;
+          if (tablesDropdownItem) {
+            if (isTablesChild) tablesDropdownItem.classList.add('active');
+            else tablesDropdownItem.classList.remove('active');
           }
           // Overview dropdown
           var isOverviewChild = (tab === 'stats' || tab === 'products');
-          var overviewDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
-          if (overviewDropdown) {
-            if (isOverviewChild) overviewDropdown.classList.add('active');
-            else overviewDropdown.classList.remove('active');
+          var overviewToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
+          var overviewDropdownItem = overviewToggle ? overviewToggle.closest('.nav-item') : null;
+          if (overviewDropdownItem) {
+            if (isOverviewChild) overviewDropdownItem.classList.add('active');
+            else overviewDropdownItem.classList.remove('active');
           }
           // Traffic dropdown
           var isTrafficChild = (tab === 'channels' || tab === 'type');
-          var trafficDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
-          if (trafficDropdown) {
-            if (isTrafficChild) trafficDropdown.classList.add('active');
-            else trafficDropdown.classList.remove('active');
+          var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
+          var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
+          if (trafficDropdownItem) {
+            if (isTrafficChild) trafficDropdownItem.classList.add('active');
+            else trafficDropdownItem.classList.remove('active');
           }
         }
 

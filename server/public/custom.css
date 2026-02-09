@@ -472,11 +472,7 @@
 .sticky-top .navbar.sticky-top { border-bottom: none; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
-/* ── Nav active state ── */
-.navbar-nav .nav-link.active {
-  color: var(--tblr-primary) !important;
-  border-bottom: 2px solid var(--tblr-primary);
-}
+/* ── Nav active state (Tabler handles .nav-item.active styling) ── */
 
 /* ── Toast dark-mode support ── */
 body.theme-dark .sale-toast {
