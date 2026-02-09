@@ -388,24 +388,22 @@ const API = '';
       return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'width=100&height=100';
     }
 
-    const FLAG_PLACEHOLDER_SRC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2230%22%20viewBox%3D%220%200%2040%2030%22%3E%3Crect%20width%3D%2240%22%20height%3D%2230%22%20fill%3D%22%23f0f0f0%22/%3E%3Cpath%20d%3D%22M12%2010h16v2H12zm0%208h16v2H12z%22%20fill%3D%22%23c0c0c0%22/%3E%3C/svg%3E';
-
-    function flagSrc(code) {
-      const raw = (code || '').toString().trim().toLowerCase();
-      if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) return FLAG_PLACEHOLDER_SRC;
-      return hotImg('https://flagcdn.com/w40/' + raw + '.png');
-    }
-
     function flagImg(code, label) {
-      const src = flagSrc(code);
+      const raw = (code || '').toString().trim().toLowerCase();
       const safeLabel = label != null ? String(label) : (code ? String(code) : '?');
       const titleAttr = label ? ' title="' + escapeHtml(safeLabel) + '"' : '';
-      return '<img class="flag-img" src="' + src + '" alt="' + escapeHtml(safeLabel) + '"' + titleAttr + ' loading="lazy">';
+      if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
+        return '<span class="flag flag-xs flag-country-xx"' + titleAttr + ' aria-label="' + escapeHtml(safeLabel) + '"></span>';
+      }
+      return '<span class="flag flag-xs flag-country-' + raw + '"' + titleAttr + ' aria-label="' + escapeHtml(safeLabel) + '"></span>';
     }
 
     function flagImgSmall(code) {
-      const src = flagSrc(code);
-      return '<img class="sale-toast-inline-flag-img" src="' + src + '" alt="" aria-hidden="true" loading="lazy">';
+      const raw = (code || '').toString().trim().toLowerCase();
+      if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
+        return '<span class="flag flag-xs flag-country-xx" aria-hidden="true"></span>';
+      }
+      return '<span class="flag flag-xs flag-country-' + raw + '" aria-hidden="true"></span>';
     }
 
     function arrivedAgo(startedAt) {
