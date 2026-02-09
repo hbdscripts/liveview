@@ -50,13 +50,6 @@
       // Tabler beta22 uses body class for dark mode
       document.body.classList.toggle('theme-dark', value === 'dark');
       root.setAttribute('data-bs-theme', value || 'light');
-      // Swap header logo for dark mode
-      var headerLogo = document.querySelector('.navbar-nav .nav-link img[alt="Kexo"]');
-      if (headerLogo) {
-        headerLogo.src = value === 'dark'
-          ? '/assets/kexo_logo_fullcolor_dark.webp'
-          : '/assets/desktop_ui_logo.webp';
-      }
     } else if (key === 'theme-primary') {
       var color = PRIMARY_COLORS[value];
       if (color) {
