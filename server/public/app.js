@@ -4644,6 +4644,7 @@ const API = '';
       ids.forEach(function(id) {
         const el = document.getElementById(id);
         if (!el) return;
+        el.removeAttribute('data-odometer');
         el.innerHTML = spinner;
       });
     }
@@ -4811,7 +4812,7 @@ const API = '';
         salesLabelEl.title = '';
       }
       if (salesEl) {
-        animateOdometerText(salesEl, salesVal != null ? formatRevenue(salesVal) : '\u2014');
+        salesEl.textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
       }
       if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
