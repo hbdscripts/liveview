@@ -127,6 +127,59 @@
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
   }
 
+  function ensureErrorsModalDom() {
+    if (document.getElementById('ads-errors-modal')) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'ads-errors-modal';
+    overlay.className = 'ads-modal-overlay';
+    overlay.innerHTML =
+      '<div class="ads-modal-box" style="max-width:720px">' +
+        '<div class="ads-modal-header">' +
+          '<h3 class="ads-modal-title">Errors detected</h3>' +
+          '<button type="button" class="ads-modal-close" aria-label="Close">&times;</button>' +
+        '</div>' +
+        '<div class="ads-modal-body">' +
+          '<div id="ads-errors-body"></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.ads-modal-close').addEventListener('click', closeErrorsModal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeErrorsModal(); });
+  }
+
+  function closeErrorsModal() {
+    var el = document.getElementById('ads-errors-modal');
+    if (el) el.classList.remove('open');
+  }
+
+  function openErrorsModal(errors, payload) {
+    ensureErrorsModalDom();
+    var modal = document.getElementById('ads-errors-modal');
+    var body = document.getElementById('ads-errors-body');
+    if (!modal || !body) return;
+    var errs = Array.isArray(errors) ? errors : [];
+    var h = '';
+    if (!errs.length) {
+      h += '<div class="muted" style="padding:12px;text-align:center;">No errors.</div>';
+    } else {
+      h += '<div class="text-muted small" style="margin-bottom:10px;">' + esc(String(errs.length)) + ' issue(s) detected.</div>';
+      h += '<ul class="ads-errors-list">';
+      for (var i = 0; i < errs.length; i++) {
+        var e = errs[i] || {};
+        h += '<li><span class="ads-errors-title">' + esc(e.title || 'Error') + '</span>' +
+          (e.detail ? ('<div class="ads-errors-detail">' + esc(e.detail) + '</div>') : '') +
+        '</li>';
+      }
+      h += '</ul>';
+    }
+    if (payload) {
+      h += '<div class="text-muted small" style="margin:14px 0 6px;">Diagnostics</div>';
+      h += '<pre class="ads-errors-pre">' + esc(JSON.stringify(payload, null, 2)) + '</pre>';
+    }
+    body.innerHTML = h;
+    modal.classList.add('open');
+  }
+
   function openCampaignModal(campaignId, campaignName) {
     ensureModalDom();
     var modal = document.getElementById('ads-campaign-modal');
@@ -244,7 +297,19 @@
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +
-      '.ads-campaign-row:hover{background:rgba(13,148,136,0.04);}';
+      '.ads-campaign-row:hover{background:rgba(13,148,136,0.04);}' +
+      '.ads-loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;padding:32px 12px;gap:12px;text-align:center;}' +
+      '.ads-refresh-mini{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(0,0,0,0.04);color:var(--muted,#555);}' +
+      'html[data-bs-theme="dark"] .ads-refresh-mini{background:rgba(255,255,255,0.06);}' +
+      '@keyframes adsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
+      '.ads-spin{animation:adsSpin 1s linear infinite;}' +
+      '.ads-campaign-table{table-layout:fixed;}' +
+      '.ads-campaign-table .grid-cell:first-child{width:36%;}' +
+      '.ads-campaign-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.ads-errors-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px;}' +
+      '.ads-errors-title{font-weight:600;}' +
+      '.ads-errors-detail{margin-top:2px;color:var(--muted,#555);font-size:12px;white-space:pre-wrap;word-break:break-word;}' +
+      '.ads-errors-pre{font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:0;padding:10px;background:#f8f8f8;border-radius:8px;border:1px solid #e5e5e5;}';
     document.head.appendChild(style);
   }
 
@@ -253,6 +318,57 @@
   var _lastStatus = null;
   var _lastSummary = null;
   var _lastRefreshResult = null;
+  var _lastRangeKey = null;
+  var _lastFetchedAt = 0;
+  var _lastFetchError = null;
+  var _isRefreshing = false;
+  var _isForceRefreshing = false;
+  var _lastErrors = [];
+  var _lastErrorsPayload = null;
+
+  function renderLoading(root, label) {
+    if (!root) return;
+    ensureModalCss();
+    root.innerHTML =
+      '<div class="ads-loading-wrap">' +
+        '<div class="spinner-border text-primary" role="status" aria-label="Loading"></div>' +
+        '<div class="muted">' + esc(label || 'Loading…') + '</div>' +
+      '</div>';
+  }
+
+  function renderLoadError(root, msg) {
+    if (!root) return;
+    ensureModalCss();
+    root.innerHTML =
+      '<div class="ads-loading-wrap">' +
+        '<div class="text-danger fw-semibold">Could not load ads</div>' +
+        (msg ? ('<div class="muted small" style="max-width:520px;">' + esc(msg) + '</div>') : '') +
+      '</div>';
+  }
+
+  function collectErrors(status, summary, refreshResult) {
+    var errs = [];
+    function push(title, detail) {
+      var d = detail != null ? String(detail).trim() : '';
+      if (!d) return;
+      errs.push({ title: title, detail: d });
+    }
+
+    if (_lastFetchError) push('Load failed', _lastFetchError);
+    if (!status) push('Status', 'No provider status returned.');
+    if (!summary) push('Summary', 'No summary returned.');
+    if (summary && summary.ok === false) push('Summary', summary.error || 'Summary failed.');
+
+    var rr = refreshResult || null;
+    if (rr) {
+      if (rr.ok === false) push('Refresh', rr.error || 'Refresh failed.');
+      if (rr.spend && rr.spend.ok === false) push('Spend sync', rr.spend.error || 'Spend sync failed.');
+      if (rr.gclidBackfill && rr.gclidBackfill.ok === false) push('GCLID backfill', rr.gclidBackfill.error || 'GCLID backfill failed.');
+      if (rr.orderAttribution && rr.orderAttribution.ok === false) push('Order attribution', rr.orderAttribution.error || 'Order attribution failed.');
+    }
+
+    return errs;
+  }
 
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
@@ -265,6 +381,7 @@
     var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
     var currency = (summary && summary.currency) || 'GBP';
     var note = (summary && summary.note) ? String(summary.note) : '';
+    if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
 
     // Sort campaigns
     campaigns = sortCampaigns(campaigns);
@@ -274,14 +391,17 @@
       var cls = 'grid-row' + (isHeader ? ' grid-row--header' : '') + (cssClass ? ' ' + cssClass : '');
       var h = '<div class="' + cls + '" role="row"' + (attrs || '') + '>';
       for (var i = 0; i < cells.length; i++) {
-        var extra = '';
-        if (isHeader && cells[i].sortKey) {
-          var isActive = sortKey === cells[i].sortKey;
-          extra = ' class="grid-cell sortable' + (isActive ? (sortDesc ? ' th-sort-desc' : ' th-sort-asc') : '') + '" data-sort="' + cells[i].sortKey + '"';
-        } else {
-          extra = ' class="grid-cell' + (cells[i].cls || '') + '"';
+        var cell = cells[i] || {};
+        var cellCls = 'grid-cell' + (cell.cls || '');
+        var extra = ' class="' + cellCls + '"';
+        if (isHeader && cell.sortKey) {
+          var isActive = sortKey === cell.sortKey;
+          extra = ' class="grid-cell sortable' +
+            (isActive ? (sortDesc ? ' th-sort-desc' : ' th-sort-asc') : '') +
+            (cell.cls || '') +
+            '" data-sort="' + cell.sortKey + '"';
         }
-        h += '<div' + extra + ' role="' + role + '">' + (cells[i].html != null ? cells[i].html : cells[i]) + '</div>';
+        h += '<div' + extra + ' role="' + role + '">' + (cell.html != null ? cell.html : cell) + '</div>';
       }
       h += '</div>';
       return h;
@@ -315,7 +435,9 @@
     })();
 
     // Header cells: Campaign, Spend, Impr, Clicks, Profit, ROAS, Sales
-    var headerCells = COL_DEFS.map(function (d) { return { html: d.label, sortKey: d.key }; });
+    var headerCells = COL_DEFS.map(function (d, idx) {
+      return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-end' };
+    });
 
     var bodyHtml = '';
 
@@ -323,12 +445,12 @@
     var tProfit = totals.profit != null ? Number(totals.profit) : 0;
     var totalsRowHtml = gridRow([
       { html: '<strong>Total</strong>' },
-      { html: esc(fmtMoney(totals.spend, currency)) },
-      { html: esc(fmtNum(totals.impressions)) },
-      { html: esc(fmtNum(totals.clicks)) },
-      { html: esc(fmtMoney(tProfit, currency)), cls: ' ' + profitClass(tProfit) },
-      { html: esc(fmtRoas(totals.roas)) },
-      { html: esc(fmtMoney(totals.revenue, currency)) },
+      { html: esc(fmtMoney(totals.spend, currency)), cls: ' text-end' },
+      { html: esc(fmtNum(totals.impressions)), cls: ' text-end' },
+      { html: esc(fmtNum(totals.clicks)), cls: ' text-end' },
+      { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
+      { html: esc(fmtRoas(totals.roas)), cls: ' text-end' },
+      { html: esc(fmtMoney(totals.revenue, currency)), cls: ' text-end' },
     ], false, 'ads-totals-row');
 
     // Campaign rows
@@ -340,49 +462,92 @@
       var pr = c.profit != null ? Number(c.profit) : 0;
 
       bodyHtml += gridRow([
-        { html: esc(cName) },
-        { html: esc(fmtMoney(c.spend, currency)) },
-        { html: esc(fmtNum(c.impressions)) },
-        { html: esc(fmtNum(c.clicks)) },
-        { html: esc(fmtMoney(pr, currency)), cls: ' ' + profitClass(pr) },
-        { html: esc(fmtRoas(c.roas)) },
-        { html: esc(fmtMoney(c.revenue, currency)) },
+        { html: '<span class="ads-campaign-name">' + esc(cName) + '</span>' },
+        { html: esc(fmtMoney(c.spend, currency)), cls: ' text-end' },
+        { html: esc(fmtNum(c.impressions)), cls: ' text-end' },
+        { html: esc(fmtNum(c.clicks)), cls: ' text-end' },
+        { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
+        { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
+        { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-end' },
       ], false, 'ads-campaign-row', ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
     }
 
     if (!campaigns.length && !note) {
-      bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="grid-column:1/-1;text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
+      bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
     }
 
     // Totals last
     bodyHtml += totalsRowHtml;
 
-    // Build connection status line
+    // Build footer status/actions
     var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
     var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
     var connBadge = isConnected ? '<span class="badge bg-green"></span>' : '<span class="badge bg-secondary"></span>';
 
     root.innerHTML =
-      '<div class="country-table-wrap">' +
-        '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
-          '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
-          '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="d-flex align-items-center gap-2" style="padding:10px 12px;">' +
-        connBadge +
-        '<span class="muted small">' + esc(connLabel) + '</span>' +
-        '<button type="button" class="btn btn-icon btn-ghost-secondary ms-auto" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh"><i class="ti ti-refresh"></i></button>' +
-      '</div>' +
-      (note ? ('<div class="muted" style="padding: 10px 12px;">' + esc(note) + '</div>') : '') +
-      (_lastRefreshResult ? ('<details style="padding: 10px 12px;"><summary class="muted" style="cursor:pointer;">Sync diagnostics</summary><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:8px 0 0;padding:8px;background:#f8f8f8;border-radius:6px;border:1px solid #e5e5e5;">' + esc(JSON.stringify(_lastRefreshResult, null, 2)) + '</pre></details>') : '');
+      '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
+        '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
+        '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
+      '</div>';
 
-    // Bind refresh button
-    var btn = document.getElementById('ads-refresh-btn');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        try { window.__adsRefresh && window.__adsRefresh({ force: true }); } catch (_) {}
-      });
+    var footer = document.getElementById('ads-footer');
+    var noteEl = document.getElementById('ads-note');
+    _lastErrors = collectErrors(status, summary, _lastRefreshResult);
+    _lastErrorsPayload = {
+      fetchError: _lastFetchError,
+      refresh: _lastRefreshResult,
+      providers: status && status.providers ? status.providers : null,
+      rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
+    };
+
+    if (footer) {
+      footer.style.display = '';
+      var errsBtn = _lastErrors.length
+        ? '<button type="button" class="btn btn-danger btn-sm" id="ads-errors-btn" title="View errors">' +
+            '<i class="ti ti-alert-triangle"></i><span class="ms-2">Errors detected</span>' +
+          '</button>'
+        : '';
+
+      var miniTitle = _isForceRefreshing ? 'Syncing…' : 'Refreshing…';
+      footer.innerHTML =
+        '<div class="d-flex align-items-center gap-2 flex-wrap w-100">' +
+          '<div class="d-flex align-items-center gap-2">' +
+            connBadge +
+            '<span class="text-muted small">' + esc(connLabel) + '</span>' +
+            '<span class="ads-refresh-mini" id="ads-refresh-mini" style="display:' + (_isRefreshing ? 'inline-flex' : 'none') + ';" title="' + esc(miniTitle) + '" aria-label="' + esc(miniTitle) + '">' +
+              '<i class="ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '') + '"></i>' +
+            '</span>' +
+          '</div>' +
+          '<div class="ms-auto d-flex align-items-center gap-2">' +
+            errsBtn +
+            '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Sync Google Ads + attribution" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
+              '<i class="ti ti-refresh"></i>' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+
+      var rbtn = document.getElementById('ads-refresh-btn');
+      if (rbtn) {
+        rbtn.addEventListener('click', function () {
+          try { window.__adsRefresh && window.__adsRefresh({ force: true }); } catch (_) {}
+        });
+      }
+      var ebtn = document.getElementById('ads-errors-btn');
+      if (ebtn) {
+        ebtn.addEventListener('click', function () {
+          try { openErrorsModal(_lastErrors, _lastErrorsPayload); } catch (_) {}
+        });
+      }
+    }
+
+    if (noteEl) {
+      if (note) {
+        noteEl.style.display = '';
+        noteEl.textContent = note;
+      } else {
+        noteEl.style.display = 'none';
+        noteEl.textContent = '';
+      }
     }
 
     // Bind sortable headers
@@ -410,7 +575,27 @@
   /* ── refresh / init ──────────────────────────────────────── */
 
   var inFlight = null;
-  var hasAutoSynced = false;
+
+  function applyRefreshingUi(refreshing, isForce) {
+    _isRefreshing = !!refreshing;
+    _isForceRefreshing = !!isForce;
+    var mini = document.getElementById('ads-refresh-mini');
+    if (mini) {
+      if (_isRefreshing) {
+        mini.style.display = 'inline-flex';
+        mini.title = _isForceRefreshing ? 'Syncing…' : 'Refreshing…';
+        mini.setAttribute('aria-label', mini.title);
+        var icon = mini.querySelector('i');
+        if (icon) icon.className = 'ti ti-refresh ads-spin';
+      } else {
+        mini.style.display = 'none';
+        var icon2 = mini.querySelector('i');
+        if (icon2) icon2.className = 'ti ti-refresh';
+      }
+    }
+    var btn = document.getElementById('ads-refresh-btn');
+    if (btn) btn.disabled = _isRefreshing;
+  }
 
   function computeRangeKey() {
     try { if (typeof getStatsRange === 'function') return String(getStatsRange() || 'today'); } catch (_) {}
@@ -430,8 +615,29 @@
     if (inFlight) return inFlight;
 
     var isForce = !!(options && options.force);
-    root.innerHTML = '<div class="muted">' + (isForce ? 'Syncing Google Ads spend…' : 'Loading…') + '</div>';
     var rangeKey = computeRangeKey();
+    var now = Date.now();
+
+    // Soft refresh should not spam requests (tab focus / theme refresh). Keep UX smooth.
+    if (!isForce && _lastSummary && _lastRangeKey === rangeKey && _lastFetchedAt && (now - _lastFetchedAt) < 15000) {
+      // Ensure footer is visible (in case user navigated before first render)
+      try {
+        if (!root.innerHTML) render(root, _lastStatus, _lastSummary);
+      } catch (_) {}
+      return Promise.resolve({ status: _lastStatus, summary: _lastSummary, cached: true });
+    }
+
+    _lastFetchError = null;
+    var footer = document.getElementById('ads-footer');
+    var noteEl = document.getElementById('ads-note');
+
+    if (!_lastSummary) {
+      if (footer) footer.style.display = 'none';
+      if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
+      renderLoading(root, isForce ? 'Syncing…' : 'Loading…');
+    } else {
+      applyRefreshingUi(true, isForce);
+    }
 
     var preStep = isForce ? postRefresh(rangeKey) : Promise.resolve(null);
 
@@ -444,17 +650,25 @@
     }).then(function (arr) {
       var status = arr && arr[0] ? arr[0] : null;
       var summary = arr && arr[1] ? arr[1] : null;
-      render(root, status, summary, isForce ? _lastRefreshResult : undefined);
+      if (!status || !summary) _lastFetchError = 'Failed to load ads data (status/summary).';
+      if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
+      else _lastRangeKey = rangeKey;
+      if (summary) _lastFetchedAt = Date.now();
 
-      if (!isForce && !hasAutoSynced && summary && summary.note && (!summary.campaigns || !summary.campaigns.length)) {
-        hasAutoSynced = true;
-        inFlight = null;
-        return refresh({ force: true });
-      }
+      applyRefreshingUi(false, false);
+      render(root, status || _lastStatus, summary || _lastSummary, isForce ? _lastRefreshResult : undefined);
 
       return { status: status, summary: summary };
     }).catch(function () {
-      root.innerHTML = '<div class="muted">Could not load ads.</div>';
+      _lastFetchError = 'Could not load ads.';
+      applyRefreshingUi(false, false);
+      if (_lastSummary) {
+        render(root, _lastStatus, _lastSummary, isForce ? _lastRefreshResult : undefined);
+      } else {
+        if (footer) footer.style.display = 'none';
+        if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
+        renderLoadError(root, _lastFetchError);
+      }
       return null;
     }).finally(function () {
       if (inFlight === p) inFlight = null;
