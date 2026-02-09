@@ -4875,6 +4875,68 @@ const API = '';
       scheduleKpiPagerUpdate();
     }
 
+    // Populate dashboard KPI cards using the same /api/kpis data as inner pages
+    function renderDashboardKpisFromApi(data) {
+      if (!data || PAGE !== 'dashboard') return;
+      var el = function(id) { return document.getElementById(id); };
+      var kpiRange = getStatsRange();
+      var sales = data.sales || {};
+      var convertedCountMap = data.convertedCount || {};
+      var returningRevenue = data.returningRevenue || {};
+      var breakdown = data.trafficBreakdown || {};
+      var conv = data.conversion || {};
+      var aovMap = data.aov || {};
+      var bounceMap = data.bounce || {};
+      var forRange = breakdown[kpiRange];
+      var sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
+      var salesVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
+      var orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
+      var returningVal = typeof returningRevenue[kpiRange] === 'number' ? returningRevenue[kpiRange] : null;
+      var convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
+      var aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
+      var bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
+
+      // Compare values
+      var compare = data.compare || null;
+      var compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
+      var compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
+      var compareSalesVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
+      var compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
+      var compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
+      var compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
+      var compareReturningVal = compare && typeof compare.returningRevenue === 'number' ? compare.returningRevenue : null;
+      var compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
+
+      // Populate main values
+      if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
+      if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = orderCountVal != null ? Math.round(orderCountVal).toLocaleString() : '\u2014';
+      if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
+      if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = convVal != null ? pct(convVal) : '\u2014';
+      if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
+      if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+      if (el('dash-kpi-returning')) {
+        var retPct = orderCountVal > 0 && returningVal != null ? Math.round((returningVal / salesVal) * 1000) / 10 : null;
+        el('dash-kpi-returning').textContent = retPct != null ? pct(retPct) : '\u2014';
+      }
+
+      // Change badges using same delta logic
+      function changeBadge(curr, prev, invert) {
+        var d = kpiDelta(curr, prev);
+        if (d == null) return '<span class="text-muted">\u2014</span>';
+        var p = Math.round(d * 100);
+        var sign = p >= 0 ? '+' : '';
+        var good = invert ? (p <= 0) : (p >= 0);
+        var cls = good ? 'text-green' : 'text-red';
+        var icon = p >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
+        return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + p + '%</span>';
+      }
+      if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(salesVal, compareSalesVal);
+      if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(orderCountVal, compareOrdersVal);
+      if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(convVal, compareConvVal);
+      if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(aovVal, compareAovVal);
+      if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadge(bounceVal, compareBounceVal, true);
+    }
+
     // KPI pager: swipe on mobile, page on desktop when labels wrap.
     let kpiPagerRaf = null;
     function scheduleKpiPagerUpdate() {
@@ -7654,6 +7716,9 @@ const API = '';
           }
           if (tab === 'dashboard') {
             try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
+            refreshKpis({ force: false }).then(function(data) {
+              if (data) renderDashboardKpisFromApi(data);
+            });
           } else if (tab === 'stats') {
             refreshStats({ force: false });
             ensureKpis();
@@ -8180,14 +8245,10 @@ const API = '';
         if (!data) return;
         var allSeries = data.series || [];
         var displayDays = dashLastDays || Math.ceil(allSeries.length / 2) || 1;
-        // Split into current and previous periods (for KPIs)
+        // Current period for secondary stats; charts use at least 7 data points
         var series = allSeries.slice(-displayDays);
-        var prevStart = Math.max(0, allSeries.length - displayDays * 2);
-        var prevSeries = allSeries.slice(prevStart, allSeries.length - displayDays);
-        // Charts always show at least 7 data points for meaningful display
         var chartDays = Math.max(displayDays, 7);
         var chartSeries = allSeries.slice(-Math.min(chartDays, allSeries.length));
-        console.log('[dashboard] renderDashboard called, kpi:', series.length, 'chart:', chartSeries.length, 'prev:', prevSeries.length);
 
         var el = function(id) { return document.getElementById(id); };
         // Recompute summary from current period only
@@ -8207,17 +8268,8 @@ const API = '';
         var curMobile = sumField(series, 'mobileSessions');
         var s = data.summary || {};
 
-        if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = fmtGbp(curRevenue);
-        if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = fmtNum(curOrders);
-        if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = fmtNum(curSessions);
-        if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = fmtPct(curConvRate);
-        if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = fmtGbp(curAov);
+        // Main KPI values + change badges are set by renderDashboardKpisFromApi() using /api/kpis
         if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = curAdSpend > 0 ? fmtGbp(curAdSpend) : '\u2014';
-        if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = fmtPct(curBounceRate);
-        if (el('dash-kpi-returning')) {
-          var retPct = curOrders > 0 ? Math.round((curReturning / curOrders) * 1000) / 10 : null;
-          el('dash-kpi-returning').textContent = retPct != null ? fmtPct(retPct) : '\u2014';
-        }
 
         // Secondary stats
         var numDays = series.length || 1;
@@ -8266,41 +8318,6 @@ const API = '';
         if (el('dash-roas-progress')) {
           var roasPct = curRoas != null ? Math.min(curRoas / 5 * 100, 100) : 0;
           el('dash-roas-progress').style.width = roasPct.toFixed(1) + '%';
-        }
-
-        // Change indicators — compare current period vs previous period
-        function changeBadge(curr, prev) {
-          if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
-          var pct = ((curr - prev) / Math.abs(prev)) * 100;
-          var sign = pct >= 0 ? '+' : '';
-          var cls = pct >= 0 ? 'text-green' : 'text-red';
-          var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
-          return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
-        }
-        function changeBadgeInvert(curr, prev) {
-          if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
-          var pct = ((curr - prev) / Math.abs(prev)) * 100;
-          var sign = pct >= 0 ? '+' : '';
-          var cls = pct <= 0 ? 'text-green' : 'text-red';
-          var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
-          return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
-        }
-        if (prevSeries.length > 0) {
-          var prevRevenue = sumField(prevSeries, 'revenue');
-          var prevOrders = sumField(prevSeries, 'orders');
-          var prevConvRate = avgField(prevSeries, 'convRate');
-          var prevAov = avgField(prevSeries, 'aov');
-          var prevBounceRate = avgField(prevSeries, 'bounceRate');
-          var prevReturningOrders = sumField(prevSeries, 'returningCustomerOrders');
-          var prevTotalOrders = sumField(prevSeries, 'orders');
-          var prevRetPct = prevTotalOrders > 0 ? (prevReturningOrders / prevTotalOrders) * 100 : 0;
-          var curRetPct = curOrders > 0 ? (curReturning / curOrders) * 100 : 0;
-          if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(curRevenue, prevRevenue);
-          if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(curOrders, prevOrders);
-          if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(curConvRate, prevConvRate);
-          if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(curAov, prevAov);
-          if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadgeInvert(curBounceRate, prevBounceRate);
-          if (el('dash-kpi-returning-change')) el('dash-kpi-returning-change').innerHTML = changeBadge(curRetPct, prevRetPct);
         }
 
         // Sparklines in KPI cards (current period only)
