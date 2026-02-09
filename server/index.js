@@ -87,6 +87,8 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/config-status', configStatus);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
+app.get('/api/theme-defaults', settings.getThemeDefaults);
+app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);
@@ -229,6 +231,8 @@ app.get('/overview', (req, res) => res.redirect(301, '/countries'));
 app.get('/countries', (req, res) => sendPage(res, 'countries.html'));
 app.get('/products', (req, res) => sendPage(res, 'products.html'));
 app.get('/traffic', (req, res) => sendPage(res, 'traffic.html'));
+app.get('/channels', (req, res) => sendPage(res, 'channels.html'));
+app.get('/type', (req, res) => sendPage(res, 'type.html'));
 app.get('/ads', (req, res) => sendPage(res, 'ads.html'));
 app.get('/tools', (req, res) => sendPage(res, 'tools.html'));
 

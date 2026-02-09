@@ -440,7 +440,7 @@ const API = '';
               if (activeMainTab === 'breakdown' && typeof refreshBreakdown === 'function') refreshBreakdown({ force: false });
               if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
               if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
-              if (activeMainTab === 'traffic' && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
+              if ((activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
@@ -7278,10 +7278,10 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'traffic', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', traffic: 'Traffic', ads: 'Ads' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', traffic: 'traffic', ads: 'ads' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', traffic: 'traffic', ads: 'ads' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'traffic', 'channels', 'type', 'ads'];
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', traffic: 'Traffic', channels: 'Channels', type: 'Type', ads: 'Ads' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', traffic: 'traffic', channels: 'channels', type: 'type', ads: 'ads' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', traffic: 'traffic', channels: 'channels', type: 'type', ads: 'ads' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
@@ -7392,31 +7392,26 @@ const API = '';
           if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
           if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
-          // Tables dropdown
+          // Tables dropdown — highlight parent when a child page is active
           var isTablesChild = (tab === 'spy' || tab === 'sales' || tab === 'date');
           var tablesDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tables"]');
           if (tablesDropdown) {
-            var tddMenu = tablesDropdown.nextElementSibling;
-            if (isTablesChild) {
-              tablesDropdown.classList.add('active');
-              tablesDropdown.setAttribute('aria-expanded', 'true');
-              if (tddMenu) tddMenu.classList.add('show');
-            } else {
-              tablesDropdown.classList.remove('active');
-            }
+            if (isTablesChild) tablesDropdown.classList.add('active');
+            else tablesDropdown.classList.remove('active');
           }
           // Overview dropdown
           var isOverviewChild = (tab === 'stats' || tab === 'products');
           var overviewDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
           if (overviewDropdown) {
-            var ddMenu = overviewDropdown.nextElementSibling;
-            if (isOverviewChild) {
-              overviewDropdown.classList.add('active');
-              overviewDropdown.setAttribute('aria-expanded', 'true');
-              if (ddMenu) ddMenu.classList.add('show');
-            } else {
-              overviewDropdown.classList.remove('active');
-            }
+            if (isOverviewChild) overviewDropdown.classList.add('active');
+            else overviewDropdown.classList.remove('active');
+          }
+          // Traffic dropdown
+          var isTrafficChild = (tab === 'channels' || tab === 'type');
+          var trafficDropdown = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
+          if (trafficDropdown) {
+            if (isTrafficChild) trafficDropdown.classList.add('active');
+            else trafficDropdown.classList.remove('active');
           }
         }
 
@@ -7452,7 +7447,7 @@ const API = '';
           } else if (tab === 'products') {
             refreshProducts({ force: false });
             ensureKpis();
-          } else if (tab === 'traffic') {
+          } else if (tab === 'traffic' || tab === 'channels' || tab === 'type') {
             refreshTraffic({ force: false });
             ensureKpis();
           } else if (tab === 'ads') {
@@ -7577,7 +7572,7 @@ const API = '';
             else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'breakdown') refreshBreakdown({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
-            else if (activeMainTab === 'traffic') refreshTraffic({ force: true });
+            else if (activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
             else fetchSessions();
           });
@@ -7653,7 +7648,7 @@ const API = '';
     }
 
     function onTrafficAutoRefreshTick() {
-      if (activeMainTab !== 'traffic') return;
+      if (activeMainTab !== 'traffic' && activeMainTab !== 'channels' && activeMainTab !== 'type') return;
       if (getStatsRange() !== 'today') return;
       if (document.visibilityState !== 'visible') return;
       refreshTraffic({ force: false });
@@ -7701,7 +7696,7 @@ const API = '';
       } else if (activeMainTab === 'products') {
         const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
         if (staleProducts) refreshProducts({ force: false });
-      } else if (activeMainTab === 'traffic') {
+      } else if (activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });
       } else if (activeMainTab === 'ads') {
@@ -7812,8 +7807,9 @@ const API = '';
       var dashLoading = false;
       var dashLastDays = 30;
       var dashCharts = {};
-      var DASH_ACCENT = '#0d9488';
-      var DASH_ACCENT_LIGHT = 'rgba(13,148,136,0.12)';
+      var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
+      var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
+      var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
       var DASH_ORANGE = '#f59e0b';
       var DASH_ORANGE_LIGHT = 'rgba(245,158,11,0.10)';
       var DASH_BLUE = '#3b82f6';
@@ -7912,8 +7908,108 @@ const API = '';
         if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = s.convRate != null ? fmtPct(s.convRate) : '\u2014';
         if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = s.aov != null ? fmtGbp(s.aov) : '\u2014';
         if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = s.adSpend != null && s.adSpend > 0 ? fmtGbp(s.adSpend) : '\u2014';
+        if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = s.bounceRate != null ? fmtPct(s.bounceRate) : '\u2014';
+        if (el('dash-kpi-returning')) {
+          var retPct = (s.orders > 0 && s.returningCustomerOrders != null) ? Math.round((s.returningCustomerOrders / s.orders) * 1000) / 10 : null;
+          el('dash-kpi-returning').textContent = retPct != null ? fmtPct(retPct) : '\u2014';
+        }
 
+        // Secondary stats
         var series = data.series || [];
+        var numDays = series.length || 1;
+
+        // Orders: Today + Avg/Day
+        if (el('dash-orders-today')) {
+          var todayOrders = series.length > 0 ? (series[series.length - 1].orders || 0) : 0;
+          el('dash-orders-today').textContent = fmtNum(todayOrders);
+        }
+        if (el('dash-orders-avg')) {
+          var avgOrders = numDays > 0 ? Math.round((s.orders || 0) / numDays * 10) / 10 : 0;
+          el('dash-orders-avg').textContent = avgOrders % 1 === 0 ? fmtNum(avgOrders) : avgOrders.toFixed(1);
+        }
+
+        // Conversion Rate: progress bar + target diff
+        if (el('dash-conv-progress')) {
+          var convPct = Math.min((s.convRate || 0) / 2.5 * 100, 100);
+          el('dash-conv-progress').style.width = convPct.toFixed(1) + '%';
+        }
+        if (el('dash-conv-target-diff')) {
+          var diff = (s.convRate || 0) - 2.5;
+          el('dash-conv-target-diff').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%';
+          el('dash-conv-target-diff').className = diff >= 0 ? 'text-success' : 'text-danger';
+        }
+
+        // AOV: Highest / Lowest
+        if (el('dash-aov-high')) el('dash-aov-high').textContent = s.aovHigh != null ? fmtGbp(s.aovHigh) : '\u2014';
+        if (el('dash-aov-low')) el('dash-aov-low').textContent = s.aovLow != null ? fmtGbp(s.aovLow) : '\u2014';
+
+        // Sessions: Desktop / Mobile
+        if (el('dash-sessions-desktop')) el('dash-sessions-desktop').textContent = s.desktopSessions != null ? fmtNum(s.desktopSessions) : '\u2014';
+        if (el('dash-sessions-mobile')) el('dash-sessions-mobile').textContent = s.mobileSessions != null ? fmtNum(s.mobileSessions) : '\u2014';
+
+        // Bounce Rate: progress bar
+        if (el('dash-bounce-progress')) {
+          el('dash-bounce-progress').style.width = Math.min(s.bounceRate || 0, 100).toFixed(1) + '%';
+        }
+
+        // Returning Customers: New / Return split
+        if (el('dash-customers-new')) el('dash-customers-new').textContent = s.newCustomerOrders != null ? fmtNum(s.newCustomerOrders) : '\u2014';
+        if (el('dash-customers-return')) el('dash-customers-return').textContent = s.returningCustomerOrders != null ? fmtNum(s.returningCustomerOrders) : '\u2014';
+
+        // ROAS badge + progress
+        if (el('dash-roas-badge')) el('dash-roas-badge').textContent = s.roas != null ? s.roas.toFixed(2) + 'x' : '\u2014';
+        if (el('dash-roas-progress')) {
+          var roasPct = s.roas != null ? Math.min(s.roas / 5 * 100, 100) : 0;
+          el('dash-roas-progress').style.width = roasPct.toFixed(1) + '%';
+        }
+
+        // Change indicators (compare first half vs second half of period)
+        if (series.length >= 2) {
+          var mid = Math.floor(series.length / 2);
+          var firstHalf = series.slice(0, mid);
+          var secondHalf = series.slice(mid);
+          function sumField(arr, field) { var t = 0; for (var i = 0; i < arr.length; i++) t += (arr[i][field] || 0); return t; }
+          function avgField(arr, field) { if (!arr.length) return 0; return sumField(arr, field) / arr.length; }
+          function changeBadge(curr, prev) {
+            if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
+            var pct = ((curr - prev) / Math.abs(prev)) * 100;
+            var sign = pct >= 0 ? '+' : '';
+            var cls = pct >= 0 ? 'text-green' : 'text-red';
+            var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
+            return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
+          }
+          function changeBadgeInvert(curr, prev) {
+            if (!prev || prev === 0) return '<span class="text-muted">\u2014</span>';
+            var pct = ((curr - prev) / Math.abs(prev)) * 100;
+            var sign = pct >= 0 ? '+' : '';
+            var cls = pct <= 0 ? 'text-green' : 'text-red';
+            var icon = pct >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
+            return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + Math.round(pct) + '%</span>';
+          }
+          if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(sumField(secondHalf, 'revenue'), sumField(firstHalf, 'revenue'));
+          if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(sumField(secondHalf, 'orders'), sumField(firstHalf, 'orders'));
+          if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(avgField(secondHalf, 'convRate'), avgField(firstHalf, 'convRate'));
+          if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(avgField(secondHalf, 'aov'), avgField(firstHalf, 'aov'));
+          if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadgeInvert(avgField(secondHalf, 'bounceRate'), avgField(firstHalf, 'bounceRate'));
+          if (el('dash-kpi-returning-change')) el('dash-kpi-returning-change').innerHTML = changeBadge(sumField(secondHalf, 'orders'), sumField(firstHalf, 'orders'));
+        }
+
+        // Revenue sparkline (mini chart in KPI card)
+        if (el('dash-revenue-sparkline') && series.length > 1 && typeof ApexCharts !== 'undefined') {
+          var sparkData = series.map(function(d) { return d.revenue; });
+          var sparkEl = el('dash-revenue-sparkline');
+          sparkEl.innerHTML = '';
+          var sparkChart = new ApexCharts(sparkEl, {
+            chart: { type: 'area', height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: [{ data: sparkData }],
+            stroke: { width: 2, curve: 'smooth' },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+            colors: [DASH_ACCENT],
+            tooltip: { enabled: false }
+          });
+          sparkChart.render();
+        }
+
         var labels = series.map(function(d) { return shortDate(d.date); });
 
         makeChart('dash-chart-revenue', labels, [{

@@ -49,10 +49,38 @@ async function postSettings(req, res) {
   res.json({ ok: true, pixelSessionMode: normalized });
 }
 
+// ── Theme defaults (shared across all logins) ──────────────────────────────
+const THEME_KEYS = ['theme', 'theme_base', 'theme_primary', 'theme_radius'];
+
+async function getThemeDefaults(req, res) {
+  const result = { ok: true };
+  for (const key of THEME_KEYS) {
+    try { result[key] = (await store.getSetting('theme_' + key)) || ''; } catch (_) { result[key] = ''; }
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(result);
+}
+
+async function postThemeDefaults(req, res) {
+  const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  try {
+    for (const key of THEME_KEYS) {
+      const val = body[key] != null ? String(body[key]).trim() : '';
+      await store.setSetting('theme_' + key, val);
+    }
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save theme' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true });
+}
+
 module.exports = {
   getSettings,
   postSettings,
   normalizePixelSessionMode,
   PIXEL_SESSION_MODE_KEY,
+  getThemeDefaults,
+  postThemeDefaults,
 };
 

@@ -242,7 +242,8 @@
   transition: all 0.3s ease;
 }
 
-.sale-toast.show {
+.sale-toast.show,
+.sale-toast.active {
   opacity: 1;
   transform: translateX(0);
 }

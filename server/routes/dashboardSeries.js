@@ -314,16 +314,65 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     s.adSpend = adSpendPerDay[s.date] || 0;
   }
 
+  // Device breakdown (desktop vs mobile vs tablet)
+  let desktopSessions = 0, mobileSessions = 0;
+  try {
+    const ph = config.dbUrl ? ['$1', '$2'] : ['?', '?'];
+    const deviceRows = await db.all(
+      'SELECT LOWER(COALESCE(s.ua_device_type, \'unknown\')) AS device, COUNT(*) AS n FROM sessions s WHERE s.started_at >= ' + ph[0] + ' AND s.started_at < ' + ph[1] + filter.sql.replace(/sessions\./g, 's.') + ' GROUP BY LOWER(COALESCE(s.ua_device_type, \'unknown\'))',
+      [overallStart, overallEnd, ...filter.params]
+    );
+    for (const r of deviceRows) {
+      const d = (r.device || '').trim();
+      if (d === 'desktop') desktopSessions += Number(r.n) || 0;
+      else if (d === 'mobile' || d === 'tablet') mobileSessions += Number(r.n) || 0;
+    }
+  } catch (_) {}
+
+  // Returning vs new customer orders
+  let newCustomerOrders = 0, returningCustomerOrders = 0;
+  if (shop) {
+    try {
+      const ph = config.dbUrl ? ['$1', '$2', '$3'] : ['?', '?', '?'];
+      const retRows = await db.all(
+        config.dbUrl
+          ? `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
+             FROM orders_shopify
+             WHERE shop = $1 AND created_at >= $2 AND created_at < $3
+               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+             GROUP BY ctype`
+          : `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
+             FROM orders_shopify
+             WHERE shop = ? AND created_at >= ? AND created_at < ?
+               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+             GROUP BY ctype`,
+        [shop, overallStart, overallEnd]
+      );
+      for (const r of retRows) {
+        if (r.ctype === 'returning') returningCustomerOrders = Number(r.n) || 0;
+        else newCustomerOrders = Number(r.n) || 0;
+      }
+    } catch (_) {}
+  }
+
   // Summary totals
-  let totalRevenue = 0, totalOrders = 0, totalSessions = 0, totalAdSpend = 0;
+  let totalRevenue = 0, totalOrders = 0, totalSessions = 0, totalAdSpend = 0, totalBounced = 0;
+  let aovHigh = 0, aovLow = Infinity;
   for (const s of series) {
     totalRevenue += s.revenue;
     totalOrders += s.orders;
     totalSessions += s.sessions;
     totalAdSpend += s.adSpend;
+    totalBounced += (bouncePerDay[s.date] || 0);
+    if (s.orders > 0) {
+      if (s.aov > aovHigh) aovHigh = s.aov;
+      if (s.aov < aovLow) aovLow = s.aov;
+    }
   }
+  if (!Number.isFinite(aovLow) || aovLow === Infinity) aovLow = 0;
   const avgConvRate = totalSessions > 0 ? Math.round(Math.min((totalOrders / totalSessions) * 100, 100) * 10) / 10 : 0;
   const avgAov = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
+  const bounceRate = totalSessions > 0 ? Math.round((totalBounced / totalSessions) * 1000) / 10 : 0;
   const roas = totalAdSpend > 0 ? Math.round((totalRevenue / totalAdSpend) * 100) / 100 : null;
 
   return {
@@ -337,8 +386,15 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       sessions: totalSessions,
       convRate: avgConvRate,
       aov: avgAov,
+      aovHigh: Math.round(aovHigh * 100) / 100,
+      aovLow: Math.round(aovLow * 100) / 100,
+      bounceRate,
       adSpend: Math.round(totalAdSpend * 100) / 100,
       roas,
+      desktopSessions,
+      mobileSessions,
+      newCustomerOrders,
+      returningCustomerOrders,
     },
   };
 }
