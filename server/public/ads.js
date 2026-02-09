@@ -287,14 +287,41 @@
       return h;
     }
 
+    // Sanity-check totals (best-effort): API totals should match sum of campaigns (within rounding tolerance).
+    (function auditTotals() {
+      try {
+        var sum = { spend: 0, impressions: 0, clicks: 0, revenue: 0, profit: 0 };
+        for (var i = 0; i < campaigns.length; i++) {
+          var c = campaigns[i] || {};
+          sum.spend += Number(c.spend) || 0;
+          sum.impressions += Number(c.impressions) || 0;
+          sum.clicks += Number(c.clicks) || 0;
+          sum.revenue += Number(c.revenue) || 0;
+          sum.profit += Number(c.profit) || 0;
+        }
+        var tolMoney = 0.06; // allow small rounding drift between per-campaign rounding vs totals rounding
+        function dm(a, b) { return Math.abs((Number(a) || 0) - (Number(b) || 0)); }
+        function di(a, b) { return Math.abs((Math.floor(Number(a) || 0)) - (Math.floor(Number(b) || 0))); }
+        var mismatches = [];
+        if (dm(sum.spend, totals.spend) > tolMoney) mismatches.push('spend');
+        if (dm(sum.revenue, totals.revenue) > tolMoney) mismatches.push('revenue');
+        if (dm(sum.profit, totals.profit) > tolMoney) mismatches.push('profit');
+        if (di(sum.clicks, totals.clicks) > 0) mismatches.push('clicks');
+        if (di(sum.impressions, totals.impressions) > 0) mismatches.push('impressions');
+        if (mismatches.length) {
+          console.warn('[ads] totals mismatch (api vs sum(campaigns))', { mismatches: mismatches, api: totals, sum: sum });
+        }
+      } catch (_) {}
+    })();
+
     // Header cells: Campaign, Spend, Impr, Clicks, Profit, ROAS, Sales
     var headerCells = COL_DEFS.map(function (d) { return { html: d.label, sortKey: d.key }; });
 
     var bodyHtml = '';
 
-    // Totals row
+    // Totals row (render at bottom)
     var tProfit = totals.profit != null ? Number(totals.profit) : 0;
-    bodyHtml += gridRow([
+    var totalsRowHtml = gridRow([
       { html: '<strong>Total</strong>' },
       { html: esc(fmtMoney(totals.spend, currency)) },
       { html: esc(fmtNum(totals.impressions)) },
@@ -326,6 +353,9 @@
     if (!campaigns.length && !note) {
       bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="grid-column:1/-1;text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
     }
+
+    // Totals last
+    bodyHtml += totalsRowHtml;
 
     // Build connection status line
     var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
