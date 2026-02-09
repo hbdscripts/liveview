@@ -3717,7 +3717,7 @@ const API = '';
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(code, label);
-        const labelHtml = '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span><span class="country-code">' + escapeHtml(code) + '</span></span>';
+        const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +
@@ -3773,7 +3773,7 @@ const API = '';
         },
         series: revenues,
         labels: labels,
-        colors: ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4', '#ccfbf1', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5'],
+        colors: ['#4592e9', '#1673b4', '#32bdb0', '#179ea8', '#fa9f2e', '#fab05d', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'],
         plotOptions: {
           pie: {
             donut: {
@@ -3847,47 +3847,54 @@ const API = '';
         return;
       }
 
-      // Create a treemap as a geographical visualization alternative
-      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 15);
-      const chartData = sortedRows.map(r => {
+      // Horizontal bar chart showing revenue by country
+      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 12);
+      const categories = sortedRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        return {
-          x: countryLabel(code),
-          y: r.revenue || 0
-        };
+        return countryLabel(code);
       });
+      const revenues = sortedRows.map(r => r.revenue || 0);
 
       const options = {
         chart: {
-          type: 'treemap',
+          type: 'bar',
           height: 320,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false }
         },
         series: [{
-          data: chartData
+          name: 'Revenue',
+          data: revenues
         }],
-        colors: ['#0d9488'],
+        colors: ['#4592e9'],
         plotOptions: {
-          treemap: {
-            distributed: true,
-            enableShades: true,
-            shadeIntensity: 0.5,
-            colorScale: {
-              ranges: [
-                { from: 0, to: 0, color: '#f1f5f9' }
-              ]
-            }
+          bar: {
+            horizontal: true,
+            borderRadius: 3,
+            barHeight: '65%'
           }
         },
         dataLabels: {
           enabled: true,
-          style: {
-            fontSize: '12px',
-            fontWeight: 600
+          formatter: function(val) {
+            return '£' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
           },
-          formatter: function(text, op) {
-            return [text, '£' + Number(op.value).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })];
+          style: {
+            fontSize: '11px',
+            fontWeight: 600
+          }
+        },
+        xaxis: {
+          categories: categories,
+          labels: {
+            formatter: function(val) {
+              return '£' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            }
+          }
+        },
+        yaxis: {
+          labels: {
+            style: { fontSize: '12px' }
           }
         },
         legend: {
@@ -3963,13 +3970,10 @@ const API = '';
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(iso, label);
-        const thumbImg = productThumb
-          ? '<img src="' + escapeHtml(productThumb) + '" alt="' + escapeHtml(productTitle) + '" loading="lazy">'
-          : '<span class="geo-product-thumb-placeholder" aria-hidden="true"></span>';
-        const thumb = productUrl
-          ? '<a class="geo-product-thumb" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</a>'
-          : '<span class="geo-product-thumb" title="' + escapeHtml(productTitle) + '">' + thumbImg + '</span>';
-        const labelHtml = '<span class="country-label">' + thumb + '</span>';
+        const titleLink = productUrl
+          ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + escapeHtml(productTitle) + '</a>'
+          : escapeHtml(productTitle);
+        const labelHtml = '<span class="country-label">' + titleLink + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +

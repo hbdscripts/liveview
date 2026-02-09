@@ -447,6 +447,19 @@
   margin-bottom: .5rem;
 }
 
+/* Country cell: flag + label inline */
+.country-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.country-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .text-accent {
   color: var(--tblr-primary);
 }
