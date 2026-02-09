@@ -37,11 +37,11 @@
             </select>
           </div>
           <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
-            <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="theme-settings-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="config-open-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="theme-settings-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-open-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
+            <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
           </div>
         </div>
       </header>
@@ -487,14 +487,14 @@
         <div class="container-xl">
           <div class="d-flex align-items-center justify-content-between py-3">
             <div class="d-flex align-items-center gap-1">
-              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-audio-btn" aria-label="Sound"><i class="ti ti-volume"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-theme-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
-              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary btn-sm" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound"><i class="ti ti-volume"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-theme-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
+              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
             </div>
             <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30">
-            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary btn-sm" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
+            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
           </div>
         </div>
       </footer>
@@ -507,13 +507,13 @@
           <h3 class="config-modal-title">Settings</h3>
         </div>
         <div class="config-modal-actions">
-          <button type="button" id="config-refresh-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Refresh diagnostics" aria-label="Refresh diagnostics">
+          <button type="button" id="config-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh diagnostics" aria-label="Refresh diagnostics">
             <i class="ti ti-refresh"></i>
           </button>
-          <button type="button" id="config-reconcile-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Sync Shopify orders (7d)" aria-label="Sync Shopify orders (7d)">
+          <button type="button" id="config-reconcile-btn" class="btn btn-icon btn-ghost-secondary" title="Sync Shopify orders (7d)" aria-label="Sync Shopify orders (7d)">
             <i class="ti ti-download"></i>
           </button>
-          <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="config-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
         </div>
       </div>
       <div id="config-status"><div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div></div>
@@ -529,10 +529,10 @@
           <div class="kpi-compare-meta" id="kpi-compare-updated">Updated —</div>
         </div>
         <div class="kpi-compare-modal-actions">
-          <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Refresh comparison" aria-label="Refresh comparison">
+          <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh comparison" aria-label="Refresh comparison">
             <i class="ti ti-refresh"></i><span>Refresh</span>
           </button>
-          <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="kpi-compare-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
         </div>
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
