@@ -221,12 +221,38 @@ function isLoggedIn(req) {
 
 // Simple server-side include: <!--#include partials/header.html-->
 const _includeCache = {};
+const _includeCacheEnabled =
+  process.env.NODE_ENV === 'production' &&
+  !(process.env.INCLUDE_CACHE === '0' || process.env.INCLUDE_CACHE === 'false');
+
+function safeResolveIncludePath(file) {
+  const rel = file != null ? String(file).trim() : '';
+  if (!rel) return null;
+  // Disallow path traversal / absolute paths.
+  if (rel.includes('..') || rel.startsWith('/') || rel.startsWith('\\')) return null;
+  const base = path.resolve(path.join(__dirname, 'public'));
+  const full = path.resolve(path.join(__dirname, 'public', rel));
+  if (!full.startsWith(base + path.sep) && full !== base) return null;
+  return full;
+}
+
 function resolveIncludes(html) {
   return html.replace(/<!--#include\s+([\w./%-]+)\s*-->/g, (_, file) => {
-    if (!_includeCache[file]) {
-      _includeCache[file] = fs.readFileSync(path.join(__dirname, 'public', file), 'utf8');
+    try {
+      const fileKey = file != null ? String(file) : '';
+      const full = safeResolveIncludePath(fileKey);
+      if (!full) {
+        console.warn('[includes] blocked include path:', fileKey);
+        return `<!-- include blocked: ${fileKey} -->`;
+      }
+      if (_includeCacheEnabled && _includeCache[fileKey]) return _includeCache[fileKey];
+      const content = fs.readFileSync(full, 'utf8');
+      if (_includeCacheEnabled) _includeCache[fileKey] = content;
+      return content;
+    } catch (err) {
+      console.error('[includes] failed to read include:', file, err && err.message ? err.message : err);
+      return `<!-- include missing: ${file} -->`;
     }
-    return _includeCache[file];
   });
 }
 

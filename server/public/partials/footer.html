@@ -8,7 +8,10 @@
               <button type="button" class="btn btn-icon btn-ghost-secondary footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
               <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
             </div>
-            <a href="/dashboard"><img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30"></a>
+            <a href="/dashboard" aria-label="Kexo dashboard">
+              <img class="kexo-logo kexo-logo-light" src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30">
+              <img class="kexo-logo kexo-logo-dark" src="/assets/kexo_logo_fullcolor_dark.webp" alt="Kexo" width="30">
+            </a>
             <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
           </div>
         </div>

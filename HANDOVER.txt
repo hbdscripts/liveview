@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Products page UX fixes: loader + pagination + spacing)
+Last updated: 2026-02-09 (Dashboard KPI + nav/theme robustness fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -178,3 +178,15 @@ Edge (optional):
 - Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.
 - Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
 - Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
+- Dashboard KPI correctness + consistency:
+  - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
+  - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.
+- Nav + theming:
+  - Added direct `/traffic` link in the Traffic dropdown and highlight dropdown on `/traffic`.
+  - Header/footer logos now swap to `kexo_logo_fullcolor_dark.webp` when global theme is dark.
+- Reliability/cleanup:
+  - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
+  - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.
+  - De-duplicated grid-table CSS (kept definitions in `custom.css`).
+  - Legacy `live-visitors.html` no longer references missing `/nav.css`.
+  - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.

@@ -1963,8 +1963,13 @@ const API = '';
     }
 
     function formatRevenue(num) {
-      if (num == null || typeof num !== 'number') return '';
-      return '\u00A3' + num.toFixed(2);
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '';
+      // Keep dashboard currency formatting consistent everywhere (thousands separators + 2dp).
+      try {
+        return '\u00A3' + num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (_) {
+        return '\u00A3' + num.toFixed(2);
+      }
     }
 
     function formatRevenueSub(num) {
@@ -1982,11 +1987,16 @@ const API = '';
 
     function formatRevenueTableHtml(num) {
       if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '—';
-      if (isIconMode()) return '\u00A3' + Math.round(num);
-      if (num % 1 === 0) return '\u00A3' + num;
-      const fixed = num.toFixed(2);
-      const parts = fixed.split('.');
-      return '\u00A3' + parts[0] + '<span class="rev-decimal">.' + parts[1] + '</span>';
+      if (isIconMode()) return '\u00A3' + Math.round(num).toLocaleString('en-GB');
+      if (num % 1 === 0) return '\u00A3' + num.toLocaleString('en-GB');
+      let fixed = null;
+      try {
+        fixed = num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (_) {
+        fixed = num.toFixed(2);
+      }
+      const parts = String(fixed).split('.');
+      return '\u00A3' + parts[0] + '<span class="rev-decimal">.' + (parts[1] || '00') + '</span>';
     }
 
     function animateTickerText(el, nextText) {
@@ -4765,9 +4775,6 @@ const API = '';
       renderKpiSparkline('bounce', s.map(function(d) { return d.bounceRate || 0; }));
     }
 
-    // KPI boxes temporarily show N/A: sales/revenue dedupe and pixel-vs-Shopify alignment are not final;
-    // numbers were over- or under-reporting. To restore real values: in renderLiveKpis below, remove the
-    // "N/A" block and uncomment the "Real values (when fixed)" block so KPIs use data again.
     function renderLiveKpis(data) {
       const salesEl = document.getElementById('live-kpi-sales');
       const sessionsEl = document.getElementById('live-kpi-sessions');
@@ -4883,6 +4890,7 @@ const API = '';
       var sales = data.sales || {};
       var convertedCountMap = data.convertedCount || {};
       var returningRevenue = data.returningRevenue || {};
+      var returningOrderCountMap = data.returningOrderCount || {};
       var breakdown = data.trafficBreakdown || {};
       var conv = data.conversion || {};
       var aovMap = data.aov || {};
@@ -4892,6 +4900,7 @@ const API = '';
       var salesVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       var orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
       var returningVal = typeof returningRevenue[kpiRange] === 'number' ? returningRevenue[kpiRange] : null;
+      var returningOrdersVal = typeof returningOrderCountMap[kpiRange] === 'number' ? returningOrderCountMap[kpiRange] : null;
       var convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       var aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       var bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
@@ -4906,6 +4915,7 @@ const API = '';
       var compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
       var compareReturningVal = compare && typeof compare.returningRevenue === 'number' ? compare.returningRevenue : null;
       var compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
+      var compareReturningOrdersVal = compare && typeof compare.returningOrderCount === 'number' ? compare.returningOrderCount : null;
 
       // Populate main values
       if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
@@ -4915,7 +4925,8 @@ const API = '';
       if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
       if (el('dash-kpi-returning')) {
-        var retPct = orderCountVal > 0 && returningVal != null ? Math.round((returningVal / salesVal) * 1000) / 10 : null;
+        // Returning Customers rate (orders by returning customers / total orders)
+        var retPct = orderCountVal > 0 && returningOrdersVal != null ? Math.round((returningOrdersVal / orderCountVal) * 1000) / 10 : null;
         el('dash-kpi-returning').textContent = retPct != null ? pct(retPct) : '\u2014';
       }
 
@@ -4935,6 +4946,15 @@ const API = '';
       if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(convVal, compareConvVal);
       if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(aovVal, compareAovVal);
       if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadge(bounceVal, compareBounceVal, true);
+      if (el('dash-kpi-returning-change')) {
+        var compareRetPct = compareOrdersVal > 0 && compareReturningOrdersVal != null
+          ? Math.round((compareReturningOrdersVal / compareOrdersVal) * 1000) / 10
+          : null;
+        var currRetPct = orderCountVal > 0 && returningOrdersVal != null
+          ? Math.round((returningOrdersVal / orderCountVal) * 1000) / 10
+          : null;
+        el('dash-kpi-returning-change').innerHTML = changeBadge(currRetPct, compareRetPct);
+      }
     }
 
     // KPI pager: swipe on mobile, page on desktop when labels wrap.
@@ -7683,7 +7703,7 @@ const API = '';
             else overviewDropdownItem.classList.remove('active');
           }
           // Traffic dropdown
-          var isTrafficChild = (tab === 'channels' || tab === 'type');
+          var isTrafficChild = (tab === 'traffic' || tab === 'channels' || tab === 'type');
           var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
           var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
           if (trafficDropdownItem) {
@@ -7910,10 +7930,6 @@ const API = '';
       refreshKpis({ force: false });
     }
 
-    function onBreakdownAutoRefreshTick() {
-      // Dead: breakdown tab no longer exists in any active page.
-    }
-
     function onProductsAutoRefreshTick() {
       if (activeMainTab !== 'products') return;
       if (getStatsRange() !== 'today') return;
@@ -7928,12 +7944,11 @@ const API = '';
       refreshTraffic({ force: false });
     }
 
-    // Live: refresh every 60s. Today/Sales: refresh every 5 min. Breakdown/Products/Traffic: every 5 min (Today only).
+    // Live: refresh every 60s. Today/Sales: refresh every 5 min. Products/Traffic: every 5 min (Today only).
     _intervals.push(setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS));
     _intervals.push(setInterval(onRangeAutoRefreshTick, 60000)); // check every 60s whether to refresh Today/Sales (5 min interval)
     _intervals.push(setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS));
     _intervals.push(setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS));
-    _intervals.push(setInterval(onBreakdownAutoRefreshTick, STATS_REFRESH_MS));
     _intervals.push(setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS));
     _intervals.push(setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS));
     _intervals.push(setInterval(tickTimeOnSite, 30000));
@@ -8112,7 +8127,11 @@ const API = '';
       var DASH_PURPLE = '#8b5cf6';
       var DASH_PURPLE_LIGHT = 'rgba(139,92,246,0.10)';
 
-      function fmtGbp(n) { return '\u00A3' + (n % 1 === 0 ? n.toLocaleString() : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
+      function fmtGbp(n) {
+        var v = (typeof n === 'number') ? n : Number(n);
+        if (!isFinite(v)) return '\u2014';
+        return formatRevenue(v) || '\u2014';
+      }
       function fmtNum(n) { return n != null ? n.toLocaleString() : '\u2014'; }
       function fmtPct(n) { return n != null ? n.toFixed(1) + '%' : '\u2014'; }
       function shortDate(ymd) {
@@ -8151,7 +8170,7 @@ const API = '';
           var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data || [] }; });
           var colors = datasets.map(function(ds) { return ds.borderColor || DASH_ACCENT; });
           var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
-            : (opts && opts.currency) ? function(v) { return v != null ? '\u00A3' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'; }
+            : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
           var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 0 }

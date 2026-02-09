@@ -1851,6 +1851,20 @@ async function getReturningRevenue(start, end, options = {}) {
   return salesTruth.getTruthReturningRevenueGbp(shop, start, end);
 }
 
+/** Count of truth orders from returning customers in range. */
+async function getReturningOrderCount(start, end, options = {}) {
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return 0;
+  return salesTruth.getTruthReturningOrderCount(shop, start, end);
+}
+
+/** Count of unique truth customers who are returning in range. */
+async function getReturningCustomerCount(start, end, options = {}) {
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return 0;
+  return salesTruth.getTruthReturningCustomerCount(shop, start, end);
+}
+
 async function getConversionRate(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
@@ -2662,6 +2676,8 @@ async function getKpis(options = {}) {
   const [
     salesVal,
     returningRevenueVal,
+    returningOrderCountVal,
+    returningCustomerCountVal,
     conversionVal,
     convertedCountVal,
     trafficBreakdownVal,
@@ -2671,6 +2687,8 @@ async function getKpis(options = {}) {
   ] = await Promise.all([
     getSalesTotal(bounds.start, bounds.end, { ...opts, rangeKey }),
     getReturningRevenue(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getReturningOrderCount(bounds.start, bounds.end, { ...opts, rangeKey }),
+    getReturningCustomerCount(bounds.start, bounds.end, { ...opts, rangeKey }),
     getConversionRate(bounds.start, bounds.end, { ...opts, rangeKey }),
     getConvertedCount(bounds.start, bounds.end, { ...opts, rangeKey }),
     getSessionCounts(bounds.start, bounds.end, { ...opts, rangeKey }),
@@ -2708,6 +2726,8 @@ async function getKpis(options = {}) {
       const [
         compareSales,
         compareReturning,
+        compareReturningOrderCount,
+        compareReturningCustomerCount,
         compareConversion,
         compareConvertedCount,
         compareBreakdown,
@@ -2715,6 +2735,8 @@ async function getKpis(options = {}) {
       ] = await Promise.all([
         getSalesTotal(compareStart, compareEnd, compareOpts),
         getReturningRevenue(compareStart, compareEnd, compareOpts),
+        getReturningOrderCount(compareStart, compareEnd, compareOpts),
+        getReturningCustomerCount(compareStart, compareEnd, compareOpts),
         getConversionRate(compareStart, compareEnd, compareOpts),
         getConvertedCount(compareStart, compareEnd, compareOpts),
         getSessionCounts(compareStart, compareEnd, compareOpts),
@@ -2723,6 +2745,8 @@ async function getKpis(options = {}) {
       compare = {
         sales: compareSales,
         returningRevenue: compareReturning,
+        returningOrderCount: compareReturningOrderCount,
+        returningCustomerCount: compareReturningCustomerCount,
         conversion: compareConversion,
         aov: aovFromSalesAndCount(compareSales, compareConvertedCount),
         bounce: compareBounce,
@@ -2742,6 +2766,8 @@ async function getKpis(options = {}) {
   return {
     sales: { [rangeKey]: salesVal },
     returningRevenue: { [rangeKey]: returningRevenueVal },
+    returningOrderCount: { [rangeKey]: returningOrderCountVal },
+    returningCustomerCount: { [rangeKey]: returningCustomerCountVal },
     conversion: { [rangeKey]: conversionVal },
     aov: { [rangeKey]: aovVal },
     bounce: { [rangeKey]: bounceVal },

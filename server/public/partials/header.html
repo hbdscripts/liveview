@@ -14,7 +14,10 @@
               <option value="custom" id="date-opt-custom">Custom</option>
             </select>
           </div>
-          <a href="/dashboard" class="navbar-brand-center d-none d-md-flex"><img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30"></a>
+          <a href="/dashboard" class="navbar-brand-center d-none d-md-flex" aria-label="Kexo dashboard">
+            <img class="kexo-logo kexo-logo-light" src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30">
+            <img class="kexo-logo kexo-logo-dark" src="/assets/kexo_logo_fullcolor_dark.webp" alt="Kexo" width="30">
+          </a>
           <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
             <button type="button" class="btn btn-icon btn-ghost-secondary" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
             <button type="button" class="btn btn-icon btn-ghost-secondary" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
@@ -52,6 +55,7 @@
                     <a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Traffic</span>
                     </a>
                     <div class="dropdown-menu">
+                      <a class="dropdown-item" id="nav-tab-traffic" data-nav="traffic" href="/traffic"><i class="ti ti-activity me-2"></i>Traffic</a>
                       <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2"></i>Channels</a>
                       <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a>
                     </div>
