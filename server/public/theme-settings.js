@@ -50,6 +50,7 @@
       // Tabler beta22 uses body class for dark mode
       document.body.classList.toggle('theme-dark', value === 'dark');
       root.setAttribute('data-bs-theme', value || 'light');
+      root.classList.remove('theme-dark-early');
     } else if (key === 'theme-primary') {
       var color = PRIMARY_COLORS[value];
       if (color) {

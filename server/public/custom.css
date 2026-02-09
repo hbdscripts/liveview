@@ -513,7 +513,11 @@
   height: 100%;
 }
 
-/* ── Nav active state (Tabler handles .nav-item.active styling) ── */
+/* ── Nav active state ── */
+.navbar .navbar-nav .nav-item.active > .nav-link,
+.navbar .navbar-nav .nav-item > .nav-link.active {
+  box-shadow: inset 0 -2px 0 var(--tblr-primary);
+}
 
 /* ── Refresh icon spin ── */
 @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
