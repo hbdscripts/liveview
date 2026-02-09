@@ -97,7 +97,32 @@ async function getKpisExpandedExtra(req, res) {
         ttlMs: 5 * 60 * 1000,
         force,
       },
-      async () => computeExpandedExtras(bounds, timeZone)
+      async () => {
+        // Compare bounds: previous-period comparison (same duration).
+        const periodLengthMs = bounds.end - bounds.start;
+        let compareStart = bounds.start - periodLengthMs;
+        let compareEnd = bounds.start;
+        if (rangeKey === 'today') {
+          const yb = store.getRangeBounds('yesterday', now, timeZone);
+          compareStart = yb.start;
+          compareEnd = Math.min(yb.end, compareStart + periodLengthMs);
+        }
+        if (compareStart < 0) compareStart = 0;
+        if (compareEnd < 0) compareEnd = 0;
+
+        const current = await computeExpandedExtras(bounds, timeZone);
+        const compare = (compareEnd > compareStart)
+          ? await computeExpandedExtras({ start: compareStart, end: compareEnd }, timeZone)
+          : null;
+        return {
+          ...current,
+          compare: compare ? {
+            itemsSold: typeof compare.itemsSold === 'number' ? compare.itemsSold : null,
+            ordersFulfilled: typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null,
+            returns: typeof compare.returns === 'number' ? compare.returns : null,
+          } : null,
+        };
+      }
     );
     res.json(cached && cached.ok ? cached.data : null);
   } catch (err) {

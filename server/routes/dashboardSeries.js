@@ -77,6 +77,41 @@ async function fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, o
   return { sessionsPerDay, bouncePerDay };
 }
 
+async function fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, overallEnd) {
+  const unitsPerDay = {};
+  for (const d of Array.isArray(dayBounds) ? dayBounds : []) {
+    unitsPerDay[d.label] = 0;
+  }
+  if (!shop || !dayBounds || !dayBounds.length) return unitsPerDay;
+
+  // Single-pass conditional aggregation across all day bounds.
+  const cols = [];
+  const params = [shop, overallStart, overallEnd];
+  for (let i = 0; i < dayBounds.length; i++) {
+    cols.push(`COALESCE(SUM(CASE WHEN li.order_created_at >= ? AND li.order_created_at < ? THEN li.quantity ELSE 0 END), 0) AS units_${i}`);
+    params.push(dayBounds[i].start, dayBounds[i].end);
+  }
+
+  const row = await db.get(
+    `
+      SELECT ${cols.join(', ')}
+      FROM orders_shopify_line_items li
+      WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+        AND (li.order_test IS NULL OR li.order_test = 0)
+        AND li.order_cancelled_at IS NULL
+        AND li.order_financial_status = 'paid'
+    `,
+    params
+  );
+
+  for (let i = 0; i < dayBounds.length; i++) {
+    const label = dayBounds[i].label;
+    const v = row ? Number(row[`units_${i}`]) : 0;
+    unitsPerDay[label] = Number.isFinite(v) ? Math.trunc(v) : 0;
+  }
+  return unitsPerDay;
+}
+
 async function getDashboardSeries(req, res) {
   const rangeRaw = (typeof req.query.range === 'string' ? req.query.range : '').trim().toLowerCase();
   const normalizeRange = (rk) => {
@@ -552,6 +587,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const sb = await fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
   const sessionsPerDay = sb.sessionsPerDay || {};
   const bouncePerDay = sb.bouncePerDay || {};
+  const unitsPerDay = shop ? await fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, overallEnd) : {};
 
   // Fetch orders + revenue per day from Shopify truth
   const ratesToGbp = await fx.getRatesToGbp();
@@ -615,6 +651,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     const sessions = sessionsPerDay[db_day.label] || 0;
     const orders = ordersPerDay[db_day.label] || 0;
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
+    const units = unitsPerDay[db_day.label] || 0;
     const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
     const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
     const shopifySessions = shopifySessionsPerDay[db_day.label] || 0;
@@ -627,6 +664,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       date: db_day.label,
       revenue,
       orders,
+      units,
       sessions,
       convRate,
       shopifyConvRate,

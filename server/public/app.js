@@ -4680,6 +4680,7 @@ const API = '';
       const spinner = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
       const ids = [
         'live-kpi-orders',
+        'live-kpi-revenue',
         'live-kpi-sessions',
         'live-kpi-conv',
         'live-kpi-returning',
@@ -4788,7 +4789,7 @@ const API = '';
     var sparklineSeriesFetched = false;
 
     function fetchSparklineData() {
-      if (sparklineSeriesFetched || PAGE === 'dashboard') return;
+      if (sparklineSeriesFetched) return;
       sparklineSeriesFetched = true;
       var url = API + '/api/dashboard-series?range=14d';
       fetchWithTimeout(url, { credentials: 'same-origin' }, 15000)
@@ -4806,26 +4807,31 @@ const API = '';
       if (!sparklineSeriesCache || sparklineSeriesCache.length < 2) return;
       var s = sparklineSeriesCache;
       renderKpiSparkline('orders', s.map(function(d) { return d.orders || 0; }));
+      renderKpiSparkline('revenue', s.map(function(d) { return d.revenue || 0; }));
       renderKpiSparkline('conv', s.map(function(d) { return d.convRate || 0; }));
       renderKpiSparkline('sessions', s.map(function(d) { return d.sessions || 0; }));
       renderKpiSparkline('returning', s.map(function(d) { return d.returningCustomerOrders || 0; }));
       renderKpiSparkline('aov', s.map(function(d) { return d.aov || 0; }));
       renderKpiSparkline('bounce', s.map(function(d) { return d.bounceRate || 0; }));
+      renderKpiSparkline('items', s.map(function(d) { return d.units || 0; }));
     }
 
     function renderLiveKpis(data) {
       const ordersEl = document.getElementById('live-kpi-orders');
+      const revenueEl = document.getElementById('live-kpi-revenue');
       const sessionsEl = document.getElementById('live-kpi-sessions');
       const convEl = document.getElementById('live-kpi-conv');
       const returningEl = document.getElementById('live-kpi-returning');
       const aovEl = document.getElementById('live-kpi-aov');
       const bounceEl = document.getElementById('live-kpi-bounce');
       const ordersSubEl = document.getElementById('live-kpi-orders-sub');
+      const revenueSubEl = document.getElementById('live-kpi-revenue-sub');
       const sessionsSubEl = document.getElementById('live-kpi-sessions-sub');
       const convSubEl = document.getElementById('live-kpi-conv-sub');
       const returningSubEl = document.getElementById('live-kpi-returning-sub');
       const aovSubEl = document.getElementById('live-kpi-aov-sub');
       const bounceSubEl = document.getElementById('live-kpi-bounce-sub');
+      const sales = data && data.sales ? data.sales : {};
       const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
       const returningCustomerCountMap = data && data.returningCustomerCount ? data.returningCustomerCount : {};
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
@@ -4851,6 +4857,7 @@ const API = '';
       const forRange = breakdown[kpiRange];
       const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
       const orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
+      const revenueVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
@@ -4859,12 +4866,14 @@ const API = '';
       const compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
       const compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
       const compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
+      const compareRevenueVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
       const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
       if (ordersEl) ordersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
+      if (revenueEl) revenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (returningEl) returningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
@@ -4872,6 +4881,7 @@ const API = '';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
 
       applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
+      applyKpiDeltaColor(revenueEl, revenueVal, compareRevenueVal, false);
       applyKpiDeltaColor(sessionsEl, sessionsVal, compareSessionsVal, false);
       applyKpiDeltaColor(convEl, convVal, compareConvVal, false);
       applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
@@ -4978,6 +4988,7 @@ const API = '';
         el.classList.remove('is-hidden');
       }
       setSub(ordersSubEl, compareOrdersVal != null ? formatSessions(compareOrdersVal) : '\u2014');
+      setSub(revenueSubEl, compareRevenueVal != null ? formatRevenueSub(compareRevenueVal) : '\u2014');
       setSub(sessionsSubEl, compareSessionsVal != null ? formatSessions(compareSessionsVal) : '\u2014');
       setSub(convSubEl, compareConvVal != null ? pct(compareConvVal) : '\u2014');
       setSub(returningSubEl, compareReturningVal != null ? formatSessions(compareReturningVal) : '\u2014');
@@ -5157,15 +5168,41 @@ const API = '';
       const itemsEl = document.getElementById('live-kpi-items-sold');
       const fulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
       const returnsEl = document.getElementById('live-kpi-returns');
+      const itemsSubEl = document.getElementById('live-kpi-items-sold-sub');
+      const fulfilledSubEl = document.getElementById('live-kpi-orders-fulfilled-sub');
+      const returnsSubEl = document.getElementById('live-kpi-returns-sub');
       if (!itemsEl && !fulfilledEl && !returnsEl) return;
 
       const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
       const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
       const returnsCount = extras && typeof extras.returns === 'number' ? extras.returns : null;
+      const compare = extras && extras.compare ? extras.compare : null;
+      const itemsSoldCompare = compare && typeof compare.itemsSold === 'number' ? compare.itemsSold : null;
+      const ordersFulfilledCompare = compare && typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null;
+      const returnsCompare = compare && typeof compare.returns === 'number' ? compare.returns : null;
 
       if (itemsEl) itemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (fulfilledEl) fulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       if (returnsEl) returnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
+
+      function setSub(el, text) {
+        if (!el) return;
+        if (text === '' || text == null) {
+          el.textContent = '';
+          el.classList.add('is-hidden');
+          return;
+        }
+        el.textContent = text;
+        el.classList.remove('is-hidden');
+      }
+
+      setSub(itemsSubEl, itemsSoldCompare != null ? formatSessions(itemsSoldCompare) : '\u2014');
+      setSub(fulfilledSubEl, ordersFulfilledCompare != null ? formatSessions(ordersFulfilledCompare) : '\u2014');
+      setSub(returnsSubEl, returnsCompare != null ? formatSessions(returnsCompare) : '\u2014');
+
+      applyKpiDeltaColor(itemsEl, itemsSold, itemsSoldCompare, false);
+      applyKpiDeltaColor(fulfilledEl, ordersFulfilled, ordersFulfilledCompare, false);
+      applyKpiDeltaColor(returnsEl, returnsCount, returnsCompare, true);
     }
 
     function fetchExpandedKpiExtras(options = {}) {
