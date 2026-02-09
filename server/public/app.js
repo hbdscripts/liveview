@@ -7566,7 +7566,7 @@ const API = '';
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Type', ads: 'Ads' };
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Table', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Type', ads: 'Ads' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
@@ -7685,6 +7685,10 @@ const API = '';
           var isDashboardChild = (tab === 'dashboard' || tab === 'spy' || tab === 'sales' || tab === 'date');
           var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard"]');
           var dashboardDropdownItem = dashboardToggle ? dashboardToggle.closest('.nav-item') : null;
+          if (dashboardToggle) {
+            dashboardToggle.classList.toggle('active', !!isDashboardChild);
+            dashboardToggle.setAttribute('aria-current', isDashboardChild ? 'page' : 'false');
+          }
           if (dashboardDropdownItem) {
             if (isDashboardChild) dashboardDropdownItem.classList.add('active');
             else dashboardDropdownItem.classList.remove('active');
