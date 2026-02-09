@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Dashboard KPI + nav/theme robustness fixes)
+Last updated: 2026-02-09 (Unify grid-table header styling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -189,6 +189,7 @@ Edge (optional):
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
   - Ads profit now uses KEXO-attributed sales (purchases→sessions rollup); Google conversion value is not used for Sales/profit.
+  - Grid-table headers use shared `kexo-grid-header` styling so headers match across pages.
   - Shared Product Insights modal: clicking product thumbnails opens a Tabler modal with image gallery, Today-by-default range selector, KPI table, and charts powered by `/api/product-insights`.
   - Sessions table entry/exit links open the same modal, loading either product insights (for `/products/...`) or page insights (for non-product URLs) via `/api/page-insights`.
   - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.

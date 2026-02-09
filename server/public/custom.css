@@ -42,13 +42,15 @@
   display: table-row !important;
 }
 
+/* Shared grid header style (match dashboard overview bottom tables). */
+.kexo-grid-header .grid-row--header .grid-cell,
 .grid-row--header .grid-cell {
   font-weight: 600 !important;
   font-size: .6875rem !important;
   text-transform: uppercase !important;
   letter-spacing: .04em !important;
   color: var(--tblr-secondary, #626976) !important;
-  padding: .625rem 1rem !important;
+  padding: .5rem 1rem !important;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   background: transparent !important;
   vertical-align: middle;

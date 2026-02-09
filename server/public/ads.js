@@ -365,7 +365,7 @@
     root.innerHTML =
       '<div class="country-table-wrap">' +
         '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
-          '<div class="grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
+          '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
           '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
         '</div>' +
       '</div>' +

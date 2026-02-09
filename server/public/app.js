@@ -1239,7 +1239,7 @@ const API = '';
         } catch (_) {}
         html += '<div class="tsm-table-scroll">';
         html +=   '<div class="grid-table tsm-table tsm-sources-grid" role="table" aria-label="Mapped sources">';
-        html +=     '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+        html +=     '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
                       '<div class="grid-cell" role="columnheader">Source</div>' +
                       '<div class="grid-cell" role="columnheader">Key</div>' +
                       '<div class="grid-cell" role="columnheader">Icon URL</div>' +
@@ -1315,7 +1315,7 @@ const API = '';
       } else {
         html += '<div class="tsm-table-scroll">';
         html +=   '<div class="grid-table tsm-table tsm-tokens-grid" role="table" aria-label="Tokens">';
-        html +=     '<div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+        html +=     '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
                       '<div class="grid-cell" role="columnheader">Token</div>' +
                       '<div class="grid-cell" role="columnheader">Seen</div>' +
                       '<div class="grid-cell" role="columnheader">Map / existing</div>' +
