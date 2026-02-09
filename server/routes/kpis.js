@@ -1,11 +1,11 @@
 /**
- * GET /api/kpis?range=today|yesterday|3d|7d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD
+ * GET /api/kpis?range=today|yesterday|3d|7d|14d|30d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD
  * Lightweight KPIs for the top grid (polled frequently).
  */
 const store = require('../store');
 const reportCache = require('../reportCache');
 
-const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
+const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 
 function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';

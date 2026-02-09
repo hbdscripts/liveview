@@ -173,7 +173,9 @@ function verifyShopifyHmac(query) {
 }
 
 function isShopifySignedAppUrlRequest(req) {
-  if (!req || req.method !== 'GET' || req.path !== '/') return false;
+  if (!req || req.method !== 'GET') return false;
+  // Only treat signed query params as auth for UI page loads (not API calls).
+  if (typeof req.path === 'string' && req.path.startsWith('/api/')) return false;
   const q = req.query || {};
   const shopNorm = String(q.shop || '').trim().toLowerCase();
   if (!shopNorm) return false;
@@ -207,8 +209,7 @@ function isShopifySignedAppUrlReferer(req) {
     const reqHost = hostNoPort(req.get('host') || req.get('x-forwarded-host'));
     const refHost = hostNoPort(u.host);
     if (reqHost && refHost && reqHost !== refHost) return false;
-    // Most embedded loads use the signed App URL at "/".
-    if (u.pathname !== '/') return false;
+    // Embedded app navigation can be on /dashboard, /live, etc. Accept any path as long as the signed query is valid.
     if (!u.search || u.search.length < 5) return false;
     const q = {};
     for (const [k, v] of u.searchParams.entries()) {

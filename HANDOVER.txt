@@ -1,7 +1,7 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-08 (Tabler UI + split pages, sticky navbar overlap, tools page rebuild, per-page routing)
+Last updated: 2026-02-09 (Dashboard data fixes + Shopify embedded auth hardening + navbar-sticky rollout)
 
-This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend now uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
+This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
 IMPORTANT (for future agents)
 - Keep this file accurate. If you change core paths (routes, auth, dashboard UX, deploy), update this file in the SAME commit.
@@ -42,7 +42,8 @@ Server routing (Express):
 - See: `server/index.js`.
 
 Auth protection:
-- `server/middleware/dashboardAuth.js` updated to include the new per-page routes.
+- `server/middleware/dashboardAuth.js` protects per-page routes + API routes.
+- Embedded Shopify app support: signed query requests and signed referers now work for ALL dashboard pages (not just `/`), so API calls don't 401 when navigating in an iframe.
 - Login flow redirects to `/dashboard` after OAuth (`server/routes/login.js`).
 
 ---
@@ -54,6 +55,21 @@ Auth protection:
 - Highlights nav by setting `aria-current="page"`.
 - Ads page lazily loads `/ads.js` when needed.
 - Tools page hides shared KPI/date controls and skips auto-refresh.
+- Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
+
+---
+
+## Dashboard (homepage) data wiring
+
+`server/public/dashboard.html`:
+- Homepage chart container IDs and table IDs are aligned to what `server/public/app.js` expects, so charts/tables render instead of showing empty state.
+
+Date range normalization (frontend + backend):
+- UI uses `7days/14days/30days`; APIs use `7d/14d/30d`. `server/public/app.js` normalizes keys before calling APIs.
+- Backend now allows `14d/30d` where needed (routes + store).
+
+Platform start/min date clamp:
+- MIN_YMD + PLATFORM_START values were corrected back to 2025-02-01 so historical ranges aren't incorrectly clamped into the future.
 
 ---
 
@@ -155,3 +171,8 @@ Edge (optional):
 - Tabler UI rollout and split-page architecture (per-page HTML routes).
 - Sticky navbar overlap layout and shared theme config (`tabler-theme.css`).
 - Tools page rebuilt + styles moved to `tools.css`.
+
+2026-02-09
+- Fix “no data” on homepage: range-key normalization, correct min/platform-start clamps, and dashboard chart/table ID wiring.
+- Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
+- Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.

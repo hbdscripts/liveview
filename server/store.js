@@ -1492,6 +1492,14 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
     const startParts = addDaysToParts(todayParts, -6);
     return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
   }
+  if (rangeKey === '14d') {
+    const startParts = addDaysToParts(todayParts, -13);
+    return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
+  }
+  if (rangeKey === '30d') {
+    const startParts = addDaysToParts(todayParts, -29);
+    return { start: startOfDayUtcMs(startParts, timeZone), end: nowMs };
+  }
   if (rangeKey === 'month') {
     const startOfMonth = zonedTimeToUtcMs(todayParts.year, todayParts.month, 1, 0, 0, 0, timeZone);
     return { start: startOfMonth, end: nowMs };
@@ -1500,7 +1508,7 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
 }
 
 // Platform start date: never return data before Feb 1 2025
-const PLATFORM_START_MS = zonedTimeToUtcMs(2026, 2, 8, 0, 0, 0, 'Europe/London');
+const PLATFORM_START_MS = zonedTimeToUtcMs(2025, 2, 1, 0, 0, 0, 'Europe/London');
 const _origGetRangeBounds = getRangeBounds;
 getRangeBounds = function(rangeKey, nowMs, timeZone) {
   const bounds = _origGetRangeBounds(rangeKey, nowMs, timeZone);
@@ -1813,7 +1821,7 @@ async function getPixelReturningRevenueGbp(start, end) {
 function isDayLikeRangeKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim().toLowerCase();
-  if (k === 'today' || k === 'yesterday' || k === '3d' || k === '7d' || k === 'month') return true;
+  if (k === 'today' || k === 'yesterday' || k === '3d' || k === '7d' || k === '14d' || k === '30d' || k === 'month') return true;
   if (/^d:\d{4}-\d{2}-\d{2}$/.test(k)) return true;
   const m = k.match(/^r:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return false;
@@ -2500,7 +2508,7 @@ async function getStats(options = {}) {
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
-  const allowedLegacy = new Set(['3d', '7d', 'month']);
+  const allowedLegacy = new Set(['3d', '7d', '14d', '30d', 'month']);
   const rangeKeys = DEFAULT_RANGE_KEYS.slice();
   if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || isRangeKey || allowedLegacy.has(requestedRange))) {
     rangeKeys.push(requestedRange);
@@ -2630,7 +2638,7 @@ async function getKpis(options = {}) {
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
-  const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', 'month']);
+  const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
   const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || isRangeKey || allowedLegacy.has(requestedRange))
     ? requestedRange
     : 'today';

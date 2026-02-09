@@ -58,37 +58,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 1030;
-  background: var(--tblr-navbar-bg, #1e293b);
-}
-
-/* Navbar date selector styling */
-.navbar .form-select-sm {
-  padding: 0.25rem 1.75rem 0.25rem 0.5rem;
-  font-size: 0.8125rem;
-  border-color: rgba(255, 255, 255, 0.2);
-  background-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.navbar .form-select-sm:focus {
-  border-color: var(--tblr-primary);
-  background-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 1);
-}
-
-/* Navbar button styling */
-.navbar .btn-icon {
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  background: transparent;
-  border: none;
-}
-
-.navbar .btn-icon:hover {
-  color: rgba(255, 255, 255, 1);
-  background-color: rgba(255, 255, 255, 0.1);
+  background: var(--tblr-bg-surface, #fff);
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
 }
 
 /* Horizontal navbar active state */

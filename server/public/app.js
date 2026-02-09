@@ -28,7 +28,68 @@ const API = '';
     let pendingCustomRangeEndYmd = null; // modal-only pending selection
     let customCalendarLastPayload = null; // last /api/available-days payload used for rendering
     /** When dateRange is 'live' or 'sales', stats/KPIs use today's data; only the main table shows those special views. */
-    function getStatsRange() { return (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : dateRange; }
+    function normalizeRangeKeyForApi(key) {
+      const k = (key == null ? '' : String(key)).trim().toLowerCase();
+      // UI uses friendly labels (7days/14days/30days) but APIs + server payload keys use 7d/14d/30d.
+      if (k === '7days') return '7d';
+      if (k === '14days') return '14d';
+      if (k === '30days') return '30d';
+      return k;
+    }
+    function getStatsRange() {
+      const raw = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : dateRange;
+      return normalizeRangeKeyForApi(raw);
+    }
+
+    // Shopify embedded app: keep the signed query params on internal navigation.
+    // Without this, moving from `/?shop=...&hmac=...` to `/dashboard` drops the signature and API calls can 401.
+    (function propagateShopifySignedQueryToLinks() {
+      try {
+        const cur = new URL(window.location.href);
+        const sp = cur.searchParams;
+        const shop = sp.get('shop');
+        const hmac = sp.get('hmac');
+        const ts = sp.get('timestamp');
+        if (!shop || !hmac || !ts) return;
+        if (!/\.myshopify\.com$/i.test(shop)) return;
+
+        const signedEntries = [];
+        sp.forEach(function(v, k) { signedEntries.push([k, v]); });
+        const signedKeys = new Set(signedEntries.map(function(e) { return e[0]; }));
+
+        const isAssetPath = function(p) {
+          if (!p) return false;
+          if (p.startsWith('/assets/')) return true;
+          return /\.(css|js|png|webp|jpg|jpeg|gif|svg|ico|map|txt)$/i.test(p);
+        };
+
+        document.querySelectorAll('a[href]').forEach(function(a) {
+          const rawHref = a.getAttribute('href');
+          if (!rawHref) return;
+          const h = rawHref.trim();
+          if (!h || h[0] === '#') return;
+          if (/^(javascript:|mailto:|tel:)/i.test(h)) return;
+
+          let u;
+          try { u = new URL(h, cur.origin); } catch (_) { return; }
+          if (u.origin !== cur.origin) return;
+          if ((u.pathname || '').startsWith('/api/')) return;
+          if (isAssetPath(u.pathname || '')) return;
+
+          // Don't add signed params to links that already have extra params:
+          // adding any new key would invalidate the existing hmac.
+          let hasNonSigned = false;
+          u.searchParams.forEach(function(_v, k) { if (!signedKeys.has(k)) hasNonSigned = true; });
+          if (hasNonSigned) return;
+
+          signedEntries.forEach(function(pair) {
+            u.searchParams.set(pair[0], pair[1]);
+          });
+          a.setAttribute('href', u.pathname + '?' + u.searchParams.toString() + (u.hash || ''));
+        });
+      } catch (_) {}
+    })();
+
     function getKpiData() {
       if (kpiCache) return kpiCache;
       if (getStatsRange() === 'today') return {};
@@ -162,7 +223,7 @@ const API = '';
     let selectedSessionId = null;
     let timeTick = null;
     const tz = 'Europe/London';
-    const MIN_YMD = '2026-02-01';
+    const MIN_YMD = '2025-02-01';
 
     function floorAllowsYesterday() {
       try {
@@ -4177,7 +4238,7 @@ const API = '';
         mode: 'range',
         dateFormat: 'Y-m-d',
         maxDate: 'today',
-        minDate: MIN_YMD || '2026-02-01',
+        minDate: MIN_YMD || '2025-02-01',
         disable: [
           function(date) {
             const y = date.getFullYear();
@@ -5312,7 +5373,7 @@ const API = '';
       } else {
         var limit = rowsPerPage;
         var offset = (currentPage - 1) * rowsPerPage;
-        url = API + '/api/sessions?range=' + encodeURIComponent(dateRange) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
+        url = API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
       }
       liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {
