@@ -177,3 +177,4 @@ Edge (optional):
 - Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
 - Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.
 - Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
+- Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
