@@ -142,13 +142,11 @@ const API = '';
     let lastKpisFetchedAt = 0;
     let lastTrafficFetchedAt = 0;
     let lastProductsFetchedAt = 0;
-    let lastBreakdownFetchedAt = 0;
     let kpiCache = null;
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
-    let breakdownRefreshInFlight = null;
     let kpisRefreshInFlight = null;
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
@@ -478,7 +476,6 @@ const API = '';
               if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
             }
             if (shopForSalesFallback) {
-              if (activeMainTab === 'breakdown' && typeof refreshBreakdown === 'function') refreshBreakdown({ force: false });
               if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
               if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
               if ((activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
@@ -4428,7 +4425,6 @@ const API = '';
       bestVariantsCache = null;
       trafficCache = null;
       lastStatsFetchedAt = 0;
-      lastBreakdownFetchedAt = 0;
       lastProductsFetchedAt = 0;
       lastTrafficFetchedAt = 0;
       updateNextUpdateUi();
@@ -4440,8 +4436,6 @@ const API = '';
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
-      } else if (activeMainTab === 'breakdown') {
-        refreshBreakdown({ force: false });
       } else if (activeMainTab === 'traffic') {
         refreshTraffic({ force: false });
       } else if (activeMainTab === 'products') {
@@ -5049,42 +5043,6 @@ const API = '';
           build.finish();
         });
       return statsRefreshInFlight;
-    }
-
-    function refreshBreakdown(options = {}) {
-      const force = !!options.force;
-      if (breakdownRefreshInFlight) return breakdownRefreshInFlight;
-      var shop = getShopParam() || shopForSalesFallback || null;
-      if (!shop) return Promise.resolve(null);
-
-      const build = startReportBuild({ key: 'breakdown', overlayId: 'breakdown-loading-overlay', stepId: 'breakdown-build-step' });
-      build.step('Loading\u2026');
-      let leaderboardP = null;
-      let finishesP = null;
-      let lengthsP = null;
-      let chainStylesP = null;
-      try { leaderboardP = fetchProductsLeaderboard({ force }); } catch (err) { console.error(err); leaderboardP = Promise.resolve(null); }
-      try { finishesP = fetchFinishes({ force }); } catch (err) { console.error(err); finishesP = Promise.resolve(null); }
-      try { lengthsP = fetchLengths({ force }); } catch (err) { console.error(err); lengthsP = Promise.resolve(null); }
-      try { chainStylesP = fetchChainStyles({ force }); } catch (err) { console.error(err); chainStylesP = Promise.resolve(null); }
-      function settled(p) {
-        return Promise.resolve(p)
-          .then(function(v) { return { ok: true, value: v }; })
-          .catch(function(err) { console.error(err); return { ok: false, error: err }; });
-      }
-
-      breakdownRefreshInFlight = Promise.all([settled(leaderboardP), settled(finishesP), settled(lengthsP), settled(chainStylesP)])
-        .then(function() {
-          renderBreakdownTitles(leaderboardCache);
-          renderBreakdownTypes(leaderboardCache);
-          renderBreakdownFinishes(finishesCache);
-          renderBreakdownLengths(lengthsCache);
-          renderBreakdownChainStyles(chainStylesCache);
-          lastBreakdownFetchedAt = Date.now();
-        })
-        .catch(function(err) { console.error(err); return null; })
-        .finally(function() { breakdownRefreshInFlight = null; build.finish(); });
-      return breakdownRefreshInFlight;
     }
 
     function refreshProducts(options = {}) {
@@ -7540,8 +7498,6 @@ const API = '';
             try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
           } else if (tab === 'stats') {
             refreshStats({ force: false });
-            refreshBreakdown({ force: false });
-            if (statsCache && statsCache.country) renderAov(statsCache);
             ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
@@ -7669,7 +7625,6 @@ const API = '';
             } catch (_) {}
             if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
             else if (activeMainTab === 'stats') refreshStats({ force: true });
-            else if (activeMainTab === 'breakdown') refreshBreakdown({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
@@ -7733,10 +7688,7 @@ const API = '';
     }
 
     function onBreakdownAutoRefreshTick() {
-      if (activeMainTab !== 'breakdown') return;
-      if (getStatsRange() !== 'today') return;
-      if (document.visibilityState !== 'visible') return;
-      refreshBreakdown({ force: false });
+      // Dead: breakdown tab no longer exists in any active page.
     }
 
     function onProductsAutoRefreshTick() {
@@ -7789,9 +7741,6 @@ const API = '';
       } else if (activeMainTab === 'stats') {
         const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
         if (stale) refreshStats({ force: false });
-      } else if (activeMainTab === 'breakdown') {
-        const staleBreakdown = !lastBreakdownFetchedAt || (Date.now() - lastBreakdownFetchedAt) > STATS_REFRESH_MS;
-        if (staleBreakdown) refreshBreakdown({ force: false });
       } else if (activeMainTab === 'products') {
         const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
         if (staleProducts) refreshProducts({ force: false });
