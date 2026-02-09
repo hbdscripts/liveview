@@ -886,6 +886,14 @@ body.theme-dark .landing-thumb {
   .landing-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
 }
 
+/* Mobile topbar: collapse action icons + date into settings dropdown (desktop unchanged). */
+@media (max-width: 767.98px) {
+  .kexo-mobile-topmenu { min-width: 18rem; max-width: calc(100vw - 1rem); }
+  .kexo-mobile-topmenu #kexo-mobile-date-slot { width: 100%; }
+  .kexo-mobile-topmenu #global-date-select { width: 100% !important; max-width: none !important; }
+  .kexo-mobile-topmenu #kexo-mobile-actions-slot { width: 100%; }
+}
+
 @media (max-width: 768px) and (min-width: 577px) {
   #live-kpi-grid > .col-sm-4 { flex: 0 0 33.333%; max-width: 33.333%; }
   #live-kpi-grid .h1 { font-size: 1.25rem; }

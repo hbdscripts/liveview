@@ -13,7 +13,7 @@
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
             <span class="navbar-toggler-icon"></span>
           </button>
-          <div class="d-flex align-items-center">
+          <div class="d-none d-md-flex align-items-center" id="kexo-date-wrap">
             <select id="global-date-select" class="form-select" aria-label="Date range">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
@@ -27,11 +27,23 @@
             <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30">
           </a>
           <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="theme-settings-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-open-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
-            <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+            <div class="dropdown d-md-none">
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-mobile-topmenu-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
+                <i class="ti ti-settings-filled" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end p-2 kexo-mobile-topmenu" id="kexo-mobile-topmenu">
+                <div id="kexo-mobile-date-slot"></div>
+                <div class="dropdown-divider my-2"></div>
+                <div id="kexo-mobile-actions-slot" class="d-flex flex-wrap gap-1 justify-content-end"></div>
+              </div>
+            </div>
+            <div id="kexo-desktop-actions" class="d-none d-md-flex flex-row align-items-center gap-1">
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="audio-mute-btn" aria-label="Sound"><i class="ti ti-volume sound-icon-on"></i><i class="ti ti-volume-off sound-icon-off is-hidden"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="theme-settings-btn" aria-label="Theme"><i class="ti ti-palette"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="config-open-btn" aria-label="Diagnostics"><i class="ti ti-settings"></i></button>
+              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" id="logout-btn" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+            </div>
           </div>
         </div>
       </header>

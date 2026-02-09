@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Unify grid-table header styling)
+Last updated: 2026-02-09 (Mobile topbar dropdown for actions + date)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -179,6 +179,7 @@ Edge (optional):
 - Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.
 - Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
 - Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
+- Mobile: topbar collapses action icons + date picker under a single settings dropdown (desktop unchanged).
 - Dashboard KPI correctness + consistency:
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.

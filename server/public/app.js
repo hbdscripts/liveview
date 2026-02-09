@@ -7418,6 +7418,49 @@ const API = '';
     })();
 
     (function initTopBar() {
+      (function initMobileTopbarSettingsDropdown() {
+        const dateWrap = document.getElementById('kexo-date-wrap');
+        const desktopActions = document.getElementById('kexo-desktop-actions');
+        const mobileDateSlot = document.getElementById('kexo-mobile-date-slot');
+        const mobileActionsSlot = document.getElementById('kexo-mobile-actions-slot');
+        if (!dateWrap || !desktopActions || !mobileDateSlot || !mobileActionsSlot) return;
+
+        const homeParent = dateWrap.parentNode;
+        const homeNext = dateWrap.nextSibling;
+        const homeClass = dateWrap.className;
+        const mql = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
+
+        function moveChildren(from, to) {
+          if (!from || !to) return;
+          while (from.firstChild) to.appendChild(from.firstChild);
+        }
+
+        function mount() {
+          const isMobile = mql ? !!mql.matches : (window.innerWidth < 768);
+          if (isMobile) {
+            try { if (!mobileDateSlot.contains(dateWrap)) mobileDateSlot.appendChild(dateWrap); } catch (_) {}
+            dateWrap.className = 'd-flex align-items-center w-100';
+            moveChildren(desktopActions, mobileActionsSlot);
+          } else {
+            try {
+              if (homeParent && dateWrap.parentNode !== homeParent) {
+                if (homeNext && homeNext.parentNode === homeParent) homeParent.insertBefore(dateWrap, homeNext);
+                else homeParent.appendChild(dateWrap);
+              }
+            } catch (_) {}
+            dateWrap.className = homeClass;
+            moveChildren(mobileActionsSlot, desktopActions);
+          }
+        }
+
+        mount();
+        try {
+          if (mql && mql.addEventListener) mql.addEventListener('change', mount);
+          else if (mql && mql.addListener) mql.addListener(mount);
+          else window.addEventListener('resize', mount);
+        } catch (_) {}
+      })();
+
       try { saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true'; } catch (_) { saleMuted = false; }
       try { saleAudio = new Audio(CASH_REGISTER_MP3_URL); } catch (_) { saleAudio = null; }
       if (saleAudio) {
