@@ -1893,12 +1893,11 @@ const API = '';
           });
         });
       }
-      const prevBtn = document.getElementById('pagination-prev');
-      const nextBtn = document.getElementById('pagination-next');
-      const labelEl = document.getElementById('pagination-label');
-      if (prevBtn) { prevBtn.disabled = currentPage <= 1; }
-      if (nextBtn) { nextBtn.disabled = currentPage >= totalPages; }
-      if (labelEl) labelEl.textContent = currentPage + ' of ' + totalPages;
+      var paginWrap = document.getElementById('table-pagination');
+      if (paginWrap) {
+        paginWrap.classList.toggle('is-hidden', totalPages <= 1);
+        if (totalPages > 1) paginWrap.innerHTML = buildPaginationHtml(currentPage, totalPages);
+      }
       const rowsSelect = document.getElementById('rows-per-page-select');
       if (rowsSelect) rowsSelect.value = String(rowsPerPage);
       updateSortHeaders();
@@ -2911,14 +2910,16 @@ const API = '';
 
     (function initTypeTablePagination() {
       TYPE_TABLE_DEFS.forEach(function(def) {
-        var prevBtn = document.getElementById('type-' + def.id + '-prev');
-        var nextBtn = document.getElementById('type-' + def.id + '-next');
-        if (prevBtn) prevBtn.addEventListener('click', function() {
-          typeTablePages[def.id] = Math.max(1, (typeTablePages[def.id] || 1) - 1);
-          renderTypeTable(leaderboardCache, def);
-        });
-        if (nextBtn) nextBtn.addEventListener('click', function() {
-          typeTablePages[def.id] = (typeTablePages[def.id] || 1) + 1;
+        var wrap = document.getElementById('type-' + def.id + '-pagination');
+        if (!wrap) return;
+        wrap.addEventListener('click', function(e) {
+          var link = e.target.closest('a[data-page]');
+          if (!link) return;
+          e.preventDefault();
+          if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
+          var pg = parseInt(link.dataset.page, 10);
+          if (!pg || pg < 1) return;
+          typeTablePages[def.id] = pg;
           renderTypeTable(leaderboardCache, def);
         });
       });
@@ -3403,26 +3404,51 @@ const API = '';
       return Math.min(Math.max(1, n), Math.max(1, totalPages || 1));
     }
 
+    function buildPaginationHtml(page, totalPages) {
+      var p = Math.max(1, page);
+      var tp = Math.max(1, totalPages);
+      var chevL = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg>';
+      var chevR = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>';
+      var h = '<ul class="pagination m-0">';
+      h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">' + chevL + '</a></li>';
+      // Build page numbers with ellipsis
+      var pages = [];
+      if (tp <= 7) {
+        for (var i = 1; i <= tp; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        if (p > 3) pages.push('...');
+        var start = Math.max(2, p - 1);
+        var end = Math.min(tp - 1, p + 1);
+        if (p <= 3) { start = 2; end = 4; }
+        if (p >= tp - 2) { start = tp - 3; end = tp - 1; }
+        for (var i = start; i <= end; i++) pages.push(i);
+        if (p < tp - 2) pages.push('...');
+        pages.push(tp);
+      }
+      for (var j = 0; j < pages.length; j++) {
+        var pg = pages[j];
+        if (pg === '...') {
+          h += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        } else {
+          h += '<li class="page-item' + (pg === p ? ' active' : '') + '"><a class="page-link" href="#" data-page="' + pg + '">' + pg + '</a></li>';
+        }
+      }
+      h += '<li class="page-item' + (p >= tp ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p + 1) + '" aria-label="Next">' + chevR + '</a></li>';
+      h += '</ul>';
+      return h;
+    }
+
     function updateCardPagination(prefix, page, totalPages) {
-      const wrap = document.getElementById(prefix + '-pagination');
-      const prev = document.getElementById(prefix + '-prev');
-      const next = document.getElementById(prefix + '-next');
-      const label = document.getElementById(prefix + '-label');
-      if (!wrap || !prev || !next || !label) return;
-      const pages = Math.max(1, totalPages || 1);
-      const show = pages > 1;
+      var wrap = document.getElementById(prefix + '-pagination');
+      if (!wrap) return;
+      var pages = Math.max(1, totalPages || 1);
+      var show = pages > 1;
       wrap.dataset.paginated = show ? '1' : '0';
       wrap.dataset.pages = String(pages);
       wrap.dataset.page = String(page);
       wrap.classList.toggle('is-hidden', !show);
-      prev.disabled = page <= 1;
-      next.disabled = page >= pages;
-      // Tabler pagination: toggle disabled class on parent li.page-item
-      var prevItem = prev.closest('.page-item');
-      var nextItem = next.closest('.page-item');
-      if (prevItem) prevItem.classList.toggle('disabled', page <= 1);
-      if (nextItem) nextItem.classList.toggle('disabled', page >= pages);
-      label.textContent = page + ' of ' + pages;
+      if (show) wrap.innerHTML = buildPaginationHtml(page, pages);
     }
 
     function scheduleBreakdownSync() {
@@ -5635,73 +5661,50 @@ const API = '';
       });
     }
 
-    const paginationPrev = document.getElementById('pagination-prev');
-    if (paginationPrev) {
-      paginationPrev.addEventListener('click', function() {
-        if (currentPage <= 1) return;
-        currentPage--;
+    // Session table pagination (live/sales/date) — delegated
+    (function initSessionTablePagination() {
+      var wrap = document.getElementById('table-pagination');
+      if (!wrap) return;
+      wrap.addEventListener('click', function(e) {
+        var link = e.target.closest('a[data-page]');
+        if (!link) return;
+        e.preventDefault();
+        if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
+        var pg = parseInt(link.dataset.page, 10);
+        if (!pg || pg < 1) return;
+        currentPage = pg;
         if (sessionsTotal != null) fetchSessions(); else renderTable();
       });
-    }
-    const paginationNext = document.getElementById('pagination-next');
-    if (paginationNext) {
-      paginationNext.addEventListener('click', function() {
-        const totalPages = sessionsTotal != null
-          ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
-          : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
-        if (currentPage >= totalPages) return;
-        currentPage++;
-        if (sessionsTotal != null) fetchSessions(); else renderTable();
-      });
-    }
+    })();
 
     setupSortableHeaders();
     setupBestSellersSort();
     setupAllTableSorts();
 
+    // Card-table pagination — event delegation on containers
     (function initTopTablePagination() {
-      function bind(prefix, onPrev, onNext) {
-        const prev = document.getElementById(prefix + '-prev');
-        const next = document.getElementById(prefix + '-next');
-        if (prev) prev.addEventListener('click', function() { onPrev(); });
-        if (next) next.addEventListener('click', function() { onNext(); });
+      function bindDelegate(prefix, goToPage) {
+        var wrap = document.getElementById(prefix + '-pagination');
+        if (!wrap) return;
+        wrap.addEventListener('click', function(e) {
+          var link = e.target.closest('a[data-page]');
+          if (!link) return;
+          e.preventDefault();
+          if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
+          var pg = parseInt(link.dataset.page, 10);
+          if (!pg || pg < 1) return;
+          goToPage(pg);
+        });
       }
-      bind('country',
-        function() { countryPage = Math.max(1, countryPage - 1); renderCountry(statsCache); },
-        function() { countryPage = countryPage + 1; renderCountry(statsCache); }
-      );
-      bind('best-geo-products',
-        function() { bestGeoProductsPage = Math.max(1, bestGeoProductsPage - 1); renderBestGeoProducts(statsCache); },
-        function() { bestGeoProductsPage = bestGeoProductsPage + 1; renderBestGeoProducts(statsCache); }
-      );
-      bind('best-sellers',
-        function() { bestSellersPage = Math.max(1, bestSellersPage - 1); fetchBestSellers(); },
-        function() { bestSellersPage = bestSellersPage + 1; fetchBestSellers(); }
-      );
-      bind('best-variants',
-        function() { bestVariantsPage = Math.max(1, bestVariantsPage - 1); fetchBestVariants(); },
-        function() { bestVariantsPage = bestVariantsPage + 1; fetchBestVariants(); }
-      );
-      bind('breakdown-aov',
-        function() { breakdownAovPage = Math.max(1, breakdownAovPage - 1); renderAov(statsCache); },
-        function() { breakdownAovPage = breakdownAovPage + 1; renderAov(statsCache); }
-      );
-      bind('breakdown-title',
-        function() { breakdownTitlePage = Math.max(1, breakdownTitlePage - 1); renderBreakdownTitles(leaderboardCache); },
-        function() { breakdownTitlePage = breakdownTitlePage + 1; renderBreakdownTitles(leaderboardCache); }
-      );
-      bind('breakdown-finish',
-        function() { breakdownFinishPage = Math.max(1, breakdownFinishPage - 1); renderBreakdownFinishes(finishesCache); },
-        function() { breakdownFinishPage = breakdownFinishPage + 1; renderBreakdownFinishes(finishesCache); }
-      );
-      bind('breakdown-length',
-        function() { breakdownLengthPage = Math.max(1, breakdownLengthPage - 1); renderBreakdownLengths(lengthsCache); },
-        function() { breakdownLengthPage = breakdownLengthPage + 1; renderBreakdownLengths(lengthsCache); }
-      );
-      bind('breakdown-chainstyle',
-        function() { breakdownChainStylePage = Math.max(1, breakdownChainStylePage - 1); renderBreakdownChainStyles(chainStylesCache); },
-        function() { breakdownChainStylePage = breakdownChainStylePage + 1; renderBreakdownChainStyles(chainStylesCache); }
-      );
+      bindDelegate('country', function(pg) { countryPage = pg; renderCountry(statsCache); });
+      bindDelegate('best-geo-products', function(pg) { bestGeoProductsPage = pg; renderBestGeoProducts(statsCache); });
+      bindDelegate('best-sellers', function(pg) { bestSellersPage = pg; fetchBestSellers(); });
+      bindDelegate('best-variants', function(pg) { bestVariantsPage = pg; fetchBestVariants(); });
+      bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
+      bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
+      bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });
+      bindDelegate('breakdown-length', function(pg) { breakdownLengthPage = pg; renderBreakdownLengths(lengthsCache); });
+      bindDelegate('breakdown-chainstyle', function(pg) { breakdownChainStylePage = pg; renderBreakdownChainStyles(chainStylesCache); });
     })();
 
     (function initRowsPerPageSelect() {
