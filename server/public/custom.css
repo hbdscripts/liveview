@@ -608,10 +608,14 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
   height: 42px;
   min-width: 42px;
   min-height: 42px;
-  border-radius: var(--tblr-border-radius, 4px);
   object-fit: cover;
-  border: 2px solid #fff;
+  border: 2px solid var(--tblr-bg-surface, #fff);
   box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+body.theme-dark .landing-thumb {
+  border-color: var(--tblr-body-bg, #1a2234);
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 
 /* Stacked entry/exit thumbnails (only when 2 images overlap) */
