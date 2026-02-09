@@ -1,6 +1,44 @@
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
+
+    // ── Page progress bar (Tabler turbo-style) ──
+    var _progressEl = null;
+    var _progressBarEl = null;
+    var _progressActive = 0;
+    var _progressHideTimer = null;
+    function _ensureProgress() {
+      if (_progressEl) return;
+      _progressEl = document.createElement('div');
+      _progressEl.className = 'page-progress';
+      _progressEl.innerHTML = '<div class="page-progress-bar"></div>';
+      document.body.prepend(_progressEl);
+      _progressBarEl = _progressEl.querySelector('.page-progress-bar');
+    }
+    function showPageProgress() {
+      _ensureProgress();
+      _progressActive++;
+      if (_progressHideTimer) { clearTimeout(_progressHideTimer); _progressHideTimer = null; }
+      _progressBarEl.style.transition = 'none';
+      _progressBarEl.style.width = '0%';
+      _progressEl.classList.add('active');
+      requestAnimationFrame(function() {
+        _progressBarEl.style.transition = 'width 8s cubic-bezier(0.1, 0.05, 0, 1)';
+        _progressBarEl.style.width = '85%';
+      });
+    }
+    function hidePageProgress() {
+      _ensureProgress();
+      _progressActive = Math.max(0, _progressActive - 1);
+      if (_progressActive > 0) return;
+      _progressBarEl.style.transition = 'width 0.2s ease';
+      _progressBarEl.style.width = '100%';
+      _progressHideTimer = setTimeout(function() {
+        _progressEl.classList.remove('active');
+        _progressBarEl.style.width = '0%';
+        _progressHideTimer = null;
+      }, 300);
+    }
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
     const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
@@ -4836,6 +4874,7 @@ const API = '';
       if (wrap) wrap.classList.add('report-building');
       if (overlay) overlay.classList.remove('is-hidden');
       if (stepEl) stepEl.textContent = '';
+      showPageProgress();
 
       function step(text) {
         if (reportBuildTokens[key] !== token) return;
@@ -4847,6 +4886,7 @@ const API = '';
         if (reportBuildTokens[key] !== token) return;
         if (overlay) overlay.classList.add('is-hidden');
         if (wrap) wrap.classList.remove('report-building');
+        hidePageProgress();
       }
 
       return { step: step, finish: finish };
@@ -5369,6 +5409,7 @@ const API = '';
       if (liveRefreshInFlight) return liveRefreshInFlight;
       var overlay = document.getElementById('sessions-loading-overlay');
       if (overlay) overlay.classList.remove('is-hidden');
+      showPageProgress();
       var isLive = dateRange === 'live';
       var url;
       if (isLive) {
@@ -5423,6 +5464,7 @@ const API = '';
         .finally(function() {
           liveRefreshInFlight = null;
           if (overlay) overlay.classList.add('is-hidden');
+          hidePageProgress();
         });
       return liveRefreshInFlight;
     }
@@ -8132,6 +8174,7 @@ const API = '';
           days = n;
         } catch (_) {}
         dashLoading = true;
+        showPageProgress();
         var url = API + '/api/dashboard-series?days=' + days + (force ? '&_=' + Date.now() : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
@@ -8145,6 +8188,9 @@ const API = '';
           })
           .catch(function() {
             dashLoading = false;
+          })
+          .finally(function() {
+            hidePageProgress();
           });
       }
 
