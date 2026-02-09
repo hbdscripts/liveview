@@ -8274,18 +8274,19 @@ const API = '';
         function sumField(arr, field) { var t = 0; for (var i = 0; i < arr.length; i++) t += (arr[i][field] || 0); return t; }
         function avgField(arr, field) { if (!arr.length) return 0; return sumField(arr, field) / arr.length; }
 
+        var s = data.summary || {};
         var curRevenue = sumField(series, 'revenue');
         var curOrders = sumField(series, 'orders');
         var curSessions = sumField(series, 'sessions');
         var curConvRate = avgField(series, 'convRate');
         var curAov = avgField(series, 'aov');
         var curBounceRate = avgField(series, 'bounceRate');
-        var curReturning = sumField(series, 'returningCustomerOrders');
-        var curNewCustomers = sumField(series, 'newCustomerOrders');
         var curAdSpend = sumField(series, 'adSpend');
-        var curDesktop = sumField(series, 'desktopSessions');
-        var curMobile = sumField(series, 'mobileSessions');
-        var s = data.summary || {};
+        // These are computed server-side as summary totals (not per-day series points).
+        var curReturning = (s && typeof s.returningCustomerOrders === 'number') ? s.returningCustomerOrders : sumField(series, 'returningCustomerOrders');
+        var curNewCustomers = (s && typeof s.newCustomerOrders === 'number') ? s.newCustomerOrders : sumField(series, 'newCustomerOrders');
+        var curDesktop = (s && typeof s.desktopSessions === 'number') ? s.desktopSessions : sumField(series, 'desktopSessions');
+        var curMobile = (s && typeof s.mobileSessions === 'number') ? s.mobileSessions : sumField(series, 'mobileSessions');
 
         // Main KPI values + change badges are set by renderDashboardKpisFromApi() using /api/kpis
         if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = curAdSpend > 0 ? fmtGbp(curAdSpend) : '\u2014';

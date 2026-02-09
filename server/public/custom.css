@@ -11,11 +11,6 @@
   --online-dot-color: #22c55e;
 }
 
-/* Logo swap for dark mode (global theme only). */
-.kexo-logo-dark { display: none; }
-html[data-bs-theme="dark"] .kexo-logo-dark { display: inline; }
-html[data-bs-theme="dark"] .kexo-logo-light { display: none; }
-
 /* Grid table system — Tabler invoice style */
 .grid-table {
   display: table !important;

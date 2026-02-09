@@ -183,10 +183,11 @@ Edge (optional):
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.
 - Nav + theming:
   - Added direct `/traffic` link in the Traffic dropdown and highlight dropdown on `/traffic`.
-  - Header/footer logos now swap to `kexo_logo_fullcolor_dark.webp` when global theme is dark.
+  - Header/footer logo reverted to a single image (no dark-mode swap).
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.
   - De-duplicated grid-table CSS (kept definitions in `custom.css`).
   - Legacy `live-visitors.html` no longer references missing `/nav.css`.
   - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
+  - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.

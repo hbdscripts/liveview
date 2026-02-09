@@ -93,6 +93,14 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const overallStart = dayBounds[0].start;
   const overallEnd = dayBounds[dayBounds.length - 1].end;
 
+  // Best-effort guardrail: ensure truth cache is fresh for this range so dashboard-series
+  // doesn't drift from /api/kpis (which reconciles before reporting).
+  if (shop) {
+    try {
+      await salesTruth.ensureReconciled(shop, overallStart, overallEnd, 'dashboard_series');
+    } catch (_) {}
+  }
+
   // Fetch sessions + bounce per day
   const sessionsPerDay = {};
   const bouncePerDay = {};
