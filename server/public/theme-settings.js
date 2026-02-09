@@ -3,11 +3,11 @@
 
   var DEFAULTS = {
     theme: 'light',
-    'theme-primary': '',
+    // Default primary is green (#2fb344) to match Tabler preview; stored value overrides.
+    'theme-primary': 'green',
     'theme-radius': '1',
-    // KEXO UI defaults (overridable)
-    'kexo-topbar': '',        // '' = default gradient
-    'kexo-nav-active': ''     // '' = default gradient underline
+    'theme-font': 'sans',
+    'theme-base': 'slate',
   };
 
   var KEYS = Object.keys(DEFAULTS);
@@ -37,6 +37,23 @@
     '2': '2rem'
   };
 
+  // Font family map
+  var FONT_FAMILIES = {
+    sans: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+    serif: 'Georgia, Cambria, \"Times New Roman\", Times, serif',
+    mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
+    comic: '\"Comic Sans MS\", \"Comic Sans\", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif'
+  };
+
+  // Gray palette map (Tabler uses --tblr-gray-50..950)
+  var BASE_PALETTES = {
+    slate:  { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a',950:'#020617' },
+    gray:   { 50:'#f9fafb',100:'#f3f4f6',200:'#e5e7eb',300:'#d1d5db',400:'#9ca3af',500:'#6b7280',600:'#4b5563',700:'#374151',800:'#1f2937',900:'#111827',950:'#030712' },
+    zinc:   { 50:'#fafafa',100:'#f4f4f5',200:'#e4e4e7',300:'#d4d4d8',400:'#a1a1aa',500:'#71717a',600:'#52525b',700:'#3f3f46',800:'#27272a',900:'#18181b',950:'#09090b' },
+    neutral:{ 50:'#fafafa',100:'#f5f5f5',200:'#e5e5e5',300:'#d4d4d4',400:'#a3a3a3',500:'#737373',600:'#525252',700:'#404040',800:'#262626',900:'#171717',950:'#0a0a0a' },
+    stone:  { 50:'#fafaf9',100:'#f5f5f4',200:'#e7e5e4',300:'#d6d3d1',400:'#a8a29e',500:'#78716c',600:'#57534e',700:'#44403c',800:'#292524',900:'#1c1917',950:'#0c0a09' }
+  };
+
   function getStored(key) {
     try { return localStorage.getItem('tabler-' + key); } catch (_) { return null; }
   }
@@ -50,7 +67,7 @@
   function applyTheme(key, value) {
     var root = document.documentElement;
     if (key === 'theme') {
-      // Tabler beta22 uses body class for dark mode
+      // Tabler uses data-bs-theme (Bootstrap 5.3). Keep a legacy body class for older CSS hooks.
       document.body.classList.toggle('theme-dark', value === 'dark');
       root.setAttribute('data-bs-theme', value || 'light');
       root.classList.remove('theme-dark-early');
@@ -76,47 +93,26 @@
         root.style.removeProperty('--tblr-border-radius-lg');
         root.style.removeProperty('--tblr-border-radius-xl');
       }
-    } else if (key === 'kexo-topbar') {
-      // '' => use CSS defaults from tabler-theme.css
-      var v = (value || '').toString().trim().toLowerCase();
-      if (!v) {
-        root.style.removeProperty('--kexo-topbar-bg');
-        root.style.removeProperty('--kexo-topbar-fg');
-        root.style.removeProperty('--kexo-topbar-fg-strong');
-        root.style.removeProperty('--kexo-topbar-shadow');
-        root.style.removeProperty('--kexo-topbar-control-bg');
-        root.style.removeProperty('--kexo-topbar-control-border');
-        root.style.removeProperty('--kexo-topbar-control-border-focus');
+    } else if (key === 'theme-font') {
+      var ff = FONT_FAMILIES[value];
+      if (ff) {
+        root.style.setProperty('--tblr-font-sans-serif', ff);
+        root.style.setProperty('--bs-body-font-family', ff);
+      } else {
+        root.style.removeProperty('--tblr-font-sans-serif');
+        root.style.removeProperty('--bs-body-font-family');
+      }
+    } else if (key === 'theme-base') {
+      var palette = BASE_PALETTES[value];
+      if (!palette) {
+        ['50','100','200','300','400','500','600','700','800','900','950'].forEach(function(k) {
+          root.style.removeProperty('--tblr-gray-' + k);
+        });
         return;
       }
-      if (v === 'primary') {
-        root.style.setProperty('--kexo-topbar-bg', 'var(--tblr-primary)');
-      } else if (v === 'dark') {
-        root.style.setProperty('--kexo-topbar-bg', '#1b2434');
-      } else {
-        // Unknown -> fall back to defaults
-        root.style.removeProperty('--kexo-topbar-bg');
-      }
-      // Ensure readable foreground against non-light backgrounds
-      root.style.setProperty('--kexo-topbar-fg', 'rgba(255,255,255,0.92)');
-      root.style.setProperty('--kexo-topbar-fg-strong', 'rgba(255,255,255,0.98)');
-      root.style.setProperty('--kexo-topbar-shadow', '0 1px 2px rgba(0,0,0,0.28)');
-      root.style.setProperty('--kexo-topbar-control-bg', 'rgba(255,255,255,0.08)');
-      root.style.setProperty('--kexo-topbar-control-border', 'rgba(255,255,255,0.18)');
-      root.style.setProperty('--kexo-topbar-control-border-focus', 'rgba(255,255,255,0.28)');
-    } else if (key === 'kexo-nav-active') {
-      var a = (value || '').toString().trim().toLowerCase();
-      if (!a) {
-        root.style.removeProperty('--kexo-nav-active-underline');
-        return;
-      }
-      if (a === 'primary') {
-        root.style.setProperty('--kexo-nav-active-underline', 'var(--tblr-primary)');
-      } else if (a === 'none') {
-        root.style.setProperty('--kexo-nav-active-underline', 'transparent');
-      } else {
-        root.style.removeProperty('--kexo-nav-active-underline');
-      }
+      Object.keys(palette).forEach(function(k) {
+        root.style.setProperty('--tblr-gray-' + k, palette[k]);
+      });
     }
   }
 
@@ -205,9 +201,8 @@
           '</div>' +
 
           '<div class="mb-4">' +
-            '<label class="form-label">Primary color</label>' +
+            '<label class="form-label">Color scheme</label>' +
             '<div class="row g-2">' +
-              colorCard('theme-primary', '', 'Default') +
               colorCard('theme-primary', 'blue', 'Blue') +
               colorCard('theme-primary', 'azure', 'Azure') +
               colorCard('theme-primary', 'indigo', 'Indigo') +
@@ -224,31 +219,34 @@
           '</div>' +
 
           '<div class="mb-4">' +
-            '<label class="form-label">Border radius</label>' +
+            '<label class="form-label">Font family</label>' +
             '<div class="form-selectgroup">' +
-              radioCard('theme-radius', '0', 'None') +
-              radioCard('theme-radius', '0.5', 'Small') +
-              radioCard('theme-radius', '1', 'Default') +
-              radioCard('theme-radius', '1.5', 'Large') +
-              radioCard('theme-radius', '2', 'Pill') +
+              radioCard('theme-font', 'sans', 'Sans-serif') +
+              radioCard('theme-font', 'serif', 'Serif') +
+              radioCard('theme-font', 'mono', 'Monospace') +
+              radioCard('theme-font', 'comic', 'Comic') +
             '</div>' +
           '</div>' +
 
           '<div class="mb-4">' +
-            '<label class="form-label">Top bar background</label>' +
+            '<label class="form-label">Theme base</label>' +
             '<div class="form-selectgroup">' +
-              radioCard('kexo-topbar', '', 'KEXO gradient') +
-              radioCard('kexo-topbar', 'primary', 'Primary') +
-              radioCard('kexo-topbar', 'dark', 'Dark') +
+              radioCard('theme-base', 'slate', 'Slate') +
+              radioCard('theme-base', 'gray', 'Gray') +
+              radioCard('theme-base', 'zinc', 'Zinc') +
+              radioCard('theme-base', 'neutral', 'Neutral') +
+              radioCard('theme-base', 'stone', 'Stone') +
             '</div>' +
           '</div>' +
 
           '<div class="mb-4">' +
-            '<label class="form-label">Active menu underline</label>' +
+            '<label class="form-label">Corner radius</label>' +
             '<div class="form-selectgroup">' +
-              radioCard('kexo-nav-active', '', 'KEXO gradient') +
-              radioCard('kexo-nav-active', 'primary', 'Primary') +
-              radioCard('kexo-nav-active', 'none', 'None') +
+              radioCard('theme-radius', '0', '0') +
+              radioCard('theme-radius', '0.5', '0.5') +
+              radioCard('theme-radius', '1', '1') +
+              radioCard('theme-radius', '1.5', '1.5') +
+              radioCard('theme-radius', '2', '2') +
             '</div>' +
           '</div>' +
 

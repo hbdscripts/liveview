@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Ads: background spend sync + patch spend/profit updates)
+Last updated: 2026-02-09 (UI: Tabler fluid-vertical sidebar + condensed KPIs + refreshed Theme Settings)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -16,7 +16,8 @@ IMPORTANT (for future agents)
 Pages (new, Tabler layout):
 - `server/public/dashboard.html`
 - `server/public/live.html`
-- `server/public/overview.html`
+- `server/public/sales.html`
+- `server/public/date.html`
 - `server/public/countries.html`
 - `server/public/products.html`
 - `server/public/channels.html`
@@ -26,7 +27,10 @@ Pages (new, Tabler layout):
 
 Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
-- `server/public/tabler-theme.css`: Tabler theme tokens + sticky navbar overlap styling.
+- `server/public/partials/header.html`: Tabler fluid-vertical wrapper (opens `.page` + sidebar + `.page-wrapper`).
+- `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
+- `server/public/partials/kpis-expanded.html`: KPI component (condensed strip + expanded grid toggle).
+- `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary green (`#2fb344`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
 - `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
 
@@ -39,7 +43,7 @@ Legacy/backup:
 
 Server routing (Express):
 - Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
-- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/overview`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/tools`.
+- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/sales`, `/date`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/tools`.
 - See: `server/index.js`.
 
 Auth protection:
@@ -54,8 +58,10 @@ Auth protection:
 `server/public/app.js`:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
-- Ads page lazily loads `/ads.js` when needed.
-- Shared KPI grid is now hidden by default and only shown when the header “Show more” (or mobile “Show KPIs”) toggle is enabled.
+- Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
+- KPI component is now top-of-content with 2 mutually-exclusive states (persisted in `localStorage` as `kexo-kpis-expanded`):
+  - Condensed KPI strip (always shown by default)
+  - Expanded KPI grid (chevron toggle)
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -85,14 +91,17 @@ Platform start/min date clamp:
 
 ## KPI system (global, every page)
 
-Header quick KPIs (desktop):
-- `server/public/partials/header.html`: compact “Orders / Clicks / Conv” in the top bar center + “Show more” toggle.
+Date control (sidebar, under logo):
+- UI is in `server/public/partials/header.html` as a Tabler input-group dropdown.
+- It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
 
-Expanded KPI grid (all pages, hidden by default):
+KPI component (top-of-content, every page):
 - Markup lives in ONE include: `server/public/partials/kpis-expanded.html`.
-- All pages include it under the nav bar; visibility is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
-- Extra KPIs (Items sold / Orders fulfilled / Returns) are fetched only when expanded is shown:
+- Condensed KPI strip is shown by default; expanded KPI grid toggles via chevrons.
+- State is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
+- Extra KPIs (Items sold / Orders fulfilled / Returns):
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
+  - Warmed in the background so condensed + expanded can both render without blanks.
 
 KPI caching (perf + UX):
 - `/api/kpis` is cached (server-side) for 2 minutes and also painted from `localStorage` on navigation to avoid empty KPI boxes.
@@ -101,11 +110,10 @@ KPI caching (perf + UX):
 
 ---
 
-## Sticky navbar overlap
+## Layout (fluid vertical)
 
-Tabler “navbar-overlap” layout applied:
-- All new pages include `class="navbar-overlap-page"` on `<body>`.
-- Sticky overlap styling lives in `server/public/tabler-theme.css`.
+- Shared wrapper is Tabler fluid vertical: dark sidebar + `.page-wrapper` (see `server/public/partials/header.html`).
+- Pages use `container-fluid` for a “fluid” feel (matching Tabler’s `layout-fluid-vertical`).
 
 ---
 
@@ -194,18 +202,18 @@ Edge (optional):
 2026-02-09
 - Fix “no data” on homepage: range-key normalization, correct min/platform-start clamps, and dashboard chart/table ID wiring.
 - Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
-- Begin rollout of Tabler “navbar-sticky” two-part (white header + white menu) across pages; removes `navbar-brand-autodark`/dark theme usage that caused the logo to appear white.
+- UI: migrated to Tabler `layout-fluid-vertical` (dark sidebar) and removed prior sticky/top-nav + KEXO gradient theming.
 - Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
 - Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
-- Mobile: topbar collapses action icons + date picker under a single settings dropdown (desktop unchanged).
+- Mobile: sidebar toggler + Settings dropdown remain; date control is in the sidebar.
 - Removed per-page `<h2 class="page-title" id="page-title">…</h2>` headers; current page is indicated by the nav.
 - Nav dropdowns: when a child page is active, the dropdown toggle label becomes that child (e.g. “Live”), and the group label is shown inside the dropdown.
 - Nav highlight: active top-level item is bold and dropdown caret spacing is increased for readability.
 - DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
-- Header UX: global date selector is visible on Tools (same behavior as other pages).
+- Date control: sidebar date dropdown is visible on all pages (including Tools).
 - KPI UX/perf: add 2-minute caching + localStorage warm-paint; reduce duplicate conversion/session work; invalidate KPI caches after the sale toast hides.
 - Header actions: desktop topbar now shows a single Settings button with a Tabler dropdown for Refresh/Sound/Theme/Diagnostics/Sign out (mobile still uses the settings dropdown).
-- Topbar quick KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
+- Condensed KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
 - Dashboard-series: include per-day returning-customer counts so the “Returning” sparkline can render (with a one-time forced refresh if an older cached payload is detected).
 - Dashboard KPI correctness + consistency:
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
@@ -233,5 +241,5 @@ Edge (optional):
   - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
   - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.
 - Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
-- Theme: sticky top bar now uses a default KEXO gradient background (icons/controls styled for contrast) and active-nav underline supports a gradient; both are overridable via Theme Settings.
-- KPIs: expanded KPI grid now includes Revenue and moves Bounce to the second row; items sold now has a dashboard-series sparkline.
+- Theme: removed KEXO gradient vars; Theme Settings controls mode/scheme/font/base/radius; default primary is `#2fb344`.
+- KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.

@@ -546,196 +546,57 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
-/* ── Header/top menu: no borders (top bar uses gradient) ── */
-.sticky-top > header.navbar { border-bottom: none !important; border-top: none !important; }
-.sticky-top .navbar-expand-md .navbar { border-bottom: none !important; border-top: none !important; }
-
-/* ── Header: brand left + compact KPI strip center ── */
-.kexo-navbar-brand {
-  padding-top: 0;
-  padding-bottom: 0;
-  margin-right: 0;
+/* ── Sidebar date control (fluid vertical) ───────────────────────── */
+.kexo-sidebar-date {
+  padding: .25rem .5rem .5rem;
 }
-.kexo-navbar-brand img { display: block; }
-
-.kexo-topbar-center {
-  gap: 1.1rem;
+.kexo-sidebar-date .input-group {
+  width: 100%;
 }
-.kexo-topbar-center,
-.kexo-topbar-kpis {
-  flex-wrap: nowrap;
-  white-space: nowrap;
+.kexo-sidebar-date .dropdown-menu {
+  min-width: 100%;
+}
+#kexo-date-display {
+  text-align: left;
+  justify-content: flex-start;
 }
 
-/* Desktop: keep the quick-KPI cluster visually centered in the bar (independent of right-side actions width). */
-@media (min-width: 768px) {
-  .sticky-top > header.navbar[data-bs-theme="dark"] .container-xl {
-    position: relative;
-  }
-  .sticky-top > header.navbar[data-bs-theme="dark"] .kexo-topbar-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    max-width: calc(100% - 9.5rem); /* leave room for the Settings button */
-  }
-}
-.kexo-topbar-kpis {
+/* ── KPI condensed strip (top-of-content) ────────────────────────── */
+.kexo-kpis-condensed-row {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: .75rem;
 }
-.kexo-topbar-kpi {
-  min-width: 120px;
-  line-height: 1.05;
+.kexo-kpis-condensed-strip {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
-.kexo-topbar-kpi-label {
-  font-size: 0.6rem;
+.kexo-kpi-chip {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: .35rem .5rem;
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-radius: var(--tblr-border-radius, .375rem);
+  background: var(--tblr-bg-surface, #fff);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.kexo-kpi-chip.is-hidden { display: none !important; }
+.kexo-kpi-chip-label {
+  font-size: .6rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
+  letter-spacing: .04em;
+  color: var(--tblr-secondary, #626976);
 }
-.kexo-topbar-kpi-value {
-  color: inherit;
-  text-shadow: var(--kexo-topbar-shadow, 0 1px 2px rgba(0,0,0,0.25));
-}
-.kexo-topbar-delta {
-  display: inline-flex;
-  align-items: center;
-  padding: 0;
-  font-size: .75rem;
-  line-height: 1;
-  color: rgba(255,255,255,0.92);
-  text-shadow: var(--kexo-topbar-shadow, 0 1px 2px rgba(0,0,0,0.25));
-}
-.kexo-topbar-delta.is-up { color: rgba(209, 250, 229, 0.98); }
-.kexo-topbar-delta.is-down { color: rgba(254, 202, 202, 0.98); }
-.kexo-topbar-delta.is-flat { color: rgba(255,255,255,0.80); }
-.kexo-topbar-delta-icon { filter: drop-shadow(var(--kexo-topbar-shadow, 0 1px 2px rgba(0,0,0,0.25))); }
-
-/* Date select: add visible chevron and extra right padding */
-.kexo-date-wrap {
-  position: relative;
-}
-.kexo-date-wrap .form-select {
-  padding-right: 2rem !important;
-  /* Use our custom chevron; hide the native caret to avoid misalignment/outside rendering. */
-  background-image: none !important;
-}
-.kexo-date-chevron {
-  position: absolute;
-  right: .7rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: rgba(255,255,255,0.92);
-  filter: drop-shadow(var(--kexo-topbar-shadow, 0 1px 2px rgba(0,0,0,0.25)));
-}
-
-.kexo-topbar-kpis-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.55rem;
-  white-space: nowrap;
-}
-.kexo-topbar-kpis-more i {
-  transition: transform 0.15s ease;
-}
-.kexo-topbar-kpis-more[aria-expanded="true"] i {
-  transform: rotate(180deg);
-}
-
-/* Top bar KPI labels: ensure readable on gradient */
-.kexo-topbar-kpi-label,
-.kexo-topbar-kpis-more,
-.kexo-topbar-kpis-more-label {
-  color: var(--kexo-topbar-fg-strong, rgba(255,255,255,0.98));
-  text-shadow: var(--kexo-topbar-shadow, 0 1px 2px rgba(0,0,0,0.25));
-}
-
-/* Top menu active underline (flush to outside/bottom edge) */
-#navbar-menu .navbar-nav .nav-link {
-  position: relative;
-  border-bottom: none !important;
-  border-top: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
-}
-#navbar-menu .navbar-nav .nav-link.active {
-  border-bottom: none !important;
-  border-top: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
-}
-#navbar-menu .navbar-nav .nav-item.active > .nav-link,
-#navbar-menu .navbar-nav .nav-link[aria-current="page"] {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
-}
-#navbar-menu .navbar-nav .nav-link:focus,
-#navbar-menu .navbar-nav .nav-link:focus-visible {
-  outline: 0 !important;
-  box-shadow: none !important;
-}
-/* Guard against Tabler adding an extra active indicator pseudo-element. */
-#navbar-menu .navbar-nav .nav-link::before {
-  display: none !important;
-}
-#navbar-menu .navbar-nav .nav-item.active > .nav-link::after,
-#navbar-menu .navbar-nav .nav-link[aria-current="page"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px; /* outside edge */
-  height: 3px;
-  border-radius: 0;
-  background: var(--kexo-nav-active-underline, var(--tblr-primary));
-}
-
-#kexo-kpis-toggle-mobile i {
-  transition: transform 0.15s ease;
-}
-#kexo-kpis-toggle-mobile[aria-expanded="true"] i {
-  transform: rotate(180deg);
-}
-
-/* ── Top nav: remove rounded nav items, center nav links ── */
-.sticky-top .navbar .navbar-nav .nav-link {
-  border-radius: 0 !important;
-}
-
-/* Top nav: make current parent/link bold (no page titles). */
-#navbar-menu .navbar-nav .nav-item.active > .nav-link,
-#navbar-menu .navbar-nav .nav-link[aria-current="page"] {
+.kexo-kpi-chip-value {
   font-weight: 600;
-}
-
-/* Top nav: add more gap before the dropdown chevron/caret. */
-#navbar-menu .navbar-nav .nav-link.dropdown-toggle::after {
-  margin-left: 0.6rem;
-}
-#navbar-menu .navbar-nav .nav-item.active > .nav-link.dropdown-toggle::after {
-  margin-left: 0.75rem;
-}
-@media (min-width: 769px) {
-  #navbar-menu .navbar .container-xl {
-    justify-content: center;
-  }
-  #navbar-menu .navbar .d-flex.flex-md-row {
-    flex-grow: 0 !important;
-  }
+  font-size: .9rem;
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */
@@ -750,21 +611,21 @@ html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
 .refresh-spinning i { animation: spin-once .6s ease-in-out; }
 
 /* ── Dark mode: link color matches body text ── */
-body.theme-dark a:not(.btn):not(.nav-link):not(.dropdown-item) {
+html[data-bs-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item) {
   color: var(--tblr-body-color, #e2e8f0);
 }
-body.theme-dark a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
+html[data-bs-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
   color: var(--tblr-primary);
 }
 
 /* ── Toast dark-mode support ── */
-body.theme-dark .sale-toast {
+html[data-bs-theme="dark"] .sale-toast {
   background: var(--tblr-bg-surface, #1e293b);
   border-color: var(--tblr-border-color, #2d3748);
   color: var(--tblr-body-color, #e2e8f0);
 }
-body.theme-dark .sale-toast-title { color: var(--tblr-body-color, #e2e8f0); }
-body.theme-dark .sale-toast-close { filter: invert(1); }
+html[data-bs-theme="dark"] .sale-toast-title { color: var(--tblr-body-color, #e2e8f0); }
+html[data-bs-theme="dark"] .sale-toast-close { filter: invert(1); }
 
 /* Sale-toast toggle eye icon states */
 #last-sale-toggle .ti-eye { display: inline; }
@@ -844,7 +705,7 @@ body.theme-dark .sale-toast-close { filter: invert(1); }
   box-shadow: 0 1px 3px rgba(0,0,0,.12);
 }
 
-body.theme-dark .landing-thumb {
+html[data-bs-theme="dark"] .landing-thumb {
   border-color: var(--tblr-body-bg, #1a2234);
   box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
@@ -1058,24 +919,6 @@ body.theme-dark .landing-thumb {
   /* Footer: stack on mobile */
   .footer .d-flex { flex-wrap: wrap; justify-content: center !important; gap: .5rem; }
 
-  /* Navbar: tighter spacing + mobile alignment */
-  .navbar .container-xl { padding-left: .5rem; padding-right: .5rem; }
-  .navbar-nav .nav-link { padding: .25rem .4rem; font-size: .8125rem; }
-  #global-date-select { font-size: .75rem; max-width: 120px; }
-
-  /* Fix mobile header: distribute space evenly so logo/date box centers */
-  .sticky-top > header .container-xl {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .sticky-top > header .container-xl > .d-flex { flex: 0 0 auto; }
-  .sticky-top > header .container-xl > .navbar-nav { flex: 0 0 auto; }
-
-  /* Second navbar (nav menu) on mobile: center the logo */
-  #navbar-menu .navbar-nav { align-items: center; }
-  #navbar-menu .navbar-nav .nav-link img[alt="Kexo"] { width: 50px; height: auto; }
-
   /* Chart type switcher: smaller */
   .chart-type-switcher .btn { width: 1.5rem; height: 1.5rem; }
   .chart-type-switcher .btn i { font-size: .75rem; }
@@ -1083,14 +926,6 @@ body.theme-dark .landing-thumb {
   /* Product/breakdown cells: constrain */
   .breakdown-product-name { max-width: 100px; }
   .landing-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
-}
-
-/* Mobile topbar: collapse action icons + date into settings dropdown (desktop unchanged). */
-@media (max-width: 767.98px) {
-  .kexo-mobile-topmenu { min-width: 18rem; max-width: calc(100vw - 1rem); }
-  .kexo-mobile-topmenu #kexo-mobile-date-slot { width: 100%; }
-  .kexo-mobile-topmenu #global-date-select { width: 100% !important; max-width: none !important; }
-  .kexo-mobile-topmenu #kexo-mobile-actions-slot { width: 100%; }
 }
 
 @media (max-width: 768px) and (min-width: 577px) {

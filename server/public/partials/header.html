@@ -1,246 +1,144 @@
-    <script>
-      // Prevent light-theme flash: Tabler beta22 relies on body.theme-dark.
-      (function () {
-        try {
-          var t = localStorage.getItem('tabler-theme');
-          if (t === 'dark') document.body.classList.add('theme-dark');
-        } catch (e) {}
-      })();
-    </script>
-    <div class="sticky-top">
-      <header class="navbar navbar-expand-md navbar-dark sticky-top d-print-none" data-bs-theme="dark">
-        <div class="container-xl">
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
-            <span class="navbar-toggler-icon"></span>
+<div class="page">
+  <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+    <div class="container-fluid">
+      <h1 class="navbar-brand navbar-brand-autodark d-flex justify-content-center py-3">
+        <a href="/dashboard" class="d-inline-flex align-items-center justify-content-center" aria-label="Kexo dashboard">
+          <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
+        </a>
+      </h1>
+
+      <div class="kexo-sidebar-date">
+        <div class="input-group input-group-sm">
+          <button type="button" class="btn btn-outline-light" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
+          <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
+            <i class="ti ti-chevron-down" aria-hidden="true"></i>
           </button>
-          <a href="/dashboard" class="navbar-brand d-none d-md-flex kexo-navbar-brand" aria-label="Kexo dashboard">
-            <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
-          </a>
-          <div class="d-none d-md-flex align-items-center kexo-topbar-center mx-md-auto" aria-label="Quick KPIs">
-            <div class="d-none d-md-flex align-items-center kexo-date-wrap" id="kexo-date-wrap">
-              <select id="global-date-select" class="form-select" aria-label="Date range">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="7days">Last 7 days</option>
-                <option value="14days">Last 14 days</option>
-                <option value="30days">Last 30 days</option>
-                <option value="custom" id="date-opt-custom">Custom</option>
-              </select>
-              <i class="ti ti-chevron-down kexo-date-chevron" aria-hidden="true"></i>
-            </div>
-
-            <div class="kexo-topbar-kpis" id="kexo-topbar-kpis" aria-label="Quick KPIs">
-              <div class="col-auto kexo-topbar-kpi">
-                <div class="subheader kexo-topbar-kpi-label">Orders</div>
-                <div class="d-flex align-items-baseline">
-                  <div class="h3 me-2 kexo-topbar-kpi-value" id="topbar-kpi-orders">&mdash;</div>
-                  <div class="me-auto">
-                    <span class="kexo-topbar-delta is-hidden" id="topbar-kpi-orders-delta">
-                      <span class="kexo-topbar-delta-text" id="topbar-kpi-orders-delta-text"></span>
-                      <i class="ti ti-trending-up kexo-topbar-delta-icon" aria-hidden="true"></i>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-auto kexo-topbar-kpi">
-                <div class="subheader kexo-topbar-kpi-label">Clicks</div>
-                <div class="d-flex align-items-baseline">
-                  <div class="h3 me-2 kexo-topbar-kpi-value" id="topbar-kpi-clicks">&mdash;</div>
-                  <div class="me-auto">
-                    <span class="kexo-topbar-delta is-hidden" id="topbar-kpi-clicks-delta">
-                      <span class="kexo-topbar-delta-text" id="topbar-kpi-clicks-delta-text"></span>
-                      <i class="ti ti-trending-up kexo-topbar-delta-icon" aria-hidden="true"></i>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-auto kexo-topbar-kpi">
-                <div class="subheader kexo-topbar-kpi-label">Conv rate</div>
-                <div class="d-flex align-items-baseline">
-                  <div class="h3 me-2 kexo-topbar-kpi-value" id="topbar-kpi-conv">&mdash;</div>
-                  <div class="me-auto">
-                    <span class="kexo-topbar-delta is-hidden" id="topbar-kpi-conv-delta">
-                      <span class="kexo-topbar-delta-text" id="topbar-kpi-conv-delta-text"></span>
-                      <i class="ti ti-trending-up kexo-topbar-delta-icon" aria-hidden="true"></i>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button type="button" class="btn btn-sm btn-ghost-secondary kexo-topbar-kpis-more" id="kexo-kpis-toggle" aria-expanded="false" aria-controls="kexo-expanded-kpis">
-                <span class="kexo-topbar-kpis-more-label">Show more</span>
-                <i class="ti ti-chevron-down" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-          <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
-            <div class="dropdown d-md-none">
-              <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-mobile-topmenu-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
-                <i class="ti ti-settings" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end p-2 kexo-mobile-topmenu" id="kexo-mobile-topmenu">
-                <div id="kexo-mobile-date-slot"></div>
-                <div class="mt-2">
-                  <button type="button" class="btn btn-sm btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1" id="kexo-kpis-toggle-mobile" aria-expanded="false" aria-controls="kexo-expanded-kpis">
-                    <span class="kexo-kpis-toggle-mobile-label">Show KPIs</span>
-                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
-                  </button>
-                </div>
-                <div class="dropdown-divider my-2"></div>
-                <div id="kexo-mobile-actions-slot" class="d-flex flex-column gap-1"></div>
-              </div>
-            </div>
-            <div class="d-none d-md-flex align-items-center">
-              <div class="dropdown">
-                <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-desktop-actions-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Settings">
-                  <i class="ti ti-settings" aria-hidden="true"></i>
-                </button>
-                <div class="dropdown-menu dropdown-menu-end" id="kexo-desktop-actions" aria-label="Actions">
-                  <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
-                    <i class="ti ti-refresh me-2" aria-hidden="true"></i>Refresh
-                  </button>
-                  <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
-                    <i class="ti ti-volume me-2 sound-icon-on" aria-hidden="true"></i>
-                    <i class="ti ti-volume-off me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
-                    Sound
-                  </button>
-                  <button type="button" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
-                    <i class="ti ti-palette me-2" aria-hidden="true"></i>Theme
-                  </button>
-                  <button type="button" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">
-                    <i class="ti ti-settings me-2" aria-hidden="true"></i>Diagnostics
-                  </button>
-                  <div class="dropdown-divider"></div>
-                  <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
-                    <i class="ti ti-logout me-2" aria-hidden="true"></i>Sign out
-                  </a>
-                </div>
-              </div>
-            </div>
+          <div class="dropdown-menu w-100" id="kexo-date-menu" aria-label="Date ranges">
+            <button class="dropdown-item" type="button" data-range="today">Today</button>
+            <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
+            <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
+            <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
+            <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
           </div>
         </div>
-      </header>
 
-      <header class="navbar-expand-md d-print-none">
-        <div class="collapse navbar-collapse" id="navbar-menu">
-          <div class="navbar">
-            <div class="container-xl">
-              <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
-                <ul class="navbar-nav">
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-dashboard" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="icon icon-tabler icons-tabler-filled icon-tabler-layout-dashboard"
-                        >
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M9 3a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2zm0 12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2zm10 -4a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2zm0 -8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2z" />
-                        </svg>
-                      </span>
-                      <span class="nav-link-title">Dashboard</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><i class="ti ti-layout-dashboard me-2"></i>Overview</a>
-                      <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a>
-                      <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a>
-                      <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Table</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-breakdown" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="icon icon-tabler icons-tabler-filled icon-tabler-chart-pie"
-                        >
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M9.883 2.207a1.9 1.9 0 0 1 2.087 1.522l.025 .167l.005 .104v7a1 1 0 0 0 .883 .993l.117 .007h6.8a2 2 0 0 1 2 2a1 1 0 0 1 -.026 .226a10 10 0 1 1 -12.27 -11.933l.27 -.067l.11 -.02z" />
-                          <path d="M14 3.5v5.5a1 1 0 0 0 1 1h5.5a1 1 0 0 0 .943 -1.332a10 10 0 0 0 -6.11 -6.111a1 1 0 0 0 -1.333 .943z" />
-                        </svg>
-                      </span>
-                      <span class="nav-link-title">Breakdown</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2"></i>Countries</a>
-                      <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="ti ti-package me-2"></i>Products</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="icon icon-tabler icons-tabler-filled icon-tabler-bolt"
-                        >
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M13 2l.018 .001l.016 .001l.083 .005l.011 .002h.011l.038 .009l.052 .008l.016 .006l.011 .001l.029 .011l.052 .014l.019 .009l.015 .004l.028 .014l.04 .017l.021 .012l.022 .01l.023 .015l.031 .017l.034 .024l.018 .011l.013 .012l.024 .017l.038 .034l.022 .017l.008 .01l.014 .012l.036 .041l.026 .027l.006 .009c.12 .147 .196 .322 .218 .513l.001 .012l.002 .041l.004 .064v6h5a1 1 0 0 1 .868 1.497l-.06 .091l-8 11c-.568 .783 -1.808 .38 -1.808 -.588v-6h-5a1 1 0 0 1 -.868 -1.497l.06 -.091l8 -11l.01 -.013l.018 -.024l.033 -.038l.018 -.022l.009 -.008l.013 -.014l.04 -.036l.028 -.026l.008 -.006a1 1 0 0 1 .402 -.199l.011 -.001l.027 -.005l.074 -.013l.011 -.001l.041 -.002z" />
-                        </svg>
-                      </span>
-                      <span class="nav-link-title">Traffic</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2"></i>Channels</a>
-                      <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a>
-                    </div>
-                  </li>
-                  <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" role="button" aria-expanded="false">
-                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="icon icon-tabler icons-tabler-filled icon-tabler-puzzle"
-                        >
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M10 2a3 3 0 0 1 2.995 2.824l.005 .176v1h3a2 2 0 0 1 1.995 1.85l.005 .15v3h1a3 3 0 0 1 .176 5.995l-.176 .005h-1v3a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-1a1 1 0 0 0 -1.993 -.117l-.007 .117v1a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h1a1 1 0 0 0 .117 -1.993l-.117 -.007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h3v-1a3 3 0 0 1 3 -3z" />
-                        </svg>
-                      </span>
-                      <span class="nav-link-title">Integrations</span>
-                    </a>
-                    <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="ti ti-brand-google me-2"></i>Google Ads</a>
-                    </div>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools">
-                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          class="icon icon-tabler icons-tabler-filled icon-tabler-settings"
-                        >
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M14.647 4.081a.724 .724 0 0 0 1.08 .448c2.439 -1.485 5.23 1.305 3.745 3.744a.724 .724 0 0 0 .447 1.08c2.775 .673 2.775 4.62 0 5.294a.724 .724 0 0 0 -.448 1.08c1.485 2.439 -1.305 5.23 -3.744 3.745a.724 .724 0 0 0 -1.08 .447c-.673 2.775 -4.62 2.775 -5.294 0a.724 .724 0 0 0 -1.08 -.448c-2.439 1.485 -5.23 -1.305 -3.745 -3.744a.724 .724 0 0 0 -.447 -1.08c-2.775 -.673 -2.775 -4.62 0 -5.294a.724 .724 0 0 0 .448 -1.08c-1.485 -2.439 1.305 -5.23 3.744 -3.745a.722 .722 0 0 0 1.08 -.447c.673 -2.775 4.62 -2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z" />
-                        </svg>
-                      </span>
-                      <span class="nav-link-title">Tools</span>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+        <!-- Hidden select keeps existing app.js date logic working. -->
+        <select id="global-date-select" class="visually-hidden" aria-label="Date range">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7days">Last 7 days</option>
+          <option value="14days">Last 14 days</option>
+          <option value="30days">Last 30 days</option>
+          <option value="custom" id="date-opt-custom">Custom</option>
+        </select>
+      </div>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="sidebar-menu">
+        <ul class="navbar-nav pt-lg-3">
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-layout-dashboard"></i></span>
+              <span class="nav-link-title">Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-live-photo"></i></span>
+              <span class="nav-link-title">Live</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-sales" data-nav="sales" href="/sales">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-shopping-cart"></i></span>
+              <span class="nav-link-title">Sales</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-date" data-nav="date" href="/date">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-calendar"></i></span>
+              <span class="nav-link-title">Table</span>
+            </a>
+          </li>
+
+          <li class="nav-item mt-2">
+            <a class="nav-link" id="nav-tab-stats" data-nav="countries" href="/countries">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-world"></i></span>
+              <span class="nav-link-title">Countries</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-products" data-nav="products" href="/products">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-package"></i></span>
+              <span class="nav-link-title">Products</span>
+            </a>
+          </li>
+
+          <li class="nav-item mt-2">
+            <a class="nav-link" id="nav-tab-channels" data-nav="channels" href="/channels">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-chart-line"></i></span>
+              <span class="nav-link-title">Channels</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tab-type" data-nav="type" href="/type">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-device-analytics"></i></span>
+              <span class="nav-link-title">Type</span>
+            </a>
+          </li>
+
+          <li class="nav-item mt-2">
+            <a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-brand-google"></i></span>
+              <span class="nav-link-title">Google Ads</span>
+            </a>
+          </li>
+
+          <li class="nav-item mt-2">
+            <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools">
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-settings"></i></span>
+              <span class="nav-link-title">Tools</span>
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
+  </aside>
+
+  <div class="page-wrapper">
+    <header class="navbar navbar-expand-md d-print-none">
+      <div class="container-fluid">
+        <div class="navbar-nav flex-row order-md-last align-items-center gap-1">
+          <div class="dropdown">
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-desktop-actions-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Settings">
+              <i class="ti ti-settings" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end" id="kexo-desktop-actions" aria-label="Actions">
+              <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
+                <i class="ti ti-refresh me-2" aria-hidden="true"></i>Refresh
+              </button>
+              <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
+                <i class="ti ti-volume me-2 sound-icon-on" aria-hidden="true"></i>
+                <i class="ti ti-volume-off me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
+                Sound
+              </button>
+              <button type="button" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
+                <i class="ti ti-palette me-2" aria-hidden="true"></i>Theme
+              </button>
+              <button type="button" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">
+                <i class="ti ti-settings me-2" aria-hidden="true"></i>Diagnostics
+              </button>
+              <div class="dropdown-divider"></div>
+              <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
+                <i class="ti ti-logout me-2" aria-hidden="true"></i>Sign out
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>

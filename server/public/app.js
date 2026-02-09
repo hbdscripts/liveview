@@ -4294,6 +4294,78 @@ const API = '';
       if (wrap) wrap.classList.toggle('is-hidden', dateRange === 'live');
     }
 
+    function syncSidebarDateDisplay() {
+      const sel = document.getElementById('global-date-select');
+      const displayBtn = document.getElementById('kexo-date-display');
+      if (!sel || !displayBtn) return;
+
+      let label = null;
+      try {
+        const opt = sel.options[sel.selectedIndex];
+        label = opt && opt.textContent ? String(opt.textContent).trim() : null;
+      } catch (_) {}
+
+      if (!label) {
+        const fallback = { today: 'Today', yesterday: 'Yesterday', '7days': 'Last 7 days', '14days': 'Last 14 days', '30days': 'Last 30 days', custom: 'Custom' };
+        label = fallback[String(dateRange || 'today')] || 'Today';
+      }
+      displayBtn.textContent = label;
+    }
+
+    function syncSidebarDateMenuAvailability() {
+      const sel = document.getElementById('global-date-select');
+      const menu = document.getElementById('kexo-date-menu');
+      if (!sel || !menu) return;
+
+      // Yesterday visibility/disabled mirrors the <select> option.
+      try {
+        const opt = sel.querySelector('option[value="yesterday"]');
+        const item = menu.querySelector('[data-range="yesterday"]');
+        if (opt && item) {
+          const hidden = !!opt.hidden;
+          const disabled = !!opt.disabled;
+          item.style.display = hidden ? 'none' : '';
+          if (disabled) item.setAttribute('disabled', 'disabled');
+          else item.removeAttribute('disabled');
+          item.classList.toggle('disabled', disabled);
+          item.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        }
+      } catch (_) {}
+
+      // Active item highlight: custom ranges map to the "Custom…" item.
+      let active = '';
+      try { active = String(sel.value || '').trim(); } catch (_) { active = ''; }
+      const isCustom = isCustomRangeKey(active) || isCustomDayRangeKey(active);
+      menu.querySelectorAll('[data-range]').forEach(function(btn) {
+        const v = String(btn.getAttribute('data-range') || '').trim();
+        btn.classList.toggle('active', isCustom ? (v === 'custom') : (v === active));
+      });
+    }
+
+    function initSidebarDateMenu() {
+      const sel = document.getElementById('global-date-select');
+      const menu = document.getElementById('kexo-date-menu');
+      if (!sel || !menu) return;
+      if (menu.getAttribute('data-kexo-bound') === '1') return;
+      menu.setAttribute('data-kexo-bound', '1');
+
+      menu.addEventListener('click', function(e) {
+        const target = e && e.target ? e.target : null;
+        const btn = target && target.closest ? target.closest('[data-range]') : null;
+        if (!btn) return;
+        const v = String(btn.getAttribute('data-range') || '').trim();
+        if (!v) return;
+        if (btn.disabled || btn.classList.contains('disabled') || btn.getAttribute('aria-disabled') === 'true') return;
+        sel.value = v;
+        try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+        syncSidebarDateDisplay();
+        syncSidebarDateMenuAvailability();
+      });
+
+      syncSidebarDateDisplay();
+      syncSidebarDateMenuAvailability();
+    }
+
     function syncDateSelectOptions() {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
@@ -4339,6 +4411,8 @@ const API = '';
 
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
+      syncSidebarDateDisplay();
+      syncSidebarDateMenuAvailability();
     }
 
     function applyRangeAvailable(available) {
@@ -4375,6 +4449,8 @@ const API = '';
       }
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
+      syncSidebarDateDisplay();
+      syncSidebarDateMenuAvailability();
     }
 
     // Custom date calendar (last 30 days, disabled if no data)
@@ -4889,6 +4965,13 @@ const API = '';
       const itemsSoldEl = document.getElementById('live-kpi-items-sold');
       const ordersFulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
       const returnsEl = document.getElementById('live-kpi-returns');
+      const condOrdersEl = document.getElementById('cond-kpi-orders');
+      const condRevenueEl = document.getElementById('cond-kpi-revenue');
+      const condConvEl = document.getElementById('cond-kpi-conv');
+      const condSessionsEl = document.getElementById('cond-kpi-sessions');
+      const condReturningEl = document.getElementById('cond-kpi-returning');
+      const condAovEl = document.getElementById('cond-kpi-aov');
+      const condBounceEl = document.getElementById('cond-kpi-bounce');
       const topbarOrdersEl = document.getElementById('topbar-kpi-orders');
       const topbarClicksEl = document.getElementById('topbar-kpi-clicks');
       const topbarConvEl = document.getElementById('topbar-kpi-conv');
@@ -4924,6 +5007,15 @@ const API = '';
       if (returningEl) returningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+
+      // Condensed KPI strip (no deltas; values only)
+      if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
+      if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
+      if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
+      if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
+      if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
+      if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
+      if (condBounceEl) condBounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
 
       applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
       applyKpiDeltaColor(revenueEl, revenueVal, compareRevenueVal, false);
@@ -5010,6 +5102,8 @@ const API = '';
       if (itemsSoldEl && itemsSoldEl.querySelector && itemsSoldEl.querySelector('.kpi-mini-spinner')) itemsSoldEl.textContent = '\u2014';
       if (ordersFulfilledEl && ordersFulfilledEl.querySelector && ordersFulfilledEl.querySelector('.kpi-mini-spinner')) ordersFulfilledEl.textContent = '\u2014';
       if (returnsEl && returnsEl.querySelector && returnsEl.querySelector('.kpi-mini-spinner')) returnsEl.textContent = '\u2014';
+
+      try { updateCondensedKpiOverflow(); } catch (_) {}
 
       function setSub(el, text) {
         if (!el) return;
@@ -5208,7 +5302,7 @@ const API = '';
       window.addEventListener('resize', function() { scheduleKpiPagerUpdate(); scheduleBreakdownSync(); });
     })();
 
-    // Expanded KPI strip (hidden by default; toggled from header)
+    // KPI component: condensed strip + expanded grid (mutually exclusive)
     const KPI_EXPANDED_LS_KEY = 'kexo-kpis-expanded';
     let _kpisExpanded = null;
     function isKpisExpanded() {
@@ -5216,6 +5310,27 @@ const API = '';
       try { _kpisExpanded = (localStorage.getItem(KPI_EXPANDED_LS_KEY) === '1'); }
       catch (_) { _kpisExpanded = false; }
       return !!_kpisExpanded;
+    }
+
+    let _condensedOverflowRaf = 0;
+    function updateCondensedKpiOverflow() {
+      const strip = document.getElementById('kexo-condensed-kpis');
+      if (!strip) return;
+      const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
+      if (!chips.length) return;
+      chips.forEach(function(ch) { ch.classList.remove('is-hidden'); });
+      // Hide from the end until the strip fits.
+      for (let i = chips.length - 1; i >= 0 && strip.scrollWidth > strip.clientWidth; i--) {
+        chips[i].classList.add('is-hidden');
+      }
+    }
+    function scheduleCondensedKpiOverflowUpdate() {
+      if (_condensedOverflowRaf) return;
+      const raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function(cb) { return setTimeout(cb, 16); };
+      _condensedOverflowRaf = raf(function() {
+        _condensedOverflowRaf = 0;
+        updateCondensedKpiOverflow();
+      });
     }
 
     let kpiExpandedExtrasCache = null;
@@ -5227,10 +5342,13 @@ const API = '';
       const itemsEl = document.getElementById('live-kpi-items-sold');
       const fulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
       const returnsEl = document.getElementById('live-kpi-returns');
+      const condItemsEl = document.getElementById('cond-kpi-items-sold');
+      const condFulfilledEl = document.getElementById('cond-kpi-orders-fulfilled');
+      const condReturnsEl = document.getElementById('cond-kpi-returns');
       const itemsSubEl = document.getElementById('live-kpi-items-sold-sub');
       const fulfilledSubEl = document.getElementById('live-kpi-orders-fulfilled-sub');
       const returnsSubEl = document.getElementById('live-kpi-returns-sub');
-      if (!itemsEl && !fulfilledEl && !returnsEl) return;
+      if (!itemsEl && !fulfilledEl && !returnsEl && !condItemsEl && !condFulfilledEl && !condReturnsEl) return;
 
       const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
       const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
@@ -5243,6 +5361,9 @@ const API = '';
       if (itemsEl) itemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (fulfilledEl) fulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       if (returnsEl) returnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
+      if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
+      if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
+      if (condReturnsEl) condReturnsEl.textContent = returnsCount != null ? formatSessions(returnsCount) : '\u2014';
 
       function setSub(el, text) {
         if (!el) return;
@@ -5262,6 +5383,8 @@ const API = '';
       applyKpiDeltaColor(itemsEl, itemsSold, itemsSoldCompare, false);
       applyKpiDeltaColor(fulfilledEl, ordersFulfilled, ordersFulfilledCompare, false);
       applyKpiDeltaColor(returnsEl, returnsCount, returnsCompare, true);
+
+      try { updateCondensedKpiOverflow(); } catch (_) {}
     }
 
     function fetchExpandedKpiExtras(options = {}) {
@@ -5302,21 +5425,15 @@ const API = '';
 
     function applyKpisExpandedUi() {
       const expanded = isKpisExpanded();
-      const wrap = document.getElementById('kexo-expanded-kpis') || document.querySelector('.shared-kpi-wrap');
-      if (wrap) wrap.style.display = expanded ? '' : 'none';
+      const expandedWrap = document.getElementById('kexo-expanded-kpis') || document.querySelector('.shared-kpi-wrap');
+      const condensedRow = document.getElementById('kexo-kpis-condensed-row');
+      if (expandedWrap) expandedWrap.style.display = expanded ? '' : 'none';
+      if (condensedRow) condensedRow.style.display = expanded ? 'none' : '';
 
-      const btn = document.getElementById('kexo-kpis-toggle');
-      if (btn) {
-        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        const label = btn.querySelector('.kexo-topbar-kpis-more-label');
-        if (label) label.textContent = expanded ? 'Hide' : 'Show more';
-      }
-      const btnMobile = document.getElementById('kexo-kpis-toggle-mobile');
-      if (btnMobile) {
-        btnMobile.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        const label = btnMobile.querySelector('.kexo-kpis-toggle-mobile-label');
-        if (label) label.textContent = expanded ? 'Hide KPIs' : 'Show KPIs';
-      }
+      const btnExpand = document.getElementById('kexo-kpis-expand-btn');
+      if (btnExpand) btnExpand.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      const btnCollapse = document.getElementById('kexo-kpis-collapse-btn');
+      if (btnCollapse) btnCollapse.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 
       if (expanded) {
         try {
@@ -5325,6 +5442,8 @@ const API = '';
           else renderLiveKpis(getKpiData());
         } catch (_) {}
         fetchExpandedKpiExtras({ force: false }).then(function(extras) { renderExpandedKpiExtras(extras); scheduleKpiPagerUpdate(); });
+      } else {
+        scheduleCondensedKpiOverflowUpdate();
       }
 
       scheduleKpiPagerUpdate();
@@ -5337,19 +5456,13 @@ const API = '';
     }
 
     (function initKpisExpandedToggle() {
-      const btn = document.getElementById('kexo-kpis-toggle');
-      if (btn) {
-        btn.addEventListener('click', function() {
-          setKpisExpanded(!isKpisExpanded());
-        });
-      }
-      const btnMobile = document.getElementById('kexo-kpis-toggle-mobile');
-      if (btnMobile) {
-        btnMobile.addEventListener('click', function() {
-          setKpisExpanded(!isKpisExpanded());
-        });
-      }
+      const btnExpand = document.getElementById('kexo-kpis-expand-btn');
+      if (btnExpand) btnExpand.addEventListener('click', function() { setKpisExpanded(true); });
+      const btnCollapse = document.getElementById('kexo-kpis-collapse-btn');
+      if (btnCollapse) btnCollapse.addEventListener('click', function() { setKpisExpanded(false); });
+      try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
       applyKpisExpandedUi();
+      scheduleCondensedKpiOverflowUpdate();
     })();
 
     function delay(ms) {
@@ -5535,6 +5648,15 @@ const API = '';
         });
     }
 
+    function refreshKpiExtrasSoft() {
+      // Condensed strip shows these KPIs, so keep them warm even when expanded view is closed.
+      const hasExtrasEls = !!(document.getElementById('live-kpi-items-sold') || document.getElementById('cond-kpi-items-sold'));
+      if (!hasExtrasEls) return;
+      fetchExpandedKpiExtras({ force: false })
+        .then(function(extras) { try { renderExpandedKpiExtras(extras); } catch (_) {} })
+        .catch(function() {});
+    }
+
     function refreshKpis(options = {}) {
       const force = !!options.force;
       const rangeKey = getStatsRange();
@@ -5551,6 +5673,7 @@ const API = '';
       if (!force && !stale && kpiCache) {
         try { renderLiveKpis(getKpiData()); } catch (_) {}
         try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
+        try { refreshKpiExtrasSoft(); } catch (_) {}
         return Promise.resolve(kpiCache);
       }
 
@@ -5585,12 +5708,14 @@ const API = '';
           }
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
+          try { refreshKpiExtrasSoft(); } catch (_) {}
           return data;
         })
         .catch(function(err) {
           console.error(err);
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
+          try { refreshKpiExtrasSoft(); } catch (_) {}
           return null;
         })
         .finally(function() {
@@ -7969,6 +8094,7 @@ const API = '';
           }
         });
         initCustomDateModal();
+        initSidebarDateMenu();
       }
       (function initMobileDateMenu() {
         const btn = document.getElementById('mobile-date-btn');

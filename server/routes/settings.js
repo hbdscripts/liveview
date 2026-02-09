@@ -55,9 +55,8 @@ const THEME_KEYS = [
   'theme',
   'theme_primary',
   'theme_radius',
-  // KEXO extensions (optional)
-  'kexo_topbar',
-  'kexo_nav_active',
+  'theme_font',
+  'theme_base',
 ];
 
 async function getThemeDefaults(req, res) {

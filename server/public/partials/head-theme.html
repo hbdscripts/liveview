@@ -1,4 +1,75 @@
   <script>
-    (function(){try{var t=localStorage.getItem('tabler-theme');if(t==='dark'){document.documentElement.setAttribute('data-bs-theme','dark');document.documentElement.classList.add('theme-dark-early');}}catch(e){}})();
+    (function () {
+      try {
+        var root = document.documentElement;
+
+        var mode = localStorage.getItem('tabler-theme');
+        if (mode === 'dark') {
+          root.setAttribute('data-bs-theme', 'dark');
+          root.classList.add('theme-dark-early');
+        } else if (mode === 'light') {
+          root.setAttribute('data-bs-theme', 'light');
+          root.classList.remove('theme-dark-early');
+        }
+
+        var PRIMARY = {
+          blue: ['#206bc4', '32,107,196'],
+          azure: ['#4299e1', '66,153,225'],
+          indigo: ['#4263eb', '66,99,235'],
+          purple: ['#ae3ec9', '174,62,201'],
+          pink: ['#d6336c', '214,51,108'],
+          red: ['#d63939', '214,57,57'],
+          orange: ['#f76707', '247,103,7'],
+          yellow: ['#f59f00', '245,159,0'],
+          lime: ['#74b816', '116,184,22'],
+          green: ['#2fb344', '47,179,68'],
+          teal: ['#0ca678', '12,166,120'],
+          cyan: ['#17a2b8', '23,162,184'],
+        };
+        var primary = localStorage.getItem('tabler-theme-primary');
+        if (primary && PRIMARY[primary]) {
+          root.style.setProperty('--tblr-primary', PRIMARY[primary][0]);
+          root.style.setProperty('--tblr-primary-rgb', PRIMARY[primary][1]);
+        }
+
+        var RADIUS = { '0': '0', '0.5': '.25rem', '1': '.375rem', '1.5': '.5rem', '2': '2rem' };
+        var radius = localStorage.getItem('tabler-theme-radius');
+        if (radius && RADIUS[radius] != null) {
+          var r = RADIUS[radius];
+          root.style.setProperty('--tblr-border-radius', r);
+          root.style.setProperty('--tblr-border-radius-sm', r === '0' ? '0' : 'calc(' + r + ' * .75)');
+          root.style.setProperty('--tblr-border-radius-lg', r === '0' ? '0' : 'calc(' + r + ' * 1.5)');
+          root.style.setProperty('--tblr-border-radius-xl', r === '0' ? '0' : 'calc(' + r + ' * 3)');
+        }
+
+        var FONTS = {
+          sans: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+          serif: 'Georgia, Cambria, \"Times New Roman\", Times, serif',
+          mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
+          comic: '\"Comic Sans MS\", \"Comic Sans\", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+        };
+        var font = localStorage.getItem('tabler-theme-font');
+        if (font && FONTS[font]) {
+          root.style.setProperty('--tblr-font-sans-serif', FONTS[font]);
+          root.style.setProperty('--bs-body-font-family', FONTS[font]);
+        }
+
+        var BASES = {
+          slate: { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a',950:'#020617' },
+          gray: { 50:'#f9fafb',100:'#f3f4f6',200:'#e5e7eb',300:'#d1d5db',400:'#9ca3af',500:'#6b7280',600:'#4b5563',700:'#374151',800:'#1f2937',900:'#111827',950:'#030712' },
+          zinc: { 50:'#fafafa',100:'#f4f4f5',200:'#e4e4e7',300:'#d4d4d8',400:'#a1a1aa',500:'#71717a',600:'#52525b',700:'#3f3f46',800:'#27272a',900:'#18181b',950:'#09090b' },
+          neutral: { 50:'#fafafa',100:'#f5f5f5',200:'#e5e5e5',300:'#d4d4d4',400:'#a3a3a3',500:'#737373',600:'#525252',700:'#404040',800:'#262626',900:'#171717',950:'#0a0a0a' },
+          stone: { 50:'#fafaf9',100:'#f5f5f4',200:'#e7e5e4',300:'#d6d3d1',400:'#a8a29e',500:'#78716c',600:'#57534e',700:'#44403c',800:'#292524',900:'#1c1917',950:'#0c0a09' },
+        };
+        var base = localStorage.getItem('tabler-theme-base');
+        if (base && BASES[base]) {
+          var palette = BASES[base];
+          for (var k in palette) {
+            if (!Object.prototype.hasOwnProperty.call(palette, k)) continue;
+            root.style.setProperty('--tblr-gray-' + k, palette[k]);
+          }
+        }
+      } catch (e) {}
+    })();
   </script>
   <style>.theme-dark-early,.theme-dark-early body{background:#1a2234;color:#e2e8f0;}</style>
