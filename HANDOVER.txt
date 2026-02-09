@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (Bold active nav + caret spacing)
+Last updated: 2026-02-09 (DB perf indexes + dashboard-series speedup)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -183,6 +183,7 @@ Edge (optional):
 - Removed per-page `<h2 class="page-title" id="page-title">…</h2>` headers; current page is indicated by the nav.
 - Nav dropdowns: when a child page is active, the dropdown toggle label becomes that child (e.g. “Live”), and the group label is shown inside the dropdown.
 - Nav highlight: active top-level item is bold and dropdown caret spacing is increased for readability.
+- DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
 - Dashboard KPI correctness + consistency:
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.

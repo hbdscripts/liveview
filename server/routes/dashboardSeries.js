@@ -20,6 +20,63 @@ function sessionFilterForTraffic(trafficMode) {
   return { sql: '', params: [] };
 }
 
+async function fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter) {
+  const sessionsPerDay = {};
+  const bouncePerDay = {};
+  for (const d of Array.isArray(dayBounds) ? dayBounds : []) {
+    sessionsPerDay[d.label] = 0;
+    bouncePerDay[d.label] = 0;
+  }
+  if (!dayBounds || !dayBounds.length) return { sessionsPerDay, bouncePerDay };
+
+  // Ensure the filter applies to the correct aliases (s / s2). (Filter currently uses `s.`.)
+  const filterOuter = String(filter && filter.sql ? filter.sql : '')
+    .replace(/sessions\./g, 's.')
+    .replace(/\bs\./g, 's.');
+  const filterS2 = String(filter && filter.sql ? filter.sql : '')
+    .replace(/sessions\./g, 's2.')
+    .replace(/\bs\./g, 's2.');
+  const filterParams = (filter && Array.isArray(filter.params)) ? filter.params : [];
+
+  // Single-pass conditional aggregation across all day bounds.
+  const cols = [];
+  const params = [
+    overallStart, overallEnd, ...filterParams, // pv subquery range
+    overallStart, overallEnd, ...filterParams, // outer sessions range
+  ];
+  for (let i = 0; i < dayBounds.length; i++) {
+    cols.push(`COALESCE(SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? THEN 1 ELSE 0 END), 0) AS sessions_${i}`);
+    cols.push(`COALESCE(SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? AND COALESCE(pv.pv, 0) = 1 THEN 1 ELSE 0 END), 0) AS bounces_${i}`);
+    params.push(dayBounds[i].start, dayBounds[i].end, dayBounds[i].start, dayBounds[i].end);
+  }
+
+  const row = await db.get(
+    `
+      SELECT ${cols.join(', ')}
+      FROM sessions s
+      LEFT JOIN (
+        SELECT e.session_id AS session_id, COUNT(*) AS pv
+        FROM events e
+        JOIN sessions s2 ON s2.session_id = e.session_id
+        WHERE e.type = 'page_viewed'
+          AND s2.started_at >= ? AND s2.started_at < ?
+          ${filterS2}
+        GROUP BY e.session_id
+      ) pv ON pv.session_id = s.session_id
+      WHERE s.started_at >= ? AND s.started_at < ?
+      ${filterOuter}
+    `,
+    params
+  );
+
+  for (let i = 0; i < dayBounds.length; i++) {
+    const label = dayBounds[i].label;
+    sessionsPerDay[label] = row ? (Number(row[`sessions_${i}`]) || 0) : 0;
+    bouncePerDay[label] = row ? (Number(row[`bounces_${i}`]) || 0) : 0;
+  }
+  return { sessionsPerDay, bouncePerDay };
+}
+
 async function getDashboardSeries(req, res) {
   const rangeRaw = (typeof req.query.range === 'string' ? req.query.range : '').trim().toLowerCase();
   const normalizeRange = (rk) => {
@@ -107,6 +164,10 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     dayBounds.push({ label, start: startMs, end: endMs });
   }
 
+  if (!dayBounds.length) {
+    return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
+  }
+
   const overallStart = dayBounds[0].start;
   const overallEnd = dayBounds[dayBounds.length - 1].end;
 
@@ -118,25 +179,10 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
-  // Fetch sessions + bounce per day
-  const sessionsPerDay = {};
-  const bouncePerDay = {};
-  const filterAliased = filter.sql.replace(/sessions\./g, 's.');
-  for (const db_day of dayBounds) {
-    const ph = config.dbUrl ? ['$1', '$2'] : ['?', '?'];
-    const sessRow = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ' + ph[0] + ' AND s.started_at < ' + ph[1] + filterAliased,
-      [db_day.start, db_day.end, ...filter.params]
-    );
-    sessionsPerDay[db_day.label] = sessRow ? Number(sessRow.n) || 0 : 0;
-
-    const bounceRow = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ' + ph[0] + ' AND s.started_at < ' + ph[1] + filterAliased +
-      ' AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = \'page_viewed\') = 1',
-      [db_day.start, db_day.end, ...filter.params]
-    );
-    bouncePerDay[db_day.label] = bounceRow ? Number(bounceRow.n) || 0 : 0;
-  }
+  // Fetch sessions + bounces across all days in one pass (avoid per-day loops).
+  const sb = await fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
+  const sessionsPerDay = sb.sessionsPerDay || {};
+  const bouncePerDay = sb.bouncePerDay || {};
 
   // Fetch orders + revenue per day from Shopify truth
   const ratesToGbp = await fx.getRatesToGbp();
@@ -145,11 +191,11 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   if (shop) {
     const orderRows = await db.all(
       config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at, raw_json
+        ? `SELECT order_id, total_price, currency, created_at
            FROM orders_shopify
            WHERE shop = $1 AND created_at >= $2 AND created_at < $3
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at, raw_json
+        : `SELECT order_id, total_price, currency, created_at
            FROM orders_shopify
            WHERE shop = ? AND created_at >= ? AND created_at < ?
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
@@ -503,24 +549,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   }
 
   // Fetch sessions + bounce per day
-  const sessionsPerDay = {};
-  const bouncePerDay = {};
-  const filterAliased = filter.sql.replace(/sessions\./g, 's.');
-  for (const db_day of dayBounds) {
-    const ph = config.dbUrl ? ['$1', '$2'] : ['?', '?'];
-    const sessRow = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ' + ph[0] + ' AND s.started_at < ' + ph[1] + filterAliased,
-      [db_day.start, db_day.end, ...filter.params]
-    );
-    sessionsPerDay[db_day.label] = sessRow ? Number(sessRow.n) || 0 : 0;
-
-    const bounceRow = await db.get(
-      'SELECT COUNT(*) AS n FROM sessions s WHERE s.started_at >= ' + ph[0] + ' AND s.started_at < ' + ph[1] + filterAliased +
-      ' AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = \'page_viewed\') = 1',
-      [db_day.start, db_day.end, ...filter.params]
-    );
-    bouncePerDay[db_day.label] = bounceRow ? Number(bounceRow.n) || 0 : 0;
-  }
+  const sb = await fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
+  const sessionsPerDay = sb.sessionsPerDay || {};
+  const bouncePerDay = sb.bouncePerDay || {};
 
   // Fetch orders + revenue per day from Shopify truth
   const ratesToGbp = await fx.getRatesToGbp();
@@ -529,11 +560,11 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   if (shop) {
     const orderRows = await db.all(
       config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at, raw_json
+        ? `SELECT order_id, total_price, currency, created_at
            FROM orders_shopify
            WHERE shop = $1 AND created_at >= $2 AND created_at < $3
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at, raw_json
+        : `SELECT order_id, total_price, currency, created_at
            FROM orders_shopify
            WHERE shop = ? AND created_at >= ? AND created_at < ?
              AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
