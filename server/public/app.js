@@ -1964,7 +1964,7 @@ const API = '';
 
     function formatRevenue(num) {
       if (num == null || typeof num !== 'number') return '';
-      return '\u00A3' + (num % 1 === 0 ? num : num.toFixed(2));
+      return '\u00A3' + num.toFixed(2);
     }
 
     function formatRevenueSub(num) {
