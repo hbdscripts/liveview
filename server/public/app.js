@@ -638,7 +638,7 @@ const API = '';
           var path = isExit
             ? '<path d="M19 12H5M11 6l-6 6 6 6"></path>'
             : '<path d="M5 12h14M13 6l6 6-6 6"></path>';
-          return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+          return '<svg class="' + cls + '" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
         }
 
         function line(kind, meta) {
@@ -824,7 +824,7 @@ const API = '';
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
     const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
-    const BOUGHT_OVERLAY_SVG = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="currentColor"></circle><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"></path></svg>';
+    const BOUGHT_OVERLAY_SVG = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="currentColor"></circle><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"></path></svg>';
     const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
     const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
@@ -2763,7 +2763,7 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const thumbInner = '<span class="leaderboard-thumb-wrap">' +
+        const thumbInner = '<span class="avatar avatar-sm leaderboard-thumb-wrap">' +
             '<span class="leaderboard-thumb-placeholder" aria-hidden="true"></span>' +
             (thumb
               ? '<img class="leaderboard-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
@@ -2831,7 +2831,7 @@ const API = '';
         var thumb = r && r.thumb_url ? String(r.thumb_url) : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         var thumbUrl = thumb ? (hotImgSquare(thumb) || thumb) : '';
-        var thumbImg = '<span class="thumb-wrap">' +
+        var thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
           '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
           (thumbUrl ? '<img class="bs-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
@@ -3036,7 +3036,7 @@ const API = '';
         const thumbUrl = (v && v.thumb_url) ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap">' +
+        const thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
           '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
           (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
@@ -3185,7 +3185,7 @@ const API = '';
         const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
         const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
         const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap">' +
+        const thumbImg = '<span class="avatar avatar-sm thumb-wrap">' +
           '<span class="bs-thumb-placeholder" aria-hidden="true"></span>' +
           (thumbSrc ? '<img class="bs-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
         '</span>';
@@ -3531,8 +3531,8 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const placeholderSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
-        const imgInner = '<span class="breakdown-thumb-wrap">' +
+        const placeholderSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
+        const imgInner = '<span class="avatar avatar-sm breakdown-thumb-wrap">' +
           placeholderSvg +
           (thumb
             ? '<img class="breakdown-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
@@ -3558,7 +3558,7 @@ const API = '';
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"></path><path d="M16 19l2 2 4-4"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"></path><path d="M16 19l2 2 4-4"></path></svg></span>';
       tbody.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
@@ -3588,7 +3588,7 @@ const API = '';
         if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
         if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
         if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
-        return '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 5.5H19l-4.4 3.2L16.4 16 12 12.8 7.6 16l1.8-5.3L5 7.5h5.2z"></path></svg></span>';
+        return '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 5.5H19l-4.4 3.2L16.4 16 12 12.8 7.6 16l1.8-5.3L5 7.5h5.2z"></path></svg></span>';
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
@@ -3630,7 +3630,7 @@ const API = '';
       updateCardPagination('breakdown-length', breakdownLengthPage, totalPages);
       var start = (breakdownLengthPage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M6 7v10"></path><path d="M10 7v6"></path><path d="M14 7v6"></path><path d="M18 7v10"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M6 7v10"></path><path d="M10 7v6"></path><path d="M14 7v6"></path><path d="M18 7v10"></path></svg></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
@@ -3662,7 +3662,7 @@ const API = '';
       updateCardPagination('breakdown-chainstyle', breakdownChainStylePage, totalPages);
       var start = (breakdownChainStylePage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -4091,7 +4091,6 @@ const API = '';
     function syncDateSelectOptions() {
       const sel = document.getElementById('global-date-select');
       if (!sel) return;
-      if (activeMainTab === 'dashboard') return;
       const hasLive = sel.querySelector('option[value="live"]');
       if (hasLive) hasLive.remove();
       // Keep the "Custom" option stable, and create a dynamic option for the currently applied custom range.
@@ -4340,7 +4339,9 @@ const API = '';
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: true });
 
-      if (activeMainTab === 'stats') {
+      if (activeMainTab === 'dashboard') {
+        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
+      } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
       } else if (activeMainTab === 'breakdown') {
         refreshBreakdown({ force: false });
@@ -4701,7 +4702,7 @@ const API = '';
           return;
         }
         const compareSvg =
-          '<svg fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+          '<svg width="13" height="13" fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
             '<path d="M46.05,60.163H31.923c-0.836,0-1.513,0.677-1.513,1.513v21.934c0,0.836,0.677,1.513,1.513,1.513H46.05 c0.836,0,1.512-0.677,1.512-1.513V61.675C47.562,60.839,46.885,60.163,46.05,60.163z"></path>' +
             '<path d="M68.077,14.878H53.95c-0.836,0-1.513,0.677-1.513,1.513v67.218c0,0.836,0.677,1.513,1.513,1.513h14.127 c0.836,0,1.513-0.677,1.513-1.513V16.391C69.59,15.555,68.913,14.878,68.077,14.878z"></path>' +
             '<path d="M90.217,35.299H76.09c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513h14.126 c0.836,0,1.513-0.677,1.513-1.513V36.812C91.729,35.977,91.052,35.299,90.217,35.299z"></path>' +
@@ -5705,9 +5706,9 @@ const API = '';
       const modalCardEl = preserveView ? document.querySelector('#config-modal .config-modal-card') : null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
       if (configStatusEl && !preserveView) {
-        configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
+        configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
       }
-      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
+      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
@@ -8093,7 +8094,7 @@ const API = '';
           } else {
             prodTbody.innerHTML = products.map(function(p) {
               var thumbHtml = p.thumb_url
-                ? '<img src="' + escapeHtml(hotImg(p.thumb_url)) + '" width="32" height="32" style="border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:0.5rem" loading="lazy" alt="">'
+                ? '<span class="avatar avatar-sm me-2"><img src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt=""></span>'
                 : '';
               return '<tr><td><span style="display:inline-flex;align-items:center">' + thumbHtml + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
             }).join('');
@@ -8148,10 +8149,30 @@ const API = '';
           });
       }
 
+      function dashDaysFromDateRange() {
+        var r = (typeof dateRange === 'string') ? dateRange.trim().toLowerCase() : 'today';
+        if (r === 'today' || r === 'live' || r === 'sales' || r === '1h') return 1;
+        if (r === 'yesterday') return 1;
+        if (r === '7days') return 7;
+        if (r === '14days') return 14;
+        if (r === '30days') return 30;
+        // Custom range: compute days between start and end
+        if (r.startsWith('r:')) {
+          try {
+            var parts = r.slice(2).split(':');
+            var s = new Date(parts[0] + 'T00:00:00Z');
+            var e = new Date(parts[1] + 'T00:00:00Z');
+            var diff = Math.round((e - s) / 86400000) + 1;
+            if (Number.isFinite(diff) && diff > 0) return Math.min(diff, 90);
+          } catch (_) {}
+        }
+        if (r.startsWith('d:')) return 1;
+        return 7;
+      }
+
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
-        var days = dashLastDays || 30;
-        try { days = parseInt(document.getElementById('dash-range-select').value, 10) || 30; } catch (_) {}
+        var days = dashDaysFromDateRange();
         if (!force && dashCache && dashCache.days === days) {
           renderDashboard(dashCache);
           return;
@@ -8159,55 +8180,11 @@ const API = '';
         fetchDashboardData(days, force);
       };
 
-      var rangeSel = document.getElementById('dash-range-select');
-      if (rangeSel) {
-        (function syncDashRangeOptions() {
-          try {
-            var todayYmd = ymdNowInTz();
-            var maxDays = 1;
-            if (todayYmd && todayYmd >= MIN_YMD) {
-              var a = new Date(MIN_YMD + 'T00:00:00.000Z');
-              var b = new Date(todayYmd + 'T00:00:00.000Z');
-              var diff = Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
-              if (Number.isFinite(diff) && diff > 0) maxDays = diff;
-            }
-
-            var hadOk = false;
-            for (var i = 0; i < rangeSel.options.length; i++) {
-              var opt = rangeSel.options[i];
-              var v = parseInt(opt.value, 10);
-              var ok = Number.isFinite(v) && v > 0 && v <= maxDays;
-              opt.disabled = !ok;
-              try { opt.hidden = !ok; } catch (_) {}
-              if (ok) hadOk = true;
-            }
-            if (!hadOk) {
-              var o = document.createElement('option');
-              o.value = String(maxDays);
-              o.textContent = 'Since ' + formatYmdLabel(MIN_YMD);
-              o.selected = true;
-              rangeSel.insertBefore(o, rangeSel.firstChild);
-            } else {
-              var selOpt = rangeSel.options[rangeSel.selectedIndex];
-              if (selOpt && selOpt.disabled) {
-                for (var j = 0; j < rangeSel.options.length; j++) {
-                  if (!rangeSel.options[j].disabled) { rangeSel.selectedIndex = j; break; }
-                }
-              }
-            }
-          } catch (_) {}
-        })();
-        rangeSel.addEventListener('change', function() {
-          var days = parseInt(rangeSel.value, 10) || 30;
-          fetchDashboardData(days, true);
-        });
-      }
-
       // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
       if (dashPanel && dashPanel.classList.contains('active')) {
-        fetchDashboardData(parseInt((rangeSel && rangeSel.value) || '7', 10), false);
+        fetchDashboardData(dashDaysFromDateRange(), false);
       }
     })();
 

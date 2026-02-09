@@ -45,6 +45,11 @@ body {
 }
 
 /* ── Sticky navbar layout ────────────────────────────────────────── */
+/* Space between nav and page content */
+.sticky-top ~ .page {
+  padding-top: 15px;
+}
+
 .navbar.sticky-top {
   position: sticky;
   top: 0;
