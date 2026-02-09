@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (KPIs: 2m cache + localStorage paint + sale toast invalidation)
+Last updated: 2026-02-09 (Ads: background spend sync + patch spend/profit updates)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -217,6 +217,7 @@ Edge (optional):
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
   - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure, connection/refresh/errors live in a real `card-footer`, loading is centered, and non-forced refreshes update silently (small spinning refresh icon) instead of wiping the table.
+  - Ads spend sync: server runs Google Ads spend sync in the background every 5 minutes (recent window), and the Ads UI refreshes by patching spend/profit/ROAS in-place (no “Syncing…” table wipe).
   - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
   - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
   - Fix `/api/dashboard-series` 500 on Postgres: reorder params for conditional-aggregate queries so BIGINT columns don’t receive `shop` string params (affects Units Sold + session/bounce aggregation).

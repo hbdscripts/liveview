@@ -472,50 +472,66 @@ setInterval(() => {
   cleanup.run().catch(err => console.error('Cleanup error:', err));
 }, 2 * 60 * 1000);
 
-// Ads spend sync every 30 minutes (Google Ads → google_ads_spend_hourly + bs_revenue_hourly)
+// Ads spend sync runs in the background so the Ads table can refresh without wiping UI.
 (function scheduleAdsSync() {
+  if (process.env.DISABLE_SCHEDULED_ADS_SYNC === '1' || process.env.DISABLE_SCHEDULED_ADS_SYNC === 'true') return;
+
   const store = require('./store');
-  const { rollupRevenueHourly } = require('./ads/adsRevenueRollup');
   const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
   const { getAdsDb } = require('./ads/adsDb');
 
-  async function runAdsSync() {
+  const SPEND_SYNC_MS = 5 * 60 * 1000;
+  const GCLID_BACKFILL_MS = 30 * 60 * 1000;
+
+  let spendInFlight = false;
+  let gclidInFlight = false;
+
+  function resolveBounds(rangeKey) {
+    const now = Date.now();
+    const timeZone = store.resolveAdminTimeZone();
+    const bounds = store.getRangeBounds(rangeKey, now, timeZone);
+    return { rangeStartTs: bounds.start, rangeEndTs: bounds.end };
+  }
+
+  async function runSpendSync(rangeKey) {
+    if (spendInFlight) return;
+    spendInFlight = true;
     try {
       const adsDb = getAdsDb();
       if (!adsDb) return; // ADS_DB_URL not set — skip silently
-      const now = Date.now();
-      const timeZone = store.resolveAdminTimeZone();
-      const bounds = store.getRangeBounds('7d', now, timeZone);
-      const rangeStartTs = bounds.start;
-      const rangeEndTs = bounds.end;
-
-      // 1. Spend sync
-      let spend = null;
-      try {
-        spend = await syncGoogleAdsSpendHourly({ rangeStartTs, rangeEndTs });
-      } catch (e) {
-        spend = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'spend_sync_failed' };
-      }
-      console.log('[ads-sync] Spend sync:', spend && spend.ok ? `${spend.upserts} upserts (${spend.apiVersion})` : (spend && spend.error || 'failed'));
-
-      // 2. Gclid backfill (maps gclid in session entry_url → campaign via click_view)
-      let gclidBf = null;
-      try {
-        gclidBf = await backfillCampaignIdsFromGclid({ rangeStartTs, rangeEndTs, apiVersion: spend && spend.apiVersion ? spend.apiVersion : '' });
-      } catch (e) {
-        gclidBf = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'gclid_backfill_failed' };
-      }
-      console.log('[ads-sync] Gclid backfill:', gclidBf && gclidBf.ok ? `${gclidBf.updated || 0} updated` : (gclidBf && gclidBf.error || 'failed'));
-
-      // 3. Revenue rollup (picks up newly-backfilled campaign IDs)
-      const rollup = await rollupRevenueHourly({ rangeStartTs, rangeEndTs, source: 'googleads' });
-      console.log('[ads-sync] Revenue rollup:', rollup && rollup.ok ? `${rollup.upserts} upserts` : (rollup && rollup.error || 'failed'));
+      const { rangeStartTs, rangeEndTs } = resolveBounds(rangeKey);
+      const spend = await syncGoogleAdsSpendHourly({ rangeStartTs, rangeEndTs });
+      if (spend && spend.ok) console.log('[ads-sync] spend:', spend.upserts, 'upserts', spend.apiVersion ? '(' + spend.apiVersion + ')' : '');
+      else console.warn('[ads-sync] spend failed:', spend && spend.error ? spend.error : 'failed');
     } catch (err) {
-      console.error('[ads-sync] Error:', err);
+      console.error('[ads-sync] spend error:', err && err.message ? err.message : err);
+    } finally {
+      spendInFlight = false;
     }
   }
 
-  // First run 30s after boot, then every 30 minutes
-  setTimeout(() => { runAdsSync().catch(() => {}); }, 30 * 1000);
-  setInterval(() => { runAdsSync().catch(() => {}); }, 30 * 60 * 1000);
+  async function runGclidBackfill(rangeKey) {
+    if (gclidInFlight) return;
+    gclidInFlight = true;
+    try {
+      const adsDb = getAdsDb();
+      if (!adsDb) return;
+      const { rangeStartTs, rangeEndTs } = resolveBounds(rangeKey);
+      const out = await backfillCampaignIdsFromGclid({ rangeStartTs, rangeEndTs });
+      if (out && out.ok) console.log('[ads-sync] gclid backfill:', out.updated || 0, 'updated');
+      else console.warn('[ads-sync] gclid backfill failed:', out && out.error ? out.error : 'failed');
+    } catch (err) {
+      console.error('[ads-sync] gclid backfill error:', err && err.message ? err.message : err);
+    } finally {
+      gclidInFlight = false;
+    }
+  }
+
+  // Bootstrap: backfill a wider window once, then keep recent spend fresh.
+  setTimeout(() => { runSpendSync('7d').catch(() => {}); }, 30 * 1000);
+  setInterval(() => { runSpendSync('3d').catch(() => {}); }, SPEND_SYNC_MS);
+
+  // GCLID → campaign cache: less frequent (used for attribution fallbacks).
+  setTimeout(() => { runGclidBackfill('7d').catch(() => {}); }, 45 * 1000);
+  setInterval(() => { runGclidBackfill('7d').catch(() => {}); }, GCLID_BACKFILL_MS);
 })();

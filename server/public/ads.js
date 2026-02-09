@@ -49,21 +49,24 @@
     }).catch(function () { return null; });
   }
 
-  function postRefresh(rangeKey) {
-    var url = baseApi() + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey || 'today');
-    return fetch(url, {
-      method: 'POST', credentials: 'same-origin', cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: 'googleads' }),
-    }).then(function (r) {
-      return r && r.ok ? r.json().catch(function () { return null; }) : null;
-    }).catch(function () { return null; });
-  }
-
   function profitClass(v) {
     var x = v != null ? Number(v) : 0;
     if (!Number.isFinite(x) || x === 0) return '';
     return x > 0 ? 'ads-profit-pos' : 'ads-profit-neg';
+  }
+
+  function setProfitCellClass(cell, profit) {
+    if (!cell || !cell.classList) return;
+    var x = profit != null ? Number(profit) : 0;
+    cell.classList.remove('ads-profit-pos', 'ads-profit-neg');
+    if (!Number.isFinite(x) || x === 0) return;
+    cell.classList.add(x > 0 ? 'ads-profit-pos' : 'ads-profit-neg');
+  }
+
+  function patchText(el, text) {
+    if (!el) return;
+    var next = text == null ? '' : String(text);
+    if (el.textContent !== next) el.textContent = next;
   }
 
   /* ── sort state ──────────────────────────────────────────── */
@@ -370,6 +373,99 @@
     return errs;
   }
 
+  function patchSpendProfitRoas(root, summary) {
+    if (!root || !summary || !summary.totals) return false;
+    var currency = (summary && summary.currency) || 'GBP';
+    var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+    if (!campaigns.length) return false;
+
+    var map = new Map();
+    for (var i = 0; i < campaigns.length; i++) {
+      var c = campaigns[i];
+      if (!c || !c.campaignId) continue;
+      map.set(String(c.campaignId), c);
+    }
+
+    var rows = root.querySelectorAll('.ads-campaign-row');
+    if (!rows || !rows.length) return false;
+
+    for (var ri = 0; ri < rows.length; ri++) {
+      var row = rows[ri];
+      if (!row) continue;
+      var id = row.getAttribute('data-campaign-id') || '';
+      if (!id) continue;
+      var c2 = map.get(String(id));
+      if (!c2) return false; // campaign set changed -> full rerender
+
+      var cells = row.querySelectorAll('.grid-cell');
+      if (!cells || cells.length < 7) return false;
+
+      patchText(cells[1], fmtMoney(c2.spend, currency));
+
+      var pr = c2.profit != null ? Number(c2.profit) : 0;
+      patchText(cells[4], fmtMoney(pr, currency));
+      setProfitCellClass(cells[4], pr);
+
+      patchText(cells[5], fmtRoas(c2.roas));
+    }
+
+    var totals = summary && summary.totals ? summary.totals : null;
+    var tRow = root.querySelector('.ads-totals-row');
+    if (totals && tRow) {
+      var tCells = tRow.querySelectorAll('.grid-cell');
+      if (!tCells || tCells.length < 7) return false;
+      patchText(tCells[1], fmtMoney(totals.spend, currency));
+      var tProfit = totals.profit != null ? Number(totals.profit) : 0;
+      patchText(tCells[4], fmtMoney(tProfit, currency));
+      setProfitCellClass(tCells[4], tProfit);
+      patchText(tCells[5], fmtRoas(totals.roas));
+    }
+
+    return true;
+  }
+
+  function patchFooterAndNote(status, summary) {
+    var footer = document.getElementById('ads-footer');
+    var noteEl = document.getElementById('ads-note');
+
+    var note = (summary && summary.note) ? String(summary.note) : '';
+    if (noteEl) {
+      if (note) {
+        noteEl.style.display = '';
+        patchText(noteEl, note);
+      } else {
+        noteEl.style.display = 'none';
+        patchText(noteEl, '');
+      }
+    }
+
+    if (!footer) return;
+
+    var providers = status && status.providers ? status.providers : [];
+    var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
+    var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
+
+    var badge = footer.querySelector('.badge');
+    if (badge) {
+      badge.className = isConnected ? 'badge bg-green' : 'badge bg-secondary';
+    }
+
+    var labelEl = footer.querySelector('.ads-conn-label');
+    if (labelEl) patchText(labelEl, connLabel);
+
+    _lastErrors = collectErrors(status, summary, null);
+    _lastErrorsPayload = {
+      fetchError: _lastFetchError,
+      providers: status && status.providers ? status.providers : null,
+      rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
+    };
+
+    var errBtn = document.getElementById('ads-errors-btn');
+    if (errBtn) {
+      errBtn.style.display = _lastErrors.length ? 'inline-flex' : 'none';
+    }
+  }
+
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
     _lastSummary = summary;
@@ -502,25 +598,21 @@
 
     if (footer) {
       footer.style.display = '';
-      var errsBtn = _lastErrors.length
-        ? '<button type="button" class="btn btn-danger btn-sm" id="ads-errors-btn" title="View errors">' +
-            '<i class="ti ti-alert-triangle"></i><span class="ms-2">Errors detected</span>' +
-          '</button>'
-        : '';
-
-      var miniTitle = _isForceRefreshing ? 'Syncing…' : 'Refreshing…';
+      var miniTitle = 'Refreshing…';
       footer.innerHTML =
         '<div class="d-flex align-items-center gap-2 flex-wrap w-100">' +
           '<div class="d-flex align-items-center gap-2">' +
             connBadge +
-            '<span class="text-muted small">' + esc(connLabel) + '</span>' +
+            '<span class="text-muted small ads-conn-label">' + esc(connLabel) + '</span>' +
             '<span class="ads-refresh-mini" id="ads-refresh-mini" style="display:' + (_isRefreshing ? 'inline-flex' : 'none') + ';" title="' + esc(miniTitle) + '" aria-label="' + esc(miniTitle) + '">' +
               '<i class="ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '') + '"></i>' +
             '</span>' +
           '</div>' +
           '<div class="ms-auto d-flex align-items-center gap-2">' +
-            errsBtn +
-            '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Sync Google Ads + attribution" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
+            '<button type="button" class="btn btn-danger btn-sm" id="ads-errors-btn" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="View errors">' +
+              '<i class="ti ti-alert-triangle"></i><span class="ms-2">Errors detected</span>' +
+            '</button>' +
+            '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Refresh metrics" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
               '<i class="ti ti-refresh"></i>' +
             '</button>' +
           '</div>' +
@@ -583,7 +675,7 @@
     if (mini) {
       if (_isRefreshing) {
         mini.style.display = 'inline-flex';
-        mini.title = _isForceRefreshing ? 'Syncing…' : 'Refreshing…';
+        mini.title = 'Refreshing…';
         mini.setAttribute('aria-label', mini.title);
         var icon = mini.querySelector('i');
         if (icon) icon.className = 'ti ti-refresh ads-spin';
@@ -634,20 +726,15 @@
     if (!_lastSummary) {
       if (footer) footer.style.display = 'none';
       if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
-      renderLoading(root, isForce ? 'Syncing…' : 'Loading…');
+      renderLoading(root, 'Loading…');
     } else {
       applyRefreshingUi(true, isForce);
     }
 
-    var preStep = isForce ? postRefresh(rangeKey) : Promise.resolve(null);
-
-    var p = preStep.then(function (rr) {
-      if (rr) _lastRefreshResult = rr;
-      return Promise.all([
-        fetchJson('/api/ads/status'),
-        fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : '')),
-      ]);
-    }).then(function (arr) {
+    var p = Promise.all([
+      fetchJson('/api/ads/status'),
+      fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : '')),
+    ]).then(function (arr) {
       var status = arr && arr[0] ? arr[0] : null;
       var summary = arr && arr[1] ? arr[1] : null;
       if (!status || !summary) _lastFetchError = 'Failed to load ads data (status/summary).';
@@ -656,14 +743,30 @@
       if (summary) _lastFetchedAt = Date.now();
 
       applyRefreshingUi(false, false);
-      render(root, status || _lastStatus, summary || _lastSummary, isForce ? _lastRefreshResult : undefined);
+      var nextStatus = status || _lastStatus;
+      var nextSummary = summary || _lastSummary;
+
+      var didPatch = false;
+      if (nextSummary && _lastSummary) {
+        try {
+          didPatch = patchSpendProfitRoas(root, nextSummary);
+          patchFooterAndNote(nextStatus, nextSummary);
+        } catch (_) { didPatch = false; }
+      }
+
+      if (!didPatch) {
+        render(root, nextStatus, nextSummary, undefined);
+      } else {
+        _lastStatus = nextStatus;
+        _lastSummary = nextSummary;
+      }
 
       return { status: status, summary: summary };
     }).catch(function () {
       _lastFetchError = 'Could not load ads.';
       applyRefreshingUi(false, false);
       if (_lastSummary) {
-        render(root, _lastStatus, _lastSummary, isForce ? _lastRefreshResult : undefined);
+        try { patchFooterAndNote(_lastStatus, _lastSummary); } catch (_) {}
       } else {
         if (footer) footer.style.display = 'none';
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
@@ -679,5 +782,23 @@
   }
 
   window.__adsRefresh = refresh;
-  window.__adsInit = function () { return refresh({ force: false }); };
+  window.__adsInit = function () {
+    var AUTO_REFRESH_MS = 5 * 60 * 1000;
+    var hasTimer = false;
+    try { hasTimer = !!window.__adsAutoTimer; } catch (_) { hasTimer = false; }
+    if (!hasTimer) {
+      try {
+        window.__adsAutoTimer = setInterval(function () {
+          try {
+            if (document.visibilityState !== 'visible') return;
+            var panel = document.getElementById('tab-panel-ads');
+            if (panel && panel.classList && !panel.classList.contains('active')) return;
+            // Silent refresh: patch spend/profit/ROAS in-place (no table wipe).
+            refresh({ force: false });
+          } catch (_) {}
+        }, AUTO_REFRESH_MS);
+      } catch (_) {}
+    }
+    return refresh({ force: false });
+  };
 })();

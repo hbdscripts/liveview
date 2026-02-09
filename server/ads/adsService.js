@@ -247,7 +247,7 @@ async function getSummary(options = {}) {
   campaigns.sort((a, b) => (b.spend || 0) - (a.spend || 0));
 
   const note = (!revRows || !revRows.length) && (!spendRows || !spendRows.length)
-    ? 'No spend data yet. Click ↻ to sync Google Ads. Sales are attributed from Shopify truth orders via tracking params (bs_campaign_id/utm_id/gclid).'
+    ? 'No spend data yet. Google Ads spend sync runs in the background — ensure Google Ads is connected. Sales are attributed from Shopify truth orders via tracking params (bs_campaign_id/utm_id/gclid).'
     : ((!revRows || !revRows.length) && (spendRows && spendRows.length)
       ? 'Spend is synced from Google Ads. No attributed Shopify orders found for this range yet — check landing_site has bs_campaign_id/utm_id or gclid cache is working.'
       : null);
