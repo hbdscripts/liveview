@@ -8178,7 +8178,7 @@ const API = '';
     (function initDashboard() {
       var dashCache = null;
       var dashLoading = false;
-      var dashLastDays = 30;
+      var dashLastRangeKey = null;
       var dashCharts = {};
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
@@ -8326,11 +8326,8 @@ const API = '';
       function renderDashboard(data) {
         if (!data) return;
         var allSeries = data.series || [];
-        var displayDays = dashLastDays || Math.ceil(allSeries.length / 2) || 1;
-        // Current period for secondary stats; charts use at least 7 data points
-        var series = allSeries.slice(-displayDays);
-        var chartDays = Math.max(displayDays, 7);
-        var chartSeries = allSeries.slice(-Math.min(chartDays, allSeries.length));
+        var series = allSeries;
+        var chartSeries = allSeries;
 
         var el = function(id) { return document.getElementById(id); };
         // Recompute summary from current period only
@@ -8524,33 +8521,20 @@ const API = '';
         }
       }
 
-      function fetchDashboardData(days, force) {
+      function fetchDashboardData(rangeKey, force) {
         if (dashLoading && !force) return;
-        try {
-          var n = parseInt(days, 10);
-          if (!Number.isFinite(n) || n <= 0) n = 7;
-          var todayYmd = ymdNowInTz();
-          if (todayYmd && todayYmd >= MIN_YMD) {
-            var a = new Date(MIN_YMD + 'T00:00:00.000Z');
-            var b = new Date(todayYmd + 'T00:00:00.000Z');
-            var maxDays = Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
-            if (Number.isFinite(maxDays) && maxDays > 0) n = Math.min(n, maxDays);
-          } else {
-            n = 1;
-          }
-          days = n;
-        } catch (_) {}
+        rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+        if (!rangeKey) rangeKey = 'today';
         dashLoading = true;
         showPageProgress();
-        var fetchDays = Math.max(days * 2, 14); // Enough data for charts + comparison
-        var url = API + '/api/dashboard-series?days=' + fetchDays + (force ? '&_=' + Date.now() : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? '&_=' + Date.now() : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
             dashLoading = false;
             if (data) {
               dashCache = data;
-              dashLastDays = days;
+              dashLastRangeKey = rangeKey;
               renderDashboard(data);
             }
           })
@@ -8563,42 +8547,29 @@ const API = '';
           });
       }
 
-      function dashDaysFromDateRange() {
-        var r = (typeof dateRange === 'string') ? dateRange.trim().toLowerCase() : 'today';
-        if (r === 'today' || r === 'live' || r === 'sales' || r === '1h') return 1;
-        if (r === 'yesterday') return 1;
-        if (r === '7days') return 7;
-        if (r === '14days') return 14;
-        if (r === '30days') return 30;
-        // Custom range: compute days between start and end
-        if (r.startsWith('r:')) {
-          try {
-            var parts = r.slice(2).split(':');
-            var s = new Date(parts[0] + 'T00:00:00Z');
-            var e = new Date(parts[1] + 'T00:00:00Z');
-            var diff = Math.round((e - s) / 86400000) + 1;
-            if (Number.isFinite(diff) && diff > 0) return Math.min(diff, 90);
-          } catch (_) {}
-        }
-        if (r.startsWith('d:')) return 1;
-        return 7;
+      function dashRangeKeyFromDateRange() {
+        // Use the same normalized API range key as KPIs/stats so Dashboard charts/tables match the header selection.
+        var rk = (typeof getStatsRange === 'function') ? getStatsRange() : ((typeof dateRange === 'string') ? dateRange : 'today');
+        rk = (rk == null ? '' : String(rk)).trim().toLowerCase();
+        if (!rk) rk = 'today';
+        return rk;
       }
 
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
-        var days = dashDaysFromDateRange();
-        if (!force && dashCache && dashLastDays === days) {
+        var rk = dashRangeKeyFromDateRange();
+        if (!force && dashCache && dashLastRangeKey === rk) {
           renderDashboard(dashCache);
           return;
         }
-        fetchDashboardData(days, force);
+        fetchDashboardData(rk, force);
       };
 
       // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
-        fetchDashboardData(dashDaysFromDateRange(), false);
+        fetchDashboardData(dashRangeKeyFromDateRange(), false);
       }
     })();
 
