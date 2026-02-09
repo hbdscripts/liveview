@@ -2680,23 +2680,31 @@ async function getKpis(options = {}) {
   ]);
 
   let compare = null;
-  if (rangeKey === 'today') {
-    const nowParts = getTimeZoneParts(new Date(now), timeZone);
-    const yesterdayParts = addDaysToParts(nowParts, -1);
-    const compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
-    const compareEnd = zonedTimeToUtcMs(
-      yesterdayParts.year,
-      yesterdayParts.month,
-      yesterdayParts.day,
-      nowParts.hour,
-      nowParts.minute,
-      nowParts.second,
-      timeZone
-    );
-    const todayStart = startOfDayUtcMs(nowParts, timeZone);
-    const compareEndClamped = Math.max(compareStart, Math.min(compareEnd, todayStart));
-    if (compareEndClamped > compareStart) {
-      const compareOpts = { ...opts, rangeKey: 'yesterday' };
+  // Compute previous-period comparison for all date ranges
+  {
+    const periodLengthMs = bounds.end - bounds.start;
+    let compareStart, compareEnd;
+    if (rangeKey === 'today') {
+      // Today up to now → yesterday up to same time-of-day
+      const nowParts = getTimeZoneParts(new Date(now), timeZone);
+      const yesterdayParts = addDaysToParts(nowParts, -1);
+      compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
+      const sameTimeYesterday = zonedTimeToUtcMs(
+        yesterdayParts.year, yesterdayParts.month, yesterdayParts.day,
+        nowParts.hour, nowParts.minute, nowParts.second, timeZone
+      );
+      const todayStart = startOfDayUtcMs(nowParts, timeZone);
+      compareEnd = Math.max(compareStart, Math.min(sameTimeYesterday, todayStart));
+    } else {
+      // All other ranges: shift back by the period length
+      compareStart = bounds.start - periodLengthMs;
+      compareEnd = bounds.start;
+    }
+    // Clamp to platform start
+    if (compareStart < PLATFORM_START_MS) compareStart = PLATFORM_START_MS;
+    if (compareEnd < PLATFORM_START_MS) compareEnd = PLATFORM_START_MS;
+    if (compareEnd > compareStart) {
+      const compareOpts = { ...opts, rangeKey: rangeKey === 'today' ? 'yesterday' : rangeKey };
       const [
         compareSales,
         compareReturning,
@@ -2705,12 +2713,12 @@ async function getKpis(options = {}) {
         compareBreakdown,
         compareBounce,
       ] = await Promise.all([
-        getSalesTotal(compareStart, compareEndClamped, compareOpts),
-        getReturningRevenue(compareStart, compareEndClamped, compareOpts),
-        getConversionRate(compareStart, compareEndClamped, compareOpts),
-        getConvertedCount(compareStart, compareEndClamped, compareOpts),
-        getSessionCounts(compareStart, compareEndClamped, compareOpts),
-        getBounceRate(compareStart, compareEndClamped, compareOpts),
+        getSalesTotal(compareStart, compareEnd, compareOpts),
+        getReturningRevenue(compareStart, compareEnd, compareOpts),
+        getConversionRate(compareStart, compareEnd, compareOpts),
+        getConvertedCount(compareStart, compareEnd, compareOpts),
+        getSessionCounts(compareStart, compareEnd, compareOpts),
+        getBounceRate(compareStart, compareEnd, compareOpts),
       ]);
       compare = {
         sales: compareSales,
@@ -2720,7 +2728,7 @@ async function getKpis(options = {}) {
         bounce: compareBounce,
         convertedCount: compareConvertedCount,
         trafficBreakdown: compareBreakdown,
-        range: { start: compareStart, end: compareEndClamped },
+        range: { start: compareStart, end: compareEnd },
       };
     }
   }

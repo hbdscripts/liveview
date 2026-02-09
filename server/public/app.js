@@ -59,7 +59,7 @@ const API = '';
     let statsCache = {};
     let trafficCache = null;
     let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
@@ -4738,10 +4738,9 @@ const API = '';
       if (aovVal != null) renderKpiSparkline('aov', generateMockSparklineData(aovVal, aovVal * 0.2));
       if (bounceVal != null) renderKpiSparkline('bounce', generateMockSparklineData(bounceVal, bounceVal * 0.15));
 
-      const showYesterday = kpiRange === 'today';
       function setSub(el, text) {
         if (!el) return;
-        if (!showYesterday || text === '' || text == null) {
+        if (text === '' || text == null) {
           el.textContent = '';
           el.classList.add('is-hidden');
           return;
@@ -7489,7 +7488,7 @@ const API = '';
           var showKpis = (tab !== 'dashboard' && tab !== 'tools');
           var sharedKpiWrap = document.querySelector('.shared-kpi-wrap');
           if (sharedKpiWrap) sharedKpiWrap.style.display = showKpis ? '' : 'none';
-          var showDateSel = (tab !== 'dashboard' && tab !== 'tools');
+          var showDateSel = (tab !== 'tools');
           var globalDateSel = document.getElementById('global-date-select');
           if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
           var mobileDateBtn = document.getElementById('mobile-date-btn');
@@ -8265,8 +8264,9 @@ const API = '';
               renderDashboard(data);
             }
           })
-          .catch(function() {
+          .catch(function(err) {
             dashLoading = false;
+            console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
             hidePageProgress();
@@ -8297,7 +8297,7 @@ const API = '';
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
         var days = dashDaysFromDateRange();
-        if (!force && dashCache && dashCache.days === days) {
+        if (!force && dashCache && dashLastDays === days) {
           renderDashboard(dashCache);
           return;
         }
@@ -8307,7 +8307,7 @@ const API = '';
       // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
-      if (dashPanel && dashPanel.classList.contains('active')) {
+      if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
         fetchDashboardData(dashDaysFromDateRange(), false);
       }
     })();
