@@ -484,15 +484,18 @@
 
 /* ── Nav link separators (desktop only) ── */
 @media (min-width: 769px) {
+  /* Make nav items flex so separator sits beside the link */
+  .navbar .navbar-nav .nav-item + .nav-item {
+    display: flex;
+    align-items: center;
+  }
   /* Insert a real 1px separator between nav items */
   .navbar .navbar-nav .nav-item + .nav-item::before {
     content: '';
-    display: inline-block;
+    flex-shrink: 0;
     width: 1px;
     height: 1rem;
     background: #eeeeee;
-    vertical-align: middle;
-    align-self: center;
   }
   body.theme-dark .navbar .navbar-nav .nav-item + .nav-item::before {
     background: rgba(255, 255, 255, 0.12);
