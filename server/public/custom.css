@@ -312,6 +312,17 @@
   opacity: 1;
 }
 
+/* KPI bar: contain overflow, allow horizontal swipe inside */
+.shared-kpi-wrap {
+  overflow: hidden;
+}
+.kpi-mobile-pager {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.kpi-mobile-pager::-webkit-scrollbar { display: none; }
+
 /* Hide KPI mobile pager button */
 #kpi-mobile-next {
   display: none !important;
@@ -471,14 +482,32 @@
 .sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
-/* ── Nav link separators (desktop only) ── */
+/* ── Nav link separators + padding (desktop only) ── */
 @media (min-width: 769px) {
-  .navbar .navbar-nav .nav-item + .nav-item .nav-link {
+  .navbar .navbar-nav .nav-item + .nav-item > .nav-link {
     border-left: 1px solid #eeeeee;
+    padding-left: .75rem;
+  }
+  /* Active bottom border spans full width up to the separator */
+  .navbar .navbar-nav .nav-item.active > .nav-link,
+  .navbar .navbar-nav .nav-item > .nav-link.active {
+    box-shadow: inset 0 -2px 0 var(--tblr-primary);
   }
 }
 
 /* ── Nav active state (Tabler handles .nav-item.active styling) ── */
+
+/* ── Refresh icon spin ── */
+@keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.refresh-spinning i { animation: spin-once .6s ease-in-out; }
+
+/* ── Dark mode: link color matches body text ── */
+body.theme-dark a:not(.btn):not(.nav-link):not(.dropdown-item) {
+  color: var(--tblr-body-color, #e2e8f0);
+}
+body.theme-dark a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
+  color: var(--tblr-primary);
+}
 
 /* ── Toast dark-mode support ── */
 body.theme-dark .sale-toast {

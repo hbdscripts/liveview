@@ -7772,8 +7772,8 @@ const API = '';
         const btn = document.getElementById('refresh-btn');
         if (btn) {
           btn.addEventListener('click', function() {
-            btn.classList.add('spinning');
-            setTimeout(function() { btn.classList.remove('spinning'); }, 800);
+            btn.classList.add('refresh-spinning');
+            setTimeout(function() { btn.classList.remove('refresh-spinning'); }, 600);
             // If Settings/Diagnostics modal is open, refresh diagnostics too (but keep the user's view).
             try {
               if (typeof isConfigModalOpen === 'function' && isConfigModalOpen()) {
