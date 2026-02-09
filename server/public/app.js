@@ -59,7 +59,7 @@ const API = '';
     let statsCache = {};
     let trafficCache = null;
     let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? '30days' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
