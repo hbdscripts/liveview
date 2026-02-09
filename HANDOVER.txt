@@ -19,7 +19,8 @@ Pages (new, Tabler layout):
 - `server/public/overview.html`
 - `server/public/countries.html`
 - `server/public/products.html`
-- `server/public/traffic.html`
+- `server/public/channels.html`
+- `server/public/type.html`
 - `server/public/ads.html`
 - `server/public/tools.html`
 
@@ -38,7 +39,7 @@ Legacy/backup:
 
 Server routing (Express):
 - Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
-- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/overview`, `/countries`, `/products`, `/traffic`, `/ads`, `/tools`.
+- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/overview`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/tools`.
 - See: `server/index.js`.
 
 Auth protection:
@@ -112,7 +113,7 @@ Tabler “navbar-overlap” layout applied:
 ## Pending follow-ups (if requested)
 
 - Full Tabler restyle of the Diagnostics modal.
-- UI polish pass across new pages (align cards, spacing, cards in overview/countries/products/traffic).
+- UI polish pass across new pages (align cards, spacing, cards in countries/products/channels/type).
 ## High-level architecture
 
 Backend:
@@ -182,7 +183,7 @@ Edge (optional):
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.
 - Nav + theming:
-  - Added direct `/traffic` link in the Traffic dropdown and highlight dropdown on `/traffic`.
+  - Traffic dropdown now links to `/channels` and `/type` only (combined `/traffic` page removed).
   - Header/footer logo reverted to a single image (no dark-mode swap).
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).

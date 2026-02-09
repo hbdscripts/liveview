@@ -270,7 +270,6 @@ app.get('/date', (req, res) => sendPage(res, 'date.html'));
 app.get('/overview', (req, res) => res.redirect(301, '/countries'));
 app.get('/countries', (req, res) => sendPage(res, 'countries.html'));
 app.get('/products', (req, res) => sendPage(res, 'products.html'));
-app.get('/traffic', (req, res) => sendPage(res, 'traffic.html'));
 app.get('/channels', (req, res) => sendPage(res, 'channels.html'));
 app.get('/type', (req, res) => sendPage(res, 'type.html'));
 app.get('/ads', (req, res) => sendPage(res, 'ads.html'));

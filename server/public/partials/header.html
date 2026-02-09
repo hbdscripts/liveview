@@ -34,16 +34,46 @@
               <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
                 <ul class="navbar-nav">
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-dashboard" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Dashboard</span>
+                    <a class="nav-link dropdown-toggle" href="#navbar-dashboard" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="icon icon-tabler icons-tabler-filled icon-tabler-layout-dashboard"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M9 3a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2zm0 12a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2zm10 -4a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2zm0 -8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2z" />
+                        </svg>
+                      </span>
+                      <span class="nav-link-title">Dashboard</span>
                     </a>
                     <div class="dropdown-menu">
+                      <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><i class="ti ti-layout-dashboard me-2"></i>Overview</a>
                       <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a>
                       <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a>
                       <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Date</a>
                     </div>
                   </li>
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Overview</span>
+                    <a class="nav-link dropdown-toggle" href="#navbar-breakdown" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="icon icon-tabler icons-tabler-filled icon-tabler-chart-pie"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M9.883 2.207a1.9 1.9 0 0 1 2.087 1.522l.025 .167l.005 .104v7a1 1 0 0 0 .883 .993l.117 .007h6.8a2 2 0 0 1 2 2a1 1 0 0 1 -.026 .226a10 10 0 1 1 -12.27 -11.933l.27 -.067l.11 -.02z" />
+                          <path d="M14 3.5v5.5a1 1 0 0 0 1 1h5.5a1 1 0 0 0 .943 -1.332a10 10 0 0 0 -6.11 -6.111a1 1 0 0 0 -1.333 .943z" />
+                        </svg>
+                      </span>
+                      <span class="nav-link-title">Breakdown</span>
                     </a>
                     <div class="dropdown-menu">
                       <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2"></i>Countries</a>
@@ -51,23 +81,64 @@
                     </div>
                   </li>
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Traffic</span>
+                    <a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="icon icon-tabler icons-tabler-filled icon-tabler-bolt"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M13 2l.018 .001l.016 .001l.083 .005l.011 .002h.011l.038 .009l.052 .008l.016 .006l.011 .001l.029 .011l.052 .014l.019 .009l.015 .004l.028 .014l.04 .017l.021 .012l.022 .01l.023 .015l.031 .017l.034 .024l.018 .011l.013 .012l.024 .017l.038 .034l.022 .017l.008 .01l.014 .012l.036 .041l.026 .027l.006 .009c.12 .147 .196 .322 .218 .513l.001 .012l.002 .041l.004 .064v6h5a1 1 0 0 1 .868 1.497l-.06 .091l-8 11c-.568 .783 -1.808 .38 -1.808 -.588v-6h-5a1 1 0 0 1 -.868 -1.497l.06 -.091l8 -11l.01 -.013l.018 -.024l.033 -.038l.018 -.022l.009 -.008l.013 -.014l.04 -.036l.028 -.026l.008 -.006a1 1 0 0 1 .402 -.199l.011 -.001l.027 -.005l.074 -.013l.011 -.001l.041 -.002z" />
+                        </svg>
+                      </span>
+                      <span class="nav-link-title">Traffic</span>
                     </a>
                     <div class="dropdown-menu">
-                      <a class="dropdown-item" id="nav-tab-traffic" data-nav="traffic" href="/traffic"><i class="ti ti-activity me-2"></i>Traffic</a>
                       <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2"></i>Channels</a>
                       <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a>
                     </div>
                   </li>
                   <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" role="button" aria-expanded="false"><span class="nav-link-title">Integrations</span>
+                    <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" role="button" aria-expanded="false">
+                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="icon icon-tabler icons-tabler-filled icon-tabler-puzzle"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M10 2a3 3 0 0 1 2.995 2.824l.005 .176v1h3a2 2 0 0 1 1.995 1.85l.005 .15v3h1a3 3 0 0 1 .176 5.995l-.176 .005h-1v3a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-1a1 1 0 0 0 -1.993 -.117l-.007 .117v1a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h1a1 1 0 0 0 .117 -1.993l-.117 -.007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h3v-1a3 3 0 0 1 3 -3z" />
+                        </svg>
+                      </span>
+                      <span class="nav-link-title">Integrations</span>
                     </a>
                     <div class="dropdown-menu">
                       <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="ti ti-brand-google me-2"></i>Google Ads</a>
                     </div>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools"><span class="nav-link-title">Tools</span>
+                    <a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools">
+                      <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          class="icon icon-tabler icons-tabler-filled icon-tabler-settings"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M14.647 4.081a.724 .724 0 0 0 1.08 .448c2.439 -1.485 5.23 1.305 3.745 3.744a.724 .724 0 0 0 .447 1.08c2.775 .673 2.775 4.62 0 5.294a.724 .724 0 0 0 -.448 1.08c1.485 2.439 -1.305 5.23 -3.744 3.745a.724 .724 0 0 0 -1.08 .447c-.673 2.775 -4.62 2.775 -5.294 0a.724 .724 0 0 0 -1.08 -.448c-2.439 1.485 -5.23 -1.305 -3.745 -3.744a.724 .724 0 0 0 -.447 -1.08c-2.775 -.673 -2.775 -4.62 0 -5.294a.724 .724 0 0 0 .448 -1.08c-1.485 -2.439 1.305 -5.23 3.744 -3.745a.722 .722 0 0 0 1.08 -.447c.673 -2.775 4.62 -2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z" />
+                        </svg>
+                      </span>
+                      <span class="nav-link-title">Tools</span>
                     </a>
                   </li>
                 </ul>

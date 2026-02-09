@@ -478,7 +478,7 @@ const API = '';
             if (shopForSalesFallback) {
               if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
               if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
-              if ((activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
+              if ((activeMainTab === 'channels' || activeMainTab === 'type') && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
@@ -3977,7 +3977,7 @@ const API = '';
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
 
-      if (typeof ApexCharts === 'undefined') {
+      if (typeof jsVectorMap === 'undefined') {
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
@@ -3997,74 +3997,72 @@ const API = '';
         return;
       }
 
-      // Horizontal bar chart showing revenue by country
-      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 12);
-      const categories = sortedRows.map(r => {
-        const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        return countryLabel(code);
-      });
-      const revenues = sortedRows.map(r => r.revenue || 0);
+      // Vector map (Tabler-style): revenue by country with tooltip details.
+      const revenueByIso2 = {};
+      const ordersByIso2 = {};
+      for (const r of rows || []) {
+        let iso = (r && r.country_code != null) ? String(r.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
+        if (!iso || iso === 'XX') continue;
+        // Common alias
+        if (iso === 'UK') iso = 'GB';
+        const rev = (r && typeof r.revenue === 'number') ? r.revenue : 0;
+        const ord = (r && r.converted != null) ? Number(r.converted) : 0;
+        if (!Number.isFinite(rev) && !Number.isFinite(ord)) continue;
+        revenueByIso2[iso] = (revenueByIso2[iso] || 0) + (Number.isFinite(rev) ? rev : 0);
+        ordersByIso2[iso] = (ordersByIso2[iso] || 0) + (Number.isFinite(ord) ? ord : 0);
+      }
 
-      const options = {
-        chart: {
-          type: 'bar',
-          height: 320,
-          fontFamily: 'Inter, sans-serif',
-          toolbar: { show: false }
-        },
-        series: [{
-          name: 'Revenue',
-          data: revenues
-        }],
-        colors: ['#4592e9'],
-        plotOptions: {
-          bar: {
-            horizontal: true,
-            borderRadius: 3,
-            barHeight: '65%'
-          }
-        },
-        dataLabels: {
-          enabled: true,
-          formatter: function(val) {
-            return '£' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-          },
-          style: {
-            fontSize: '11px',
-            fontWeight: 600
-          }
-        },
-        xaxis: {
-          categories: categories,
-          labels: {
-            formatter: function(val) {
-              return '£' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-            }
-          }
-        },
-        yaxis: {
-          labels: {
-            style: { fontSize: '12px' }
-          }
-        },
-        legend: {
-          show: false
-        },
-        tooltip: {
-          y: {
-            formatter: function(value) {
-              return '£' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-          }
-        }
-      };
+      // Clean mount
+      el.innerHTML = '';
 
       try {
-        countriesMapChartInstance = new ApexCharts(el, options);
-        countriesMapChartInstance.render();
+        const border = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-border-color') || '#e6e7e9').trim();
+        const muted = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-secondary') || '#626976').trim();
+        countriesMapChartInstance = new jsVectorMap({
+          selector: '#countries-map-chart',
+          map: 'world',
+          backgroundColor: 'transparent',
+          zoomButtons: true,
+          regionStyle: {
+            initial: { fill: 'rgba(148,163,184,0.25)', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(69,146,233,0.35)' },
+            selected: { fill: 'rgba(69,146,233,0.45)' },
+          },
+          series: {
+            regions: [
+              {
+                attribute: 'fill',
+                values: revenueByIso2,
+                scale: ['rgba(69,146,233,0.15)', 'rgba(69,146,233,0.95)'],
+                normalizeFunction: 'polynomial',
+              }
+            ]
+          },
+          onRegionTooltipShow: function(tooltip, code) {
+            const iso = (code || '').toString().trim().toUpperCase();
+            const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
+              ? (countriesMapChartInstance.getRegionName(iso) || iso)
+              : iso;
+            const rev = revenueByIso2[iso] || 0;
+            const ord = ordersByIso2[iso] || 0;
+            if (!rev && !ord) {
+              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
+              return;
+            }
+            const revHtml = formatRevenue(Number(rev) || 0) || '—';
+            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '—';
+            tooltip.html(
+              '<div style="min-width:180px">' +
+                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style=\"color:inherit\">' + escapeHtml(revHtml) + '</span></div>' +
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style=\"color:inherit\">' + escapeHtml(ordHtml) + '</span></div>' +
+              '</div>'
+            );
+          }
+        });
       } catch (err) {
-        console.error('[countries-map] Chart render error:', err);
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Chart rendering failed</div>';
+        console.error('[countries-map] map render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Map rendering failed</div>';
       }
     }
 
@@ -4501,7 +4499,7 @@ const API = '';
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
-      } else if (activeMainTab === 'traffic') {
+      } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
         refreshTraffic({ force: false });
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
@@ -7567,15 +7565,14 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'traffic', 'channels', 'type', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', traffic: 'Traffic', channels: 'Channels', type: 'Type', ads: 'Ads' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', traffic: 'traffic', channels: 'channels', type: 'type', ads: 'ads' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', traffic: 'traffic', channels: 'channels', type: 'type', ads: 'ads' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads'];
+        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Date', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Type', ads: 'Ads' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
         const tabProducts = document.getElementById('nav-tab-products');
-        const tabTraffic = document.getElementById('nav-tab-traffic');
         const tabAds = document.getElementById('nav-tab-ads');
         const tabSales = document.getElementById('nav-tab-sales');
         const tabDate = document.getElementById('nav-tab-date');
@@ -7584,7 +7581,6 @@ const API = '';
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
         const panelProducts = document.getElementById('tab-panel-products');
-        const panelTraffic = document.getElementById('tab-panel-traffic');
         const panelAds = document.getElementById('tab-panel-ads');
         const mobileBtn = document.getElementById('mobile-tabs-btn');
         const mobileMenu = document.getElementById('mobile-tabs-menu');
@@ -7681,29 +7677,28 @@ const API = '';
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', tab === 'stats' ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', tab === 'products' ? 'true' : 'false');
-          if (tabTraffic) tabTraffic.setAttribute('aria-selected', tab === 'traffic' ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', tab === 'ads' ? 'true' : 'false');
           if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
           if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
-          // Tables dropdown — highlight parent li.nav-item when a child page is active
-          var isTablesChild = (tab === 'spy' || tab === 'sales' || tab === 'date');
-          var tablesToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tables"]');
-          var tablesDropdownItem = tablesToggle ? tablesToggle.closest('.nav-item') : null;
-          if (tablesDropdownItem) {
-            if (isTablesChild) tablesDropdownItem.classList.add('active');
-            else tablesDropdownItem.classList.remove('active');
+          // Dashboard dropdown — highlight parent li.nav-item when a child page is active
+          var isDashboardChild = (tab === 'dashboard' || tab === 'spy' || tab === 'sales' || tab === 'date');
+          var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard"]');
+          var dashboardDropdownItem = dashboardToggle ? dashboardToggle.closest('.nav-item') : null;
+          if (dashboardDropdownItem) {
+            if (isDashboardChild) dashboardDropdownItem.classList.add('active');
+            else dashboardDropdownItem.classList.remove('active');
           }
-          // Overview dropdown
-          var isOverviewChild = (tab === 'stats' || tab === 'products');
-          var overviewToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-overview"]');
-          var overviewDropdownItem = overviewToggle ? overviewToggle.closest('.nav-item') : null;
-          if (overviewDropdownItem) {
-            if (isOverviewChild) overviewDropdownItem.classList.add('active');
-            else overviewDropdownItem.classList.remove('active');
+          // Breakdown dropdown (Countries + Products)
+          var isBreakdownChild = (tab === 'stats' || tab === 'products');
+          var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown"]');
+          var breakdownDropdownItem = breakdownToggle ? breakdownToggle.closest('.nav-item') : null;
+          if (breakdownDropdownItem) {
+            if (isBreakdownChild) breakdownDropdownItem.classList.add('active');
+            else breakdownDropdownItem.classList.remove('active');
           }
           // Traffic dropdown
-          var isTrafficChild = (tab === 'traffic' || tab === 'channels' || tab === 'type');
+          var isTrafficChild = (tab === 'channels' || tab === 'type');
           var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
           var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
           if (trafficDropdownItem) {
@@ -7745,7 +7740,7 @@ const API = '';
           } else if (tab === 'products') {
             refreshProducts({ force: false });
             ensureKpis();
-          } else if (tab === 'traffic' || tab === 'channels' || tab === 'type') {
+          } else if (tab === 'channels' || tab === 'type') {
             refreshTraffic({ force: false });
             ensureKpis();
           } else if (tab === 'ads') {
@@ -7770,7 +7765,6 @@ const API = '';
           var isSpy = tab === 'spy';
           var isStats = tab === 'stats';
           var isProducts = tab === 'products';
-          var isTraffic = tab === 'traffic';
           var isAds = tab === 'ads';
           activeMainTab = tab;
           syncMobileMenu(tab);
@@ -7788,7 +7782,6 @@ const API = '';
           if (panelSpy) panelSpy.classList.toggle('active', isSpy || isSales || isDate);
           if (panelStats) panelStats.classList.toggle('active', isStats);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
-          if (panelTraffic) panelTraffic.classList.toggle('active', isTraffic);
           if (panelAds) panelAds.classList.toggle('active', isAds);
 
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
@@ -7826,7 +7819,6 @@ const API = '';
         if (tabSpy) tabSpy.addEventListener('click', function() { setTab('spy'); });
         if (tabStats) tabStats.addEventListener('click', function() { setTab('stats'); });
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
-        if (tabTraffic) tabTraffic.addEventListener('click', function() { setTab('traffic'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
         if (tabTools) tabTools.addEventListener('click', function() { setTab('tools'); });
         if (mobileBtn && mobileMenu) {
@@ -7869,7 +7861,7 @@ const API = '';
             if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
             else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
-            else if (activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
+            else if (activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
             else fetchSessions();
           });
@@ -7938,7 +7930,7 @@ const API = '';
     }
 
     function onTrafficAutoRefreshTick() {
-      if (activeMainTab !== 'traffic' && activeMainTab !== 'channels' && activeMainTab !== 'type') return;
+      if (activeMainTab !== 'channels' && activeMainTab !== 'type') return;
       if (getStatsRange() !== 'today') return;
       if (document.visibilityState !== 'visible') return;
       refreshTraffic({ force: false });
@@ -7982,7 +7974,7 @@ const API = '';
       } else if (activeMainTab === 'products') {
         const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
         if (staleProducts) refreshProducts({ force: false });
-      } else if (activeMainTab === 'traffic' || activeMainTab === 'channels' || activeMainTab === 'type') {
+      } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });
       } else if (activeMainTab === 'ads') {
