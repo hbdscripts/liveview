@@ -8344,10 +8344,15 @@ const API = '';
             ensureKpis();
             ensureAdsLoaded().then(function(ok) {
               if (!ok) return;
-              try {
-                if (window.__adsInit) window.__adsInit();
-                else if (window.__adsRefresh) window.__adsRefresh({ force: false });
-              } catch (_) {}
+              // IMPORTANT: if `/ads.js` is already present as a deferred script tag (e.g. on `/ads` page),
+              // the promise can resolve before the script executes (microtask checkpoint after this script),
+              // leaving Ads blank until another event triggers a refresh. Defer one macrotask so Ads JS has run.
+              setTimeout(function() {
+                try {
+                  if (window.__adsInit) window.__adsInit();
+                  else if (window.__adsRefresh) window.__adsRefresh({ force: false });
+                } catch (_) {}
+              }, 0);
             });
           } else {
             var sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);

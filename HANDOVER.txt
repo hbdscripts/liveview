@@ -218,6 +218,7 @@ Edge (optional):
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
   - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure, connection/refresh/errors live in a real `card-footer`, loading is centered, and non-forced refreshes update silently (small spinning refresh icon) instead of wiping the table.
   - Ads spend sync: server runs Google Ads spend sync in the background every 5 minutes (recent window), and the Ads UI refreshes by patching spend/profit/ROAS in-place (no “Syncing…” table wipe).
+  - Ads boot: `app.js` defers Ads init by one macrotask so `/ads` doesn’t render blank (avoids the “Promise resolves before deferred ads.js executes” edge case).
   - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
   - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
   - Fix `/api/dashboard-series` 500 on Postgres: reorder params for conditional-aggregate queries so BIGINT columns don’t receive `shop` string params (affects Units Sold + session/bounce aggregation).

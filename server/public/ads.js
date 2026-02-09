@@ -401,12 +401,15 @@
       if (!cells || cells.length < 7) return false;
 
       patchText(cells[1], fmtMoney(c2.spend, currency));
+      patchText(cells[2], fmtNum(c2.impressions));
+      patchText(cells[3], fmtNum(c2.clicks));
 
       var pr = c2.profit != null ? Number(c2.profit) : 0;
       patchText(cells[4], fmtMoney(pr, currency));
       setProfitCellClass(cells[4], pr);
 
       patchText(cells[5], fmtRoas(c2.roas));
+      patchText(cells[6], fmtMoney(c2.revenue, currency));
     }
 
     var totals = summary && summary.totals ? summary.totals : null;
@@ -415,10 +418,13 @@
       var tCells = tRow.querySelectorAll('.grid-cell');
       if (!tCells || tCells.length < 7) return false;
       patchText(tCells[1], fmtMoney(totals.spend, currency));
+      patchText(tCells[2], fmtNum(totals.impressions));
+      patchText(tCells[3], fmtNum(totals.clicks));
       var tProfit = totals.profit != null ? Number(totals.profit) : 0;
       patchText(tCells[4], fmtMoney(tProfit, currency));
       setProfitCellClass(tCells[4], tProfit);
       patchText(tCells[5], fmtRoas(totals.roas));
+      patchText(tCells[6], fmtMoney(totals.revenue, currency));
     }
 
     return true;

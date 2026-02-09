@@ -478,13 +478,17 @@ setInterval(() => {
 
   const store = require('./store');
   const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
+  const { syncAttributedOrdersToAdsDb } = require('./ads/adsOrderAttributionSync');
   const { getAdsDb } = require('./ads/adsDb');
 
   const SPEND_SYNC_MS = 5 * 60 * 1000;
   const GCLID_BACKFILL_MS = 30 * 60 * 1000;
+  const ATTR_SYNC_MS = 5 * 60 * 1000;
+  const ATTR_BACKFILL_MS = 30 * 60 * 1000;
 
   let spendInFlight = false;
   let gclidInFlight = false;
+  let attrInFlight = false;
 
   function resolveBounds(rangeKey) {
     const now = Date.now();
@@ -527,6 +531,35 @@ setInterval(() => {
     }
   }
 
+  async function runOrderAttribution(rangeKey, reasonKey) {
+    if (attrInFlight) return;
+    attrInFlight = true;
+    try {
+      const adsDb = getAdsDb();
+      if (!adsDb) return;
+      const shop = salesTruth.resolveShopForSales('');
+      if (!shop) return;
+      const { rangeStartTs, rangeEndTs } = resolveBounds(rangeKey);
+
+      try {
+        await salesTruth.ensureReconciled(shop, rangeStartTs, rangeEndTs, reasonKey || ('ads_sync_' + rangeKey));
+      } catch (e) {
+        console.warn('[ads-sync] reconcile failed (non-fatal):', e && e.message ? String(e.message).slice(0, 220) : e);
+      }
+
+      const out = await syncAttributedOrdersToAdsDb({ shop, rangeStartTs, rangeEndTs, source: 'googleads' });
+      if (out && out.ok) {
+        console.log('[ads-sync] attribution:', out.upserts || 0, 'upserts', '(' + rangeKey + ')');
+      } else {
+        console.warn('[ads-sync] attribution failed:', out && out.error ? out.error : 'failed');
+      }
+    } catch (err) {
+      console.error('[ads-sync] attribution error:', err && err.message ? err.message : err);
+    } finally {
+      attrInFlight = false;
+    }
+  }
+
   // Bootstrap: backfill a wider window once, then keep recent spend fresh.
   setTimeout(() => { runSpendSync('7d').catch(() => {}); }, 30 * 1000);
   setInterval(() => { runSpendSync('3d').catch(() => {}); }, SPEND_SYNC_MS);
@@ -534,4 +567,9 @@ setInterval(() => {
   // GCLID → campaign cache: less frequent (used for attribution fallbacks).
   setTimeout(() => { runGclidBackfill('7d').catch(() => {}); }, 45 * 1000);
   setInterval(() => { runGclidBackfill('7d').catch(() => {}); }, GCLID_BACKFILL_MS);
+
+  // Order attribution into Ads DB: keep today's orders fresh frequently; backfill weekly window less often.
+  setTimeout(() => { runOrderAttribution('7d', 'ads_sync_boot_7d').catch(() => {}); }, 75 * 1000);
+  setInterval(() => { runOrderAttribution('today', 'ads_sync_today').catch(() => {}); }, ATTR_SYNC_MS);
+  setInterval(() => { runOrderAttribution('7d', 'ads_sync_7d').catch(() => {}); }, ATTR_BACKFILL_MS);
 })();
