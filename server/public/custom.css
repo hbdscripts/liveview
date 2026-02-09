@@ -1,5 +1,10 @@
 /* Minimal custom styles - Tabler-compatible */
 
+/* Global links: inherit surrounding text color (no blue link default). */
+a {
+  color: inherit !important;
+}
+
 /* Custom color variables for specific features */
 :root {
   --converted-bg: #edf7f6;

@@ -217,3 +217,4 @@ Edge (optional):
   - Legacy `live-visitors.html` no longer references missing `/nav.css`.
   - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
   - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.
+- Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
