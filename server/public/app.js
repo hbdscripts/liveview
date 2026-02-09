@@ -8179,10 +8179,13 @@ const API = '';
         if (!data) return;
         var allSeries = data.series || [];
         var displayDays = dashLastDays || Math.ceil(allSeries.length / 2) || 1;
-        // Split into current and previous periods
+        // Split into current and previous periods (for KPIs)
         var series = allSeries.slice(-displayDays);
         var prevSeries = allSeries.slice(0, allSeries.length - displayDays);
-        console.log('[dashboard] renderDashboard called, current:', series.length, 'prev:', prevSeries.length);
+        // Charts always show at least 7 data points for meaningful display
+        var chartDays = Math.max(displayDays, 7);
+        var chartSeries = allSeries.slice(-Math.min(chartDays, allSeries.length));
+        console.log('[dashboard] renderDashboard called, kpi:', series.length, 'chart:', chartSeries.length, 'prev:', prevSeries.length);
 
         var el = function(id) { return document.getElementById(id); };
         // Recompute summary from current period only
@@ -8313,16 +8316,16 @@ const API = '';
           });
           chart.render();
         }
-        renderSparkline('dash-revenue-sparkline', series.map(function(d) { return d.revenue; }), DASH_ACCENT);
-        renderSparkline('dash-sessions-sparkline', series.map(function(d) { return d.sessions; }), DASH_ORANGE);
-        renderSparkline('dash-orders-sparkline', series.map(function(d) { return d.orders; }), DASH_BLUE);
-        renderSparkline('dash-returning-sparkline', series.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
+        renderSparkline('dash-revenue-sparkline', chartSeries.map(function(d) { return d.revenue; }), DASH_ACCENT);
+        renderSparkline('dash-sessions-sparkline', chartSeries.map(function(d) { return d.sessions; }), DASH_ORANGE);
+        renderSparkline('dash-orders-sparkline', chartSeries.map(function(d) { return d.orders; }), DASH_BLUE);
+        renderSparkline('dash-returning-sparkline', chartSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
 
-        var labels = series.map(function(d) { return shortDate(d.date); });
+        var labels = chartSeries.map(function(d) { return shortDate(d.date); });
 
         makeChart('dash-chart-revenue', labels, [{
           label: 'Revenue',
-          data: series.map(function(d) { return d.revenue; }),
+          data: chartSeries.map(function(d) { return d.revenue; }),
           borderColor: DASH_ACCENT,
           backgroundColor: DASH_ACCENT_LIGHT,
           fill: true,
@@ -8331,17 +8334,17 @@ const API = '';
 
         makeChart('dash-chart-orders', labels, [{
           label: 'Orders',
-          data: series.map(function(d) { return d.orders; }),
+          data: chartSeries.map(function(d) { return d.orders; }),
           borderColor: DASH_BLUE,
           backgroundColor: DASH_BLUE_LIGHT,
           fill: true,
           borderWidth: 2
         }]);
 
-        var hasShopifyConv = series.some(function(d) { return d.shopifyConvRate != null; });
+        var hasShopifyConv = chartSeries.some(function(d) { return d.shopifyConvRate != null; });
         var convDatasets = [{
           label: 'Kexo Conv Rate',
-          data: series.map(function(d) { return d.convRate; }),
+          data: chartSeries.map(function(d) { return d.convRate; }),
           borderColor: DASH_PURPLE,
           backgroundColor: DASH_PURPLE_LIGHT,
           fill: true,
@@ -8350,7 +8353,7 @@ const API = '';
         if (hasShopifyConv) {
           convDatasets.push({
             label: 'Shopify Conv Rate',
-            data: series.map(function(d) { return d.shopifyConvRate; }),
+            data: chartSeries.map(function(d) { return d.shopifyConvRate; }),
             borderColor: '#5c6ac4',
             backgroundColor: 'rgba(92,106,196,0.10)',
             fill: false,
@@ -8362,26 +8365,26 @@ const API = '';
 
         makeChart('dash-chart-sessions', labels, [{
           label: 'Sessions',
-          data: series.map(function(d) { return d.sessions; }),
+          data: chartSeries.map(function(d) { return d.sessions; }),
           borderColor: DASH_ORANGE,
           backgroundColor: DASH_ORANGE_LIGHT,
           fill: true,
           borderWidth: 2
         }]);
 
-        var hasAdSpend = series.some(function(d) { return d.adSpend > 0; });
+        var hasAdSpend = chartSeries.some(function(d) { return d.adSpend > 0; });
         var adRow = el('dash-adspend-row');
         if (adRow) adRow.style.display = hasAdSpend ? '' : 'none';
         if (hasAdSpend) {
           makeChart('dash-chart-adspend', labels, [{
             label: 'Revenue',
-            data: series.map(function(d) { return d.revenue; }),
+            data: chartSeries.map(function(d) { return d.revenue; }),
             borderColor: DASH_ACCENT,
             backgroundColor: 'transparent',
             borderWidth: 2
           }, {
             label: 'Ad Spend',
-            data: series.map(function(d) { return d.adSpend; }),
+            data: chartSeries.map(function(d) { return d.adSpend; }),
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239,68,68,0.08)',
             fill: true,
@@ -8437,7 +8440,7 @@ const API = '';
         } catch (_) {}
         dashLoading = true;
         showPageProgress();
-        var fetchDays = days * 2; // Request double for "vs previous period" comparison
+        var fetchDays = Math.max(days * 2, 14); // Enough data for charts + comparison
         var url = API + '/api/dashboard-series?days=' + fetchDays + (force ? '&_=' + Date.now() : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })

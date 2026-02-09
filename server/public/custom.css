@@ -482,34 +482,35 @@
 .sticky-top > header.navbar { border-bottom: none !important; }
 .sticky-top .navbar-expand-md .navbar { border-bottom: 1px solid var(--tblr-border-color, #e6e7e9); }
 
-/* ── Nav link separators (desktop only) ── */
+/* ── Centered header logo ── */
+.navbar-dark .container-xl {
+  position: relative;
+}
+.navbar-brand-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.navbar-brand-center img {
+  display: block;
+}
+
+/* ── Top nav: remove rounded nav items, center nav links ── */
+.sticky-top .navbar .navbar-nav .nav-link {
+  border-radius: 0 !important;
+}
 @media (min-width: 769px) {
-  /* Make nav items flex so separator sits beside the link */
-  .navbar .navbar-nav .nav-item + .nav-item {
-    display: flex;
-    align-items: center;
+  #navbar-menu .navbar .container-xl {
+    justify-content: center;
   }
-  /* Insert a real 1px separator between nav items */
-  .navbar .navbar-nav .nav-item + .nav-item::before {
-    content: '';
-    flex-shrink: 0;
-    width: 1px;
-    height: 1rem;
-    background: #eeeeee;
-  }
-  body.theme-dark .navbar .navbar-nav .nav-item + .nav-item::before {
-    background: rgba(255, 255, 255, 0.12);
-  }
-  /* Active bottom border */
-  .navbar .navbar-nav .nav-item.active > .nav-link,
-  .navbar .navbar-nav .nav-item > .nav-link.active {
-    box-shadow: inset 0 -2px 0 var(--tblr-primary);
+  #navbar-menu .navbar .d-flex.flex-md-row {
+    flex-grow: 0 !important;
   }
 }
 
-/* ── Top nav: remove rounded nav items ── */
-.sticky-top .navbar .navbar-nav .nav-link {
-  border-radius: 0 !important;
+/* ── Dashboard KPI cards: equal height per row ── */
+#tab-panel-dashboard > .row > [class*="col"] > .card {
+  height: 100%;
 }
 
 /* ── Nav active state (Tabler handles .nav-item.active styling) ── */
