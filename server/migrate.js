@@ -41,6 +41,7 @@ const { up: up033 } = require('./migrations/033_sessions_landing_composite_index
 const { up: up034 } = require('./migrations/034_perf_indexes_more');
 const { up: up035 } = require('./migrations/035_growth_retention_indexes');
 const { up: up036 } = require('./migrations/036_tools_compare_cr_indexes');
+const { up: up037 } = require('./migrations/037_perf_composite_indexes_wal');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -82,6 +83,7 @@ async function main() {
   await up034();
   await up035();
   await up036();
+  await up037();
 
   try {
     const r = await runAdsMigrations();

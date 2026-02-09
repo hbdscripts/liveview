@@ -240,7 +240,7 @@
         <div id="best-sellers-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best sellers">
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></div>
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="ti ti-package" aria-hidden="true"></i></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="ti ti-click" aria-hidden="true"></i></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="ti ti-currency-pound" aria-hidden="true"></i></span></div>
@@ -252,21 +252,23 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
-        <button type="button" id="best-sellers-prev">Prev</button>
-        <span class="page-label" id="best-sellers-label">1 of 1</span>
-        <button type="button" id="best-sellers-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="best-sellers-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="best-sellers-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="best-sellers-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
     <div class="stats-card card" id="stats-best-variants">
       <div class="card-header">
-        <h3 class="card-title">by Variant</h3>
+        <h3 class="card-title">Variant</h3>
       </div>
       <div class="country-table-wrap" id="best-variants-wrap">
         <div id="best-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best variants">
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="by Variant"><span class="th-label-long">by Variant</span><span class="th-label-short">Variant</span></div>
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="ti ti-package" aria-hidden="true"></i></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="ti ti-click" aria-hidden="true"></i></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="ti ti-currency-pound" aria-hidden="true"></i></span></div>
@@ -278,10 +280,12 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
-        <button type="button" id="best-variants-prev">Prev</button>
-        <span class="page-label" id="best-variants-label">1 of 1</span>
-        <button type="button" id="best-variants-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="best-variants-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="best-variants-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="best-variants-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
   </div>
@@ -293,7 +297,7 @@
       <div class="country-table-wrap">
         <div id="type-necklaces-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Necklaces">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Necklaces</span><span class="th-label-short">Necklaces</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -302,7 +306,7 @@
           <div id="type-necklaces-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><button type="button" id="type-necklaces-prev">Prev</button><span class="page-label" id="type-necklaces-label">1 of 1</span><button type="button" id="type-necklaces-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-necklaces-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-necklaces-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-necklaces-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-bracelets">
       <div class="card-header">
@@ -311,7 +315,7 @@
       <div class="country-table-wrap">
         <div id="type-bracelets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Bracelets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Bracelets</span><span class="th-label-short">Bracelets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -320,7 +324,7 @@
           <div id="type-bracelets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><button type="button" id="type-bracelets-prev">Prev</button><span class="page-label" id="type-bracelets-label">1 of 1</span><button type="button" id="type-bracelets-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-bracelets-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-bracelets-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-bracelets-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-earrings">
       <div class="card-header">
@@ -329,7 +333,7 @@
       <div class="country-table-wrap">
         <div id="type-earrings-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Earrings">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Earrings</span><span class="th-label-short">Earrings</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -338,7 +342,7 @@
           <div id="type-earrings-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><button type="button" id="type-earrings-prev">Prev</button><span class="page-label" id="type-earrings-label">1 of 1</span><button type="button" id="type-earrings-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-earrings-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-earrings-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-earrings-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-sets">
       <div class="card-header">
@@ -347,7 +351,7 @@
       <div class="country-table-wrap">
         <div id="type-sets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Sets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Jewelry Sets</span><span class="th-label-short">Sets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -356,7 +360,7 @@
           <div id="type-sets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><button type="button" id="type-sets-prev">Prev</button><span class="page-label" id="type-sets-label">1 of 1</span><button type="button" id="type-sets-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-sets-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-sets-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-sets-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-charms">
       <div class="card-header">
@@ -365,7 +369,7 @@
       <div class="country-table-wrap">
         <div id="type-charms-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Charms">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Charms</span><span class="th-label-short">Charms</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -374,7 +378,7 @@
           <div id="type-charms-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><button type="button" id="type-charms-prev">Prev</button><span class="page-label" id="type-charms-label">1 of 1</span><button type="button" id="type-charms-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-charms-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-charms-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-charms-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-extras">
       <div class="card-header">
@@ -383,7 +387,7 @@
       <div class="country-table-wrap">
         <div id="type-extras-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Extras">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Extras</span><span class="th-label-short">Extras</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -392,7 +396,7 @@
           <div id="type-extras-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-extras-pagination" aria-label="Extras pagination"><button type="button" id="type-extras-prev">Prev</button><span class="page-label" id="type-extras-label">1 of 1</span><button type="button" id="type-extras-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-extras-pagination" aria-label="Extras pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-extras-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-extras-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-extras-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
   </div>
   </div>

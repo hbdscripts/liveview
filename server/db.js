@@ -39,6 +39,10 @@ function getDb() {
   const Database = require('better-sqlite3');
   const dbPath = path.join(process.cwd(), 'live_visitors.sqlite');
   const sqlite = new Database(dbPath);
+  // Performance: WAL mode for concurrent reads/writes, larger cache, mmap I/O
+  sqlite.pragma('journal_mode = WAL');
+  sqlite.pragma('cache_size = -32000');
+  sqlite.pragma('mmap_size = 268435456');
   db = {
     run: (sql, params = []) => {
       const result = sqlite.prepare(sql).run(...params);

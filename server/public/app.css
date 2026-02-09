@@ -150,7 +150,7 @@
     .best-sellers-table .product-cell a { display: inline-block; text-decoration: none; flex-shrink: 0; }
     /* Product thumbnails: shared styling (prevents "thin line" aspect ratios). */
     .bs-thumb, .landing-thumb { border-radius: 100%; object-fit: cover; object-position: center; flex-shrink: 0; display: block; }
-    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+    .best-sellers-table .product-cell .bs-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .best-sellers-table .product-cell .bs-name {
       flex: 1;
       min-width: 0;
@@ -163,7 +163,7 @@
       font-size: var(--table-font-size);
     }
     .best-sellers-table .thumb-wrap { width: 36px; height: 36px; }
-    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 100%; }
+    .best-sellers-table .bs-thumb-placeholder { position: absolute; inset: 0; width: 36px; height: 36px; background: var(--border); border-radius: 100%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
     .best-sellers-table .product-cell .bs-thumb { position: absolute; inset: 0; }
     .by-country-table th.sortable { cursor: pointer; user-select: none; }
     .by-country-table th.sortable:hover { color: var(--accent); }
@@ -1035,62 +1035,10 @@
     .table-pagination #rows-per-page-select:hover { color: var(--accent); }
     .table-pagination #rows-per-page-select:focus { outline: none; }
 
-    .card-pagination {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0;
-      padding: 0.5rem 0.75rem;
-      background: rgba(255, 255, 255, 0.7);
-      border-top: 1px solid var(--border);
-      font-size: 0.8125rem;
-      color: var(--muted);
-      border-radius: 0 0 var(--radius) var(--radius);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-    }
-    .card-pagination button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      padding: 0 10px;
-      height: 30px;
-      border: 1px solid var(--border);
-      border-radius: 0;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: none;
-      color: var(--text);
-      cursor: pointer;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      line-height: 1;
-      transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
-    }
-    .card-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
-    .card-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
-    .card-pagination button:disabled { opacity: 1; cursor: default; box-shadow: none; transform: none; }
-    .card-pagination .page-label {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      /* padding: 10px; */
-      height: 30px;
-      border: 1px solid var(--border);
-      border-radius: 0;
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: none;
-      min-width: 70px;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      color: var(--muted);
-      font-weight: 500;
-    }
-    .card-pagination button[id$="-prev"] { border-radius: 4px 0 0 4px; }
-    .card-pagination button[id$="-next"] { border-radius: 0 4px 4px 0; }
-    .card-pagination .page-label,
-    .card-pagination button[id$="-next"] { border-left: none; }
+    /* Pagination: uses Tabler's built-in .pagination classes; page-label keeps tabular nums */
+    .pagination .page-link#best-sellers-label,
+    .pagination .page-link#best-variants-label,
+    .pagination .page-link[id$="-label"] { font-variant-numeric: tabular-nums; min-width: 60px; text-align: center; cursor: default; }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
     .source-icons { display: inline-flex; align-items: center; gap: 4px; }
     .source-icons img { width: 20px; height: 20px; }

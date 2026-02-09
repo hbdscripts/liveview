@@ -581,9 +581,7 @@
 .table-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 
 .table-pagination button#pagination-prev::before,
-.card-pagination button[id$="-prev"]::before,
-.table-pagination button#pagination-next::after,
-.card-pagination button[id$="-next"]::after {
+.table-pagination button#pagination-next::after {
   content: '';
   display: inline-block;
   width: 16px;
@@ -597,13 +595,11 @@
   mask-position: center;
   opacity: 0.9;
 }
-.table-pagination button#pagination-prev::before,
-.card-pagination button[id$="-prev"]::before {
+.table-pagination button#pagination-prev::before {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 18l-6-6 6-6' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 18l-6-6 6-6' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E");
 }
-.table-pagination button#pagination-next::after,
-.card-pagination button[id$="-next"]::after {
+.table-pagination button#pagination-next::after {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 6l6 6-6 6' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 6l6 6-6 6' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E");
 }
@@ -650,62 +646,8 @@
 .table-pagination #rows-per-page-select:hover { color: var(--accent); }
 .table-pagination #rows-per-page-select:focus { outline: none; }
 
-.card-pagination {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0;
-  padding: 0.65rem 0.75rem;
-  background: rgba(255, 255, 255, 0.7);
-  border-top: 1px solid var(--border);
-  font-size: 0.8125rem;
-  color: var(--muted);
-  border-radius: 0 0 var(--radius) var(--radius);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-.card-pagination button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 0 10px;
-  height: 30px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: none;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 650;
-  line-height: 1;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
-}
-.card-pagination button:hover:not(:disabled) { border-color: rgba(13, 148, 136, 0.45); background: rgba(13, 148, 136, 0.08); color: var(--accent); }
-.card-pagination button:active:not(:disabled) { box-shadow: 0 0 0 rgba(0,0,0,0); }
-.card-pagination button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
-.card-pagination .page-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* padding: 10px; */
-  height: 30px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: none;
-  min-width: 104px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  font-weight: 600;
-}
-.card-pagination button[id$="-prev"] { border-radius: 4px 0 0 4px; }
-.card-pagination button[id$="-next"] { border-radius: 0 4px 4px 0; }
-.card-pagination .page-label,
-.card-pagination button[id$="-next"] { border-left: none; }
+/* Pagination: uses Tabler's built-in .pagination classes */
+.pagination .page-link[id$="-label"] { font-variant-numeric: tabular-nums; min-width: 60px; text-align: center; cursor: default; }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
     .source-icons { display: inline-flex; align-items: center; gap: 4px; }
     .source-icons img { width: 20px; height: 20px; }
@@ -1181,10 +1123,12 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="country-pagination" aria-label="Country pagination">
-        <button type="button" id="country-prev">Prev</button>
-        <span class="page-label" id="country-label">1 of 1</span>
-        <button type="button" id="country-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="country-pagination" aria-label="Country pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="country-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="country-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="country-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
     <div class="stats-card card" id="stats-best-geo-products">
@@ -1204,10 +1148,12 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
-        <button type="button" id="best-geo-products-prev">Prev</button>
-        <span class="page-label" id="best-geo-products-label">1 of 1</span>
-        <button type="button" id="best-geo-products-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-geo-products-pagination" aria-label="Best GEO products pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="best-geo-products-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="best-geo-products-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="best-geo-products-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
   </div>
@@ -1236,7 +1182,7 @@
           <div id="breakdown-aov-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="breakdown-aov-pagination" aria-label="AOV pagination"><button type="button" id="breakdown-aov-prev">Prev</button><span class="page-label" id="breakdown-aov-label">1 of 1</span><button type="button" id="breakdown-aov-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="breakdown-aov-pagination" aria-label="AOV pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="breakdown-aov-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="breakdown-aov-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="breakdown-aov-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card">
       <div class="country-table-wrap">
@@ -1249,7 +1195,7 @@
           <div id="breakdown-title-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="breakdown-title-pagination" aria-label="Product pagination"><button type="button" id="breakdown-title-prev">Prev</button><span class="page-label" id="breakdown-title-label">1 of 1</span><button type="button" id="breakdown-title-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="breakdown-title-pagination" aria-label="Product pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="breakdown-title-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="breakdown-title-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="breakdown-title-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card">
       <div class="country-table-wrap">
@@ -1274,7 +1220,7 @@
           <div id="breakdown-finish-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="breakdown-finish-pagination" aria-label="Finish pagination"><button type="button" id="breakdown-finish-prev">Prev</button><span class="page-label" id="breakdown-finish-label">1 of 1</span><button type="button" id="breakdown-finish-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="breakdown-finish-pagination" aria-label="Finish pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="breakdown-finish-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="breakdown-finish-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="breakdown-finish-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card">
       <div class="country-table-wrap">
@@ -1287,7 +1233,7 @@
           <div id="breakdown-length-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="breakdown-length-pagination" aria-label="Length pagination"><button type="button" id="breakdown-length-prev">Prev</button><span class="page-label" id="breakdown-length-label">1 of 1</span><button type="button" id="breakdown-length-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="breakdown-length-pagination" aria-label="Length pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="breakdown-length-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="breakdown-length-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="breakdown-length-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card">
       <div class="country-table-wrap">
@@ -1300,7 +1246,7 @@
           <div id="breakdown-chainstyle-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="breakdown-chainstyle-pagination" aria-label="Chain Style pagination"><button type="button" id="breakdown-chainstyle-prev">Prev</button><span class="page-label" id="breakdown-chainstyle-label">1 of 1</span><button type="button" id="breakdown-chainstyle-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="breakdown-chainstyle-pagination" aria-label="Chain Style pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="breakdown-chainstyle-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="breakdown-chainstyle-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="breakdown-chainstyle-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
   </div>
   </div>
@@ -1322,7 +1268,7 @@
         <div id="best-sellers-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best sellers">
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Best"><span class="th-label-long">Best</span><span class="th-label-short">Best</span></div>
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
@@ -1334,10 +1280,12 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
-        <button type="button" id="best-sellers-prev">Prev</button>
-        <span class="page-label" id="best-sellers-label">1 of 1</span>
-        <button type="button" id="best-sellers-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="best-sellers-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="best-sellers-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="best-sellers-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
     <div class="stats-card card" id="stats-best-variants">
@@ -1345,7 +1293,7 @@
         <div id="best-variants-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best variants">
           <div class="grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="by Variant"><span class="th-label-long">by Variant</span><span class="th-label-short">Variant</span></div>
+              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4.94198C6.47561 4.02693 5.129 3.65381 4.39141 4.39141C3.55146 5.23136 4.15187 6.86106 5.3527 10.1205L7.3603 15.5696C7.96225 17.2035 8.26322 18.0204 8.92489 18.1658C9.58656 18.3111 10.2022 17.6955 11.4334 16.4643L12.6361 15.2616L16.5744 19.1999C16.9821 19.6077 17.186 19.8116 17.4135 19.9058C17.7168 20.0314 18.0575 20.0314 18.3608 19.9058C18.5882 19.8116 18.7921 19.6077 19.1999 19.1999C19.6077 18.7921 19.8116 18.5882 19.9058 18.3608C20.0314 18.0575 20.0314 17.7168 19.9058 17.4135C19.8116 17.186 19.6077 16.9821 19.1999 16.5744L15.2616 12.6361L16.4643 11.4334C17.6955 10.2022 18.3111 9.58656 18.1658 8.92489C18.0204 8.26322 17.2035 7.96225 15.5696 7.3603L13 6.41359"></path></svg></span></div>
               <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
@@ -1357,10 +1305,12 @@
           </div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
-        <button type="button" id="best-variants-prev">Prev</button>
-        <span class="page-label" id="best-variants-label">1 of 1</span>
-        <button type="button" id="best-variants-next">Next</button>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-variants-pagination" aria-label="Best variants pagination">
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item"><button type="button" class="page-link" id="best-variants-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li>
+          <li class="page-item disabled"><span class="page-link" id="best-variants-label">1 of 1</span></li>
+          <li class="page-item"><button type="button" class="page-link" id="best-variants-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li>
+        </ul>
       </div>
     </div>
   </div>
@@ -1369,7 +1319,7 @@
       <div class="country-table-wrap">
         <div id="type-necklaces-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Necklaces">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Necklaces</span><span class="th-label-short">Necklaces</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1378,13 +1328,13 @@
           <div id="type-necklaces-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><button type="button" id="type-necklaces-prev">Prev</button><span class="page-label" id="type-necklaces-label">1 of 1</span><button type="button" id="type-necklaces-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-necklaces-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-necklaces-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-necklaces-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-bracelets">
       <div class="country-table-wrap">
         <div id="type-bracelets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Bracelets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Bracelets</span><span class="th-label-short">Bracelets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1393,13 +1343,13 @@
           <div id="type-bracelets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><button type="button" id="type-bracelets-prev">Prev</button><span class="page-label" id="type-bracelets-label">1 of 1</span><button type="button" id="type-bracelets-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-bracelets-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-bracelets-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-bracelets-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-earrings">
       <div class="country-table-wrap">
         <div id="type-earrings-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Earrings">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Earrings</span><span class="th-label-short">Earrings</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1408,13 +1358,13 @@
           <div id="type-earrings-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><button type="button" id="type-earrings-prev">Prev</button><span class="page-label" id="type-earrings-label">1 of 1</span><button type="button" id="type-earrings-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-earrings-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-earrings-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-earrings-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-sets">
       <div class="country-table-wrap">
         <div id="type-sets-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Sets">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Jewelry Sets</span><span class="th-label-short">Sets</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1423,13 +1373,13 @@
           <div id="type-sets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><button type="button" id="type-sets-prev">Prev</button><span class="page-label" id="type-sets-label">1 of 1</span><button type="button" id="type-sets-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-sets-pagination" aria-label="Sets pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-sets-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-sets-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-sets-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-charms">
       <div class="country-table-wrap">
         <div id="type-charms-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Charms">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Charms</span><span class="th-label-short">Charms</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1438,13 +1388,13 @@
           <div id="type-charms-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><button type="button" id="type-charms-prev">Prev</button><span class="page-label" id="type-charms-label">1 of 1</span><button type="button" id="type-charms-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-charms-pagination" aria-label="Charms pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-charms-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-charms-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-charms-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
     <div class="stats-card card" id="stats-type-extras">
       <div class="country-table-wrap">
         <div id="type-extras-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Extras">
           <div class="grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Extras</span><span class="th-label-short">Extras</span></div>
+            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short">Product</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short">Ord</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short">Sess</span></div>
             <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short">Rev</span></div>
@@ -1453,7 +1403,7 @@
           <div id="type-extras-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">—</div></div></div>
         </div>
       </div>
-      <div class="card-pagination is-hidden" id="type-extras-pagination" aria-label="Extras pagination"><button type="button" id="type-extras-prev">Prev</button><span class="page-label" id="type-extras-label">1 of 1</span><button type="button" id="type-extras-next">Next</button></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-extras-pagination" aria-label="Extras pagination"><ul class="pagination pagination-sm m-0"><li class="page-item"><button type="button" class="page-link" id="type-extras-prev"><i class="ti ti-chevron-left" aria-hidden="true"></i></button></li><li class="page-item disabled"><span class="page-link" id="type-extras-label">1 of 1</span></li><li class="page-item"><button type="button" class="page-link" id="type-extras-next"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></li></ul></div>
     </div>
   </div>
   </div>

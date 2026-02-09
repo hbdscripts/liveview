@@ -45,7 +45,7 @@ const API = '';
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
-    const TOP_TABLE_PAGE_SIZE = 25;
+    const TOP_TABLE_PAGE_SIZE = 10;
     const COUNTRY_PAGE_SIZE = 25;
     const COUNTRY_PRODUCTS_PAGE_SIZE = 25;
     const BREAKDOWN_PAGE_SIZE = 25;
@@ -2843,7 +2843,7 @@ const API = '';
       { id: 'charms',    keys: ['charms', 'charm'] },
       { id: 'extras',    keys: ['extras', 'extra'] },
     ];
-    var TYPE_TABLE_PAGE_SIZE = 25;
+    var TYPE_TABLE_PAGE_SIZE = 10;
     var typeTablePages = {};
     TYPE_TABLE_DEFS.forEach(function(d) { typeTablePages[d.id] = 1; });
 
@@ -3413,6 +3413,11 @@ const API = '';
       wrap.classList.toggle('is-hidden', !show);
       prev.disabled = page <= 1;
       next.disabled = page >= pages;
+      // Tabler pagination: toggle disabled class on parent li.page-item
+      var prevItem = prev.closest('.page-item');
+      var nextItem = next.closest('.page-item');
+      if (prevItem) prevItem.classList.toggle('disabled', page <= 1);
+      if (nextItem) nextItem.classList.toggle('disabled', page >= pages);
       label.textContent = page + ' of ' + pages;
     }
 
