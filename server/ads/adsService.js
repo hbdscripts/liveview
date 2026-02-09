@@ -4,6 +4,7 @@ const { getDb } = require('../db');
 const fx = require('../fx');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig } = require('./adsStore');
+const { rollupRevenueHourly } = require('./adsRevenueRollup');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
 
@@ -102,75 +103,36 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue — match confirmed Shopify orders to campaigns via landing_site URL
-  const mainDb = getDb();
+  // Revenue — live KEXO purchases attributed via sessions.bs_campaign_id (NOT Google conversion value).
+  //
+  // We keep a rollup in ads DB (`bs_revenue_hourly`) derived from `purchases` + `sessions` so the
+  // dashboard can show near-real-time profit (Sales - Spend) without relying on delayed Google conversions.
+  try {
+    await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
+  } catch (e) {
+    console.warn('[ads.summary] revenue rollup failed (non-fatal):', e && e.message ? e.message : e);
+  }
+
   let revRows = [];
-  if (mainDb) {
-    // Fetch confirmed orders with their raw_json (contains landing_site)
-    const orders = await mainDb.all(
-      `SELECT order_id, total_price, currency, raw_json
-       FROM orders_shopify
-       WHERE created_at >= ? AND created_at < ?
-         AND financial_status IN ('paid', 'partially_refunded')
-         AND cancelled_at IS NULL`,
-      [bounds.start, bounds.end]
+  try {
+    const revFilterSql = source ? ' AND source = ?' : '';
+    const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
+    revRows = await adsDb.all(
+      `
+        SELECT
+          campaign_id,
+          adgroup_id,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COALESCE(SUM(orders), 0) AS orders
+        FROM bs_revenue_hourly
+        WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)${revFilterSql}
+        GROUP BY campaign_id, adgroup_id
+      `,
+      revParams
     );
-
-    // Load gclid→campaign cache from ads DB
-    let gclidCache = new Map();
-    try {
-      const cacheRows = await adsDb.all('SELECT gclid, campaign_id, adgroup_id FROM gclid_campaign_cache');
-      for (const cr of cacheRows || []) {
-        if (cr.gclid && cr.campaign_id) gclidCache.set(cr.gclid, { campaignId: String(cr.campaign_id), adgroupId: cr.adgroup_id || '_all_' });
-      }
-    } catch (_) {}
-
-    // Match each order to a campaign via landing_site
-    const ratesToGbp = await fx.getRatesToGbp();
-    const merged = new Map();
-    const seenOrderIds = new Set();
-    for (const o of orders || []) {
-      const oid = o && o.order_id ? String(o.order_id) : '';
-      if (!oid || seenOrderIds.has(oid)) continue;
-
-      let landingSite = '';
-      try {
-        const json = typeof o.raw_json === 'string' ? JSON.parse(o.raw_json) : null;
-        landingSite = (json && (json.landing_site || json.landingSite)) || '';
-      } catch (_) {}
-      if (!landingSite) continue;
-
-      // Try bs_campaign_id, utm_id, or utm_campaign from landing URL
-      const extracted = extractCampaignFromUrl(landingSite);
-      let campaignId = extracted ? extracted.campaignId : '';
-      let adgroupId = extracted ? extracted.adgroupId : '_all_';
-
-      // Fallback: extract gclid and look up in cache
-      if (!campaignId) {
-        const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
-        const gclid = gclidMatch ? decodeURIComponent(gclidMatch[1]).trim() : '';
-        if (gclid) {
-          const mapping = gclidCache.get(gclid);
-          if (mapping) {
-            campaignId = mapping.campaignId;
-            adgroupId = mapping.adgroupId || '_all_';
-          }
-        }
-      }
-      if (!campaignId) continue;
-
-      seenOrderIds.add(oid);
-      const currency = fx.normalizeCurrency(o.currency) || 'GBP';
-      const rawPrice = o.total_price != null ? Number(o.total_price) : 0;
-      const priceGbp = fx.convertToGbp(Number.isFinite(rawPrice) ? rawPrice : 0, currency, ratesToGbp);
-
-      const key = campaignId + '\0' + adgroupId;
-      const cur = merged.get(key) || { campaign_id: campaignId, adgroup_id: adgroupId, revenue_gbp: 0, orders: 0 };
-      cur.revenue_gbp += (typeof priceGbp === 'number' && Number.isFinite(priceGbp)) ? priceGbp : 0;
-      cur.orders += 1;
-      merged.set(key, cur);
-    }
-    revRows = Array.from(merged.values());
+  } catch (e) {
+    console.warn('[ads.summary] failed to read bs_revenue_hourly (non-fatal):', e && e.message ? e.message : e);
+    revRows = [];
   }
 
   // Spend (Google Ads rollups) — now also includes Google conversion data
@@ -233,7 +195,7 @@ async function getSummary(options = {}) {
     return camp.adgroups.get(key);
   }
 
-  // Apply live revenue (from main DB purchases → sessions)
+  // Apply KEXO-attributed revenue (from purchases → sessions rollup)
   for (const r of revRows || []) {
     const campaignId = r && r.campaign_id != null ? String(r.campaign_id) : '';
     const adgroupId = r && r.adgroup_id != null ? String(r.adgroup_id) : '';
@@ -252,7 +214,7 @@ async function getSummary(options = {}) {
     ag.orders += ord;
   }
 
-  // Apply spend + Google conversion revenue (as fallback when bs_revenue_hourly is empty for a campaign)
+  // Apply spend (Google Ads)
   for (const r of spendRows || []) {
     const campaignId = r && r.campaign_id != null ? String(r.campaign_id) : '';
     const adgroupId = r && r.adgroup_id != null ? String(r.adgroup_id) : '';
@@ -263,8 +225,6 @@ async function getSummary(options = {}) {
     const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
     const clicks = r && r.clicks != null ? Number(r.clicks) : 0;
     const impressions = r && r.impressions != null ? Number(r.impressions) : 0;
-    const conv = r && r.conversions != null ? Number(r.conversions) : 0;
-    const convVal = r && r.conversions_value_gbp != null ? Number(r.conversions_value_gbp) : 0;
     const sp = Number.isFinite(spend) ? spend : 0;
     const cl = Number.isFinite(clicks) ? clicks : 0;
     const im = Number.isFinite(impressions) ? impressions : 0;
@@ -278,16 +238,6 @@ async function getSummary(options = {}) {
     ag.spend += sp;
     ag.clicks += cl;
     ag.impressions += im;
-
-    // Use Google conversion revenue if no Kexo-attributed revenue exists for this campaign
-    const gcv = Number.isFinite(convVal) ? convVal : 0;
-    const gc = Number.isFinite(conv) ? conv : 0;
-    if (gcv > 0 && camp.revenue === 0) {
-      camp.revenue += gcv;
-      camp.orders += Math.round(gc);
-      ag.revenue += gcv;
-      ag.orders += Math.round(gc);
-    }
   }
 
   // Finalize
@@ -330,8 +280,10 @@ async function getSummary(options = {}) {
   campaigns.sort((a, b) => (b.spend || 0) - (a.spend || 0));
 
   const note = (!revRows || !revRows.length) && (!spendRows || !spendRows.length)
-    ? 'No spend data yet. Click ↻ to sync Google Ads. Revenue is attributed live via tracking params (bs_campaign_id).'
-    : null;
+    ? 'No spend data yet. Click ↻ to sync Google Ads. Sales are attributed live from KEXO purchases via tracking params (bs_campaign_id).'
+    : ((!revRows || !revRows.length) && (spendRows && spendRows.length)
+      ? 'Spend is synced from Google Ads. No KEXO-attributed sales found for this range yet — check that your ads land on URLs with bs_campaign_id (or gclid backfill is working).'
+      : null);
 
   return {
     ok: true,
@@ -363,9 +315,17 @@ async function getCampaignDetail(options = {}) {
   const timeZone = store.resolveAdminTimeZone();
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
   const currency = 'GBP';
+  const source = options.source != null ? String(options.source).trim().toLowerCase() : 'googleads';
 
   const adsDb = getAdsDb();
   if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+
+  // Best-effort: keep revenue rollup fresh for this range.
+  try {
+    await rollupRevenueHourly({ rangeStartTs: bounds.start, rangeEndTs: bounds.end, source });
+  } catch (e) {
+    console.warn('[ads.campaign-detail] revenue rollup failed (non-fatal):', e && e.message ? e.message : e);
+  }
 
   // Hourly spend for this campaign
   const spendHourly = await adsDb.all(
@@ -382,88 +342,74 @@ async function getCampaignDetail(options = {}) {
     [bounds.start, bounds.end, campaignId]
   );
 
-  // Attributed orders for this campaign (from orders_shopify via landing_site)
+  // Revenue series for this campaign: from KEXO purchases rollup (NOT Google conversion value).
+  let revenueHourly = new Map();
+  try {
+    const rows = await adsDb.all(
+      `SELECT
+         EXTRACT(EPOCH FROM hour_ts)::bigint * 1000 AS ts,
+         COALESCE(SUM(revenue_gbp), 0) AS revenue
+       FROM bs_revenue_hourly
+       WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+         AND source = ?
+         AND campaign_id = ?
+       GROUP BY hour_ts
+       ORDER BY hour_ts ASC`,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+    for (const r of rows || []) {
+      if (r && r.ts) revenueHourly.set(Number(r.ts), Number(r.revenue) || 0);
+    }
+  } catch (e) {
+    console.warn('[ads.campaign-detail] failed to read bs_revenue_hourly (non-fatal):', e && e.message ? e.message : e);
+  }
+
+  // Recent attributed sales list: live purchases joined to sessions (best-effort; display only).
   const mainDb = getDb();
   let recentSales = [];
-  let revenueHourly = new Map();
-
   if (mainDb) {
-    const orders = await mainDb.all(
-      `SELECT order_id, order_name, total_price, currency, created_at, raw_json
-       FROM orders_shopify
-       WHERE created_at >= ? AND created_at < ?
-         AND financial_status IN ('paid', 'partially_refunded')
-         AND cancelled_at IS NULL
-       ORDER BY created_at DESC`,
-      [bounds.start, bounds.end]
-    );
-
-    let gclidCache = new Map();
     try {
-      const cacheRows = await adsDb.all('SELECT gclid, campaign_id, adgroup_id FROM gclid_campaign_cache');
-      for (const cr of cacheRows || []) {
-        if (cr.gclid && cr.campaign_id) gclidCache.set(cr.gclid, { campaignId: String(cr.campaign_id), adgroupId: cr.adgroup_id || '_all_' });
+      const rows = await mainDb.all(
+        `SELECT
+           p.purchased_at AS purchased_at,
+           p.order_total AS order_total,
+           p.order_currency AS order_currency,
+           p.order_id AS order_id,
+           p.checkout_token AS checkout_token,
+           s.country_code AS country_code
+         FROM purchases p
+         INNER JOIN sessions s ON s.session_id = p.session_id
+         WHERE p.purchased_at >= ? AND p.purchased_at < ?
+           AND NULLIF(TRIM(s.bs_campaign_id), '') IS NOT NULL
+           AND TRIM(s.bs_campaign_id) = ?
+           AND LOWER(TRIM(COALESCE(NULLIF(TRIM(s.bs_source), ''), ''))) = ?
+         ORDER BY p.purchased_at DESC
+         LIMIT 30`,
+        [bounds.start, bounds.end, campaignId, source]
+      );
+
+      const ratesToGbp = await fx.getRatesToGbp();
+      for (const r of rows || []) {
+        const ts = r && r.purchased_at != null ? Number(r.purchased_at) : 0;
+        const raw = r && r.order_total != null ? Number(r.order_total) : 0;
+        const cur = fx.normalizeCurrency(r && r.order_currency != null ? r.order_currency : '') || 'GBP';
+        const gbp = fx.convertToGbp(Number.isFinite(raw) ? raw : 0, cur, ratesToGbp);
+        const value = (typeof gbp === 'number' && Number.isFinite(gbp)) ? Math.round(gbp * 100) / 100 : 0;
+        const oid = r && r.order_id ? String(r.order_id) : '';
+        const token = r && r.checkout_token ? String(r.checkout_token) : '';
+        const id = oid || token || '';
+        recentSales.push({
+          orderId: id,
+          orderName: id,
+          country: r && r.country_code ? String(r.country_code).toUpperCase() : '',
+          value,
+          currency,
+          time: ts,
+        });
       }
-    } catch (_) {}
-
-    const ratesToGbp = await fx.getRatesToGbp();
-    const seenOrderIds = new Set();
-
-    for (const o of orders || []) {
-      const oid = o && o.order_id ? String(o.order_id) : '';
-      if (!oid || seenOrderIds.has(oid)) continue;
-
-      let json = null;
-      let landingSite = '';
-      try {
-        json = typeof o.raw_json === 'string' ? JSON.parse(o.raw_json) : null;
-        landingSite = (json && (json.landing_site || json.landingSite)) || '';
-      } catch (_) {}
-      if (!landingSite) continue;
-
-      // Try bs_campaign_id, utm_id, or utm_campaign from landing URL
-      const extracted = extractCampaignFromUrl(landingSite);
-      let matchedCampaignId = extracted ? extracted.campaignId : '';
-
-      // Fallback: extract gclid and look up in cache
-      if (!matchedCampaignId) {
-        const gclidMatch = String(landingSite).match(/[?&]gclid=([^&]+)/);
-        const gclid = gclidMatch ? decodeURIComponent(gclidMatch[1]).trim() : '';
-        if (gclid) {
-          const mapping = gclidCache.get(gclid);
-          if (mapping) matchedCampaignId = mapping.campaignId;
-        }
-      }
-      if (matchedCampaignId !== campaignId) continue;
-
-      seenOrderIds.add(oid);
-      const cur = fx.normalizeCurrency(o.currency) || 'GBP';
-      const rawPrice = o.total_price != null ? Number(o.total_price) : 0;
-      const priceGbp = fx.convertToGbp(Number.isFinite(rawPrice) ? rawPrice : 0, cur, ratesToGbp);
-      const rev = (typeof priceGbp === 'number' && Number.isFinite(priceGbp)) ? priceGbp : 0;
-
-      // Country from shipping/billing address
-      let country = '';
-      if (json) {
-        const addr = json.shipping_address || json.shippingAddress || json.billing_address || json.billingAddress || {};
-        country = addr.country_code || addr.countryCode || addr.country || '';
-      }
-
-      // Bucket into hourly for graph
-      const createdAt = o.created_at != null ? Number(o.created_at) : 0;
-      const hourTs = Math.floor(createdAt / 3600000) * 3600000;
-      const prev = revenueHourly.get(hourTs) || 0;
-      revenueHourly.set(hourTs, prev + rev);
-
-      // Collect for recent sales list
-      recentSales.push({
-        orderId: oid,
-        orderName: o.order_name || oid,
-        country: country ? String(country).toUpperCase() : '',
-        value: Math.round(rev * 100) / 100,
-        currency,
-        time: createdAt,
-      });
+    } catch (e) {
+      console.warn('[ads.campaign-detail] failed to fetch recent purchases (non-fatal):', e && e.message ? e.message : e);
+      recentSales = [];
     }
   }
 

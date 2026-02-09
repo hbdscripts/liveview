@@ -188,6 +188,7 @@ Edge (optional):
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals row is rendered at the bottom (with a console sanity-check against campaign sums).
+  - Ads profit now uses KEXO-attributed sales (purchases→sessions rollup); Google conversion value is not used for Sales/profit.
   - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.
   - De-duplicated grid-table CSS (kept definitions in `custom.css`).
   - Legacy `live-visitors.html` no longer references missing `/nav.css`.
