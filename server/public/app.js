@@ -4572,9 +4572,10 @@ const API = '';
       const data = Array.isArray(dataPoints) ? dataPoints.slice(-7) : [];
       if (data.length === 0) return;
 
+      const primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, 'rgba(13, 148, 136, 0.4)');
-      gradient.addColorStop(1, 'rgba(13, 148, 136, 0.01)');
+      gradient.addColorStop(0, 'rgba(' + primaryRgb + ', 0.4)');
+      gradient.addColorStop(1, 'rgba(' + primaryRgb + ', 0.01)');
 
       kpiSparklines[kpiKey] = new Chart(ctx, {
         type: 'line',
@@ -4582,7 +4583,7 @@ const API = '';
           labels: data.map(function() { return ''; }),
           datasets: [{
             data: data,
-            borderColor: 'rgba(13, 148, 136, 0.6)',
+            borderColor: 'rgba(' + primaryRgb + ', 0.6)',
             backgroundColor: gradient,
             borderWidth: 2,
             fill: true,
@@ -8018,7 +8019,7 @@ const API = '';
         if (dashLoading && !force) return;
         try {
           var n = parseInt(days, 10);
-          if (!Number.isFinite(n) || n <= 0) n = 30;
+          if (!Number.isFinite(n) || n <= 0) n = 7;
           var todayYmd = ymdNowInTz();
           if (todayYmd && todayYmd >= MIN_YMD) {
             var a = new Date(MIN_YMD + 'T00:00:00.000Z');
@@ -8106,7 +8107,7 @@ const API = '';
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
       if (dashPanel && dashPanel.classList.contains('active')) {
-        fetchDashboardData(parseInt((rangeSel && rangeSel.value) || '30', 10), false);
+        fetchDashboardData(parseInt((rangeSel && rangeSel.value) || '7', 10), false);
       }
     })();
 

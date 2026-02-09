@@ -211,7 +211,8 @@
     var h = '<table class="ads-modal-sales-table"><thead><tr><th>Country</th><th>Value</th><th>Time</th></tr></thead><tbody>';
     for (var i = 0; i < sales.length; i++) {
       var s = sales[i];
-      var flag = s.country ? '<img class="flag-img" src="https://flagcdn.com/w40/' + esc(s.country.toLowerCase()) + '.png" alt="' + esc(s.country) + '" width="20" height="15" style="border-radius:2px;vertical-align:middle;margin-right:4px;" onerror="this.style.display=\'none\'">' : '';
+      var cc = s.country ? s.country.toLowerCase() : '';
+      var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
       h += '<tr><td>' + flag + esc(s.country || '—') + '</td><td>' + esc(fmtMoney(s.value, currency)) + '</td><td>' + esc(fmtTime(s.time)) + '</td></tr>';
     }
     h += '</tbody></table>';
@@ -337,7 +338,7 @@
     root.innerHTML =
       '<div class="stats-row-wrap">' +
         '<div class="stats-row">' +
-          '<div class="stats-card">' +
+          '<div class="stats-card card">' +
             '<div class="traffic-card-header">' +
               '<h3 class="traffic-card-title">Ads</h3>' +
               '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="ads-refresh-btn" title="Sync spend from Google Ads" aria-label="Refresh"><i class="ti ti-refresh"></i></button>' +

@@ -1,12 +1,7 @@
 /* ── Tabler theme overrides ──────────────────────────────────────── */
 
 :root {
-  --tblr-primary: #0d9488;
-  --tblr-primary-rgb: 13, 148, 136;
-  --tblr-link-color: #0d9488;
-  --tblr-link-hover-color: #0f766e;
-
-  /* Override old app.css custom props to match Tabler */
+  /* Let Tabler defaults apply — theme settings panel controls primary color */
   --bg: var(--tblr-bg-surface, #f1f5f9);
   --card: #fff;
   --border: var(--tblr-border-color, #e6e7e9);
@@ -26,10 +21,6 @@ body {
 
 .navbar-brand img {
   height: 32px;
-}
-
-.nav-link[aria-current="page"] {
-  color: var(--tblr-primary) !important;
 }
 
 /* ── Page header (vertical layout — light background) ────────────── */
@@ -60,13 +51,6 @@ body {
   z-index: 1030;
   background: var(--tblr-bg-surface, #fff);
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
-}
-
-/* Horizontal navbar active state */
-.navbar-nav .nav-link[aria-current="page"] {
-  background: rgba(var(--tblr-primary-rgb), 0.2);
-  color: var(--tblr-primary) !important;
-  border-radius: var(--tblr-border-radius, .375rem);
 }
 
 .navbar-nav .dropdown-menu {
