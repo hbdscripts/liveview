@@ -257,7 +257,7 @@ body:has(.navbar.sticky-top) .navbar-vertical {
   letter-spacing: .04em !important;
   color: var(--tblr-secondary, #626976) !important;
   padding: .625rem 1rem !important;
-  border-bottom: 2px solid var(--tblr-border-color, #e6e7e9) !important;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   background: transparent !important;
   vertical-align: middle;
   white-space: nowrap;
@@ -296,7 +296,8 @@ body:has(.navbar.sticky-top) .navbar-vertical {
 /* Country table wrap — fit inside Tabler card */
 .country-table-wrap {
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Sessions table (Live page) ──────────────────────────────────── */

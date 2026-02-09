@@ -59,7 +59,7 @@ const API = '';
     let statsCache = {};
     let trafficCache = null;
     let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? '30days' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
@@ -3121,13 +3121,15 @@ const API = '';
     }
 
     let productsChartInstance = null;
+    let productsChartData = null;
+    let productsChartType = 'bar';
 
-    function renderProductsChart(data) {
+    function renderProductsChart(data, chartType) {
       const el = document.getElementById('products-chart');
       if (!el) return;
 
       if (typeof ApexCharts === 'undefined') {
-        setTimeout(function() { renderProductsChart(data); }, 200);
+        setTimeout(function() { renderProductsChart(data, chartType); }, 200);
         return;
       }
 
@@ -3136,12 +3138,16 @@ const API = '';
         productsChartInstance = null;
       }
 
-      if (!data || !Array.isArray(data.bestSellers) || data.bestSellers.length === 0) {
+      if (data) productsChartData = data;
+      if (chartType) productsChartType = chartType;
+      var d = productsChartData;
+
+      if (!d || !Array.isArray(d.bestSellers) || d.bestSellers.length === 0) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
         return;
       }
 
-      const products = data.bestSellers.slice().sort(function(a, b) {
+      const products = d.bestSellers.slice().sort(function(a, b) {
         return (b.revenue || 0) - (a.revenue || 0);
       }).slice(0, 10);
 
@@ -3151,9 +3157,18 @@ const API = '';
       });
       const revenues = products.map(function(p) { return p.revenue || 0; });
 
+      var ct = productsChartType;
+      var isBar = ct === 'bar';
+      var isLine = ct === 'line';
+      var isArea = ct === 'area';
+
+      var fillConfig = isLine ? { type: 'solid', opacity: 0 }
+        : isArea ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } }
+        : { type: 'solid', opacity: 1 };
+
       const options = {
         chart: {
-          type: 'bar',
+          type: isBar ? 'bar' : ct,
           height: 280,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false }
@@ -3163,25 +3178,32 @@ const API = '';
           data: revenues
         }],
         colors: ['#0d9488'],
-        plotOptions: {
+        plotOptions: isBar ? {
           bar: {
             horizontal: true,
             borderRadius: 4,
             barHeight: '70%'
           }
-        },
+        } : {},
+        stroke: { width: isBar ? 0 : 2, curve: 'smooth' },
+        fill: fillConfig,
+        markers: { size: isLine ? 3 : 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
         xaxis: {
           categories: categories,
           labels: {
-            formatter: function(value) {
+            style: { fontSize: '11px' },
+            formatter: isBar ? function(value) {
               return '£' + Number(value).toLocaleString();
-            }
+            } : undefined
           }
         },
         yaxis: {
           labels: {
-            style: { fontSize: '11px' }
+            style: { fontSize: '11px' },
+            formatter: !isBar ? function(value) {
+              return '£' + Number(value).toLocaleString();
+            } : undefined
           }
         },
         tooltip: {
@@ -3197,8 +3219,41 @@ const API = '';
         }
       };
 
+      el.innerHTML = '';
       productsChartInstance = new ApexCharts(el, options);
       productsChartInstance.render();
+      initProductsChartSwitcher();
+    }
+
+    function initProductsChartSwitcher() {
+      var el = document.getElementById('products-chart');
+      if (!el) return;
+      var card = el.closest('.card');
+      if (!card) return;
+      var header = card.querySelector('.card-header');
+      if (!header || header.querySelector('.chart-type-switcher')) return;
+
+      var wrap = document.createElement('div');
+      wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
+      var types = [
+        { type: 'bar', icon: 'ti-chart-bar', label: 'Bar' },
+        { type: 'area', icon: 'ti-chart-area-line', label: 'Area' },
+        { type: 'line', icon: 'ti-chart-line', label: 'Line' }
+      ];
+      types.forEach(function(t) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === productsChartType ? ' active' : '');
+        btn.setAttribute('aria-label', t.label);
+        btn.innerHTML = '<i class="ti ' + t.icon + '"></i>';
+        btn.addEventListener('click', function() {
+          wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          renderProductsChart(null, t.type);
+        });
+        wrap.appendChild(btn);
+      });
+      header.appendChild(wrap);
     }
 
     function renderBestSellers(data, errorMessage) {
@@ -4650,18 +4705,15 @@ const API = '';
     const kpiSparklines = {};
 
     function renderKpiSparkline(kpiKey, dataPoints) {
-      const canvas = document.getElementById('kpi-sparkline-' + kpiKey);
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      const el = document.getElementById('kpi-sparkline-' + kpiKey);
+      if (!el) return;
 
       if (kpiSparklines[kpiKey]) {
-        kpiSparklines[kpiKey].destroy();
+        try { kpiSparklines[kpiKey].destroy(); } catch (_) {}
         kpiSparklines[kpiKey] = null;
       }
 
-      if (typeof Chart === 'undefined') {
+      if (typeof ApexCharts === 'undefined') {
         setTimeout(function() { renderKpiSparkline(kpiKey, dataPoints); }, 200);
         return;
       }
@@ -4670,40 +4722,17 @@ const API = '';
       if (data.length === 0) return;
 
       const primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, 'rgba(' + primaryRgb + ', 0.4)');
-      gradient.addColorStop(1, 'rgba(' + primaryRgb + ', 0.01)');
 
-      kpiSparklines[kpiKey] = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: data.map(function() { return ''; }),
-          datasets: [{
-            data: data,
-            borderColor: 'rgba(' + primaryRgb + ', 0.6)',
-            backgroundColor: gradient,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          },
-          scales: {
-            x: { display: false },
-            y: { display: false }
-          },
-          animation: { duration: 300 },
-          interaction: { mode: null }
-        }
+      el.innerHTML = '';
+      kpiSparklines[kpiKey] = new ApexCharts(el, {
+        chart: { type: 'area', sparkline: { enabled: true }, animations: { enabled: true, easing: 'easeinout', speed: 300 } },
+        series: [{ data: data }],
+        stroke: { width: 2, curve: 'smooth' },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.01 } },
+        colors: ['rgba(' + primaryRgb + ', 0.6)'],
+        tooltip: { enabled: false }
       });
+      kpiSparklines[kpiKey].render();
     }
 
     function generateMockSparklineData(baseValue, variance) {
@@ -7907,6 +7936,8 @@ const API = '';
         setTimeout(function() { waitForApexCharts(cb, retries + 1); }, 200);
       }
 
+      var dashChartConfigs = {};
+
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
           console.warn('[dashboard] ApexCharts not loaded yet, will retry for:', chartId);
@@ -7918,6 +7949,10 @@ const API = '';
         if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
         el.innerHTML = '';
 
+        dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: opts };
+
+        var chartType = (opts && opts.chartType) || 'area';
+
         try {
           var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data || [] }; });
           var colors = datasets.map(function(ds) { return ds.borderColor || DASH_ACCENT; });
@@ -7925,9 +7960,13 @@ const API = '';
             : (opts && opts.currency) ? function(v) { return v != null ? '\u00A3' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
+          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 0 }
+            : chartType === 'bar' ? { type: 'solid', opacity: 1 }
+            : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } };
+
           var apexOpts = {
             chart: {
-              type: 'area',
+              type: chartType,
               height: 200,
               fontFamily: 'Inter, sans-serif',
               toolbar: { show: false },
@@ -7936,11 +7975,9 @@ const API = '';
             },
             series: apexSeries,
             colors: colors,
-            stroke: { width: 2, curve: 'smooth' },
-            fill: {
-              type: 'gradient',
-              gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] }
-            },
+            stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+            fill: fillConfig,
+            plotOptions: chartType === 'bar' ? { bar: { columnWidth: '60%', borderRadius: 3 } } : {},
             xaxis: {
               categories: labels || [],
               labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
@@ -7955,18 +7992,59 @@ const API = '';
             tooltip: { y: { formatter: yFmt } },
             legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px' },
             dataLabels: { enabled: false },
-            markers: { size: 0, hover: { size: 4 } },
+            markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
 
           var chart = new ApexCharts(el, apexOpts);
           chart.render();
           dashCharts[chartId] = chart;
+          initChartTypeSwitcher(chartId);
           return chart;
         } catch (err) {
           console.error('[dashboard] chart render error:', chartId, err);
           return null;
         }
+      }
+
+      function switchChartType(chartId, newType) {
+        var cfg = dashChartConfigs[chartId];
+        if (!cfg) return;
+        var o = Object.assign({}, cfg.opts || {}, { chartType: newType });
+        makeChart(chartId, cfg.labels, cfg.datasets, o);
+      }
+
+      function initChartTypeSwitcher(chartId) {
+        var el = document.getElementById(chartId);
+        if (!el) return;
+        var card = el.closest('.card');
+        if (!card) return;
+        var header = card.querySelector('.card-header');
+        if (!header) return;
+        if (header.querySelector('.chart-type-switcher')) return;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
+        var types = [
+          { type: 'area', icon: 'ti-chart-area-line', label: 'Area' },
+          { type: 'line', icon: 'ti-chart-line', label: 'Line' },
+          { type: 'bar', icon: 'ti-chart-bar', label: 'Bar' }
+        ];
+        types.forEach(function(t) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === 'area' ? ' active' : '');
+          btn.setAttribute('aria-label', t.label);
+          btn.setAttribute('data-chart-type', t.type);
+          btn.innerHTML = '<i class="ti ' + t.icon + '"></i>';
+          btn.addEventListener('click', function() {
+            wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            switchChartType(chartId, t.type);
+          });
+          wrap.appendChild(btn);
+        });
+        header.appendChild(wrap);
       }
 
       function renderDashboard(data) {

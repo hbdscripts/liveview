@@ -70,11 +70,25 @@ function round2(n) {
   return Math.round(x * 100) / 100;
 }
 
+const TYPE_CANONICAL = {
+  'earring': { key: 'earrings', label: 'Earrings' },
+  'necklace': { key: 'necklaces', label: 'Necklaces' },
+  'bracelet': { key: 'bracelets', label: 'Bracelets' },
+  'charm': { key: 'charms', label: 'Charms' },
+  'extra': { key: 'extras', label: 'Extras' },
+  'set': { key: 'sets', label: 'Sets' },
+  'jewellery set': { key: 'jewellery sets', label: 'Jewellery Sets' },
+  'jewelry set': { key: 'jewelry sets', label: 'Jewelry Sets' },
+};
+
 function normalizeTypeLabel(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return { key: 'unknown', label: 'Unknown' };
   const label = s.replace(/\s+/g, ' ').trim().slice(0, 80);
   const key = label.toLowerCase();
+  // Normalize singular to plural canonical forms
+  const canon = TYPE_CANONICAL[key];
+  if (canon) return { key: canon.key, label: canon.label };
   return { key: key || 'unknown', label: label || 'Unknown' };
 }
 
