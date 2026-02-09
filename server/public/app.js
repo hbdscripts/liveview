@@ -7776,6 +7776,103 @@ const API = '';
             if (isTrafficChild) trafficDropdownItem.classList.add('active');
             else trafficDropdownItem.classList.remove('active');
           }
+
+          // Dropdown UX: swap the parent label with the active child label so
+          // you can always see the current page even without page titles.
+          (function swapDropdownParentWithActiveChild() {
+            function trimText(s) {
+              return (s == null ? '' : String(s)).replace(/\s+/g, ' ').trim();
+            }
+            function showAllDropdownItems(menu) {
+              if (!menu) return;
+              menu.querySelectorAll('a.dropdown-item').forEach(function(a) {
+                if (a.classList.contains('kexo-nav-parent-item')) return;
+                a.classList.remove('is-hidden');
+                a.removeAttribute('aria-hidden');
+              });
+            }
+            function removeParentEntry(menu) {
+              if (!menu) return;
+              var p = menu.querySelector('.kexo-nav-parent-item');
+              if (p && p.parentNode) p.parentNode.removeChild(p);
+              var d = menu.querySelector('.kexo-nav-parent-divider');
+              if (d && d.parentNode) d.parentNode.removeChild(d);
+            }
+            function ensureParentEntry(menu, title, iconClass) {
+              if (!menu) return null;
+              var existing = menu.querySelector('.kexo-nav-parent-item');
+              if (existing) return existing;
+              var a = document.createElement('a');
+              a.className = 'dropdown-item kexo-nav-parent-item text-secondary';
+              a.href = '#';
+              a.setAttribute('role', 'menuitem');
+              if (iconClass) {
+                var i = document.createElement('i');
+                i.className = 'ti ' + iconClass + ' me-2';
+                i.setAttribute('aria-hidden', 'true');
+                a.appendChild(i);
+              }
+              a.appendChild(document.createTextNode(title));
+
+              var first = menu.firstChild;
+              menu.insertBefore(a, first);
+              var div = document.createElement('div');
+              div.className = 'dropdown-divider my-1 kexo-nav-parent-divider';
+              menu.insertBefore(div, a.nextSibling);
+              return a;
+            }
+            function applyToGroup(toggleHref, iconClass) {
+              var toggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="' + toggleHref + '"]');
+              if (!toggle) return;
+              var menu = toggle.parentNode ? toggle.parentNode.querySelector('.dropdown-menu') : null;
+              if (!menu) return;
+              var titleEl = toggle.querySelector('.nav-link-title');
+              if (!titleEl) return;
+
+              // Persist the default group title the first time.
+              if (!toggle.getAttribute('data-kexo-default-title')) {
+                toggle.setAttribute('data-kexo-default-title', trimText(titleEl.textContent));
+              }
+              var groupTitle = trimText(toggle.getAttribute('data-kexo-default-title')) || trimText(titleEl.textContent);
+
+              showAllDropdownItems(menu);
+              removeParentEntry(menu);
+
+              var active = menu.querySelector('a.dropdown-item[aria-current="page"]');
+              if (!active) {
+                // Not inside this dropdown group — restore default.
+                titleEl.textContent = groupTitle;
+                return;
+              }
+
+              var activeLabel = trimText(active.textContent);
+              if (!activeLabel) {
+                titleEl.textContent = groupTitle;
+                return;
+              }
+
+              // Parent becomes the active child.
+              titleEl.textContent = activeLabel;
+
+              // Parent label becomes a dropdown item (at top).
+              var parentEntry = ensureParentEntry(menu, groupTitle, iconClass);
+              try {
+                var firstReal = menu.querySelector('a.dropdown-item:not(.kexo-nav-parent-item)');
+                if (parentEntry && firstReal && firstReal.getAttribute('href')) {
+                  parentEntry.href = firstReal.getAttribute('href');
+                }
+              } catch (_) {}
+
+              // Hide the active child item so it isn't duplicated.
+              active.classList.add('is-hidden');
+              active.setAttribute('aria-hidden', 'true');
+            }
+
+            applyToGroup('#navbar-dashboard', 'ti-layout-dashboard');
+            applyToGroup('#navbar-breakdown', 'ti-chart-pie');
+            applyToGroup('#navbar-traffic', 'ti-bolt');
+            applyToGroup('#navbar-integrations', 'ti-puzzle');
+          })();
         }
 
         function runTabWork(tab) {
