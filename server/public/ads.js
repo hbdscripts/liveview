@@ -101,6 +101,7 @@
   /* ── modal ───────────────────────────────────────────────── */
 
   var modalChart = null;
+  var chartJsLoading = null;
 
   function ensureModalDom() {
     if (document.getElementById('ads-campaign-modal')) return;
@@ -122,6 +123,41 @@
     document.body.appendChild(overlay);
     overlay.querySelector('.ads-modal-close').addEventListener('click', closeModal);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+  }
+
+  function ensureChartJs() {
+    try { if (typeof Chart !== 'undefined') return Promise.resolve(true); } catch (_) {}
+    if (chartJsLoading) return chartJsLoading;
+
+    chartJsLoading = new Promise(function(resolve) {
+      try {
+        // If a tag exists (possibly still loading), attach listeners.
+        var existing = document.querySelector('script[data-chart-js="1"]');
+        if (existing) {
+          try { if (typeof Chart !== 'undefined') { resolve(true); return; } } catch (_) {}
+          existing.addEventListener('load', function() { resolve(true); }, { once: true });
+          existing.addEventListener('error', function() { resolve(false); }, { once: true });
+          return;
+        }
+
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+        s.async = true;
+        s.defer = true;
+        s.setAttribute('data-chart-js', '1');
+        s.onload = function() {
+          try { resolve(typeof Chart !== 'undefined'); } catch (_) { resolve(false); }
+        };
+        s.onerror = function() { resolve(false); };
+        document.head.appendChild(s);
+      } catch (_) {
+        resolve(false);
+      }
+    }).finally(function() {
+      chartJsLoading = null;
+    });
+
+    return chartJsLoading;
   }
 
   function closeModal() {
@@ -198,12 +234,21 @@
           document.getElementById('ads-modal-sales').innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           return;
         }
-        renderModalChart(data.chart || {});
-        renderModalSales(data.recentSales || [], data.currency || 'GBP');
+        var currency = data.currency || 'GBP';
+        ensureChartJs().then(function(ok) {
+          // If the modal was closed while loading, skip rendering.
+          try {
+            var m = document.getElementById('ads-campaign-modal');
+            if (!m || !m.classList.contains('open')) return;
+          } catch (_) {}
+          if (!ok) return;
+          renderModalChart(data.chart || {}, currency);
+        });
+        renderModalSales(data.recentSales || [], currency);
       });
   }
 
-  function renderModalChart(chart) {
+  function renderModalChart(chart, currency) {
     if (typeof Chart === 'undefined') return;
     var canvas = document.getElementById('ads-modal-chart');
     if (!canvas) return;
@@ -245,12 +290,12 @@
             backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { size: 12 }, bodyFont: { size: 12 },
             padding: 10, cornerRadius: 6,
             callbacks: {
-              label: function (ctx) { return (ctx.dataset.label || '') + ': £' + (ctx.parsed.y != null ? ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'); },
+              label: function (ctx) { return (ctx.dataset.label || '') + ': ' + (ctx.parsed.y != null ? fmtMoney(ctx.parsed.y, currency || 'GBP') : '—'); },
             },
           },
         },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: function (v) { return '£' + v.toLocaleString(); }, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { beginAtZero: true, ticks: { callback: function (v) { return fmtMoney(v, currency || 'GBP'); }, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
           x: { ticks: { font: { size: 11 }, maxRotation: 0 }, grid: { display: false } },
         },
       },
