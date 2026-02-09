@@ -153,6 +153,9 @@ const API = '';
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
     let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0 };
+    var _intervals = [];
+    var _eventSource = null;
+    var _fetchAbortControllers = {};
     let lastUpdateTime = null;
     let lastConvertedCountToday = 0;
     let hasSeenConvertedCountToday = false; // prevents "sale" triggers on first load
@@ -5419,7 +5422,10 @@ const API = '';
         var offset = (currentPage - 1) * rowsPerPage;
         url = API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
       }
-      liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      if (_fetchAbortControllers.sessions) { try { _fetchAbortControllers.sessions.abort(); } catch (_) {} }
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      _fetchAbortControllers.sessions = ac;
+      liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: ac ? ac.signal : undefined })
         .then(function(r) {
           if (!r.ok) {
             sessionsLoadError = r.status === 502 ? 'Server error (502). Try again or refresh.' : 'Server error (' + r.status + ').';
@@ -5460,9 +5466,10 @@ const API = '';
           updateKpis();
           return sessions;
         })
-        .catch(function() { sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
+        .catch(function(err) { if (err && err.name === 'AbortError') return null; sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
         .finally(function() {
           liveRefreshInFlight = null;
+          if (_fetchAbortControllers.sessions === ac) _fetchAbortControllers.sessions = null;
           if (overlay) overlay.classList.add('is-hidden');
           hidePageProgress();
         });
@@ -5472,7 +5479,10 @@ const API = '';
     function fetchOnlineCount() {
       if (onlineCountInFlight) return;
       onlineCountInFlight = true;
-      fetch(API + '/api/sessions?filter=active&countOnly=1&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+      if (_fetchAbortControllers.onlineCount) { try { _fetchAbortControllers.onlineCount.abort(); } catch (_) {} }
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      _fetchAbortControllers.onlineCount = ac;
+      fetch(API + '/api/sessions?filter=active&countOnly=1&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store', signal: ac ? ac.signal : undefined })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           if (data != null && typeof data.count === 'number') {
@@ -5482,6 +5492,7 @@ const API = '';
         .catch(function() {})
         .then(function() {
           onlineCountInFlight = false;
+          if (_fetchAbortControllers.onlineCount === ac) _fetchAbortControllers.onlineCount = null;
           updateKpis();
         });
     }
@@ -7057,7 +7068,7 @@ const API = '';
     try { refreshConfigStatus(); } catch (_) {}
 
     updateLastSaleAgo();
-    setInterval(updateLastSaleAgo, 10000);
+    _intervals.push(setInterval(updateLastSaleAgo, 10000));
 
     (function initConfigModal() {
       const modal = document.getElementById('config-modal');
@@ -7626,10 +7637,10 @@ const API = '';
       })();
       updateServerTimeDisplay();
       updateNextUpdateUi();
-      setInterval(function() {
+      _intervals.push(setInterval(function() {
         updateServerTimeDisplay();
         updateNextUpdateUi();
-      }, 1000);
+      }, 1000));
     })();
 
     (function setupStatsCardScrollHideHeader() {
@@ -7701,21 +7712,21 @@ const API = '';
     }
 
     // Live: refresh every 60s. Today/Sales: refresh every 5 min. Breakdown/Products/Traffic: every 5 min (Today only).
-    setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS);
-    setInterval(onRangeAutoRefreshTick, 60000); // check every 60s whether to refresh Today/Sales (5 min interval)
-    setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS);
-    setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS);
-    setInterval(onBreakdownAutoRefreshTick, STATS_REFRESH_MS);
-    setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS);
-    setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS);
-    setInterval(tickTimeOnSite, 30000);
+    _intervals.push(setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS));
+    _intervals.push(setInterval(onRangeAutoRefreshTick, 60000)); // check every 60s whether to refresh Today/Sales (5 min interval)
+    _intervals.push(setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS));
+    _intervals.push(setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS));
+    _intervals.push(setInterval(onBreakdownAutoRefreshTick, STATS_REFRESH_MS));
+    _intervals.push(setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS));
+    _intervals.push(setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS));
+    _intervals.push(setInterval(tickTimeOnSite, 30000));
     // Online count: when not on Live, refresh every 60s so Online always shows real people online
-    setInterval(function() {
+    _intervals.push(setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange === 'live') return;
       fetchOnlineCount();
-    }, LIVE_REFRESH_MS);
+    }, LIVE_REFRESH_MS));
     // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 10 min or if arrived too long ago
-    setInterval(function() {
+    _intervals.push(setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange !== 'live') return;
       var cutoff = Date.now() - ACTIVE_WINDOW_MS;
       var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
@@ -7725,7 +7736,7 @@ const API = '';
           s.started_at != null && s.started_at >= arrivedCutoff;
       });
       if (sessions.length !== before) { currentPage = 1; renderTable(); updateKpis(); }
-    }, 30000);
+    }, 30000));
 
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
@@ -7754,10 +7765,21 @@ const API = '';
       }
     });
 
-    const es = new EventSource(API + '/api/stream');
-    es.onmessage = (e) => {
+    function initEventSource() {
+      if (_eventSource) { try { _eventSource.close(); } catch (_) {} }
+      var es = new EventSource(API + '/api/stream');
+      _eventSource = es;
+      es.onerror = function() {
+        // Browser auto-reconnects on transient errors; if the connection is
+        // permanently closed (readyState === CLOSED), retry after a delay.
+        if (es.readyState === EventSource.CLOSED) {
+          try { es.close(); } catch (_) {}
+          setTimeout(function() { if (_eventSource === es) initEventSource(); }, 5000);
+        }
+      };
+      es.onmessage = function(e) {
       try {
-        const msg = JSON.parse(e.data);
+        var msg = JSON.parse(e.data);
         if (msg.type === 'session_update' && msg.session) {
           const session = msg.session;
           // Keep footer "Last sale" correct even when not on Live tab.
@@ -7847,6 +7869,19 @@ const API = '';
         }
       } catch (_) {}
     };
+    }
+    initEventSource();
+
+    // ── Cleanup on page unload ──
+    window.addEventListener('beforeunload', function() {
+      _intervals.forEach(function(id) { clearInterval(id); });
+      _intervals.length = 0;
+      if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
+      Object.keys(_fetchAbortControllers).forEach(function(k) {
+        try { _fetchAbortControllers[k].abort(); } catch (_) {}
+      });
+    });
+
     // ── Dashboard tab logic ──────────────────────────────────────────────
     (function initDashboard() {
       var dashCache = null;
