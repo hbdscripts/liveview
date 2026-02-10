@@ -8316,11 +8316,65 @@ const API = '';
         var pageWrapper = document.querySelector('.page-wrapper');
         var sidebarMenu = document.getElementById('sidebar-menu');
         var toggler = document.querySelector('.navbar-toggler[data-bs-target="#sidebar-menu"]');
-        if (!pageWrapper || !sidebarMenu || !toggler) return;
+        if (!pageWrapper || !sidebarMenu) return;
+        function closeSidebar() {
+          sidebarMenu.classList.remove('show');
+          try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+              var c = bootstrap.Collapse.getInstance(sidebarMenu);
+              if (c) c.hide();
+            }
+          } catch (_) {}
+          if (toggler) toggler.setAttribute('aria-expanded', 'false');
+        }
         pageWrapper.addEventListener('click', function(e) {
           if (!sidebarMenu.classList.contains('show')) return;
           if (e.target.closest('.navbar-vertical')) return;
-          toggler.click();
+          if (toggler) toggler.click();
+          else closeSidebar();
+        });
+      })();
+      (function initMobileMenu() {
+        var btn = document.getElementById('kexo-mobile-menu-btn');
+        var nav = document.getElementById('kexo-mobile-nav');
+        if (!btn || !nav) return;
+        var backdrop = null;
+        function close() {
+          nav.hidden = true;
+          btn.setAttribute('aria-expanded', 'false');
+          document.body.classList.remove('kexo-mobile-nav-open');
+          if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+          backdrop = null;
+        }
+        function open() {
+          nav.hidden = false;
+          btn.setAttribute('aria-expanded', 'true');
+          document.body.classList.add('kexo-mobile-nav-open');
+          if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.className = 'kexo-mobile-nav-backdrop';
+            backdrop.setAttribute('aria-hidden', 'true');
+            backdrop.addEventListener('click', close);
+            document.body.appendChild(backdrop);
+          }
+        }
+        function toggle() {
+          if (nav.hidden) open(); else close();
+        }
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          toggle();
+        });
+        var settingsBtn = document.getElementById('kexo-mobile-nav-settings');
+        if (settingsBtn) {
+          settingsBtn.addEventListener('click', function() {
+            close();
+            var sidebarMenu = document.getElementById('sidebar-menu');
+            if (sidebarMenu) sidebarMenu.classList.add('show');
+          });
+        }
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') close();
         });
       })();
       (function initRefreshBtn() {

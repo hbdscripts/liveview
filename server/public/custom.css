@@ -900,16 +900,86 @@ a {
     flex: 1;
     height: auto;
   }
-  .navbar-toggler { border: none; color: #fff; padding: .25rem; }
-  .navbar-toggler .navbar-toggler-icon {
-    filter: invert(1) grayscale(100%) brightness(200%);
-  }
-  .kexo-topbar-slot-right .btn-ghost-light {
-    color: #fff;
+  .kexo-mobile-menu-btn,
+  .kexo-mobile-date-btn {
+    color: #fff !important;
     border: none;
+    padding: .35rem;
   }
-  .kexo-topbar-slot-right .btn-ghost-light:hover {
-    color: rgba(255,255,255,.75);
+  .kexo-mobile-menu-btn:hover,
+  .kexo-mobile-date-btn:hover {
+    color: rgba(255,255,255,.85) !important;
+    background: rgba(255,255,255,.08);
+  }
+  .kexo-mobile-menu-btn i,
+  .kexo-mobile-date-btn i {
+    font-size: 1.25rem;
+  }
+  .kexo-topbar-slot-right .dropdown-menu {
+    background: #1b2434;
+    border-color: rgba(255,255,255,.12);
+  }
+  .kexo-topbar-slot-right .dropdown-item {
+    color: rgba(255,255,255,.9);
+  }
+  .kexo-topbar-slot-right .dropdown-item:hover {
+    background: rgba(255,255,255,.08);
+    color: #fff;
+  }
+  .kexo-topbar-slot-right .dropdown-divider {
+    border-color: rgba(255,255,255,.12);
+  }
+  .page-wrapper > header.kexo-top-navbar {
+    position: relative;
+  }
+  .kexo-mobile-nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1b2434;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    padding: .5rem 0;
+    z-index: 1060;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .kexo-mobile-nav[hidden] {
+    display: none !important;
+  }
+  .kexo-mobile-nav:not([hidden]) {
+    display: block;
+  }
+  .kexo-mobile-nav-item {
+    display: block;
+    padding: .6rem 1rem;
+    color: rgba(255,255,255,.9);
+    text-decoration: none;
+    font-size: .9375rem;
+    font-weight: 500;
+  }
+  .kexo-mobile-nav-item:hover {
+    background: rgba(255,255,255,.08);
+    color: #fff;
+  }
+  .kexo-mobile-nav-settings {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+  }
+  .kexo-mobile-nav-divider {
+    height: 1px;
+    background: rgba(255,255,255,.12);
+    margin: .35rem 1rem;
+  }
+  .kexo-mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 1055;
   }
   .kexo-kpis-navbar { display: none; }
   .kexo-date-bar { display: none; }

@@ -111,8 +111,8 @@
       <div class="container-fluid">
         <div class="kexo-topbar-row d-lg-none">
           <div class="kexo-topbar-slot kexo-topbar-slot-left">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon"></span>
+            <button class="btn btn-icon kexo-mobile-menu-btn" type="button" id="kexo-mobile-menu-btn" aria-expanded="false" aria-controls="kexo-mobile-nav" aria-label="Open menu">
+              <i class="ti ti-menu-2" aria-hidden="true"></i>
             </button>
           </div>
 
@@ -124,7 +124,7 @@
 
           <div class="kexo-topbar-slot kexo-topbar-slot-right">
             <div class="dropdown">
-              <button type="button" class="btn btn-icon btn-ghost-light" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
+              <button type="button" class="btn btn-icon kexo-mobile-date-btn" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
                 <i class="ti ti-calendar" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
@@ -133,11 +133,27 @@
                 <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
                 <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
                 <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
-                <div class="dropdown-divider"></div>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
+              <div class="dropdown-divider"></div>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
               </div>
             </div>
           </div>
+        </div>
+
+        <div id="kexo-mobile-nav" class="kexo-mobile-nav" aria-label="Navigation" hidden>
+          <a href="/dashboard" class="kexo-mobile-nav-item" data-nav="dashboard">Overview</a>
+          <a href="/live" class="kexo-mobile-nav-item" data-nav="live">Live View</a>
+          <a href="/sales" class="kexo-mobile-nav-item" data-nav="sales">Recent Sales</a>
+          <a href="/date" class="kexo-mobile-nav-item" data-nav="date">Table View</a>
+          <a href="/countries" class="kexo-mobile-nav-item" data-nav="countries">Countries</a>
+          <a href="/products" class="kexo-mobile-nav-item" data-nav="products">Products</a>
+          <a href="/channels" class="kexo-mobile-nav-item" data-nav="channels">Channels</a>
+          <a href="/type" class="kexo-mobile-nav-item" data-nav="type">Type</a>
+          <a href="/ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
+          <a href="/tools" class="kexo-mobile-nav-item" data-nav="tools">Tools</a>
+          <div class="kexo-mobile-nav-divider"></div>
+          <button type="button" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</button>
+          <a href="/app/logout" class="kexo-mobile-nav-item">Sign out</a>
         </div>
 
         <div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
