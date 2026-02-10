@@ -80,6 +80,12 @@ function chunk(arr, size) {
   return out;
 }
 
+function looksLikeGoogleAdsSource(v) {
+  const s = v != null ? String(v).trim().toLowerCase() : '';
+  if (!s) return false;
+  return s.includes('googleads') || s === 'google' || s.includes('adwords') || s.includes('google');
+}
+
 async function getGclidMappingCached(adsDb, cache, gclid) {
   const key = gclid != null ? String(gclid).trim() : '';
   if (!key) return null;
@@ -356,17 +362,20 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   for (const ids of chunk(uniqueSessionIds, 800)) {
     const placeholders = ids.map(() => '?').join(',');
     const rows = await db.all(
-      `SELECT session_id, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
+      `SELECT session_id, visitor_id, started_at, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, utm_source, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
       ids
     );
     for (const r of rows || []) {
       const sid = r && r.session_id != null ? String(r.session_id).trim() : '';
       if (!sid) continue;
       sessionMap.set(sid, {
+        visitorId: r && r.visitor_id != null ? String(r.visitor_id).trim() : null,
+        startedAt: r && r.started_at != null ? Number(r.started_at) : null,
         bsSource: r && r.bs_source != null ? String(r.bs_source).trim().toLowerCase() : null,
         bsCampaignId: r && r.bs_campaign_id != null ? String(r.bs_campaign_id).trim() : null,
         bsAdgroupId: r && r.bs_adgroup_id != null ? String(r.bs_adgroup_id).trim() : null,
         bsAdId: r && r.bs_ad_id != null ? String(r.bs_ad_id).trim() : null,
+        utmSource: r && r.utm_source != null ? String(r.utm_source).trim().toLowerCase() : null,
         entryUrl: r && r.entry_url != null ? String(r.entry_url).trim() : null,
       });
     }
@@ -374,6 +383,54 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
 
   let attributed = 0;
   let unattributed = 0;
+
+  async function findLastGoogleAdsClickForVisitor(visitorId, beforeMs) {
+    const vid = visitorId != null ? String(visitorId).trim() : '';
+    const before = beforeMs != null ? Number(beforeMs) : null;
+    if (!vid || before == null || !Number.isFinite(before)) return null;
+
+    const WINDOW_DAYS = 30;
+    const minMs = before - WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+    try {
+      const row = await db.get(
+        `
+          SELECT
+            started_at,
+            bs_source,
+            utm_source,
+            bs_campaign_id,
+            bs_adgroup_id,
+            bs_ad_id,
+            entry_url
+          FROM sessions
+          WHERE visitor_id = ?
+            AND started_at >= ? AND started_at < ?
+            AND NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL
+          ORDER BY started_at DESC
+          LIMIT 1
+        `,
+        [vid, minMs, before]
+      );
+      if (!row || !row.bs_campaign_id) return null;
+      const bsSource = row.bs_source != null ? String(row.bs_source).trim().toLowerCase() : '';
+      const utmSource = row.utm_source != null ? String(row.utm_source).trim().toLowerCase() : '';
+      const entryUrl = row.entry_url != null ? String(row.entry_url).trim() : '';
+      const params = safeUrlParams(entryUrl);
+      const gl = extractGclidLike(params);
+      if (!looksLikeGoogleAds({ bsSource, utmSource, gclidLike: gl }) && !looksLikeGoogleAdsSource(bsSource) && !looksLikeGoogleAdsSource(utmSource)) {
+        return null;
+      }
+      return {
+        startedAt: row.started_at != null ? Number(row.started_at) : null,
+        bsCampaignId: row.bs_campaign_id != null ? String(row.bs_campaign_id).trim() : null,
+        bsAdgroupId: row.bs_adgroup_id != null ? String(row.bs_adgroup_id).trim() : null,
+        bsAdId: row.bs_ad_id != null ? String(row.bs_ad_id).trim() : null,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
 
   // Apply evidence attribution (and establish source when landing_site didn't include it).
   for (const o of parsed) {
@@ -417,6 +474,20 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           attributed++;
           continue;
         }
+      }
+    }
+
+    // Carry-over (last Google Ads click): attribute direct/returning purchases that lost UTMs on the purchase session.
+    if (!o.campaignId && sess && sess.visitorId) {
+      const last = await findLastGoogleAdsClickForVisitor(sess.visitorId, o.createdAtMs);
+      if (last && last.bsCampaignId) {
+        o.source = o.source || source;
+        o.campaignId = last.bsCampaignId;
+        o.adgroupId = last.bsAdgroupId || '_all_';
+        o.adId = last.bsAdId || null;
+        o.attributionMethod = 'visitor.last_ads_click';
+        attributed++;
+        continue;
       }
     }
 
