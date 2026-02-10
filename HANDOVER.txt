@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (desktop date picker moved beside Settings)
+Last updated: 2026-02-10 (header dropdown top corners squared)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -273,6 +273,8 @@ Edge (optional):
 - KPI load UX: added critical inline KPI strip CSS in `partials/head-theme.html` so the first paint matches final compact sizing (prevents large-then-shrink flash during page load).
 - Desktop gutter follow-up: removed global `html { scrollbar-gutter: stable; }` from `tabler-theme.css` because it reserved scrollbar space and caused a persistent apparent left/right gap on desktop widths.
 - Header UX follow-up: moved desktop date range dropdown from hidden date-bar staging area into desktop top nav right next to `Settings` (same IDs/logic, `global-date-select` remains canonical).
+- KPI strip UX follow-up: horizontal overflow remains enabled, but visible scrollbars are now hidden for condensed KPI chips (Firefox, WebKit, legacy Edge) in both critical head CSS and `custom.css`.
+- Header dropdown polish: top corners are now square and only bottom corners are rounded for header dropdown menus (desktop nav/settings and mobile topbar dropdown).
 - KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
