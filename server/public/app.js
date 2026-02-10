@@ -4958,7 +4958,7 @@ const API = '';
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
-            chart: { type: 'area', height: 28, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: 'area', height: 16, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
             stroke: { width: 2, curve: 'smooth' },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
@@ -8497,8 +8497,10 @@ const API = '';
         if (settingsBtn) {
           settingsBtn.addEventListener('click', function() {
             close();
-            var sidebarMenu = document.getElementById('sidebar-menu');
-            if (sidebarMenu) sidebarMenu.classList.add('show');
+            var configBtn = document.getElementById('config-open-btn');
+            if (configBtn) {
+              try { configBtn.click(); } catch (_) {}
+            }
           });
         }
         document.addEventListener('keydown', function(e) {

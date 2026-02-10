@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (KPI sparkline fallback + dashboard previous-period card values)
+Last updated: 2026-02-10 (top KPI mini-sparklines moved to top-right; dashboard sparklines remain full-width bottom strip)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -249,6 +249,11 @@ Edge (optional):
 - KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.
 
 2026-02-10
+- Desktop layout update: removed the left sidebar on desktop and added a Tabler horizontal navigation bar directly under the KPI strip (mobile menu behavior unchanged).
+- Desktop nav follow-up: horizontal nav is now grouped dropdowns (Dashboard/Breakdown/Traffic/Integrations/Tools) in Tabler style.
+- Dashboard KPI cards: background sparkline overlays are now pinned to the bottom strip of each card (instead of filling from the top).
+- Header/layout follow-up: removed sidebar markup entirely, switched desktop to a full-width dark Tabler-style top menu, moved logo to the first menu item, and kept KPIs above the menu.
+- KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
 - Header: pin Settings dropdown to the far-right of the top bar.

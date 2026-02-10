@@ -570,10 +570,11 @@ a {
 }
 .dash-kpi-sparkline-wrap {
   position: absolute;
-  top: 0;
+  top: auto;
   left: 0;
   right: 0;
   bottom: 0;
+  height: 48px;
   z-index: 0;
   opacity: 0.18;
   pointer-events: none;
@@ -581,7 +582,7 @@ a {
 .dash-kpi-sparkline-wrap > div {
   width: 100% !important;
   height: 100% !important;
-  min-height: 40px;
+  min-height: 48px;
 }
 .card-body:has(.dash-kpi-sparkline-wrap) > *:not(.dash-kpi-sparkline-wrap) {
   position: relative;
@@ -745,6 +746,13 @@ a {
 /* ── Sidebar structure (no internal scroll + bottom settings) ───── */
 /* Logo row: same height as KPI bar, grid effect with aligned border-bottom */
 @media (min-width: 992px) {
+  .navbar-vertical {
+    display: none !important;
+  }
+  .page-wrapper {
+    margin-left: 0 !important;
+    width: 100%;
+  }
   .navbar-vertical > .container-fluid > .navbar-brand {
     flex-shrink: 0;
     min-height: var(--kexo-top-row-height);
@@ -881,12 +889,14 @@ a {
 }
 .kexo-kpi-chip-sparkline {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 28px;
+  top: 6px;
+  right: 6px;
+  left: auto;
+  bottom: auto;
+  width: 56px;
+  height: 16px;
   z-index: 0;
-  opacity: 0.18;
+  opacity: 0.28;
   pointer-events: none;
 }
 .kexo-kpi-chip > .subheader,
@@ -1098,9 +1108,96 @@ a {
   .navbar-vertical.navbar-expand-lg {
     overflow-y: visible;
   }
+  .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar > .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
   .kexo-topbar-slot-left {
     width: 0;
   }
+}
+
+/* ── Desktop horizontal nav under KPI strip ───────────────────────── */
+.kexo-desktop-nav {
+  background: #1f2937;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 2.75rem;
+  width: 100%;
+}
+.kexo-desktop-nav .container-fluid {
+  padding-left: .75rem;
+  padding-right: .75rem;
+  max-width: 100%;
+}
+.kexo-desktop-nav-list {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin: 0;
+  width: 100%;
+  padding: .35rem 0;
+  scrollbar-width: thin;
+}
+.kexo-desktop-logo-item {
+  margin-right: .35rem;
+}
+.kexo-desktop-logo-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .35rem .5rem !important;
+  background: transparent !important;
+}
+.kexo-desktop-logo-link img {
+  display: block;
+  width: 80px;
+  height: 29px;
+}
+.kexo-desktop-nav-list .nav-link {
+  font-size: .8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .88);
+  border-radius: 9999px;
+  padding: .35rem .7rem;
+}
+.kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
+  margin-left: .4rem;
+}
+.kexo-desktop-nav-list .nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+.kexo-desktop-nav-list .nav-item.active > .nav-link,
+.kexo-desktop-nav-list .nav-link[aria-current="page"] {
+  color: #fff;
+  background: var(--tblr-primary, #3eb3ab);
+}
+.kexo-desktop-nav-list .dropdown-menu {
+  margin-top: .3rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  min-width: 13rem;
+  background: #111827;
+}
+.kexo-desktop-nav-list .dropdown-item {
+  font-size: .8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .9);
+}
+.kexo-desktop-nav-list .dropdown-item:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.kexo-desktop-nav-list .dropdown-item[aria-current="page"] {
+  color: #fff;
+  background: var(--tblr-primary, #3eb3ab);
+}
+.kexo-desktop-nav-list .dropdown-divider {
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */
