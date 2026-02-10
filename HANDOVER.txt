@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Mobile: sidebar overlay only, no double logo/hamburger)
+Last updated: 2026-02-10 (Countries: map full-width, #136363, pie removed)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -262,3 +262,4 @@ Edge (optional):
 - UI audit + fixes: Online badge moved from Live/card header to sidebar under logo (green circle when active, grey when none); primary color `#3eb3ab`; active nav items white; Theme Settings button fixed (inject offcanvas on load + data-bs-toggle); mobile padding/typography polish.
 - KPI sparklines: background graph effect on all dashboard cards (Conv, AOV, Bounce, Ad Spend) and condensed header chips; `renderCondensedSparklines(chartSeries)` called from dashboard when data loaded, `fetchCondensedSeries()` wired into `refreshKpis` for other pages.
 - Mobile: sidebar is overlay-only (position fixed, off-screen when closed); no persistent strip — single top bar (hamburger + logo + date); backdrop tap-to-close wired in `initSidebarBackdropClose`.
+- Countries: removed pie chart; map spans full width above both tables; map fill color #136363 (was blue).

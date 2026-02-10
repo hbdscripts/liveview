@@ -3935,97 +3935,6 @@ const API = '';
       scheduleBreakdownSync();
     }
 
-    // Countries pie chart
-    let countriesPieChartInstance = null;
-    function renderCountriesPieChart(data) {
-      const el = document.getElementById('countries-pie-chart');
-      if (!el) return;
-
-      if (typeof ApexCharts === 'undefined') {
-        setTimeout(function() { renderCountriesPieChart(data); }, 200);
-        return;
-      }
-
-      if (countriesPieChartInstance) {
-        try {
-          countriesPieChartInstance.destroy();
-        } catch (_) {}
-        countriesPieChartInstance = null;
-      }
-
-      const c = data.country || {};
-      const rows = c[getStatsRange()] || [];
-
-      if (rows.length === 0) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);">No data</div>';
-        return;
-      }
-
-      // Sort by revenue and take top 10
-      const sortedRows = rows.slice().sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 10);
-      const labels = sortedRows.map(r => {
-        const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
-        return countryLabel(code);
-      });
-      const revenues = sortedRows.map(r => r.revenue || 0);
-
-      const options = {
-        chart: {
-          type: 'donut',
-          height: 320,
-          fontFamily: 'Inter, sans-serif',
-          toolbar: { show: false }
-        },
-        series: revenues,
-        labels: labels,
-        colors: ['#4592e9', '#1673b4', '#32bdb0', '#179ea8', '#fa9f2e', '#fab05d', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'],
-        plotOptions: {
-          pie: {
-            donut: {
-              size: '65%',
-              labels: {
-                show: true,
-                total: {
-                  show: true,
-                  label: 'Total Revenue',
-                  fontSize: '14px',
-                  formatter: function(w) {
-                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                    return '£' + Number(total).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-                  }
-                }
-              }
-            }
-          }
-        },
-        dataLabels: {
-          enabled: true,
-          formatter: function(val) {
-            return val.toFixed(1) + '%';
-          }
-        },
-        legend: {
-          position: 'bottom',
-          fontSize: '12px'
-        },
-        tooltip: {
-          y: {
-            formatter: function(value) {
-              return '£' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-          }
-        }
-      };
-
-      try {
-        countriesPieChartInstance = new ApexCharts(el, options);
-        countriesPieChartInstance.render();
-      } catch (err) {
-        console.error('[countries-pie] Chart render error:', err);
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Chart rendering failed</div>';
-      }
-    }
-
     // Countries map chart
     let countriesMapChartInstance = null;
     function renderCountriesMapChart(data) {
@@ -4079,16 +3988,16 @@ const API = '';
           backgroundColor: 'transparent',
           zoomButtons: true,
           regionStyle: {
-            initial: { fill: 'rgba(148,163,184,0.25)', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(69,146,233,0.35)' },
-            selected: { fill: 'rgba(69,146,233,0.45)' },
+            initial: { fill: 'rgba(19,99,99,0.15)', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(19,99,99,0.35)' },
+            selected: { fill: 'rgba(19,99,99,0.45)' },
           },
           series: {
             regions: [
               {
                 attribute: 'fill',
                 values: revenueByIso2,
-                scale: ['rgba(69,146,233,0.15)', 'rgba(69,146,233,0.95)'],
+                scale: ['rgba(19,99,99,0.15)', 'rgba(19,99,99,0.95)'],
                 normalizeFunction: 'polynomial',
               }
             ]
@@ -4813,7 +4722,6 @@ const API = '';
       }
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
-      renderCountriesPieChart(statsCache);
       renderCountriesMapChart(statsCache);
       renderCountry(statsCache);
       renderBestGeoProducts(statsCache);
