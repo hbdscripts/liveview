@@ -6506,7 +6506,10 @@ const API = '';
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
       const p = fetch(getConfigStatusUrl({ force: !!options.force }), { credentials: 'same-origin', cache: 'no-store' })
-        .then(r => r.json())
+        .then(function(r) {
+          if (!r.ok) throw new Error('Config status ' + r.status);
+          return r.json();
+        })
         .then(c => {
           function code(value) { return '<code>' + escapeHtml(value == null ? '' : String(value)) + '</code>'; }
           function pill(text, tone) {
@@ -7813,6 +7816,7 @@ const API = '';
       return p;
     }
     try { window.refreshConfigStatus = refreshConfigStatus; } catch (_) {}
+    try { window.initTrafficSourceMapping = function(opts) { initTrafficSourceMappingPanel(opts || {}); }; } catch (_) {}
 
     // Best-effort: prime Diagnostics data in the background (modal is closed at load).
     try { refreshConfigStatus(); } catch (_) {}

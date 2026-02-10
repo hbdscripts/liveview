@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Settings page full implementation + yesterday KPIs fix + desktop nav KEXO 3-color accents)
+Last updated: 2026-02-10 (Settings Sources tab + config-status fetch error handling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -24,7 +24,7 @@ Pages (new, Tabler layout):
 - `server/public/type.html`
 - `server/public/ads.html`
 - `server/public/tools.html`
-- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, KPIs, Diagnostics); placeholder content; wired later.
+- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs, Diagnostics); Sources tab has traffic-source-mapping UI (UTM → source + icon).
 - `server/public/settings-page.js`: Settings tab switching (standalone; no app.js changes).
 - `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
 
@@ -197,6 +197,10 @@ Edge (optional):
 ---
 
 ## Changelog (summary)
+
+2026-02-10
+- Settings: added Sources tab for traffic source mapping (UTM → source + icon); `initTrafficSourceMapping` exposed on window.
+- app.js: config-status fetch now checks `r.ok`; non-2xx throws so errors surface in Diagnostics.
 
 2026-02-08
 - Tabler UI rollout and split-page architecture (per-page HTML routes).

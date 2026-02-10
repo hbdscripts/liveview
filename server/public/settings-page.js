@@ -18,6 +18,7 @@
     assets: 'settings-panel-assets',
     'data-reporting': 'settings-panel-data-reporting',
     integrations: 'settings-panel-integrations',
+    sources: 'settings-panel-sources',
     kpis: 'settings-panel-kpis',
     diagnostics: 'settings-panel-diagnostics',
   };
@@ -55,6 +56,9 @@
     updateUrl(key);
     if (key === 'diagnostics') {
       try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
+    }
+    if (key === 'sources') {
+      try { if (typeof window.initTrafficSourceMapping === 'function') window.initTrafficSourceMapping({ rootId: 'settings-traffic-source-mapping-root' }); } catch (_) {}
     }
   }
 
