@@ -272,5 +272,5 @@ Edge (optional):
 - Mobile tables: grid-tables use card layout on small screens (max-width 576px); no overflow-x; header hidden; each row is a card with data-label from header synced via MutationObserver; applies to country, traffic, products, sessions tables.
 - Sidebar online badge: split into 2-column grid (left: website name + SVG globe icon; right: online count); real border; website name ellipsis when overflow; navbar brand img height 36px; shop display from /api/store-base-url (shopDisplayDomain).
 - Layout: page-wrapper margin-left 0, page padding 0, KPI strip padding-left 0 so KPIs/content touch sidebar.
-- Badge: SHOP_DISPLAY_DOMAIN for custom domain (e.g. hbdjewellery.com); font 12px; border top/bottom only (dark); no left/right.
+- Badge: SHOP_DISPLAY_DOMAIN for custom domain (e.g. hbdjewellery.com); font 12px; border top/bottom only (dark); no left/right; background #1d2e40.
 - Dashboard KPI cards: sparklines as background graphs (position absolute, opacity 0.18); allow 1 data point for Today range.
