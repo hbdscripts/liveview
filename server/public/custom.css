@@ -592,6 +592,11 @@ a {
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
+/* ── Prevent page-body from stretching on pages with little content ── */
+.page-body {
+  flex: 0 0 auto;
+}
+
 /* ── Layout alignment + top navbar ───────────────────────────────── */
 /* Keep header and content containers aligned with Tabler gutters. */
 .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar {
