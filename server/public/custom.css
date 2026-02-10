@@ -654,13 +654,13 @@ a {
   font-weight: 500;
   color: #333;
   background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 3px;
-  cursor: pointer;
+  border: 0;
+  border-radius: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+  margin-right: 8px;
 }
 .kexo-date-btn:hover {
   border-color: #9ca3af;
