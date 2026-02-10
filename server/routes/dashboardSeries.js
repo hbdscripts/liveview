@@ -346,12 +346,19 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
       const metaMap = new Map();
-      for (const pid of productIds) {
+      const metaPairs = await Promise.all(productIds.map(async function(pid) {
         try {
           const meta = await productMetaCache.getProductMeta(shop, token, pid);
-          if (meta && meta.ok) metaMap.set(String(pid), meta);
-        } catch (_) {}
-      }
+          return [String(pid), meta];
+        } catch (_) {
+          return [String(pid), null];
+        }
+      }));
+      metaPairs.forEach(function(pair) {
+        const pid = pair[0];
+        const meta = pair[1];
+        if (meta && meta.ok) metaMap.set(pid, meta);
+      });
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
@@ -724,12 +731,19 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
       const metaMap = new Map();
-      for (const pid of productIds) {
+      const metaPairs = await Promise.all(productIds.map(async function(pid) {
         try {
           const meta = await productMetaCache.getProductMeta(shop, token, pid);
-          if (meta && meta.ok) metaMap.set(String(pid), meta);
-        } catch (_) {}
-      }
+          return [String(pid), meta];
+        } catch (_) {
+          return [String(pid), null];
+        }
+      }));
+      metaPairs.forEach(function(pair) {
+        const pid = pair[0];
+        const meta = pair[1];
+        if (meta && meta.ok) metaMap.set(pid, meta);
+      });
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);

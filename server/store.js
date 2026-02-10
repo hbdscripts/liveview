@@ -415,32 +415,46 @@ async function upsertTrafficSourceTokens(tokens, tsMs) {
   if (!list.length) return { ok: true, insertedOrUpdated: 0 };
   const db = getDb();
   const ts = typeof tsMs === 'number' ? tsMs : Date.now();
-  let n = 0;
+  const counts = new Map();
   for (const t of list) {
     const p = normalizeTrafficUtmParam(t && t.param);
     const v = normalizeTrafficUtmValue(t && t.value);
     if (!p || !v) continue;
-    try {
-      await db.run(
-        `
-          INSERT INTO traffic_source_tokens (utm_param, utm_value, first_seen_at, last_seen_at, seen_count)
-          VALUES (?, ?, ?, ?, 1)
-          ON CONFLICT (utm_param, utm_value) DO UPDATE SET
-            last_seen_at = CASE
-              WHEN excluded.last_seen_at > traffic_source_tokens.last_seen_at THEN excluded.last_seen_at
-              ELSE traffic_source_tokens.last_seen_at
-            END,
-            seen_count = traffic_source_tokens.seen_count + 1
-        `,
-        [p, v, ts, ts]
-      );
-      n++;
-    } catch (_) {
-      // Fail-open (e.g. tables not present yet).
-      return { ok: false, insertedOrUpdated: n };
-    }
+    const key = p + '\x1f' + v;
+    counts.set(key, (counts.get(key) || 0) + 1);
   }
-  return { ok: true, insertedOrUpdated: n };
+
+  const rows = Array.from(counts.entries()).map(([key, count]) => {
+    const split = key.split('\x1f');
+    return { p: split[0], v: split[1], count };
+  });
+  if (!rows.length) return { ok: true, insertedOrUpdated: 0 };
+
+  const valuesSql = rows.map(() => '(?, ?, ?, ?, ?)').join(', ');
+  const params = [];
+  rows.forEach((r) => {
+    params.push(r.p, r.v, ts, ts, r.count);
+  });
+
+  try {
+    await db.run(
+      `
+        INSERT INTO traffic_source_tokens (utm_param, utm_value, first_seen_at, last_seen_at, seen_count)
+        VALUES ${valuesSql}
+        ON CONFLICT (utm_param, utm_value) DO UPDATE SET
+          last_seen_at = CASE
+            WHEN excluded.last_seen_at > traffic_source_tokens.last_seen_at THEN excluded.last_seen_at
+            ELSE traffic_source_tokens.last_seen_at
+          END,
+          seen_count = traffic_source_tokens.seen_count + excluded.seen_count
+      `,
+      params
+    );
+  } catch (_) {
+    // Fail-open (e.g. tables not present yet).
+    return { ok: false, insertedOrUpdated: 0 };
+  }
+  return { ok: true, insertedOrUpdated: rows.length };
 }
 
 async function upsertTrafficSourceMeta({ sourceKey, label, iconUrl } = {}) {
@@ -1633,31 +1647,42 @@ async function getShopifySessionsCountForBounds(shop, startMs, endMs, timeZone, 
   if (!ymds.length) return 0;
 
   const todayYmd = ymdFromMs(Date.now(), tz);
+  const latestByYmd = await Promise.all(
+    ymds.map(async (ymd) => ({ ymd, latest: await getLatestShopifySessionsSnapshot(safeShop, ymd) }))
+  );
   let total = 0;
-  for (const ymd of ymds) {
-    const latest = await getLatestShopifySessionsSnapshot(safeShop, ymd);
+  const missingYmds = [];
+
+  for (const { ymd, latest } of latestByYmd) {
     const isToday = ymd === todayYmd;
     const freshEnough = latest && typeof latest.sessionsCount === 'number' && (!isToday || (latest.fetchedAt && (Date.now() - latest.fetchedAt) < SHOPIFY_SESSIONS_TODAY_REFRESH_MS));
     if (freshEnough) {
       total += Number(latest.sessionsCount) || 0;
-      continue;
-    }
-    if (!fetchIfMissing) return null;
-
-    const inflightKey = safeShop + '|' + ymd;
-    let p = shopifySessionsFetchInflight.get(inflightKey);
-    if (!p) {
-      p = fetchShopifySessionsCountForDay(safeShop, ymd, tz).catch(() => null).finally(() => {
-        if (shopifySessionsFetchInflight.get(inflightKey) === p) shopifySessionsFetchInflight.delete(inflightKey);
-      });
-      shopifySessionsFetchInflight.set(inflightKey, p);
-    }
-    const fetched = await p;
-    if (typeof fetched === 'number') {
-      total += fetched;
     } else {
-      return null;
+      if (!fetchIfMissing) return null;
+      missingYmds.push(ymd);
     }
+  }
+
+  if (!missingYmds.length) return total;
+
+  const fetchedCounts = await Promise.all(
+    missingYmds.map(async (ymd) => {
+      const inflightKey = safeShop + '|' + ymd;
+      let p = shopifySessionsFetchInflight.get(inflightKey);
+      if (!p) {
+        p = fetchShopifySessionsCountForDay(safeShop, ymd, tz).catch(() => null).finally(() => {
+          if (shopifySessionsFetchInflight.get(inflightKey) === p) shopifySessionsFetchInflight.delete(inflightKey);
+        });
+        shopifySessionsFetchInflight.set(inflightKey, p);
+      }
+      return p;
+    })
+  );
+
+  for (const fetched of fetchedCounts) {
+    if (typeof fetched === 'number') total += fetched;
+    else return null;
   }
   return total;
 }

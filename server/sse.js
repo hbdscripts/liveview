@@ -3,10 +3,28 @@
  */
 
 const clients = new Set();
+let heartbeatTimer = null;
+
+function removeClient(res) {
+  clients.delete(res);
+  if (clients.size === 0 && heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
+function ensureHeartbeat() {
+  if (heartbeatTimer) return;
+  heartbeatTimer = setInterval(() => heartbeat(), 30000);
+}
 
 function addClient(res) {
   clients.add(res);
-  res.on('close', () => clients.delete(res));
+  ensureHeartbeat();
+  const cleanup = () => removeClient(res);
+  res.on('close', cleanup);
+  res.on('error', cleanup);
+  res.on('aborted', cleanup);
 }
 
 function broadcast(data) {

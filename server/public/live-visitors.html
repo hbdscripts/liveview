@@ -7562,7 +7562,7 @@
               (apiVer ? rowKV('API version hint', codeInline(apiVer)) : rowKV('API version hint', pillInline('Auto', 'ok')))
             ));
 
-            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/app/live-visitors');
+            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/dashboard');
             googleAdsPanel += card('Actions', (
               '<div class="dm-bar-actions" style="justify-content:flex-start;">' +
                 '<a class="dm-copy-btn" href="' + escapeHtml(connectUrl) + '" title="Connect Google Ads (OAuth)">' + copyIcon + '<span>Connect</span></a>' +
@@ -7648,7 +7648,7 @@
           advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
           advancedDropdown +=   '<div class="dm-bar-actions">' +
                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                       '<a href="/auth/google?redirect=/app/live-visitors" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
+                       '<a href="/auth/google?redirect=/dashboard" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                        (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +

@@ -355,7 +355,7 @@ a {
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0 0 5px 0;
+  padding: 0 0 4px 0;
   background: #fff;
   border: 0;
   min-height: var(--kexo-top-row-height);
@@ -870,19 +870,21 @@ a {
 .kexo-kpis-condensed-strip {
   display: flex;
   align-items: stretch;
-  gap: .45rem;
+  gap: .6rem;
+  justify-content: space-between;
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
 }
 .kexo-kpi-chip {
-  flex: 0 0 auto;
+  flex: 1 1 128px;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  min-width: 130px;
-  padding: 0 15px 0 0;
-  margin: 5px 15px 5px 0;
+  min-width: 116px;
+  max-width: 220px;
+  padding: 2px 8px 0 0;
+  margin: 4px 0;
   line-height: 1.12;
   font-variant-numeric: tabular-nums;
   position: relative;
@@ -1125,16 +1127,26 @@ a {
   width: 100%;
 }
 .kexo-desktop-nav .container-fluid {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 100%;
+}
+.kexo-desktop-nav .navbar {
+  width: 100%;
+}
+.kexo-desktop-nav-container {
+  width: 100%;
+  max-width: 100% !important;
   padding-left: .75rem;
   padding-right: .75rem;
-  max-width: 100%;
 }
 .kexo-desktop-nav-list {
   display: flex;
   align-items: center;
   gap: .35rem;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: visible;
   white-space: nowrap;
   margin: 0;
   width: 100%;
@@ -1198,6 +1210,13 @@ a {
 }
 .kexo-desktop-nav-list .dropdown-divider {
   border-color: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 1199.98px) {
+  .kexo-kpi-chip {
+    min-width: 104px;
+    max-width: 180px;
+  }
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */

@@ -11,9 +11,6 @@ function streamRouter(req, res, next) {
   res.flushHeaders();
 
   sse.addClient(res);
-
-  const interval = setInterval(() => sse.heartbeat(), 30000);
-  res.on('close', () => clearInterval(interval));
 }
 
 module.exports = streamRouter;

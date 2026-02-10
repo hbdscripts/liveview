@@ -4886,6 +4886,7 @@ const API = '';
     var condensedSeriesRange = null;
     var condensedSeriesFetchedAt = 0;
     var sparklineHistorySeriesCache = null;
+    var sparklineHistorySeriesRange = null;
     var sparklineHistorySeriesFetchedAt = 0;
     var sparklineHistorySeriesInFlight = null;
 
@@ -4895,18 +4896,26 @@ const API = '';
       return Array.isArray(series) ? series : [];
     }
 
+    function getSparklineFallbackRangeKey() {
+      var rk = normalizeRangeKeyForApi(getStatsRange());
+      if (!rk || rk === 'today' || rk === 'yesterday' || rk === '1h' || /^d:\d{4}-\d{2}-\d{2}$/.test(rk)) return '7d';
+      return rk;
+    }
+
     function ensureSparklineHistorySeries() {
+      var fallbackRange = getSparklineFallbackRangeKey();
       var stale = !sparklineHistorySeriesFetchedAt || (Date.now() - sparklineHistorySeriesFetchedAt) > KPI_CACHE_TTL_MS;
-      if (!stale && sparklineHistorySeriesCache && sparklineHistorySeriesCache.length >= 2) {
+      if (!stale && sparklineHistorySeriesRange === fallbackRange && sparklineHistorySeriesCache && sparklineHistorySeriesCache.length >= 2) {
         return Promise.resolve(sparklineHistorySeriesCache);
       }
       if (sparklineHistorySeriesInFlight) return sparklineHistorySeriesInFlight;
-      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=7d', { credentials: 'same-origin', cache: 'default' }, 15000)
+      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(fallbackRange), { credentials: 'same-origin', cache: 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && Array.isArray(data.series) ? data.series : [];
           if (s.length >= 2) {
             sparklineHistorySeriesCache = s;
+            sparklineHistorySeriesRange = fallbackRange;
             sparklineHistorySeriesFetchedAt = Date.now();
           }
           return sparklineHistorySeriesCache;
@@ -7303,7 +7312,7 @@ const API = '';
               (apiVer ? rowKV('API version hint', codeInline(apiVer)) : rowKV('API version hint', pillInline('Auto', 'ok')))
             ));
 
-            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/app/live-visitors');
+            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/dashboard');
             googleAdsPanel += card('Actions', (
               '<div class="dm-bar-actions" style="justify-content:flex-start;">' +
                 '<a class="dm-copy-btn" href="' + escapeHtml(connectUrl) + '" title="Connect Google Ads (OAuth)">' + copyIcon + '<span>Connect</span></a>' +
@@ -7389,7 +7398,7 @@ const API = '';
           advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
           advancedDropdown +=   '<div class="dm-bar-actions">' +
                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                       '<a href="/auth/google?redirect=/app/live-visitors" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
+                      '<a href="/auth/google?redirect=/dashboard" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                        (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
@@ -8215,7 +8224,7 @@ const API = '';
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
           // Dashboard dropdown — highlight parent li.nav-item when a child page is active
           var isDashboardChild = (tab === 'dashboard' || tab === 'spy' || tab === 'sales' || tab === 'date');
-          var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard"]');
+          var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard-menu"]');
           var dashboardDropdownItem = dashboardToggle ? dashboardToggle.closest('.nav-item') : null;
           if (dashboardToggle) {
             dashboardToggle.classList.toggle('active', !!isDashboardChild);
@@ -8227,7 +8236,7 @@ const API = '';
           }
           // Breakdown dropdown (Countries + Products)
           var isBreakdownChild = (tab === 'stats' || tab === 'products');
-          var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown"]');
+          var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown-menu"]');
           var breakdownDropdownItem = breakdownToggle ? breakdownToggle.closest('.nav-item') : null;
           if (breakdownToggle) {
             breakdownToggle.classList.toggle('active', !!isBreakdownChild);
@@ -8239,7 +8248,7 @@ const API = '';
           }
           // Traffic dropdown
           var isTrafficChild = (tab === 'channels' || tab === 'type');
-          var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
+          var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic-menu"]');
           var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
           if (trafficToggle) {
             trafficToggle.classList.toggle('active', !!isTrafficChild);
@@ -8252,7 +8261,7 @@ const API = '';
 
           // Integrations dropdown (Google Ads)
           var isIntegrationsChild = (tab === 'ads');
-          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations"]');
+          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations-menu"]');
           var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
           if (integrationsToggle) {
             integrationsToggle.classList.toggle('active', !!isIntegrationsChild);
@@ -8265,7 +8274,7 @@ const API = '';
 
           // Tools dropdown
           var isToolsChild = (tab === 'tools');
-          var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools"]');
+          var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
             toolsToggle.classList.toggle('active', !!isToolsChild);
@@ -8958,7 +8967,13 @@ const API = '';
 
         // Bounce Rate: progress bar
         if (el('dash-bounce-progress')) {
-          el('dash-bounce-progress').style.width = Math.min(curBounceRate, 100).toFixed(1) + '%';
+          var bouncePct = Math.min(Math.max(curBounceRate, 0), 100);
+          var bouncePctText = bouncePct.toFixed(1) + '%';
+          el('dash-bounce-progress').style.width = bouncePctText;
+          el('dash-bounce-progress').setAttribute('aria-valuenow', bouncePct.toFixed(1));
+          el('dash-bounce-progress').setAttribute('aria-valuemin', '0');
+          el('dash-bounce-progress').setAttribute('aria-valuemax', '100');
+          el('dash-bounce-progress').setAttribute('aria-label', bouncePctText + ' bounce rate');
         }
 
         // Returning Customers: New / Return split
@@ -8970,7 +8985,12 @@ const API = '';
         if (el('dash-roas-badge')) el('dash-roas-badge').textContent = curRoas != null ? curRoas.toFixed(2) + 'x' : '\u2014';
         if (el('dash-roas-progress')) {
           var roasPct = curRoas != null ? Math.min(curRoas / 5 * 100, 100) : 0;
-          el('dash-roas-progress').style.width = roasPct.toFixed(1) + '%';
+          var roasPctText = roasPct.toFixed(1) + '%';
+          el('dash-roas-progress').style.width = roasPctText;
+          el('dash-roas-progress').setAttribute('aria-valuenow', roasPct.toFixed(1));
+          el('dash-roas-progress').setAttribute('aria-valuemin', '0');
+          el('dash-roas-progress').setAttribute('aria-valuemax', '100');
+          el('dash-roas-progress').setAttribute('aria-label', roasPctText + ' of 5x ROAS target');
         }
 
         // Sparklines in KPI cards.

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (top KPI mini-sparklines moved to top-right; dashboard sparklines remain full-width bottom strip)
+Last updated: 2026-02-10 (Tabler horizontal navbar rebuilt to native collapse/navbar markup, KPI strip spacing/fit improved, SSE + query perf fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -285,3 +285,10 @@ Edge (optional):
 - Settings dropdown: full-width hover on list items (menu padding 0, items span edge-to-edge).
 - Countries map: high-traffic fill uses primary teal (#3eb3ab) instead of dark #136363 (was appearing black).
 - Sidebar badge: fallback to hbdjewellery.com when shopDisplayDomain is empty or derived from Shopify handle (e.g. 943925-c1.com).
+- Desktop nav: rebuilt with Tabler `collapse navbar-collapse` + inner `.navbar` structure (`#navbar-menu`), centered grouped menu items, logo as first item, and settings kept in right-side nav column.
+- Header KPI strip: chips now fill available topbar width more cleanly via smarter `gap` + `min-width`/`flex` behavior (better distribution before overflow hiding kicks in).
+- Accessibility + semantics: desktop dropdown toggles now include `aria-haspopup="menu"` + `aria-controls`; desktop/mobile date buttons now provide explicit controls wiring; dashboard progress bars now maintain `aria-valuenow`/bounds/labels as values update.
+- Routing fix: diagnostics Google Ads reconnect + re-login links now redirect to `/dashboard` (not legacy `/app/live-visitors`).
+- SSE reliability: removed per-client heartbeat interval and switched to a shared timer with cleanup on `close`/`error`/`aborted`.
+- Backend perf: batched `upsertTrafficSourceTokens` writes, parallelized Shopify sessions day-snapshot loading + missing-day fetches, and parallelized product meta lookups in dashboard-series.
+- DB perf: added migration `039_active_sessions_last_seen_started_at_index.js` for active-session query support (`sessions(last_seen, started_at)`).
