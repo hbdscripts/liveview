@@ -1,5 +1,7 @@
 /* Minimal custom styles - Tabler-compatible */
 
+#sale-toast-inline-flag { margin-right: 5px; }
+
 /* Global links: inherit surrounding text color (no blue link default). */
 a {
   color: inherit !important;
