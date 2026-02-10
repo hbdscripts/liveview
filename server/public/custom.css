@@ -2,8 +2,6 @@
 
 /* Remove outer browser gap site-wide */
 html, body { margin: 0; padding: 0; }
-.page, .page-wrapper { margin-left: 0; padding-left: 0; }
-.page-wrapper { width: 100%; }
 
 #sale-toast-inline-flag { margin-right: 5px; }
 
@@ -24,6 +22,7 @@ a {
   --kexo-kpi-gap: 15px;
   --kexo-kpi-min-width: 148px;
   --kexo-kpi-width: 148px;
+  --kexo-top-row-height: 2.65rem;
 }
 
 /* Grid table system — Tabler invoice style */
@@ -351,11 +350,6 @@ a {
   opacity: 1;
 }
 
-/* Top row grid: compact KPI bar below dark nav */
-:root {
-  --kexo-top-row-height: 2.65rem;
-}
-
 /* KPI bar: below dark nav, light strip, single line, 100% width */
 .kexo-kpis-navbar {
   position: relative;
@@ -603,10 +597,13 @@ a {
   padding-left: 1rem;
   padding-right: 1rem;
 }
-.page-body > .container-fluid,
+.page-body > .container-fluid {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
 .footer .container-fluid {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .kexo-topbar-row {
@@ -943,7 +940,7 @@ a {
     background: rgba(0,0,0,.4);
     z-index: 1055;
   }
-  /* Keep KPI strip visible on smaller widths; it already scrolls horizontally. */
+  .kexo-kpis-navbar { display: none !important; }
   .kexo-date-bar { display: none; }
 }
 
@@ -1118,10 +1115,10 @@ body[data-page="dashboard"] #kexo-kpis {
   display: none !important;
 }
 
-/* ── Dashboard page: keep compact but padded content gutters ── */
+/* ── Dashboard page: match other pages' content gutters ── */
 body[data-page="dashboard"] .page-body > .container-fluid {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */

@@ -38,17 +38,18 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Page layout: sidebar and top bar meet with no gap */
+/* Page layout: vertical stack (no sidebar) */
 .page {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
+  flex-direction: column;
+  min-height: 100%;
   padding: 0;
 }
 .page > .page-wrapper {
   flex: 1;
   min-width: 0;
-  margin-left: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Unified Tabler card look ────────────────────────────────────── */
