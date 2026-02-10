@@ -673,12 +673,10 @@ a {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: .18rem;
-  min-width: 132px;
-  padding: .42rem .56rem;
-  border: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-radius: var(--tblr-border-radius, .375rem);
-  background: var(--tblr-bg-surface, #fff);
+  gap: 5px;
+  min-width: 130px;
+  padding: 0 15px 0 0;
+  margin: 5px 15px 5px 0;
   line-height: 1.12;
   font-variant-numeric: tabular-nums;
 }
