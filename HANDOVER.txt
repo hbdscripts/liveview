@@ -271,3 +271,4 @@ Edge (optional):
 - Mobile header: logo uses footer.png (80x29); hamburger and date icons white, no background or border; topbar row min-height 60px, no border.
 - Mobile tables: grid-tables use card layout on small screens (max-width 576px); no overflow-x; header hidden; each row is a card with data-label from header synced via MutationObserver; applies to country, traffic, products, sessions tables.
 - Sidebar online badge: split into 2-column grid (left: website name + SVG globe icon; right: online count); real border; website name ellipsis when overflow; navbar brand img height 36px; shop display from /api/store-base-url (shopDisplayDomain).
+- Layout: page-wrapper margin-left 0, page padding 0, KPI strip padding-left 0 so KPIs/content touch sidebar.

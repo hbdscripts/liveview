@@ -620,9 +620,9 @@ a {
   padding-left: 0;
   padding-right: 1rem;
 }
-/* KPI strip: minimal left padding so bar meets sidebar; chips have internal spacing */
+/* KPI strip: no left padding so bar meets sidebar flush; chips have internal spacing */
 .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar .kexo-kpis-condensed-strip {
-  padding-left: 0.5rem;
+  padding-left: 0;
 }
 .page-body > .container-fluid,
 .footer .container-fluid {
