@@ -36,6 +36,16 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Page layout: sidebar and top bar meet with no gap */
+.page {
+  display: flex;
+  flex-wrap: nowrap;
+}
+.page > .page-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Sidebar active link */
 .navbar-vertical {
   background: #132231;
