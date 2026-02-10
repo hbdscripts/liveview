@@ -822,6 +822,7 @@ a {
   min-width: 100%;
   width: 100%;
   box-sizing: border-box;
+  padding: 0;
 }
 .navbar-vertical .dropdown-menu .dropdown-item {
   width: 100%;
@@ -829,10 +830,13 @@ a {
   display: block;
   text-align: left;
   box-sizing: border-box;
+  padding: 0.5rem 1rem;
+  border-radius: 0;
 }
 .navbar-vertical .dropdown-menu .dropdown-item:hover {
   width: 100%;
   min-width: 100%;
+  background: rgba(var(--tblr-primary-rgb), 0.08);
 }
 .navbar-vertical .dropdown-menu .dropdown-item[aria-current="page"],
 .navbar-vertical .dropdown-menu .dropdown-item.active {
