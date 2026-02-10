@@ -643,7 +643,7 @@ a {
   color: #333;
   background: #fff;
   border: 1px solid #d1d5db;
-  border-radius: 9999px;
+  border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
