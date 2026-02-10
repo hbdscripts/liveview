@@ -685,7 +685,7 @@ a {
   font-size: .64rem;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: var(--tblr-secondary, #626976);
+  color: #555;
 }
 .kexo-kpi-chip-value {
   font-weight: 700;
