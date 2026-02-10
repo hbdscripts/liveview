@@ -143,7 +143,8 @@
         <div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
           <div class="kexo-kpis-condensed-row" id="kexo-kpis-condensed-row" aria-label="Condensed KPIs">
             <div class="kexo-kpis-condensed-strip" id="kexo-condensed-kpis">
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="orders">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-orders-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Orders</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-orders">&mdash;</div>
@@ -157,7 +158,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-orders-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="revenue">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-revenue-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Revenue</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-revenue">&mdash;</div>
@@ -171,7 +173,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-revenue-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="conv">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-conv-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Conv rate</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-conv">&mdash;</div>
@@ -185,7 +188,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-conv-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="sessions">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-sessions-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Sessions</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-sessions">&mdash;</div>
@@ -199,7 +203,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-sessions-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="returning">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-returning-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Returning</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-returning">&mdash;</div>
@@ -213,7 +218,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-returning-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="aov">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-aov-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">AOV</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-aov">&mdash;</div>
@@ -227,7 +233,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-aov-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="orders">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-items-sold-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Items ordered</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-items-sold">&mdash;</div>
@@ -241,7 +248,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-items-sold-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="bounce">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-bounce-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Bounce</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-bounce">&mdash;</div>
@@ -255,7 +263,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-bounce-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="orders">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-orders-fulfilled-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Fulfilled</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-orders-fulfilled">&mdash;</div>
@@ -269,7 +278,8 @@
                 <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-orders-fulfilled-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
               </div>
 
-              <div class="kexo-kpi-chip" data-kpi-chip>
+              <div class="kexo-kpi-chip" data-kpi-chip data-cond-sparkline="revenue">
+                <div class="kexo-kpi-chip-sparkline" id="cond-kpi-returns-sparkline" aria-hidden="true"></div>
                 <div class="subheader kexo-kpi-chip-label">Returns</div>
                 <div class="d-flex align-items-baseline">
                   <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-returns">&mdash;</div>

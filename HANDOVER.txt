@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (UI: Online badge moved to sidebar under logo; primary #3eb3ab; active nav white; theme settings fix; mobile polish)
+Last updated: 2026-02-10 (KPI sparklines: background graph effect on dashboard cards + condensed header chips)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -260,3 +260,4 @@ Edge (optional):
 - KPIs (follow-up): remove expanded/toggle path entirely (small chips only in header), inline KPI markup in `partials/header.html` (no nested include dependency), and move desktop date box to topbar far-right.
 - Dashboard: add a dedicated "Vs previous period" KPI strip under the main KPI cards with trend deltas/icons and progress bars driven by `/api/kpis` compare values.
 - UI audit + fixes: Online badge moved from Live/card header to sidebar under logo (green circle when active, grey when none); primary color `#3eb3ab`; active nav items white; Theme Settings button fixed (inject offcanvas on load + data-bs-toggle); mobile padding/typography polish.
+- KPI sparklines: background graph effect on all dashboard cards (Conv, AOV, Bounce, Ad Spend) and condensed header chips; `renderCondensedSparklines(chartSeries)` called from dashboard when data loaded, `fetchCondensedSeries()` wired into `refreshKpis` for other pages.

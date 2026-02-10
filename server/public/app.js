@@ -4907,6 +4907,84 @@ const API = '';
       }
     }
 
+    var condensedSeriesCache = null;
+    var condensedSeriesRange = null;
+    var condensedSeriesFetchedAt = 0;
+
+    function renderCondensedSparklines(series) {
+      if (!series || series.length < 2 || typeof ApexCharts === 'undefined') return;
+      var _primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '62,179,171';
+      var ACCENT = 'rgb(' + _primaryRgb + ')';
+      var ORANGE = '#f59e0b';
+      var BLUE = '#3b82f6';
+      var PURPLE = '#8b5cf6';
+      var RED = '#ef4444';
+      var map = {
+        'cond-kpi-orders-sparkline': function(d) { return d.orders; },
+        'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
+        'cond-kpi-conv-sparkline': function(d) { return d.convRate; },
+        'cond-kpi-sessions-sparkline': function(d) { return d.sessions; },
+        'cond-kpi-returning-sparkline': function(d) { return d.returningCustomerOrders || 0; },
+        'cond-kpi-aov-sparkline': function(d) { return d.aov; },
+        'cond-kpi-items-sold-sparkline': function(d) { return d.orders; },
+        'cond-kpi-bounce-sparkline': function(d) { return d.bounceRate; },
+        'cond-kpi-orders-fulfilled-sparkline': function(d) { return d.orders; },
+        'cond-kpi-returns-sparkline': function(d) { return d.revenue; }
+      };
+      var colors = {
+        'cond-kpi-orders-sparkline': BLUE,
+        'cond-kpi-revenue-sparkline': ACCENT,
+        'cond-kpi-conv-sparkline': PURPLE,
+        'cond-kpi-sessions-sparkline': ORANGE,
+        'cond-kpi-returning-sparkline': PURPLE,
+        'cond-kpi-aov-sparkline': ACCENT,
+        'cond-kpi-items-sold-sparkline': BLUE,
+        'cond-kpi-bounce-sparkline': RED,
+        'cond-kpi-orders-fulfilled-sparkline': BLUE,
+        'cond-kpi-returns-sparkline': RED
+      };
+      Object.keys(map).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var dataArr = series.map(map[id]);
+        if (dataArr.length < 2) return;
+        el.innerHTML = '';
+        try {
+          var chart = new ApexCharts(el, {
+            chart: { type: 'area', height: 28, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: [{ data: dataArr }],
+            stroke: { width: 2, curve: 'smooth' },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+            colors: [colors[id] || ACCENT],
+            tooltip: { enabled: false }
+          });
+          chart.render();
+        } catch (_) {}
+      });
+    }
+
+    function fetchCondensedSeries() {
+      var rangeKey = getStatsRange();
+      if (!rangeKey) return;
+      var stale = !condensedSeriesFetchedAt || (Date.now() - condensedSeriesFetchedAt) > KPI_CACHE_TTL_MS;
+      if (!stale && condensedSeriesCache && condensedSeriesRange === rangeKey) {
+        renderCondensedSparklines(condensedSeriesCache);
+        return;
+      }
+      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey), { credentials: 'same-origin', cache: 'default' }, 15000)
+        .then(function(r) { return r && r.ok ? r.json() : null; })
+        .then(function(data) {
+          var s = data && data.series ? data.series : null;
+          if (s && s.length) {
+            condensedSeriesCache = s;
+            condensedSeriesRange = rangeKey;
+            condensedSeriesFetchedAt = Date.now();
+            renderCondensedSparklines(s);
+          }
+        })
+        .catch(function() {});
+    }
+
     function renderLiveKpis(data) {
       const sales = data && data.sales ? data.sales : {};
       const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
@@ -5500,6 +5578,7 @@ const API = '';
         try { renderLiveKpis(getKpiData()); } catch (_) {}
         try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
         try { refreshKpiExtrasSoft(); } catch (_) {}
+        try { fetchCondensedSeries(); } catch (_) {}
         return Promise.resolve(kpiCache);
       }
 
@@ -5510,6 +5589,7 @@ const API = '';
         if (kpiCache) {
           renderLiveKpis(getKpiData());
           if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData());
+          fetchCondensedSeries();
         }
       } catch (_) {}
 
@@ -5535,6 +5615,7 @@ const API = '';
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
           try { refreshKpiExtrasSoft(); } catch (_) {}
+          try { fetchCondensedSeries(); } catch (_) {}
           return data;
         })
         .catch(function(err) {
@@ -8825,6 +8906,12 @@ const API = '';
         renderSparkline('dash-sessions-sparkline', chartSeries.map(function(d) { return d.sessions; }), DASH_ORANGE);
         renderSparkline('dash-orders-sparkline', chartSeries.map(function(d) { return d.orders; }), DASH_BLUE);
         renderSparkline('dash-returning-sparkline', chartSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
+        renderSparkline('dash-conv-sparkline', chartSeries.map(function(d) { return d.convRate; }), DASH_PURPLE);
+        renderSparkline('dash-aov-sparkline', chartSeries.map(function(d) { return d.aov; }), DASH_ACCENT);
+        renderSparkline('dash-bounce-sparkline', chartSeries.map(function(d) { return d.bounceRate; }), '#ef4444');
+        renderSparkline('dash-adspend-sparkline', chartSeries.map(function(d) { return d.adSpend || 0; }), '#ef4444');
+
+        try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(chartSeries); } catch (_) {}
 
         var labels = chartSeries.map(function(d) { return shortDate(d.date); });
 

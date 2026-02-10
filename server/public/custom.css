@@ -752,6 +752,23 @@ a {
   margin: 5px 15px 5px 0;
   line-height: 1.12;
   font-variant-numeric: tabular-nums;
+  position: relative;
+}
+.kexo-kpi-chip-sparkline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+}
+.kexo-kpi-chip > .subheader,
+.kexo-kpi-chip > .d-flex,
+.kexo-kpi-chip > .progress {
+  position: relative;
+  z-index: 1;
 }
 .kexo-kpi-chip.is-hidden { display: none !important; }
 .kexo-kpi-chip-label {
