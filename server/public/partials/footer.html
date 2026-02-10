@@ -1,17 +1,19 @@
       <footer class="footer footer-transparent d-print-none">
         <div class="container-fluid">
           <div class="d-flex align-items-center justify-content-between py-3">
-            <div class="d-flex align-items-center gap-1">
+            <div class="d-flex align-items-center gap-1 footer-left">
               <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
               <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound"><i class="ti ti-volume"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-theme-btn" aria-label="Theme"><i class="ti ti-palette-filled"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings-filled"></i></button>
-              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-theme-btn d-none d-lg-inline-flex" aria-label="Theme"><i class="ti ti-palette-filled"></i></button>
             </div>
             <a href="/dashboard" aria-label="Kexo dashboard">
               <img src="/assets/footer.png" alt="Kexo" width="30">
             </a>
-            <span class="text-secondary d-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye-filled"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
+            <div class="d-flex align-items-center gap-1 footer-right">
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-diagnostics-btn" aria-label="Diagnostics"><i class="ti ti-settings-filled"></i></button>
+              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary d-lg-none" aria-label="Sign out"><i class="ti ti-logout"></i></a>
+              <span class="text-secondary d-none d-lg-flex align-items-center gap-1" style="font-size:.8125rem">Last sale: <span class="last-sale-ago">&mdash;</span> <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="ti ti-eye-filled"></i><i class="ti ti-eye-off" style="display:none"></i></button></span>
+            </div>
           </div>
         </div>
       </footer>
