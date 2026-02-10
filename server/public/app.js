@@ -525,6 +525,7 @@ const API = '';
       var n = toMs(startedAt);
       if (n == null) return '\u2014';
       var s = Math.floor((Date.now() - n) / 1000);
+      if (s < 0) return 'just now';
       if (s < 60) return s + ' secs ago';
       if (s < 3600) return Math.floor(s / 60) + ' mins ago';
       if (s < 86400) return Math.floor(s / 3600) + ' hrs ago';

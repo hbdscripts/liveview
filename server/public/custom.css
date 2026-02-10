@@ -39,6 +39,12 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Sessions table: fixed layout so header and body columns stay aligned when scrolling */
+#sessions-table.grid-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 #sale-toast-inline-flag { margin-right: 5px; }
 
 /* Global links: inherit surrounding text color (no blue link default). */
