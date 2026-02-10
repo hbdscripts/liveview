@@ -7587,6 +7587,14 @@ const API = '';
             }
           } catch (_) {}
           try { renderTrafficPickers(trafficCache || null); } catch (_) {}
+          // On Settings page: trafficCache is never populated (no modal open). Fetch and populate Channels/Device pickers.
+          if (configStatusEl && configStatusEl.id === 'diagnostics-content') {
+            try {
+              fetchTrafficData({ force: true }).then(function(data) {
+                try { renderTrafficPickers(data || null); } catch (_) {}
+              }).catch(function() {});
+            } catch (_) {}
+          }
           try {
             const btn = document.getElementById('be-copy-ai-btn');
             const msg = document.getElementById('be-copy-ai-msg');
@@ -7776,9 +7784,9 @@ const API = '';
           return c;
         })
         .catch(() => {
-          const configStatusEl = document.getElementById('config-status');
-          if (configStatusEl) {
-            configStatusEl.innerHTML =
+          const errEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
+          if (errEl) {
+            errEl.innerHTML =
               '<div class="dm-error">' +
                 '<span class="dm-pill dm-pill-bad">Error</span>' +
                 '<span>Could not load diagnostics.</span>' +

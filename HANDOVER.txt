@@ -334,3 +334,4 @@ Edge (optional):
 - KPIs yesterday: for non-today ranges, Shopify reconcile runs in background (not awaited) so `/api/kpis` returns quickly and avoids client timeout; yesterday vs day-before comparison now shows correctly.
 - Settings page: new `/settings` route and full implementation; General (configDisplay from config-status), Theme (form from theme-settings.js), Assets (override URLs), Data & Reporting (orders/sessions source, pixel session mode), Integrations (Pixel/Google Ads status), Diagnostics (refreshConfigStatus into #diagnostics-content); header Theme/Diagnostics link to /settings; Settings in Tools nav dropdown.
 - Fix renderTable on Settings page: early return when #table-body is absent so fetchSessions→renderTable no longer throws innerHTML on null.
+- Settings diagnostics: when target is #diagnostics-content, fetch traffic data so Channels/Device pickers load; fix error handler to use diagnostics-content.
