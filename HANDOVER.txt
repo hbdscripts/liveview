@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Footer: desktop shows only centered eye, no icons/logo)
+Last updated: 2026-02-10 (Mobile: footer logo, white icons no bg, 60px header)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -268,3 +268,4 @@ Edge (optional):
 - Theme: color mode picker removed (light only); border-radius setting now applies to --radius and --tblr-border-radius (+ card, sessions, overlays); Settings dropdown items full width on hover; head-theme always forces light.
 - Layout: scrollbar-gutter stable on html to prevent KPI/content shift when modal/dropdown opens; uniform page-body partials (page-body-start, page-body-end) across all dashboard pages.
 - Footer: on desktop hide all icons, logo, diagnostics; show only centered last-sale eye; reduce padding and remove white bar.
+- Mobile header: logo uses footer.png (80x29); hamburger and date icons white, no background or border; topbar row min-height 60px, no border.
