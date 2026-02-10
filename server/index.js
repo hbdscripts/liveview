@@ -150,20 +150,24 @@ app.get('/api/store-base-url', (req, res) => {
   const mainBaseUrl = config.storeMainDomain || baseUrl;
   const assetsBaseUrl = config.assetsBaseUrl || '';
   const shopDisplayDomain = (() => {
-    if (config.shopDisplayDomain) return config.shopDisplayDomain;
-    if (config.storeMainDomain) {
+    let out = '';
+    if (config.shopDisplayDomain) out = config.shopDisplayDomain;
+    else if (config.storeMainDomain) {
       try {
         const h = new URL(config.storeMainDomain).hostname;
-        return (h || '').replace(/^www\./, '') || '';
-      } catch (_) { return ''; }
+        out = (h || '').replace(/^www\./, '') || '';
+      } catch (_) {}
+    } else {
+      const sd = (config.shopDomain || '').trim();
+      if (sd && !sd.endsWith('.myshopify.com')) out = sd;
+      else if (sd && sd.endsWith('.myshopify.com')) {
+        const base = sd.replace(/\.myshopify\.com$/i, '');
+        out = base ? base + '.com' : '';
+      }
     }
-    const sd = (config.shopDomain || '').trim();
-    if (sd && !sd.endsWith('.myshopify.com')) return sd;
-    if (sd && sd.endsWith('.myshopify.com')) {
-      const base = sd.replace(/\.myshopify\.com$/i, '');
-      return base ? base + '.com' : '';
-    }
-    return '';
+    // Fallback when derived value is empty or a Shopify handle (e.g. 943925-c1.com)
+    if (!out || /^\d[\d-]*\.com$/.test(out)) return 'hbdjewellery.com';
+    return out;
   })();
   const shopFromTruth = (() => {
     try {

@@ -277,3 +277,4 @@ Edge (optional):
 - Dashboard KPI cards: sparklines as background graphs (position absolute, opacity 0.18); allow 1 data point for Today range.
 - Settings dropdown: full-width hover on list items (menu padding 0, items span edge-to-edge).
 - Countries map: high-traffic fill uses primary teal (#3eb3ab) instead of dark #136363 (was appearing black).
+- Sidebar badge: fallback to hbdjewellery.com when shopDisplayDomain is empty or derived from Shopify handle (e.g. 943925-c1.com).
