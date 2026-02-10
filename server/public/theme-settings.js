@@ -318,17 +318,24 @@
     '</div>';
   }
 
-  // Bind the footer palette button
+  // Open the theme offcanvas
+  function openThemePanel() {
+    injectOffcanvas();
+    var el = document.getElementById('theme-offcanvas');
+    if (el && typeof bootstrap !== 'undefined') {
+      var offcanvas = bootstrap.Offcanvas.getOrCreateInstance(el);
+      offcanvas.show();
+    }
+  }
+
+  // Bind the sidebar + footer theme buttons
   function bindFooterButton() {
-    var btn = document.getElementById('theme-settings-btn');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      injectOffcanvas();
-      var el = document.getElementById('theme-offcanvas');
-      if (el && typeof bootstrap !== 'undefined') {
-        var offcanvas = bootstrap.Offcanvas.getOrCreateInstance(el);
-        offcanvas.show();
-      }
+    var sidebarBtn = document.getElementById('theme-settings-btn');
+    if (sidebarBtn) sidebarBtn.addEventListener('click', openThemePanel);
+
+    // Footer theme button(s)
+    document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
+      btn.addEventListener('click', openThemePanel);
     });
   }
 

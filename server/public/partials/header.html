@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <h1 class="navbar-brand navbar-brand-autodark d-flex justify-content-center py-3">
         <a href="/dashboard" class="d-inline-flex align-items-center justify-content-center" aria-label="Kexo dashboard">
-          <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
+          <img src="/assets/logo2_dark.png" alt="Kexo" width="80" height="29">
         </a>
       </h1>
 
@@ -11,25 +11,25 @@
         <ul class="navbar-nav pt-lg-3 kexo-sidebar-nav">
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#navbar-dashboard" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false">
-              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-layout-dashboard"></i></span>
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-layout-dashboard-filled"></i></span>
               <span class="nav-link-title">Dashboard</span>
             </a>
             <div class="dropdown-menu">
-              <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><i class="ti ti-layout-dashboard me-2" aria-hidden="true"></i>Dashboard</a>
-              <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2" aria-hidden="true"></i>Live</a>
-              <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2" aria-hidden="true"></i>Sales</a>
-              <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2" aria-hidden="true"></i>Table</a>
+              <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard">Overview</a>
+              <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live">Live View</a>
+              <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales">Recent Sales</a>
+              <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date">Table View</a>
             </div>
           </li>
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#navbar-breakdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false">
-              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-chart-pie"></i></span>
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-chart-pie-filled"></i></span>
               <span class="nav-link-title">Breakdown</span>
             </a>
             <div class="dropdown-menu">
-              <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2" aria-hidden="true"></i>Countries</a>
-              <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="ti ti-package me-2" aria-hidden="true"></i>Products</a>
+              <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries">Countries</a>
+              <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products">Products</a>
             </div>
           </li>
 
@@ -39,18 +39,18 @@
               <span class="nav-link-title">Traffic</span>
             </a>
             <div class="dropdown-menu">
-              <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2" aria-hidden="true"></i>Channels</a>
-              <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2" aria-hidden="true"></i>Type</a>
+              <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels">Channels</a>
+              <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type">Type</a>
             </div>
           </li>
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#navbar-integrations" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false">
-              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-puzzle"></i></span>
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-puzzle-filled"></i></span>
               <span class="nav-link-title">Integrations</span>
             </a>
             <div class="dropdown-menu">
-              <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="ti ti-brand-google me-2" aria-hidden="true"></i>Google Ads</a>
+              <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads">Google Ads</a>
             </div>
           </li>
 
@@ -63,31 +63,22 @@
 
           <li class="nav-item dropup mt-auto kexo-sidebar-settings">
             <a class="nav-link dropdown-toggle" href="#navbar-settings" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false">
-              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-settings"></i></span>
+              <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"><i class="ti ti-settings-filled"></i></span>
               <span class="nav-link-title">Settings</span>
             </a>
             <div class="dropdown-menu">
-              <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
-                <i class="ti ti-refresh me-2" aria-hidden="true"></i>Refresh
-              </button>
-              <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
-                <i class="ti ti-volume me-2 sound-icon-on" aria-hidden="true"></i>
-                <i class="ti ti-volume-off me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
-                Sound
-              </button>
-              <button type="button" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
-                <i class="ti ti-palette me-2" aria-hidden="true"></i>Theme
-              </button>
-              <button type="button" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">
-                <i class="ti ti-settings me-2" aria-hidden="true"></i>Diagnostics
-              </button>
+              <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">Refresh</button>
+              <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">Sound</button>
+              <button type="button" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">Theme</button>
+              <button type="button" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">Diagnostics</button>
               <div class="dropdown-divider"></div>
-              <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
-                <i class="ti ti-logout me-2" aria-hidden="true"></i>Sign out
-              </a>
+              <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">Sign out</a>
             </div>
           </li>
         </ul>
+        <div class="kexo-sidebar-scroll-arrow" id="kexo-sidebar-scroll-arrow" aria-hidden="true">
+          <i class="ti ti-chevron-down"></i>
+        </div>
       </div>
     </div>
   </aside>
@@ -107,49 +98,7 @@
               <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
             </a>
           </div>
-
-          <div class="kexo-topbar-slot kexo-topbar-slot-right">
-            <div class="input-group input-group-sm d-none d-lg-flex kexo-topbar-date">
-              <button type="button" class="btn btn-outline-secondary" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
-              <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
-                <i class="ti ti-chevron-down" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end w-100" id="kexo-date-menu" aria-label="Date ranges">
-                <button class="dropdown-item" type="button" data-range="today">Today</button>
-                <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
-                <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
-                <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
-                <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
-                <div class="dropdown-divider"></div>
-                <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
-              </div>
-            </div>
-
-            <div class="dropdown d-lg-none">
-              <button type="button" class="btn btn-icon btn-ghost-secondary" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
-                <i class="ti ti-calendar" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
-                <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="yesterday">Yesterday</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
-                <div class="dropdown-divider"></div>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
-              </div>
-            </div>
-          </div>
         </div>
-
-        <select id="global-date-select" class="visually-hidden" aria-label="Date range">
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="7days">Last 7 days</option>
-          <option value="14days">Last 14 days</option>
-          <option value="30days">Last 30 days</option>
-          <option value="custom" id="date-opt-custom">Custom</option>
-        </select>
 
         <div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
           <div class="kexo-kpis-condensed-row" id="kexo-kpis-condensed-row" aria-label="Condensed KPIs">
@@ -298,3 +247,49 @@
         </div>
       </div>
     </header>
+
+    <div class="kexo-date-bar">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center justify-content-end">
+          <div class="input-group input-group-sm d-none d-lg-flex kexo-topbar-date">
+            <button type="button" class="btn btn-outline-secondary" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
+            <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
+              <i class="ti ti-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end w-100" id="kexo-date-menu" aria-label="Date ranges">
+              <button class="dropdown-item" type="button" data-range="today">Today</button>
+              <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
+              <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
+              <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
+              <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
+            </div>
+          </div>
+
+          <div class="dropdown d-lg-none">
+            <button type="button" class="btn btn-icon btn-ghost-secondary" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
+              <i class="ti ti-calendar" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
+              <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="yesterday">Yesterday</button>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
+              <div class="dropdown-divider"></div>
+              <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
+            </div>
+          </div>
+        </div>
+
+        <select id="global-date-select" class="visually-hidden" aria-label="Date range">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7days">Last 7 days</option>
+          <option value="14days">Last 14 days</option>
+          <option value="30days">Last 30 days</option>
+          <option value="custom" id="date-opt-custom">Custom</option>
+        </select>
+      </div>
+    </div>

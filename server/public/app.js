@@ -8140,6 +8140,20 @@ const API = '';
             if (isIntegrationsChild) integrationsDropdownItem.classList.add('active');
             else integrationsDropdownItem.classList.remove('active');
           }
+
+          // Open the parent dropdown that contains the active child
+          var toggles = [
+            { active: isDashboardChild, el: dashboardToggle },
+            { active: isBreakdownChild, el: breakdownToggle },
+            { active: isTrafficChild, el: trafficToggle },
+            { active: isIntegrationsChild, el: integrationsToggle }
+          ];
+          toggles.forEach(function(t) {
+            if (t.el && typeof bootstrap !== 'undefined') {
+              var dd = bootstrap.Dropdown.getOrCreateInstance(t.el);
+              if (t.active) dd.show(); else dd.hide();
+            }
+          });
         }
 
         function runTabWork(tab) {
@@ -9502,6 +9516,27 @@ const API = '';
 
       // Expose for debugging / future use
       window.__openProductInsights = openProduct;
+    })();
+
+    // ── Sidebar scroll arrow for small viewports ──
+    (function () {
+      var nav = document.querySelector('.kexo-sidebar-nav');
+      var arrow = document.getElementById('kexo-sidebar-scroll-arrow');
+      if (!nav || !arrow) return;
+
+      function checkOverflow() {
+        var hasOverflow = nav.scrollHeight > nav.clientHeight + 8;
+        var atBottom = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 8;
+        arrow.classList.toggle('is-visible', hasOverflow && !atBottom);
+      }
+
+      arrow.addEventListener('click', function () {
+        nav.scrollTo({ top: nav.scrollHeight, behavior: 'smooth' });
+      });
+
+      nav.addEventListener('scroll', checkOverflow, { passive: true });
+      window.addEventListener('resize', checkOverflow, { passive: true });
+      checkOverflow();
     })();
 
 })();
