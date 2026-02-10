@@ -8195,12 +8195,26 @@ const API = '';
             else integrationsDropdownItem.classList.remove('active');
           }
 
+          // Tools dropdown
+          var isToolsChild = (tab === 'tools');
+          var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools"]');
+          var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
+          if (toolsToggle) {
+            toolsToggle.classList.toggle('active', !!isToolsChild);
+            toolsToggle.setAttribute('aria-current', isToolsChild ? 'page' : 'false');
+          }
+          if (toolsDropdownItem) {
+            if (isToolsChild) toolsDropdownItem.classList.add('active');
+            else toolsDropdownItem.classList.remove('active');
+          }
+
           // Open the parent dropdown that contains the active child (CSS only, no Bootstrap API)
           var toggles = [
             { active: isDashboardChild, el: dashboardToggle },
             { active: isBreakdownChild, el: breakdownToggle },
             { active: isTrafficChild, el: trafficToggle },
-            { active: isIntegrationsChild, el: integrationsToggle }
+            { active: isIntegrationsChild, el: integrationsToggle },
+            { active: isToolsChild, el: toolsToggle }
           ];
           toggles.forEach(function(t) {
             if (!t.el) return;
