@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-09 (UI: Tabler fluid-vertical sidebar + condensed KPIs + refreshed Theme Settings)
+Last updated: 2026-02-10 (UI: Tabler fluid-vertical sidebar + condensed KPIs + refreshed Theme Settings)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -246,3 +246,7 @@ Edge (optional):
 - Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
 - Theme: removed KEXO gradient vars; Theme Settings controls mode/scheme/font/base/radius; default primary is `#2fb344`.
 - KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.
+
+2026-02-10
+- Header: pin Settings dropdown to the far-right of the top bar.
+- Ops: version local CSS/JS URLs in rendered HTML so deploys don’t mix “new HTML + cached old JS/CSS” (fixes unstyled / stale KPI strip in embeds).

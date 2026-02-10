@@ -225,6 +225,46 @@ function isLoggedIn(req) {
   return !!(oauthCookie && dashboardAuth.verifyOauthSession(oauthCookie));
 }
 
+// Static assets are cached aggressively in some embed contexts (e.g. Shopify admin + CDN).
+// Version local CSS/JS URLs in rendered HTML so deploys don't produce "new HTML + old JS/CSS" mismatches.
+const ASSET_VERSION = (() => {
+  try {
+    const envCommit = String(
+      process.env.RAILWAY_GIT_COMMIT_SHA ||
+      process.env.RAILWAY_GIT_COMMIT_HASH ||
+      process.env.GIT_COMMIT ||
+      process.env.COMMIT_SHA ||
+      process.env.SOURCE_VERSION ||
+      ''
+    ).trim();
+    if (envCommit) return envCommit.slice(0, 12);
+  } catch (_) {}
+
+  try {
+    const base = path.join(__dirname, 'public');
+    const files = ['app.js', 'custom.css', 'tabler-theme.css', 'theme-settings.js', 'diagnostics-modal.css'];
+    const stamps = files.map((f) => {
+      const stat = fs.statSync(path.join(base, f));
+      return Math.trunc(stat.mtimeMs).toString(36);
+    });
+    return stamps.join('.');
+  } catch (_) {}
+
+  try {
+    return String((pkg && pkg.version) || '0.0.0');
+  } catch (_) {}
+
+  return String(Date.now());
+})();
+
+function applyAssetVersionToHtml(html) {
+  if (!ASSET_VERSION) return html;
+  const v = encodeURIComponent(String(ASSET_VERSION));
+  return String(html || '').replace(/\b(href|src)="(\/(?!assets\/)[^"?]+\.(?:css|js))"/g, (_m, attr, url) => {
+    return `${attr}="${url}?v=${v}"`;
+  });
+}
+
 // Simple server-side include: <!--#include partials/header.html-->
 const _includeCache = {};
 const _includeCacheEnabled =
@@ -266,7 +306,7 @@ function sendPage(res, filename) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const filePath = path.join(__dirname, 'public', filename);
   const raw = fs.readFileSync(filePath, 'utf8');
-  res.type('html').send(resolveIncludes(raw));
+  res.type('html').send(applyAssetVersionToHtml(resolveIncludes(raw)));
 }
 
 app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));
