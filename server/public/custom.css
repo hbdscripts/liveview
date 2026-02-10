@@ -352,13 +352,13 @@ a {
 
 /* Top row grid: compact KPI bar below dark nav */
 :root {
-  --kexo-top-row-height: 3.25rem;
+  --kexo-top-row-height: 2.65rem;
 }
 
 /* KPI bar: below dark nav, light strip, single line, 100% width */
 .kexo-kpis-navbar {
   position: relative;
-  margin: 0 0 20px;
+  margin: 0 0 8px;
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
@@ -724,11 +724,11 @@ a {
   flex: 0 0 var(--kexo-kpi-width);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: var(--kexo-kpi-min-width);
   max-width: var(--kexo-kpi-width);
   padding: 2px 6px 0 0;
-  margin: 2px 0 1px;
+  margin: 0;
   line-height: 1.12;
   font-variant-numeric: tabular-nums;
   position: relative;
@@ -753,19 +753,19 @@ a {
 }
 .kexo-kpi-chip.is-hidden { display: none !important; }
 .kexo-kpi-chip-label {
-  font-size: .64rem;
+  font-size: .6rem;
   text-transform: uppercase;
   letter-spacing: .04em;
   color: #555;
 }
 .kexo-kpi-chip-value {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: .94rem;
   line-height: 1;
   color: #333;
 }
 .kexo-kpi-chip-delta {
-  font-size: .75rem;
+  font-size: .68rem;
   font-weight: 500;
   color: var(--tblr-secondary, #626976);
   gap: .2rem;
@@ -783,7 +783,7 @@ a {
   font-size: .84rem;
 }
 .kexo-kpi-chip-progress {
-  height: 5px;
+  height: 4px;
   margin: 0;
   background: rgba(100, 116, 139, .16);
 }
@@ -957,10 +957,12 @@ a {
 }
 .kexo-desktop-nav-row {
   justify-content: space-between;
+  flex-wrap: nowrap;
 }
 .kexo-desktop-nav-left {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   padding-left: 0;
+  min-width: 0;
 }
 .kexo-desktop-nav-logo {
   position: absolute;
@@ -971,6 +973,7 @@ a {
 .kexo-desktop-nav-right {
   flex: 0 0 auto;
   margin-left: auto;
+  white-space: nowrap;
 }
 .kexo-desktop-nav-container {
   width: 100%;

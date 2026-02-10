@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (KPI single line, nav 100%)
+Last updated: 2026-02-10 (desktop nav single row + compact KPI bar)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -261,6 +261,8 @@ Edge (optional):
 - KPI bar: margin-bottom 20px, box-shadow 2px 2px 2px #eee, background #fff.
 - Layout: remove left gap site-wide (body margin: 0; page wrapper padding-left: 0).
 - KPI strip: single line (flex-wrap: nowrap), 100% width, horizontal scroll if overflow; nav container full width.
+- Desktop nav alignment: force menu/logo/settings onto one row (no wrap) so Settings no longer drops beneath the menu.
+- KPI strip compact pass: reduced bar height, reduced chip spacing/font sizing, and reduced bottom gap so it no longer appears oversized.
 - KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
