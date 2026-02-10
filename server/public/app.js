@@ -4028,6 +4028,8 @@ const API = '';
       try {
         const border = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-border-color') || '#e6e7e9').trim();
         const muted = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-secondary') || '#626976').trim();
+        var primaryRgb = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb') || '62,179,171').trim();
+        var primaryHex = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary') || '#3eb3ab').trim();
         countriesMapChartInstance = new jsVectorMap({
           selector: '#countries-map-chart',
           map: 'world',
@@ -4035,15 +4037,15 @@ const API = '';
           zoomButtons: true,
           regionStyle: {
             initial: { fill: '#e0f2f2', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(19,99,99,0.35)' },
-            selected: { fill: 'rgba(19,99,99,0.45)' },
+            hover: { fill: 'rgba(' + primaryRgb + ',0.35)' },
+            selected: { fill: 'rgba(' + primaryRgb + ',0.45)' },
           },
           series: {
             regions: [
               {
                 attribute: 'fill',
                 values: revenueByIso2,
-                scale: ['#e0f2f2', '#136363'],
+                scale: ['#e0f2f2', primaryHex],
                 normalizeFunction: 'polynomial',
               }
             ]

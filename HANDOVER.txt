@@ -276,3 +276,4 @@ Edge (optional):
 - Badge: SHOP_DISPLAY_DOMAIN for custom domain (e.g. hbdjewellery.com); font 12px; border top/bottom only (dark); no left/right; background #1d2e40.
 - Dashboard KPI cards: sparklines as background graphs (position absolute, opacity 0.18); allow 1 data point for Today range.
 - Settings dropdown: full-width hover on list items (menu padding 0, items span edge-to-edge).
+- Countries map: high-traffic fill uses primary teal (#3eb3ab) instead of dark #136363 (was appearing black).
