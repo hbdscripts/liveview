@@ -328,15 +328,30 @@
     }
   }
 
-  // Bind the sidebar + footer theme buttons via delegation (avoids Bootstrap dropdown eating clicks)
-  function bindFooterButton() {
-    document.addEventListener('click', function (e) {
-      var btn = e.target.closest('#theme-settings-btn, .footer-theme-btn');
-      if (btn) {
+  // Bind theme buttons directly (sidebar #theme-settings-btn + footer .footer-theme-btn)
+  function bindThemeButtons() {
+    var sidebarBtn = document.getElementById('theme-settings-btn');
+    if (sidebarBtn) {
+      sidebarBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // Close the Settings dropdown first
+        var dd = sidebarBtn.closest('.dropdown-menu');
+        if (dd) {
+          var toggle = dd.previousElementSibling;
+          if (toggle && typeof bootstrap !== 'undefined') {
+            try { bootstrap.Dropdown.getOrCreateInstance(toggle).hide(); } catch (_) {}
+          }
+        }
         openThemePanel();
-      }
+      });
+    }
+    document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openThemePanel();
+      });
     });
   }
 
@@ -344,7 +359,7 @@
   restoreAll();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
-      bindFooterButton();
+      bindThemeButtons();
       fetchDefaults();
     });
   } else {
