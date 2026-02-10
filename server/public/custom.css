@@ -873,6 +873,9 @@ html[data-bs-theme="dark"] .landing-thumb {
 .card > .country-table-wrap .grid-row--header .grid-cell,
 .stats-card .grid-row--header .grid-cell {
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
+  height: 40px;
+  background: #fafafa !important;
+  color: #333 !important;
 }
 
 /* ── Dashboard bottom tables: equal height ── */

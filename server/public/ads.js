@@ -168,27 +168,49 @@
 
   function ensureErrorsModalDom() {
     if (document.getElementById('ads-errors-modal')) return;
-    var overlay = document.createElement('div');
-    overlay.id = 'ads-errors-modal';
-    overlay.className = 'ads-modal-overlay';
-    overlay.innerHTML =
-      '<div class="ads-modal-box" style="max-width:720px">' +
-        '<div class="ads-modal-header">' +
-          '<h3 class="ads-modal-title">Errors detected</h3>' +
-          '<button type="button" class="ads-modal-close" aria-label="Close">&times;</button>' +
-        '</div>' +
-        '<div class="ads-modal-body">' +
-          '<div id="ads-errors-body"></div>' +
+    var wrap = document.createElement('div');
+    wrap.className = 'modal modal-blur';
+    wrap.id = 'ads-errors-modal';
+    wrap.tabIndex = -1;
+    wrap.style.display = 'none';
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.innerHTML =
+      '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog">' +
+        '<div class="modal-content">' +
+          '<div class="modal-header">' +
+            '<h5 class="modal-title">Errors detected</h5>' +
+            '<button type="button" class="btn-close" id="ads-errors-close" aria-label="Close"></button>' +
+          '</div>' +
+          '<div class="modal-body">' +
+            '<div id="ads-errors-body"></div>' +
+          '</div>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('.ads-modal-close').addEventListener('click', closeErrorsModal);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeErrorsModal(); });
+    document.body.appendChild(wrap);
+
+    var closeBtn = document.getElementById('ads-errors-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeErrorsModal);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) closeErrorsModal(); });
+
+    // One-time ESC handler.
+    try {
+      if (!window.__adsErrorsEscBound) {
+        window.__adsErrorsEscBound = true;
+        document.addEventListener('keydown', function (e) {
+          if (!e || e.key !== 'Escape') return;
+          closeErrorsModal();
+        });
+      }
+    } catch (_) {}
   }
 
   function closeErrorsModal() {
     var el = document.getElementById('ads-errors-modal');
-    if (el) el.classList.remove('open');
+    if (!el) return;
+    el.classList.remove('show');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
   }
 
   function openErrorsModal(errors, payload) {
@@ -216,7 +238,10 @@
       h += '<pre class="ads-errors-pre">' + esc(JSON.stringify(payload, null, 2)) + '</pre>';
     }
     body.innerHTML = h;
-    modal.classList.add('open');
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
   }
 
   function openCampaignModal(campaignId, campaignName) {
@@ -352,7 +377,13 @@
       '@keyframes adsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
       '.ads-spin{animation:adsSpin 1s linear infinite;}' +
       '.ads-campaign-table{table-layout:fixed;}' +
-      '.ads-campaign-table .grid-cell:first-child{width:36%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(1){width:36%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(2){width:12%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(3){width:10%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(4){width:10%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(5){width:12%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(6){width:10%;}' +
+      '.ads-campaign-table .grid-cell:nth-child(7){width:10%;}' +
       '.ads-campaign-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.ads-errors-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px;}' +
       '.ads-errors-title{font-weight:600;}' +
@@ -377,6 +408,14 @@
   function renderLoading(root, label) {
     if (!root) return;
     ensureModalCss();
+    try {
+      var actions = document.getElementById('ads-actions');
+      var footer = document.getElementById('ads-footer');
+      var noteEl = document.getElementById('ads-note');
+      if (actions) actions.style.display = 'none';
+      if (footer) footer.style.display = 'none';
+      if (noteEl) { noteEl.style.display = 'none'; patchText(noteEl, ''); }
+    } catch (_) {}
     root.innerHTML =
       '<div class="ads-loading-wrap">' +
         '<div class="spinner-border text-primary" role="status" aria-label="Loading"></div>' +
@@ -387,6 +426,14 @@
   function renderLoadError(root, msg) {
     if (!root) return;
     ensureModalCss();
+    try {
+      var actions = document.getElementById('ads-actions');
+      var footer = document.getElementById('ads-footer');
+      var noteEl = document.getElementById('ads-note');
+      if (actions) actions.style.display = 'none';
+      if (footer) footer.style.display = 'none';
+      if (noteEl) { noteEl.style.display = 'none'; patchText(noteEl, ''); }
+    } catch (_) {}
     root.innerHTML =
       '<div class="ads-loading-wrap">' +
         '<div class="text-danger fw-semibold">Could not load ads</div>' +
@@ -458,7 +505,8 @@
     }
 
     var totals = summary && summary.totals ? summary.totals : null;
-    var tRow = root.querySelector('.ads-totals-row');
+    var totalsFooter = document.getElementById('ads-footer');
+    var tRow = totalsFooter ? totalsFooter.querySelector('.ads-totals-row') : null;
     if (totals && tRow) {
       var tCells = tRow.querySelectorAll('.grid-cell');
       if (!tCells || tCells.length < 7) return false;
@@ -475,10 +523,63 @@
     return true;
   }
 
-  function patchFooterAndNote(status, summary) {
-    var footer = document.getElementById('ads-footer');
-    var noteEl = document.getElementById('ads-note');
+  function alertTriangleSvg() {
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>' +
+        '<path d="M12 9v2m0 4v.01"></path>' +
+        '<path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7 -14a2 2 0 0 0 -3.68 0l-7 14a2 2 0 0 0 1.84 2.75"></path>' +
+      '</svg>'
+    );
+  }
 
+  function renderActionsBar(status, summary) {
+    var actions = document.getElementById('ads-actions');
+    if (!actions) return;
+
+    var providers = status && status.providers ? status.providers : [];
+    var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
+    var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
+
+    _lastErrors = collectErrors(status, summary, _lastRefreshResult);
+    _lastErrorsPayload = {
+      fetchError: _lastFetchError,
+      refresh: _lastRefreshResult,
+      providers: status && status.providers ? status.providers : null,
+      rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
+    };
+
+    var connIcon = isConnected ? 'ti-plug-connected' : 'ti-plug-x';
+    var connBtnClass = isConnected ? 'btn-ghost-success' : 'btn-ghost-secondary';
+
+    actions.style.display = '';
+    actions.innerHTML =
+      '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
+        alertTriangleSvg() +
+      '</button>' +
+      '<button type="button" class="btn btn-icon ' + connBtnClass + '" id="ads-conn-icon" disabled title="' + esc(connLabel) + '" aria-label="' + esc(connLabel) + '">' +
+        '<i class="ti ' + connIcon + '"></i>' +
+      '</button>' +
+      '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Refresh metrics" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
+        '<i class="ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '') + '"></i>' +
+      '</button>';
+
+    var rbtn = document.getElementById('ads-refresh-btn');
+    if (rbtn) {
+      rbtn.addEventListener('click', function () {
+        try { window.__adsRefresh && window.__adsRefresh({ force: true }); } catch (_) {}
+      });
+    }
+    var ebtn = document.getElementById('ads-errors-icon');
+    if (ebtn) {
+      ebtn.addEventListener('click', function () {
+        try { openErrorsModal(_lastErrors, _lastErrorsPayload); } catch (_) {}
+      });
+    }
+  }
+
+  function patchFooterAndNote(status, summary) {
+    var noteEl = document.getElementById('ads-note');
     var note = (summary && summary.note) ? String(summary.note) : '';
     if (noteEl) {
       if (note) {
@@ -490,31 +591,7 @@
       }
     }
 
-    if (!footer) return;
-
-    var providers = status && status.providers ? status.providers : [];
-    var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
-    var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
-
-    var badge = footer.querySelector('.badge');
-    if (badge) {
-      badge.className = isConnected ? 'badge bg-green' : 'badge bg-secondary';
-    }
-
-    var labelEl = footer.querySelector('.ads-conn-label');
-    if (labelEl) patchText(labelEl, connLabel);
-
-    _lastErrors = collectErrors(status, summary, null);
-    _lastErrorsPayload = {
-      fetchError: _lastFetchError,
-      providers: status && status.providers ? status.providers : null,
-      rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
-    };
-
-    var errBtn = document.getElementById('ads-errors-btn');
-    if (errBtn) {
-      errBtn.style.display = _lastErrors.length ? 'inline-flex' : 'none';
-    }
+    renderActionsBar(status, summary);
   }
 
   function render(root, status, summary, refreshResult) {
@@ -588,7 +665,7 @@
 
     var bodyHtml = '';
 
-    // Totals row (render at bottom)
+    // Totals row (render in card footer)
     var tProfit = totals.profit != null ? Number(totals.profit) : 0;
     var totalsRowHtml = gridRow([
       { html: '<strong>Total</strong>' },
@@ -623,75 +700,22 @@
       bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
     }
 
-    // Totals last
-    bodyHtml += totalsRowHtml;
-
-    // Build footer status/actions
-    var isConnected = providers.length && providers.some(function (p) { return !!(p && p.connected); });
-    var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
-    var connBadge = isConnected ? '<span class="badge bg-green"></span>' : '<span class="badge bg-secondary"></span>';
-
     root.innerHTML =
       '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
         '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
         '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
       '</div>';
 
-    var footer = document.getElementById('ads-footer');
-    var noteEl = document.getElementById('ads-note');
-    _lastErrors = collectErrors(status, summary, _lastRefreshResult);
-    _lastErrorsPayload = {
-      fetchError: _lastFetchError,
-      refresh: _lastRefreshResult,
-      providers: status && status.providers ? status.providers : null,
-      rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
-    };
-
-    if (footer) {
-      footer.style.display = '';
-      var miniTitle = 'Refreshing…';
-      footer.innerHTML =
-        '<div class="d-flex align-items-center gap-2 flex-wrap w-100">' +
-          '<div class="d-flex align-items-center gap-2">' +
-            connBadge +
-            '<span class="text-muted small ads-conn-label">' + esc(connLabel) + '</span>' +
-            '<span class="ads-refresh-mini" id="ads-refresh-mini" style="display:' + (_isRefreshing ? 'inline-flex' : 'none') + ';" title="' + esc(miniTitle) + '" aria-label="' + esc(miniTitle) + '">' +
-              '<i class="ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '') + '"></i>' +
-            '</span>' +
-          '</div>' +
-          '<div class="ms-auto d-flex align-items-center gap-2">' +
-            '<button type="button" class="btn btn-danger btn-sm" id="ads-errors-btn" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="View errors">' +
-              '<i class="ti ti-alert-triangle"></i><span class="ms-2">Errors detected</span>' +
-            '</button>' +
-            '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Refresh metrics" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
-              '<i class="ti ti-refresh"></i>' +
-            '</button>' +
-          '</div>' +
+    var totalsFooter = document.getElementById('ads-footer');
+    if (totalsFooter) {
+      totalsFooter.style.display = '';
+      totalsFooter.innerHTML =
+        '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads totals">' +
+          '<div class="grid-body" role="rowgroup">' + totalsRowHtml + '</div>' +
         '</div>';
-
-      var rbtn = document.getElementById('ads-refresh-btn');
-      if (rbtn) {
-        rbtn.addEventListener('click', function () {
-          try { window.__adsRefresh && window.__adsRefresh({ force: true }); } catch (_) {}
-        });
-      }
-      var ebtn = document.getElementById('ads-errors-btn');
-      if (ebtn) {
-        ebtn.addEventListener('click', function () {
-          try { openErrorsModal(_lastErrors, _lastErrorsPayload); } catch (_) {}
-        });
-      }
     }
 
-    if (noteEl) {
-      if (note) {
-        noteEl.style.display = '';
-        noteEl.textContent = note;
-      } else {
-        noteEl.style.display = 'none';
-        noteEl.textContent = '';
-      }
-    }
+    patchFooterAndNote(status, summary);
 
     // Bind sortable headers
     var headers = root.querySelectorAll('[data-sort]');
@@ -722,22 +746,12 @@
   function applyRefreshingUi(refreshing, isForce) {
     _isRefreshing = !!refreshing;
     _isForceRefreshing = !!isForce;
-    var mini = document.getElementById('ads-refresh-mini');
-    if (mini) {
-      if (_isRefreshing) {
-        mini.style.display = 'inline-flex';
-        mini.title = 'Refreshing…';
-        mini.setAttribute('aria-label', mini.title);
-        var icon = mini.querySelector('i');
-        if (icon) icon.className = 'ti ti-refresh ads-spin';
-      } else {
-        mini.style.display = 'none';
-        var icon2 = mini.querySelector('i');
-        if (icon2) icon2.className = 'ti ti-refresh';
-      }
-    }
     var btn = document.getElementById('ads-refresh-btn');
-    if (btn) btn.disabled = _isRefreshing;
+    if (btn) {
+      btn.disabled = _isRefreshing;
+      var icon = btn.querySelector('i');
+      if (icon) icon.className = 'ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '');
+    }
   }
 
   function computeRangeKey() {
@@ -771,10 +785,12 @@
     }
 
     _lastFetchError = null;
+    var actions = document.getElementById('ads-actions');
     var footer = document.getElementById('ads-footer');
     var noteEl = document.getElementById('ads-note');
 
     if (!_lastSummary) {
+      if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
       if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
       renderLoading(root, 'Loading…');
@@ -819,6 +835,7 @@
       if (_lastSummary) {
         try { patchFooterAndNote(_lastStatus, _lastSummary); } catch (_) {}
       } else {
+        if (actions) actions.style.display = 'none';
         if (footer) footer.style.display = 'none';
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
         renderLoadError(root, _lastFetchError);
