@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Tabler horizontal navbar rebuilt to native collapse/navbar markup, KPI strip spacing/fit improved, SSE + query perf fixes)
+Last updated: 2026-02-10 (desktop nav recolored to #1c2f42 with borderless white text style; KPI fit now JS width-calculated)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -292,3 +292,5 @@ Edge (optional):
 - SSE reliability: removed per-client heartbeat interval and switched to a shared timer with cleanup on `close`/`error`/`aborted`.
 - Backend perf: batched `upsertTrafficSourceTokens` writes, parallelized Shopify sessions day-snapshot loading + missing-day fetches, and parallelized product meta lookups in dashboard-series.
 - DB perf: added migration `039_active_sessions_last_seen_started_at_index.js` for active-session query support (`sessions(last_seen, started_at)`).
+- Desktop nav styling follow-up: top navbar now uses `#1c2f42`, removes nav/dropdown borders, removes hover backgrounds, keeps text white, and shows active state on the outer `li.nav-item` indicator instead of link background.
+- KPI strip fit follow-up: condensed chips now use JS width calculation against available strip width; trailing chips are hidden from the end when space runs out.

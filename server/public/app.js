@@ -5305,8 +5305,27 @@ const API = '';
       const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       if (!chips.length) return;
       chips.forEach(function(ch) { ch.classList.remove('is-hidden'); });
-      // Hide from the end until the strip fits, but keep at least 3 visible.
-      for (let i = chips.length - 1; i >= 3 && strip.scrollWidth > strip.clientWidth; i--) {
+
+      const stripStyle = window.getComputedStyle(strip);
+      const stripPadLeft = parseFloat(stripStyle.paddingLeft) || 0;
+      const stripPadRight = parseFloat(stripStyle.paddingRight) || 0;
+      const available = Math.max(0, strip.clientWidth - stripPadLeft - stripPadRight);
+      let used = 0;
+      let visibleCount = 0;
+
+      for (let i = 0; i < chips.length; i++) {
+        const chip = chips[i];
+        const st = window.getComputedStyle(chip);
+        const ml = parseFloat(st.marginLeft) || 0;
+        const mr = parseFloat(st.marginRight) || 0;
+        const chipWidth = chip.getBoundingClientRect().width + ml + mr;
+        if (visibleCount > 0 && (used + chipWidth) > available) break;
+        used += chipWidth;
+        visibleCount++;
+      }
+
+      if (visibleCount < 1) visibleCount = 1;
+      for (let i = visibleCount; i < chips.length; i++) {
         chips[i].classList.add('is-hidden');
       }
     }
