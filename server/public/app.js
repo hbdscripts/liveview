@@ -149,6 +149,52 @@ const API = '';
       } catch (_) {}
     })();
 
+    // Sync data-label from header to body cells for mobile card layout
+    (function initGridTableMobileLabels() {
+      function syncLabels(tableEl) {
+        if (!tableEl || !tableEl.querySelector) return;
+        var headerRow = tableEl.querySelector('.grid-row--header');
+        var headerCells = headerRow ? headerRow.querySelectorAll('.grid-cell') : [];
+        var labels = Array.from(headerCells).map(function(c) {
+          var a = c.getAttribute('aria-label');
+          if (a) return a.trim();
+          var short = c.querySelector('.th-label-short');
+          if (short && short.textContent) return short.textContent.trim();
+          var long = c.querySelector('.th-label-long');
+          if (long && long.textContent) return long.textContent.trim();
+          return (c.textContent || '').trim();
+        });
+        if (labels.length === 0) return;
+        tableEl.querySelectorAll('.grid-body .grid-row').forEach(function(row) {
+          var cells = row.querySelectorAll('.grid-cell:not(.span-all)');
+          cells.forEach(function(cell, i) {
+            if (labels[i]) cell.setAttribute('data-label', labels[i]);
+          });
+        });
+      }
+      function observeGridBodies() {
+        document.querySelectorAll('.grid-table .grid-body').forEach(function(body) {
+          if (body._gridLabelsObserved) return;
+          body._gridLabelsObserved = true;
+          syncLabels(body.closest('.grid-table'));
+          var mo = new MutationObserver(function() {
+            syncLabels(body.closest('.grid-table'));
+          });
+          mo.observe(body, { childList: true, subtree: true });
+        });
+      }
+      function run() {
+        observeGridBodies();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+      } else {
+        run();
+      }
+      setTimeout(run, 800);
+      setTimeout(run, 2000);
+    })();
+
     function getKpiData() {
       if (kpiCache) return kpiCache;
       if (getStatsRange() === 'today') return {};
