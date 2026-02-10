@@ -8841,6 +8841,13 @@ const API = '';
         var m = months[parseInt(parts[1], 10) - 1] || '';
         return d + ' ' + m;
       }
+      function shortHourLabel(key) {
+        if (!key) return '';
+        var s = String(key);
+        var idx = s.indexOf(' ');
+        if (idx >= 0) return s.slice(idx + 1);
+        return s;
+      }
 
       function waitForApexCharts(cb, retries) {
         if (typeof ApexCharts !== 'undefined') { cb(); return; }
@@ -9069,7 +9076,10 @@ const API = '';
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
-        var labels = chartSeries.map(function(d) { return shortDate(d.date); });
+        var bucket = data && data.bucket ? String(data.bucket) : 'day';
+        var labels = chartSeries.map(function(d) {
+          return bucket === 'hour' ? shortHourLabel(d.date) : shortDate(d.date);
+        });
 
         makeChart('dash-chart-revenue', labels, [{
           label: 'Revenue',

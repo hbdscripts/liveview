@@ -1123,10 +1123,20 @@ a {
 .kexo-desktop-nav-list .nav-item.active::after {
   background: currentColor;
 }
-/* Override Tabler's .navbar-expand-md .nav-item.active:after border color (same media) */
+/* Override Tabler's .navbar-expand-md .nav-item.active:after – KEXO accent color */
 @media (min-width: 768px) {
+  .navbar-expand-md .nav-item.active::after,
   .kexo-desktop-nav .nav-item.active::after {
-    border-bottom-color: currentColor;
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.2rem;
+    height: 0;
+    border: 0 var(--tblr-border-style, solid) currentColor;
+    border-bottom-width: 3px;
+    border-radius: 10px;
+    background: transparent;
   }
 }
 .kexo-desktop-nav-list .nav-item.active .nav-link,

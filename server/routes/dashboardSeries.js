@@ -134,6 +134,16 @@ async function getDashboardSeries(req, res) {
   const allowedRange = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month', '1h']);
   const rangeKey = (allowedRange.has(requestedRange) || isDayKey || isRangeKey) ? requestedRange : '';
 
+  let bucketHint = 'day';
+  if (rangeKey) {
+    let isSingleDay = rangeKey === 'today' || rangeKey === 'yesterday' || isDayKey;
+    if (!isSingleDay && isRangeKey) {
+      const m = String(rangeKey).match(/^r:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/);
+      if (m && m[1] && m[2] && m[1] === m[2]) isSingleDay = true;
+    }
+    bucketHint = isSingleDay ? 'hour' : 'day';
+  }
+
   const daysRaw = parseInt(req.query.days, 10);
   const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 7;
   const force = !!(req.query.force === '1' || req.query.force === 'true' || req.query._);
@@ -147,20 +157,26 @@ async function getDashboardSeries(req, res) {
   const todayBounds = store.getRangeBounds('today', now, timeZone);
   const bounds = rangeKey ? store.getRangeBounds(rangeKey, now, timeZone) : null;
 
+  if (rangeKey && bucketHint === 'day' && bounds && Number.isFinite(Number(bounds.start)) && Number.isFinite(Number(bounds.end))) {
+    const spanMs = Number(bounds.end) - Number(bounds.start);
+    const spanDays = spanMs > 0 ? Math.ceil(spanMs / (24 * 60 * 60 * 1000)) : 0;
+    if (spanDays >= 56) bucketHint = 'week';
+  }
+
   try {
     const cached = await reportCache.getOrComputeJson(
       {
         shop: '',
         endpoint: 'dashboard-series',
-        rangeKey: rangeKey ? ('range_' + rangeKey) : ('days_' + days),
+        rangeKey: rangeKey ? ('range_' + rangeKey + '_' + bucketHint) : ('days_' + days),
         rangeStartTs: rangeKey ? bounds.start : todayBounds.start,
         rangeEndTs: rangeKey ? bounds.end : now,
-        params: rangeKey ? { trafficMode, rangeKey } : { trafficMode, days },
+        params: rangeKey ? { trafficMode, rangeKey, bucket: bucketHint } : { trafficMode, days, bucket: 'day' },
         ttlMs: 5 * 60 * 1000,
         force,
       },
       () => rangeKey
-        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode)
+        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint)
         : computeDashboardSeries(days, now, timeZone, trafficMode)
     );
     res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [] });
@@ -509,6 +525,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     series,
     topProducts,
     topCountries,
+    bucket: 'day',
     summary: {
       revenue: Math.round(totalRevenue * 100) / 100,
       orders: totalOrders,
@@ -554,7 +571,13 @@ function ymdFromParts(parts) {
   return `${y}-${m}-${d}`;
 }
 
-async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode) {
+function hourLabelFromParts(parts, hour) {
+  const ymd = ymdFromParts(parts);
+  const hh = String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, '0');
+  return `${ymd} ${hh}:00`;
+}
+
+async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint) {
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
   const filter = sessionFilterForTraffic(trafficMode);
@@ -590,7 +613,51 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     cur = next;
   }
 
-  if (!dayBounds.length) {
+  let bucket = (bucketHint === 'hour') ? 'hour' : (bucketHint === 'week' ? 'week' : 'day');
+  let bucketBounds = dayBounds;
+  if (bucket === 'hour' && dayBounds.length === 1) {
+    const only = dayBounds[0];
+    const hourBounds = [];
+    for (let h = 0; h < 24; h++) {
+      const hStartFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, h, 0, 0, timeZone);
+      const hEndFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, h + 1, 0, 0, timeZone);
+      const hStart = Math.max(hStartFull, start);
+      const hEnd = Math.min(hEndFull, end);
+      if (hEnd > hStart) {
+        hourBounds.push({ label: hourLabelFromParts(startParts, h), start: hStart, end: hEnd });
+      }
+    }
+    if (hourBounds.length >= 2) {
+      bucketBounds = hourBounds;
+    } else {
+      bucket = 'day';
+      bucketBounds = dayBounds;
+    }
+  } else if (bucket === 'week' && dayBounds.length > 1) {
+    const weekBounds = [];
+    let wk = { year: startParts.year, month: startParts.month, day: startParts.day };
+    while (true) {
+      const label = ymdFromParts(wk);
+      const wkStartFull = zonedTimeToUtcMs(wk.year, wk.month, wk.day, 0, 0, 0, timeZone);
+      const wkEndParts = addDaysToParts(wk, 7);
+      const wkEndFull = zonedTimeToUtcMs(wkEndParts.year, wkEndParts.month, wkEndParts.day, 0, 0, 0, timeZone);
+      const wkStart = Math.max(wkStartFull, start);
+      const wkEnd = Math.min(wkEndFull, end);
+      if (wkEnd > wkStart) {
+        weekBounds.push({ label, start: wkStart, end: wkEnd });
+      }
+      if (!(wkEndFull < end)) break;
+      wk = wkEndParts;
+    }
+    if (weekBounds.length >= 2) {
+      bucketBounds = weekBounds;
+    } else {
+      bucket = 'day';
+      bucketBounds = dayBounds;
+    }
+  }
+
+  if (!bucketBounds.length) {
     return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
   }
 
@@ -606,11 +673,10 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
-  // Fetch sessions + bounce per day
-  const sb = await fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
+  const sb = await fetchSessionsAndBouncesByDayBounds(db, bucketBounds, overallStart, overallEnd, filter);
   const sessionsPerDay = sb.sessionsPerDay || {};
   const bouncePerDay = sb.bouncePerDay || {};
-  const unitsPerDay = shop ? await fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, overallEnd) : {};
+  const unitsPerDay = shop ? await fetchUnitsSoldByDayBounds(db, shop, bucketBounds, overallStart, overallEnd) : {};
 
   // Fetch orders + revenue per day from Shopify truth
   const ratesToGbp = await fx.getRatesToGbp();
@@ -634,7 +700,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     for (const row of orderRows) {
       const createdAt = Number(row.created_at);
       let dayLabel = null;
-      for (const db_day of dayBounds) {
+      for (const db_day of bucketBounds) {
         if (createdAt >= db_day.start && createdAt < db_day.end) {
           dayLabel = db_day.label;
           break;
@@ -658,9 +724,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
 
   // Fetch Shopify sessions per day (from shopify_sessions_snapshots)
   const shopifySessionsPerDay = {};
-  if (shop) {
+  if (shop && bucket === 'day') {
     try {
-      const dayLabels = dayBounds.map(d => d.label);
+      const dayLabels = bucketBounds.map(d => d.label);
       const shopifyRows = await db.all(
         config.dbUrl
           ? `SELECT day_ymd, MAX(sessions_count) AS sessions_count
@@ -678,15 +744,15 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
-  const series = dayBounds.map(function(db_day) {
+  const series = bucketBounds.map(function(db_day) {
     const sessions = sessionsPerDay[db_day.label] || 0;
     const orders = ordersPerDay[db_day.label] || 0;
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
     const units = unitsPerDay[db_day.label] || 0;
     const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
     const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
-    const shopifySessions = shopifySessionsPerDay[db_day.label] || 0;
-    const rawShopifyConv = shopifySessions > 0 ? (orders / shopifySessions) * 100 : null;
+    const shopifySessions = bucket === 'day' ? (shopifySessionsPerDay[db_day.label] || 0) : 0;
+    const rawShopifyConv = (bucket === 'day' && shopifySessions > 0) ? (orders / shopifySessions) * 100 : null;
     const shopifyConvRate = rawShopifyConv != null ? Math.round(Math.min(rawShopifyConv, 100) * 10) / 10 : null;
     const aov = orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0;
     const bounced = bouncePerDay[db_day.label] || 0;
@@ -799,31 +865,36 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
-  // Ad spend per day (if ads DB available) — only on Postgres ads DB
-  let adSpendPerDay = {};
-  try {
-    const adsDb = require('../ads/adsDb');
-    if (adsDb && typeof adsDb.getAdsPool === 'function') {
-      const pool = adsDb.getAdsPool();
-      if (pool) {
-        const spendRows = await pool.query(
-          `SELECT (hour_ts AT TIME ZONE 'UTC')::date::text AS day, COALESCE(SUM(spend_gbp), 0) AS spend_gbp
-           FROM google_ads_spend_hourly
-           WHERE (hour_ts AT TIME ZONE 'UTC')::date >= $1::date AND (hour_ts AT TIME ZONE 'UTC')::date <= $2::date
-           GROUP BY (hour_ts AT TIME ZONE 'UTC')::date
-           ORDER BY day`,
-          [dayBounds[0].label, dayBounds[dayBounds.length - 1].label]
-        );
-        if (spendRows && spendRows.rows) {
-          for (const r of spendRows.rows) {
-            adSpendPerDay[r.day] = Math.round((Number(r.spend_gbp) || 0) * 100) / 100;
+  if (bucket === 'day') {
+    let adSpendPerDay = {};
+    try {
+      const adsDb = require('../ads/adsDb');
+      if (adsDb && typeof adsDb.getAdsPool === 'function') {
+        const pool = adsDb.getAdsPool();
+        if (pool) {
+          const spendRows = await pool.query(
+            `SELECT (hour_ts AT TIME ZONE 'UTC')::date::text AS day, COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+             FROM google_ads_spend_hourly
+             WHERE (hour_ts AT TIME ZONE 'UTC')::date >= $1::date AND (hour_ts AT TIME ZONE 'UTC')::date <= $2::date
+             GROUP BY (hour_ts AT TIME ZONE 'UTC')::date
+             ORDER BY day`,
+            [bucketBounds[0].label, bucketBounds[bucketBounds.length - 1].label]
+          );
+          if (spendRows && spendRows.rows) {
+            for (const r of spendRows.rows) {
+              adSpendPerDay[r.day] = Math.round((Number(r.spend_gbp) || 0) * 100) / 100;
+            }
           }
         }
       }
+    } catch (_) {}
+    for (const s of series) {
+      s.adSpend = adSpendPerDay[s.date] || 0;
     }
-  } catch (_) {}
-  for (const s of series) {
-    s.adSpend = adSpendPerDay[s.date] || 0;
+  } else {
+    for (const s of series) {
+      s.adSpend = 0;
+    }
   }
 
   // Device breakdown (desktop vs mobile vs tablet)
@@ -891,6 +962,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     series,
     topProducts,
     topCountries,
+    bucket,
     summary: {
       revenue: Math.round(totalRevenue * 100) / 100,
       orders: totalOrders,
