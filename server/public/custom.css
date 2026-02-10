@@ -376,11 +376,11 @@ a {
 /* KPI bar: below dark nav, light strip, single line, 100% width */
 .kexo-kpis-navbar {
   position: relative;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0;
+  padding: 0 0 2px 5px;
   background: #fff;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
   box-shadow: 2px 2px 2px #eee;
@@ -955,7 +955,6 @@ a {
     background: rgba(0,0,0,.4);
     z-index: 1055;
   }
-  .kexo-kpis-navbar { display: none !important; }
   .kexo-date-bar { display: none; }
 }
 
