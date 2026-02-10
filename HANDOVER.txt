@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (UI: sidebar Settings dropup + restored nav groups; single navbar-owned KPI overlay with overflow-aware pager; mobile topbar hamburger/centered logo/date icon)
+Last updated: 2026-02-10 (UI: condensed-only navbar KPIs rendered inline in header; desktop date box moved to topbar right; dashboard adds vs-previous-period KPI strip)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -29,7 +29,6 @@ Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
 - `server/public/partials/header.html`: Tabler fluid-vertical wrapper (opens `.page` + sidebar + `.page-wrapper`).
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
-- `server/public/partials/kpis-expanded.html`: KPI component (condensed strip + expanded overlay grid).
 - `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary green (`#2fb344`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
 - `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
@@ -59,10 +58,7 @@ Auth protection:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
 - Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
-- KPI component lives in the top navbar and is a single DOM container across pages:
-  - Condensed KPI strip stays in place
-  - Expanded KPI grid opens as an overlay so the page content start does not shift
-  - State is persisted in `localStorage` as `kexo-kpis-expanded`
+- KPI component lives in the top navbar and is a single condensed-strip DOM container across pages (expanded overlay removed).
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -92,20 +88,19 @@ Platform start/min date clamp:
 
 ## KPI system (global, every page)
 
-Date control (sidebar, under logo):
-- UI is in `server/public/partials/header.html` as a Tabler input-group dropdown.
+Date control (topbar, far-right):
+- UI is in `server/public/partials/header.html` as a Tabler input-group dropdown in the desktop topbar right slot.
 - It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
-- Mobile: sidebar date input is hidden; topbar date icon dropdown updates the same `select#global-date-select`.
+- Mobile: topbar date icon dropdown updates the same `select#global-date-select`.
 
 KPI component (top navbar, every page):
-- Markup lives in ONE include: `server/public/partials/kpis-expanded.html` and is included from `server/public/partials/header.html` (pages do not include KPIs directly).
-- Condensed KPI strip is always visible; expanded KPI grid toggles via chevrons and renders as an overlay (no layout shift).
+- Markup lives directly in `server/public/partials/header.html` (pages do not include KPIs directly).
+- Condensed KPI strip is always visible; expanded KPI overlay/toggle were removed.
 - Condensed chips include value + delta + a small progress bar.
-- State is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
 - Extra KPIs (Items ordered / Orders fulfilled / Returns value):
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
   - Computed from Shopify Orders API (not KEXO tables): items ordered = line-item qty (orders created in range), orders fulfilled = distinct orders with fulfillments created in range, returns = refund transaction value (shown as negative in UI).
-  - Warmed in the background so condensed + expanded can both render without blanks.
+  - Warmed in the background so condensed chips render without blanks.
 
 KPI caching (perf + UX):
 - `/api/kpis` is cached (server-side) for 2 minutes and also painted from `localStorage` on navigation to avoid empty KPI boxes.
@@ -262,3 +257,5 @@ Edge (optional):
 - KPIs: render from a single navbar-owned container (included from `partials/header.html`) and open the expanded grid as an overlay (no vertical layout shift); condensed chips now show delta + mini progress bars.
 - Mobile topbar: hamburger left (opens sidebar drawer), logo perfectly centered, date icon right (Tabler dropdown bound to `#global-date-select`).
 - KPI pager: show prev/next only on overflow, use smooth scrollBy clicks, auto-recompute via ResizeObserver/MutationObserver, and teardown listeners on unload.
+- KPIs (follow-up): remove expanded/toggle path entirely (small chips only in header), inline KPI markup in `partials/header.html` (no nested include dependency), and move desktop date box to topbar far-right.
+- Dashboard: add a dedicated "Vs previous period" KPI strip under the main KPI cards with trend deltas/icons and progress bars driven by `/api/kpis` compare values.

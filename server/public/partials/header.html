@@ -7,33 +7,6 @@
         </a>
       </h1>
 
-      <div class="kexo-sidebar-date">
-        <div class="input-group input-group-sm d-none d-lg-flex">
-          <button type="button" class="btn btn-outline-light" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
-          <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
-            <i class="ti ti-chevron-down" aria-hidden="true"></i>
-          </button>
-          <div class="dropdown-menu w-100" id="kexo-date-menu" aria-label="Date ranges">
-            <button class="dropdown-item" type="button" data-range="today">Today</button>
-            <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
-            <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
-            <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
-            <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
-            <div class="dropdown-divider"></div>
-            <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
-          </div>
-        </div>
-
-        <select id="global-date-select" class="visually-hidden" aria-label="Date range">
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="7days">Last 7 days</option>
-          <option value="14days">Last 14 days</option>
-          <option value="30days">Last 30 days</option>
-          <option value="custom" id="date-opt-custom">Custom</option>
-        </select>
-      </div>
-
       <div class="collapse navbar-collapse" id="sidebar-menu">
         <ul class="navbar-nav pt-lg-3 kexo-sidebar-nav">
           <li class="nav-item dropdown">
@@ -136,6 +109,22 @@
           </div>
 
           <div class="kexo-topbar-slot kexo-topbar-slot-right">
+            <div class="input-group input-group-sm d-none d-lg-flex kexo-topbar-date">
+              <button type="button" class="btn btn-outline-secondary" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
+              <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
+                <i class="ti ti-chevron-down" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end w-100" id="kexo-date-menu" aria-label="Date ranges">
+                <button class="dropdown-item" type="button" data-range="today">Today</button>
+                <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
+                <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
+                <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
+                <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
+              </div>
+            </div>
+
             <div class="dropdown d-lg-none">
               <button type="button" class="btn btn-icon btn-ghost-secondary" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
                 <i class="ti ti-calendar" aria-hidden="true"></i>
@@ -150,13 +139,162 @@
                 <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
               </div>
             </div>
-
-            <button type="button" class="btn btn-icon btn-ghost-secondary kexo-kpi-toggle-btn" id="kexo-kpis-expand-btn" aria-label="Toggle KPI panel" aria-expanded="false">
-              <i class="ti ti-chevron-down" aria-hidden="true"></i>
-            </button>
           </div>
         </div>
 
-        <!--#include partials/kpis-expanded.html-->
+        <select id="global-date-select" class="visually-hidden" aria-label="Date range">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7days">Last 7 days</option>
+          <option value="14days">Last 14 days</option>
+          <option value="30days">Last 30 days</option>
+          <option value="custom" id="date-opt-custom">Custom</option>
+        </select>
+
+        <div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
+          <div class="kexo-kpis-condensed-row" id="kexo-kpis-condensed-row" aria-label="Condensed KPIs">
+            <div class="kexo-kpis-condensed-strip" id="kexo-condensed-kpis">
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Orders</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-orders">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-orders-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-orders-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Revenue</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-revenue">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-revenue-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-revenue-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Conv rate</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-conv">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-conv-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-conv-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Sessions</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-sessions">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-sessions-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-sessions-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Returning</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-returning">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-returning-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-returning-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">AOV</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-aov">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-aov-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-aov-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Items ordered</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-items-sold">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-items-sold-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-items-sold-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Bounce</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-bounce">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-bounce-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-bounce-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Fulfilled</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-orders-fulfilled">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-orders-fulfilled-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-orders-fulfilled-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+
+              <div class="kexo-kpi-chip" data-kpi-chip>
+                <div class="subheader kexo-kpi-chip-label">Returns</div>
+                <div class="d-flex align-items-baseline">
+                  <div class="h3 mb-0 me-2 kexo-kpi-chip-value" id="cond-kpi-returns">&mdash;</div>
+                  <div class="me-auto">
+                    <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-returns-delta">
+                      <span class="kexo-kpi-chip-delta-text">&mdash;</span>
+                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="progress progress-sm kexo-kpi-chip-progress"><div class="progress-bar bg-secondary" id="cond-kpi-returns-bar" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </header>

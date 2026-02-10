@@ -2212,15 +2212,8 @@ const API = '';
 
         // Pull fresh KPI data (fast metrics) immediately after cache reset.
         try { refreshKpis({ force: true }); } catch (_) {}
-        // If expanded KPIs are visible, refresh the extras too.
-        try {
-          if (typeof isKpisExpanded === 'function' && isKpisExpanded()) {
-            fetchExpandedKpiExtras({ force: true }).then(function(extras) {
-              renderExpandedKpiExtras(extras);
-              scheduleKpiPagerUpdate();
-            });
-          }
-        } catch (_) {}
+        // Refresh condensed KPI extras as well.
+        try { refreshKpiExtrasSoft(); } catch (_) {}
       }, 320);
     }
 
@@ -4620,12 +4613,7 @@ const API = '';
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: true });
-      try {
-        if (typeof isKpisExpanded === 'function' && isKpisExpanded()) {
-          // Extras depend on range too.
-          fetchExpandedKpiExtras({ force: true }).then(function(extras) { renderExpandedKpiExtras(extras); scheduleKpiPagerUpdate(); });
-        }
-      } catch (_) {}
+      try { refreshKpiExtrasSoft(); } catch (_) {}
 
       if (activeMainTab === 'dashboard') {
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
@@ -4781,16 +4769,16 @@ const API = '';
     function setLiveKpisLoading() {
       const spinner = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
       const ids = [
-        'live-kpi-orders',
-        'live-kpi-revenue',
-        'live-kpi-sessions',
-        'live-kpi-conv',
-        'live-kpi-returning',
-        'live-kpi-aov',
-        'live-kpi-bounce',
-        'live-kpi-items-sold',
-        'live-kpi-orders-fulfilled',
-        'live-kpi-returns',
+        'cond-kpi-orders',
+        'cond-kpi-revenue',
+        'cond-kpi-sessions',
+        'cond-kpi-conv',
+        'cond-kpi-returning',
+        'cond-kpi-aov',
+        'cond-kpi-bounce',
+        'cond-kpi-items-sold',
+        'cond-kpi-orders-fulfilled',
+        'cond-kpi-returns',
       ];
       ids.forEach(function(id) {
         const el = document.getElementById(id);
@@ -4846,162 +4834,67 @@ const API = '';
       const isFlat = toneDelta != null && !isUp && !isDown;
 
       if (deltaEl) {
-        deltaEl.classList.remove('is-up', 'is-down');
-        if (rawDelta == null) {
-          deltaEl.textContent = '\u2014';
-        } else if (isNew) {
-          deltaEl.textContent = 'new';
-          deltaEl.classList.add(cur > 0 ? 'is-up' : 'is-down');
-        } else {
-          const pct = Math.round(Math.abs(rawDelta) * 1000) / 10;
-          deltaEl.textContent = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pct.toFixed(1).replace(/\.0$/, '') + '%';
-          if (isUp) deltaEl.classList.add('is-up');
-          if (isDown) deltaEl.classList.add('is-down');
+        const textEl = deltaEl.querySelector('.kexo-kpi-chip-delta-text');
+        const iconEl = deltaEl.querySelector('.kexo-kpi-chip-delta-icon');
+        let text = '\u2014';
+        let dir = 'none';
+
+        if (rawDelta != null) {
+          if (isNew) {
+            text = 'new';
+            dir = isDown ? 'down' : 'up';
+          } else {
+            const pct = Math.round(Math.abs(rawDelta) * 1000) / 10;
+            text = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pct.toFixed(1).replace(/\.0$/, '') + '%';
+            dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
+          }
+        }
+
+        deltaEl.classList.remove('is-up', 'is-down', 'is-flat');
+        if (dir === 'up') deltaEl.classList.add('is-up');
+        else if (dir === 'down') deltaEl.classList.add('is-down');
+        else if (dir === 'flat') deltaEl.classList.add('is-flat');
+        deltaEl.setAttribute('data-dir', dir);
+        if (textEl) textEl.textContent = text;
+        else deltaEl.textContent = text;
+
+        if (iconEl) {
+          if (dir === 'up') {
+            iconEl.classList.remove('is-hidden', 'ti-trending-down', 'ti-minus');
+            iconEl.classList.add('ti-trending-up');
+          } else if (dir === 'down') {
+            iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-minus');
+            iconEl.classList.add('ti-trending-down');
+          } else if (dir === 'flat') {
+            iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-trending-down');
+            iconEl.classList.add('ti-minus');
+          } else {
+            iconEl.classList.remove('ti-trending-up', 'ti-trending-down', 'ti-minus');
+            iconEl.classList.add('is-hidden');
+          }
         }
       }
 
       if (barEl) {
         barEl.classList.remove('bg-success', 'bg-danger', 'bg-secondary');
-        if (rawDelta == null) {
-          barEl.style.width = '0%';
-          barEl.classList.add('bg-secondary');
-          return;
+        let widthPct = 0;
+        let barClass = 'bg-secondary';
+
+        if (rawDelta != null && !isFlat) {
+          widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+          barClass = isUp ? 'bg-success' : 'bg-danger';
         }
-        if (isFlat) {
-          barEl.style.width = '0%';
-          barEl.classList.add('bg-secondary');
-          return;
-        }
-        const widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+
         barEl.style.width = String(widthPct) + '%';
-        barEl.classList.add(isUp ? 'bg-success' : 'bg-danger');
+        barEl.classList.add(barClass);
+        barEl.setAttribute('aria-valuenow', String(widthPct));
+        barEl.setAttribute('aria-label', String(widthPct) + '% complete');
+        const srText = barEl.querySelector('.visually-hidden');
+        if (srText) srText.textContent = String(widthPct) + '% complete';
       }
-    }
-
-    function applyKpiDeltaColor(el, current, baseline, invert) {
-      if (!el) return;
-      var wrapper = el.closest('.d-flex.align-items-baseline');
-      if (wrapper) {
-        var old = wrapper.querySelector('.kpi-delta-indicator');
-        if (old) old.remove();
-      }
-      const delta = kpiDelta(current, baseline);
-      if (delta == null) return;
-      if (Math.abs(delta) < 0.005) return;
-      const pct = Math.round(Math.abs(delta) * 100);
-      const toneDelta = invert ? -delta : delta;
-      const colorClass = toneDelta > 0 ? 'text-green' : 'text-red';
-      const bgClass = toneDelta > 0 ? 'bg-green-lt' : 'bg-red-lt';
-      const iconClass = delta > 0 ? 'ti ti-trending-up' : 'ti ti-trending-down';
-      var indicator = document.createElement('div');
-      // Tabler-style delta pill (subtle background)
-      indicator.className = 'kpi-delta-indicator badge ' + bgClass + ' ' + colorClass + ' ms-auto';
-      indicator.setAttribute('aria-hidden', 'true');
-      indicator.innerHTML = '<i class="' + iconClass + ' me-1" aria-hidden="true"></i>' + pct + '%';
-      if (wrapper) {
-        wrapper.appendChild(indicator);
-      }
-    }
-
-    const kpiSparklines = {};
-
-    function renderKpiSparkline(kpiKey, dataPoints) {
-      const el = document.getElementById('kpi-sparkline-' + kpiKey);
-      if (!el) return;
-
-      if (kpiSparklines[kpiKey]) {
-        try { kpiSparklines[kpiKey].destroy(); } catch (_) {}
-        kpiSparklines[kpiKey] = null;
-      }
-
-      if (typeof ApexCharts === 'undefined') {
-        setTimeout(function() { renderKpiSparkline(kpiKey, dataPoints); }, 200);
-        return;
-      }
-
-      const data = Array.isArray(dataPoints) ? dataPoints.slice(-7) : [];
-      if (data.length === 0) return;
-
-      const primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
-
-      el.innerHTML = '';
-      kpiSparklines[kpiKey] = new ApexCharts(el, {
-        chart: { type: 'area', sparkline: { enabled: true }, animations: { enabled: true, easing: 'easeinout', speed: 300 } },
-        series: [{ data: data }],
-        stroke: { width: 2, curve: 'smooth' },
-        fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.01 } },
-        colors: ['rgba(' + primaryRgb + ', 0.6)'],
-        tooltip: { enabled: false }
-      });
-      kpiSparklines[kpiKey].render();
-    }
-
-    var sparklineSeriesCache = null;
-    var sparklineSeriesFetched = false;
-    var sparklineSeriesForceAttempted = false;
-
-    function fetchSparklineData() {
-      if (sparklineSeriesFetched) return;
-      sparklineSeriesFetched = true;
-      var url = API + '/api/dashboard-series?range=14d';
-      fetchWithTimeout(url, { credentials: 'same-origin' }, 15000)
-        .then(function(r) { return (r && r.ok) ? r.json() : null; })
-        .then(function(data) {
-          if (data && Array.isArray(data.series) && data.series.length > 0) {
-            sparklineSeriesCache = data.series.slice(-7);
-            renderSparklineFromCache();
-            // Back-compat: older cached dashboard-series payloads didn't include returningCustomerOrders.
-            // If we detect that, force a one-time recompute so the Returning sparkline doesn't stay flat until reload.
-            try {
-              var first = sparklineSeriesCache && sparklineSeriesCache[0] ? sparklineSeriesCache[0] : null;
-              var missingReturning = !(first && typeof first.returningCustomerOrders === 'number');
-              if (missingReturning && !sparklineSeriesForceAttempted) {
-                sparklineSeriesForceAttempted = true;
-                var bust = API + '/api/dashboard-series?range=14d&force=1&_=' + Date.now();
-                fetchWithTimeout(bust, { credentials: 'same-origin', cache: 'no-store' }, 15000)
-                  .then(function(r2) { return (r2 && r2.ok) ? r2.json() : null; })
-                  .then(function(data2) {
-                    if (data2 && Array.isArray(data2.series) && data2.series.length > 0) {
-                      sparklineSeriesCache = data2.series.slice(-7);
-                      renderSparklineFromCache();
-                    }
-                  })
-                  .catch(function() {});
-              }
-            } catch (_) {}
-          }
-        })
-        .catch(function() {});
-    }
-
-    function renderSparklineFromCache() {
-      if (!sparklineSeriesCache || sparklineSeriesCache.length < 2) return;
-      var s = sparklineSeriesCache;
-      renderKpiSparkline('orders', s.map(function(d) { return d.orders || 0; }));
-      renderKpiSparkline('revenue', s.map(function(d) { return d.revenue || 0; }));
-      renderKpiSparkline('conv', s.map(function(d) { return d.convRate || 0; }));
-      renderKpiSparkline('sessions', s.map(function(d) { return d.sessions || 0; }));
-      renderKpiSparkline('returning', s.map(function(d) { return d.returningCustomerOrders || 0; }));
-      renderKpiSparkline('aov', s.map(function(d) { return d.aov || 0; }));
-      renderKpiSparkline('bounce', s.map(function(d) { return d.bounceRate || 0; }));
-      renderKpiSparkline('items', s.map(function(d) { return d.units || 0; }));
     }
 
     function renderLiveKpis(data) {
-      const ordersEl = document.getElementById('live-kpi-orders');
-      const revenueEl = document.getElementById('live-kpi-revenue');
-      const sessionsEl = document.getElementById('live-kpi-sessions');
-      const convEl = document.getElementById('live-kpi-conv');
-      const returningEl = document.getElementById('live-kpi-returning');
-      const aovEl = document.getElementById('live-kpi-aov');
-      const bounceEl = document.getElementById('live-kpi-bounce');
-      const ordersSubEl = document.getElementById('live-kpi-orders-sub');
-      const revenueSubEl = document.getElementById('live-kpi-revenue-sub');
-      const sessionsSubEl = document.getElementById('live-kpi-sessions-sub');
-      const convSubEl = document.getElementById('live-kpi-conv-sub');
-      const returningSubEl = document.getElementById('live-kpi-returning-sub');
-      const aovSubEl = document.getElementById('live-kpi-aov-sub');
-      const bounceSubEl = document.getElementById('live-kpi-bounce-sub');
       const sales = data && data.sales ? data.sales : {};
       const convertedCountMap = data && data.convertedCount ? data.convertedCount : {};
       const returningCustomerCountMap = data && data.returningCustomerCount ? data.returningCustomerCount : {};
@@ -5009,9 +4902,6 @@ const API = '';
       const conv = data && data.conversion ? data.conversion : {};
       const aovMap = data && data.aov ? data.aov : {};
       const bounceMap = data && data.bounce ? data.bounce : {};
-      const itemsSoldEl = document.getElementById('live-kpi-items-sold');
-      const ordersFulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
-      const returnsEl = document.getElementById('live-kpi-returns');
       const condOrdersEl = document.getElementById('cond-kpi-orders');
       const condRevenueEl = document.getElementById('cond-kpi-revenue');
       const condConvEl = document.getElementById('cond-kpi-conv');
@@ -5047,15 +4937,6 @@ const API = '';
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
 
-      if (ordersEl) ordersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
-      if (revenueEl) revenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
-      if (sessionsEl) sessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
-      if (convEl) convEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (returningEl) returningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
-      if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
-      if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
-
-      // Condensed KPI strip (value + delta + mini progress)
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
@@ -5071,14 +4952,6 @@ const API = '';
       applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
       applyCondensedKpiDelta('bounce', bounceVal, compareBounceVal, true);
       try { updateCondensedKpiOverflow(); } catch (_) {}
-
-      applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
-      applyKpiDeltaColor(revenueEl, revenueVal, compareRevenueVal, false);
-      applyKpiDeltaColor(sessionsEl, sessionsVal, compareSessionsVal, false);
-      applyKpiDeltaColor(convEl, convVal, compareConvVal, false);
-      applyKpiDeltaColor(returningEl, returningVal, compareReturningVal, false);
-      applyKpiDeltaColor(aovEl, aovVal, compareAovVal, false);
-      applyKpiDeltaColor(bounceEl, bounceVal, compareBounceVal, true);
 
       // Header quick KPIs (compact)
       if (topbarOrdersEl) topbarOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
@@ -5121,7 +4994,7 @@ const API = '';
         deltaWrap.classList.toggle('is-up', up);
         deltaWrap.classList.toggle('is-down', down);
         deltaWrap.classList.toggle('is-flat', !up && !down);
-        deltaTextEl.textContent = (p > 0 ? '' : '') + Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
+        deltaTextEl.textContent = Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
         // Only show arrows when movement is meaningful.
         if (iconEl) {
           iconEl.classList.toggle('is-hidden', !up && !down);
@@ -5147,62 +5020,6 @@ const API = '';
         topbarConvDeltaTextEl,
         deltaPct(convVal, compareConvVal)
       );
-
-      // Render sparklines from real dashboard-series data
-      if (!sparklineSeriesFetched) fetchSparklineData();
-      else renderSparklineFromCache();
-
-      // Expanded KPIs: leave these as-is until /api/kpis-expanded-extra fills them.
-      // If they haven't been populated yet, keep them as "—" rather than spinners forever.
-      if (itemsSoldEl && itemsSoldEl.querySelector && itemsSoldEl.querySelector('.kpi-mini-spinner')) itemsSoldEl.textContent = '\u2014';
-      if (ordersFulfilledEl && ordersFulfilledEl.querySelector && ordersFulfilledEl.querySelector('.kpi-mini-spinner')) ordersFulfilledEl.textContent = '\u2014';
-      if (returnsEl && returnsEl.querySelector && returnsEl.querySelector('.kpi-mini-spinner')) returnsEl.textContent = '\u2014';
-
-      try { updateCondensedKpiOverflow(); } catch (_) {}
-
-      function setSub(el, text) {
-        if (!el) return;
-        if (text === '' || text == null) {
-          el.textContent = '';
-          el.classList.add('is-hidden');
-          return;
-        }
-        const compareSvg =
-          '<svg width="13" height="13" fill="currentColor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
-            '<path d="M46.05,60.163H31.923c-0.836,0-1.513,0.677-1.513,1.513v21.934c0,0.836,0.677,1.513,1.513,1.513H46.05 c0.836,0,1.512-0.677,1.512-1.513V61.675C47.562,60.839,46.885,60.163,46.05,60.163z"></path>' +
-            '<path d="M68.077,14.878H53.95c-0.836,0-1.513,0.677-1.513,1.513v67.218c0,0.836,0.677,1.513,1.513,1.513h14.127 c0.836,0,1.513-0.677,1.513-1.513V16.391C69.59,15.555,68.913,14.878,68.077,14.878z"></path>' +
-            '<path d="M90.217,35.299H76.09c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513h14.126 c0.836,0,1.513-0.677,1.513-1.513V36.812C91.729,35.977,91.052,35.299,90.217,35.299z"></path>' +
-            '<path d="M23.91,35.299H9.783c-0.836,0-1.513,0.677-1.513,1.513v46.797c0,0.836,0.677,1.513,1.513,1.513H23.91 c0.836,0,1.513-0.677,1.513-1.513V36.812C25.423,35.977,24.746,35.299,23.91,35.299z"></path>' +
-          '</svg>';
-
-        function compareBtn(kpiKey, ariaLabel) {
-          return (
-            '<button type="button" class="kpi-compare-inline-btn kpi-compare-open-btn" data-kpi-compare="' + escapeHtml(kpiKey) + '"' +
-              ' aria-label="' + escapeHtml(ariaLabel) + '" title="Compare vs Shopify">' +
-              compareSvg +
-            '</button>'
-          );
-        }
-
-        if (el === convSubEl) {
-          el.innerHTML = compareBtn('conv', 'Compare conversion rate vs Shopify') + escapeHtml(text == null ? '' : String(text));
-        } else if (el === sessionsSubEl) {
-          el.innerHTML = compareBtn('sessions', 'Compare sessions vs Shopify') + escapeHtml(text == null ? '' : String(text));
-        } else if (el === aovSubEl) {
-          el.innerHTML = compareBtn('aov', 'Compare AOV vs Shopify') + escapeHtml(text == null ? '' : String(text));
-        } else {
-          el.textContent = text;
-        }
-        el.classList.remove('is-hidden');
-      }
-      setSub(ordersSubEl, compareOrdersVal != null ? formatSessions(compareOrdersVal) : '\u2014');
-      setSub(revenueSubEl, compareRevenueVal != null ? formatRevenueSub(compareRevenueVal) : '\u2014');
-      setSub(sessionsSubEl, compareSessionsVal != null ? formatSessions(compareSessionsVal) : '\u2014');
-      setSub(convSubEl, compareConvVal != null ? pct(compareConvVal) : '\u2014');
-      setSub(returningSubEl, compareReturningVal != null ? formatSessions(compareReturningVal) : '\u2014');
-      setSub(aovSubEl, compareAovVal != null ? formatRevenueSub(compareAovVal) : '\u2014');
-      setSub(bounceSubEl, compareBounceVal != null ? pct(compareBounceVal) : '\u2014');
-      scheduleKpiPagerUpdate();
     }
 
     // Populate dashboard KPI cards using the same /api/kpis data as inner pages
@@ -5236,7 +5053,6 @@ const API = '';
       var compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       var compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       var compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
-      var compareReturningVal = compare && typeof compare.returningRevenue === 'number' ? compare.returningRevenue : null;
       var compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
       var compareReturningOrdersVal = compare && typeof compare.returningOrderCount === 'number' ? compare.returningOrderCount : null;
 
@@ -5278,149 +5094,88 @@ const API = '';
           : null;
         el('dash-kpi-returning-change').innerHTML = changeBadge(currRetPct, compareRetPct);
       }
-    }
 
-    // KPI pager: overflow-aware controls with observer + cleanup.
-    let kpiPagerRaf = null;
-    const kpiPagerSingleton = {
-      wrap: null,
-      grid: null,
-      btnNext: null,
-      btnPrev: null,
-      onNext: null,
-      onPrev: null,
-      onScroll: null,
-      onResize: null,
-      resizeObserver: null,
-      mutationObserver: null,
-    };
+      function setVsPrevMetric(metricKey, current, previous, formatValue, invert) {
+        var valueEl = el('dash-vs-prev-' + metricKey + '-value');
+        var deltaWrap = el('dash-vs-prev-' + metricKey + '-delta');
+        var barEl = el('dash-vs-prev-' + metricKey + '-bar');
+        if (!valueEl && !deltaWrap && !barEl) return;
 
-    function scheduleKpiPagerUpdate() {
-      if (typeof requestAnimationFrame !== 'function') {
-        applyKpiPager();
-        return;
-      }
-      if (kpiPagerRaf) cancelAnimationFrame(kpiPagerRaf);
-      kpiPagerRaf = requestAnimationFrame(function() {
-        kpiPagerRaf = null;
-        applyKpiPager();
-      });
-    }
+        var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
+        var prev = (typeof previous === 'number' && Number.isFinite(previous)) ? previous : null;
+        var rawDelta = (cur != null && prev != null) ? kpiDelta(cur, prev) : null;
+        var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
+        var isNew = cur != null && prev === 0 && cur !== 0;
+        var isUp = toneDelta != null && toneDelta > 0.005;
+        var isDown = toneDelta != null && toneDelta < -0.005;
+        var isFlat = toneDelta != null && !isUp && !isDown;
 
-    function applyKpiPager() {
-      const wrap = kpiPagerSingleton.wrap || document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
-      const btnNext = kpiPagerSingleton.btnNext || document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
-      const btnPrev = kpiPagerSingleton.btnPrev || document.getElementById('kpi-pager-prev');
-      if (!wrap || !btnNext) return;
+        if (valueEl) valueEl.textContent = cur != null ? formatValue(cur) : '\u2014';
 
-      const hasOverflow = wrap.scrollWidth > (wrap.clientWidth + 1);
-      const atStart = wrap.scrollLeft <= 1;
-      const atEnd = (wrap.scrollLeft + wrap.clientWidth) >= (wrap.scrollWidth - 1);
-
-      if (!hasOverflow) {
-        btnNext.classList.add('is-hidden');
-        btnNext.disabled = true;
-        if (btnPrev) {
-          btnPrev.classList.add('is-hidden');
-          btnPrev.disabled = true;
+        if (deltaWrap) {
+          var textEl = deltaWrap.querySelector('.dash-vs-prev-delta-text');
+          var iconEl = deltaWrap.querySelector('.dash-vs-prev-delta-icon');
+          var deltaText = '\u2014';
+          var dir = 'none';
+          if (rawDelta != null) {
+            if (isNew) {
+              deltaText = 'new';
+              dir = isDown ? 'down' : 'up';
+            } else {
+              var pctAbs = Math.round(Math.abs(rawDelta) * 1000) / 10;
+              deltaText = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pctAbs.toFixed(1).replace(/\.0$/, '') + '%';
+              dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
+            }
+          }
+          deltaWrap.classList.remove('text-success', 'text-danger');
+          deltaWrap.classList.toggle('text-success', dir === 'up');
+          deltaWrap.classList.toggle('text-danger', dir === 'down');
+          deltaWrap.setAttribute('data-dir', dir);
+          if (textEl) textEl.textContent = deltaText;
+          else deltaWrap.textContent = deltaText;
+          if (iconEl) {
+            if (dir === 'up') {
+              iconEl.classList.remove('is-hidden', 'ti-trending-down', 'ti-minus');
+              iconEl.classList.add('ti-trending-up');
+            } else if (dir === 'down') {
+              iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-minus');
+              iconEl.classList.add('ti-trending-down');
+            } else if (dir === 'flat') {
+              iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-trending-down');
+              iconEl.classList.add('ti-minus');
+            } else {
+              iconEl.classList.remove('ti-trending-up', 'ti-trending-down', 'ti-minus');
+              iconEl.classList.add('is-hidden');
+            }
+          }
         }
-        return;
+
+        if (barEl) {
+          barEl.classList.remove('bg-success', 'bg-danger', 'bg-secondary');
+          var widthPct = 0;
+          var barClass = 'bg-secondary';
+          if (rawDelta != null && !isFlat) {
+            widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+            barClass = isUp ? 'bg-success' : 'bg-danger';
+          }
+          barEl.style.width = String(widthPct) + '%';
+          barEl.classList.add(barClass);
+          barEl.setAttribute('aria-valuenow', String(widthPct));
+          barEl.setAttribute('aria-label', String(widthPct) + '% complete');
+          var sr = barEl.querySelector('.visually-hidden');
+          if (sr) sr.textContent = String(widthPct) + '% complete';
+        }
       }
 
-      btnNext.classList.toggle('is-hidden', atEnd);
-      btnNext.disabled = atEnd;
-      btnNext.setAttribute('aria-label', 'Next KPIs');
-      if (btnPrev) {
-        btnPrev.classList.toggle('is-hidden', atStart);
-        btnPrev.disabled = atStart;
-        btnPrev.setAttribute('aria-label', 'Previous KPIs');
-      }
+      setVsPrevMetric('revenue', salesVal, compareSalesVal, function(v) { return formatRevenue(v); }, false);
+      setVsPrevMetric('orders', orderCountVal, compareOrdersVal, function(v) { return formatSessions(v); }, false);
+      setVsPrevMetric('conv', convVal, compareConvVal, function(v) { return pct(v); }, false);
+      setVsPrevMetric('sessions', sessionsVal, compareSessionsVal, function(v) { return formatSessions(v); }, false);
+      setVsPrevMetric('aov', aovVal, compareAovVal, function(v) { return formatRevenue(v); }, false);
+      setVsPrevMetric('bounce', bounceVal, compareBounceVal, function(v) { return pct(v); }, true);
     }
 
-    function teardownKpiPager() {
-      const s = kpiPagerSingleton;
-      try {
-        if (s.btnNext && s.onNext) s.btnNext.removeEventListener('click', s.onNext);
-        if (s.btnPrev && s.onPrev) s.btnPrev.removeEventListener('click', s.onPrev);
-        if (s.wrap && s.onScroll) s.wrap.removeEventListener('scroll', s.onScroll);
-        if (s.onResize) window.removeEventListener('resize', s.onResize);
-        if (s.resizeObserver) s.resizeObserver.disconnect();
-        if (s.mutationObserver) s.mutationObserver.disconnect();
-      } catch (_) {}
-      s.wrap = null;
-      s.grid = null;
-      s.btnNext = null;
-      s.btnPrev = null;
-      s.onNext = null;
-      s.onPrev = null;
-      s.onScroll = null;
-      s.onResize = null;
-      s.resizeObserver = null;
-      s.mutationObserver = null;
-    }
-
-    function initKpiPager() {
-      teardownKpiPager();
-      const wrap = document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
-      const btnNext = document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
-      const btnPrev = document.getElementById('kpi-pager-prev');
-      if (!wrap || !btnNext) return;
-
-      const grid = document.getElementById('live-kpi-grid');
-      const s = kpiPagerSingleton;
-      s.wrap = wrap;
-      s.grid = grid || null;
-      s.btnNext = btnNext;
-      s.btnPrev = btnPrev || null;
-
-      const stepPx = 10;
-      s.onNext = function() {
-        if (wrap.scrollWidth <= wrap.clientWidth + 1) return;
-        try { wrap.scrollBy({ left: stepPx, behavior: 'smooth' }); }
-        catch (_) { wrap.scrollLeft += stepPx; }
-        scheduleKpiPagerUpdate();
-      };
-      s.onPrev = function() {
-        if (wrap.scrollWidth <= wrap.clientWidth + 1) return;
-        try { wrap.scrollBy({ left: -stepPx, behavior: 'smooth' }); }
-        catch (_) { wrap.scrollLeft -= stepPx; }
-        scheduleKpiPagerUpdate();
-      };
-      s.onScroll = function() { scheduleKpiPagerUpdate(); };
-      s.onResize = function() { scheduleKpiPagerUpdate(); scheduleBreakdownSync(); };
-
-      btnNext.addEventListener('click', s.onNext);
-      if (btnPrev) btnPrev.addEventListener('click', s.onPrev);
-      wrap.addEventListener('scroll', s.onScroll, { passive: true });
-      window.addEventListener('resize', s.onResize, { passive: true });
-
-      if (typeof ResizeObserver !== 'undefined') {
-        s.resizeObserver = new ResizeObserver(function() {
-          scheduleKpiPagerUpdate();
-        });
-        s.resizeObserver.observe(wrap);
-        if (grid) s.resizeObserver.observe(grid);
-      }
-      if (grid && typeof MutationObserver !== 'undefined') {
-        s.mutationObserver = new MutationObserver(function() {
-          scheduleKpiPagerUpdate();
-        });
-        s.mutationObserver.observe(grid, { childList: true, subtree: true, attributes: true });
-      }
-      scheduleKpiPagerUpdate();
-    }
-    initKpiPager();
-
-    // KPI component: condensed strip + expanded grid (mutually exclusive)
-    const KPI_EXPANDED_LS_KEY = 'kexo-kpis-expanded';
-    let _kpisExpanded = null;
-    function isKpisExpanded() {
-      if (_kpisExpanded != null) return !!_kpisExpanded;
-      try { _kpisExpanded = (localStorage.getItem(KPI_EXPANDED_LS_KEY) === '1'); }
-      catch (_) { _kpisExpanded = false; }
-      return !!_kpisExpanded;
-    }
-
+    // Condensed KPI strip only (expanded overlay removed).
     let _condensedOverflowRaf = 0;
     function updateCondensedKpiOverflow() {
       const strip = document.getElementById('kexo-condensed-kpis');
@@ -5428,8 +5183,8 @@ const API = '';
       const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       if (!chips.length) return;
       chips.forEach(function(ch) { ch.classList.remove('is-hidden'); });
-      // Hide from the end until the strip fits.
-      for (let i = chips.length - 1; i >= 0 && strip.scrollWidth > strip.clientWidth; i--) {
+      // Hide from the end until the strip fits, but keep at least 3 visible.
+      for (let i = chips.length - 1; i >= 3 && strip.scrollWidth > strip.clientWidth; i--) {
         chips[i].classList.add('is-hidden');
       }
     }
@@ -5448,16 +5203,10 @@ const API = '';
     let kpiExpandedExtrasInFlight = null;
 
     function renderExpandedKpiExtras(extras) {
-      const itemsEl = document.getElementById('live-kpi-items-sold');
-      const fulfilledEl = document.getElementById('live-kpi-orders-fulfilled');
-      const returnsEl = document.getElementById('live-kpi-returns');
       const condItemsEl = document.getElementById('cond-kpi-items-sold');
       const condFulfilledEl = document.getElementById('cond-kpi-orders-fulfilled');
       const condReturnsEl = document.getElementById('cond-kpi-returns');
-      const itemsSubEl = document.getElementById('live-kpi-items-sold-sub');
-      const fulfilledSubEl = document.getElementById('live-kpi-orders-fulfilled-sub');
-      const returnsSubEl = document.getElementById('live-kpi-returns-sub');
-      if (!itemsEl && !fulfilledEl && !returnsEl && !condItemsEl && !condFulfilledEl && !condReturnsEl) return;
+      if (!condItemsEl && !condFulfilledEl && !condReturnsEl) return;
 
       const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
       const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
@@ -5467,8 +5216,6 @@ const API = '';
       const ordersFulfilledCompare = compare && typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null;
       const returnsCompare = compare && typeof compare.returns === 'number' ? compare.returns : null;
 
-      if (itemsEl) itemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
-      if (fulfilledEl) fulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       function formatReturns(v) {
         const n = (typeof v === 'number' && Number.isFinite(v)) ? Math.abs(v) : null;
         if (n == null) return '\u2014';
@@ -5476,32 +5223,12 @@ const API = '';
         if (!s) return '\u2014';
         return '-' + s;
       }
-      if (returnsEl) returnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
       if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       if (condReturnsEl) condReturnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
       applyCondensedKpiDelta('items-sold', itemsSold, itemsSoldCompare, false);
       applyCondensedKpiDelta('orders-fulfilled', ordersFulfilled, ordersFulfilledCompare, false);
       applyCondensedKpiDelta('returns', returnsAmount, returnsCompare, true);
-
-      function setSub(el, text) {
-        if (!el) return;
-        if (text === '' || text == null) {
-          el.textContent = '';
-          el.classList.add('is-hidden');
-          return;
-        }
-        el.textContent = text;
-        el.classList.remove('is-hidden');
-      }
-
-      setSub(itemsSubEl, itemsSoldCompare != null ? formatSessions(itemsSoldCompare) : '\u2014');
-      setSub(fulfilledSubEl, ordersFulfilledCompare != null ? formatSessions(ordersFulfilledCompare) : '\u2014');
-      setSub(returnsSubEl, returnsCompare != null ? formatReturns(returnsCompare) : '\u2014');
-
-      applyKpiDeltaColor(itemsEl, itemsSold, itemsSoldCompare, false);
-      applyKpiDeltaColor(fulfilledEl, ordersFulfilled, ordersFulfilledCompare, false);
-      applyKpiDeltaColor(returnsEl, returnsAmount, returnsCompare, true);
 
       try { updateCondensedKpiOverflow(); } catch (_) {}
     }
@@ -5546,54 +5273,8 @@ const API = '';
       return kpiExpandedExtrasInFlight;
     }
 
-    function applyKpisExpandedUi() {
-      const expanded = isKpisExpanded();
-      const expandedWrap = document.getElementById('kexo-expanded-kpis') || document.querySelector('.shared-kpi-wrap');
-      const condensedRow = document.getElementById('kexo-kpis-condensed-row');
-      if (expandedWrap) expandedWrap.style.display = expanded ? '' : 'none';
-      if (condensedRow) condensedRow.style.display = '';
-      document.body.classList.toggle('kexo-kpis-overlay-open', expanded);
-
-      const btnExpand = document.getElementById('kexo-kpis-expand-btn');
-      if (btnExpand) {
-        btnExpand.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        btnExpand.setAttribute('aria-label', expanded ? 'Hide KPI panel' : 'Show KPI panel');
-        const icon = btnExpand.querySelector('i');
-        if (icon) {
-          icon.classList.remove('ti-chevron-down', 'ti-chevron-up');
-          icon.classList.add(expanded ? 'ti-chevron-up' : 'ti-chevron-down');
-        }
-      }
-
-      if (expanded) {
-        try {
-          var staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
-          if (staleKpis) refreshKpis({ force: false });
-          else renderLiveKpis(getKpiData());
-        } catch (_) {}
-        fetchExpandedKpiExtras({ force: false }).then(function(extras) { renderExpandedKpiExtras(extras); scheduleKpiPagerUpdate(); });
-      } else {
-        scheduleCondensedKpiOverflowUpdate();
-      }
-
-      scheduleKpiPagerUpdate();
-    }
-
-    function setKpisExpanded(nextExpanded) {
-      _kpisExpanded = !!nextExpanded;
-      try { localStorage.setItem(KPI_EXPANDED_LS_KEY, _kpisExpanded ? '1' : '0'); } catch (_) {}
-      applyKpisExpandedUi();
-    }
-
-    (function initKpisExpandedToggle() {
-      const btnExpand = document.getElementById('kexo-kpis-expand-btn');
-      if (btnExpand) {
-        btnExpand.addEventListener('click', function() {
-          setKpisExpanded(!isKpisExpanded());
-        });
-      }
+    (function initCondensedKpisUi() {
       try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
-      applyKpisExpandedUi();
       scheduleCondensedKpiOverflowUpdate();
     })();
 
@@ -5781,8 +5462,8 @@ const API = '';
     }
 
     function refreshKpiExtrasSoft() {
-      // Condensed strip shows these KPIs, so keep them warm even when expanded view is closed.
-      const hasExtrasEls = !!(document.getElementById('live-kpi-items-sold') || document.getElementById('cond-kpi-items-sold'));
+      // Condensed strip includes these KPIs; keep them warm in the background.
+      const hasExtrasEls = !!document.getElementById('cond-kpi-items-sold');
       if (!hasExtrasEls) return;
       fetchExpandedKpiExtras({ force: false })
         .then(function(extras) { try { renderExpandedKpiExtras(extras); } catch (_) {} })
@@ -8462,8 +8143,8 @@ const API = '';
         }
 
         function runTabWork(tab) {
-          // Expanded KPI strip visibility is controlled by the header toggle.
-          try { if (typeof applyKpisExpandedUi === 'function') applyKpisExpandedUi(); } catch (_) {}
+          // Keep condensed KPI strip fitted to available width.
+          try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
           // Keep the global date selector visible on ALL pages (including Tools) for consistent header UX.
           var showDateSel = true;
           var globalDateSel = document.getElementById('global-date-select');
@@ -8857,7 +8538,6 @@ const API = '';
     window.addEventListener('beforeunload', function() {
       _intervals.forEach(function(id) { clearInterval(id); });
       _intervals.length = 0;
-      try { teardownKpiPager(); } catch (_) {}
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       Object.keys(_fetchAbortControllers).forEach(function(k) {
         try { _fetchAbortControllers[k].abort(); } catch (_) {}

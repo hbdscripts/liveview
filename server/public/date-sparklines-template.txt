@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta22/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+  <title>Kexo · Sales</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+</head>
+<body class="layout-fluid" data-page="sales">
+    <header class="navbar navbar-expand-md d-print-none sticky-top" data-bs-theme="dark">
+      <div class="container-fluid">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <a href="/dashboard" class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+          <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" class="navbar-brand-image">
+        </a>
+
+        <div class="navbar-nav flex-row order-md-last">
+          <div class="nav-item d-none d-md-flex me-3">
+            <select id="global-date-select" class="form-select form-select-sm" aria-label="Date range">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="7days">Last 7 days</option>
+              <option value="14days">Last 14 days</option>
+              <option value="30days">Last 30 days</option>
+              <option value="custom" id="date-opt-custom">Custom</option>
+            </select>
+          </div>
+          <div class="d-none d-md-flex me-2">
+            <button type="button" class="btn btn-icon" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+            <button type="button" class="btn btn-icon" id="config-open-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
+          </div>
+          <div class="nav-item dropdown">
+            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
+              <span class="avatar avatar-sm" id="user-avatar">K</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-header" id="user-email"></span>
+              <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapse navbar-collapse" id="navbar-menu">
+          <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
+            <ul class="navbar-nav">
+              <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-dashboard"></i></span><span class="nav-link-title">Dashboard</span></a></li>
+              <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#navbar-tables" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-table"></i></span><span class="nav-link-title">Tables</span></a><div class="dropdown-menu"><a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="ti ti-live-photo me-2"></i>Live</a><a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="ti ti-shopping-cart me-2"></i>Sales</a><a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="ti ti-calendar me-2"></i>Date</a></div></li>
+              <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#navbar-overview" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-chart-pie"></i></span><span class="nav-link-title">Overview</span></a><div class="dropdown-menu"><a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="ti ti-world me-2"></i>Countries</a><a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="ti ti-package me-2"></i>Products</a></div></li>
+              <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#navbar-traffic" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-arrows-split-2"></i></span><span class="nav-link-title">Traffic</span></a><div class="dropdown-menu"><a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="ti ti-chart-line me-2"></i>Channels</a><a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="ti ti-device-analytics me-2"></i>Type</a></div></li>
+              <li class="nav-item"><a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-ad-2"></i></span><span class="nav-link-title">Ads</span></a></li>
+              <li class="nav-item"><a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools"><span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-tool"></i></span><span class="nav-link-title">Tools</span></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="page">
+      <div class="page-header d-print-none">
+        <div class="container-fluid">
+          <div class="shared-kpi-wrap mb-3" aria-label="KPIs for selected date range">
+  <div class="kpi-mobile-pager">
+    <div class="row g-3" id="live-kpi-grid">
+      <div class="col-sm-4 col-lg-2" id="live-kpi-sales-cell">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-sales" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader" id="live-kpi-sales-label">Sales</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-sales">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-sales-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-lg-2" id="live-kpi-conv-cell">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-conv" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader">Conv rate</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-conv">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-conv-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-lg-2">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-sessions" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader">Sessions</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-sessions">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-sessions-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-lg-2">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-returning" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader">Returning</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-returning">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-returning-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-lg-2">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-aov" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader">AOV</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-aov">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-aov-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-lg-2">
+        <div class="card">
+          <div class="card-body p-3 position-relative" style="overflow:hidden">
+            <canvas class="kpi-sparkline" id="kpi-sparkline-bounce" width="200" height="60"></canvas>
+            <div class="position-relative" style="z-index:1">
+              <div class="subheader">Bounce</div>
+              <div class="d-flex align-items-baseline">
+                <div class="h1 mb-0 me-2" id="live-kpi-bounce">&mdash;</div>
+              </div>
+              <div class="live-kpi-sub is-hidden" id="live-kpi-bounce-sub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-icon btn-outline-secondary kpi-mobile-next is-hidden" id="kpi-mobile-next" aria-label="Next KPIs">
+      <i class="ti ti-chevron-right" aria-hidden="true"></i>
+    </button>
+  </div>
+</div>
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <div class="page-pretitle">Tables</div>
+              <h2 class="page-title" id="page-title">Sales</h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+              <div class="d-flex align-items-center gap-2">
+                <select id="global-date-select" class="form-select form-select-sm" style="width:auto" aria-label="Date range">
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="custom" id="date-opt-custom">Custom</option>
+                </select>
+                <button type="button" class="btn btn-icon btn-sm" id="refresh-btn" aria-label="Refresh"><i class="ti ti-refresh"></i></button>
+                <button type="button" class="btn btn-icon btn-sm" id="config-open-btn" aria-label="Settings"><i class="ti ti-settings"></i></button>
+                <div class="nav-item dropdown">
+                  <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="User menu">
+                    <span class="avatar avatar-sm" id="user-avatar">K</span>
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-end">
+                    <span class="dropdown-header" id="user-email"></span>
+                    <a class="dropdown-item" href="/app/logout"><i class="ti ti-logout me-2"></i>Sign out</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="container-fluid">
+<div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="tab-spy">
+  <div class="live-view-header">
+    <h2 class="table-title" id="table-title">
+      <span id="table-title-text" class="table-title-label">Sales</span>
+    </h2>
+    <span class="next-update-block live-view-next-update-center" id="next-update-block">
+      <span class="next-update-label is-hidden" id="next-update-label">Next update</span>
+      <span class="next-update-timer is-hidden" id="next-update-timer-wrap" aria-hidden="true"></span>
+    </span>
+    <div class="live-view-online">
+      <i class="ti ti-user online-user-icon" aria-hidden="true"></i>
+      Online:
+      <span class="online-count-wrap">
+        <span id="online-count-spinner" class="mini-spinner" aria-hidden="true"></span>
+        <strong id="online-count" class="is-hidden">0</strong>
+      </span>
+    </div>
+  </div>
+  <div class="sessions-table-wrap">
+    <div class="table-loading-overlay sessions-loading-overlay is-hidden" id="sessions-loading-overlay"><div class="spinner"></div></div>
+  <div class="table-scroll-wrap">
+  <div id="sessions-table" class="grid-table sessions-table" role="table" aria-label="Sessions">
+    <div class="grid-header" role="rowgroup">
+      <div class="grid-row grid-row--header" role="row">
+        <div class="grid-cell sortable" role="columnheader" data-sort="landing" aria-sort="none" tabindex="0" aria-label="Landing Page"><span class="th-label-long">Landing Page</span><span class="th-label-short">Land</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="from" aria-sort="none" tabindex="0" aria-label="GEO"><span class="th-label-long">GEO</span><span class="th-label-short">GEO</span></div>
+        <div class="grid-cell source-cell sortable" role="columnheader" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="device" aria-sort="none" tabindex="0" aria-label="Device"><span class="th-label-long">Device</span><span class="th-label-short">Dev</span></div>
+        <div class="grid-cell cart-value-cell sortable" role="columnheader" data-sort="cart" aria-sort="none" tabindex="0" aria-label="Cart"><span class="th-label-long">Cart</span><span class="th-label-short">Cart</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="arrived" aria-sort="none" tabindex="0" aria-label="Arrived"><span class="th-label-long">Arrived</span><span class="th-label-short">Arr</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="last_seen" aria-sort="none" tabindex="0" aria-label="Seen"><span class="th-label-long">Seen</span><span class="th-label-short">Seen</span></div>
+        <div class="grid-cell sortable" role="columnheader" data-sort="history" aria-sort="none" tabindex="0" aria-label="History"><span class="th-label-long">History</span><span class="th-label-short">Hist</span></div>
+        <div class="grid-cell consent-col is-hidden" role="columnheader" aria-label="Consent (debug)"><span class="th-label-long">Consent (debug)</span><span class="th-label-short">Cons</span></div>
+      </div>
+    </div>
+    <div id="table-body" class="grid-body" role="rowgroup"></div>
+  </div>
+  </div>
+  <div class="table-pagination" id="table-pagination">
+    <div class="pagination-segments" role="group" aria-label="Pagination">
+      <button type="button" id="pagination-prev" aria-label="Previous page">Prev</button>
+      <span id="pagination-label">1 of 1</span>
+      <button type="button" id="pagination-next" aria-label="Next page">Next</button>
+      <span id="rows-per-page-wrap"><span class="muted">Rows</span>
+      <select id="rows-per-page-select" class="form-select form-select-sm" style="width:auto" aria-label="Rows per page">
+      <option value="15">15</option>
+      <option value="25" selected>25</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+      <option value="75">75</option>
+      <option value="100">100</option>
+      </select></span>
+    </div>
+  </div>
+  </div>
+  </div>
+        </div>
+      </div>
+      <footer class="footer footer-transparent d-print-none">
+        <div class="container-fluid">
+          <div class="text-secondary text-center">
+            Kexo Analytics
+          </div>
+        </div>
+      </footer>
+      <div id="side-panel" class="side-panel is-hidden">
+    <header class="side-panel-header">
+      <h3 class="side-panel-title">Session</h3>
+      <button type="button" class="side-panel-close" id="side-close" aria-label="Close">
+        <i class="ti ti-x" style="font-size:20px"></i>
+      </button>
+    </header>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-list side-panel-icon"></i>Activity</h4>
+      <ul class="side-panel-events" id="side-events"></ul>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-user side-panel-icon"></i>Details</h4>
+      <div class="side-panel-meta" id="side-meta"></div>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-link side-panel-icon"></i>Source</h4>
+      <div class="side-panel-source" id="side-source"></div>
+    </section>
+    <section class="side-panel-section">
+      <h4 class="side-panel-section-title"><i class="ti ti-cloud side-panel-icon"></i>Network</h4>
+      <div id="side-cf" class="side-panel-cf"></div>
+    </section>
+  </div>
+    </div>
+  </div>
+  <div class="config-modal" id="config-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="config-modal-header">
+        <div class="config-modal-header-inner">
+          <h3 class="config-modal-title">Settings</h3>
+        </div>
+        <div class="config-modal-actions">
+          <button type="button" id="config-refresh-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Refresh diagnostics" aria-label="Refresh diagnostics">
+            <i class="ti ti-refresh"></i>
+          </button>
+          <button type="button" id="config-reconcile-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Sync Shopify orders (7d)" aria-label="Sync Shopify orders (7d)">
+            <i class="ti ti-download"></i>
+          </button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="config-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+      <div id="config-status"><div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div></div>
+    </div>
+  </div>
+
+  <div class="config-modal" id="kpi-compare-modal" aria-hidden="true">
+    <div class="config-modal-card kpi-compare-modal-card" role="dialog" aria-modal="true" aria-label="KPI comparison">
+      <div class="kpi-compare-modal-header">
+        <div class="kpi-compare-modal-header-left">
+          <div class="kpi-compare-kicker" id="kpi-compare-kicker">KPI</div>
+          <h3 class="kpi-compare-title">Shopify vs Kexo</h3>
+          <div class="kpi-compare-meta" id="kpi-compare-updated">Updated —</div>
+        </div>
+        <div class="kpi-compare-modal-actions">
+          <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary btn-sm" title="Refresh comparison" aria-label="Refresh comparison">
+            <i class="ti ti-refresh"></i><span>Refresh</span>
+          </button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="kpi-compare-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+      <div class="kpi-compare-modal-body" id="kpi-compare-status">
+        <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="config-modal" id="date-custom-modal" aria-hidden="true">
+    <div class="config-modal-card" role="dialog" aria-modal="true" aria-label="Choose dates">
+      <div class="config-modal-header">
+        <h3 class="config-modal-title">Choose dates</h3>
+        <button type="button" class="btn btn-icon btn-ghost-secondary btn-sm" id="date-custom-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="muted u-mb-sm">Click a start date, then an end date (last 30 days). Grey dates have no data.</div>
+      <div id="date-custom-calendar" class="date-cal"></div>
+      <div class="date-cal-footer">
+        <div class="date-cal-summary" id="date-custom-summary">Select a start date.</div>
+        <div class="date-cal-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="date-custom-clear" disabled>Clear</button>
+          <button type="button" class="btn btn-primary btn-sm" id="date-custom-apply" disabled>Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sale-toast-overlay" id="sale-toast-overlay" aria-hidden="true">
+    <div class="sale-toast" id="sale-toast" aria-hidden="true">
+      <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
+      <div class="sale-toast-mid">
+        <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">—</span></div>
+        <div class="sale-toast-product" id="sale-toast-product">—</div>
+      </div>
+      <div class="sale-toast-amount-wrap">
+        <div class="sale-toast-amount" id="sale-toast-amount">£—</div>
+        <div class="sale-toast-time">
+          <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+            <title>time</title>
+            <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
+          </svg>
+          <span id="sale-toast-time">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta22/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+</body>
+</html>
