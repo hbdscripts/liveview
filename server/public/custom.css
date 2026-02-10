@@ -503,6 +503,14 @@ a {
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
+.page-body {
+  margin-top: 0;
+  margin-bottom: var(--tblr-page-padding-y);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 /* ── Layout alignment + top navbar ───────────────────────────────── */
 .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar {
   margin: 0;
