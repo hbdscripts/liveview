@@ -720,7 +720,7 @@ a {
   width: 100%;
   min-width: 0;
   flex-wrap: nowrap;
-  padding: 12px 5px;
+  padding: 0;
 }
 .kexo-kpis-condensed-strip {
   display: flex;
