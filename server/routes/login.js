@@ -45,7 +45,11 @@ function getLoginHtml(queryError) {
   <link rel="stylesheet" href="/tabler-theme.css">
   <title>Kexo &middot; Sign in</title>
   <style>
+    body { background: linear-gradient(135deg, #EAF3FF 0%, #E7FAF7 45%, #FFF2E2 100%); min-height: 100vh; }
     .navbar-brand img { height: 36px; }
+    .container-tight { margin-left: 30px; margin-right: 30px; }
+    @media (min-width: 576px) { .container-tight { margin-left: auto; margin-right: auto; } }
+    .card-md { background: rgba(255,255,255,0.8); }
     .btn-login { height: 50px; font-size: .9375rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
     .btn-shopify { background: #96bf48; border-color: #96bf48; color: #fff; }
     .btn-shopify:hover { background: #7ea83e; border-color: #7ea83e; color: #fff; }
