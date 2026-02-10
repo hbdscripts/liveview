@@ -348,7 +348,9 @@ a {
   position: relative;
   margin: .15rem 0 .45rem;
   width: 100%;
-  padding-left: 0;
+  padding: 0;
+  background: #eef3f9;
+  border: 0;
 }
 
 /* Loading states */
