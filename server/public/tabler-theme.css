@@ -325,6 +325,6 @@ html[data-bs-theme="dark"] .sessions-loading-overlay {
 @media (max-width: 991.98px) {
   .kexo-online-badge {
     padding: 0.4rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: 12px;
   }
 }

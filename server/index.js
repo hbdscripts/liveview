@@ -150,13 +150,16 @@ app.get('/api/store-base-url', (req, res) => {
   const mainBaseUrl = config.storeMainDomain || baseUrl;
   const assetsBaseUrl = config.assetsBaseUrl || '';
   const shopDisplayDomain = (() => {
+    if (config.shopDisplayDomain) return config.shopDisplayDomain;
     if (config.storeMainDomain) {
       try {
         const h = new URL(config.storeMainDomain).hostname;
         return (h || '').replace(/^www\./, '') || '';
       } catch (_) { return ''; }
     }
-    return (config.shopDomain || '').trim() || '';
+    const sd = (config.shopDomain || '').trim();
+    if (sd && !sd.endsWith('.myshopify.com')) return sd;
+    return '';
   })();
   const shopFromTruth = (() => {
     try {

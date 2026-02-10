@@ -98,6 +98,8 @@ const config = {
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
   /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */
   shopDomain: getEnv('SHOP_DOMAIN', '').trim().toLowerCase() || (getEnv('ALLOWED_SHOP_DOMAIN', '') || '').trim().toLowerCase(),
+  /** Display domain for sidebar badge (e.g. hbdjewellery.com). When set, overrides storeMainDomain/shopDomain for badge display. */
+  shopDisplayDomain: (getEnv('SHOP_DISPLAY_DOMAIN', '') || '').trim().toLowerCase().replace(/^www\./, ''),
   /** Main/public store URL for product images and links (e.g. https://www.hbdjewellery.com or STORE_MAIN_DOMAIN env). When set, dashboard uses this for og-thumb and last-action links. */
   storeMainDomain: (function() {
     const v = (getEnv('STORE_MAIN_DOMAIN', '') || '').trim();
