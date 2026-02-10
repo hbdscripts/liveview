@@ -1112,9 +1112,10 @@ a {
 }
 .kexo-desktop-nav-list .nav-item.active {
   border-bottom: none !important;
+  color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
 }
 .kexo-desktop-nav-list .nav-item.active::after {
-  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
+  background: currentColor;
 }
 .kexo-desktop-nav-list .nav-item.active .nav-link,
 .kexo-desktop-nav-list .nav-link.active {
