@@ -351,7 +351,7 @@ a {
   --kexo-top-row-height: 4.5rem;
 }
 
-/* KPI bar: navbar-owned condensed strip */
+/* KPI bar: below dark nav, light strip */
 .kexo-kpis-navbar {
   position: relative;
   margin: 0;
@@ -359,8 +359,8 @@ a {
   flex: 1 1 auto;
   min-width: 0;
   padding: 0;
-  background: transparent;
-  border: 0;
+  background: var(--tblr-bg-surface-secondary, #f4f6fb);
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
   min-height: var(--kexo-top-row-height);
   display: flex;
   align-items: center;
@@ -908,6 +908,9 @@ a {
 }
 
 @media (min-width: 992px) {
+  .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar {
+    display: none; /* Empty on desktop; KPIs moved below dark nav */
+  }
   .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar > .container-fluid {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -925,7 +928,7 @@ a {
   width: 100%;
   padding: 0;
   box-shadow: none;
-  --tblr-navbar-color: rgba(255, 255, 255, 0.92);
+  --tblr-navbar-color: #fff;
   --tblr-navbar-hover-color: #fff;
   --tblr-navbar-active-color: #fff;
   --tblr-navbar-brand-color: #fff;
@@ -937,9 +940,27 @@ a {
 .kexo-desktop-nav .row {
   width: 100%;
 }
+.kexo-desktop-nav-row {
+  justify-content: space-between;
+}
+.kexo-desktop-nav-left {
+  flex: 0 1 auto;
+  padding-left: 0;
+}
+.kexo-desktop-nav-logo {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0;
+}
+.kexo-desktop-nav-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
 .kexo-desktop-nav-container {
   width: 100%;
   max-width: 1320px !important;
+  position: relative;
 }
 .kexo-desktop-nav-list {
   display: flex;
@@ -952,49 +973,62 @@ a {
   width: auto;
   padding: 0;
 }
-.kexo-desktop-logo-item {
-  margin-right: 0;
-}
 .kexo-desktop-logo-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: .65rem .75rem !important;
   background: transparent !important;
+  color: #fff !important;
+}
+.kexo-desktop-logo-link:hover {
+  color: #fff !important;
 }
 .kexo-desktop-logo-link img {
   display: block;
   height: 29px;
 }
-.kexo-desktop-nav-list .nav-link {
+.kexo-desktop-nav-list .nav-link,
+.kexo-desktop-nav-settings .nav-link {
   font-size: .8125rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.92);
+  color: #fff !important;
   border-radius: 0;
   padding: .75rem .9rem;
   background: transparent !important;
   box-shadow: none !important;
   border: 0 !important;
 }
-.kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
+.kexo-desktop-nav-list .nav-link.dropdown-toggle::after,
+.kexo-desktop-nav-settings .nav-link.dropdown-toggle::after {
   margin-left: .4rem;
 }
-.kexo-desktop-nav-list .nav-link:hover {
-  color: #fff;
+.kexo-desktop-nav-list .nav-link:hover,
+.kexo-desktop-nav-settings .nav-link:hover {
+  color: #fff !important;
   background: transparent !important;
 }
 .kexo-desktop-nav-list .nav-item.active > .nav-link,
 .kexo-desktop-nav-list .nav-link[aria-current="page"] {
-  color: #fff;
+  color: #fff !important;
   background: transparent !important;
 }
+/* Active indicator: only green line at bottom edge, outside blue bar (no white/Tabler defaults) */
 .kexo-desktop-nav-list .nav-item {
-  border-bottom: 2px solid transparent;
+  border-bottom: none !important;
+  box-shadow: 0 2px 0 0 transparent;
 }
 .kexo-desktop-nav-list .nav-item.active {
-  border-bottom-color: #fff;
+  border-bottom: none !important;
+  box-shadow: 0 2px 0 0 var(--tblr-primary, #3eb3ab);
 }
-.kexo-desktop-nav-list .dropdown-menu {
+.kexo-desktop-nav-list .nav-item.active .nav-link,
+.kexo-desktop-nav-list .nav-link.active {
+  border: none !important;
+  box-shadow: none !important;
+}
+.kexo-desktop-nav-list .dropdown-menu,
+.kexo-desktop-nav-settings .dropdown-menu {
   margin-top: 0;
   border-radius: .375rem;
   border: 0 !important;
@@ -1002,7 +1036,8 @@ a {
   min-width: 13rem;
   background: #1c2f42;
 }
-.kexo-desktop-nav-list .dropdown-item {
+.kexo-desktop-nav-list .dropdown-item,
+.kexo-desktop-nav-settings .dropdown-item {
   font-size: .8125rem;
   font-weight: 500;
   color: #fff;
@@ -1010,16 +1045,19 @@ a {
   padding-bottom: .5rem;
   background: transparent !important;
 }
-.kexo-desktop-nav-list .dropdown-item:hover {
+.kexo-desktop-nav-list .dropdown-item:hover,
+.kexo-desktop-nav-settings .dropdown-item:hover {
   color: #fff;
   background: transparent !important;
 }
-.kexo-desktop-nav-list .dropdown-item[aria-current="page"] {
+.kexo-desktop-nav-list .dropdown-item[aria-current="page"],
+.kexo-desktop-nav-settings .dropdown-item[aria-current="page"] {
   color: #fff;
   background: transparent !important;
   font-weight: 600;
 }
-.kexo-desktop-nav-list .dropdown-divider {
+.kexo-desktop-nav-list .dropdown-divider,
+.kexo-desktop-nav-settings .dropdown-divider {
   display: none;
 }
 
@@ -1027,6 +1065,17 @@ a {
   :root {
     --kexo-kpi-min-width: 132px;
   }
+}
+
+/* ── Dashboard page: hide top KPI bar (show only in-page cards) ── */
+body[data-page="dashboard"] #kexo-kpis {
+  display: none !important;
+}
+
+/* ── Dashboard page: tighten left spacing (page-body container padding) ── */
+body[data-page="dashboard"] .page-body > .container-fluid {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */

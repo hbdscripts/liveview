@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Tabler-dark navbar alignment + smarter full-width KPI strip fit)
+Last updated: 2026-02-10 (KPIs below dark nav)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -24,10 +24,11 @@ Pages (new, Tabler layout):
 - `server/public/type.html`
 - `server/public/ads.html`
 - `server/public/tools.html`
+- `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
 
 Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
-- `server/public/partials/header.html`: shared top header, KPI strip, and Tabler dark desktop navbar wrapper.
+- `server/public/partials/header.html`: shared top header (mobile only on desktop), Tabler dark desktop navbar, then KPI strip below.
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
 - `server/public/tabler-theme.css`: Tabler theme overrides + default primary teal (`#3eb3ab`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
@@ -43,6 +44,7 @@ Legacy/backup:
 Server routing (Express):
 - Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
 - Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/sales`, `/date`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/tools`.
+- Mobile traffic: User-Agent detection redirects all mobile GET requests to `/mobile-unsupported` (logo + "Desktop only for now" copy).
 - See: `server/index.js`.
 
 Auth protection:
@@ -58,7 +60,7 @@ Auth protection:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
 - Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
-- KPI component lives in the top navbar and is a single condensed-strip DOM container across pages (expanded overlay removed).
+- KPI component lives below the dark nav and is a single condensed-strip DOM container across pages (expanded overlay removed).
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -93,7 +95,7 @@ Date control (topbar, far-right):
 - It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
 - Mobile: topbar date icon dropdown updates the same `select#global-date-select`.
 
-KPI component (top navbar, every page):
+KPI component (below dark nav, every page):
 - Markup lives directly in `server/public/partials/header.html` (pages do not include KPIs directly).
 - Condensed KPI strip is always visible; expanded KPI overlay/toggle were removed.
 - Condensed chips include value + delta + a small progress bar.
@@ -111,7 +113,7 @@ KPI caching (perf + UX):
 
 ## Layout (header + dark navbar)
 
-- Shared wrapper uses a top KPI header and a Tabler dark horizontal navbar in `server/public/partials/header.html`.
+- Shared wrapper uses a Tabler dark horizontal navbar, then a KPI strip below it, in `server/public/partials/header.html`. Mobile: top header with hamburger; desktop: header hidden, KPIs below dark nav.
 - Pages use `container-fluid` for a fluid content area.
 - Mobile: hamburger opens `#kexo-mobile-nav` overlay (backdrop click / Escape closes).
 
@@ -252,7 +254,8 @@ Edge (optional):
 - Desktop layout update: removed the left sidebar on desktop and added a Tabler horizontal navigation bar directly under the KPI strip (mobile menu behavior unchanged).
 - Desktop nav follow-up: horizontal nav is now grouped dropdowns (Dashboard/Breakdown/Traffic/Integrations/Tools) in Tabler style.
 - Dashboard KPI cards: background sparkline overlays are now pinned to the bottom strip of each card (instead of filling from the top).
-- Header/layout follow-up: removed sidebar markup entirely, switched desktop to a full-width dark Tabler-style top menu, moved logo to the first menu item, and kept KPIs above the menu.
+- Header/layout follow-up: removed sidebar markup entirely, switched desktop to a full-width dark Tabler-style top menu, moved logo to the first menu item.
+- Layout: KPIs now load below the dark nav bar (not above). Desktop header is hidden; KPIs sit in a light strip under the nav.
 - KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
@@ -300,3 +303,4 @@ Edge (optional):
 - KPI fit follow-up: condensed chips now use 15px fixed inter-chip gap with dynamic width/min-width calculation; trailing chips hide from the end when viewport shrinks.
 - Nav active-state follow-up: JS no longer applies `.active` to dropdown toggle links; active state stays on outer `li.nav-item` to match Tabler behavior.
 - Legacy naming cleanup: renamed `initSidebarDateMenu` helpers to `initHeaderDateMenu` variants in `server/public/app.js`.
+- Mobile redirect: all mobile User-Agent traffic to dashboard/login paths now redirects to `/mobile-unsupported` with centered logo and "Desktop only for now" copy.
