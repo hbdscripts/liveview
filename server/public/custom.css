@@ -545,21 +545,42 @@ a {
   align-items: center;
 }
 .kexo-topbar-date {
-  width: min(19.5rem, 44vw);
+  position: relative;
 }
-.kexo-topbar-date #kexo-date-display {
-  text-align: left;
-  justify-content: flex-start;
-  min-width: 0;
+.kexo-date-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 120px;
+  width: 120px;
+  padding: .35rem .75rem;
+  font-size: .8125rem;
+  font-weight: 500;
+  color: #333;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
-.kexo-topbar-date #kexo-date-dropdown-btn {
-  flex: 0 0 auto;
+.kexo-date-btn:hover {
+  border-color: #9ca3af;
+}
+.kexo-date-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kexo-date-btn-chevron {
+  flex-shrink: 0;
+  margin-left: 10px;
+  font-size: .75rem;
+  color: #000;
 }
 .kexo-topbar-date .dropdown-menu {
-  min-width: 100%;
+  min-width: 140px;
 }
 .kexo-mobile-logo-wrap {
   position: absolute;

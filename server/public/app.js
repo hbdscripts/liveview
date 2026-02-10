@@ -4314,7 +4314,8 @@ const API = '';
         const fallback = { today: 'Today', yesterday: 'Yesterday', '7days': 'Last 7 days', '14days': 'Last 14 days', '30days': 'Last 30 days', custom: 'Custom' };
         label = fallback[String(dateRange || 'today')] || 'Today';
       }
-      displayBtn.textContent = label;
+      var lbl = displayBtn.querySelector('.kexo-date-btn-label');
+      if (lbl) lbl.textContent = label; else displayBtn.textContent = label;
     }
 
     function syncSidebarDateMenuAvailability() {

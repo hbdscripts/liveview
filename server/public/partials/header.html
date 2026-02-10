@@ -283,12 +283,12 @@
     <div class="kexo-date-bar">
       <div class="container-fluid">
         <div class="d-flex align-items-center justify-content-end">
-          <div class="input-group input-group-sm d-none d-lg-flex kexo-topbar-date">
-            <button type="button" class="btn btn-outline-secondary" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">Today</button>
-            <button type="button" class="btn btn-primary" id="kexo-date-dropdown-btn" data-bs-toggle="dropdown" aria-label="Choose date range">
-              <i class="ti ti-chevron-down" aria-hidden="true"></i>
+          <div class="dropdown d-none d-lg-flex kexo-topbar-date">
+            <button type="button" class="kexo-date-btn" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="kexo-date-btn-label">Today</span>
+              <i class="ti ti-chevron-down kexo-date-btn-chevron" aria-hidden="true"></i>
             </button>
-            <div class="dropdown-menu dropdown-menu-end w-100" id="kexo-date-menu" aria-label="Date ranges">
+            <div class="dropdown-menu dropdown-menu-end" id="kexo-date-menu" aria-label="Date ranges">
               <button class="dropdown-item" type="button" data-range="today">Today</button>
               <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
               <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
