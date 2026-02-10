@@ -98,17 +98,34 @@
   <div class="page-wrapper">
     <header class="navbar navbar-expand-md d-print-none kexo-top-navbar">
       <div class="container-fluid">
-        <div class="kexo-topbar-row">
+        <div class="kexo-topbar-row d-lg-none">
           <div class="kexo-topbar-slot kexo-topbar-slot-left">
-            <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
             </button>
           </div>
 
-          <div class="kexo-mobile-logo-wrap d-lg-none">
+          <div class="kexo-mobile-logo-wrap">
             <a href="/dashboard" class="kexo-mobile-logo-link" aria-label="Kexo dashboard">
-              <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" width="30" height="30">
+              <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="80" height="29">
             </a>
+          </div>
+
+          <div class="kexo-topbar-slot kexo-topbar-slot-right">
+            <div class="dropdown">
+              <button type="button" class="btn btn-icon btn-ghost-light" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
+                <i class="ti ti-calendar" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
+                <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
+                <button type="button" class="dropdown-item mobile-date-item" data-value="yesterday">Yesterday</button>
+                <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
+                <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
+                <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -279,20 +296,6 @@
             </div>
           </div>
 
-          <div class="dropdown d-lg-none">
-            <button type="button" class="btn btn-icon btn-ghost-secondary" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range">
-              <i class="ti ti-calendar" aria-hidden="true"></i>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
-              <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
-              <button type="button" class="dropdown-item mobile-date-item" data-value="yesterday">Yesterday</button>
-              <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
-              <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
-              <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
-              <div class="dropdown-divider"></div>
-              <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
-            </div>
-          </div>
         </div>
 
         <select id="global-date-select" class="visually-hidden" aria-label="Date range">
