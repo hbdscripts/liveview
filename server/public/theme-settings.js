@@ -363,7 +363,7 @@
       fetchDefaults();
     });
   } else {
-    bindFooterButton();
+    bindThemeButtons();
     fetchDefaults();
   }
 })();
