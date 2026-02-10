@@ -4275,7 +4275,7 @@ const API = '';
       if (wrap) wrap.classList.toggle('is-hidden', dateRange === 'live');
     }
 
-    function syncSidebarDateDisplay() {
+    function syncHeaderDateDisplay() {
       const sel = document.getElementById('global-date-select');
       const displayBtn = document.getElementById('kexo-date-display');
       if (!sel || !displayBtn) return;
@@ -4294,7 +4294,7 @@ const API = '';
       if (lbl) lbl.textContent = label; else displayBtn.textContent = label;
     }
 
-    function syncSidebarDateMenuAvailability() {
+    function syncHeaderDateMenuAvailability() {
       const sel = document.getElementById('global-date-select');
       const menu = document.getElementById('kexo-date-menu');
       if (!sel || !menu) return;
@@ -4324,7 +4324,7 @@ const API = '';
       });
     }
 
-    function initSidebarDateMenu() {
+    function initHeaderDateMenu() {
       const sel = document.getElementById('global-date-select');
       const menu = document.getElementById('kexo-date-menu');
       if (!sel || !menu) return;
@@ -4340,12 +4340,12 @@ const API = '';
         if (btn.disabled || btn.classList.contains('disabled') || btn.getAttribute('aria-disabled') === 'true') return;
         sel.value = v;
         try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-        syncSidebarDateDisplay();
-        syncSidebarDateMenuAvailability();
+        syncHeaderDateDisplay();
+        syncHeaderDateMenuAvailability();
       });
 
-      syncSidebarDateDisplay();
-      syncSidebarDateMenuAvailability();
+      syncHeaderDateDisplay();
+      syncHeaderDateMenuAvailability();
     }
 
     function syncDateSelectOptions() {
@@ -4393,8 +4393,8 @@ const API = '';
 
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
-      syncSidebarDateDisplay();
-      syncSidebarDateMenuAvailability();
+      syncHeaderDateDisplay();
+      syncHeaderDateMenuAvailability();
     }
 
     function applyRangeAvailable(available) {
@@ -4431,8 +4431,8 @@ const API = '';
       }
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
-      syncSidebarDateDisplay();
-      syncSidebarDateMenuAvailability();
+      syncHeaderDateDisplay();
+      syncHeaderDateMenuAvailability();
     }
 
     // Custom date calendar (last 30 days, disabled if no data)
@@ -5299,34 +5299,37 @@ const API = '';
 
     // Condensed KPI strip only (expanded overlay removed).
     let _condensedOverflowRaf = 0;
+    let _condensedStripResizeObserver = null;
     function updateCondensedKpiOverflow() {
       const strip = document.getElementById('kexo-condensed-kpis');
       if (!strip) return;
       const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       if (!chips.length) return;
-      chips.forEach(function(ch) { ch.classList.remove('is-hidden'); });
-
       const stripStyle = window.getComputedStyle(strip);
       const stripPadLeft = parseFloat(stripStyle.paddingLeft) || 0;
       const stripPadRight = parseFloat(stripStyle.paddingRight) || 0;
+      const gap = parseFloat(stripStyle.columnGap || stripStyle.gap) || 15;
       const available = Math.max(0, strip.clientWidth - stripPadLeft - stripPadRight);
-      let used = 0;
-      let visibleCount = 0;
+      const rootStyle = window.getComputedStyle(document.documentElement);
+      const configuredMin = parseFloat(rootStyle.getPropertyValue('--kexo-kpi-min-width')) || 148;
+      const hardFloor = 84;
+      let visibleCount = chips.length;
+      while (visibleCount > 1) {
+        const required = (visibleCount * configuredMin) + ((visibleCount - 1) * gap);
+        if (required <= available) break;
+        visibleCount--;
+      }
+      if (visibleCount < 1) visibleCount = 1;
+
+      const totalGap = Math.max(0, (visibleCount - 1) * gap);
+      const rawChipWidth = visibleCount > 0 ? Math.floor((available - totalGap) / visibleCount) : available;
+      const chipWidth = Math.max(hardFloor, rawChipWidth || 0);
+      const chipMinWidth = Math.max(hardFloor, Math.min(configuredMin, chipWidth));
+      strip.style.setProperty('--kexo-kpi-width', String(chipWidth) + 'px');
+      strip.style.setProperty('--kexo-kpi-min-width', String(chipMinWidth) + 'px');
 
       for (let i = 0; i < chips.length; i++) {
-        const chip = chips[i];
-        const st = window.getComputedStyle(chip);
-        const ml = parseFloat(st.marginLeft) || 0;
-        const mr = parseFloat(st.marginRight) || 0;
-        const chipWidth = chip.getBoundingClientRect().width + ml + mr;
-        if (visibleCount > 0 && (used + chipWidth) > available) break;
-        used += chipWidth;
-        visibleCount++;
-      }
-
-      if (visibleCount < 1) visibleCount = 1;
-      for (let i = visibleCount; i < chips.length; i++) {
-        chips[i].classList.add('is-hidden');
+        chips[i].classList.toggle('is-hidden', i >= visibleCount);
       }
     }
     function scheduleCondensedKpiOverflowUpdate() {
@@ -5416,6 +5419,14 @@ const API = '';
 
     (function initCondensedKpisUi() {
       try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
+      try { window.addEventListener('orientationchange', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
+      try {
+        const strip = document.getElementById('kexo-condensed-kpis');
+        if (strip && typeof ResizeObserver !== 'undefined') {
+          _condensedStripResizeObserver = new ResizeObserver(function() { scheduleCondensedKpiOverflowUpdate(); });
+          _condensedStripResizeObserver.observe(strip);
+        }
+      } catch (_) {}
       scheduleCondensedKpiOverflowUpdate();
     })();
 
@@ -8014,7 +8025,7 @@ const API = '';
           }
         });
         initCustomDateModal();
-        initSidebarDateMenu();
+        initHeaderDateMenu();
       }
       (function initMobileDateMenu() {
         const btn = document.getElementById('mobile-date-btn');
@@ -8246,7 +8257,6 @@ const API = '';
           var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard-menu"]');
           var dashboardDropdownItem = dashboardToggle ? dashboardToggle.closest('.nav-item') : null;
           if (dashboardToggle) {
-            dashboardToggle.classList.toggle('active', !!isDashboardChild);
             dashboardToggle.setAttribute('aria-current', isDashboardChild ? 'page' : 'false');
           }
           if (dashboardDropdownItem) {
@@ -8258,7 +8268,6 @@ const API = '';
           var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown-menu"]');
           var breakdownDropdownItem = breakdownToggle ? breakdownToggle.closest('.nav-item') : null;
           if (breakdownToggle) {
-            breakdownToggle.classList.toggle('active', !!isBreakdownChild);
             breakdownToggle.setAttribute('aria-current', isBreakdownChild ? 'page' : 'false');
           }
           if (breakdownDropdownItem) {
@@ -8270,7 +8279,6 @@ const API = '';
           var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic-menu"]');
           var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
           if (trafficToggle) {
-            trafficToggle.classList.toggle('active', !!isTrafficChild);
             trafficToggle.setAttribute('aria-current', isTrafficChild ? 'page' : 'false');
           }
           if (trafficDropdownItem) {
@@ -8283,7 +8291,6 @@ const API = '';
           var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations-menu"]');
           var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
           if (integrationsToggle) {
-            integrationsToggle.classList.toggle('active', !!isIntegrationsChild);
             integrationsToggle.setAttribute('aria-current', isIntegrationsChild ? 'page' : 'false');
           }
           if (integrationsDropdownItem) {
@@ -8296,7 +8303,6 @@ const API = '';
           var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
-            toolsToggle.classList.toggle('active', !!isToolsChild);
             toolsToggle.setAttribute('aria-current', isToolsChild ? 'page' : 'false');
           }
           if (toolsDropdownItem) {

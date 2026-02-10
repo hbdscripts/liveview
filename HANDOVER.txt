@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (desktop nav dropdowns no longer forced-open; removed leftover sidebar-era CSS/JS)
+Last updated: 2026-02-10 (Tabler-dark navbar alignment + smarter full-width KPI strip fit)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -27,9 +27,9 @@ Pages (new, Tabler layout):
 
 Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
-- `server/public/partials/header.html`: Tabler fluid-vertical wrapper (opens `.page` + sidebar + `.page-wrapper`).
+- `server/public/partials/header.html`: shared top header, KPI strip, and Tabler dark desktop navbar wrapper.
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
-- `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary teal (`#3eb3ab`).
+- `server/public/tabler-theme.css`: Tabler theme overrides + default primary teal (`#3eb3ab`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
 - `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
 
@@ -109,11 +109,11 @@ KPI caching (perf + UX):
 
 ---
 
-## Layout (fluid vertical)
+## Layout (header + dark navbar)
 
-- Shared wrapper is Tabler fluid vertical: dark sidebar + `.page-wrapper` (see `server/public/partials/header.html`).
-- Pages use `container-fluid` for a “fluid” feel (matching Tabler’s `layout-fluid-vertical`).
-- Mobile: sidebar is an offcanvas drawer toggled from the topbar hamburger (backdrop click / Escape closes).
+- Shared wrapper uses a top KPI header and a Tabler dark horizontal navbar in `server/public/partials/header.html`.
+- Pages use `container-fluid` for a fluid content area.
+- Mobile: hamburger opens `#kexo-mobile-nav` overlay (backdrop click / Escape closes).
 
 ---
 
@@ -296,3 +296,7 @@ Edge (optional):
 - KPI strip fit follow-up: condensed chips now use JS width calculation against available strip width; trailing chips are hidden from the end when space runs out.
 - Nav behavior cleanup: removed legacy JS that force-opened active dropdown menus (`.show` state) so grouped menus stay closed until clicked.
 - Dead layout cleanup: removed obsolete sidebar-era CSS/JS (`navbar-vertical`, `kexo-sidebar-*`, `kexo-online-badge`, `#sidebar-menu` handling) no longer used by current Tabler horizontal layout.
+- Theme parity follow-up: desktop nav markup now uses Tabler dark navbar semantics (`data-bs-theme="dark"`) and `aria-haspopup="true"` on dropdown toggles.
+- KPI fit follow-up: condensed chips now use 15px fixed inter-chip gap with dynamic width/min-width calculation; trailing chips hide from the end when viewport shrinks.
+- Nav active-state follow-up: JS no longer applies `.active` to dropdown toggle links; active state stays on outer `li.nav-item` to match Tabler behavior.
+- Legacy naming cleanup: renamed `initSidebarDateMenu` helpers to `initHeaderDateMenu` variants in `server/public/app.js`.

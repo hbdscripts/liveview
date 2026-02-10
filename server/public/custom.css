@@ -16,6 +16,9 @@ a {
   --badge-returning: #6366f1;
   --chip-abandoned: #dc2626;
   --online-dot-color: #22c55e;
+  --kexo-kpi-gap: 15px;
+  --kexo-kpi-min-width: 148px;
+  --kexo-kpi-width: 148px;
 }
 
 /* Grid table system — Tabler invoice style */
@@ -355,8 +358,8 @@ a {
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0 0 4px 0;
-  background: #fff;
+  padding: 0;
+  background: transparent;
   border: 0;
   min-height: var(--kexo-top-row-height);
   display: flex;
@@ -569,7 +572,7 @@ a {
 }
 
 /* ── Layout alignment + top navbar ───────────────────────────────── */
-/* KPIs meet sidebar edge: no left padding on header so bar aligns flush with menu */
+/* Keep header and content containers aligned with Tabler gutters. */
 .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar {
   margin: 0;
   padding: 0;
@@ -585,12 +588,8 @@ a {
   align-items: stretch;
   width: 100%;
   max-width: 100%;
-  padding-left: 0;
+  padding-left: 1rem;
   padding-right: 1rem;
-}
-/* KPI strip: no left padding so bar meets sidebar flush; chips have internal spacing */
-.page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar .kexo-kpis-condensed-strip {
-  padding-left: 0;
 }
 .page-body > .container-fluid,
 .footer .container-fluid {
@@ -693,25 +692,28 @@ a {
 .kexo-kpis-condensed-row {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 .kexo-kpis-condensed-strip {
   display: flex;
   align-items: stretch;
-  gap: .6rem;
-  justify-content: space-between;
+  gap: var(--kexo-kpi-gap);
+  justify-content: flex-start;
   flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   overflow: hidden;
 }
 .kexo-kpi-chip {
-  flex: 1 1 128px;
+  flex: 0 0 var(--kexo-kpi-width);
   display: flex;
   flex-direction: column;
   gap: 5px;
-  min-width: 116px;
-  max-width: 220px;
-  padding: 2px 8px 0 0;
-  margin: 4px 0;
+  min-width: var(--kexo-kpi-min-width);
+  max-width: var(--kexo-kpi-width);
+  padding: 2px 6px 0 0;
+  margin: 4px 0 2px;
   line-height: 1.12;
   font-variant-numeric: tabular-nums;
   position: relative;
@@ -921,45 +923,34 @@ a {
   border: 0 !important;
   min-height: 2.75rem;
   width: 100%;
-}
-.kexo-desktop-nav .container-fluid {
-  padding-left: 0;
-  padding-right: 0;
-  max-width: 100%;
-}
-.kexo-desktop-nav .navbar {
-  width: 100%;
   padding: 0;
+  box-shadow: none;
+  --tblr-navbar-color: rgba(255, 255, 255, 0.92);
+  --tblr-navbar-hover-color: #fff;
+  --tblr-navbar-active-color: #fff;
+  --tblr-navbar-brand-color: #fff;
+  --tblr-navbar-brand-hover-color: #fff;
+  --tblr-navbar-disabled-color: rgba(255, 255, 255, 0.6);
+  --tblr-navbar-toggler-border-color: rgba(255, 255, 255, 0.24);
+  --tblr-navbar-toggler-icon-bg: none;
+}
+.kexo-desktop-nav .row {
+  width: 100%;
 }
 .kexo-desktop-nav-container {
   width: 100%;
-  max-width: 100% !important;
-  padding-left: 0;
-  padding-right: 0;
-}
-.kexo-desktop-nav .row {
-  --bs-gutter-x: 0;
-  --bs-gutter-y: 0;
-  margin-left: 0;
-  margin-right: 0;
-}
-.kexo-desktop-nav .col,
-.kexo-desktop-nav .col-md-auto {
-  padding-left: 0;
-  padding-right: 0;
+  max-width: 1320px !important;
 }
 .kexo-desktop-nav-list {
   display: flex;
   align-items: center;
   gap: 0;
-  flex-wrap: wrap;
-  justify-content: center;
-  overflow-x: visible;
-  white-space: nowrap;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  white-space: normal;
   margin: 0;
-  width: 100%;
+  width: auto;
   padding: 0;
-  scrollbar-width: thin;
 }
 .kexo-desktop-logo-item {
   margin-right: 0;
@@ -978,10 +969,12 @@ a {
 .kexo-desktop-nav-list .nav-link {
   font-size: .8125rem;
   font-weight: 500;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.92);
   border-radius: 0;
-  padding: .65rem .9rem;
+  padding: .75rem .9rem;
   background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
 }
 .kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
   margin-left: .4rem;
@@ -1003,7 +996,7 @@ a {
 }
 .kexo-desktop-nav-list .dropdown-menu {
   margin-top: 0;
-  border-radius: 0;
+  border-radius: .375rem;
   border: 0 !important;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   min-width: 13rem;
@@ -1031,9 +1024,8 @@ a {
 }
 
 @media (max-width: 1199.98px) {
-  .kexo-kpi-chip {
-    min-width: 104px;
-    max-width: 180px;
+  :root {
+    --kexo-kpi-min-width: 132px;
   }
 }
 
