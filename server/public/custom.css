@@ -374,8 +374,8 @@ a {
 .kexo-kpis-navbar .container-fluid {
   width: 100%;
   max-width: 100%;
-  padding-left: .75rem;
-  padding-right: .75rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* Loading states */
@@ -605,8 +605,8 @@ a {
 }
 .page-body > .container-fluid,
 .footer .container-fluid {
-  padding-left: .75rem;
-  padding-right: .75rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .kexo-topbar-row {
@@ -1001,8 +1001,8 @@ a {
   width: 100%;
   max-width: 100%;
   position: relative;
-  padding-left: .75rem;
-  padding-right: .75rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 .kexo-desktop-nav-list {
   display: flex;
@@ -1120,8 +1120,8 @@ body[data-page="dashboard"] #kexo-kpis {
 
 /* ── Dashboard page: keep compact but padded content gutters ── */
 body[data-page="dashboard"] .page-body > .container-fluid {
-  padding-left: .75rem;
-  padding-right: .75rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */
