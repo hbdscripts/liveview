@@ -625,25 +625,8 @@ a {
 }
 .kexo-sidebar-scroll-arrow.is-visible { display: block; }
 
-/* ── Date bar (overlaps page-header row, right-aligned) ──────────── */
-.kexo-date-bar {
-  position: relative;
-  z-index: 5;
-  height: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-.kexo-date-bar > .container-fluid {
-  display: flex;
-  justify-content: flex-end;
-  pointer-events: auto;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-.kexo-date-bar .d-flex {
-  position: relative;
-  top: 1.75rem;
-}
+/* ── Date bar (holds hidden select; visible date picker moved into page-header by JS) ── */
+.kexo-date-bar { height: 0; overflow: hidden; margin: 0; padding: 0; }
 
 .navbar-vertical .dropdown-menu {
   min-width: 100%;
@@ -727,6 +710,7 @@ a {
 }
 
 @media (max-width: 991.98px) {
+  .navbar-vertical > .container-fluid > .navbar-brand { display: none; }
   .page-wrapper > header.navbar.navbar-expand-md.kexo-top-navbar {
     background: #1b2434;
     border-bottom: none;
