@@ -935,10 +935,6 @@ a {
     flex: 1;
     height: auto;
   }
-  .kexo-mobile-logo-link img {
-    width: 80px;
-    height: 29px;
-  }
   .kexo-mobile-menu-btn,
   .kexo-mobile-date-btn {
     color: #fff !important;
@@ -994,14 +990,20 @@ a {
   .kexo-mobile-nav-item {
     display: block;
     padding: .6rem 1rem;
-    color: rgba(255,255,255,.9);
+    color: #fff;
     text-decoration: none;
     font-size: .9375rem;
     font-weight: 500;
   }
+  .kexo-mobile-nav-item:hover,
+  .kexo-mobile-nav-item:active,
+  .kexo-mobile-nav-item:focus,
+  .kexo-mobile-nav-item:visited {
+    color: #fff;
+    text-decoration: none;
+  }
   .kexo-mobile-nav-item:hover {
     background: rgba(255,255,255,.08);
-    color: #fff;
   }
   .kexo-mobile-nav-settings {
     width: 100%;
@@ -1010,6 +1012,14 @@ a {
     border: none;
     cursor: pointer;
     font: inherit;
+    color: #fff;
+    text-decoration: none;
+  }
+  .kexo-mobile-nav-settings:hover,
+  .kexo-mobile-nav-settings:active,
+  .kexo-mobile-nav-settings:focus {
+    color: #fff;
+    text-decoration: none;
   }
   .kexo-mobile-nav-divider {
     height: 1px;
