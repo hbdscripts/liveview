@@ -5301,7 +5301,9 @@ const API = '';
 
       const stripStyle = window.getComputedStyle(strip);
       const gapPx = parseFloat(stripStyle.columnGap || stripStyle.gap) || 0;
-      const hardFloor = 84; // readability floor; below this we start hiding chips
+      const rootStyle = window.getComputedStyle(document.documentElement);
+      const configuredMin = parseFloat(rootStyle.getPropertyValue('--kexo-kpi-min-width')) || 120;
+      const minWidth = Math.max(100, configuredMin); // never below 100; hide chips when below min
 
       function widthFor(count) {
         const n = Math.max(1, Number(count) || 1);
@@ -5311,7 +5313,7 @@ const API = '';
 
       let visibleCount = chips.length;
       let chipWidth = widthFor(visibleCount);
-      while (visibleCount > 1 && chipWidth < hardFloor) {
+      while (visibleCount > 1 && chipWidth < minWidth) {
         visibleCount -= 1;
         chipWidth = widthFor(visibleCount);
       }
