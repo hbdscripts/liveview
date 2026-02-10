@@ -544,6 +544,28 @@ a {
 }
 .footer-settings-btn { cursor: pointer; }
 
+/* Desktop: only the last-sale eye, centered; no icons, logo, or white bar */
+@media (min-width: 992px) {
+  .footer .footer-left,
+  .footer .footer-logo,
+  .footer .footer-diagnostics-btn { display: none !important; }
+  .footer .footer-last-sale-text { display: none !important; }
+  .footer .footer-inner {
+    justify-content: center;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .footer .container-fluid {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .footer,
+  .footer .container-fluid {
+    background: transparent !important;
+    border: none !important;
+  }
+}
+
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
