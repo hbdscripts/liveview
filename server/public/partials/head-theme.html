@@ -1,5 +1,10 @@
   <script>
     (function () {
+      /* Viewport-based mobile redirect (fallback when User-Agent emulation doesn't change UA) */
+      if (window.innerWidth < 768 && window.location.pathname !== '/mobile-unsupported') {
+        window.location.replace('/mobile-unsupported');
+        return;
+      }
       try {
         var root = document.documentElement;
 
