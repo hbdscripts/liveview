@@ -44,13 +44,21 @@ function getLoginHtml(queryError) {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css">
   <link rel="stylesheet" href="/tabler-theme.css">
   <title>Kexo &middot; Sign in</title>
+  <style>
+    .navbar-brand img { height: 36px; }
+    .btn-login { height: 50px; font-size: .9375rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .btn-shopify { background: #96bf48; border-color: #96bf48; color: #fff; }
+    .btn-shopify:hover { background: #7ea83e; border-color: #7ea83e; color: #fff; }
+    .btn-google { background: #4285f4; border-color: #4285f4; color: #fff; }
+    .btn-google:hover { background: #3367d6; border-color: #3367d6; color: #fff; }
+  </style>
 </head>
 <body class="d-flex flex-column" data-bs-theme="light">
   <div class="page page-center">
     <div class="container container-tight py-4">
       <div class="text-center mb-4">
         <a href="/" class="navbar-brand navbar-brand-autodark">
-          <img src="/assets/logo2.png" alt="Kexo" width="120" height="44">
+          <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="100" height="36">
         </a>
       </div>
       <div class="card card-md">
@@ -58,12 +66,12 @@ function getLoginHtml(queryError) {
           <h2 class="h2 text-center mb-4">Sign in to your account</h2>
           ${errMsg}
           <div class="d-grid gap-2">
-            <a href="/auth/shopify-login" class="btn btn-dark">
-              <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.34 3.8c-.07-.05-.14-.05-.21-.02s-.1.1-.12.17l-.44 1.36c-.26-.12-.56-.23-.9-.3-.08-.78-.44-1.57-1.2-1.57h-.06c-.18-.22-.4-.37-.63-.37-1.56 0-2.3 1.95-2.54 2.94l-1.5.47c-.47.15-.48.16-.54.6l-1.14 8.8L11.28 17l5.17-1.12s-1.87-12.52-1.9-12.72c-.04-.2-.14-.31-.21-.36zM12.2 5.48l-.73.23c.14-.55.42-1.1.78-1.37-.15.32-.05.73 0 1.14zM11.29 4.4c.36.02.6.43.74.87l-.56.17c.1-.42.08-.8-.18-1.04zm-.4-.42c.05 0 .1.02.14.05-.47.22-.98.79-1.2 1.93l-1.12.35c.31-1.06.93-2.33 2.17-2.33z"/><path d="M15.13 3.95l-.02-.01-.01.01c-.02 0-.05.02-.07.05-.02.02-.03.05-.04.08l-.44 1.37s-.65-.14-.95-.17c-.12-1.16-.68-1.53-1.13-1.56h-.02l-.04-.04-.01-.01c-.14-.16-.32-.27-.5-.27-1.26 0-2.04 1.58-2.37 2.72l-1.68.52c-.35.11-.37.12-.41.46l-1.2 9.2 7.02 1.31 5.44-1.18-1.87-12.52c-.03-.12-.09-.17-.14-.2l-.02-.01-.03.02.5.22zm-3.43.91c.26.03.44.08.44.08l-.1.3c-.15-.5-.44-.87-.8-.95zm-.32-.42s.03 0 .07.02c-.38.17-.8.65-1.04 1.66l-1.27.39c.27-.92.83-2.07 2.24-2.07z"/></svg>
+            <a href="/auth/shopify-login" class="btn btn-shopify btn-login">
+              <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 109.5 124.5" fill="white"><path d="M95.9 23.9c-.1-.6-.6-1-1.1-1-.5 0-9.3-.2-9.3-.2s-7.4-7.2-8.1-7.9c-.7-.7-2.2-.5-2.7-.3-.1 0-1.5.5-3.9 1.2-2.3-6.7-6.4-12.8-13.6-12.8h-.6C54.6.6 52.4 0 50.5 0 29.4 0 19.2 26.4 16.2 39.8l-13.7 4.2c-4.3 1.3-4.4 1.5-5 5.5C-2.9 52.6 0 124.5 0 124.5l76.1 13.1 39.1-9.6S96 24.5 95.9 23.9zM67.2 18.3l-5.9 1.8c0-3.1-.3-7.5-1.5-11.2 3.7.7 6.2 4.7 7.4 9.4zM55.8 22.1l-12.7 3.9c1.2-4.7 3.6-9.4 6.4-12.5 1.1-1.1 2.6-2.4 4.3-3.1 1.7 3.5 2.1 8.5 2 11.7zM50.6 4.2c1.4 0 2.6.5 3.6 1.4-4.1 1.9-8.5 6.8-10.3 16.5l-10 3.1C36.3 15.7 42.3 4.2 50.6 4.2z"/></svg>
               Continue with Shopify
             </a>
-            ${hasGoogle ? `<a href="/auth/google?redirect=/dashboard" class="btn btn-outline-secondary">
-              <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1H12v2.9h5.35c-.5 2.95-3 4.25-5.35 4.25a6.1 6.1 0 0 1 0-12.2c1.65 0 2.75.7 3.4 1.3l2.3-2.2C16.25 3.55 14.35 2.7 12 2.7a9.3 9.3 0 1 0 0 18.6c5.35 0 8.9-3.75 8.9-9.05 0-.6-.05-1.05-.15-1.5z"/></svg>
+            ${hasGoogle ? `<a href="/auth/google?redirect=/dashboard" class="btn btn-google btn-login">
+              <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M21.35 11.1H12v2.9h5.35c-.5 2.95-3 4.25-5.35 4.25a6.1 6.1 0 0 1 0-12.2c1.65 0 2.75.7 3.4 1.3l2.3-2.2C16.25 3.55 14.35 2.7 12 2.7a9.3 9.3 0 1 0 0 18.6c5.35 0 8.9-3.75 8.9-9.05 0-.6-.05-1.05-.15-1.5z"/></svg>
               Continue with Google
             </a>` : ''}
           </div>

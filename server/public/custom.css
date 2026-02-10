@@ -345,6 +345,8 @@ a {
 .kexo-kpis-navbar {
   position: relative;
   margin: .15rem 0 .45rem;
+  width: 100%;
+  padding-left: 0;
 }
 
 /* Loading states */
@@ -621,10 +623,29 @@ a {
 }
 .kexo-sidebar-scroll-arrow.is-visible { display: block; }
 
-/* ── Date bar (below header) ─────────────────────────────────────── */
+/* ── Date bar (overlaps page-header row, right-aligned) ──────────── */
 .kexo-date-bar {
-  padding: .5rem 0;
-  border-bottom: 1px solid var(--tblr-border-color, rgba(98,105,118,.16));
+  position: relative;
+  z-index: 5;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.kexo-date-bar > .container-fluid {
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+  padding-top: 0;
+  padding-bottom: 0;
+  /* Overlap the page-header by pulling up */
+  margin-top: -2rem;
+  margin-bottom: -1rem;
+  height: 0;
+  overflow: visible;
+}
+.kexo-date-bar .d-flex {
+  position: relative;
+  top: .35rem;
 }
 
 .navbar-vertical .dropdown-menu {

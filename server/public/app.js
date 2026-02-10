@@ -8141,7 +8141,7 @@ const API = '';
             else integrationsDropdownItem.classList.remove('active');
           }
 
-          // Open the parent dropdown that contains the active child
+          // Open the parent dropdown that contains the active child (CSS only, no Bootstrap API)
           var toggles = [
             { active: isDashboardChild, el: dashboardToggle },
             { active: isBreakdownChild, el: breakdownToggle },
@@ -8149,9 +8149,12 @@ const API = '';
             { active: isIntegrationsChild, el: integrationsToggle }
           ];
           toggles.forEach(function(t) {
-            if (t.el && typeof bootstrap !== 'undefined') {
-              var dd = bootstrap.Dropdown.getOrCreateInstance(t.el);
-              if (t.active) dd.show(); else dd.hide();
+            if (!t.el) return;
+            var menu = t.el.nextElementSibling;
+            if (t.active) {
+              t.el.classList.add('show');
+              t.el.setAttribute('aria-expanded', 'true');
+              if (menu) menu.classList.add('show');
             }
           });
         }

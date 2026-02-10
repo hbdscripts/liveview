@@ -328,14 +328,15 @@
     }
   }
 
-  // Bind the sidebar + footer theme buttons
+  // Bind the sidebar + footer theme buttons via delegation (avoids Bootstrap dropdown eating clicks)
   function bindFooterButton() {
-    var sidebarBtn = document.getElementById('theme-settings-btn');
-    if (sidebarBtn) sidebarBtn.addEventListener('click', openThemePanel);
-
-    // Footer theme button(s)
-    document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
-      btn.addEventListener('click', openThemePanel);
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('#theme-settings-btn, .footer-theme-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openThemePanel();
+      }
     });
   }
 
