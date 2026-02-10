@@ -365,6 +365,7 @@ app.get('/channels', (req, res) => sendPage(res, 'channels.html'));
 app.get('/type', (req, res) => sendPage(res, 'type.html'));
 app.get('/ads', (req, res) => sendPage(res, 'ads.html'));
 app.get('/tools', (req, res) => sendPage(res, 'tools.html'));
+app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
 app.get('/', async (req, res, next) => {
