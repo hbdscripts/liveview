@@ -706,6 +706,7 @@ a {
   width: 100%;
   min-width: 0;
   flex-wrap: nowrap;
+  padding: 12px 5px;
 }
 .kexo-kpis-condensed-strip {
   display: flex;
@@ -918,7 +919,7 @@ a {
     background: rgba(0,0,0,.4);
     z-index: 1055;
   }
-  .kexo-kpis-navbar { display: none; }
+  /* Keep KPI strip visible on smaller widths; it already scrolls horizontally. */
   .kexo-date-bar { display: none; }
 }
 
