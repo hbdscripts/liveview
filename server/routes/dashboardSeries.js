@@ -176,14 +176,162 @@ async function getDashboardSeries(req, res) {
         force,
       },
       () => rangeKey
-        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint)
+        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey)
         : computeDashboardSeries(days, now, timeZone, trafficMode)
     );
-    res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [] });
+    res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [] });
   } catch (err) {
     console.error('[dashboard-series]', err);
     res.status(500).json({ error: 'Internal error' });
   }
+}
+
+function getPlatformStartMs(nowMs, timeZone) {
+  try {
+    const b = store.getRangeBounds('d:2025-02-01', nowMs, timeZone);
+    return b && Number.isFinite(Number(b.start)) ? Number(b.start) : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function getCompareWindow(rangeKey, bounds, nowMs, timeZone) {
+  const start = bounds && Number.isFinite(Number(bounds.start)) ? Number(bounds.start) : nowMs;
+  const end = bounds && Number.isFinite(Number(bounds.end)) ? Number(bounds.end) : nowMs;
+  const platformStartMs = getPlatformStartMs(nowMs, timeZone);
+  const periodLengthMs = end - start;
+
+  let compareStart = start;
+  let compareEnd = start;
+  if (rangeKey === 'today') {
+    // Today up to X -> yesterday up to X (time-of-day aligned in admin timezone)
+    const todayBounds = store.getRangeBounds('today', nowMs, timeZone);
+    const yesterdayBounds = store.getRangeBounds('yesterday', nowMs, timeZone);
+    const todayStart = todayBounds && Number.isFinite(Number(todayBounds.start)) ? Number(todayBounds.start) : start;
+    const yStart = yesterdayBounds && Number.isFinite(Number(yesterdayBounds.start)) ? Number(yesterdayBounds.start) : (start - 24 * 60 * 60 * 1000);
+    const yEnd = yesterdayBounds && Number.isFinite(Number(yesterdayBounds.end)) ? Number(yesterdayBounds.end) : start;
+    const elapsed = Math.max(0, end - todayStart);
+    compareStart = yStart;
+    compareEnd = Math.min(yEnd, yStart + elapsed);
+  } else {
+    compareStart = start - periodLengthMs;
+    compareEnd = start;
+  }
+
+  if (platformStartMs && compareStart < platformStartMs) compareStart = platformStartMs;
+  if (platformStartMs && compareEnd < platformStartMs) compareEnd = platformStartMs;
+  if (!(compareEnd > compareStart)) return null;
+  return { start: compareStart, end: compareEnd };
+}
+
+async function fetchProductAggByProductId(db, shop, startMs, endMs) {
+  if (!shop) return [];
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return [];
+  try {
+    return await db.all(
+      config.dbUrl
+        ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+           FROM orders_shopify_line_items li
+           WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+           GROUP BY TRIM(li.product_id)`
+        : `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+           FROM orders_shopify_line_items li
+           WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+           GROUP BY TRIM(li.product_id)`,
+      [shop, start, end]
+    );
+  } catch (_) {
+    return [];
+  }
+}
+
+async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
+  if (!shop || !nowBounds || !prevBounds) return { trendingUp: [], trendingDown: [] };
+  const nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end);
+  const prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end);
+
+  const nowMap = new Map();
+  const prevMap = new Map();
+  nowRows.forEach(function(r) {
+    const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+    if (!pid) return;
+    nowMap.set(pid, {
+      product_id: pid,
+      title: r.title || 'Unknown',
+      revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
+      orders: Number(r.orders) || 0,
+    });
+  });
+  prevRows.forEach(function(r) {
+    const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+    if (!pid) return;
+    prevMap.set(pid, {
+      product_id: pid,
+      title: r.title || 'Unknown',
+      revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
+      orders: Number(r.orders) || 0,
+    });
+  });
+
+  const allPids = new Set();
+  nowMap.forEach(function(_, k) { allPids.add(k); });
+  prevMap.forEach(function(_, k) { allPids.add(k); });
+
+  const base = [];
+  allPids.forEach(function(pid) {
+    const n = nowMap.get(pid) || { product_id: pid, title: 'Unknown', revenue: 0, orders: 0 };
+    const p = prevMap.get(pid) || { product_id: pid, title: n.title || 'Unknown', revenue: 0, orders: 0 };
+    base.push({
+      product_id: pid,
+      title: n.title || p.title || 'Unknown',
+      revenueNow: n.revenue,
+      revenuePrev: p.revenue,
+      ordersNow: n.orders,
+      ordersPrev: p.orders,
+      deltaRevenue: Math.round(((n.revenue - p.revenue) || 0) * 100) / 100,
+      deltaOrders: (n.orders - p.orders) || 0,
+    });
+  });
+
+  // Fetch product thumbnails
+  let token = null;
+  try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
+  const productIds = token ? base.map(r => r.product_id).filter(Boolean) : [];
+  const metaMap = new Map();
+  if (token && productIds.length) {
+    const metaPairs = await Promise.all(productIds.map(async function(pid) {
+      try {
+        const meta = await productMetaCache.getProductMeta(shop, token, pid);
+        return [String(pid), meta];
+      } catch (_) {
+        return [String(pid), null];
+      }
+    }));
+    metaPairs.forEach(function(pair) {
+      const pid = pair[0];
+      const meta = pair[1];
+      if (meta && meta.ok) metaMap.set(pid, meta);
+    });
+  }
+
+  base.forEach(function(r) {
+    const meta = metaMap.get(r.product_id);
+    r.thumb_url = meta && meta.thumb_url ? String(meta.thumb_url) : null;
+  });
+
+  const up = base
+    .filter(function(r) { return r.deltaRevenue > 0.005; })
+    .sort(function(a, b) { return b.deltaRevenue - a.deltaRevenue; })
+    .slice(0, 8);
+  const down = base
+    .filter(function(r) { return r.deltaRevenue < -0.005; })
+    .sort(function(a, b) { return a.deltaRevenue - b.deltaRevenue; })
+    .slice(0, 8);
+  return { trendingUp: up, trendingDown: down };
 }
 
 async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
@@ -223,7 +371,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   }
 
   if (!dayBounds.length) {
-    return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
+    return { days: 0, series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [], summary: {} };
   }
 
   const overallStart = dayBounds[0].start;
@@ -430,6 +578,19 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
+  // Trending up/down vs previous equivalent period
+  let trendingUp = [];
+  let trendingDown = [];
+  if (shop) {
+    const nowBounds = { start: overallStart, end: overallEnd };
+    const prevBounds = { start: Math.max(getPlatformStartMs(nowMs, timeZone), overallStart - (overallEnd - overallStart)), end: overallStart };
+    try {
+      const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds);
+      trendingUp = t && t.trendingUp ? t.trendingUp : [];
+      trendingDown = t && t.trendingDown ? t.trendingDown : [];
+    } catch (_) {}
+  }
+
   // Ad spend per day (if ads DB available)
   let adSpendPerDay = {};
   try {
@@ -525,6 +686,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     series,
     topProducts,
     topCountries,
+    trendingUp,
+    trendingDown,
     bucket: 'day',
     summary: {
       revenue: Math.round(totalRevenue * 100) / 100,
@@ -577,7 +740,7 @@ function hourLabelFromParts(parts, hour) {
   return `${ymd} ${hh}:00`;
 }
 
-async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint) {
+async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey) {
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
   const filter = sessionFilterForTraffic(trafficMode);
@@ -585,7 +748,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const start = bounds && Number.isFinite(Number(bounds.start)) ? Number(bounds.start) : nowMs;
   const end = bounds && Number.isFinite(Number(bounds.end)) ? Number(bounds.end) : nowMs;
   if (!(end > start)) {
-    return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
+    return { days: 0, series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [], summary: {} };
   }
 
   const startYmd = ymdFromMsInTz(start, timeZone);
@@ -593,7 +756,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const startParts = partsFromYmd(startYmd);
   const endParts = partsFromYmd(endYmd);
   if (!startParts || !endParts) {
-    return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
+    return { days: 0, series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [], summary: {} };
   }
 
   const dayBounds = [];
@@ -658,7 +821,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   }
 
   if (!bucketBounds.length) {
-    return { days: 0, series: [], topProducts: [], topCountries: [], summary: {} };
+    return { days: 0, series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [], summary: {} };
   }
 
   const overallStart = start;
@@ -865,6 +1028,21 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
+  // Trending up/down vs previous equivalent period
+  let trendingUp = [];
+  let trendingDown = [];
+  if (shop) {
+    const nowBounds = { start: overallStart, end: overallEnd };
+    const prevBounds = getCompareWindow(rangeKey, { start: overallStart, end: overallEnd }, nowMs, timeZone);
+    if (prevBounds) {
+      try {
+        const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds);
+        trendingUp = t && t.trendingUp ? t.trendingUp : [];
+        trendingDown = t && t.trendingDown ? t.trendingDown : [];
+      } catch (_) {}
+    }
+  }
+
   if (bucket === 'day') {
     let adSpendPerDay = {};
     try {
@@ -962,6 +1140,8 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     series,
     topProducts,
     topCountries,
+    trendingUp,
+    trendingDown,
     bucket,
     summary: {
       revenue: Math.round(totalRevenue * 100) / 100,

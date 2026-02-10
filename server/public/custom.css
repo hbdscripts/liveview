@@ -555,6 +555,7 @@ a {
 /* Dashboard KPI cards: background sparklines */
 .card-body:has(.dash-kpi-sparkline-wrap) {
   position: relative;
+  min-height: 130px;
 }
 .dash-kpi-sparkline-wrap {
   position: absolute;
@@ -564,7 +565,7 @@ a {
   bottom: 0;
   height: 48px;
   z-index: 0;
-  opacity: 0.24;
+  opacity: 0.34;
   pointer-events: none;
 }
 .dash-kpi-sparkline-wrap > div {
@@ -589,6 +590,18 @@ a {
   align-items: baseline;
   white-space: nowrap;
   min-width: 0;
+}
+
+.chart-type-switcher .btn.btn-icon {
+  padding: 0.25rem 0.35rem;
+}
+.chart-type-switcher .btn.btn-icon svg {
+  width: 22px;
+  height: 22px;
+  color: #555;
+}
+.chart-type-switcher .btn.btn-icon.active {
+  background: rgba(0,0,0,0.06);
 }
 
 /* ── Footer ────────────────────────────────────────────── */

@@ -241,6 +241,39 @@
       </div>
     </div>
 
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top Products</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table" id="dash-top-products">
+              <thead>
+                <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top Countries</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table" id="dash-top-countries">
+              <thead>
+                <tr><th>Country</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Charts + tables (wired to /api/dashboard-series via app.js) -->
     <div class="row g-3 mb-3">
       <div class="col-lg-6">
@@ -305,10 +338,10 @@
       <div class="col-lg-6">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Top Products</h3>
+            <h3 class="card-title">Trending Up</h3>
           </div>
           <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-top-products">
+            <table class="table table-vcenter card-table" id="dash-trending-up">
               <thead>
                 <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th></tr>
               </thead>
@@ -320,12 +353,12 @@
       <div class="col-lg-6">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Top Countries</h3>
+            <h3 class="card-title">Trending Down</h3>
           </div>
           <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-top-countries">
+            <table class="table table-vcenter card-table" id="dash-trending-down">
               <thead>
-                <tr><th>Country</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th></tr>
+                <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th></tr>
               </thead>
               <tbody></tbody>
             </table>
