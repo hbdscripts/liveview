@@ -53,6 +53,9 @@
       el.classList.toggle('active', panelKey === key);
     });
     updateUrl(key);
+    if (key === 'diagnostics') {
+      try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
+    }
   }
 
   function escapeHtml(s) {

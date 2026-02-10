@@ -7812,6 +7812,7 @@ const API = '';
       configStatusRefreshInFlight = p;
       return p;
     }
+    try { window.refreshConfigStatus = refreshConfigStatus; } catch (_) {}
 
     // Best-effort: prime Diagnostics data in the background (modal is closed at load).
     try { refreshConfigStatus(); } catch (_) {}
