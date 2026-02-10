@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (compact header, viewport mobile redirect)
+Last updated: 2026-02-10 (KPI bar styles, remove left gap)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -258,6 +258,8 @@ Edge (optional):
 - Layout: KPIs now load below the dark nav bar (not above). Desktop header is hidden; KPIs sit in a light strip under the nav.
 - Header compact: KPI strip min-height 3.25rem (was 4.5rem), nav links tighter padding, dark nav 2.5rem.
 - Mobile redirect: client-side viewport fallback in head-theme (redirect if width < 768px) so emulating mobile by resize works.
+- KPI bar: margin-bottom 20px, box-shadow 2px 2px 2px #eee, background #fff.
+- Layout: remove left gap site-wide (body margin: 0; page wrapper padding-left: 0).
 - KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.

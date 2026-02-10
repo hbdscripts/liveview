@@ -1,5 +1,9 @@
 /* Minimal custom styles - Tabler-compatible */
 
+/* Remove left gap site-wide */
+body { margin: 0; }
+.page, .page-wrapper { margin-left: 0; padding-left: 0; }
+
 #sale-toast-inline-flag { margin-right: 5px; }
 
 /* Global links: inherit surrounding text color (no blue link default). */
@@ -354,13 +358,14 @@ a {
 /* KPI bar: below dark nav, light strip */
 .kexo-kpis-navbar {
   position: relative;
-  margin: 0;
+  margin: 0 0 20px;
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
   padding: 0;
-  background: var(--tblr-bg-surface-secondary, #f4f6fb);
+  background: #fff;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+  box-shadow: 2px 2px 2px #eee;
   min-height: var(--kexo-top-row-height);
   display: flex;
   align-items: center;
