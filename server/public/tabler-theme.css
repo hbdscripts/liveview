@@ -1,5 +1,10 @@
 /* ── Tabler theme overrides ──────────────────────────────────────── */
 
+/* Reserve scrollbar space so content doesn't shift when modal/offcanvas opens */
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
   /* Default primary (Theme Settings can override) */
   --tblr-primary: #3eb3ab;
