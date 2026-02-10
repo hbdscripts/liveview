@@ -1949,6 +1949,7 @@ const API = '';
 
     function renderTable() {
       const tbody = document.getElementById('table-body');
+      if (!tbody) return; // Sessions table not present (e.g. Settings page)
       const isRangeMode = sessionsTotal != null;
       const totalPages = isRangeMode
         ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
