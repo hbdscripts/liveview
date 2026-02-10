@@ -1044,7 +1044,8 @@ a {
 }
 .kexo-desktop-brand-link img {
   display: block;
-  height: 24px;
+  height: 20px;
+  margin-left: 10px;
 }
 .kexo-desktop-nav-list .nav-link,
 .kexo-desktop-nav-settings .nav-link {
