@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Mobile: table card layout, no overflow-x)
+Last updated: 2026-02-10 (KPI sparkline fallback + dashboard previous-period card values)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -249,6 +249,8 @@ Edge (optional):
 - KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.
 
 2026-02-10
+- Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
+- KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
 - Header: pin Settings dropdown to the far-right of the top bar.
 - Ops: version local CSS/JS URLs in rendered HTML so deploys don’t mix “new HTML + cached old JS/CSS” (fixes unstyled / stale KPI strip in embeds).
 - Ads UI polish: move totals into the card footer, move connection/refresh/errors into an actions bar below the table (Tabler SVG), add Conv (orders) column, and make campaign column sticky on mobile horizontal scroll.

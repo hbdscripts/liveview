@@ -99,6 +99,25 @@ const API = '';
       const raw = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : dateRange;
       return normalizeRangeKeyForApi(raw);
     }
+    function getRangeDisplayLabel(rangeKey) {
+      const rk = normalizeRangeKeyForApi(rangeKey);
+      if (rk === 'today') return 'Today';
+      if (rk === 'yesterday') return 'Yesterday';
+      if (rk === '3d') return 'Last 3 days';
+      if (rk === '7d') return 'Last 7 days';
+      if (rk === '14d') return 'Last 14 days';
+      if (rk === '30d') return 'Last 30 days';
+      if (rk === 'month') return 'This month';
+      if (/^d:\d{4}-\d{2}-\d{2}$/.test(rk)) return 'Selected day';
+      if (/^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(rk)) return 'Selected range';
+      return 'Current';
+    }
+    function getCompareDisplayLabel(rangeKey) {
+      const rk = normalizeRangeKeyForApi(rangeKey);
+      if (rk === 'today') return 'Yesterday';
+      if (rk === 'yesterday') return 'Day before';
+      return 'Previous';
+    }
 
     // Shopify embedded app: keep the signed query params on internal navigation.
     // Without this, moving from `/?shop=...&hmac=...` to `/dashboard` drops the signature and API calls can 401.
@@ -4866,9 +4885,41 @@ const API = '';
     var condensedSeriesCache = null;
     var condensedSeriesRange = null;
     var condensedSeriesFetchedAt = 0;
+    var sparklineHistorySeriesCache = null;
+    var sparklineHistorySeriesFetchedAt = 0;
+    var sparklineHistorySeriesInFlight = null;
+
+    function getSparklineSeries(series) {
+      if (Array.isArray(series) && series.length >= 2) return series;
+      if (Array.isArray(sparklineHistorySeriesCache) && sparklineHistorySeriesCache.length >= 2) return sparklineHistorySeriesCache;
+      return Array.isArray(series) ? series : [];
+    }
+
+    function ensureSparklineHistorySeries() {
+      var stale = !sparklineHistorySeriesFetchedAt || (Date.now() - sparklineHistorySeriesFetchedAt) > KPI_CACHE_TTL_MS;
+      if (!stale && sparklineHistorySeriesCache && sparklineHistorySeriesCache.length >= 2) {
+        return Promise.resolve(sparklineHistorySeriesCache);
+      }
+      if (sparklineHistorySeriesInFlight) return sparklineHistorySeriesInFlight;
+      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=7d', { credentials: 'same-origin', cache: 'default' }, 15000)
+        .then(function(r) { return r && r.ok ? r.json() : null; })
+        .then(function(data) {
+          var s = data && Array.isArray(data.series) ? data.series : [];
+          if (s.length >= 2) {
+            sparklineHistorySeriesCache = s;
+            sparklineHistorySeriesFetchedAt = Date.now();
+          }
+          return sparklineHistorySeriesCache;
+        })
+        .catch(function() { return sparklineHistorySeriesCache; })
+        .finally(function() { sparklineHistorySeriesInFlight = null; });
+      return sparklineHistorySeriesInFlight;
+    }
 
     function renderCondensedSparklines(series) {
-      if (!series || series.length < 2 || typeof ApexCharts === 'undefined') return;
+      if (typeof ApexCharts === 'undefined') return;
+      var sourceSeries = getSparklineSeries(series);
+      if (!sourceSeries || !sourceSeries.length) return;
       var _primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '62,179,171';
       var ACCENT = 'rgb(' + _primaryRgb + ')';
       var ORANGE = '#f59e0b';
@@ -4902,7 +4953,7 @@ const API = '';
       Object.keys(map).forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
-        var dataArr = series.map(map[id]);
+        var dataArr = sourceSeries.map(map[id]);
         if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
         el.innerHTML = '';
         try {
@@ -4936,6 +4987,11 @@ const API = '';
             condensedSeriesRange = rangeKey;
             condensedSeriesFetchedAt = Date.now();
             renderCondensedSparklines(s);
+            if (s.length < 2) {
+              ensureSparklineHistorySeries().then(function(historySeries) {
+                if (historySeries && historySeries.length >= 2) renderCondensedSparklines(s);
+              }).catch(function() {});
+            }
           }
         })
         .catch(function() {});
@@ -5074,6 +5130,8 @@ const API = '';
       if (!data || PAGE !== 'dashboard') return;
       var el = function(id) { return document.getElementById(id); };
       var kpiRange = getStatsRange();
+      var currentLabel = getRangeDisplayLabel(kpiRange);
+      var compareLabel = getCompareDisplayLabel(kpiRange);
       var sales = data.sales || {};
       var convertedCountMap = data.convertedCount || {};
       var returningRevenue = data.returningRevenue || {};
@@ -5115,6 +5173,14 @@ const API = '';
         var retPct = orderCountVal > 0 && returningOrdersVal != null ? Math.round((returningOrdersVal / orderCountVal) * 1000) / 10 : null;
         el('dash-kpi-returning').textContent = retPct != null ? pct(retPct) : '\u2014';
       }
+      if (el('dash-revenue-compare-label')) el('dash-revenue-compare-label').textContent = compareLabel;
+      if (el('dash-revenue-compare-value')) el('dash-revenue-compare-value').textContent = compareSalesVal != null ? formatRevenue(compareSalesVal) : '\u2014';
+      if (el('dash-orders-current-label')) el('dash-orders-current-label').textContent = currentLabel;
+      if (el('dash-orders-current')) el('dash-orders-current').textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
+      if (el('dash-orders-compare-label')) el('dash-orders-compare-label').textContent = compareLabel;
+      if (el('dash-orders-compare-value')) el('dash-orders-compare-value').textContent = compareOrdersVal != null ? formatSessions(compareOrdersVal) : '\u2014';
+      if (el('dash-conv-compare-label')) el('dash-conv-compare-label').textContent = compareLabel;
+      if (el('dash-conv-compare-value')) el('dash-conv-compare-value').textContent = compareConvVal != null ? pct(compareConvVal) : '\u2014';
 
       // Change badges using same delta logic
       function changeBadge(curr, prev, invert) {
@@ -8876,25 +8942,8 @@ const API = '';
         // Secondary stats
         var numDays = series.length || 1;
 
-        // Orders: Today + Avg/Day
-        if (el('dash-orders-today')) {
-          var todayOrders = series.length > 0 ? (series[series.length - 1].orders || 0) : 0;
-          el('dash-orders-today').textContent = fmtNum(todayOrders);
-        }
-        if (el('dash-orders-avg')) {
-          var avgOrders = numDays > 0 ? Math.round(curOrders / numDays * 10) / 10 : 0;
-          el('dash-orders-avg').textContent = avgOrders % 1 === 0 ? fmtNum(avgOrders) : avgOrders.toFixed(1);
-        }
-
-        // Conversion Rate: progress bar + target diff
-        if (el('dash-conv-progress')) {
-          var convPct = Math.min(curConvRate / 2.5 * 100, 100);
-          el('dash-conv-progress').style.width = convPct.toFixed(1) + '%';
-        }
-        if (el('dash-conv-target-diff')) {
-          var diff = curConvRate - 2.5;
-          el('dash-conv-target-diff').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%';
-          el('dash-conv-target-diff').className = diff >= 0 ? 'text-success' : 'text-danger';
+        if (el('dash-orders-current') && el('dash-orders-current').textContent === '\u2014') {
+          el('dash-orders-current').textContent = fmtNum(curOrders);
         }
 
         // AOV: Highest / Lowest
@@ -8922,7 +8971,18 @@ const API = '';
           el('dash-roas-progress').style.width = roasPct.toFixed(1) + '%';
         }
 
-        // Sparklines in KPI cards (current period only)
+        // Sparklines in KPI cards.
+        var sparklineSeries = getSparklineSeries(chartSeries);
+        if (chartSeries.length < 2 && (!sparklineHistorySeriesCache || sparklineHistorySeriesCache.length < 2)) {
+          ensureSparklineHistorySeries().then(function(historySeries) {
+            if (!historySeries || historySeries.length < 2) return;
+            if (dashCache && dashLastRangeKey === dashRangeKeyFromDateRange()) {
+              try { renderDashboard(dashCache); } catch (_) {}
+            } else {
+              try { renderCondensedSparklines(historySeries); } catch (_) {}
+            }
+          }).catch(function() {});
+        }
         function renderSparkline(elId, dataArr, color) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
@@ -8938,16 +8998,16 @@ const API = '';
           });
           chart.render();
         }
-        renderSparkline('dash-revenue-sparkline', chartSeries.map(function(d) { return d.revenue; }), DASH_ACCENT);
-        renderSparkline('dash-sessions-sparkline', chartSeries.map(function(d) { return d.sessions; }), DASH_ORANGE);
-        renderSparkline('dash-orders-sparkline', chartSeries.map(function(d) { return d.orders; }), DASH_BLUE);
-        renderSparkline('dash-returning-sparkline', chartSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
-        renderSparkline('dash-conv-sparkline', chartSeries.map(function(d) { return d.convRate; }), DASH_PURPLE);
-        renderSparkline('dash-aov-sparkline', chartSeries.map(function(d) { return d.aov; }), DASH_ACCENT);
-        renderSparkline('dash-bounce-sparkline', chartSeries.map(function(d) { return d.bounceRate; }), '#ef4444');
-        renderSparkline('dash-adspend-sparkline', chartSeries.map(function(d) { return d.adSpend || 0; }), '#ef4444');
+        renderSparkline('dash-revenue-sparkline', sparklineSeries.map(function(d) { return d.revenue; }), DASH_ACCENT);
+        renderSparkline('dash-sessions-sparkline', sparklineSeries.map(function(d) { return d.sessions; }), DASH_ORANGE);
+        renderSparkline('dash-orders-sparkline', sparklineSeries.map(function(d) { return d.orders; }), DASH_BLUE);
+        renderSparkline('dash-returning-sparkline', sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE);
+        renderSparkline('dash-conv-sparkline', sparklineSeries.map(function(d) { return d.convRate; }), DASH_PURPLE);
+        renderSparkline('dash-aov-sparkline', sparklineSeries.map(function(d) { return d.aov; }), DASH_ACCENT);
+        renderSparkline('dash-bounce-sparkline', sparklineSeries.map(function(d) { return d.bounceRate; }), '#ef4444');
+        renderSparkline('dash-adspend-sparkline', sparklineSeries.map(function(d) { return d.adSpend || 0; }), '#ef4444');
 
-        try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(chartSeries); } catch (_) {}
+        try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
         var labels = chartSeries.map(function(d) { return shortDate(d.date); });
 
