@@ -40,6 +40,7 @@ body {
 .page {
   display: flex;
   flex-wrap: nowrap;
+  gap: 0;
 }
 .page > .page-wrapper {
   flex: 1;
