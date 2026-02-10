@@ -4,14 +4,20 @@
 html, body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 .page {
   min-height: 100%;
 }
 .page-wrapper {
   min-width: 0;
+}
+
+.kexo-nav-svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
 }
 
 /* Contain horizontal table overflow inside the card, not the viewport */
@@ -1163,6 +1169,11 @@ html[data-bs-theme="dark"] .sale-toast-close { filter: invert(1); }
 #last-sale-toggle .ti-eye-off { display: none; }
 #last-sale-toggle.is-on .ti-eye { display: none; }
 #last-sale-toggle.is-on .ti-eye-off { display: inline; }
+
+#footer-last-sale-toggle svg { display: inline; }
+#footer-last-sale-toggle .ti-eye-off { display: none; }
+#footer-last-sale-toggle.is-on svg { display: none; }
+#footer-last-sale-toggle.is-on .ti-eye-off { display: inline; }
 
 /* Mute button icon states */
 #audio-mute-btn .sound-icon-off { display: none; }
