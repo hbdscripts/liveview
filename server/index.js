@@ -81,6 +81,22 @@ app.use('/api/ingest', cors({ origin: true, credentials: false }));
 
 app.use('/api/ingest', ingestRouter);
 
+// Redirect mobile traffic to unsupported page (before auth)
+const MOBILE_REDIRECT_PATHS = new Set([
+  '/', '/dashboard', '/live', '/sales', '/date', '/overview', '/countries',
+  '/products', '/channels', '/type', '/ads', '/tools', '/app/login'
+]);
+const MOBILE_UA = /Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const pathname = (req.path || '').split('?')[0];
+  if (pathname === '/mobile-unsupported') return next();
+  if (!MOBILE_REDIRECT_PATHS.has(pathname)) return next();
+  const ua = req.get('User-Agent') || '';
+  if (!MOBILE_UA.test(ua)) return next();
+  res.redirect(302, '/mobile-unsupported');
+});
+
 // Protect dashboard + admin API: only from Shopify admin (Referer/Origin) or Google OAuth cookie (direct visits)
 app.use(dashboardAuth.middleware);
 
@@ -329,6 +345,7 @@ function sendPage(res, filename) {
   res.type('html').send(applyAssetVersionToHtml(resolveIncludes(raw)));
 }
 
+app.get('/mobile-unsupported', (req, res) => sendPage(res, 'mobile-unsupported.html'));
 app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));
 app.get('/live', (req, res) => sendPage(res, 'live.html'));
 app.get('/sales', (req, res) => sendPage(res, 'sales.html'));
