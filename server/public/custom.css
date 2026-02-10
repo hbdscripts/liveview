@@ -20,6 +20,19 @@ html, body {
   vertical-align: -0.125em;
 }
 
+/* ── KEXO 3-color logic (reusable) ─────────────────────────────────── */
+/* Usage:
+   - Apply `kexo-3color` to a container.
+   - Style items using `var(--kexo-accent)`.
+   - Optional: force an item’s accent with `kexo-accent-1/2/3`. */
+.kexo-3color > :nth-child(3n + 1) { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
+.kexo-3color > :nth-child(3n + 2) { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
+.kexo-3color > :nth-child(3n + 3) { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+
+.kexo-accent-1 { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
+.kexo-accent-2 { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
+.kexo-accent-3 { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+
 /* Contain horizontal table overflow inside the card, not the viewport */
 .table-scroll-wrap {
   overflow-x: auto;
@@ -739,11 +752,7 @@ a {
   width: 100%;
   min-width: 0;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge legacy */
+  overflow: hidden;
 }
 .kexo-kpis-condensed-strip::-webkit-scrollbar {
   width: 0;
@@ -1079,14 +1088,33 @@ a {
   color: #fff !important;
   background: transparent !important;
 }
-/* Active indicator: only green line at bottom edge, outside blue bar (no white/Tabler defaults) */
+/* Top-level nav icon accents (KEXO 3-color logic) */
+.kexo-desktop-nav-list > .nav-item > .nav-link > .kexo-nav-svg,
+.kexo-desktop-nav-settings > .nav-item > .nav-link > .kexo-nav-svg {
+  color: var(--kexo-accent, #fff);
+}
+
+/* Active indicator: bottom edge underline via ::after (matches icon accent) */
 .kexo-desktop-nav-list .nav-item {
   border-bottom: none !important;
-  box-shadow: 0 2px 0 0 transparent;
+  box-shadow: none !important;
+  position: relative;
+}
+.kexo-desktop-nav-list .nav-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  pointer-events: none;
 }
 .kexo-desktop-nav-list .nav-item.active {
   border-bottom: none !important;
-  box-shadow: 0 2px 0 0 var(--tblr-primary, #3eb3ab);
+}
+.kexo-desktop-nav-list .nav-item.active::after {
+  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
 }
 .kexo-desktop-nav-list .nav-item.active .nav-link,
 .kexo-desktop-nav-list .nav-link.active {

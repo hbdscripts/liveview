@@ -8,6 +8,14 @@
   --tblr-primary-rgb: 62,179,171;
   --tblr-gray-50: #f9fafc;
 
+  /* KEXO 3-color accent rotation (brand) */
+  --kexo-accent-1: #4b94e4;
+  --kexo-accent-2: #3eb3ab;
+  --kexo-accent-3: #f59e34;
+  --kexo-accent-1-rgb: 75,148,228;
+  --kexo-accent-2-rgb: 62,179,171;
+  --kexo-accent-3-rgb: 245,158,52;
+
   --bg: var(--tblr-bg-surface, #f1f5f9);
   --card: #fff;
   --border: var(--tblr-border-color, #e6e7e9);

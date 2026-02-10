@@ -5295,14 +5295,40 @@ const API = '';
       if (!strip) return;
       const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       if (!chips.length) return;
-      const rootStyle = window.getComputedStyle(document.documentElement);
-      const configuredMin = parseFloat(rootStyle.getPropertyValue('--kexo-kpi-min-width')) || 148;
-      const hardFloor = 84;
-      // Keep a stable chip width across pages and rely on horizontal overflow.
-      const chipWidth = Math.max(hardFloor, configuredMin);
-      const chipMinWidth = Math.max(hardFloor, Math.min(configuredMin, chipWidth));
-      strip.style.setProperty('--kexo-kpi-width', String(chipWidth) + 'px');
-      strip.style.setProperty('--kexo-kpi-min-width', String(chipMinWidth) + 'px');
+      // Auto-fit chips to available width; hide overflow chips from the end.
+      const avail = strip.clientWidth || 0;
+      if (!Number.isFinite(avail) || avail <= 0) return;
+
+      const stripStyle = window.getComputedStyle(strip);
+      const gapPx = parseFloat(stripStyle.columnGap || stripStyle.gap) || 0;
+      const hardFloor = 84; // readability floor; below this we start hiding chips
+
+      function widthFor(count) {
+        const n = Math.max(1, Number(count) || 1);
+        const totalGap = gapPx * Math.max(0, n - 1);
+        return (avail - totalGap) / n;
+      }
+
+      let visibleCount = chips.length;
+      let chipWidth = widthFor(visibleCount);
+      while (visibleCount > 1 && chipWidth < hardFloor) {
+        visibleCount -= 1;
+        chipWidth = widthFor(visibleCount);
+      }
+
+      // If we can’t satisfy the floor (extremely narrow), show 1 chip at whatever width we have.
+      if (!Number.isFinite(chipWidth) || chipWidth <= 0) return;
+
+      const w = Math.max(0, Math.round(chipWidth * 100) / 100);
+      const wStr = String(w).replace(/\.0+$/, '');
+      strip.style.setProperty('--kexo-kpi-width', wStr + 'px');
+      strip.style.setProperty('--kexo-kpi-min-width', wStr + 'px');
+
+      for (let i = 0; i < chips.length; i++) {
+        const show = i < visibleCount;
+        chips[i].classList.toggle('is-hidden', !show);
+        chips[i].setAttribute('aria-hidden', show ? 'false' : 'true');
+      }
     }
     function scheduleCondensedKpiOverflowUpdate() {
       if (_condensedOverflowRaf) return;
