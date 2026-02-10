@@ -2033,6 +2033,15 @@ const API = '';
 
     function pct(v) { return v != null ? v.toFixed(1) + '%' : ''; }
 
+    function formatRevenue0(num) {
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '';
+      try {
+        return '\u00A3' + Math.round(num).toLocaleString('en-GB');
+      } catch (_) {
+        return '\u00A3' + String(Math.round(num));
+      }
+    }
+
     function crPillHtml(v) {
       const n = v != null ? Number(v) : NaN;
       if (!Number.isFinite(n)) return '';
@@ -5125,167 +5134,116 @@ const API = '';
       );
     }
 
-    // Populate dashboard KPI cards using the same /api/kpis data as inner pages
-    function renderDashboardKpisFromApi(data) {
-      if (!data || PAGE !== 'dashboard') return;
+    // Dashboard KPI cards: selected range (primary) plus fixed comparisons (Yesterday + 7 Day)
+    let _dashKpiCompareFetchedAt = 0;
+    let _dashKpiCompareInFlight = null;
+    let _dashKpisYesterday = null;
+    let _dashKpis7d = null;
+
+    function fetchKpisForRangeKey(rangeKey) {
+      rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+      if (!rangeKey) rangeKey = 'today';
+      const url = API + '/api/kpis?range=' + encodeURIComponent(rangeKey);
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
+        .then(function(r) {
+          if (!r || !r.ok) throw new Error('KPIs HTTP ' + (r ? r.status : '0'));
+          return r.json();
+        });
+    }
+
+    function ensureDashboardCompareKpis() {
+      const ttlMs = 120 * 1000;
+      const fresh = _dashKpiCompareFetchedAt && (Date.now() - _dashKpiCompareFetchedAt) < ttlMs;
+      if (fresh && _dashKpisYesterday && _dashKpis7d) return Promise.resolve({ yesterday: _dashKpisYesterday, d7: _dashKpis7d });
+      if (_dashKpiCompareInFlight) return _dashKpiCompareInFlight;
+      _dashKpiCompareInFlight = Promise.all([
+        fetchKpisForRangeKey('yesterday').catch(function() { return null; }),
+        fetchKpisForRangeKey('7d').catch(function() { return null; }),
+      ]).then(function(parts) {
+        _dashKpisYesterday = parts && parts[0] ? parts[0] : null;
+        _dashKpis7d = parts && parts[1] ? parts[1] : null;
+        _dashKpiCompareFetchedAt = Date.now();
+        return { yesterday: _dashKpisYesterday, d7: _dashKpis7d };
+      }).finally(function() {
+        _dashKpiCompareInFlight = null;
+      });
+      return _dashKpiCompareInFlight;
+    }
+
+    function renderDashboardKpisFromApi(primaryData) {
+      if (!primaryData || PAGE !== 'dashboard') return;
       var el = function(id) { return document.getElementById(id); };
       var kpiRange = getStatsRange();
-      var currentLabel = getRangeDisplayLabel(kpiRange);
-      var compareLabel = getCompareDisplayLabel(kpiRange);
-      var sales = data.sales || {};
-      var convertedCountMap = data.convertedCount || {};
-      var returningRevenue = data.returningRevenue || {};
-      var returningOrderCountMap = data.returningOrderCount || {};
-      var breakdown = data.trafficBreakdown || {};
-      var conv = data.conversion || {};
-      var aovMap = data.aov || {};
-      var bounceMap = data.bounce || {};
-      var forRange = breakdown[kpiRange];
-      var sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
-      var salesVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
-      var orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
-      var returningVal = typeof returningRevenue[kpiRange] === 'number' ? returningRevenue[kpiRange] : null;
-      var returningOrdersVal = typeof returningOrderCountMap[kpiRange] === 'number' ? returningOrderCountMap[kpiRange] : null;
-      var convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
-      var aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
-      var bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
 
-      // Compare values
-      var compare = data.compare || null;
-      var compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
-      var compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
-      var compareSalesVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
-      var compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
-      var compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
-      var compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
-      var compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
-      var compareReturningOrdersVal = compare && typeof compare.returningOrderCount === 'number' ? compare.returningOrderCount : null;
+      function numFromMap(dataObj, keyName, rangeKey) {
+        var map = dataObj && dataObj[keyName] ? dataObj[keyName] : null;
+        var v = map && typeof map[rangeKey] === 'number' ? map[rangeKey] : null;
+        return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+      }
 
-      // Populate main values
-      if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue(salesVal) : '\u2014';
-      if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = orderCountVal != null ? Math.round(orderCountVal).toLocaleString() : '\u2014';
+      function sessionsFromBreakdown(dataObj, rangeKey) {
+        var br = dataObj && dataObj.trafficBreakdown ? dataObj.trafficBreakdown : null;
+        var r = br && br[rangeKey] ? br[rangeKey] : null;
+        var v = r && typeof r.human_sessions === 'number' ? r.human_sessions : null;
+        return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+      }
+
+      function forKey(rangeKey) {
+        if (rangeKey === kpiRange) return primaryData;
+        if (rangeKey === 'yesterday') return _dashKpisYesterday;
+        if (rangeKey === '7d') return _dashKpis7d;
+        return null;
+      }
+
+      var main = forKey(kpiRange) || primaryData;
+      var salesVal = numFromMap(main, 'sales', kpiRange);
+      var ordersVal = numFromMap(main, 'convertedCount', kpiRange);
+      var sessionsVal = sessionsFromBreakdown(main, kpiRange);
+      var convVal = numFromMap(main, 'conversion', kpiRange);
+      var aovVal = numFromMap(main, 'aov', kpiRange);
+      var bounceVal = numFromMap(main, 'bounce', kpiRange);
+      var returningVal = numFromMap(main, 'returningCustomerCount', kpiRange);
+      var roasVal = numFromMap(main, 'roas', kpiRange);
+
+      if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue0(salesVal) : '\u2014';
+      if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014';
       if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
+      if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = aovVal != null ? formatRevenue0(aovVal) : '\u2014';
       if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
-      if (el('dash-kpi-returning')) {
-        // Returning Customers rate (orders by returning customers / total orders)
-        var retPct = orderCountVal > 0 && returningOrdersVal != null ? Math.round((returningOrdersVal / orderCountVal) * 1000) / 10 : null;
-        el('dash-kpi-returning').textContent = retPct != null ? pct(retPct) : '\u2014';
-      }
-      if (el('dash-revenue-compare-label')) el('dash-revenue-compare-label').textContent = compareLabel;
-      if (el('dash-revenue-compare-value')) el('dash-revenue-compare-value').textContent = compareSalesVal != null ? formatRevenue(compareSalesVal) : '\u2014';
-      if (el('dash-orders-current-label')) el('dash-orders-current-label').textContent = currentLabel;
-      if (el('dash-orders-current')) el('dash-orders-current').textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
-      if (el('dash-orders-compare-label')) el('dash-orders-compare-label').textContent = compareLabel;
-      if (el('dash-orders-compare-value')) el('dash-orders-compare-value').textContent = compareOrdersVal != null ? formatSessions(compareOrdersVal) : '\u2014';
-      if (el('dash-conv-compare-label')) el('dash-conv-compare-label').textContent = compareLabel;
-      if (el('dash-conv-compare-value')) el('dash-conv-compare-value').textContent = compareConvVal != null ? pct(compareConvVal) : '\u2014';
+      if (el('dash-kpi-returning')) el('dash-kpi-returning').textContent = returningVal != null ? Math.round(returningVal).toLocaleString() : '\u2014';
+      if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014';
 
-      // Change badges using same delta logic
-      function changeBadge(curr, prev, invert) {
-        var d = kpiDelta(curr, prev);
-        if (d == null) return '<span class="text-muted">\u2014</span>';
-        var p = Math.round(d * 100);
-        var sign = p >= 0 ? '+' : '';
-        var good = invert ? (p <= 0) : (p >= 0);
-        var cls = good ? 'text-green' : 'text-red';
-        var icon = p >= 0 ? '<i class="ti ti-trending-up"></i>' : '<i class="ti ti-trending-down"></i>';
-        return '<span class="d-inline-flex align-items-center ' + cls + '">' + icon + ' ' + sign + p + '%</span>';
-      }
-      if (el('dash-kpi-revenue-change')) el('dash-kpi-revenue-change').innerHTML = changeBadge(salesVal, compareSalesVal);
-      if (el('dash-kpi-orders-change')) el('dash-kpi-orders-change').innerHTML = changeBadge(orderCountVal, compareOrdersVal);
-      if (el('dash-kpi-conv-change')) el('dash-kpi-conv-change').innerHTML = changeBadge(convVal, compareConvVal);
-      if (el('dash-kpi-aov-change')) el('dash-kpi-aov-change').innerHTML = changeBadge(aovVal, compareAovVal);
-      if (el('dash-kpi-bounce-change')) el('dash-kpi-bounce-change').innerHTML = changeBadge(bounceVal, compareBounceVal, true);
-      if (el('dash-kpi-returning-change')) {
-        var compareRetPct = compareOrdersVal > 0 && compareReturningOrdersVal != null
-          ? Math.round((compareReturningOrdersVal / compareOrdersVal) * 1000) / 10
-          : null;
-        var currRetPct = orderCountVal > 0 && returningOrdersVal != null
-          ? Math.round((returningOrdersVal / orderCountVal) * 1000) / 10
-          : null;
-        el('dash-kpi-returning-change').innerHTML = changeBadge(currRetPct, compareRetPct);
+      function renderCompare(rangeKey, suffix) {
+        var d = forKey(rangeKey);
+        var sales = numFromMap(d, 'sales', rangeKey);
+        var orders = numFromMap(d, 'convertedCount', rangeKey);
+        var sessions = sessionsFromBreakdown(d, rangeKey);
+        var conv = numFromMap(d, 'conversion', rangeKey);
+        var aov = numFromMap(d, 'aov', rangeKey);
+        var bounce = numFromMap(d, 'bounce', rangeKey);
+        var returning = numFromMap(d, 'returningCustomerCount', rangeKey);
+        var roas = numFromMap(d, 'roas', rangeKey);
+
+        if (el('dash-revenue-' + suffix)) el('dash-revenue-' + suffix).textContent = sales != null ? formatRevenue0(sales) : '\u2014';
+        if (el('dash-orders-' + suffix)) el('dash-orders-' + suffix).textContent = orders != null ? Math.round(orders).toLocaleString() : '\u2014';
+        if (el('dash-sessions-' + suffix)) el('dash-sessions-' + suffix).textContent = sessions != null ? formatSessions(sessions) : '\u2014';
+        if (el('dash-conv-' + suffix)) el('dash-conv-' + suffix).textContent = conv != null ? pct(conv) : '\u2014';
+        if (el('dash-aov-' + suffix)) el('dash-aov-' + suffix).textContent = aov != null ? formatRevenue0(aov) : '\u2014';
+        if (el('dash-bounce-' + suffix)) el('dash-bounce-' + suffix).textContent = bounce != null ? pct(bounce) : '\u2014';
+        if (el('dash-returning-' + suffix)) el('dash-returning-' + suffix).textContent = returning != null ? Math.round(returning).toLocaleString() : '\u2014';
+        if (el('dash-roas-' + suffix)) el('dash-roas-' + suffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
       }
 
-      function setVsPrevMetric(metricKey, current, previous, formatValue, invert) {
-        var valueEl = el('dash-vs-prev-' + metricKey + '-value');
-        var deltaWrap = el('dash-vs-prev-' + metricKey + '-delta');
-        var barEl = el('dash-vs-prev-' + metricKey + '-bar');
-        if (!valueEl && !deltaWrap && !barEl) return;
+      renderCompare('yesterday', 'yesterday');
+      renderCompare('7d', '7d');
 
-        var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
-        var prev = (typeof previous === 'number' && Number.isFinite(previous)) ? previous : null;
-        var rawDelta = (cur != null && prev != null) ? kpiDelta(cur, prev) : null;
-        var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
-        var isNew = cur != null && prev === 0 && cur !== 0;
-        var isUp = toneDelta != null && toneDelta > 0.005;
-        var isDown = toneDelta != null && toneDelta < -0.005;
-        var isFlat = toneDelta != null && !isUp && !isDown;
-
-        if (valueEl) valueEl.textContent = cur != null ? formatValue(cur) : '\u2014';
-
-        if (deltaWrap) {
-          var textEl = deltaWrap.querySelector('.dash-vs-prev-delta-text');
-          var iconEl = deltaWrap.querySelector('.dash-vs-prev-delta-icon');
-          var deltaText = '\u2014';
-          var dir = 'none';
-          if (rawDelta != null) {
-            if (isNew) {
-              deltaText = 'new';
-              dir = isDown ? 'down' : 'up';
-            } else {
-              var pctAbs = Math.round(Math.abs(rawDelta) * 1000) / 10;
-              deltaText = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pctAbs.toFixed(1).replace(/\.0$/, '') + '%';
-              dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
-            }
-          }
-          deltaWrap.classList.remove('text-success', 'text-danger');
-          deltaWrap.classList.toggle('text-success', dir === 'up');
-          deltaWrap.classList.toggle('text-danger', dir === 'down');
-          deltaWrap.setAttribute('data-dir', dir);
-          if (textEl) textEl.textContent = deltaText;
-          else deltaWrap.textContent = deltaText;
-          if (iconEl) {
-            if (dir === 'up') {
-              iconEl.classList.remove('is-hidden', 'ti-trending-down', 'ti-minus');
-              iconEl.classList.add('ti-trending-up');
-            } else if (dir === 'down') {
-              iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-minus');
-              iconEl.classList.add('ti-trending-down');
-            } else if (dir === 'flat') {
-              iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-trending-down');
-              iconEl.classList.add('ti-minus');
-            } else {
-              iconEl.classList.remove('ti-trending-up', 'ti-trending-down', 'ti-minus');
-              iconEl.classList.add('is-hidden');
-            }
-          }
-        }
-
-        if (barEl) {
-          barEl.classList.remove('bg-success', 'bg-danger', 'bg-secondary');
-          var widthPct = 0;
-          var barClass = 'bg-secondary';
-          if (rawDelta != null && !isFlat) {
-            widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
-            barClass = isUp ? 'bg-success' : 'bg-danger';
-          }
-          barEl.style.width = String(widthPct) + '%';
-          barEl.classList.add(barClass);
-          barEl.setAttribute('aria-valuenow', String(widthPct));
-          barEl.setAttribute('aria-label', String(widthPct) + '% complete');
-          var sr = barEl.querySelector('.visually-hidden');
-          if (sr) sr.textContent = String(widthPct) + '% complete';
-        }
+      // Fetch compare data in background (cacheable), then repaint once.
+      if (!_dashKpisYesterday || !_dashKpis7d) {
+        ensureDashboardCompareKpis().then(function() {
+          try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
+        }).catch(function() {});
       }
-
-      setVsPrevMetric('revenue', salesVal, compareSalesVal, function(v) { return formatRevenue(v); }, false);
-      setVsPrevMetric('orders', orderCountVal, compareOrdersVal, function(v) { return formatSessions(v); }, false);
-      setVsPrevMetric('conv', convVal, compareConvVal, function(v) { return pct(v); }, false);
-      setVsPrevMetric('sessions', sessionsVal, compareSessionsVal, function(v) { return formatSessions(v); }, false);
-      setVsPrevMetric('aov', aovVal, compareAovVal, function(v) { return formatRevenue(v); }, false);
-      setVsPrevMetric('bounce', bounceVal, compareBounceVal, function(v) { return pct(v); }, true);
     }
 
     // Condensed KPI strip only (expanded overlay removed).
@@ -8986,57 +8944,7 @@ const API = '';
         var curAov = avgField(series, 'aov');
         var curBounceRate = avgField(series, 'bounceRate');
         var curAdSpend = sumField(series, 'adSpend');
-        // These are computed server-side as summary totals (not per-day series points).
-        var curReturning = (s && typeof s.returningCustomerOrders === 'number') ? s.returningCustomerOrders : sumField(series, 'returningCustomerOrders');
-        var curNewCustomers = (s && typeof s.newCustomerOrders === 'number') ? s.newCustomerOrders : sumField(series, 'newCustomerOrders');
-        var curDesktop = (s && typeof s.desktopSessions === 'number') ? s.desktopSessions : sumField(series, 'desktopSessions');
-        var curMobile = (s && typeof s.mobileSessions === 'number') ? s.mobileSessions : sumField(series, 'mobileSessions');
-
-        // Main KPI values + change badges are set by renderDashboardKpisFromApi() using /api/kpis
-        if (el('dash-kpi-adspend')) el('dash-kpi-adspend').textContent = curAdSpend > 0 ? fmtGbp(curAdSpend) : '\u2014';
-
-        // Secondary stats
-        var numDays = series.length || 1;
-
-        if (el('dash-orders-current') && el('dash-orders-current').textContent === '\u2014') {
-          el('dash-orders-current').textContent = fmtNum(curOrders);
-        }
-
-        // AOV: Highest / Lowest
-        if (el('dash-aov-high')) el('dash-aov-high').textContent = s.aovHigh != null ? fmtGbp(s.aovHigh) : '\u2014';
-        if (el('dash-aov-low')) el('dash-aov-low').textContent = s.aovLow != null ? fmtGbp(s.aovLow) : '\u2014';
-
-        // Sessions: Desktop / Mobile
-        if (el('dash-sessions-desktop')) el('dash-sessions-desktop').textContent = fmtNum(curDesktop);
-        if (el('dash-sessions-mobile')) el('dash-sessions-mobile').textContent = fmtNum(curMobile);
-
-        // Bounce Rate: progress bar
-        if (el('dash-bounce-progress')) {
-          var bouncePct = Math.min(Math.max(curBounceRate, 0), 100);
-          var bouncePctText = bouncePct.toFixed(1) + '%';
-          el('dash-bounce-progress').style.width = bouncePctText;
-          el('dash-bounce-progress').setAttribute('aria-valuenow', bouncePct.toFixed(1));
-          el('dash-bounce-progress').setAttribute('aria-valuemin', '0');
-          el('dash-bounce-progress').setAttribute('aria-valuemax', '100');
-          el('dash-bounce-progress').setAttribute('aria-label', bouncePctText + ' bounce rate');
-        }
-
-        // Returning Customers: New / Return split
-        if (el('dash-customers-new')) el('dash-customers-new').textContent = fmtNum(curNewCustomers);
-        if (el('dash-customers-return')) el('dash-customers-return').textContent = fmtNum(curReturning);
-
-        // ROAS badge + progress
-        var curRoas = curAdSpend > 0 ? curRevenue / curAdSpend : null;
-        if (el('dash-roas-badge')) el('dash-roas-badge').textContent = curRoas != null ? curRoas.toFixed(2) + 'x' : '\u2014';
-        if (el('dash-roas-progress')) {
-          var roasPct = curRoas != null ? Math.min(curRoas / 5 * 100, 100) : 0;
-          var roasPctText = roasPct.toFixed(1) + '%';
-          el('dash-roas-progress').style.width = roasPctText;
-          el('dash-roas-progress').setAttribute('aria-valuenow', roasPct.toFixed(1));
-          el('dash-roas-progress').setAttribute('aria-valuemin', '0');
-          el('dash-roas-progress').setAttribute('aria-valuemax', '100');
-          el('dash-roas-progress').setAttribute('aria-label', roasPctText + ' of 5x ROAS target');
-        }
+        // KPI card values are set by renderDashboardKpisFromApi() using /api/kpis
 
         // Sparklines in KPI cards.
         var sparklineSeries = getSparklineSeries(chartSeries);
@@ -9072,7 +8980,11 @@ const API = '';
         renderSparkline('dash-conv-sparkline', sparklineSeries.map(function(d) { return d.convRate; }), DASH_PURPLE);
         renderSparkline('dash-aov-sparkline', sparklineSeries.map(function(d) { return d.aov; }), DASH_ACCENT);
         renderSparkline('dash-bounce-sparkline', sparklineSeries.map(function(d) { return d.bounceRate; }), '#ef4444');
-        renderSparkline('dash-adspend-sparkline', sparklineSeries.map(function(d) { return d.adSpend || 0; }), '#ef4444');
+        renderSparkline('dash-roas-sparkline', sparklineSeries.map(function(d) {
+          var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
+          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+          return (spend > 0) ? (rev / spend) : 0;
+        }), '#ef4444');
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 

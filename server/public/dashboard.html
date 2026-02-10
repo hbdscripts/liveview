@@ -40,20 +40,23 @@
         <div class="card">
           <div class="card-body">
             <div class="d-flex align-items-center">
-              <div class="subheader">Total Revenue</div>
+              <div class="subheader">Revenue</div>
             </div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-revenue">&mdash;</div>
-              <div id="dash-kpi-revenue-change" class="ms-auto">
-                <span class="text-muted">&mdash;</span>
-              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-revenue-sparkline" style="height:40px"></div>
             </div>
-            <div class="d-flex justify-content-between mt-1">
-              <small class="text-muted" id="dash-revenue-compare-label">Previous</small>
-              <small class="fw-bold" id="dash-revenue-compare-value">&mdash;</small>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-revenue-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-revenue-7d">&mdash;</span>
+              </div>
             </div>
           </div>
         </div>
@@ -65,33 +68,21 @@
           <div class="card-body">
             <div class="d-flex align-items-center">
               <div class="subheader">Orders</div>
-              <div class="ms-auto lh-1">
-                <div class="dropdown">
-                  <a class="dropdown-toggle text-secondary" href="#" data-bs-toggle="dropdown" aria-label="Order details">
-                    <i class="ti ti-dots-vertical"></i>
-                  </a>
-                  <div class="dropdown-menu dropdown-menu-end">
-                    <span class="dropdown-header">Order Breakdown</span>
-                    <a class="dropdown-item" href="/sales">View All Orders</a>
-                  </div>
-                </div>
-              </div>
             </div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-orders">&mdash;</div>
-              <div id="dash-kpi-orders-change" class="text-muted">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-orders-sparkline" style="height:40px"></div>
             </div>
-            <div class="row mt-1">
-              <div class="col">
-                <div class="text-muted small" id="dash-orders-current-label">Current</div>
-                <div class="fw-bold" id="dash-orders-current">&mdash;</div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-orders-yesterday">&mdash;</span>
               </div>
-              <div class="col">
-                <div class="text-muted small" id="dash-orders-compare-label">Previous</div>
-                <div class="fw-bold" id="dash-orders-compare-value">&mdash;</div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-orders-7d">&mdash;</span>
               </div>
             </div>
           </div>
@@ -105,14 +96,19 @@
             <div class="subheader">Conversion Rate</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-conv">&mdash;</div>
-              <div id="dash-kpi-conv-change" class="text-muted">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-conv-sparkline" style="height:40px"></div>
             </div>
-            <div class="d-flex justify-content-between mt-1">
-              <small class="text-muted" id="dash-conv-compare-label">Previous</small>
-              <small class="fw-bold" id="dash-conv-compare-value">&mdash;</small>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-conv-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-conv-7d">&mdash;</span>
+              </div>
             </div>
           </div>
         </div>
@@ -125,19 +121,18 @@
             <div class="subheader">Average Order Value</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-aov">&mdash;</div>
-              <div id="dash-kpi-aov-change" class="text-muted">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-aov-sparkline" style="height:40px"></div>
             </div>
-            <div class="row g-2 mt-1">
-              <div class="col-6">
-                <div class="text-muted small">Highest</div>
-                <div class="text-success fw-bold" id="dash-aov-high">&mdash;</div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-aov-yesterday">&mdash;</span>
               </div>
-              <div class="col-6">
-                <div class="text-muted small">Lowest</div>
-                <div class="text-warning fw-bold" id="dash-aov-low">&mdash;</div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-aov-7d">&mdash;</span>
               </div>
             </div>
           </div>
@@ -156,14 +151,14 @@
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-sessions-sparkline" style="height:40px"></div>
             </div>
-            <div class="row g-2 mt-1">
-              <div class="col">
-                <div class="text-muted small"><i class="ti ti-device-desktop me-1"></i>Desktop</div>
-                <div class="fw-bold" id="dash-sessions-desktop">&mdash;</div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-sessions-yesterday">&mdash;</span>
               </div>
-              <div class="col">
-                <div class="text-muted small"><i class="ti ti-device-mobile me-1"></i>Mobile</div>
-                <div class="fw-bold" id="dash-sessions-mobile">&mdash;</div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-sessions-7d">&mdash;</span>
               </div>
             </div>
           </div>
@@ -177,15 +172,20 @@
             <div class="subheader">Bounce Rate</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-bounce">&mdash;</div>
-              <div id="dash-kpi-bounce-change" class="text-muted">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-bounce-sparkline" style="height:40px"></div>
             </div>
-            <div class="progress progress-sm mt-1">
-              <div class="progress-bar bg-danger" id="dash-bounce-progress" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% bounce rate"></div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-bounce-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-bounce-7d">&mdash;</span>
+              </div>
             </div>
-            <small class="text-muted">Lower is better</small>
           </div>
         </div>
       </div>
@@ -197,19 +197,18 @@
             <div class="subheader">Returning Customers</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-returning">&mdash;</div>
-              <div id="dash-kpi-returning-change" class="text-muted">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-returning-sparkline" style="height:40px"></div>
             </div>
-            <div class="row g-2 mt-1">
-              <div class="col">
-                <div class="text-muted small">New</div>
-                <div id="dash-customers-new">&mdash;</div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-returning-yesterday">&mdash;</span>
               </div>
-              <div class="col">
-                <div class="text-muted small">Return</div>
-                <div id="dash-customers-return">&mdash;</div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-returning-7d">&mdash;</span>
               </div>
             </div>
           </div>
@@ -220,19 +219,22 @@
       <div class="col-sm-6 col-lg-3">
         <div class="card">
           <div class="card-body">
-            <div class="subheader">Ad Spend & ROAS</div>
+            <div class="subheader">Ad Spend ROAS</div>
             <div class="d-flex align-items-baseline">
-              <div class="h2 mb-0 me-2" id="dash-kpi-adspend">&mdash;</div>
+              <div class="h1 mb-0 me-2" id="dash-kpi-roas">&mdash;</div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-adspend-sparkline" style="height:40px"></div>
+              <div id="dash-roas-sparkline" style="height:40px"></div>
             </div>
-            <div class="d-flex justify-content-between align-items-center mt-1">
-              <span class="text-muted small">ROAS</span>
-              <span class="fw-bold" id="dash-roas-badge">&mdash;</span>
-            </div>
-            <div class="progress progress-sm mt-2">
-              <div class="progress-bar bg-success" id="dash-roas-progress" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% of 5x ROAS target"></div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-roas-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-roas-7d">&mdash;</span>
+              </div>
             </div>
           </div>
         </div>

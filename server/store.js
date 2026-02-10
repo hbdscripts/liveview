@@ -2686,6 +2686,28 @@ async function getKpis(options = {}) {
 
   const bounds = getRangeBounds(rangeKey, now, timeZone);
 
+  async function getAdSpendGbp(startMs, endMs) {
+    try {
+      const adsDb = require('./ads/adsDb');
+      if (!adsDb || typeof adsDb.getAdsPool !== 'function') return null;
+      const pool = adsDb.getAdsPool();
+      if (!pool) return null;
+      const start = Number(startMs);
+      const end = Number(endMs);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+      const startSec = start / 1000;
+      const endSec = end / 1000;
+      const r = await pool.query(
+        'SELECT COALESCE(SUM(spend_gbp), 0) AS spend_gbp FROM google_ads_spend_hourly WHERE hour_ts >= to_timestamp($1) AND hour_ts < to_timestamp($2)',
+        [startSec, endSec]
+      );
+      const v = r && r.rows && r.rows[0] ? Number(r.rows[0].spend_gbp) : null;
+      return (typeof v === 'number' && Number.isFinite(v)) ? Math.round(v * 100) / 100 : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function cacheSlowMetric(metricKey, start, end, cacheRangeKey, computeFn) {
     const rk = typeof cacheRangeKey === 'string' ? cacheRangeKey : rangeKey;
     return reportCache.getOrComputeJson(
@@ -2731,6 +2753,7 @@ async function getKpis(options = {}) {
     convertedCountVal,
     trafficBreakdownVal,
     bounceVal,
+    adSpendVal,
     yesterdayOk,
     salesTruthHealth,
   ] = await Promise.all([
@@ -2753,6 +2776,13 @@ async function getKpis(options = {}) {
       rangeKey,
       () => getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey })
     ),
+    cacheSlowMetric(
+      'adSpend',
+      bounds.start,
+      bounds.end,
+      rangeKey,
+      () => getAdSpendGbp(bounds.start, bounds.end)
+    ),
     rangeHasSessions(yesterdayBounds.start, yesterdayBounds.end, opts),
     (salesShop ? salesTruth.getTruthHealth(salesShop || '', rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'r')).slice(0, 64)) : Promise.resolve(null)),
   ]);
@@ -2764,6 +2794,10 @@ async function getKpis(options = {}) {
   const ordersForConv = (typeof convertedCountVal === 'number' && Number.isFinite(convertedCountVal)) ? convertedCountVal : null;
   const conversionVal = (sessionsForConv != null && Number.isFinite(sessionsForConv) && sessionsForConv > 0 && ordersForConv != null)
     ? (Math.round((ordersForConv / sessionsForConv) * 1000) / 10)
+    : null;
+
+  const roasVal = (typeof salesVal === 'number' && Number.isFinite(salesVal) && typeof adSpendVal === 'number' && Number.isFinite(adSpendVal) && adSpendVal > 0)
+    ? (Math.round((salesVal / adSpendVal) * 100) / 100)
     : null;
 
   let compare = null;
@@ -2800,6 +2834,7 @@ async function getKpis(options = {}) {
         compareConvertedCount,
         compareBreakdown,
         compareBounce,
+        compareAdSpend,
       ] = await Promise.all([
         getSalesTotal(compareStart, compareEnd, compareOpts),
         getReturningRevenue(compareStart, compareEnd, compareOpts),
@@ -2820,6 +2855,13 @@ async function getKpis(options = {}) {
           compareOpts.rangeKey,
           () => getBounceRate(compareStart, compareEnd, compareOpts)
         ),
+        cacheSlowMetric(
+          'adSpend',
+          compareStart,
+          compareEnd,
+          compareOpts.rangeKey,
+          () => getAdSpendGbp(compareStart, compareEnd)
+        ),
       ]);
 
       const compareSessionsForConv = compareBreakdown && typeof compareBreakdown.human_sessions === 'number'
@@ -2830,6 +2872,10 @@ async function getKpis(options = {}) {
         ? (Math.round((compareOrdersForConv / compareSessionsForConv) * 1000) / 10)
         : null;
 
+      const compareRoas = (typeof compareSales === 'number' && Number.isFinite(compareSales) && typeof compareAdSpend === 'number' && Number.isFinite(compareAdSpend) && compareAdSpend > 0)
+        ? (Math.round((compareSales / compareAdSpend) * 100) / 100)
+        : null;
+
       compare = {
         sales: compareSales,
         returningRevenue: compareReturning,
@@ -2838,6 +2884,8 @@ async function getKpis(options = {}) {
         conversion: compareConversion,
         aov: aovFromSalesAndCount(compareSales, compareConvertedCount),
         bounce: compareBounce,
+        adSpend: compareAdSpend,
+        roas: compareRoas,
         convertedCount: compareConvertedCount,
         trafficBreakdown: compareBreakdown,
         range: { start: compareStart, end: compareEnd },
@@ -2860,6 +2908,8 @@ async function getKpis(options = {}) {
     aov: { [rangeKey]: aovVal },
     bounce: { [rangeKey]: bounceVal },
     convertedCount: { [rangeKey]: convertedCountVal },
+    adSpend: { [rangeKey]: adSpendVal },
+    roas: { [rangeKey]: roasVal },
     compare,
     trafficMode,
     trafficBreakdown: { [rangeKey]: trafficBreakdownVal },

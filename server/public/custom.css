@@ -564,7 +564,7 @@ a {
   bottom: 0;
   height: 48px;
   z-index: 0;
-  opacity: 0.18;
+  opacity: 0.24;
   pointer-events: none;
 }
 .dash-kpi-sparkline-wrap > div {
@@ -575,6 +575,20 @@ a {
 .card-body:has(.dash-kpi-sparkline-wrap) > *:not(.dash-kpi-sparkline-wrap) {
   position: relative;
   z-index: 1;
+}
+
+.dash-kpi-compare-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.dash-kpi-compare-item {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* ── Footer ────────────────────────────────────────────── */
