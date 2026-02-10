@@ -8230,8 +8230,37 @@ const API = '';
           adsLoading = new Promise(function(resolve) {
             const existing = document.querySelector('script[data-ads-js="1"]');
             if (existing) {
-              adsLoaded = true;
-              resolve(true);
+              // If the script tag exists but hasn't executed yet (defer + slow network),
+              // wait for it so Ads can initialize immediately instead of staying blank.
+              try {
+                if (window.__adsInit || window.__adsRefresh) {
+                  adsLoaded = true;
+                  resolve(true);
+                  return;
+                }
+              } catch (_) {}
+
+              const onLoad = function() {
+                adsLoaded = true;
+                resolve(true);
+              };
+              const onError = function() {
+                resolve(false);
+              };
+              try {
+                existing.addEventListener('load', onLoad, { once: true });
+                existing.addEventListener('error', onError, { once: true });
+              } catch (_) {}
+
+              // Edge: if it already loaded before listeners attached, resolve on next tick.
+              setTimeout(function() {
+                try {
+                  if (window.__adsInit || window.__adsRefresh) {
+                    adsLoaded = true;
+                    resolve(true);
+                  }
+                } catch (_) {}
+              }, 0);
               return;
             }
             const s = document.createElement('script');
