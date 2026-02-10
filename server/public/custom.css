@@ -735,6 +735,9 @@ a {
   font-variant-numeric: tabular-nums;
   position: relative;
 }
+.kexo-kpi-chip .d-flex {
+  flex-wrap: nowrap;
+}
 .kexo-kpi-chip-sparkline {
   position: absolute;
   top: 6px;
@@ -759,18 +762,21 @@ a {
   text-transform: uppercase;
   letter-spacing: .04em;
   color: #555;
+  white-space: nowrap;
 }
 .kexo-kpi-chip-value {
   font-weight: 600;
   font-size: .94rem;
   line-height: 1;
   color: #333;
+  white-space: nowrap;
 }
 .kexo-kpi-chip-delta {
   font-size: .68rem;
   font-weight: 500;
   color: var(--tblr-secondary, #626976);
   gap: .2rem;
+  white-space: nowrap;
 }
 .kexo-kpi-chip-delta.is-up {
   color: var(--tblr-primary, #3eb3ab);

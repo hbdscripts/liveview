@@ -5305,32 +5305,14 @@ const API = '';
       if (!strip) return;
       const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       if (!chips.length) return;
-      const stripStyle = window.getComputedStyle(strip);
-      const stripPadLeft = parseFloat(stripStyle.paddingLeft) || 0;
-      const stripPadRight = parseFloat(stripStyle.paddingRight) || 0;
-      const gap = parseFloat(stripStyle.columnGap || stripStyle.gap) || 15;
-      const available = Math.max(0, strip.clientWidth - stripPadLeft - stripPadRight);
       const rootStyle = window.getComputedStyle(document.documentElement);
       const configuredMin = parseFloat(rootStyle.getPropertyValue('--kexo-kpi-min-width')) || 148;
       const hardFloor = 84;
-      let visibleCount = chips.length;
-      while (visibleCount > 1) {
-        const required = (visibleCount * configuredMin) + ((visibleCount - 1) * gap);
-        if (required <= available) break;
-        visibleCount--;
-      }
-      if (visibleCount < 1) visibleCount = 1;
-
-      const totalGap = Math.max(0, (visibleCount - 1) * gap);
-      const rawChipWidth = visibleCount > 0 ? Math.floor((available - totalGap) / visibleCount) : available;
-      const chipWidth = Math.max(hardFloor, rawChipWidth || 0);
+      // Keep a stable chip width across pages and rely on horizontal overflow.
+      const chipWidth = Math.max(hardFloor, configuredMin);
       const chipMinWidth = Math.max(hardFloor, Math.min(configuredMin, chipWidth));
       strip.style.setProperty('--kexo-kpi-width', String(chipWidth) + 'px');
       strip.style.setProperty('--kexo-kpi-min-width', String(chipMinWidth) + 'px');
-
-      for (let i = 0; i < chips.length; i++) {
-        chips[i].classList.toggle('is-hidden', i >= visibleCount);
-      }
     }
     function scheduleCondensedKpiOverflowUpdate() {
       if (_condensedOverflowRaf) return;
