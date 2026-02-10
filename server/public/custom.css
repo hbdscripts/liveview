@@ -808,6 +808,33 @@ a {
 }
 
 @media (max-width: 991.98px) {
+  /* Sidebar: overlay only when opened, no persistent strip (avoids double logo + hamburger) */
+  .navbar-vertical {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 16rem;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 1050;
+    overflow-y: auto;
+  }
+  .navbar-vertical:has(#sidebar-menu.show) {
+    transform: translateX(0);
+  }
+  .page-wrapper {
+    margin-left: 0;
+  }
+  /* Backdrop when sidebar overlay is open: tap to close */
+  .page:has(.navbar-vertical:has(#sidebar-menu.show)) .page-wrapper::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 1040;
+    pointer-events: auto;
+  }
   .navbar-vertical > .container-fluid > .navbar-brand { display: none; }
   .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar > .container-fluid {
     padding-left: 0.75rem;

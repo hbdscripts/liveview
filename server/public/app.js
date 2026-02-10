@@ -8404,6 +8404,17 @@ const API = '';
           });
         }
       })();
+      (function initSidebarBackdropClose() {
+        var pageWrapper = document.querySelector('.page-wrapper');
+        var sidebarMenu = document.getElementById('sidebar-menu');
+        var toggler = document.querySelector('.navbar-toggler[data-bs-target="#sidebar-menu"]');
+        if (!pageWrapper || !sidebarMenu || !toggler) return;
+        pageWrapper.addEventListener('click', function(e) {
+          if (!sidebarMenu.classList.contains('show')) return;
+          if (e.target.closest('.navbar-vertical')) return;
+          toggler.click();
+        });
+      })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
         if (btn) {
