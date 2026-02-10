@@ -4831,6 +4831,53 @@ const API = '';
       return diff / base;
     }
 
+    function applyCondensedKpiDelta(key, current, baseline, invert) {
+      const deltaEl = document.getElementById('cond-kpi-' + key + '-delta');
+      const barEl = document.getElementById('cond-kpi-' + key + '-bar');
+      if (!deltaEl && !barEl) return;
+
+      const cur = typeof current === 'number' && Number.isFinite(current) ? current : null;
+      const base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
+      const rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
+      const toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
+      const isNew = cur != null && base === 0 && cur !== 0;
+      const isUp = toneDelta != null && toneDelta > 0.005;
+      const isDown = toneDelta != null && toneDelta < -0.005;
+      const isFlat = toneDelta != null && !isUp && !isDown;
+
+      if (deltaEl) {
+        deltaEl.classList.remove('is-up', 'is-down');
+        if (rawDelta == null) {
+          deltaEl.textContent = '\u2014';
+        } else if (isNew) {
+          deltaEl.textContent = 'new';
+          deltaEl.classList.add(cur > 0 ? 'is-up' : 'is-down');
+        } else {
+          const pct = Math.round(Math.abs(rawDelta) * 1000) / 10;
+          deltaEl.textContent = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pct.toFixed(1).replace(/\.0$/, '') + '%';
+          if (isUp) deltaEl.classList.add('is-up');
+          if (isDown) deltaEl.classList.add('is-down');
+        }
+      }
+
+      if (barEl) {
+        barEl.classList.remove('bg-success', 'bg-danger', 'bg-secondary');
+        if (rawDelta == null) {
+          barEl.style.width = '0%';
+          barEl.classList.add('bg-secondary');
+          return;
+        }
+        if (isFlat) {
+          barEl.style.width = '0%';
+          barEl.classList.add('bg-secondary');
+          return;
+        }
+        const widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+        barEl.style.width = String(widthPct) + '%';
+        barEl.classList.add(isUp ? 'bg-success' : 'bg-danger');
+      }
+    }
+
     function applyKpiDeltaColor(el, current, baseline, invert) {
       if (!el) return;
       var wrapper = el.closest('.d-flex.align-items-baseline');
@@ -5008,7 +5055,7 @@ const API = '';
       if (aovEl) aovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (bounceEl) bounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
 
-      // Condensed KPI strip (no deltas; values only)
+      // Condensed KPI strip (value + delta + mini progress)
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
@@ -5016,6 +5063,13 @@ const API = '';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condBounceEl) condBounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
+      applyCondensedKpiDelta('orders', orderCountVal, compareOrdersVal, false);
+      applyCondensedKpiDelta('revenue', revenueVal, compareRevenueVal, false);
+      applyCondensedKpiDelta('sessions', sessionsVal, compareSessionsVal, false);
+      applyCondensedKpiDelta('conv', convVal, compareConvVal, false);
+      applyCondensedKpiDelta('returning', returningVal, compareReturningVal, false);
+      applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
+      applyCondensedKpiDelta('bounce', bounceVal, compareBounceVal, true);
       try { updateCondensedKpiOverflow(); } catch (_) {}
 
       applyKpiDeltaColor(ordersEl, orderCountVal, compareOrdersVal, false);
@@ -5226,8 +5280,21 @@ const API = '';
       }
     }
 
-    // KPI pager: swipe on mobile, page on desktop when labels wrap.
+    // KPI pager: overflow-aware controls with observer + cleanup.
     let kpiPagerRaf = null;
+    const kpiPagerSingleton = {
+      wrap: null,
+      grid: null,
+      btnNext: null,
+      btnPrev: null,
+      onNext: null,
+      onPrev: null,
+      onScroll: null,
+      onResize: null,
+      resizeObserver: null,
+      mutationObserver: null,
+    };
+
     function scheduleKpiPagerUpdate() {
       if (typeof requestAnimationFrame !== 'function') {
         applyKpiPager();
@@ -5239,29 +5306,24 @@ const API = '';
         applyKpiPager();
       });
     }
-    function kpiLabelWraps(el) {
-      if (!el) return false;
-      const rect = el.getBoundingClientRect();
-      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
-      const lh = style ? parseFloat(style.lineHeight) : 0;
-      const fs = style ? parseFloat(style.fontSize) : 0;
-      const lineHeight = (Number.isFinite(lh) && lh > 0) ? lh : (Number.isFinite(fs) && fs > 0 ? fs * 1.2 : 0);
-      if (!lineHeight) return false;
-      return rect.height > lineHeight * 1.4;
-    }
+
     function applyKpiPager() {
-      const wrap = document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
-      const btnNext = document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
-      const btnPrev = document.getElementById('kpi-pager-prev');
+      const wrap = kpiPagerSingleton.wrap || document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
+      const btnNext = kpiPagerSingleton.btnNext || document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
+      const btnPrev = kpiPagerSingleton.btnPrev || document.getElementById('kpi-pager-prev');
       if (!wrap || !btnNext) return;
-      const hasOverflow = wrap.scrollWidth > (wrap.clientWidth + 2);
-      const atStart = wrap.scrollLeft <= 2;
-      const atEnd = (wrap.scrollLeft + wrap.clientWidth) >= (wrap.scrollWidth - 2);
+
+      const hasOverflow = wrap.scrollWidth > (wrap.clientWidth + 1);
+      const atStart = wrap.scrollLeft <= 1;
+      const atEnd = (wrap.scrollLeft + wrap.clientWidth) >= (wrap.scrollWidth - 1);
 
       if (!hasOverflow) {
         btnNext.classList.add('is-hidden');
         btnNext.disabled = true;
-        if (btnPrev) { btnPrev.classList.add('is-hidden'); btnPrev.disabled = true; }
+        if (btnPrev) {
+          btnPrev.classList.add('is-hidden');
+          btnPrev.disabled = true;
+        }
         return;
       }
 
@@ -5274,34 +5336,80 @@ const API = '';
         btnPrev.setAttribute('aria-label', 'Previous KPIs');
       }
     }
-    (function initKpiPager() {
+
+    function teardownKpiPager() {
+      const s = kpiPagerSingleton;
+      try {
+        if (s.btnNext && s.onNext) s.btnNext.removeEventListener('click', s.onNext);
+        if (s.btnPrev && s.onPrev) s.btnPrev.removeEventListener('click', s.onPrev);
+        if (s.wrap && s.onScroll) s.wrap.removeEventListener('scroll', s.onScroll);
+        if (s.onResize) window.removeEventListener('resize', s.onResize);
+        if (s.resizeObserver) s.resizeObserver.disconnect();
+        if (s.mutationObserver) s.mutationObserver.disconnect();
+      } catch (_) {}
+      s.wrap = null;
+      s.grid = null;
+      s.btnNext = null;
+      s.btnPrev = null;
+      s.onNext = null;
+      s.onPrev = null;
+      s.onScroll = null;
+      s.onResize = null;
+      s.resizeObserver = null;
+      s.mutationObserver = null;
+    }
+
+    function initKpiPager() {
+      teardownKpiPager();
       const wrap = document.getElementById('kpi-pager-scroll') || document.querySelector('.kpi-mobile-pager');
       const btnNext = document.getElementById('kpi-pager-next') || document.getElementById('kpi-mobile-next');
       const btnPrev = document.getElementById('kpi-pager-prev');
-      if (wrap && btnNext) {
-        btnNext.addEventListener('click', function() {
-          if (wrap.scrollWidth > wrap.clientWidth) {
-            const delta = Math.min(wrap.clientWidth * 0.85, wrap.scrollWidth - wrap.scrollLeft - wrap.clientWidth);
-            wrap.scrollLeft += Math.max(0, delta);
-            scheduleKpiPagerUpdate();
-          }
+      if (!wrap || !btnNext) return;
+
+      const grid = document.getElementById('live-kpi-grid');
+      const s = kpiPagerSingleton;
+      s.wrap = wrap;
+      s.grid = grid || null;
+      s.btnNext = btnNext;
+      s.btnPrev = btnPrev || null;
+
+      const stepPx = 10;
+      s.onNext = function() {
+        if (wrap.scrollWidth <= wrap.clientWidth + 1) return;
+        try { wrap.scrollBy({ left: stepPx, behavior: 'smooth' }); }
+        catch (_) { wrap.scrollLeft += stepPx; }
+        scheduleKpiPagerUpdate();
+      };
+      s.onPrev = function() {
+        if (wrap.scrollWidth <= wrap.clientWidth + 1) return;
+        try { wrap.scrollBy({ left: -stepPx, behavior: 'smooth' }); }
+        catch (_) { wrap.scrollLeft -= stepPx; }
+        scheduleKpiPagerUpdate();
+      };
+      s.onScroll = function() { scheduleKpiPagerUpdate(); };
+      s.onResize = function() { scheduleKpiPagerUpdate(); scheduleBreakdownSync(); };
+
+      btnNext.addEventListener('click', s.onNext);
+      if (btnPrev) btnPrev.addEventListener('click', s.onPrev);
+      wrap.addEventListener('scroll', s.onScroll, { passive: true });
+      window.addEventListener('resize', s.onResize, { passive: true });
+
+      if (typeof ResizeObserver !== 'undefined') {
+        s.resizeObserver = new ResizeObserver(function() {
+          scheduleKpiPagerUpdate();
         });
+        s.resizeObserver.observe(wrap);
+        if (grid) s.resizeObserver.observe(grid);
       }
-      if (wrap && btnPrev) {
-        btnPrev.addEventListener('click', function() {
-          if (wrap.scrollWidth > wrap.clientWidth) {
-            const delta = Math.min(wrap.clientWidth * 0.85, wrap.scrollLeft);
-            wrap.scrollLeft -= Math.max(0, delta);
-            scheduleKpiPagerUpdate();
-          }
+      if (grid && typeof MutationObserver !== 'undefined') {
+        s.mutationObserver = new MutationObserver(function() {
+          scheduleKpiPagerUpdate();
         });
-      }
-      if (wrap) {
-        wrap.addEventListener('scroll', function() { scheduleKpiPagerUpdate(); }, { passive: true });
+        s.mutationObserver.observe(grid, { childList: true, subtree: true, attributes: true });
       }
       scheduleKpiPagerUpdate();
-      window.addEventListener('resize', function() { scheduleKpiPagerUpdate(); scheduleBreakdownSync(); });
-    })();
+    }
+    initKpiPager();
 
     // KPI component: condensed strip + expanded grid (mutually exclusive)
     const KPI_EXPANDED_LS_KEY = 'kexo-kpis-expanded';
@@ -5372,6 +5480,9 @@ const API = '';
       if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       if (condReturnsEl) condReturnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
+      applyCondensedKpiDelta('items-sold', itemsSold, itemsSoldCompare, false);
+      applyCondensedKpiDelta('orders-fulfilled', ordersFulfilled, ordersFulfilledCompare, false);
+      applyCondensedKpiDelta('returns', returnsAmount, returnsCompare, true);
 
       function setSub(el, text) {
         if (!el) return;
@@ -5440,12 +5551,19 @@ const API = '';
       const expandedWrap = document.getElementById('kexo-expanded-kpis') || document.querySelector('.shared-kpi-wrap');
       const condensedRow = document.getElementById('kexo-kpis-condensed-row');
       if (expandedWrap) expandedWrap.style.display = expanded ? '' : 'none';
-      if (condensedRow) condensedRow.style.display = expanded ? 'none' : '';
+      if (condensedRow) condensedRow.style.display = '';
+      document.body.classList.toggle('kexo-kpis-overlay-open', expanded);
 
       const btnExpand = document.getElementById('kexo-kpis-expand-btn');
-      if (btnExpand) btnExpand.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      const btnCollapse = document.getElementById('kexo-kpis-collapse-btn');
-      if (btnCollapse) btnCollapse.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      if (btnExpand) {
+        btnExpand.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        btnExpand.setAttribute('aria-label', expanded ? 'Hide KPI panel' : 'Show KPI panel');
+        const icon = btnExpand.querySelector('i');
+        if (icon) {
+          icon.classList.remove('ti-chevron-down', 'ti-chevron-up');
+          icon.classList.add(expanded ? 'ti-chevron-up' : 'ti-chevron-down');
+        }
+      }
 
       if (expanded) {
         try {
@@ -5469,9 +5587,11 @@ const API = '';
 
     (function initKpisExpandedToggle() {
       const btnExpand = document.getElementById('kexo-kpis-expand-btn');
-      if (btnExpand) btnExpand.addEventListener('click', function() { setKpisExpanded(true); });
-      const btnCollapse = document.getElementById('kexo-kpis-collapse-btn');
-      if (btnCollapse) btnCollapse.addEventListener('click', function() { setKpisExpanded(false); });
+      if (btnExpand) {
+        btnExpand.addEventListener('click', function() {
+          setKpisExpanded(!isKpisExpanded());
+        });
+      }
       try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
       applyKpisExpandedUi();
       scheduleCondensedKpiOverflowUpdate();
@@ -7983,49 +8103,6 @@ const API = '';
     })();
 
     (function initTopBar() {
-      (function initMobileTopbarSettingsDropdown() {
-        const dateWrap = document.getElementById('kexo-date-wrap');
-        const desktopActions = document.getElementById('kexo-desktop-actions');
-        const mobileDateSlot = document.getElementById('kexo-mobile-date-slot');
-        const mobileActionsSlot = document.getElementById('kexo-mobile-actions-slot');
-        if (!dateWrap || !desktopActions || !mobileDateSlot || !mobileActionsSlot) return;
-
-        const homeParent = dateWrap.parentNode;
-        const homeNext = dateWrap.nextSibling;
-        const homeClass = dateWrap.className;
-        const mql = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
-
-        function moveChildren(from, to) {
-          if (!from || !to) return;
-          while (from.firstChild) to.appendChild(from.firstChild);
-        }
-
-        function mount() {
-          const isMobile = mql ? !!mql.matches : (window.innerWidth < 768);
-          if (isMobile) {
-            try { if (!mobileDateSlot.contains(dateWrap)) mobileDateSlot.appendChild(dateWrap); } catch (_) {}
-            dateWrap.className = 'd-flex align-items-center w-100';
-            moveChildren(desktopActions, mobileActionsSlot);
-          } else {
-            try {
-              if (homeParent && dateWrap.parentNode !== homeParent) {
-                if (homeNext && homeNext.parentNode === homeParent) homeParent.insertBefore(dateWrap, homeNext);
-                else homeParent.appendChild(dateWrap);
-              }
-            } catch (_) {}
-            dateWrap.className = homeClass;
-            moveChildren(mobileActionsSlot, desktopActions);
-          }
-        }
-
-        mount();
-        try {
-          if (mql && mql.addEventListener) mql.addEventListener('change', mount);
-          else if (mql && mql.addListener) mql.addListener(mount);
-          else window.addEventListener('resize', mount);
-        } catch (_) {}
-      })();
-
       try { saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true'; } catch (_) { saleMuted = false; }
       try { saleAudio = new Audio(CASH_REGISTER_MP3_URL); } catch (_) { saleAudio = null; }
       if (saleAudio) {
@@ -8114,11 +8191,6 @@ const API = '';
         const sel = document.getElementById('global-date-select');
         if (!btn || !menu || !sel) return;
 
-        function close() {
-          menu.classList.remove('open');
-          btn.setAttribute('aria-expanded', 'false');
-        }
-
         function syncSelection() {
           let cur = String(dateRange || 'today');
           if (cur === 'live' || cur === 'sales' || cur === '1h') cur = 'today';
@@ -8126,21 +8198,27 @@ const API = '';
           menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
             const v = it.getAttribute('data-value');
             it.setAttribute('aria-current', v === cur ? 'true' : 'false');
+            it.classList.toggle('active', v === cur);
           });
         }
 
-        function toggle(e) {
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-          const nextOpen = !menu.classList.contains('open');
-          if (nextOpen) syncSelection();
-          menu.classList.toggle('open', nextOpen);
-          btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        function closeDropdown() {
+          try {
+            if (window.bootstrap && window.bootstrap.Dropdown) {
+              const dd = window.bootstrap.Dropdown.getOrCreateInstance(btn);
+              dd.hide();
+            }
+          } catch (_) {}
         }
 
-        btn.addEventListener('click', toggle);
+        const dropdown = btn.closest('.dropdown');
+        if (dropdown) {
+          dropdown.addEventListener('show.bs.dropdown', syncSelection);
+          dropdown.addEventListener('shown.bs.dropdown', syncSelection);
+        }
+        btn.addEventListener('click', function() { setTimeout(syncSelection, 0); });
+        sel.addEventListener('change', syncSelection);
+
         menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
           it.addEventListener('click', function(e) {
             e.preventDefault();
@@ -8159,19 +8237,8 @@ const API = '';
               ev.initEvent('change', true, true);
               sel.dispatchEvent(ev);
             }
-            close();
+            closeDropdown();
           });
-        });
-
-        document.addEventListener('click', function(e) {
-          if (!menu.classList.contains('open')) return;
-          const target = e.target;
-          if (menu.contains(target) || btn.contains(target)) return;
-          close();
-        });
-        document.addEventListener('keydown', function(e) {
-          if (e.key !== 'Escape') return;
-          close();
         });
       })();
       (function initTableTitleTabs() {
@@ -8359,6 +8426,10 @@ const API = '';
           var isBreakdownChild = (tab === 'stats' || tab === 'products');
           var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown"]');
           var breakdownDropdownItem = breakdownToggle ? breakdownToggle.closest('.nav-item') : null;
+          if (breakdownToggle) {
+            breakdownToggle.classList.toggle('active', !!isBreakdownChild);
+            breakdownToggle.setAttribute('aria-current', isBreakdownChild ? 'page' : 'false');
+          }
           if (breakdownDropdownItem) {
             if (isBreakdownChild) breakdownDropdownItem.classList.add('active');
             else breakdownDropdownItem.classList.remove('active');
@@ -8367,107 +8438,27 @@ const API = '';
           var isTrafficChild = (tab === 'channels' || tab === 'type');
           var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic"]');
           var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
+          if (trafficToggle) {
+            trafficToggle.classList.toggle('active', !!isTrafficChild);
+            trafficToggle.setAttribute('aria-current', isTrafficChild ? 'page' : 'false');
+          }
           if (trafficDropdownItem) {
             if (isTrafficChild) trafficDropdownItem.classList.add('active');
             else trafficDropdownItem.classList.remove('active');
           }
 
-          // Dropdown UX: swap the parent label with the active child label so
-          // you can always see the current page even without page titles.
-          (function swapDropdownParentWithActiveChild() {
-            function trimText(s) {
-              return (s == null ? '' : String(s)).replace(/\s+/g, ' ').trim();
-            }
-            function showAllDropdownItems(menu) {
-              if (!menu) return;
-              menu.querySelectorAll('a.dropdown-item').forEach(function(a) {
-                if (a.classList.contains('kexo-nav-parent-item')) return;
-                a.classList.remove('is-hidden');
-                a.removeAttribute('aria-hidden');
-              });
-            }
-            function removeParentEntry(menu) {
-              if (!menu) return;
-              var p = menu.querySelector('.kexo-nav-parent-item');
-              if (p && p.parentNode) p.parentNode.removeChild(p);
-              var d = menu.querySelector('.kexo-nav-parent-divider');
-              if (d && d.parentNode) d.parentNode.removeChild(d);
-            }
-            function ensureParentEntry(menu, title, iconClass) {
-              if (!menu) return null;
-              var existing = menu.querySelector('.kexo-nav-parent-item');
-              if (existing) return existing;
-              var a = document.createElement('a');
-              a.className = 'dropdown-item kexo-nav-parent-item text-secondary';
-              a.href = '#';
-              a.setAttribute('role', 'menuitem');
-              if (iconClass) {
-                var i = document.createElement('i');
-                i.className = 'ti ' + iconClass + ' me-2';
-                i.setAttribute('aria-hidden', 'true');
-                a.appendChild(i);
-              }
-              a.appendChild(document.createTextNode(title));
-
-              var first = menu.firstChild;
-              menu.insertBefore(a, first);
-              var div = document.createElement('div');
-              div.className = 'dropdown-divider my-1 kexo-nav-parent-divider';
-              menu.insertBefore(div, a.nextSibling);
-              return a;
-            }
-            function applyToGroup(toggleHref, iconClass) {
-              var toggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="' + toggleHref + '"]');
-              if (!toggle) return;
-              var menu = toggle.parentNode ? toggle.parentNode.querySelector('.dropdown-menu') : null;
-              if (!menu) return;
-              var titleEl = toggle.querySelector('.nav-link-title');
-              if (!titleEl) return;
-
-              // Persist the default group title the first time.
-              if (!toggle.getAttribute('data-kexo-default-title')) {
-                toggle.setAttribute('data-kexo-default-title', trimText(titleEl.textContent));
-              }
-              var groupTitle = trimText(toggle.getAttribute('data-kexo-default-title')) || trimText(titleEl.textContent);
-
-              showAllDropdownItems(menu);
-              removeParentEntry(menu);
-
-              var active = menu.querySelector('a.dropdown-item[aria-current="page"]');
-              if (!active) {
-                // Not inside this dropdown group — restore default.
-                titleEl.textContent = groupTitle;
-                return;
-              }
-
-              var activeLabel = trimText(active.textContent);
-              if (!activeLabel) {
-                titleEl.textContent = groupTitle;
-                return;
-              }
-
-              // Parent becomes the active child.
-              titleEl.textContent = activeLabel;
-
-              // Parent label becomes a dropdown item (at top).
-              var parentEntry = ensureParentEntry(menu, groupTitle, iconClass);
-              try {
-                var firstReal = menu.querySelector('a.dropdown-item:not(.kexo-nav-parent-item)');
-                if (parentEntry && firstReal && firstReal.getAttribute('href')) {
-                  parentEntry.href = firstReal.getAttribute('href');
-                }
-              } catch (_) {}
-
-              // Hide the active child item so it isn't duplicated.
-              active.classList.add('is-hidden');
-              active.setAttribute('aria-hidden', 'true');
-            }
-
-            applyToGroup('#navbar-dashboard', 'ti-layout-dashboard');
-            applyToGroup('#navbar-breakdown', 'ti-chart-pie');
-            applyToGroup('#navbar-traffic', 'ti-bolt');
-            applyToGroup('#navbar-integrations', 'ti-puzzle');
-          })();
+          // Integrations dropdown (Google Ads)
+          var isIntegrationsChild = (tab === 'ads');
+          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations"]');
+          var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
+          if (integrationsToggle) {
+            integrationsToggle.classList.toggle('active', !!isIntegrationsChild);
+            integrationsToggle.setAttribute('aria-current', isIntegrationsChild ? 'page' : 'false');
+          }
+          if (integrationsDropdownItem) {
+            if (isIntegrationsChild) integrationsDropdownItem.classList.add('active');
+            else integrationsDropdownItem.classList.remove('active');
+          }
         }
 
         function runTabWork(tab) {
@@ -8866,6 +8857,7 @@ const API = '';
     window.addEventListener('beforeunload', function() {
       _intervals.forEach(function(id) { clearInterval(id); });
       _intervals.length = 0;
+      try { teardownKpiPager(); } catch (_) {}
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       Object.keys(_fetchAbortControllers).forEach(function(k) {
         try { _fetchAbortControllers[k].abort(); } catch (_) {}

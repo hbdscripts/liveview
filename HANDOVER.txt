@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (UI: sidebar Settings dropup + nav groups; KPIs moved into top navbar with overlay; mobile topbar hamburger/centered logo/date icon)
+Last updated: 2026-02-10 (UI: sidebar Settings dropup + restored nav groups; single navbar-owned KPI overlay with overflow-aware pager; mobile topbar hamburger/centered logo/date icon)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -257,6 +257,8 @@ Edge (optional):
 - Header: pin Settings dropdown to the far-right of the top bar.
 - Ops: version local CSS/JS URLs in rendered HTML so deploys don’t mix “new HTML + cached old JS/CSS” (fixes unstyled / stale KPI strip in embeds).
 - Ads UI polish: move totals into the card footer, move connection/refresh/errors into an actions bar below the table (Tabler SVG), add Conv (orders) column, and make campaign column sticky on mobile horizontal scroll.
+- Ads actions/status follow-up: force `#ads-actions` to sit after `#ads-footer` (below totals), and switch Ads action icons to Tabler filled SVGs with explicit connected/disconnected status icons.
 - Sidebar: restore grouped nav parents (Dashboard/Breakdown/Traffic/Integrations) and move Settings actions into a bottom-pinned sidebar Settings dropup.
 - KPIs: render from a single navbar-owned container (included from `partials/header.html`) and open the expanded grid as an overlay (no vertical layout shift); condensed chips now show delta + mini progress bars.
 - Mobile topbar: hamburger left (opens sidebar drawer), logo perfectly centered, date icon right (Tabler dropdown bound to `#global-date-select`).
+- KPI pager: show prev/next only on overflow, use smooth scrollBy clicks, auto-recompute via ResizeObserver/MutationObserver, and teardown listeners on unload.

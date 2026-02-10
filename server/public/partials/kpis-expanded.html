@@ -1,62 +1,70 @@
-<div class="mb-3" aria-label="KPIs for selected date range">
-  <!-- Condensed (default) -->
+<div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
   <div class="kexo-kpis-condensed-row" id="kexo-kpis-condensed-row" aria-label="Condensed KPIs">
     <div class="kexo-kpis-condensed-strip" id="kexo-condensed-kpis">
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Orders</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-orders">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-orders-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-orders-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Revenue</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-revenue">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-revenue-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-revenue-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Conv rate</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-conv">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-conv-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-conv-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Sessions</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-sessions">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-sessions-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-sessions-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Returning</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-returning">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-returning-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-returning-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">AOV</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-aov">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-aov-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-aov-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Items ordered</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-items-sold">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-items-sold-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-items-sold-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Bounce</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-bounce">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-bounce-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-bounce-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Fulfilled</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-orders-fulfilled">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-orders-fulfilled-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-orders-fulfilled-bar" style="width:0%"></div></div>
       </div>
       <div class="kexo-kpi-chip" data-kpi-chip>
         <div class="kexo-kpi-chip-label">Returns</div>
         <div class="kexo-kpi-chip-value" id="cond-kpi-returns">&mdash;</div>
+        <div class="kexo-kpi-chip-delta" id="cond-kpi-returns-delta">&mdash;</div>
+        <div class="progress progress-xs kexo-kpi-chip-progress"><div class="progress-bar" id="cond-kpi-returns-bar" style="width:0%"></div></div>
       </div>
     </div>
-
-    <button type="button" class="btn btn-primary btn-icon" id="kexo-kpis-expand-btn" aria-label="Show more KPIs">
-      <i class="ti ti-chevron-down" aria-hidden="true"></i>
-    </button>
   </div>
 
-  <!-- Expanded -->
-  <div class="shared-kpi-wrap mt-3" id="kexo-expanded-kpis" aria-label="Expanded KPIs" style="display:none">
-    <div class="d-flex justify-content-end mb-2">
-      <button type="button" class="btn btn-primary btn-icon" id="kexo-kpis-collapse-btn" aria-label="Hide KPIs">
-        <i class="ti ti-chevron-up" aria-hidden="true"></i>
-      </button>
-    </div>
-
+  <div class="shared-kpi-wrap kexo-kpis-overlay" id="kexo-expanded-kpis" aria-label="Expanded KPIs" style="display:none">
     <div class="kexo-kpi-pager-shell">
       <button type="button" class="btn btn-icon btn-outline-secondary kexo-kpi-pager-btn kexo-kpi-pager-prev is-hidden" id="kpi-pager-prev" aria-label="Previous KPIs">
         <i class="ti ti-chevron-left" aria-hidden="true"></i>
