@@ -563,6 +563,30 @@ a {
   z-index: 0;
 }
 
+/* Dashboard KPI cards: background sparklines */
+.card-body:has(.dash-kpi-sparkline-wrap) {
+  position: relative;
+}
+.dash-kpi-sparkline-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+}
+.dash-kpi-sparkline-wrap > div {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 40px;
+}
+.card-body:has(.dash-kpi-sparkline-wrap) > *:not(.dash-kpi-sparkline-wrap) {
+  position: relative;
+  z-index: 1;
+}
+
 /* ── Footer ────────────────────────────────────────────── */
 .footer {
   position: static;

@@ -4901,7 +4901,7 @@ const API = '';
         var el = document.getElementById(id);
         if (!el) return;
         var dataArr = series.map(map[id]);
-        if (dataArr.length < 2) return;
+        if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
@@ -8909,7 +8909,8 @@ const API = '';
         // Sparklines in KPI cards (current period only)
         function renderSparkline(elId, dataArr, color) {
           var sparkEl = el(elId);
-          if (!sparkEl || dataArr.length < 2 || typeof ApexCharts === 'undefined') return;
+          if (!sparkEl || typeof ApexCharts === 'undefined') return;
+          if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
           var chart = new ApexCharts(sparkEl, {
             chart: { type: 'area', height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
