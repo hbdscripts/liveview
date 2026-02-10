@@ -2,17 +2,7 @@
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
 
-    // ── Move desktop date picker into page-header row (inline with title) ──
-    (function moveDatePicker() {
-      var row = document.querySelector('.page-header .row');
-      var dp = document.querySelector('.kexo-date-bar .kexo-topbar-date');
-      if (row && dp) {
-        var col = document.createElement('div');
-        col.className = 'col-auto d-none d-lg-flex align-items-center';
-        col.appendChild(dp);
-        row.appendChild(col);
-      }
-    })();
+    // Desktop date picker now lives in the top-right nav next to Settings.
 
     // ── Page progress bar (Tabler turbo-style) ──
     var _progressEl = null;

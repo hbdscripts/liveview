@@ -98,6 +98,23 @@
           </div>
           <div class="col-auto kexo-desktop-nav-right">
             <ul class="navbar-nav kexo-desktop-nav-settings">
+              <li class="nav-item d-none d-lg-flex align-items-center me-2">
+                <div class="dropdown kexo-topbar-date">
+                  <button type="button" class="kexo-date-btn" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="kexo-date-menu">
+                    <span class="kexo-date-btn-label">Today</span>
+                    <i class="ti ti-chevron-down kexo-date-btn-chevron" aria-hidden="true"></i>
+                  </button>
+                  <div class="dropdown-menu dropdown-menu-end" id="kexo-date-menu" aria-label="Date ranges">
+                    <button class="dropdown-item" type="button" data-range="today">Today</button>
+                    <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
+                    <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
+                    <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
+                    <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
+                    <div class="dropdown-divider"></div>
+                    <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
+                  </div>
+                </div>
+              </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-settings-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">Settings</a>
                 <div class="dropdown-menu dropdown-menu-end" id="navbar-settings-menu">
@@ -289,22 +306,6 @@
     <div class="kexo-date-bar">
       <div class="container-fluid">
         <div class="d-flex align-items-center justify-content-end">
-          <div class="dropdown d-none d-lg-flex kexo-topbar-date">
-            <button type="button" class="kexo-date-btn" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="kexo-date-menu">
-              <span class="kexo-date-btn-label">Today</span>
-              <i class="ti ti-chevron-down kexo-date-btn-chevron" aria-hidden="true"></i>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end" id="kexo-date-menu" aria-label="Date ranges">
-              <button class="dropdown-item" type="button" data-range="today">Today</button>
-              <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
-              <button class="dropdown-item" type="button" data-range="7days">Last 7 days</button>
-              <button class="dropdown-item" type="button" data-range="14days">Last 14 days</button>
-              <button class="dropdown-item" type="button" data-range="30days">Last 30 days</button>
-              <div class="dropdown-divider"></div>
-              <button class="dropdown-item" type="button" data-range="custom">Custom…</button>
-            </div>
-          </div>
-
         </div>
 
         <select id="global-date-select" class="visually-hidden" aria-label="Date range">
