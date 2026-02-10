@@ -655,6 +655,7 @@ a {
 .navbar-vertical > .container-fluid {
   height: 100vh;
   display: flex;
+  background: #213548;
   flex-direction: column;
   justify-content: flex-start;
   flex-wrap: nowrap;
