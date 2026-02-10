@@ -1357,8 +1357,8 @@ html[data-bs-theme="dark"] .landing-thumb {
   /* Charts: reduce height */
   [id^="dash-chart-"] { height: 160px !important; }
 
-  /* Dashboard KPI cards */
-  .row.g-3 > [class*="col-lg-3"] { flex: 0 0 50%; max-width: 50%; }
+  /* Dashboard KPI cards: full width on mobile */
+  #tab-panel-dashboard .row.g-3 > .col-sm-6.col-lg-3 { flex: 0 0 100%; max-width: 100%; }
   .row.g-3 { --bs-gutter-x: .5rem; --bs-gutter-y: .5rem; }
 
   /* Footer: stack on mobile */
