@@ -78,22 +78,34 @@
             <h3 class="card-title">General</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Read-only environment values. (Placeholder – wire to <code>/api/config-display</code> later.)</p>
+            <p class="text-secondary">Read-only environment values.</p>
             <div class="mb-3">
               <label class="form-label">App URL</label>
-              <input type="text" class="form-control" value="—" readonly />
+              <input type="text" class="form-control" id="settings-general-app-url" value="—" readonly />
             </div>
             <div class="mb-3">
-              <label class="form-label">Admin timezone</label>
-              <input type="text" class="form-control" value="—" readonly />
+              <label class="form-label">Admin timezone <span class="badge bg-secondary">TODO per-install</span></label>
+              <input type="text" class="form-control" id="settings-general-timezone" value="—" readonly />
             </div>
             <div class="mb-3">
               <label class="form-label">Store domain</label>
-              <input type="text" class="form-control" value="—" readonly />
+              <input type="text" class="form-control" id="settings-general-shop-domain" value="—" readonly />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Display domain</label>
+              <input type="text" class="form-control" id="settings-general-display-domain" value="—" readonly />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Store main URL</label>
+              <input type="text" class="form-control" id="settings-general-store-main" value="—" readonly />
             </div>
             <div class="mb-3">
               <label class="form-label">Ingest URL</label>
-              <input type="text" class="form-control" value="—" readonly />
+              <input type="text" class="form-control" id="settings-general-ingest-url" value="—" readonly />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Traffic mode / DB</label>
+              <input type="text" class="form-control" id="settings-general-traffic-mode" value="—" readonly />
             </div>
           </div>
         </div>
@@ -104,15 +116,8 @@
           <div class="card-header">
             <h3 class="card-title">Theme</h3>
           </div>
-          <div class="card-body">
-            <p class="text-secondary">Color mode, scheme, font, base, radius. (Placeholder – move from theme offcanvas later.)</p>
-            <div class="mb-3">
-              <label class="form-label">Color mode</label>
-              <select class="form-select" disabled>
-                <option>Light</option>
-                <option>Dark</option>
-              </select>
-            </div>
+          <div class="card-body" id="settings-theme-panel">
+            <div class="dm-loading">Loading theme…</div>
           </div>
         </div>
       </div>
@@ -123,16 +128,20 @@
             <h3 class="card-title">Assets</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Override favicon, logos, sale toast icon, cash-register sound, traffic source icons. (Placeholder – wire to asset overrides later.)</p>
-            <div class="mb-3">
-              <label class="form-label">Favicon override URL</label>
-              <input type="url" class="form-control" placeholder="https://…" disabled />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Logo override URL</label>
-              <input type="url" class="form-control" placeholder="https://…" disabled />
-            </div>
-            <p class="text-muted small">Upload: <span class="badge bg-secondary">TODO</span></p>
+            <p class="text-secondary">Override favicon, logos. URL override only.</p>
+            <form id="settings-assets-form">
+              <div class="mb-3">
+                <label class="form-label" for="settings-asset-favicon">Favicon override URL</label>
+                <input type="url" class="form-control" id="settings-asset-favicon" placeholder="https://…" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="settings-asset-logo">Logo override URL</label>
+                <input type="url" class="form-control" id="settings-asset-logo" placeholder="https://…" />
+              </div>
+              <button type="submit" class="btn btn-primary">Save</button>
+              <span id="settings-assets-msg" class="form-hint ms-2"></span>
+            </form>
+            <p class="text-muted small mt-2">Upload: <span class="badge bg-secondary">TODO</span></p>
           </div>
         </div>
       </div>
@@ -143,25 +152,25 @@
             <h3 class="card-title">Data &amp; Reporting</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Orders source, sessions source, pixel session mode, traffic display, source mapping. (Placeholder – move from Diagnostics later.)</p>
+            <p class="text-secondary">Orders source, sessions source, pixel session mode. Auto-saves on change.</p>
             <div class="mb-3">
-              <label class="form-label">Orders source</label>
-              <select class="form-select" disabled>
-                <option>orders_shopify</option>
+              <label class="form-label" for="settings-orders-source">Orders source</label>
+              <select class="form-select" id="settings-orders-source">
+                <option value="orders_shopify">orders_shopify</option>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Sessions source</label>
-              <select class="form-select" disabled>
-                <option>sessions</option>
-                <option>shopify_sessions</option>
+              <label class="form-label" for="settings-sessions-source">Sessions source</label>
+              <select class="form-select" id="settings-sessions-source">
+                <option value="sessions">sessions</option>
+                <option value="shopify_sessions">shopify_sessions</option>
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Pixel session mode</label>
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="pixel-session-mode" disabled />
-                <label class="form-check-label" for="pixel-session-mode">Share session across tabs (30m inactivity)</label>
+                <input class="form-check-input" type="checkbox" id="settings-pixel-session-mode" />
+                <label class="form-check-label" for="settings-pixel-session-mode">Share session across tabs (30m inactivity)</label>
               </div>
             </div>
           </div>
@@ -174,12 +183,12 @@
             <h3 class="card-title">Integrations</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Pixel status, Google Ads status. (Placeholder – pull from config-status later.)</p>
+            <p class="text-secondary">Pixel and Google Ads status from config-status.</p>
             <div class="mb-3">
-              <span class="badge bg-secondary">Pixel</span> — Ingest URL match, installed
+              <strong>Pixel</strong> <span id="settings-integrations-pixel"><span class="text-muted">—</span></span>
             </div>
             <div class="mb-3">
-              <span class="badge bg-secondary">Google Ads</span> — Connection status
+              <strong>Google Ads</strong> <span id="settings-integrations-googleads"><span class="text-muted">—</span></span>
             </div>
             <p class="text-muted small">API keys: <span class="badge bg-secondary">TODO</span></p>
           </div>
@@ -200,13 +209,20 @@
 
       <div id="settings-panel-diagnostics" class="settings-panel">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Diagnostics</h3>
+          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h3 class="card-title mb-0">Diagnostics</h3>
+            <div class="d-flex align-items-center gap-1">
+              <button type="button" class="btn btn-sm btn-outline-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
+                <i class="ti ti-refresh" aria-hidden="true"></i> Refresh
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="config-reconcile-btn" aria-label="Reconcile sales">
+                <i class="ti ti-adjustments" aria-hidden="true"></i> Reconcile
+              </button>
+            </div>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Sales, Compare, Traffic, Pixel, Google Ads, Shopify, System, Definitions. (Placeholder – move from diagnostics modal later.)</p>
-            <div id="diagnostics-content" class="p-3 bg-light rounded">
-              <p class="text-muted mb-0">Diagnostics content will be injected here when wired to <code>refreshConfigStatus</code>.</p>
+            <div id="diagnostics-content" class="dm-root">
+              <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">&mdash;</div></div></div>
             </div>
           </div>
         </div>

@@ -182,6 +182,85 @@
     });
   }
 
+  function getThemeFormHtml() {
+    return '<form id="theme-settings-form">' +
+      '<div class="mb-4">' +
+        '<label class="form-label">Color scheme</label>' +
+        '<div class="row g-2">' +
+          colorCard('theme-primary', 'blue', 'Blue') +
+          colorCard('theme-primary', 'azure', 'Azure') +
+          colorCard('theme-primary', 'indigo', 'Indigo') +
+          colorCard('theme-primary', 'purple', 'Purple') +
+          colorCard('theme-primary', 'pink', 'Pink') +
+          colorCard('theme-primary', 'red', 'Red') +
+          colorCard('theme-primary', 'orange', 'Orange') +
+          colorCard('theme-primary', 'yellow', 'Yellow') +
+          colorCard('theme-primary', 'lime', 'Lime') +
+          colorCard('theme-primary', 'green', 'Green') +
+          colorCard('theme-primary', 'teal', 'Teal') +
+          colorCard('theme-primary', 'cyan', 'Cyan') +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-4">' +
+        '<label class="form-label">Font family</label>' +
+        '<div class="form-selectgroup">' +
+          radioCard('theme-font', 'sans', 'Sans-serif') +
+          radioCard('theme-font', 'serif', 'Serif') +
+          radioCard('theme-font', 'mono', 'Monospace') +
+          radioCard('theme-font', 'comic', 'Comic') +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-4">' +
+        '<label class="form-label">Theme base</label>' +
+        '<div class="form-selectgroup">' +
+          radioCard('theme-base', 'slate', 'Slate') +
+          radioCard('theme-base', 'gray', 'Gray') +
+          radioCard('theme-base', 'zinc', 'Zinc') +
+          radioCard('theme-base', 'neutral', 'Neutral') +
+          radioCard('theme-base', 'stone', 'Stone') +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-4">' +
+        '<label class="form-label">Corner radius</label>' +
+        '<div class="form-selectgroup">' +
+          radioCard('theme-radius', '0', '0') +
+          radioCard('theme-radius', '0.5', '0.5') +
+          radioCard('theme-radius', '1', '1') +
+          radioCard('theme-radius', '1.5', '1.5') +
+          radioCard('theme-radius', '2', '2') +
+        '</div>' +
+      '</div>' +
+    '</form>' +
+    '<div class="d-flex gap-2">' +
+      '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
+      '<button type="button" class="btn btn-outline-secondary" id="theme-reset">Reset</button>' +
+    '</div>';
+  }
+
+  function bindThemeForm(formEl) {
+    if (!formEl) return;
+    formEl.addEventListener('change', function (e) {
+      var name = e.target.name;
+      var val = e.target.value;
+      setStored(name, val);
+      applyTheme(name, val);
+    });
+    var saveBtn = formEl.querySelector('#theme-save-defaults') || (formEl.parentElement && formEl.parentElement.querySelector('#theme-save-defaults'));
+    var resetBtn = formEl.querySelector('#theme-reset') || (formEl.parentElement && formEl.parentElement.querySelector('#theme-reset'));
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      saveToServer();
+      var btn = this;
+      btn.textContent = 'Saved!';
+      btn.classList.replace('btn-primary', 'btn-success');
+      setTimeout(function () { btn.textContent = 'Save as default'; btn.classList.replace('btn-success', 'btn-primary'); }, 1500);
+    });
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      KEYS.forEach(function (key) { removeStored(key); applyTheme(key, DEFAULTS[key]); });
+      syncUI();
+    });
+    syncUI();
+  }
+
   // Build the offcanvas HTML and inject into page
   function injectOffcanvas() {
     if (document.getElementById('theme-offcanvas')) return;
@@ -191,100 +270,18 @@
         '<h2 class="offcanvas-title" id="theme-offcanvas-label">Theme Settings</h2>' +
         '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>' +
       '</div>' +
-      '<div class="offcanvas-body">' +
-        '<form id="theme-settings-form">' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Color scheme</label>' +
-            '<div class="row g-2">' +
-              colorCard('theme-primary', 'blue', 'Blue') +
-              colorCard('theme-primary', 'azure', 'Azure') +
-              colorCard('theme-primary', 'indigo', 'Indigo') +
-              colorCard('theme-primary', 'purple', 'Purple') +
-              colorCard('theme-primary', 'pink', 'Pink') +
-              colorCard('theme-primary', 'red', 'Red') +
-              colorCard('theme-primary', 'orange', 'Orange') +
-              colorCard('theme-primary', 'yellow', 'Yellow') +
-              colorCard('theme-primary', 'lime', 'Lime') +
-              colorCard('theme-primary', 'green', 'Green') +
-              colorCard('theme-primary', 'teal', 'Teal') +
-              colorCard('theme-primary', 'cyan', 'Cyan') +
-            '</div>' +
-          '</div>' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Font family</label>' +
-            '<div class="form-selectgroup">' +
-              radioCard('theme-font', 'sans', 'Sans-serif') +
-              radioCard('theme-font', 'serif', 'Serif') +
-              radioCard('theme-font', 'mono', 'Monospace') +
-              radioCard('theme-font', 'comic', 'Comic') +
-            '</div>' +
-          '</div>' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Theme base</label>' +
-            '<div class="form-selectgroup">' +
-              radioCard('theme-base', 'slate', 'Slate') +
-              radioCard('theme-base', 'gray', 'Gray') +
-              radioCard('theme-base', 'zinc', 'Zinc') +
-              radioCard('theme-base', 'neutral', 'Neutral') +
-              radioCard('theme-base', 'stone', 'Stone') +
-            '</div>' +
-          '</div>' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Corner radius</label>' +
-            '<div class="form-selectgroup">' +
-              radioCard('theme-radius', '0', '0') +
-              radioCard('theme-radius', '0.5', '0.5') +
-              radioCard('theme-radius', '1', '1') +
-              radioCard('theme-radius', '1.5', '1.5') +
-              radioCard('theme-radius', '2', '2') +
-            '</div>' +
-          '</div>' +
-
-        '</form>' +
-        '<div class="d-flex gap-2">' +
-          '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
-          '<button type="button" class="btn btn-outline-secondary" id="theme-reset">Reset</button>' +
-        '</div>' +
-      '</div>' +
+      '<div class="offcanvas-body">' + getThemeFormHtml() + '</div>' +
     '</div>';
 
     document.body.insertAdjacentHTML('beforeend', html);
+    bindThemeForm(document.getElementById('theme-settings-form'));
+  }
 
-    // Bind form changes — apply immediately on selection
-    var form = document.getElementById('theme-settings-form');
-    form.addEventListener('change', function (e) {
-      var name = e.target.name;
-      var val = e.target.value;
-      setStored(name, val);
-      applyTheme(name, val);
-    });
-
-    // Save as default
-    document.getElementById('theme-save-defaults').addEventListener('click', function () {
-      saveToServer();
-      var btn = this;
-      btn.textContent = 'Saved!';
-      btn.classList.replace('btn-primary', 'btn-success');
-      setTimeout(function () {
-        btn.textContent = 'Save as default';
-        btn.classList.replace('btn-success', 'btn-primary');
-      }, 1500);
-    });
-
-    // Reset
-    document.getElementById('theme-reset').addEventListener('click', function () {
-      KEYS.forEach(function (key) {
-        removeStored(key);
-        applyTheme(key, DEFAULTS[key]);
-      });
-      syncUI();
-    });
-
-    syncUI();
+  function injectSettingsThemePanel() {
+    var panel = document.getElementById('settings-theme-panel');
+    if (!panel || panel.querySelector('#theme-settings-form')) return;
+    panel.innerHTML = getThemeFormHtml();
+    bindThemeForm(document.getElementById('theme-settings-form'));
   }
 
   function radioCard(name, value, label) {
@@ -322,17 +319,18 @@
     }
   }
 
-  // Bind theme buttons: use data-bs-toggle when possible so Bootstrap handles it
+  // Bind theme buttons: use data-bs-toggle when possible so Bootstrap handles it.
+  // Theme nav link goes to /settings?tab=theme, so don't bind offcanvas when it's a settings link.
   function bindThemeButtons() {
-    // Inject theme offcanvas on load so it exists when user clicks
-    injectOffcanvas();
+    var isSettingsPage = document.body.getAttribute('data-page') === 'settings';
+    if (!isSettingsPage) injectOffcanvas();
 
     var sidebarBtn = document.getElementById('theme-settings-btn');
-    if (sidebarBtn) {
+    var isSettingsLink = sidebarBtn && sidebarBtn.getAttribute('href') && String(sidebarBtn.getAttribute('href')).indexOf('/settings') >= 0;
+    if (sidebarBtn && !isSettingsLink) {
       sidebarBtn.setAttribute('data-bs-toggle', 'offcanvas');
       sidebarBtn.setAttribute('data-bs-target', '#theme-offcanvas');
       sidebarBtn.addEventListener('click', function (e) {
-        // Close the Settings dropdown when opening theme panel
         var dd = sidebarBtn.closest('.dropdown-menu');
         if (dd) {
           var toggle = dd.previousElementSibling;
@@ -342,10 +340,12 @@
         }
       });
     }
-    document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
-      btn.setAttribute('data-bs-toggle', 'offcanvas');
-      btn.setAttribute('data-bs-target', '#theme-offcanvas');
-    });
+    if (!isSettingsPage) {
+      document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
+        btn.setAttribute('data-bs-toggle', 'offcanvas');
+        btn.setAttribute('data-bs-target', '#theme-offcanvas');
+      });
+    }
   }
 
   // Init
@@ -354,9 +354,11 @@
     document.addEventListener('DOMContentLoaded', function () {
       bindThemeButtons();
       fetchDefaults();
+      if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
     });
   } else {
     bindThemeButtons();
     fetchDefaults();
+    if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
   }
 })();

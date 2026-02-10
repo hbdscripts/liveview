@@ -536,11 +536,24 @@ async function configStatus(req, res, next) {
     adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
   }
 
+  const configDisplay = {
+    shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
+    adminTimezone: config.adminTimezone || 'Europe/London',
+    shopDomain: config.shopDomain || config.allowedShopDomain || '',
+    shopDisplayDomain: config.shopDisplayDomain || '',
+    storeMainDomain: config.storeMainDomain || '',
+    ingestUrl: effectiveIngestUrl,
+    assetsBaseUrl: config.assetsBaseUrl || '',
+    trafficMode: config.trafficMode || 'all',
+    dbEngine: isPostgres() ? 'postgres' : 'sqlite',
+  };
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
   res.json({
     now,
     timeZone,
+    configDisplay,
     app: {
       version: pkg.version || '0.0.0',
       nodeEnv: process.env.NODE_ENV || 'development',

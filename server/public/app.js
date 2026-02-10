@@ -6487,7 +6487,7 @@ const API = '';
     function refreshConfigStatus(options = {}) {
       if (configStatusRefreshInFlight && !options.force) return configStatusRefreshInFlight;
       const refreshBtn = document.getElementById('config-refresh-btn');
-      const configStatusEl = document.getElementById('config-status');
+      const configStatusEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
       const compareModalEl = document.getElementById('kpi-compare-modal');
       const compareRefreshBtn = document.getElementById('kpi-compare-refresh-btn');
       const compareStatusEl = document.getElementById('kpi-compare-status');
@@ -7816,6 +7816,8 @@ const API = '';
       const refreshBtn = document.getElementById('config-refresh-btn');
       const reconcileBtn = document.getElementById('config-reconcile-btn');
       const closeBtn = document.getElementById('config-close-btn');
+      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
+      if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
       if (!modal) return;
       function open() {
         try { refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
@@ -7825,8 +7827,6 @@ const API = '';
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
       if (openBtn) openBtn.addEventListener('click', open);
-      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
-      if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
       document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
@@ -8448,7 +8448,7 @@ const API = '';
           toggle();
         });
         var settingsBtn = document.getElementById('kexo-mobile-nav-settings');
-        if (settingsBtn) {
+        if (settingsBtn && settingsBtn.tagName !== 'A') {
           settingsBtn.addEventListener('click', function() {
             close();
             var configBtn = document.getElementById('config-open-btn');

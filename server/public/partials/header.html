@@ -45,7 +45,7 @@
           <a href="/ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
           <a href="/tools" class="kexo-mobile-nav-item" data-nav="tools">Tools</a>
           <div class="kexo-mobile-nav-divider"></div>
-          <button type="button" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</button>
+          <a href="/settings" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</a>
           <a href="/app/logout" class="kexo-mobile-nav-item">Sign out</a>
         </div>
       </div>
@@ -92,6 +92,7 @@
                 <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M3 2a1 1 0 0 1 1 1v17h17a1 1 0 0 1 .993 .883l.007 .117a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-18a1 1 0 0 1 1 -1z" /><path d="M19 4a3 3 0 1 1 -.651 5.93l-2.002 3.202a3 3 0 1 1 -4.927 .337l-1.378 -1.655a3 3 0 1 1 1.538 -1.282l1.378 1.654a2.994 2.994 0 0 1 1.693 -.115l2.002 -3.203a3 3 0 0 1 2.347 -4.868z" /></svg>Tools</a>
                 <div class="dropdown-menu" id="navbar-tools-menu">
                   <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M3 2a1 1 0 0 1 1 1v17h17a1 1 0 0 1 .993 .883l.007 .117a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-18a1 1 0 0 1 1 -1z" /><path d="M19 4a3 3 0 1 1 -.651 5.93l-2.002 3.202a3 3 0 1 1 -4.927 .337l-1.378 -1.655a3 3 0 1 1 1.538 -1.282l1.378 1.654a2.994 2.994 0 0 1 1.693 -.115l2.002 -3.203a3 3 0 0 1 2.347 -4.868z" /></svg>Compare Conv Rate</a>
+                  <a class="dropdown-item" id="nav-tab-settings" data-nav="settings" href="/settings"><i class="ti ti-settings me-2" aria-hidden="true"></i>Settings</a>
                 </div>
               </li>
             </ul>
@@ -109,12 +110,12 @@
                     <i class="ti ti-volume-off me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
                     Sound
                   </button>
-                  <button type="button" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
+                  <a href="/settings?tab=theme" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
                     <i class="ti ti-palette me-2" aria-hidden="true"></i>Theme
-                  </button>
-                  <button type="button" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">
+                  </a>
+                  <a href="/settings?tab=diagnostics" class="dropdown-item" id="config-open-btn" aria-label="Diagnostics">
                     <i class="ti ti-settings me-2" aria-hidden="true"></i>Diagnostics
-                  </button>
+                  </a>
                   <div class="dropdown-divider"></div>
                   <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
                     <i class="ti ti-logout me-2" aria-hidden="true"></i>Sign out

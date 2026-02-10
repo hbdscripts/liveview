@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Settings page layout + yesterday KPIs fix + desktop nav KEXO 3-color accents)
+Last updated: 2026-02-10 (Settings page full implementation + yesterday KPIs fix + desktop nav KEXO 3-color accents)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -332,4 +332,4 @@ Edge (optional):
 - Legacy naming cleanup: renamed `initSidebarDateMenu` helpers to `initHeaderDateMenu` variants in `server/public/app.js`.
 - Mobile redirect: all mobile User-Agent traffic to dashboard/login paths now redirects to `/mobile-unsupported` with centered logo and "Desktop only for now" copy.
 - KPIs yesterday: for non-today ranges, Shopify reconcile runs in background (not awaited) so `/api/kpis` returns quickly and avoids client timeout; yesterday vs day-before comparison now shows correctly.
-- Settings page: new `/settings` route and standalone page with Tabler layout (General, Theme, Assets, Data & Reporting, Integrations, KPIs & Date Ranges, Diagnostics); placeholder content; `settings-page.js` handles tab switching; no app.js/header changes (pipework deferred).
+- Settings page: new `/settings` route and full implementation; General (configDisplay from config-status), Theme (form from theme-settings.js), Assets (override URLs), Data & Reporting (orders/sessions source, pixel session mode), Integrations (Pixel/Google Ads status), Diagnostics (refreshConfigStatus into #diagnostics-content); header Theme/Diagnostics link to /settings; Settings in Tools nav dropdown.

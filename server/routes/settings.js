@@ -7,6 +7,7 @@
 const store = require('../store');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
+const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 
 function normalizePixelSessionMode(v) {
   const s = v == null ? '' : String(v).trim().toLowerCase();
@@ -16,14 +17,25 @@ function normalizePixelSessionMode(v) {
 
 async function getSettings(req, res) {
   let pixelSessionMode = 'legacy';
+  let assetOverrides = {};
   try {
     pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
   } catch (_) {}
+  try {
+    const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
+    if (raw && typeof raw === 'string') {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') assetOverrides = parsed;
+    }
+  } catch (_) {}
+  const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   res.setHeader('Cache-Control', 'no-store');
   res.json({
     ok: true,
     pixelSessionMode,
     sharedSessionTtlMinutes: 30,
+    assetOverrides,
+    reporting,
   });
 }
 
@@ -33,7 +45,7 @@ async function postSettings(req, res) {
   }
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
 
-  // Accept either explicit mode or a boolean convenience field.
+  // Pixel session mode
   let nextMode = body.pixelSessionMode;
   if (typeof nextMode === 'boolean') nextMode = nextMode ? 'shared_ttl' : 'legacy';
   if (typeof body.sharedSessionFixEnabled === 'boolean') nextMode = body.sharedSessionFixEnabled ? 'shared_ttl' : 'legacy';
@@ -43,6 +55,31 @@ async function postSettings(req, res) {
     await store.setSetting(PIXEL_SESSION_MODE_KEY, normalized);
   } catch (err) {
     return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save setting' });
+  }
+
+  // Reporting config (orders source, sessions source)
+  if (body.reporting && typeof body.reporting === 'object') {
+    const ord = body.reporting.ordersSource;
+    const sess = body.reporting.sessionsSource;
+    try {
+      if (ord === 'orders_shopify') await store.setSetting('reporting_orders_source', 'orders_shopify');
+      if (sess === 'sessions' || sess === 'shopify_sessions') await store.setSetting('reporting_sessions_source', sess);
+    } catch (_) {}
+  }
+
+  // Asset overrides (merge with existing)
+  if (body.assetOverrides && typeof body.assetOverrides === 'object') {
+    try {
+      let existing = {};
+      const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
+      if (raw && typeof raw === 'string') {
+        try { existing = JSON.parse(raw) || {}; } catch (_) {}
+      }
+      const merged = { ...existing, ...body.assetOverrides };
+      await store.setSetting(ASSET_OVERRIDES_KEY, JSON.stringify(merged));
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save asset overrides' });
+    }
   }
 
   res.setHeader('Cache-Control', 'no-store');
