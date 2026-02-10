@@ -772,6 +772,9 @@ a {
 }
 
 @media (min-width: 992px) {
+  .navbar-vertical.navbar-expand-lg {
+    overflow-y: visible;
+  }
   .kexo-topbar-slot-left {
     width: 0;
   }
