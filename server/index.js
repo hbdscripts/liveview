@@ -149,6 +149,15 @@ app.get('/api/store-base-url', (req, res) => {
   const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));
   const mainBaseUrl = config.storeMainDomain || baseUrl;
   const assetsBaseUrl = config.assetsBaseUrl || '';
+  const shopDisplayDomain = (() => {
+    if (config.storeMainDomain) {
+      try {
+        const h = new URL(config.storeMainDomain).hostname;
+        return (h || '').replace(/^www\./, '') || '';
+      } catch (_) { return ''; }
+    }
+    return (config.shopDomain || '').trim() || '';
+  })();
   const shopFromTruth = (() => {
     try {
       const s = salesTruth.resolveShopForSales('');
@@ -159,7 +168,7 @@ app.get('/api/store-base-url', (req, res) => {
   })();
   const shopForSalesRaw = (config.shopDomain || config.allowedShopDomain || '').trim().toLowerCase();
   const shopForSales = shopFromTruth || (shopForSalesRaw && shopForSalesRaw.endsWith('.myshopify.com') ? shopForSalesRaw : '');
-  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl, shopForSales });
+  res.json({ baseUrl, mainBaseUrl, assetsBaseUrl, shopForSales, shopDisplayDomain });
 });
 
 // Shopify OAuth (install flow)

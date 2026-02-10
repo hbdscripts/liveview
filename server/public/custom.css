@@ -478,13 +478,36 @@ a {
 
 /* Sidebar online badge (under logo) */
 .kexo-online-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0;
   padding: 0.5rem 0.75rem;
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--tblr-border-radius, 0.5rem);
+}
+.kexo-online-badge__website {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.kexo-online-website-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.kexo-online-website-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kexo-online-badge__online {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 .kexo-online-icon {
   font-size: 0.5rem;
@@ -1385,7 +1408,11 @@ html[data-bs-theme="dark"] .landing-thumb {
     text-align: left !important;
   }
   .grid-table .grid-body .grid-cell:last-child { border-bottom: none; }
-  .grid-table .grid-body .grid-cell.span-all {
+  .grid-table .grid-body .grid-cell.span-all,
+  .grid-table .grid-body .grid-cell.is-hidden {
+    display: none;
+  }
+  .grid-table .grid-body .grid-cell.span-all:only-child {
     display: block;
     text-align: center;
     border-bottom: none;

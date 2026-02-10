@@ -9098,6 +9098,22 @@ const API = '';
       } catch (_) {}
     })();
 
+    // ── Online badge: populate website name from store config ────────────
+    (function initOnlineBadgeWebsite() {
+      try {
+        var el = document.getElementById('kexo-online-website');
+        if (!el) return;
+        fetch('/api/store-base-url', { credentials: 'same-origin' })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var domain = (d && d.shopDisplayDomain) ? String(d.shopDisplayDomain).trim() : '';
+            el.textContent = domain || '\u2014';
+            el.title = domain || '';
+          })
+          .catch(function() {});
+      } catch (_) {}
+    })();
+
     // ── Footer action buttons ──────────────────────────────────────────
     (function initFooterActions() {
       function proxyClick(footerSel, headerId) {
