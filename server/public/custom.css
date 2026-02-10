@@ -4,6 +4,8 @@
 html, body {
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 .page {
   min-height: 100%;
@@ -583,14 +585,6 @@ a {
 
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
-
-.page-body {
-  margin-top: 0;
-  margin-bottom: var(--tblr-page-padding-y);
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
 
 /* ── Layout alignment + top navbar ───────────────────────────────── */
 /* Keep header and content containers aligned with Tabler gutters. */
