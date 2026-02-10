@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (desktop nav recolored to #1c2f42 with borderless white text style; KPI fit now JS width-calculated)
+Last updated: 2026-02-10 (desktop nav dropdowns no longer forced-open; removed leftover sidebar-era CSS/JS)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -294,3 +294,5 @@ Edge (optional):
 - DB perf: added migration `039_active_sessions_last_seen_started_at_index.js` for active-session query support (`sessions(last_seen, started_at)`).
 - Desktop nav styling follow-up: top navbar now uses `#1c2f42`, removes nav/dropdown borders, removes hover backgrounds, keeps text white, and shows active state on the outer `li.nav-item` indicator instead of link background.
 - KPI strip fit follow-up: condensed chips now use JS width calculation against available strip width; trailing chips are hidden from the end when space runs out.
+- Nav behavior cleanup: removed legacy JS that force-opened active dropdown menus (`.show` state) so grouped menus stay closed until clicked.
+- Dead layout cleanup: removed obsolete sidebar-era CSS/JS (`navbar-vertical`, `kexo-sidebar-*`, `kexo-online-badge`, `#sidebar-menu` handling) no longer used by current Tabler horizontal layout.

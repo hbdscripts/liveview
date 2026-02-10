@@ -54,21 +54,6 @@ body {
   margin-left: 0;
 }
 
-/* Sidebar active link */
-.navbar-vertical {
-  background: #132231;
-}
-.navbar-vertical .nav-link[aria-current="page"] {
-  background: rgba(var(--tblr-primary-rgb), .1);
-  color: #fff !important;
-  font-weight: 600;
-}
-
-/* Sidebar brand */
-.navbar-vertical .navbar-brand img {
-  height: 36px;
-}
-
 /* ── Unified Tabler card look ────────────────────────────────────── */
 /* .card class on HTML elements now provides base Tabler card styling.
    These rules only supplement Tabler's defaults where needed. */
@@ -282,20 +267,7 @@ html[data-bs-theme="dark"] .sessions-loading-overlay {
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 
-/* Mobile: center logo in collapsed sidebar header */
 @media (max-width: 991.98px) {
-  .navbar-vertical > .container-fluid {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .navbar-vertical .navbar-brand {
-    margin: 0 auto;
-    text-align: center;
-  }
-  .navbar-vertical .navbar-toggler {
-    position: absolute;
-    left: 1rem;
-  }
   /* Page header: keep controls right-aligned on mobile */
   .page-header .row {
     flex-wrap: nowrap;
@@ -321,10 +293,3 @@ html[data-bs-theme="dark"] .sessions-loading-overlay {
   .traffic-grid { grid-template-columns: 1fr; }
 }
 
-/* Mobile: sidebar online badge - compact when drawer is narrow */
-@media (max-width: 991.98px) {
-  .kexo-online-badge {
-    padding: 0.4rem 0.5rem;
-    font-size: 12px;
-  }
-}

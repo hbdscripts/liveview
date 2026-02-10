@@ -8304,23 +8304,6 @@ const API = '';
             else toolsDropdownItem.classList.remove('active');
           }
 
-          // Open the parent dropdown that contains the active child (CSS only, no Bootstrap API)
-          var toggles = [
-            { active: isDashboardChild, el: dashboardToggle },
-            { active: isBreakdownChild, el: breakdownToggle },
-            { active: isTrafficChild, el: trafficToggle },
-            { active: isIntegrationsChild, el: integrationsToggle },
-            { active: isToolsChild, el: toolsToggle }
-          ];
-          toggles.forEach(function(t) {
-            if (!t.el) return;
-            var menu = t.el.nextElementSibling;
-            if (t.active) {
-              t.el.classList.add('show');
-              t.el.setAttribute('aria-expanded', 'true');
-              if (menu) menu.classList.add('show');
-            }
-          });
         }
 
         function runTabWork(tab) {
@@ -8467,28 +8450,6 @@ const API = '';
             closeMobileMenu();
           });
         }
-      })();
-      (function initSidebarBackdropClose() {
-        var pageWrapper = document.querySelector('.page-wrapper');
-        var sidebarMenu = document.getElementById('sidebar-menu');
-        var toggler = document.querySelector('.navbar-toggler[data-bs-target="#sidebar-menu"]');
-        if (!pageWrapper || !sidebarMenu) return;
-        function closeSidebar() {
-          sidebarMenu.classList.remove('show');
-          try {
-            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
-              var c = bootstrap.Collapse.getInstance(sidebarMenu);
-              if (c) c.hide();
-            }
-          } catch (_) {}
-          if (toggler) toggler.setAttribute('aria-expanded', 'false');
-        }
-        pageWrapper.addEventListener('click', function(e) {
-          if (!sidebarMenu.classList.contains('show')) return;
-          if (e.target.closest('.navbar-vertical')) return;
-          if (toggler) toggler.click();
-          else closeSidebar();
-        });
       })();
       (function initMobileMenu() {
         var btn = document.getElementById('kexo-mobile-menu-btn');
@@ -9778,27 +9739,6 @@ const API = '';
 
       // Expose for debugging / future use
       window.__openProductInsights = openProduct;
-    })();
-
-    // ── Sidebar scroll arrow for small viewports ──
-    (function () {
-      var nav = document.querySelector('.kexo-sidebar-nav');
-      var arrow = document.getElementById('kexo-sidebar-scroll-arrow');
-      if (!nav || !arrow) return;
-
-      function checkOverflow() {
-        var hasOverflow = nav.scrollHeight > nav.clientHeight + 8;
-        var atBottom = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 8;
-        arrow.classList.toggle('is-visible', hasOverflow && !atBottom);
-      }
-
-      arrow.addEventListener('click', function () {
-        nav.scrollTo({ top: nav.scrollHeight, behavior: 'smooth' });
-      });
-
-      nav.addEventListener('scroll', checkOverflow, { passive: true });
-      window.addEventListener('resize', checkOverflow, { passive: true });
-      checkOverflow();
     })();
 
 })();
