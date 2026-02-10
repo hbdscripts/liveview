@@ -51,9 +51,7 @@ function getLoginHtml(queryError) {
     @media (min-width: 576px) { .container-tight { margin-left: auto; margin-right: auto; } }
     .card-md { background: rgba(255,255,255,0.8); }
     .btn-login { height: 50px; font-size: .9375rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-    .btn-shopify { background: #96bf48; border-color: #96bf48; color: #fff; }
-    .btn-shopify:hover { background: #7ea83e; border-color: #7ea83e; color: #fff; }
-    .btn-google { background: #4285f4; border-color: #4285f4; color: #fff; }
+.btn-google { background: #4285f4; border-color: #4285f4; color: #fff; }
     .btn-google:hover { background: #3367d6; border-color: #3367d6; color: #fff; }
   </style>
 </head>
@@ -70,10 +68,6 @@ function getLoginHtml(queryError) {
           <h2 class="h2 text-center mb-4">Sign in to your account</h2>
           ${errMsg}
           <div class="d-grid gap-2">
-            <a href="/auth/shopify-login" class="btn btn-shopify btn-login">
-              <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 109.5 124.5" fill="white"><path d="M95.9 23.9c-.1-.6-.6-1-1.1-1-.5 0-9.3-.2-9.3-.2s-7.4-7.2-8.1-7.9c-.7-.7-2.2-.5-2.7-.3-.1 0-1.5.5-3.9 1.2-2.3-6.7-6.4-12.8-13.6-12.8h-.6C54.6.6 52.4 0 50.5 0 29.4 0 19.2 26.4 16.2 39.8l-13.7 4.2c-4.3 1.3-4.4 1.5-5 5.5C-2.9 52.6 0 124.5 0 124.5l76.1 13.1 39.1-9.6S96 24.5 95.9 23.9zM67.2 18.3l-5.9 1.8c0-3.1-.3-7.5-1.5-11.2 3.7.7 6.2 4.7 7.4 9.4zM55.8 22.1l-12.7 3.9c1.2-4.7 3.6-9.4 6.4-12.5 1.1-1.1 2.6-2.4 4.3-3.1 1.7 3.5 2.1 8.5 2 11.7zM50.6 4.2c1.4 0 2.6.5 3.6 1.4-4.1 1.9-8.5 6.8-10.3 16.5l-10 3.1C36.3 15.7 42.3 4.2 50.6 4.2z"/></svg>
-              Continue with Shopify
-            </a>
             ${hasGoogle ? `<a href="/auth/google?redirect=/dashboard" class="btn btn-google btn-login">
               <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M21.35 11.1H12v2.9h5.35c-.5 2.95-3 4.25-5.35 4.25a6.1 6.1 0 0 1 0-12.2c1.65 0 2.75.7 3.4 1.3l2.3-2.2C16.25 3.55 14.35 2.7 12 2.7a9.3 9.3 0 1 0 0 18.6c5.35 0 8.9-3.75 8.9-9.05 0-.6-.05-1.05-.15-1.5z"/></svg>
               Continue with Google
