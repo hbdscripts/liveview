@@ -688,9 +688,10 @@ a {
   color: #555;
 }
 .kexo-kpi-chip-value {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1rem;
   line-height: 1;
+  color: #333;
 }
 .kexo-kpi-chip-delta {
   font-size: .75rem;
