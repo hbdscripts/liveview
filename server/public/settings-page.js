@@ -116,7 +116,7 @@
         });
         document.querySelectorAll('#settings-integrations-googleads').forEach(function (el) {
           var conn = ga && ga.connected === true;
-          el.innerHTML = conn ? '<span class="badge bg-success">Connected</span>' : '<span class="badge bg-secondary">Not connected</span>';
+          el.innerHTML = conn ? '<span class="badge bg-success">Connected</span>' : '<span class="badge bg-primary-lt">Not connected</span>';
         });
       })
       .catch(function () {});
