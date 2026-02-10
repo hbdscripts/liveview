@@ -1117,6 +1117,12 @@ a {
 .kexo-desktop-nav-list .nav-item.active::after {
   background: currentColor;
 }
+/* Override Tabler's .navbar-expand-md .nav-item.active:after border color (same media) */
+@media (min-width: 768px) {
+  .kexo-desktop-nav .nav-item.active::after {
+    border-bottom-color: currentColor;
+  }
+}
 .kexo-desktop-nav-list .nav-item.active .nav-link,
 .kexo-desktop-nav-list .nav-link.active {
   border: none !important;
