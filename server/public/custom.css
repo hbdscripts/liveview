@@ -316,7 +316,7 @@ a {
 
 .sale-toast-amount {
   font-weight: 700;
-  color: var(--tblr-green, #2fb344);
+  color: var(--tblr-primary, #3eb3ab);
 }
 
 .sale-toast-time {
@@ -464,6 +464,40 @@ a {
   background: var(--online-dot-color);
   border-radius: 50%;
   margin-right: .25rem;
+}
+
+/* Sidebar online badge (under logo) */
+.kexo-online-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+.kexo-online-icon {
+  font-size: 0.5rem;
+  flex-shrink: 0;
+}
+.kexo-online-icon--online {
+  color: #22c55e;
+}
+.kexo-online-icon--offline {
+  color: #6b7280;
+}
+.kexo-online-label {
+  white-space: nowrap;
+}
+.kexo-online-badge .online-count-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.kexo-online-badge .mini-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
 }
 
 /* Badge variations */
@@ -672,11 +706,11 @@ a {
 .navbar-vertical .dropdown-menu .dropdown-item[aria-current="page"],
 .navbar-vertical .dropdown-menu .dropdown-item.active {
   background: rgba(var(--tblr-primary-rgb), .14);
-  color: var(--tblr-primary);
+  color: #fff;
 }
 .navbar-vertical .nav-item.active > .nav-link {
   background: rgba(var(--tblr-primary-rgb), .1);
-  color: var(--tblr-primary) !important;
+  color: #fff !important;
 }
 
 .mobile-date-item.active,
@@ -729,7 +763,7 @@ a {
   gap: .2rem;
 }
 .kexo-kpi-chip-delta.is-up {
-  color: var(--tblr-success, #2fb344);
+  color: var(--tblr-primary, #3eb3ab);
 }
 .kexo-kpi-chip-delta.is-down {
   color: var(--tblr-danger, #d63939);
@@ -1137,6 +1171,11 @@ html[data-bs-theme="dark"] .landing-thumb {
   /* Product/breakdown cells: constrain */
   .breakdown-product-name { max-width: 100px; }
   .landing-thumb { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+
+  /* Mobile: ensure page body and cards have safe padding */
+  .page-body .container-fluid { padding-left: .75rem; padding-right: .75rem; }
+  .page-body .card { margin-bottom: .75rem; }
+  .page-header .page-title { font-size: 1.25rem; }
 }
 
 @media (max-width: 768px) and (min-width: 577px) {

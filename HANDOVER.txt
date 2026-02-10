@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (UI: condensed-only navbar KPIs rendered inline in header; desktop date box moved to topbar right; dashboard adds vs-previous-period KPI strip)
+Last updated: 2026-02-10 (UI: Online badge moved to sidebar under logo; primary #3eb3ab; active nav white; theme settings fix; mobile polish)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -29,7 +29,7 @@ Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
 - `server/public/partials/header.html`: Tabler fluid-vertical wrapper (opens `.page` + sidebar + `.page-wrapper`).
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
-- `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary green (`#2fb344`).
+- `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary teal (`#3eb3ab`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
 - `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
 
@@ -245,7 +245,7 @@ Edge (optional):
   - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
   - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.
 - Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
-- Theme: removed KEXO gradient vars; Theme Settings controls mode/scheme/font/base/radius; default primary is `#2fb344`.
+- Theme: removed KEXO gradient vars; Theme Settings controls mode/scheme/font/base/radius; default primary is `#3eb3ab`.
 - KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.
 
 2026-02-10
@@ -259,3 +259,4 @@ Edge (optional):
 - KPI pager: show prev/next only on overflow, use smooth scrollBy clicks, auto-recompute via ResizeObserver/MutationObserver, and teardown listeners on unload.
 - KPIs (follow-up): remove expanded/toggle path entirely (small chips only in header), inline KPI markup in `partials/header.html` (no nested include dependency), and move desktop date box to topbar far-right.
 - Dashboard: add a dedicated "Vs previous period" KPI strip under the main KPI cards with trend deltas/icons and progress bars driven by `/api/kpis` compare values.
+- UI audit + fixes: Online badge moved from Live/card header to sidebar under logo (green circle when active, grey when none); primary color `#3eb3ab`; active nav items white; Theme Settings button fixed (inject offcanvas on load + data-bs-toggle); mobile padding/typography polish.

@@ -6156,15 +6156,21 @@ const API = '';
     function updateKpis() {
       const el = document.getElementById('online-count');
       const spinner = document.getElementById('online-count-spinner');
+      const iconEl = document.getElementById('kexo-online-icon');
       if (!el) return;
       function showSpinner() {
-        if (spinner) spinner.classList.remove('is-hidden');
+        if (spinner) { spinner.classList.remove('is-hidden'); }
         el.classList.add('is-hidden');
+        if (iconEl) { iconEl.classList.add('kexo-online-icon--offline'); iconEl.classList.remove('kexo-online-icon--online'); }
       }
       function showCount(n) {
-        if (spinner) spinner.classList.add('is-hidden');
+        if (spinner) { spinner.classList.add('is-hidden'); }
         el.classList.remove('is-hidden');
         el.textContent = String(n);
+        if (iconEl) {
+          iconEl.classList.remove('kexo-online-icon--offline', 'kexo-online-icon--online');
+          iconEl.classList.add(n > 0 ? 'kexo-online-icon--online' : 'kexo-online-icon--offline');
+        }
       }
       if (dateRange === 'live') {
         if (lastSessionsMode !== 'live') {

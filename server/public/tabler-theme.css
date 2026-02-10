@@ -2,8 +2,8 @@
 
 :root {
   /* Default primary (Theme Settings can override) */
-  --tblr-primary: #2fb344;
-  --tblr-primary-rgb: 47,179,68;
+  --tblr-primary: #3eb3ab;
+  --tblr-primary-rgb: 62,179,171;
   --tblr-gray-50: #f9fafc;
 
   --bg: var(--tblr-bg-surface, #f1f5f9);
@@ -42,7 +42,7 @@ body {
 }
 .navbar-vertical .nav-link[aria-current="page"] {
   background: rgba(var(--tblr-primary-rgb), .1);
-  color: var(--tblr-primary) !important;
+  color: #fff !important;
   font-weight: 600;
 }
 
@@ -301,4 +301,12 @@ html[data-bs-theme="dark"] .sessions-loading-overlay {
   .dash-tables-row { grid-template-columns: 1fr; }
   .stats-row { grid-template-columns: 1fr; }
   .traffic-grid { grid-template-columns: 1fr; }
+}
+
+/* Mobile: sidebar online badge - compact when drawer is narrow */
+@media (max-width: 991.98px) {
+  .kexo-online-badge {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
 }

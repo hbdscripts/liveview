@@ -3,7 +3,7 @@
 
   var DEFAULTS = {
     theme: 'light',
-    // Default primary is green (#2fb344) to match Tabler preview; stored value overrides.
+    // Default primary is teal (#3eb3ab); stored value overrides.
     'theme-primary': 'green',
     'theme-radius': '1',
     'theme-font': 'sans',
@@ -23,7 +23,7 @@
     orange: ['#f76707', '247,103,7'],
     yellow: ['#f59f00', '245,159,0'],
     lime:   ['#74b816', '116,184,22'],
-    green:  ['#2fb344', '47,179,68'],
+    green:  ['#3eb3ab', '62,179,171'],
     teal:   ['#0ca678', '12,166,120'],
     cyan:   ['#17a2b8', '23,162,184']
   };
@@ -318,7 +318,7 @@
     '</div>';
   }
 
-  // Open the theme offcanvas
+  // Open the theme offcanvas programmatically
   function openThemePanel() {
     injectOffcanvas();
     var el = document.getElementById('theme-offcanvas');
@@ -328,14 +328,17 @@
     }
   }
 
-  // Bind theme buttons directly (sidebar #theme-settings-btn + footer .footer-theme-btn)
+  // Bind theme buttons: use data-bs-toggle when possible so Bootstrap handles it
   function bindThemeButtons() {
+    // Inject theme offcanvas on load so it exists when user clicks
+    injectOffcanvas();
+
     var sidebarBtn = document.getElementById('theme-settings-btn');
     if (sidebarBtn) {
+      sidebarBtn.setAttribute('data-bs-toggle', 'offcanvas');
+      sidebarBtn.setAttribute('data-bs-target', '#theme-offcanvas');
       sidebarBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        // Close the Settings dropdown first
+        // Close the Settings dropdown when opening theme panel
         var dd = sidebarBtn.closest('.dropdown-menu');
         if (dd) {
           var toggle = dd.previousElementSibling;
@@ -343,15 +346,11 @@
             try { bootstrap.Dropdown.getOrCreateInstance(toggle).hide(); } catch (_) {}
           }
         }
-        openThemePanel();
       });
     }
     document.querySelectorAll('.footer-theme-btn').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        openThemePanel();
-      });
+      btn.setAttribute('data-bs-toggle', 'offcanvas');
+      btn.setAttribute('data-bs-target', '#theme-offcanvas');
     });
   }
 
