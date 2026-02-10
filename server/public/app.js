@@ -8590,8 +8590,36 @@ const API = '';
       if (sessions.length !== before) { currentPage = 1; renderTable(); updateKpis(); }
     }, 30000));
 
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState !== 'visible') return;
+    // ── Tab resume + deploy drift guard ─────────────────────────────────────
+    // In Safari/iOS (and some embed contexts) long-idle tabs can resume with a "white page"
+    // or broken JS/CSS if a deploy happened while the tab was backgrounded. We expose an
+    // assetVersion signal via /api/version; if it changes while hidden, hard-reload on resume.
+    var _bootVersionSig = null;
+    var _lastHiddenAt = 0;
+    var _versionCheckInFlight = null;
+    var RESUME_RELOAD_IDLE_MS = 10 * 60 * 1000;
+
+    function fetchVersionSig() {
+      if (_versionCheckInFlight) return _versionCheckInFlight;
+      _versionCheckInFlight = fetch(API + '/api/version', { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r && r.ok ? r.json() : null; })
+        .then(function(data) {
+          _versionCheckInFlight = null;
+          if (!data) return null;
+          var av = data.assetVersion != null ? String(data.assetVersion) : '';
+          var pv = data.version != null ? String(data.version) : '';
+          var sig = (av || pv) ? (av + '|' + pv) : '';
+          return sig && sig.trim() ? sig : null;
+        })
+        .catch(function() { _versionCheckInFlight = null; return null; });
+      return _versionCheckInFlight;
+    }
+
+    try {
+      fetchVersionSig().then(function(sig) { if (sig) _bootVersionSig = sig; });
+    } catch (_) {}
+
+    function onBecameVisible() {
       updateNextUpdateUi();
       if (activeMainTab !== 'dashboard' && activeMainTab !== 'tools') refreshKpis({ force: false });
       if (activeMainTab === 'dashboard') {
@@ -8612,6 +8640,29 @@ const API = '';
         const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
         if (stale) fetchSessions();
       }
+    }
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState !== 'visible') {
+        _lastHiddenAt = Date.now();
+        return;
+      }
+
+      var idleMs = _lastHiddenAt ? (Date.now() - _lastHiddenAt) : 0;
+      if (idleMs < RESUME_RELOAD_IDLE_MS) return onBecameVisible();
+
+      fetchVersionSig()
+        .then(function(sig) {
+          if (_bootVersionSig && sig && sig !== _bootVersionSig) {
+            try { window.location.reload(); } catch (_) { try { window.location.href = window.location.href; } catch (_) {} }
+            return;
+          }
+          if (!_bootVersionSig && sig) _bootVersionSig = sig;
+          onBecameVisible();
+        })
+        .catch(function() {
+          onBecameVisible();
+        });
     });
 
     function initEventSource() {

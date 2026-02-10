@@ -148,7 +148,6 @@ app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
-app.get('/api/version', (req, res) => res.json({ version: pkg.version || '0.0.0' }));
 app.get('/api/me', (req, res) => {
   const raw = (req.get('Cookie') || '').split(';').map(s => s.trim());
   const oauthPart = raw.find(p => p.startsWith(dashboardAuth.OAUTH_COOKIE_NAME + '='));
@@ -292,6 +291,15 @@ const ASSET_VERSION = (() => {
 
   return String(Date.now());
 })();
+
+// Expose a deploy/version signal for clients (helps recover from long-idle tabs + embed caching).
+app.get('/api/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    version: String((pkg && pkg.version) || '0.0.0'),
+    assetVersion: ASSET_VERSION ? String(ASSET_VERSION) : null,
+  });
+});
 
 function applyAssetVersionToHtml(html) {
   if (!ASSET_VERSION) return html;
