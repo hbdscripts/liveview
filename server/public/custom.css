@@ -1,8 +1,9 @@
 /* Minimal custom styles - Tabler-compatible */
 
-/* Remove left gap site-wide */
-body { margin: 0; }
+/* Remove outer browser gap site-wide */
+html, body { margin: 0; padding: 0; }
 .page, .page-wrapper { margin-left: 0; padding-left: 0; }
+.page-wrapper { width: 100%; }
 
 #sale-toast-inline-flag { margin-right: 5px; }
 
@@ -373,8 +374,8 @@ a {
 .kexo-kpis-navbar .container-fluid {
   width: 100%;
   max-width: 100%;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: .75rem;
+  padding-right: .75rem;
 }
 
 /* Loading states */
@@ -604,8 +605,8 @@ a {
 }
 .page-body > .container-fluid,
 .footer .container-fluid {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: .75rem;
+  padding-right: .75rem;
 }
 
 .kexo-topbar-row {
@@ -988,8 +989,8 @@ a {
   width: 100%;
   max-width: 100%;
   position: relative;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: .75rem;
+  padding-right: .75rem;
 }
 .kexo-desktop-nav-list {
   display: flex;
@@ -1101,10 +1102,10 @@ body[data-page="dashboard"] #kexo-kpis {
   display: none !important;
 }
 
-/* ── Dashboard page: tighten left spacing (page-body container padding) ── */
+/* ── Dashboard page: keep compact but padded content gutters ── */
 body[data-page="dashboard"] .page-body > .container-fluid {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: .75rem;
+  padding-right: .75rem;
 }
 
 /* ── Dashboard KPI cards: equal height per row ── */
