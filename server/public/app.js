@@ -3988,7 +3988,7 @@ const API = '';
           backgroundColor: 'transparent',
           zoomButtons: true,
           regionStyle: {
-            initial: { fill: 'rgba(19,99,99,0.15)', stroke: border, strokeWidth: 0.7 },
+            initial: { fill: '#e0f2f2', stroke: border, strokeWidth: 0.7 },
             hover: { fill: 'rgba(19,99,99,0.35)' },
             selected: { fill: 'rgba(19,99,99,0.45)' },
           },
@@ -3997,7 +3997,7 @@ const API = '';
               {
                 attribute: 'fill',
                 values: revenueByIso2,
-                scale: ['rgba(19,99,99,0.15)', 'rgba(19,99,99,0.95)'],
+                scale: ['#e0f2f2', '#136363'],
                 normalizeFunction: 'polynomial',
               }
             ]
