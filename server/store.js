@@ -2704,15 +2704,21 @@ async function getKpis(options = {}) {
   }
 
   // Guardrail: ensure Shopify truth cache is fresh for this range.
+  // For 'today' we block so KPIs reflect latest; for yesterday/other ranges we fire-and-forget
+  // so the response returns quickly (avoids ~25s timeout when reconcile is slow).
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthSync = null;
   if (salesShop) {
     const scopeKey = rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'range')).slice(0, 64);
-    try {
-      // Share the same reconcile_state(scope='today') as /api/stats and startup reconcile.
-      salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
-    } catch (_) {
-      salesTruthSync = { ok: false, error: 'reconcile_failed' };
+    if (rangeKey === 'today') {
+      try {
+        salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
+      } catch (_) {
+        salesTruthSync = { ok: false, error: 'reconcile_failed' };
+      }
+    } else {
+      salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(() => {});
+      salesTruthSync = null;
     }
   }
 
@@ -2748,7 +2754,7 @@ async function getKpis(options = {}) {
       () => getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey })
     ),
     rangeHasSessions(yesterdayBounds.start, yesterdayBounds.end, opts),
-    (salesShop ? salesTruth.getTruthHealth(salesShop || '', 'today') : Promise.resolve(null)),
+    (salesShop ? salesTruth.getTruthHealth(salesShop || '', rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'r')).slice(0, 64)) : Promise.resolve(null)),
   ]);
 
   // Avoid duplicate work: conversion rate is derived from already-fetched orders + session counts.

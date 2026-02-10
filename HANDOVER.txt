@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (desktop nav KEXO 3-color accents + KPI strip auto-fit)
+Last updated: 2026-02-10 (yesterday KPIs fix + desktop nav KEXO 3-color accents + KPI strip auto-fit)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -329,3 +329,4 @@ Edge (optional):
 - Nav active-state follow-up: JS no longer applies `.active` to dropdown toggle links; active state stays on outer `li.nav-item` to match Tabler behavior.
 - Legacy naming cleanup: renamed `initSidebarDateMenu` helpers to `initHeaderDateMenu` variants in `server/public/app.js`.
 - Mobile redirect: all mobile User-Agent traffic to dashboard/login paths now redirects to `/mobile-unsupported` with centered logo and "Desktop only for now" copy.
+- KPIs yesterday: for non-today ranges, Shopify reconcile runs in background (not awaited) so `/api/kpis` returns quickly and avoids client timeout; yesterday vs day-before comparison now shows correctly.
