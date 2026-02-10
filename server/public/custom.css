@@ -593,6 +593,9 @@ a {
 #back-to-top-btn { cursor: pointer; }
 
 /* ── Prevent page-body from stretching on pages with little content ── */
+.page-header {
+  flex: 0 0 auto;
+}
 .page-body {
   flex: 0 0 auto;
 }
