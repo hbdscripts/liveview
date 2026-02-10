@@ -603,6 +603,13 @@ a {
   -ms-overflow-style: none;
 }
 .kexo-sidebar-nav::-webkit-scrollbar { display: none; }
+/* Rotate dropdown chevron when open */
+.kexo-sidebar-nav .nav-link.dropdown-toggle::after {
+  transition: transform .2s ease;
+}
+.kexo-sidebar-nav .nav-item.dropdown.show > .nav-link.dropdown-toggle::after {
+  transform: rotate(180deg);
+}
 .kexo-sidebar-settings {
   margin-top: auto !important;
   padding-top: .45rem;
