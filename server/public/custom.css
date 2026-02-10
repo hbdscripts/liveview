@@ -744,6 +744,19 @@ a {
 
 .navbar-vertical .dropdown-menu {
   min-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.navbar-vertical .dropdown-menu .dropdown-item {
+  width: 100%;
+  min-width: 100%;
+  display: block;
+  text-align: left;
+  box-sizing: border-box;
+}
+.navbar-vertical .dropdown-menu .dropdown-item:hover {
+  width: 100%;
+  min-width: 100%;
 }
 .navbar-vertical .dropdown-menu .dropdown-item[aria-current="page"],
 .navbar-vertical .dropdown-menu .dropdown-item.active {

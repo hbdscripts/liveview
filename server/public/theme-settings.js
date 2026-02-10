@@ -3,14 +3,13 @@
 
   var DEFAULTS = {
     theme: 'light',
-    // Default primary is teal (#3eb3ab); stored value overrides.
     'theme-primary': 'green',
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
   };
 
-  var KEYS = Object.keys(DEFAULTS);
+  var KEYS = Object.keys(DEFAULTS).filter(function (k) { return k !== 'theme'; });
 
   // Primary color map: name → [hex, r, g, b]
   var PRIMARY_COLORS = {
@@ -87,11 +86,13 @@
         root.style.setProperty('--tblr-border-radius-sm', r === '0' ? '0' : 'calc(' + r + ' * .75)');
         root.style.setProperty('--tblr-border-radius-lg', r === '0' ? '0' : 'calc(' + r + ' * 1.5)');
         root.style.setProperty('--tblr-border-radius-xl', r === '0' ? '0' : 'calc(' + r + ' * 3)');
+        root.style.setProperty('--radius', r);
       } else {
         root.style.removeProperty('--tblr-border-radius');
         root.style.removeProperty('--tblr-border-radius-sm');
         root.style.removeProperty('--tblr-border-radius-lg');
         root.style.removeProperty('--tblr-border-radius-xl');
+        root.style.removeProperty('--radius');
       }
     } else if (key === 'theme-font') {
       var ff = FONT_FAMILIES[value];
@@ -118,6 +119,7 @@
 
   // Apply stored settings immediately (before paint)
   function restoreAll() {
+    applyTheme('theme', 'light');
     KEYS.forEach(function (key) {
       var val = getStored(key);
       if (val !== null) {
@@ -191,14 +193,6 @@
       '</div>' +
       '<div class="offcanvas-body">' +
         '<form id="theme-settings-form">' +
-
-          '<div class="mb-4">' +
-            '<label class="form-label">Color mode</label>' +
-            '<div class="form-selectgroup">' +
-              radioCard('theme', 'light', 'Light') +
-              radioCard('theme', 'dark', 'Dark') +
-            '</div>' +
-          '</div>' +
 
           '<div class="mb-4">' +
             '<label class="form-label">Color scheme</label>' +

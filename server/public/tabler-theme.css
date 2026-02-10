@@ -10,7 +10,7 @@
   --card: #fff;
   --border: var(--tblr-border-color, #e6e7e9);
   --shadow: none;
-  --radius: .75rem;
+  --radius: var(--tblr-border-radius, .75rem);
   --th-bg: transparent;
   --row-hover: rgba(var(--tblr-primary-rgb), .024);
   --table-gap: 1rem;
@@ -66,7 +66,7 @@ body {
 /* .card class on HTML elements now provides base Tabler card styling.
    These rules only supplement Tabler's defaults where needed. */
 .card {
-  border-radius: .75rem;
+  border-radius: var(--tblr-border-radius, .75rem);
   box-shadow: rgba(35,46,60,.04) 0 2px 4px 0;
 }
 .dash-table-card { overflow: hidden; }
@@ -236,7 +236,7 @@ body {
 .sessions-table-wrap {
   background: var(--tblr-bg-surface, #fff);
   border: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-radius: .75rem;
+  border-radius: var(--tblr-border-radius, .75rem);
   box-shadow: rgba(35,46,60,.04) 0 2px 4px 0;
   overflow: hidden;
 }
@@ -264,7 +264,7 @@ body {
 .stats-loading-overlay,
 .sessions-loading-overlay {
   background: rgba(255, 255, 255, 0.85);
-  border-radius: .75rem;
+  border-radius: var(--tblr-border-radius, .75rem);
 }
 
 /* Dark mode: avoid white flash while reports load */

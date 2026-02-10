@@ -3,14 +3,8 @@
       try {
         var root = document.documentElement;
 
-        var mode = localStorage.getItem('tabler-theme');
-        if (mode === 'dark') {
-          root.setAttribute('data-bs-theme', 'dark');
-          root.classList.add('theme-dark-early');
-        } else if (mode === 'light') {
-          root.setAttribute('data-bs-theme', 'light');
-          root.classList.remove('theme-dark-early');
-        }
+        root.setAttribute('data-bs-theme', 'light');
+        root.classList.remove('theme-dark-early');
 
         var PRIMARY = {
           blue: ['#206bc4', '32,107,196'],
@@ -40,6 +34,7 @@
           root.style.setProperty('--tblr-border-radius-sm', r === '0' ? '0' : 'calc(' + r + ' * .75)');
           root.style.setProperty('--tblr-border-radius-lg', r === '0' ? '0' : 'calc(' + r + ' * 1.5)');
           root.style.setProperty('--tblr-border-radius-xl', r === '0' ? '0' : 'calc(' + r + ' * 3)');
+          root.style.setProperty('--radius', r);
         }
 
         var FONTS = {

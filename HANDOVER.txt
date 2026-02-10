@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Mobile: themed menu button + date icon, flat nav menu)
+Last updated: 2026-02-10 (Theme: light only, border-radius fix, Settings dropdown full width)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -265,3 +265,4 @@ Edge (optional):
 - Countries: removed pie chart; map spans full width above both tables; map fill color #136363 (was blue).
 - Header grid: logo row and KPI bar same height (--kexo-top-row-height: 4.5rem), border-bottom aligned; removed border-top from online badge, logo gets it; page gap: 0 so KPI bar touches sidebar on all pages.
 - Mobile: hamburger replaced with Tabler ti-menu-2 icon; hamburger and date icon styled white on dark bar; hamburger opens flat mobile nav (kexo-mobile-nav) instead of sidebar; nav has Overview, Live View, etc. + Sign out.
+- Theme: color mode picker removed (light only); border-radius setting now applies to --radius and --tblr-border-radius (+ card, sessions, overlays); Settings dropdown items full width on hover; head-theme always forces light.
