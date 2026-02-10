@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (UI: Ads table footer totals + actions bar; Tabler fluid-vertical sidebar + condensed KPIs)
+Last updated: 2026-02-10 (UI: sidebar Settings dropup + nav groups; KPIs moved into top navbar with overlay; mobile topbar hamburger/centered logo/date icon)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -29,7 +29,7 @@ Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
 - `server/public/partials/header.html`: Tabler fluid-vertical wrapper (opens `.page` + sidebar + `.page-wrapper`).
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
-- `server/public/partials/kpis-expanded.html`: KPI component (condensed strip + expanded grid toggle).
+- `server/public/partials/kpis-expanded.html`: KPI component (condensed strip + expanded overlay grid).
 - `server/public/tabler-theme.css`: Tabler theme overrides + sidebar active state + default primary green (`#2fb344`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
 - `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
@@ -59,9 +59,10 @@ Auth protection:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
 - Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
-- KPI component is now top-of-content with 2 mutually-exclusive states (persisted in `localStorage` as `kexo-kpis-expanded`):
-  - Condensed KPI strip (always shown by default)
-  - Expanded KPI grid (chevron toggle)
+- KPI component lives in the top navbar and is a single DOM container across pages:
+  - Condensed KPI strip stays in place
+  - Expanded KPI grid opens as an overlay so the page content start does not shift
+  - State is persisted in `localStorage` as `kexo-kpis-expanded`
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -94,10 +95,12 @@ Platform start/min date clamp:
 Date control (sidebar, under logo):
 - UI is in `server/public/partials/header.html` as a Tabler input-group dropdown.
 - It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
+- Mobile: sidebar date input is hidden; topbar date icon dropdown updates the same `select#global-date-select`.
 
-KPI component (top-of-content, every page):
-- Markup lives in ONE include: `server/public/partials/kpis-expanded.html`.
-- Condensed KPI strip is shown by default; expanded KPI grid toggles via chevrons.
+KPI component (top navbar, every page):
+- Markup lives in ONE include: `server/public/partials/kpis-expanded.html` and is included from `server/public/partials/header.html` (pages do not include KPIs directly).
+- Condensed KPI strip is always visible; expanded KPI grid toggles via chevrons and renders as an overlay (no layout shift).
+- Condensed chips include value + delta + a small progress bar.
 - State is controlled in `server/public/app.js` and persisted in `localStorage` (`kexo-kpis-expanded`).
 - Extra KPIs (Items ordered / Orders fulfilled / Returns value):
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
@@ -115,6 +118,7 @@ KPI caching (perf + UX):
 
 - Shared wrapper is Tabler fluid vertical: dark sidebar + `.page-wrapper` (see `server/public/partials/header.html`).
 - Pages use `container-fluid` for a “fluid” feel (matching Tabler’s `layout-fluid-vertical`).
+- Mobile: sidebar is an offcanvas drawer toggled from the topbar hamburger (backdrop click / Escape closes).
 
 ---
 
@@ -226,7 +230,8 @@ Edge (optional):
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
   - Ads table totals are rendered in the `card-footer` (pinned) with a console sanity-check against campaign sums.
-  - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure; connection + refresh + errors live in `#ads-actions` just below the table (icons right), errors open a Tabler modal, loading is centered, and non-forced refreshes patch spend/profit/ROAS in-place instead of wiping the table.
+  - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure; connection + refresh + errors live in `#ads-actions` just below the table (icons right, Tabler SVG), errors open a Tabler modal, loading is centered, and non-forced refreshes patch spend/profit/ROAS (+ Conv) in-place instead of wiping the table.
+  - Ads table mobile: campaign column is sticky while horizontally scrolling so names remain readable.
   - Ads spend sync: server runs Google Ads spend sync in the background every 5 minutes (recent window), and the Ads UI refreshes by patching spend/profit/ROAS in-place (no “Syncing…” table wipe).
   - Ads boot: `app.js` waits for `/ads.js` to actually load/execute (when the script tag already exists) and defers init by one macrotask so `/ads` doesn’t render blank on slow networks.
   - Ads campaign modal: chart now lazy-loads Chart.js so clicking a campaign row always renders the spend vs sales graph.
@@ -251,4 +256,7 @@ Edge (optional):
 2026-02-10
 - Header: pin Settings dropdown to the far-right of the top bar.
 - Ops: version local CSS/JS URLs in rendered HTML so deploys don’t mix “new HTML + cached old JS/CSS” (fixes unstyled / stale KPI strip in embeds).
-- Ads UI polish: move totals into the card footer, move connection/refresh/errors into an actions bar below the table, and use a Tabler modal for error details.
+- Ads UI polish: move totals into the card footer, move connection/refresh/errors into an actions bar below the table (Tabler SVG), add Conv (orders) column, and make campaign column sticky on mobile horizontal scroll.
+- Sidebar: restore grouped nav parents (Dashboard/Breakdown/Traffic/Integrations) and move Settings actions into a bottom-pinned sidebar Settings dropup.
+- KPIs: render from a single navbar-owned container (included from `partials/header.html`) and open the expanded grid as an overlay (no vertical layout shift); condensed chips now show delta + mini progress bars.
+- Mobile topbar: hamburger left (opens sidebar drawer), logo perfectly centered, date icon right (Tabler dropdown bound to `#global-date-select`).

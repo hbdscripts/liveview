@@ -128,9 +128,15 @@ a {
 .ads-campaign-table .ads-totals-row {
   background: rgba(var(--tblr-primary-rgb), .035);
   font-weight: 600;
+  height: 50px;
 }
 html[data-bs-theme="dark"] .ads-campaign-table .ads-totals-row {
   background: rgba(var(--tblr-primary-rgb), .09);
+}
+
+.ads-campaign-table .ads-totals-row .grid-cell {
+  height: 50px;
+  font-weight: 600;
 }
 
 .product-insights-thumb {

@@ -72,12 +72,13 @@
   /* ── sort state ──────────────────────────────────────────── */
 
   // Column definitions: key, label, getter, format
-  // Order: Campaign, Spend, Impr, Clicks, Profit, ROAS, Sales (clicks first among metrics, sales last)
+  // Order: Campaign, Spend, Impr, Clicks, Conv, Profit, ROAS, Sales
   var COL_DEFS = [
     { key: 'campaign', label: 'Campaign', get: function (c) { return (c.campaignName || c.campaignId || '').toLowerCase(); }, fmt: null },
     { key: 'spend',    label: 'Spend',    get: function (c) { return c.spend || 0; },        fmt: function (v, cur) { return fmtMoney(v, cur); } },
     { key: 'impr',     label: 'Impr',     get: function (c) { return c.impressions || 0; },  fmt: function (v) { return fmtNum(v); } },
     { key: 'clicks',   label: 'Clicks',   get: function (c) { return c.clicks || 0; },       fmt: function (v) { return fmtNum(v); } },
+    { key: 'conv',     label: 'Conv',     get: function (c) { return c.orders || 0; },       fmt: function (v) { return fmtNum(v); } },
     { key: 'profit',   label: 'Profit',   get: function (c) { return c.profit || 0; },       fmt: function (v, cur) { return fmtMoney(v, cur); } },
     { key: 'roas',     label: 'ROAS',     get: function (c) { return c.roas != null ? c.roas : -Infinity; }, fmt: function (v) { return fmtRoas(v === -Infinity ? null : v); } },
     { key: 'sales',    label: 'Sales',    get: function (c) { return c.revenue || 0; },      fmt: function (v, cur) { return fmtMoney(v, cur); } },
@@ -375,15 +376,21 @@
       '.ads-refresh-mini{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(0,0,0,0.04);color:var(--muted,#555);}' +
       'html[data-bs-theme="dark"] .ads-refresh-mini{background:rgba(255,255,255,0.06);}' +
       '@keyframes adsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
-      '.ads-spin{animation:adsSpin 1s linear infinite;}' +
-      '.ads-campaign-table{table-layout:fixed;}' +
-      '.ads-campaign-table .grid-cell:nth-child(1){width:36%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(2){width:12%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(3){width:10%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(4){width:10%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(5){width:12%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(6){width:10%;}' +
-      '.ads-campaign-table .grid-cell:nth-child(7){width:10%;}' +
+      '.ads-spin{animation:adsSpin 1s linear infinite;transform-origin:50% 50%;}' +
+      '.ads-campaign-table{table-layout:fixed;min-width:760px;}' +
+      '#ads-footer{overflow-x:auto;-webkit-overflow-scrolling:touch;}' +
+      '.ads-campaign-table .grid-cell:nth-child(2){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(3){width:90px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(4){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(5){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(6){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(7){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(8){width:110px;}' +
+      '@media (max-width:768px){' +
+        '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;width:100px;max-width:100px;min-width:100px;background:inherit;box-shadow:1px 0 0 var(--tblr-border-color, #e6e7e9);}' +
+        '.ads-campaign-table .grid-row--header .grid-cell:first-child{z-index:3;}' +
+        '.ads-campaign-table .ads-totals-row .grid-cell:first-child{z-index:3;}' +
+      '}' +
       '.ads-campaign-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.ads-errors-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px;}' +
       '.ads-errors-title{font-weight:600;}' +
@@ -490,18 +497,19 @@
       if (!c2) return false; // campaign set changed -> full rerender
 
       var cells = row.querySelectorAll('.grid-cell');
-      if (!cells || cells.length < 7) return false;
+      if (!cells || cells.length < 8) return false;
 
       patchText(cells[1], fmtMoney(c2.spend, currency));
       patchText(cells[2], fmtNum(c2.impressions));
       patchText(cells[3], fmtNum(c2.clicks));
+      patchText(cells[4], fmtNum(c2.orders));
 
       var pr = c2.profit != null ? Number(c2.profit) : 0;
-      patchText(cells[4], fmtMoney(pr, currency));
-      setProfitCellClass(cells[4], pr);
+      patchText(cells[5], fmtMoney(pr, currency));
+      setProfitCellClass(cells[5], pr);
 
-      patchText(cells[5], fmtRoas(c2.roas));
-      patchText(cells[6], fmtMoney(c2.revenue, currency));
+      patchText(cells[6], fmtRoas(c2.roas));
+      patchText(cells[7], fmtMoney(c2.revenue, currency));
     }
 
     var totals = summary && summary.totals ? summary.totals : null;
@@ -509,15 +517,16 @@
     var tRow = totalsFooter ? totalsFooter.querySelector('.ads-totals-row') : null;
     if (totals && tRow) {
       var tCells = tRow.querySelectorAll('.grid-cell');
-      if (!tCells || tCells.length < 7) return false;
+      if (!tCells || tCells.length < 8) return false;
       patchText(tCells[1], fmtMoney(totals.spend, currency));
       patchText(tCells[2], fmtNum(totals.impressions));
       patchText(tCells[3], fmtNum(totals.clicks));
+      patchText(tCells[4], fmtNum(totals.conversions != null ? totals.conversions : totals.orders));
       var tProfit = totals.profit != null ? Number(totals.profit) : 0;
-      patchText(tCells[4], fmtMoney(tProfit, currency));
-      setProfitCellClass(tCells[4], tProfit);
-      patchText(tCells[5], fmtRoas(totals.roas));
-      patchText(tCells[6], fmtMoney(totals.revenue, currency));
+      patchText(tCells[5], fmtMoney(tProfit, currency));
+      setProfitCellClass(tCells[5], tProfit);
+      patchText(tCells[6], fmtRoas(totals.roas));
+      patchText(tCells[7], fmtMoney(totals.revenue, currency));
     }
 
     return true;
@@ -529,6 +538,32 @@
         '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>' +
         '<path d="M12 9v2m0 4v.01"></path>' +
         '<path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7 -14a2 2 0 0 0 -3.68 0l-7 14a2 2 0 0 0 1.84 2.75"></path>' +
+      '</svg>'
+    );
+  }
+
+  function refreshSvg(extraClass, idAttr) {
+    var cls = 'icon icon-tabler icons-tabler-outline icon-tabler-refresh' + (extraClass ? (' ' + extraClass) : '');
+    var id = idAttr ? (' id="' + idAttr + '"') : '';
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg"' + id + ' width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="' + cls + '" aria-hidden="true">' +
+        '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>' +
+        '<path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>' +
+        '<path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>' +
+      '</svg>'
+    );
+  }
+
+  function plugConnectedSvg() {
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-plug-connected" aria-hidden="true">' +
+        '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>' +
+        '<path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5"></path>' +
+        '<path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5"></path>' +
+        '<path d="M3 21l2.5 -2.5"></path>' +
+        '<path d="M18.5 5.5l2.5 -2.5"></path>' +
+        '<path d="M10 11l-2 2"></path>' +
+        '<path d="M13 14l-2 2"></path>' +
       '</svg>'
     );
   }
@@ -549,7 +584,6 @@
       rangeKey: summary && summary.rangeKey ? summary.rangeKey : null,
     };
 
-    var connIcon = isConnected ? 'ti-plug-connected' : 'ti-plug-x';
     var connBtnClass = isConnected ? 'btn-ghost-success' : 'btn-ghost-secondary';
 
     actions.style.display = '';
@@ -557,11 +591,11 @@
       '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
         alertTriangleSvg() +
       '</button>' +
-      '<button type="button" class="btn btn-icon ' + connBtnClass + '" id="ads-conn-icon" disabled title="' + esc(connLabel) + '" aria-label="' + esc(connLabel) + '">' +
-        '<i class="ti ' + connIcon + '"></i>' +
-      '</button>' +
+      '<span class="btn btn-icon ' + connBtnClass + ' disabled" id="ads-conn-icon" title="' + esc(connLabel) + '" aria-label="' + esc(connLabel) + '">' +
+        plugConnectedSvg() +
+      '</span>' +
       '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Refresh metrics" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
-        '<i class="ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '') + '"></i>' +
+        refreshSvg(_isRefreshing ? 'ads-spin' : '', 'ads-refresh-icon') +
       '</button>';
 
     var rbtn = document.getElementById('ads-refresh-btn');
@@ -592,6 +626,31 @@
     }
 
     renderActionsBar(status, summary);
+  }
+
+  var _adsScrollSyncInited = false;
+  function syncFooterScroll() {
+    var rootWrap = document.getElementById('ads-root');
+    var footerWrap = document.getElementById('ads-footer');
+    if (!rootWrap || !footerWrap) return;
+
+    if (!_adsScrollSyncInited) {
+      _adsScrollSyncInited = true;
+      var syncing = false;
+      function sync(from, to) {
+        if (syncing) return;
+        syncing = true;
+        try { to.scrollLeft = from.scrollLeft; } catch (_) {}
+        setTimeout(function () { syncing = false; }, 0);
+      }
+      try {
+        rootWrap.addEventListener('scroll', function () { sync(rootWrap, footerWrap); }, { passive: true });
+        footerWrap.addEventListener('scroll', function () { sync(footerWrap, rootWrap); }, { passive: true });
+      } catch (_) {}
+    }
+
+    // Ensure footer aligns to current table scroll offset.
+    try { footerWrap.scrollLeft = rootWrap.scrollLeft; } catch (_) {}
   }
 
   function render(root, status, summary, refreshResult) {
@@ -658,7 +717,7 @@
       } catch (_) {}
     })();
 
-    // Header cells: Campaign, Spend, Impr, Clicks, Profit, ROAS, Sales
+    // Header cells: Campaign, Spend, Impr, Clicks, Conv, Profit, ROAS, Sales
     var headerCells = COL_DEFS.map(function (d, idx) {
       return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-end' };
     });
@@ -672,6 +731,7 @@
       { html: esc(fmtMoney(totals.spend, currency)), cls: ' text-end' },
       { html: esc(fmtNum(totals.impressions)), cls: ' text-end' },
       { html: esc(fmtNum(totals.clicks)), cls: ' text-end' },
+      { html: esc(fmtNum(totals.conversions != null ? totals.conversions : totals.orders)), cls: ' text-end' },
       { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
       { html: esc(fmtRoas(totals.roas)), cls: ' text-end' },
       { html: esc(fmtMoney(totals.revenue, currency)), cls: ' text-end' },
@@ -690,6 +750,7 @@
         { html: esc(fmtMoney(c.spend, currency)), cls: ' text-end' },
         { html: esc(fmtNum(c.impressions)), cls: ' text-end' },
         { html: esc(fmtNum(c.clicks)), cls: ' text-end' },
+        { html: esc(fmtNum(c.orders)), cls: ' text-end' },
         { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
         { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
         { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-end' },
@@ -716,6 +777,7 @@
     }
 
     patchFooterAndNote(status, summary);
+    syncFooterScroll();
 
     // Bind sortable headers
     var headers = root.querySelectorAll('[data-sort]');
@@ -749,8 +811,11 @@
     var btn = document.getElementById('ads-refresh-btn');
     if (btn) {
       btn.disabled = _isRefreshing;
-      var icon = btn.querySelector('i');
-      if (icon) icon.className = 'ti ti-refresh' + (_isRefreshing ? ' ads-spin' : '');
+      var svg = document.getElementById('ads-refresh-icon');
+      if (svg && svg.classList) {
+        svg.classList.remove('ads-spin');
+        if (_isRefreshing) svg.classList.add('ads-spin');
+      }
     }
   }
 
