@@ -159,6 +159,10 @@ app.get('/api/store-base-url', (req, res) => {
     }
     const sd = (config.shopDomain || '').trim();
     if (sd && !sd.endsWith('.myshopify.com')) return sd;
+    if (sd && sd.endsWith('.myshopify.com')) {
+      const base = sd.replace(/\.myshopify\.com$/i, '');
+      return base ? base + '.com' : '';
+    }
     return '';
   })();
   const shopFromTruth = (() => {
