@@ -355,7 +355,7 @@ a {
   --kexo-top-row-height: 3.25rem;
 }
 
-/* KPI bar: below dark nav, light strip */
+/* KPI bar: below dark nav, light strip, single line, 100% width */
 .kexo-kpis-navbar {
   position: relative;
   margin: 0 0 20px;
@@ -369,6 +369,12 @@ a {
   min-height: var(--kexo-top-row-height);
   display: flex;
   align-items: center;
+}
+.kexo-kpis-navbar .container-fluid {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* Loading states */
@@ -693,12 +699,13 @@ a {
   color: var(--tblr-primary);
 }
 
-/* ── KPI condensed strip (navbar) ─────────────────────────────────── */
+/* ── KPI condensed strip (navbar): single line, no wrap ────────────── */
 .kexo-kpis-condensed-row {
   display: flex;
   align-items: center;
   width: 100%;
   min-width: 0;
+  flex-wrap: nowrap;
 }
 .kexo-kpis-condensed-strip {
   display: flex;
@@ -708,7 +715,10 @@ a {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 .kexo-kpi-chip {
   flex: 0 0 var(--kexo-kpi-width);
@@ -964,8 +974,10 @@ a {
 }
 .kexo-desktop-nav-container {
   width: 100%;
-  max-width: 1320px !important;
+  max-width: 100%;
   position: relative;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 .kexo-desktop-nav-list {
   display: flex;
