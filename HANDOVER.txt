@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (KPI row padding + keep KPIs visible at lower widths)
+Last updated: 2026-02-10 (nav/logo size normalization desktop+mobile)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -266,6 +266,7 @@ Edge (optional):
 - Dashboard: removed the entire "Vs previous period" KPI card section from `server/public/dashboard.html`.
 - Layout/gutter fix: removed page-level left/right container padding on desktop (`.page-body > .container-fluid`, footer, KPI bar container, desktop nav container) to eliminate the persistent left gap.
 - KPI responsiveness: `kexo-kpis-condensed-row` now has `padding: 12px 5px`, and the small-screen rule no longer hides `.kexo-kpis-navbar` so KPIs remain visible and horizontally overflow as needed.
+- Nav sizing follow-up: desktop logo is now 24px high; mobile topbar height now matches desktop nav height (2.5rem), with smaller mobile icons and a smaller mobile logo.
 - KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
 - Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
 - KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.

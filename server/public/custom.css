@@ -796,7 +796,7 @@ a {
   .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar {
     background: #1b2434;
     border: none;
-    padding: .35rem .75rem;
+    padding: 0 .75rem;
   }
   .page-wrapper > header.navbar.navbar-expand-lg.kexo-top-navbar > .container-fluid,
   .page-body > .container-fluid,
@@ -809,10 +809,10 @@ a {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: 60px;
+    min-height: 2.5rem;
   }
-  .kexo-topbar-slot-left { width: 2.5rem; flex: 0 0 auto; }
-  .kexo-topbar-slot-right { width: 2.5rem; flex: 0 0 auto; display: flex; justify-content: flex-end; }
+  .kexo-topbar-slot-left { width: 2rem; flex: 0 0 auto; }
+  .kexo-topbar-slot-right { width: 2rem; flex: 0 0 auto; display: flex; justify-content: flex-end; }
   .kexo-mobile-logo-wrap {
     position: static;
     transform: none;
@@ -820,14 +820,22 @@ a {
     align-items: center;
     justify-content: center;
     flex: 1;
-    height: auto;
+    height: 2.5rem;
+  }
+  .kexo-mobile-logo-link {
+    width: 32px;
+    height: 32px;
+  }
+  .kexo-mobile-logo-link img {
+    width: 22px;
+    height: 22px;
   }
   .kexo-mobile-menu-btn,
   .kexo-mobile-date-btn {
     color: #fff !important;
     border: none !important;
     background: transparent !important;
-    padding: .35rem;
+    padding: .2rem;
   }
   .kexo-mobile-menu-btn:hover,
   .kexo-mobile-date-btn:hover {
@@ -837,7 +845,7 @@ a {
   }
   .kexo-mobile-menu-btn i,
   .kexo-mobile-date-btn i {
-    font-size: 1.25rem;
+    font-size: 1rem;
   }
   .kexo-topbar-slot-right .dropdown-menu {
     background: #1b2434;
@@ -876,10 +884,10 @@ a {
   }
   .kexo-mobile-nav-item {
     display: block;
-    padding: .6rem 1rem;
+    padding: .5rem .75rem;
     color: #fff;
     text-decoration: none;
-    font-size: .9375rem;
+    font-size: .8125rem;
     font-weight: 500;
   }
   .kexo-mobile-nav-item:hover,
@@ -1007,7 +1015,7 @@ a {
 }
 .kexo-desktop-logo-link img {
   display: block;
-  height: 29px;
+  height: 24px;
 }
 .kexo-desktop-nav-list .nav-link,
 .kexo-desktop-nav-settings .nav-link {
