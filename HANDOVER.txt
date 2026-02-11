@@ -216,6 +216,7 @@ Edge (optional):
   - Added resize interaction suppression for sortable headers so pointer-up after drag does not trigger sort/re-order clicks.
   - Kept separator + stronger fixed-edge shadow and aligned adjacent second-column background treatment.
   - Persisted sticky width per-table (prevents cross-table width conflicts on dashboard grids) and centered dashboard table header/body alignment.
+  - Dashboard 3-column tables: set fixed widths for value columns so `w-1` doesn’t collapse them and make the first column look oversized.
 - Countries map styling:
   - Switched region/flow emphasis to `--tblr-primary`/`--tblr-primary-rgb` shades; removed non-primary dominant highlight tones.
 - Channels + Type charts:
