@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (table rows-control compact UI + live sticky max-width 400)
+Last updated: 2026-02-11 (KPI chip CSS, sparkline gradient, dashboard card layout)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -208,6 +208,13 @@ Edge (optional):
 ---
 
 ## Changelog (summary)
+
+2026-02-11
+- KPI chip CSS + sparkline + dashboard card layout:
+  - Condensed KPI chips (non-dashboard): updated `#kexo-kpis .kexo-kpi-chip` with gap 5px and explicit flex/min/max-width vars in `head-theme.html` and `custom.css`.
+  - Condensed sparklines: area chart with gradient fill (white left → primary right) so loading behind text does not affect readability; `renderCondensedSparklines` in `app.js`.
+  - Dashboard KPI cards: compare values (Yesterday / 7 Day) now stack label above value per row; `.dash-kpi-compare-item` flex-direction column; `.text-end` aligns right.
+  - Dashboard cards: min-height 160px; sparkline wrap spans 100% width (left: 0, right: 0) under all content.
 
 2026-02-11
 - Table standardization (site-wide):

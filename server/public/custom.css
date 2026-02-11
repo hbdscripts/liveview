@@ -929,15 +929,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* Dashboard KPI cards: background sparklines */
 .card-body:has(.dash-kpi-sparkline-wrap) {
   position: relative;
-  min-height: 130px;
+  min-height: 160px;
 }
 .dash-kpi-sparkline-wrap {
   position: absolute;
   top: auto;
-  left: auto;
+  left: 0;
   right: 0;
   bottom: 0;
-  width: 80%;
+  width: 100%;
   height: 48px;
   z-index: 0;
   opacity: 0.72;
@@ -960,11 +960,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   align-items: center;
 }
 .dash-kpi-compare-item {
-  display: inline-flex;
-  gap: 0.35rem;
-  align-items: baseline;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
   white-space: nowrap;
   min-width: 0;
+}
+.dash-kpi-compare-item.text-end {
+  align-items: flex-end;
 }
 
 .dash-trend-delta {
@@ -1171,12 +1175,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: none;
 }
 .kexo-kpi-chip {
-  flex: 0 0 var(--kexo-kpi-width);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: var(--kexo-kpi-min-width);
-  max-width: var(--kexo-kpi-width);
+  flex: 0 0 var(--kexo-kpi-width, 148px);
+  min-width: var(--kexo-kpi-min-width, 132px);
+  max-width: var(--kexo-kpi-width, 148px);
+  gap: 5px;
   padding: 2px 6px 0 0;
   margin: 0;
   line-height: 1.12;

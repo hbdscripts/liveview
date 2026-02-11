@@ -6032,10 +6032,20 @@ const API = '';
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
-            chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: 'area', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
             stroke: { width: 2.4, curve: 'smooth', lineCap: 'round' },
-            fill: { type: 'solid', opacity: 1 },
+            fill: {
+              type: 'gradient',
+              gradient: {
+                type: 'horizontal',
+                shadeIntensity: 1,
+                opacityFrom: 0.35,
+                opacityTo: 0.12,
+                gradientFromColors: ['#ffffff'],
+                gradientToColors: [sparkColor]
+              }
+            },
             colors: [sparkColor],
             markers: { size: 0 },
             tooltip: { enabled: false }
