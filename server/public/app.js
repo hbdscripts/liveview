@@ -6694,11 +6694,6 @@ const API = '';
         overlay.innerHTML = '' +
           '<div class="container container-slim py-4 report-build-wrap">' +
             '<div class="text-center">' +
-              '<div class="mb-3">' +
-                '<a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">' +
-                  '<img src="/assets/footer.png" height="36" alt="Kexo">' +
-                '</a>' +
-              '</div>' +
               '<div class="text-secondary mb-2 report-build-title">Preparing application</div>' +
               '<div class="text-secondary small mb-3 report-build-step">&mdash;</div>' +
               '<div class="progress progress-sm page-loader-progress"><div class="progress-bar progress-bar-indeterminate"></div></div>' +

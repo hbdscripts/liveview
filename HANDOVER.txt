@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (single page-body loader unified across routes + dashboard loader added)
+Last updated: 2026-02-11 (single page-body loader refined: no logo, centered, header/footer unaffected)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,8 +210,12 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader UX refinement (post-unification):
+  - Shared page-body loader (`#page-body-loader`) no longer renders the Kexo logo; it now shows only status text + Tabler indeterminate progress.
+  - Loader backdrop is transparent and non-interactive, so header/top menu/footer remain visually unaffected while loading happens in the center content region.
+  - During loading, page-body content is hidden via `visibility` (not `display:none`) to preserve layout height and avoid footer/nav jump.
 - Single page-body loader unification (all canonical routes):
-  - Added one shared Tabler-style loader in `server/public/partials/page-body-start.html` (`#page-body-loader`) that covers `.page-body` with `background: var(--tblr-body-bg)` and dynamic title/step text.
+  - Added one shared Tabler-style loader in `server/public/partials/page-body-start.html` (`#page-body-loader`) that anchors to `.page-body` with dynamic title/step text.
   - `server/public/app.js` report-build lifecycle now resolves to the shared page-body loader/scope (instead of per-page overlay IDs), and dashboard fetches now use the same loader lifecycle (`key: 'dashboard'`) so Overview no longer loads without a loader.
   - Disabled top thin progress-bar visuals during report loads to keep a strict one-loader-at-a-time contract.
   - Removed page-specific loader overlays from `live/sales/date/countries/products/channels/type/ads` so duplicate loaders cannot appear.

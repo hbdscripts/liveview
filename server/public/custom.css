@@ -761,8 +761,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--tblr-body-bg, #f5f7fb);
+  background: transparent;
   padding: 1rem;
+  pointer-events: none;
 }
 
 .table-loading-overlay {

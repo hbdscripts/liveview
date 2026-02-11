@@ -745,7 +745,7 @@
 
     /* Hide all content during loading/building - show only the loading overlay */
     .page-body.report-building > :not(.page-body-loader-overlay) {
-      display: none !important;
+      visibility: hidden !important;
     }
     /* KPI sub-text (comparison to yesterday) */
     .live-kpi-sub { font-size: .6875rem; font-weight: 500; color: var(--tblr-secondary); margin-top: .25rem; }
