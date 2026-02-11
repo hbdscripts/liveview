@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (condensed KPI sparkline line-only, stronger opacity, top -5px)
+Last updated: 2026-02-11 (fix condensed KPI sparkline stroke visibility + stronger line opacity)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -213,6 +213,7 @@ Edge (optional):
 - KPI chip CSS + sparkline + dashboard card layout:
   - Condensed KPI chips (non-dashboard): updated `#kexo-kpis .kexo-kpi-chip` with gap 5px and explicit flex/min/max-width vars in `head-theme.html` and `custom.css`.
   - Condensed sparklines: line-only (no fill), 2px stroke, stronger visibility (CSS opacity + `top: -5px`); `renderCondensedSparklines` in `app.js` + `.kexo-kpi-chip-sparkline` in `custom.css`.
+    - Fix: keep ApexCharts fill opacity at `1` on line charts to avoid transparent strokes (was rendering `rgba(...,0)`).
   - Dashboard KPI cards: compare values (Yesterday / 7 Day) now stack label above value per row; `.dash-kpi-compare-item` flex-direction column; `.text-end` aligns right.
   - Dashboard cards: min-height 160px; sparkline wrap spans 100% width (left: 0, right: 0) under all content.
 

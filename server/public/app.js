@@ -6035,7 +6035,9 @@ const API = '';
             chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
             stroke: { width: 2, curve: 'smooth', lineCap: 'round' },
-            fill: { type: 'solid', opacity: 0 },
+            // NOTE: ApexCharts 4.x can incorrectly apply fill opacity to line stroke color.
+            // Keep fill opacity at 1 for visible strokes; line charts still render line-only.
+            fill: { type: 'solid', opacity: 1 },
             colors: [sparkColor],
             markers: { size: 0 },
             tooltip: { enabled: false }
