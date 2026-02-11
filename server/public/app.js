@@ -6497,6 +6497,14 @@ const API = '';
       strip.style.setProperty('--kexo-kpi-width', wStr + 'px');
       strip.style.setProperty('--kexo-kpi-min-width', wStr + 'px');
 
+      // Condensed sparkline sizing: shrink more aggressively on tight chips so the chart
+      // doesn't sit behind the label/value text when chips are auto-fit small.
+      const tight = w <= 136;
+      const sparkRatio = tight ? 0.24 : 0.30;
+      const sparkW = Math.max(28, Math.min(45, Math.round(w * sparkRatio)));
+      strip.style.setProperty('--kexo-kpi-spark-width', String(sparkW) + 'px');
+      strip.style.setProperty('--kexo-kpi-spark-right', (tight ? '0px' : '6px'));
+
       for (let i = 0; i < chips.length; i++) {
         const show = i < visibleCount;
         chips[i].classList.toggle('is-hidden', !show);
