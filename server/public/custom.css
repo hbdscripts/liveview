@@ -890,7 +890,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   bottom: 0;
   width: 100% !important;
   height: 100% !important;
-  opacity: 0.18;
+  opacity: 0.32;
   pointer-events: none;
   z-index: 0;
 }
@@ -903,21 +903,19 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .dash-kpi-sparkline-wrap {
   position: absolute;
   top: auto;
-  left: 0;
+  left: auto;
   right: 0;
   bottom: 0;
+  width: 80%;
   height: 48px;
   z-index: 0;
-  opacity: 0.48;
+  opacity: 0.72;
   pointer-events: none;
 }
 .dash-kpi-sparkline-wrap > div {
   width: 100% !important;
   height: 100% !important;
   min-height: 48px;
-}
-.dash-kpi-sparkline-wrap .apexcharts-canvas {
-  filter: saturate(1.15) contrast(1.05);
 }
 .card-body:has(.dash-kpi-sparkline-wrap) > *:not(.dash-kpi-sparkline-wrap) {
   position: relative;
@@ -1057,13 +1055,13 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
   color: #333;
   background: #fff;
-  border: 0;
-  border-radius: 2px;
+  border: 1px solid #e1e1e1;
+  box-shadow: 0 1px 1px 1px #f1f1f1;
+  border-radius: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
-  margin-right: 8px;
 }
 .kexo-date-btn:hover {
   border-color: #9ca3af;
@@ -1163,10 +1161,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
   right: 6px;
   left: auto;
   bottom: auto;
-  width: 56px;
+  width: clamp(36px, calc(var(--kexo-kpi-width) * 0.3), 45px);
   height: 30px;
   z-index: 0;
-  opacity: 0.28;
+  opacity: 0.48;
   pointer-events: none;
 }
 .kexo-kpi-chip > .subheader,
@@ -1205,9 +1203,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-kpi-chip-delta.is-flat {
   color: var(--tblr-secondary, #626976);
-}
-.kexo-kpi-chip-delta-icon {
-  font-size: .84rem;
 }
 .kexo-kpi-chip-progress {
   height: 4px;
