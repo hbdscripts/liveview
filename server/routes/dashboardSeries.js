@@ -337,6 +337,72 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
   return { trendingUp: up, trendingDown: down };
 }
 
+async function fallbackTopProductsFromOrdersRawJson(db, shop, startMs, endMs, ratesToGbp, { limit = 5, maxOrders = 400 } = {}) {
+  if (!shop) return [];
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return [];
+  const lim = Math.max(1, Math.min(20, parseInt(String(limit), 10) || 5));
+  const cap = Math.max(50, Math.min(2000, parseInt(String(maxOrders), 10) || 400));
+  try {
+    const rows = await db.all(
+      config.dbUrl
+        ? `SELECT order_id, raw_json, currency
+           FROM orders_shopify
+           WHERE shop = $1 AND created_at >= $2 AND created_at < $3
+             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+           ORDER BY created_at DESC
+           LIMIT ${cap}`
+        : `SELECT order_id, raw_json, currency
+           FROM orders_shopify
+           WHERE shop = ? AND created_at >= ? AND created_at < ?
+             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+           ORDER BY created_at DESC
+           LIMIT ${cap}`,
+      [shop, start, end]
+    );
+    const agg = new Map();
+    for (const r of (rows || [])) {
+      const oid = r && r.order_id != null ? String(r.order_id).trim() : '';
+      const currency = (r && r.currency ? String(r.currency) : 'GBP').toUpperCase();
+      let json = null;
+      try { json = typeof r.raw_json === 'string' ? JSON.parse(r.raw_json) : r.raw_json; } catch (_) { json = null; }
+      const lineItems = json && Array.isArray(json.line_items) ? json.line_items : (json && Array.isArray(json.lineItems) ? json.lineItems : []);
+      for (const li of (lineItems || [])) {
+        const pid = li && li.product_id != null ? String(li.product_id).trim() : '';
+        const title = li && li.title != null ? String(li.title).trim() : '';
+        const key = pid || ('title:' + title);
+        if (!key || key === 'title:') continue;
+        const qty = li && li.quantity != null ? Number(li.quantity) : 1;
+        const unit = li && li.price != null ? Number(li.price) : (li && li.price_set && li.price_set.shop_money && li.price_set.shop_money.amount != null ? Number(li.price_set.shop_money.amount) : 0);
+        const revenue = (Number.isFinite(qty) ? qty : 1) * (Number.isFinite(unit) ? unit : 0);
+        const gbpVal = Number.isFinite(revenue) ? fx.convertToGbp(revenue, currency, ratesToGbp) : 0;
+        const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
+        const cur = agg.get(key) || { product_id: pid || null, title: title || null, revenue: 0, orderIds: new Set() };
+        cur.revenue += gbp;
+        if (oid) cur.orderIds.add(oid);
+        if (!cur.title && title) cur.title = title;
+        if (!cur.product_id && pid) cur.product_id = pid;
+        agg.set(key, cur);
+      }
+    }
+    const out = Array.from(agg.values())
+      .map(function(p) {
+        return {
+          product_id: p.product_id || null,
+          title: p.title || 'Unknown',
+          revenue: Math.round((Number(p.revenue) || 0) * 100) / 100,
+          orders: p.orderIds ? p.orderIds.size : 0,
+        };
+      })
+      .sort(function(a, b) { return b.revenue - a.revenue; })
+      .slice(0, lim);
+    return out;
+  } catch (_) {
+    return [];
+  }
+}
+
 async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
@@ -538,6 +604,35 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
         };
       });
+      if (!topProducts.length) {
+        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: 5 });
+        if (rawTop && rawTop.length) {
+          let fallbackToken = token;
+          if (!fallbackToken) {
+            try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
+          }
+          const fallbackProductIds = fallbackToken ? rawTop.map(r => r.product_id).filter(Boolean) : [];
+          const fallbackMetaMap = new Map();
+          if (fallbackToken && fallbackProductIds.length) {
+            const fallbackPairs = await Promise.all(fallbackProductIds.map(async function(pid) {
+              try { return [String(pid), await productMetaCache.getProductMeta(shop, fallbackToken, pid)]; } catch (_) { return [String(pid), null]; }
+            }));
+            fallbackPairs.forEach(function(pair) {
+              if (pair[1] && pair[1].ok) fallbackMetaMap.set(pair[0], pair[1]);
+            });
+          }
+          topProducts = rawTop.map(function(r) {
+            const pid = r.product_id ? String(r.product_id) : '';
+            const meta = fallbackMetaMap.get(pid);
+            return {
+              title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+              revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
+              orders: Number(r.orders) || 0,
+              thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
+            };
+          });
+        }
+      }
     } catch (_) {}
   }
 
@@ -836,7 +931,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   // doesn't drift from /api/kpis (which reconciles before reporting).
   if (shop) {
     try {
-      const scopeKey = ('dashboard_series_' + String(bounds && bounds.key ? bounds.key : '')).slice(0, 64) || 'dashboard_series';
+      const scopeKey = (String(rangeKey || '').trim().toLowerCase() === 'today')
+        ? 'today'
+        : (('dashboard_series_' + String(bounds && bounds.key ? bounds.key : '')).slice(0, 64) || 'dashboard_series');
       await salesTruth.ensureReconciled(shop, overallStart, overallEnd, scopeKey);
     } catch (_) {}
   }
@@ -945,16 +1042,20 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3esrer_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX( title, CA(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'pa
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+             GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`,
         [shop, overallStart, overallEnd]
@@ -980,12 +1081,41 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
         return {
-          title: r.title || 'Unknown',
+          title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
           thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
         };
       });
+      if (!topProducts.length) {
+        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: 5 });
+        if (rawTop && rawTop.length) {
+          let fallbackToken = token;
+          if (!fallbackToken) {
+            try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
+          }
+          const fallbackProductIds = fallbackToken ? rawTop.map(r => r.product_id).filter(Boolean) : [];
+          const fallbackMetaMap = new Map();
+          if (fallbackToken && fallbackProductIds.length) {
+            const fallbackPairs = await Promise.all(fallbackProductIds.map(async function(pid) {
+              try { return [String(pid), await productMetaCache.getProductMeta(shop, fallbackToken, pid)]; } catch (_) { return [String(pid), null]; }
+            }));
+            fallbackPairs.forEach(function(pair) {
+              if (pair[1] && pair[1].ok) fallbackMetaMap.set(pair[0], pair[1]);
+            });
+          }
+          topProducts = rawTop.map(function(r) {
+            const pid = r.product_id ? String(r.product_id) : '';
+            const meta = fallbackMetaMap.get(pid);
+            return {
+              title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+              revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
+              orders: Number(r.orders) || 0,
+              thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
+            };
+          });
+        }
+      }
     } catch (_) {}
   }
 

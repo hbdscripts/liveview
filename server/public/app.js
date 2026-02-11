@@ -4931,11 +4931,7 @@ const API = '';
       if (typeof ApexCharts === 'undefined') return;
       var sourceSeries = getSparklineSeries(series);
       if (!sourceSeries || !sourceSeries.length) return;
-      var _primaryRgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '62,179,171';
-      var ACCENT = 'rgb(' + _primaryRgb + ')';
-      var ORANGE = '#f59e0b';
-      var BLUE = '#3b82f6';
-      var PURPLE = '#8b5cf6';
+      var GREEN = '#22c55e';
       var RED = '#ef4444';
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
@@ -4949,23 +4945,18 @@ const API = '';
         'cond-kpi-orders-fulfilled-sparkline': function(d) { return d.orders; },
         'cond-kpi-returns-sparkline': function(d) { return d.revenue; }
       };
-      var colors = {
-        'cond-kpi-orders-sparkline': BLUE,
-        'cond-kpi-revenue-sparkline': ACCENT,
-        'cond-kpi-conv-sparkline': PURPLE,
-        'cond-kpi-sessions-sparkline': ORANGE,
-        'cond-kpi-returning-sparkline': PURPLE,
-        'cond-kpi-aov-sparkline': ACCENT,
-        'cond-kpi-items-sold-sparkline': BLUE,
-        'cond-kpi-bounce-sparkline': RED,
-        'cond-kpi-orders-fulfilled-sparkline': BLUE,
-        'cond-kpi-returns-sparkline': RED
-      };
       Object.keys(map).forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         var dataArr = sourceSeries.map(map[id]);
         if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
+        var tone = String(el.getAttribute('data-tone') || '').toLowerCase();
+        if (tone !== 'up' && tone !== 'down') {
+          var last = Number(dataArr[dataArr.length - 1]);
+          var prev = Number(dataArr[dataArr.length - 2]);
+          tone = (Number.isFinite(last) && Number.isFinite(prev) && last < prev) ? 'down' : 'up';
+        }
+        var sparkColor = tone === 'down' ? RED : GREEN;
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
@@ -4973,7 +4964,7 @@ const API = '';
             series: [{ data: dataArr }],
             stroke: { width: 2, curve: 'smooth' },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
-            colors: [colors[id] || ACCENT],
+            colors: [sparkColor],
             tooltip: { enabled: false }
           });
           chart.render();
@@ -5050,6 +5041,17 @@ const API = '';
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
+      function setCondensedSparklineTone(id, current, baseline) {
+        const sparkEl = document.getElementById(id);
+        if (!sparkEl) return;
+        const cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
+        const base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
+        if (cur == null || base == null) {
+          sparkEl.removeAttribute('data-tone');
+          return;
+        }
+        sparkEl.setAttribute('data-tone', cur < base ? 'down' : 'up');
+      }
 
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
@@ -5065,6 +5067,16 @@ const API = '';
       applyCondensedKpiDelta('returning', returningVal, compareReturningVal, false);
       applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
       applyCondensedKpiDelta('bounce', bounceVal, compareBounceVal, true);
+      setCondensedSparklineTone('cond-kpi-orders-sparkline', orderCountVal, compareOrdersVal);
+      setCondensedSparklineTone('cond-kpi-revenue-sparkline', revenueVal, compareRevenueVal);
+      setCondensedSparklineTone('cond-kpi-conv-sparkline', convVal, compareConvVal);
+      setCondensedSparklineTone('cond-kpi-sessions-sparkline', sessionsVal, compareSessionsVal);
+      setCondensedSparklineTone('cond-kpi-returning-sparkline', returningVal, compareReturningVal);
+      setCondensedSparklineTone('cond-kpi-aov-sparkline', aovVal, compareAovVal);
+      setCondensedSparklineTone('cond-kpi-bounce-sparkline', bounceVal, compareBounceVal);
+      setCondensedSparklineTone('cond-kpi-items-sold-sparkline', orderCountVal, compareOrdersVal);
+      setCondensedSparklineTone('cond-kpi-orders-fulfilled-sparkline', orderCountVal, compareOrdersVal);
+      setCondensedSparklineTone('cond-kpi-returns-sparkline', revenueVal, compareRevenueVal);
       try { updateCondensedKpiOverflow(); } catch (_) {}
 
       // Header quick KPIs (compact)
@@ -8838,11 +8850,8 @@ const API = '';
       var dashChartConfigs = {};
 
       function makeChart(chartId, labels, datasets, opts) {
-        if (typeof ApexCharts === 'undefined') {
-          console.warn('[dashboard] ApexCharts not loaded yet, will retry for:', chartId);
-          waitForApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
-          return null;
-        }
+        if (typeof ApexCharts === 'undefined') return ensureApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
+        if (!chartId) return null;
         var el = document.getElementById(chartId);
         if (!el) { console.warn('[dashboard] chart element not found:', chartId); return null; }
         if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
@@ -8854,9 +8863,34 @@ const API = '';
         var areaOpacityFrom = (opts && typeof opts.areaOpacityFrom === 'number' && isFinite(opts.areaOpacityFrom)) ? opts.areaOpacityFrom : 0.15;
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
 
+        // Guardrails: single-point or all-zero series can render as visually empty.
+        // Duplicate the only point to make a tiny segment, and set a y-axis max so 0-lines are visible.
+        try {
+          if (Array.isArray(labels) && labels.length === 1) labels = [labels[0], labels[0]];
+          if (Array.isArray(datasets)) {
+            datasets.forEach(function(ds) {
+              if (!ds || !Array.isArray(ds.data)) return;
+              if (ds.data.length === 1) ds.data = [ds.data[0], ds.data[0]];
+            });
+          }
+        } catch (_) {}
+
         try {
           var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data || [] }; });
           var colors = datasets.map(function(ds) { return ds.borderColor || DASH_ACCENT; });
+          var yMaxOverride = null;
+          try {
+            var maxV = null;
+            apexSeries.forEach(function(s) {
+              (s.data || []).forEach(function(v) {
+                var n = (typeof v === 'number') ? v : Number(v);
+                if (!isFinite(n)) return;
+                if (maxV == null || n > maxV) maxV = n;
+              });
+            });
+            if (maxV == null) maxV = 0;
+            if (maxV <= 0) yMaxOverride = 1;
+          } catch (_) {}
           var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
             : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
@@ -8887,7 +8921,8 @@ const API = '';
             },
             yaxis: {
               labels: { style: { fontSize: '11px', cssClass: 'apexcharts-yaxis-label' }, formatter: yFmt },
-              min: 0
+              min: 0,
+              max: yMaxOverride
             },
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
             tooltip: { y: { formatter: yFmt } },
@@ -8932,22 +8967,10 @@ const API = '';
         var cfg = dashChartConfigs[chartId];
         var currentType = (cfg && cfg.opts && cfg.opts.chartType) ? String(cfg.opts.chartType) : 'area';
         var types = null;
-        if (chartId === 'dash-chart-revenue' || chartId === 'dash-chart-orders') {
-          types = [
-            { type: 'bar', icon: ICON_BAR, label: 'Bar' },
-            { type: 'area', icon: ICON_AREA, label: 'Area' },
-          ];
-        } else if (chartId === 'dash-chart-sessions' || chartId === 'dash-chart-conv') {
-          types = [
-            { type: 'area', icon: ICON_AREA, label: 'Area' },
-            { type: 'bar', icon: ICON_BAR, label: 'Bar' },
-          ];
-        } else {
-          types = [
-            { type: 'area', icon: ICON_AREA, label: 'Area' },
-            { type: 'bar', icon: ICON_BAR, label: 'Bar' },
-          ];
-        }
+        types = [
+          { type: 'area', icon: ICON_AREA, label: 'Area' },
+          { type: 'bar', icon: ICON_BAR, label: 'Bar' },
+        ];
         types.forEach(function(t) {
           var btn = document.createElement('button');
           btn.type = 'button';
@@ -9047,18 +9070,36 @@ const API = '';
           });
           chart.render();
         }
-        renderSparkline('dash-revenue-sparkline', sparklineSeries.map(function(d) { return d.revenue; }), DASH_ACCENT, 'area');
-        renderSparkline('dash-sessions-sparkline', sparklineSeries.map(function(d) { return d.sessions; }), DASH_ORANGE, 'area');
-        renderSparkline('dash-orders-sparkline', sparklineSeries.map(function(d) { return d.orders; }), DASH_BLUE, 'bar');
-        renderSparkline('dash-returning-sparkline', sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE, 'area');
-        renderSparkline('dash-conv-sparkline', sparklineSeries.map(function(d) { return d.convRate; }), DASH_PURPLE, 'area');
-        renderSparkline('dash-aov-sparkline', sparklineSeries.map(function(d) { return d.aov; }), DASH_ACCENT, 'area');
-        renderSparkline('dash-bounce-sparkline', sparklineSeries.map(function(d) { return d.bounceRate; }), '#ef4444', 'area');
-        renderSparkline('dash-roas-sparkline', sparklineSeries.map(function(d) {
+        function sparkToneColor(dataArr) {
+          var GREEN = '#22c55e';
+          var RED = '#ef4444';
+          var vals = (dataArr || []).map(function(v) {
+            var n = (typeof v === 'number') ? v : Number(v);
+            return isFinite(n) ? n : null;
+          }).filter(function(v) { return v != null; });
+          if (vals.length < 2) return GREEN;
+          return vals[vals.length - 1] >= vals[vals.length - 2] ? GREEN : RED;
+        }
+        var revenueSpark = sparklineSeries.map(function(d) { return d.revenue; });
+        var sessionsSpark = sparklineSeries.map(function(d) { return d.sessions; });
+        var ordersSpark = sparklineSeries.map(function(d) { return d.orders; });
+        var returningSpark = sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; });
+        var convSpark = sparklineSeries.map(function(d) { return d.convRate; });
+        var aovSpark = sparklineSeries.map(function(d) { return d.aov; });
+        var bounceSpark = sparklineSeries.map(function(d) { return d.bounceRate; });
+        var roasSpark = sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
-        }), '#ef4444', 'area');
+        });
+        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneColor(revenueSpark), 'area');
+        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneColor(sessionsSpark), 'area');
+        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneColor(ordersSpark), 'area');
+        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneColor(returningSpark), 'area');
+        renderSparkline('dash-conv-sparkline', convSpark, sparkToneColor(convSpark), 'area');
+        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneColor(aovSpark), 'area');
+        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneColor(bounceSpark), 'area');
+        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneColor(roasSpark), 'area');
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
@@ -9074,7 +9115,7 @@ const API = '';
           backgroundColor: DASH_ACCENT_LIGHT,
           fill: true,
           borderWidth: 2
-        }], { currency: true, chartType: 'bar' });
+        }], { currency: true, chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
 
         makeChart('dash-chart-orders', labels, [{
           label: 'Orders',
@@ -9083,7 +9124,7 @@ const API = '';
           backgroundColor: DASH_BLUE_LIGHT,
           fill: true,
           borderWidth: 2
-        }], { chartType: 'bar' });
+        }], { chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
 
         var hasShopifyConv = chartSeries.some(function(d) { return d.shopifyConvRate != null; });
         var convDatasets = [{
