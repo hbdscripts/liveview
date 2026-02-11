@@ -232,15 +232,17 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
   try {
     return await db.all(
       config.dbUrl
-        ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+        ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
              AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
            GROUP BY TRIM(li.product_id)`
-        : `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+        : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
              AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
            GROUP BY TRIM(li.product_id)`,
       [shop, start, end]
     );
@@ -321,6 +323,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
   base.forEach(function(r) {
     const meta = metaMap.get(r.product_id);
     r.thumb_url = meta && meta.thumb_url ? String(meta.thumb_url) : null;
+    if ((!r.title || r.title === 'Unknown') && meta && meta.title) r.title = String(meta.title);
   });
 
   const up = base
@@ -489,17 +492,19 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`,
@@ -527,7 +532,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
         return {
-          title: r.title || 'Unknown',
+          title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
           thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
@@ -942,16 +947,14 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         config.dbUrl
           ? `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3esrer_cancelled_at IS NULL AND li.order_financial_status = 'paid'
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT 5`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(li.title) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX( title, CA(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
-             GROUP BY TRIM(li.product_id)
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'pa
              ORDER BY revenue DESC
              LIMIT 5`,
         [shop, overallStart, overallEnd]
@@ -1185,5 +1188,9 @@ function zonedTimeToUtcMs(year, month, day, hour, minute, second, timeZone) {
   const offset = getTimeZoneOffsetMs(timeZone, utcGuess);
   return utcGuess.getTime() - offset;
 }
+
+
+module.exports = { getDashboardSeries };
+module.exports = { getDashboardSeries };
 
 module.exports = { getDashboardSeries };

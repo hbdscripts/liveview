@@ -15,3 +15,5 @@ build/
 *.log
 .env.development
 live_visitors.sqlite
+
+.cursor/worktrees.json

@@ -2290,6 +2290,7 @@ const API = '';
 
         // Pull fresh KPI data (fast metrics) immediately after cache reset.
         try { refreshKpis({ force: true }); } catch (_) {}
+        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
         // Refresh condensed KPI extras as well.
         try { refreshKpiExtrasSoft(); } catch (_) {}
       }, 320);
@@ -8793,6 +8794,7 @@ const API = '';
       var dashCache = null;
       var dashLoading = false;
       var dashLastRangeKey = null;
+      var dashLastDayYmd = null;
       var dashCharts = {};
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
@@ -9002,16 +9004,45 @@ const API = '';
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
           var t = type === 'bar' ? 'bar' : (type === 'line' ? 'line' : 'area');
-          var fillCfg = t === 'line'
-            ? { type: 'solid', opacity: 0 }
-            : (t === 'bar' ? { type: 'solid', opacity: 1 } : { type: 'gradient', gradient: { opacityFrom: 0.48, opacityTo: 0.10 } });
+
+          var nums = dataArr.map(function(v) {
+            var n = (typeof v === 'number') ? v : Number(v);
+            return isFinite(n) ? n : 0;
+          });
+          var minVal = nums[0];
+          var maxVal = nums[0];
+          for (var i = 1; i < nums.length; i++) {
+            if (nums[i] < minVal) minVal = nums[i];
+            if (nums[i] > maxVal) maxVal = nums[i];
+          }
+          if (!isFinite(minVal)) minVal = 0;
+          if (!isFinite(maxVal)) maxVal = 0;
+
+          // Flat/near-flat series can render as visually empty at 40px height.
+          // Add a tiny delta to the last point and set a y-axis range so the stroke/fill is visible.
+          var span = Math.abs(maxVal - minVal);
+          if (span < 1e-9) {
+            var bump = (maxVal === 0) ? 1 : Math.max(0.01, Math.abs(maxVal) * 0.02);
+            nums[nums.length - 1] = nums[nums.length - 1] + bump;
+            minVal = Math.min(minVal, nums[nums.length - 1]);
+            maxVal = Math.max(maxVal, nums[nums.length - 1]);
+            span = Math.abs(maxVal - minVal);
+          }
+          var pad = Math.max(1e-6, span * 0.25);
+          var yMin = minVal - pad;
+          var yMax = maxVal + pad;
+
+          var fillCfg = t === 'bar'
+            ? { type: 'solid', opacity: 1 }
+            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.52 : 0.24, opacityTo: t === 'area' ? 0.14 : 0.06 } };
           var chart = new ApexCharts(sparkEl, {
             chart: { type: t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: [{ data: dataArr }],
+            series: [{ data: nums }],
             stroke: { width: t === 'bar' ? 0 : 2, curve: 'smooth' },
             fill: fillCfg,
             plotOptions: t === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             colors: [color],
+            yaxis: { min: yMin, max: yMax },
             tooltip: { enabled: false }
           });
           chart.render();
@@ -9019,15 +9050,15 @@ const API = '';
         renderSparkline('dash-revenue-sparkline', sparklineSeries.map(function(d) { return d.revenue; }), DASH_ACCENT, 'area');
         renderSparkline('dash-sessions-sparkline', sparklineSeries.map(function(d) { return d.sessions; }), DASH_ORANGE, 'area');
         renderSparkline('dash-orders-sparkline', sparklineSeries.map(function(d) { return d.orders; }), DASH_BLUE, 'bar');
-        renderSparkline('dash-returning-sparkline', sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE, 'bar');
+        renderSparkline('dash-returning-sparkline', sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; }), DASH_PURPLE, 'area');
         renderSparkline('dash-conv-sparkline', sparklineSeries.map(function(d) { return d.convRate; }), DASH_PURPLE, 'area');
-        renderSparkline('dash-aov-sparkline', sparklineSeries.map(function(d) { return d.aov; }), DASH_ACCENT, 'line');
-        renderSparkline('dash-bounce-sparkline', sparklineSeries.map(function(d) { return d.bounceRate; }), '#ef4444', 'line');
+        renderSparkline('dash-aov-sparkline', sparklineSeries.map(function(d) { return d.aov; }), DASH_ACCENT, 'area');
+        renderSparkline('dash-bounce-sparkline', sparklineSeries.map(function(d) { return d.bounceRate; }), '#ef4444', 'area');
         renderSparkline('dash-roas-sparkline', sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
-        }), '#ef4444', 'line');
+        }), '#ef4444', 'area');
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
@@ -9074,7 +9105,7 @@ const API = '';
             borderDash: [5, 3]
           });
         }
-        makeChart('dash-chart-conv', labels, convDatasets, { pct: true, chartType: 'area', areaOpacityFrom: 0.28, areaOpacityTo: 0.06 });
+        makeChart('dash-chart-conv', labels, convDatasets, { pct: true, chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
 
         makeChart('dash-chart-sessions', labels, [{
           label: 'Sessions',
@@ -9083,7 +9114,7 @@ const API = '';
           backgroundColor: DASH_ORANGE_LIGHT,
           fill: true,
           borderWidth: 2
-        }], { chartType: 'area', areaOpacityFrom: 0.28, areaOpacityTo: 0.06 });
+        }], { chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
 
         var hasAdSpend = chartSeries.some(function(d) { return d.adSpend > 0; });
         var adRow = el('dash-adspend-row');
@@ -9143,21 +9174,30 @@ const API = '';
             tbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
             return;
           }
+          function fmtSignedGbp(v) {
+            var d = (typeof v === 'number' && isFinite(v)) ? v : 0;
+            var abs = Math.abs(d);
+            var s = fmtGbp(abs);
+            if (s === '\u2014') s = '£0.00';
+            if (d > 0) return '+' + s;
+            if (d < 0) return '-' + s;
+            return s;
+          }
           function deltaText(r) {
             var d = r && typeof r.deltaRevenue === 'number' && isFinite(r.deltaRevenue) ? r.deltaRevenue : 0;
-            var sign = d >= 0 ? '+' : '';
             var cls = d >= 0 ? 'text-green' : 'text-red';
-            return '<span class="' + cls + '">' + sign + fmtGbp(d) + '</span>';
+            return '<span class="dash-trend-delta ' + cls + '">' + fmtSignedGbp(d) + '</span>';
           }
           function deltaOrdersText(r) {
             var d = r && typeof r.deltaOrders === 'number' && isFinite(r.deltaOrders) ? r.deltaOrders : 0;
             var sign = d >= 0 ? '+' : '';
             var cls = d >= 0 ? 'text-green' : 'text-red';
-            return '<span class="' + cls + '">' + sign + String(d) + '</span>';
+            return '<span class="dash-trend-delta ' + cls + '">' + sign + String(d) + '</span>';
           }
           tbody.innerHTML = rows.map(function(p) {
             var title = p && p.title ? String(p.title) : 'Unknown';
-            var thumbHtml = '<span class="thumb-wrap">' +
+            var thumbHtml = '<span class="thumb-wrap dash-thumb-wrap">' +
+              '<span class="dash-thumb-placeholder" aria-hidden="true"></span>' +
               (p && p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
             '</span>';
             var revNow = p && typeof p.revenueNow === 'number' ? p.revenueNow : 0;
@@ -9180,7 +9220,7 @@ const API = '';
         if (!rangeKey) rangeKey = 'today';
         dashLoading = true;
         showPageProgress();
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? '&_=' + Date.now() : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -9211,6 +9251,15 @@ const API = '';
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
         var rk = dashRangeKeyFromDateRange();
+        try {
+          var curYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
+          if (curYmd && dashLastDayYmd && dashLastDayYmd !== curYmd) {
+            dashCache = null;
+            dashLastRangeKey = null;
+            force = true;
+          }
+          if (curYmd) dashLastDayYmd = curYmd;
+        } catch (_) {}
         if (!force && dashCache && dashLastRangeKey === rk) {
           renderDashboard(dashCache);
           return;

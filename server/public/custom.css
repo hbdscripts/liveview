@@ -604,6 +604,21 @@ a {
   background: rgba(0,0,0,0.06);
 }
 
+.dash-trend-delta {
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.dash-thumb-wrap {
+  position: relative;
+}
+.dash-thumb-placeholder {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+}
+
 /* ── Footer ────────────────────────────────────────────── */
 .footer {
   position: static;
