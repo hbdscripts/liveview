@@ -68,7 +68,7 @@ function getLoginHtml(queryError) {
           <h2 class="h2 text-center mb-4">Sign in to your account</h2>
           ${errMsg}
           <div class="d-grid gap-2">
-            ${hasGoogle ? `<a href="/auth/google?redirect=/dashboard" class="btn btn-google btn-login">
+            ${hasGoogle ? `<a href="/auth/google?redirect=/dashboard/overview" class="btn btn-google btn-login">
               <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M21.35 11.1H12v2.9h5.35c-.5 2.95-3 4.25-5.35 4.25a6.1 6.1 0 0 1 0-12.2c1.65 0 2.75.7 3.4 1.3l2.3-2.2C16.25 3.55 14.35 2.7 12 2.7a9.3 9.3 0 1 0 0 18.6c5.35 0 8.9-3.75 8.9-9.05 0-.6-.05-1.05-.15-1.5z"/></svg>
               Continue with Google
             </a>` : ''}
@@ -85,9 +85,9 @@ function getLoginHtml(queryError) {
 function handleGetLogin(req, res) {
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
   const queryError = (req.query && req.query.error) || '';
-  // Local dev: if Google isn't configured, just jump straight to the dashboard (auth middleware allows).
+  // Local dev: if Google isn't configured, jump straight to dashboard overview (auth middleware allows).
   if (!hasGoogle && process.env.NODE_ENV !== 'production') {
-    return res.redirect(302, '/dashboard');
+    return res.redirect(302, '/dashboard/overview');
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getLoginHtml(queryError));

@@ -77,17 +77,34 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
       pathname === '/api/available-days') return true;
-  if (
-    pathname === '/dashboard' ||
-    pathname === '/live' ||
-    pathname === '/overview' ||
-    pathname === '/countries' ||
-    pathname === '/products' ||
-    pathname === '/traffic' ||
-    pathname === '/ads' ||
-    pathname === '/tools' ||
-    pathname === '/compare-conversion-rate'
-  ) return true;
+  const protectedPages = new Set([
+    '/dashboard',
+    '/dashboard/overview',
+    '/dashboard/live',
+    '/dashboard/sales',
+    '/dashboard/table',
+    '/insights/countries',
+    '/insights/products',
+    '/traffic',
+    '/traffic/channels',
+    '/traffic/device',
+    '/tools',
+    '/tools/ads',
+    '/tools/compare-conversion-rate',
+    '/settings',
+    // Legacy flat routes retained as protected redirect endpoints.
+    '/overview',
+    '/live',
+    '/sales',
+    '/date',
+    '/countries',
+    '/products',
+    '/channels',
+    '/type',
+    '/ads',
+    '/compare-conversion-rate',
+  ]);
+  if (protectedPages.has(pathname)) return true;
   return false;
 }
 
@@ -210,7 +227,7 @@ function isShopifySignedAppUrlReferer(req) {
     const reqHost = hostNoPort(req.get('host') || req.get('x-forwarded-host'));
     const refHost = hostNoPort(u.host);
     if (reqHost && refHost && reqHost !== refHost) return false;
-    // Embedded app navigation can be on /dashboard, /live, etc. Accept any path as long as the signed query is valid.
+    // Embedded app navigation can be on canonical dashboard paths (and legacy redirects). Accept any path with valid signed query.
     if (!u.search || u.search.length < 5) return false;
     const q = {};
     for (const [k, v] of u.searchParams.entries()) {

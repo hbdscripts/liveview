@@ -58,7 +58,7 @@
   }
 
   var back = qs('#tools-back');
-  try { if (back) back.href = '/dashboard' + (window.location.search || ''); } catch (_) {}
+  try { if (back) back.href = '/dashboard/overview' + (window.location.search || ''); } catch (_) {}
 
   var eventDateEl = qs('#event-date');
   var dateNote = qs('#date-note');

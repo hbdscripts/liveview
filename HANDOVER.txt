@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (condensed KPI chip sparkline responsive sizing to avoid text overlap)
+Last updated: 2026-02-11 (canonical folder routes + navbar relabel + live visitors status moved to far-right desktop nav)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -44,16 +44,16 @@ Legacy/backup:
 ## Routing + auth
 
 Server routing (Express):
-- Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
-- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/sales`, `/date`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/compare-conversion-rate`, `/settings`.
-- `/tools` now redirects to `/compare-conversion-rate` for backward compatibility.
+- Root `/` now loads the login screen or redirects to `/dashboard/overview` if already authenticated.
+- Explicit canonical routes now serve per-page HTML: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/tools/ads`, `/tools/compare-conversion-rate`, `/settings`.
+- Legacy flat routes now redirect to canonical routes with query-string preservation.
 - Mobile traffic: User-Agent detection redirects all mobile GET requests to `/mobile-unsupported` (logo + "Desktop only for now" copy).
 - See: `server/index.js`.
 
 Auth protection:
 - `server/middleware/dashboardAuth.js` protects per-page routes + API routes.
 - Embedded Shopify app support: signed query requests and signed referers now work for ALL dashboard pages (not just `/`), so API calls don't 401 when navigating in an iframe.
-- Login flow redirects to `/dashboard` after OAuth (`server/routes/login.js`).
+- Login flow redirects to `/dashboard/overview` after OAuth (`server/routes/login.js`).
 
 ---
 
@@ -86,9 +86,9 @@ Platform start/min date clamp:
 
 - Rebuilt as Tabler layout (`server/public/tools.html`).
 - All inline styles moved to `server/public/tools.css`.
-- Route is now `/compare-conversion-rate` (legacy `/tools` redirects).
-- `tools.html` now uses `data-page="compare-conversion-rate"` and page title `Compare Conversion Rate`.
-- Back link points to `/dashboard`.
+- Route is now `/tools/compare-conversion-rate` (legacy compare-route aliases redirect).
+- `tools.html` now uses `data-page="compare-conversion-rate"` and page title `Conversion Rate Compare`.
+- Back link points to `/dashboard/overview`.
 - `server/public/tools.js` uses class toggles instead of inline styles.
 
 ---
@@ -210,6 +210,16 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Canonical folder-style page routing + redirects:
+  - Added canonical routes: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/tools/ads`, `/tools/compare-conversion-rate`.
+  - Added legacy redirects with query-string preservation for old flat route aliases.
+  - Root authenticated redirect now targets `/dashboard/overview`; `/app/dashboard` now redirects to `/dashboard/overview`.
+- Navbar IA refresh:
+  - Desktop top-level labels are now `Dashboard`, `Insights`, `Traffic`, `Tools`, `Settings`.
+  - `Google Ads` moved under `Tools`; `Type` renamed to `Device & Platform`; compare tool label renamed to `Conversion Rate Compare`.
+  - Live visitors status (`#kexo-online-icon`, `#online-count-spinner`, `#online-count`) moved out of Tools dropdown and into the far-right desktop navbar as a non-clickable status element (`aria-live="polite"`).
+
+2026-02-11
 - KPI chip CSS + sparkline + dashboard card layout:
   - Condensed KPI chips (non-dashboard): updated `#kexo-kpis .kexo-kpi-chip` with gap 5px and explicit flex/min/max-width vars in `head-theme.html` and `custom.css`.
   - Condensed sparklines: line-only (no fill), 2px stroke, stronger visibility (CSS opacity + `top: -5px`); `renderCondensedSparklines` in `app.js` + `.kexo-kpi-chip-sparkline` in `custom.css`.
@@ -234,8 +244,9 @@ Edge (optional):
 2026-02-11
 - Main nav + tools/settings UX:
   - `server/public/partials/header.html`: moved the Settings dropdown into the desktop main nav (next to Tools) using the same Refresh/Sound/Theme/Settings/Sign out actions.
-  - Tools dropdown now contains `Compare Conversion Rate` (`/compare-conversion-rate`) and a non-click visitors status row (`#kexo-online-icon`, `#online-count`, `#online-count-spinner`) that turns green when online count > 0 and grey when 0.
-  - `/tools` now redirects to `/compare-conversion-rate` (`server/index.js`), and auth/mobile allowlists include `/compare-conversion-rate`.
+  - Tools dropdown now contains `Google Ads` (`/tools/ads`) and `Conversion Rate Compare` (`/tools/compare-conversion-rate`).
+  - Live visitors status row (`#kexo-online-icon`, `#online-count`, `#online-count-spinner`) now sits at the far-right desktop navbar as a non-clickable status element (not inside Tools dropdown).
+  - Legacy compare-route aliases now redirect to `/tools/compare-conversion-rate`.
 - Live page online updates:
   - `server/public/live.html` heading changed to `Online Now: <count>` (`#live-online-now-count`).
   - `server/public/app.js` now renders the live online chart as vertical bars from `/api/sessions/online-series?minutes=60&stepMinutes=5`.
@@ -243,7 +254,7 @@ Edge (optional):
   - Frontend live active cutoff aligned to 5 minutes (`ACTIVE_WINDOW_MS = 5 * 60 * 1000`).
   - `server/routes/sessions.js` + `server/store.js` now support `stepMinutes` bucket sizing for online series.
 - Session table sale-row marker:
-  - `server/public/app.js` adds `.converted-row` to the first grid cell for purchased rows on `/live`, `/date`, and `/sales`.
+  - `server/public/app.js` adds `.converted-row` to the first grid cell for purchased rows on `/dashboard/live`, `/dashboard/table`, and `/dashboard/sales`.
   - Added `.converted-row { border-left: 3px solid color-mix(...) !important; }` styling in `server/public/custom.css` (and mirrored in `server/public/app.css`).
 - KPI visuals refresh (dashboard + condensed strip):
   - `server/public/app.js` now renders KPI sparklines as line-only (no under-fill); dashboard compare mode draws previous period first as dashed grey so it sits behind the current line.
@@ -314,9 +325,9 @@ Edge (optional):
   - Switched region/flow emphasis to `--tblr-primary`/`--tblr-primary-rgb` shades; removed non-primary dominant highlight tones.
 - Channels + Type charts:
   - Removed unsupported Apex series axis fields, normalized data arrays to finite numeric series, and added defensive render guards + Promise error handling to prevent `undefined.push` Apex runtime crashes.
-  - Stabilized y-axis wiring by providing one y-axis config per series (hide Orders axis) so `/channels` + `/type` render reliably.
+  - Stabilized y-axis wiring by providing one y-axis config per series (hide Orders axis) so `/traffic/channels` + `/traffic/device` render reliably.
 - Products page chart:
-  - Switched the `/products` overview chart to a line chart (instead of horizontal bars) while keeping the rich product tooltip content.
+  - Switched the `/insights/products` overview chart to a line chart (instead of horizontal bars) while keeping the rich product tooltip content.
 - Dashboard overview charts:
   - Added y-axis headroom + NaN/undefined sanitization in chart rendering to prevent clipped lines and “blank” sessions charts.
 - Google Ads overview chart:
@@ -420,7 +431,7 @@ Edge (optional):
 - Fix “no data” on homepage: range-key normalization, correct min/platform-start clamps, and dashboard chart/table ID wiring.
 - Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
 - UI: migrated to Tabler `layout-fluid-vertical` (dark sidebar) and removed prior sticky/top-nav + KEXO gradient theming.
-- Products overview (`/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
+- Products overview (`/insights/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
 - Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
 - Mobile: sidebar toggler + Settings dropdown remain; date control is in the sidebar.
 - Removed per-page `<h2 class="page-title" id="page-title">…</h2>` headers; current page is indicated by the nav.
@@ -437,7 +448,7 @@ Edge (optional):
   - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
   - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.
 - Nav + theming:
-  - Traffic dropdown now links to `/channels` and `/type` only (combined `/traffic` page removed).
+  - Traffic dropdown now links to `/traffic/channels` and `/traffic/device` only (combined `/traffic` page removed).
   - Header/footer logo reverted to a single image (no dark-mode swap).
 - Reliability/cleanup:
   - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
@@ -445,7 +456,7 @@ Edge (optional):
   - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure; connection + refresh + errors live in `#ads-actions` just below the table (icons right, Tabler SVG), errors open a Tabler modal, loading is centered, and non-forced refreshes patch spend/profit/ROAS (+ Conv) in-place instead of wiping the table.
   - Ads table mobile: campaign column is sticky while horizontally scrolling so names remain readable.
   - Ads spend sync: server runs Google Ads spend sync in the background every 5 minutes (recent window), and the Ads UI refreshes by patching spend/profit/ROAS in-place (no “Syncing…” table wipe).
-  - Ads boot: `app.js` waits for `/ads.js` to actually load/execute (when the script tag already exists) and defers init by one macrotask so `/ads` doesn’t render blank on slow networks.
+  - Ads boot: `app.js` waits for `/ads.js` to actually load/execute (when the script tag already exists) and defers init by one macrotask so `/tools/ads` doesn’t render blank on slow networks.
   - Ads campaign modal: chart now lazy-loads Chart.js so clicking a campaign row always renders the spend vs sales graph.
   - Ads attribution coverage: `gclid_campaign_cache` now stores mappings for `gclid` + iOS click IDs (`gbraid`/`wbraid`), and order attribution can use session `entry_url` click IDs as a fallback when `bs_campaign_id` wasn’t present.
   - Ads attribution model: when a purchase session has no campaign id, we also attribute via **visitor last Google Ads click** (30-day window) using prior sessions for the same `visitor_id` (matches “last click” behavior and prevents undercount on returning/direct purchases).
@@ -529,7 +540,7 @@ Edge (optional):
 - Desktop nav: rebuilt with Tabler `collapse navbar-collapse` + inner `.navbar` structure (`#navbar-menu`), centered grouped menu items, logo as first item, and settings kept in right-side nav column.
 - Header KPI strip: chips now fill available topbar width more cleanly via smarter `gap` + `min-width`/`flex` behavior (better distribution before overflow hiding kicks in).
 - Accessibility + semantics: desktop dropdown toggles now include `aria-haspopup="menu"` + `aria-controls`; desktop/mobile date buttons now provide explicit controls wiring; dashboard progress bars now maintain `aria-valuenow`/bounds/labels as values update.
-- Routing fix: diagnostics Google Ads reconnect + re-login links now redirect to `/dashboard` (not legacy `/app/live-visitors`).
+- Routing fix: diagnostics Google Ads reconnect + re-login links now redirect to `/dashboard/overview` (not legacy `/app/live-visitors`).
 - SSE reliability: removed per-client heartbeat interval and switched to a shared timer with cleanup on `close`/`error`/`aborted`.
 - Backend perf: batched `upsertTrafficSourceTokens` writes, parallelized Shopify sessions day-snapshot loading + missing-day fetches, and parallelized product meta lookups in dashboard-series.
 - DB perf: added migration `039_active_sessions_last_seen_started_at_index.js` for active-session query support (`sessions(last_seen, started_at)`).

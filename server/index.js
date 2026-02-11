@@ -83,8 +83,33 @@ app.use('/api/ingest', ingestRouter);
 
 // Redirect mobile traffic to unsupported page (before auth)
 const MOBILE_REDIRECT_PATHS = new Set([
-  '/', '/dashboard', '/live', '/sales', '/date', '/overview', '/countries',
-  '/products', '/channels', '/type', '/ads', '/tools', '/compare-conversion-rate', '/app/login'
+  '/',
+  '/dashboard',
+  '/dashboard/overview',
+  '/dashboard/live',
+  '/dashboard/sales',
+  '/dashboard/table',
+  '/insights/countries',
+  '/insights/products',
+  '/traffic/channels',
+  '/traffic/device',
+  '/tools/ads',
+  '/tools/compare-conversion-rate',
+  '/settings',
+  // Legacy paths still accepted so mobile users land on unsupported page consistently.
+  '/live',
+  '/sales',
+  '/date',
+  '/overview',
+  '/countries',
+  '/products',
+  '/channels',
+  '/type',
+  '/ads',
+  '/traffic',
+  '/tools',
+  '/compare-conversion-rate',
+  '/app/login',
 ]);
 const MOBILE_UA = /Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 app.use((req, res, next) => {
@@ -238,11 +263,9 @@ app.get('/app.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.css'));
 });
 
-// Admin UI (embedded dashboard) - before / so /app/dashboard is exact
-app.use(express.static(path.join(__dirname, 'public')));
+// Admin UI (embedded dashboard static assets)
+app.use(express.static(path.join(__dirname, 'public'), { redirect: false }));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
-// Legacy path: redirect to root
-app.get('/app/dashboard', (req, res) => res.redirect(301, '/'));
 
 function getCookie(req, name) {
   const raw = req.get('Cookie') || req.get('cookie') || '';
@@ -327,8 +350,9 @@ function safeResolveIncludePath(file) {
   return full;
 }
 
-function resolveIncludes(html) {
-  return html.replace(/<!--#include\s+([\w./%-]+)\s*-->/g, (_, file) => {
+function resolveIncludes(html, depth = 0) {
+  if (depth > 10) return String(html || '');
+  return String(html || '').replace(/<!--#include\s+([\w./%-]+)\s*-->/g, (_, file) => {
     try {
       const fileKey = file != null ? String(file) : '';
       const full = safeResolveIncludePath(fileKey);
@@ -338,8 +362,9 @@ function resolveIncludes(html) {
       }
       if (_includeCacheEnabled && _includeCache[fileKey]) return _includeCache[fileKey];
       const content = fs.readFileSync(full, 'utf8');
-      if (_includeCacheEnabled) _includeCache[fileKey] = content;
-      return content;
+      const resolved = resolveIncludes(content, depth + 1);
+      if (_includeCacheEnabled) _includeCache[fileKey] = resolved;
+      return resolved;
     } catch (err) {
       console.error('[includes] failed to read include:', file, err && err.message ? err.message : err);
       return `<!-- include missing: ${file} -->`;
@@ -354,22 +379,70 @@ function sendPage(res, filename) {
   res.type('html').send(applyAssetVersionToHtml(resolveIncludes(raw)));
 }
 
+function appendOriginalQuery(targetPath, req) {
+  const original = String((req && req.originalUrl) || '');
+  const qIndex = original.indexOf('?');
+  if (qIndex < 0) return targetPath;
+  const query = original.slice(qIndex + 1);
+  if (!query) return targetPath;
+  return targetPath + (targetPath.includes('?') ? '&' : '?') + query;
+}
+
+function redirectWithQuery(statusCode, targetPath) {
+  return (req, res) => {
+    res.redirect(statusCode, appendOriginalQuery(targetPath, req));
+  };
+}
+
 app.get('/mobile-unsupported', (req, res) => sendPage(res, 'mobile-unsupported.html'));
-app.get('/dashboard', (req, res) => sendPage(res, 'dashboard.html'));
-app.get('/live', (req, res) => sendPage(res, 'live.html'));
-app.get('/sales', (req, res) => sendPage(res, 'sales.html'));
-app.get('/date', (req, res) => sendPage(res, 'date.html'));
-app.get('/overview', (req, res) => res.redirect(301, '/countries'));
-app.get('/countries', (req, res) => sendPage(res, 'countries.html'));
-app.get('/products', (req, res) => sendPage(res, 'products.html'));
-app.get('/channels', (req, res) => sendPage(res, 'channels.html'));
-app.get('/type', (req, res) => sendPage(res, 'type.html'));
-app.get('/ads', (req, res) => sendPage(res, 'ads.html'));
-app.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools.html'));
-app.get('/tools', (req, res) => res.redirect(302, '/compare-conversion-rate'));
+
+// Canonical page routes (folder-style URLs)
+const dashboardPagesRouter = express.Router();
+dashboardPagesRouter.get('/overview', (req, res) => sendPage(res, 'dashboard/overview.html'));
+dashboardPagesRouter.get('/live', (req, res) => sendPage(res, 'dashboard/live.html'));
+dashboardPagesRouter.get('/sales', (req, res) => sendPage(res, 'dashboard/sales.html'));
+dashboardPagesRouter.get('/table', (req, res) => sendPage(res, 'dashboard/table.html'));
+
+const insightsPagesRouter = express.Router();
+insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
+insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
+
+const trafficPagesRouter = express.Router();
+trafficPagesRouter.get('/channels', (req, res) => sendPage(res, 'traffic/channels.html'));
+trafficPagesRouter.get('/device', (req, res) => sendPage(res, 'traffic/device.html'));
+
+const toolsPagesRouter = express.Router();
+toolsPagesRouter.get('/ads', (req, res) => sendPage(res, 'tools/ads.html'));
+toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
+
+// Base folder routes should canonicalize to leaf pages (avoid automatic /path -> /path/ redirects).
+app.get('/dashboard', redirectWithQuery(301, '/dashboard/overview'));
+app.get('/dashboard/', redirectWithQuery(301, '/dashboard/overview'));
+app.get('/traffic', redirectWithQuery(301, '/traffic/channels'));
+app.get('/traffic/', redirectWithQuery(301, '/traffic/channels'));
+app.get('/tools', redirectWithQuery(301, '/tools/compare-conversion-rate'));
+app.get('/tools/', redirectWithQuery(301, '/tools/compare-conversion-rate'));
+
+app.use('/dashboard', dashboardPagesRouter);
+app.use('/insights', insightsPagesRouter);
+app.use('/traffic', trafficPagesRouter);
+app.use('/tools', toolsPagesRouter);
+
+// Legacy/flat dashboard URLs -> canonical folder routes.
+app.get('/app/dashboard', redirectWithQuery(301, '/dashboard/overview'));
+app.get('/live', redirectWithQuery(301, '/dashboard/live'));
+app.get('/sales', redirectWithQuery(301, '/dashboard/sales'));
+app.get('/date', redirectWithQuery(301, '/dashboard/table'));
+app.get('/overview', redirectWithQuery(301, '/dashboard/overview'));
+app.get('/countries', redirectWithQuery(301, '/insights/countries'));
+app.get('/products', redirectWithQuery(301, '/insights/products'));
+app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
+app.get('/type', redirectWithQuery(301, '/traffic/device'));
+app.get('/ads', redirectWithQuery(301, '/tools/ads'));
+app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 
-// App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard
+// App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to overview
 app.get('/', async (req, res, next) => {
   try {
     await auth.handleAppUrl(req, res, next);
@@ -378,7 +451,7 @@ app.get('/', async (req, res, next) => {
       return sendPage(res, 'dashboard.html');
     }
     if (isLoggedIn(req)) {
-      return res.redirect(302, '/dashboard');
+      return res.redirect(302, '/dashboard/overview');
     }
     return res.redirect(302, '/app/login');
   } catch (err) {
@@ -508,7 +581,7 @@ async function migrateAndStart() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Kexo app listening on http://0.0.0.0:${PORT}`);
-    console.log('Dashboard: /app/dashboard');
+    console.log('Dashboard: /dashboard/overview');
     console.log('Ingest: POST /api/ingest (header: X-Ingest-Secret or Authorization: Bearer <secret>)');
 
     // Restore correctness ASAP: reconcile today's Shopify orders into orders_shopify (fail-open; throttled).

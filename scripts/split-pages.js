@@ -41,19 +41,21 @@ const nav = () => `
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <a class="navbar-brand" href="/dashboard">
+    <a class="navbar-brand" href="/dashboard/overview">
       <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" />
     </a>
     <div class="collapse navbar-collapse" id="navbar-menu">
       <ul class="navbar-nav">
-        <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/live">Live</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-breakdown" data-nav="overview" href="/overview">Overview</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-stats" data-nav="countries" href="/countries">Countries</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-products" data-nav="products" href="/products">Products</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-traffic" data-nav="traffic" href="/traffic">Traffic</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/ads">Ads</a></li>
-        <li class="nav-item"><a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools">Tools</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard/overview">Overview</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-spy" data-nav="live" href="/dashboard/live">Live View</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-sales" data-nav="sales" href="/dashboard/sales">Recent Sales</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-date" data-nav="date" href="/dashboard/table">Table View</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-stats" data-nav="countries" href="/insights/countries">Countries</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-products" data-nav="products" href="/insights/products">Products</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-channels" data-nav="channels" href="/traffic/channels">Channels</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-type" data-nav="type" href="/traffic/device">Device &amp; Platform</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-ads" data-nav="ads" href="/tools/ads">Google Ads</a></li>
+        <li class="nav-item"><a class="nav-link" id="nav-tab-tools" data-nav="tools" href="/tools/compare-conversion-rate">Conversion Rate Compare</a></li>
       </ul>
       <div class="ms-auto d-flex align-items-center gap-2">
         <select id="global-date-select" class="form-select form-select-sm" aria-label="Date range">

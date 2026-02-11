@@ -10,7 +10,7 @@
           </div>
 
           <div class="kexo-mobile-logo-wrap">
-            <a href="/dashboard" class="kexo-mobile-logo-link" aria-label="Kexo dashboard">
+            <a href="/dashboard/overview" class="kexo-mobile-logo-link" aria-label="Kexo dashboard">
               <img src="/assets/footer.png" alt="Kexo" width="80" height="29">
             </a>
           </div>
@@ -34,16 +34,16 @@
         </div>
 
         <div id="kexo-mobile-nav" class="kexo-mobile-nav" aria-label="Navigation" hidden>
-          <a href="/dashboard" class="kexo-mobile-nav-item" data-nav="dashboard">Overview</a>
-          <a href="/live" class="kexo-mobile-nav-item" data-nav="live">Live View</a>
-          <a href="/sales" class="kexo-mobile-nav-item" data-nav="sales">Recent Sales</a>
-          <a href="/date" class="kexo-mobile-nav-item" data-nav="date">Table View</a>
-          <a href="/countries" class="kexo-mobile-nav-item" data-nav="countries">Countries</a>
-          <a href="/products" class="kexo-mobile-nav-item" data-nav="products">Products</a>
-          <a href="/channels" class="kexo-mobile-nav-item" data-nav="channels">Channels</a>
-          <a href="/type" class="kexo-mobile-nav-item" data-nav="type">Type</a>
-          <a href="/ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
-          <a href="/compare-conversion-rate" class="kexo-mobile-nav-item" data-nav="tools">Tools</a>
+          <a href="/dashboard/overview" class="kexo-mobile-nav-item" data-nav="dashboard">Overview</a>
+          <a href="/dashboard/live" class="kexo-mobile-nav-item" data-nav="live">Live View</a>
+          <a href="/dashboard/sales" class="kexo-mobile-nav-item" data-nav="sales">Recent Sales</a>
+          <a href="/dashboard/table" class="kexo-mobile-nav-item" data-nav="date">Table View</a>
+          <a href="/insights/countries" class="kexo-mobile-nav-item" data-nav="countries">Countries</a>
+          <a href="/insights/products" class="kexo-mobile-nav-item" data-nav="products">Products</a>
+          <a href="/traffic/channels" class="kexo-mobile-nav-item" data-nav="channels">Channels</a>
+          <a href="/traffic/device" class="kexo-mobile-nav-item" data-nav="type">Device &amp; Platform</a>
+          <a href="/tools/ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
+          <a href="/tools/compare-conversion-rate" class="kexo-mobile-nav-item" data-nav="tools">Conversion Rate Compare</a>
           <div class="kexo-mobile-nav-divider"></div>
           <a href="/settings" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</a>
           <a href="/app/logout" class="kexo-mobile-nav-item">Sign out</a>
@@ -55,49 +55,38 @@
       <div class="container-xl kexo-desktop-nav-container">
         <div class="row flex-row flex-nowrap flex-fill align-items-center kexo-desktop-nav-row">
           <div class="col kexo-desktop-nav-left">
-            <a class="kexo-desktop-brand-link" href="/dashboard" aria-label="Kexo dashboard">
+            <a class="kexo-desktop-brand-link" href="/dashboard/overview" aria-label="Kexo dashboard">
               <img src="/assets/kexo/logo_light.webp" alt="Kexo">
             </a>
             <ul class="navbar-nav kexo-desktop-nav-list kexo-3color">
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-dashboard-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-dashboard-menu"><i class="fa-jelly-filled fa-table-cells-large kexo-nav-svg me-1" data-icon-key="nav-toggle-dashboard" aria-hidden="true"></i>Dashboard</a>
                 <div class="dropdown-menu" id="navbar-dashboard-menu">
-                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><i class="fa-jelly fa-house kexo-nav-svg me-2" data-icon-key="nav-item-overview" aria-hidden="true"></i>Overview</a>
-                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="fa-jelly fa-satellite-dish kexo-nav-svg me-2" data-icon-key="nav-item-live" aria-hidden="true"></i>Live View</a>
-                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="fa-jelly fa-cart-shopping kexo-nav-svg me-2" data-icon-key="nav-item-sales" aria-hidden="true"></i>Recent Sales</a>
-                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="fa-jelly fa-table kexo-nav-svg me-2" data-icon-key="nav-item-table" aria-hidden="true"></i>Table View</a>
+                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard/overview"><i class="fa-jelly fa-house kexo-nav-svg me-2" data-icon-key="nav-item-overview" aria-hidden="true"></i>Overview</a>
+                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/dashboard/live"><i class="fa-jelly fa-satellite-dish kexo-nav-svg me-2" data-icon-key="nav-item-live" aria-hidden="true"></i>Live View</a>
+                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/dashboard/sales"><i class="fa-jelly fa-cart-shopping kexo-nav-svg me-2" data-icon-key="nav-item-sales" aria-hidden="true"></i>Recent Sales</a>
+                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/dashboard/table"><i class="fa-jelly fa-table kexo-nav-svg me-2" data-icon-key="nav-item-table" aria-hidden="true"></i>Table View</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-breakdown-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-breakdown-menu"><i class="fa-jelly-filled fa-chart-pie kexo-nav-svg me-1" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Breakdown</a>
-                <div class="dropdown-menu" id="navbar-breakdown-menu">
-                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="fa-jelly fa-globe kexo-nav-svg me-2" data-icon-key="nav-item-countries" aria-hidden="true"></i>Countries</a>
-                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="fa-jelly fa-box-open kexo-nav-svg me-2" data-icon-key="nav-item-products" aria-hidden="true"></i>Products</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-insights-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-insights-menu"><i class="fa-jelly-filled fa-chart-pie kexo-nav-svg me-1" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Insights</a>
+                <div class="dropdown-menu" id="navbar-insights-menu">
+                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/insights/countries"><i class="fa-jelly fa-globe kexo-nav-svg me-2" data-icon-key="nav-item-countries" aria-hidden="true"></i>Countries</a>
+                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/insights/products"><i class="fa-jelly fa-box-open kexo-nav-svg me-2" data-icon-key="nav-item-products" aria-hidden="true"></i>Products</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-traffic-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-traffic-menu"><i class="fa-jelly-filled fa-route kexo-nav-svg me-1" data-icon-key="nav-toggle-traffic" aria-hidden="true"></i>Traffic</a>
                 <div class="dropdown-menu" id="navbar-traffic-menu">
-                  <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="fa-jelly fa-diagram-project kexo-nav-svg me-2" data-icon-key="nav-item-channels" aria-hidden="true"></i>Channels</a>
-                  <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="fa-jelly fa-table-cells kexo-nav-svg me-2" data-icon-key="nav-item-type" aria-hidden="true"></i>Type</a>
-                </div>
-              </li>
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-integrations-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-integrations-menu"><i class="fa-jelly-filled fa-puzzle-piece kexo-nav-svg me-1" data-icon-key="nav-toggle-integrations" aria-hidden="true"></i>Integrations</a>
-                <div class="dropdown-menu" id="navbar-integrations-menu">
-                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="fa-jelly fa-rectangle-ad kexo-nav-svg me-2" data-icon-key="nav-item-ads" aria-hidden="true"></i>Google Ads</a>
+                  <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/traffic/channels"><i class="fa-jelly fa-diagram-project kexo-nav-svg me-2" data-icon-key="nav-item-channels" aria-hidden="true"></i>Channels</a>
+                  <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/traffic/device"><i class="fa-jelly fa-table-cells kexo-nav-svg me-2" data-icon-key="nav-item-type" aria-hidden="true"></i>Device &amp; Platform</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><i class="fa-jelly-filled fa-screwdriver-wrench kexo-nav-svg me-1" data-icon-key="nav-toggle-tools" aria-hidden="true"></i>Tools</a>
                 <div class="dropdown-menu" id="navbar-tools-menu">
-                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/compare-conversion-rate"><i class="fa-jelly fa-toolbox kexo-nav-svg me-2" data-icon-key="nav-item-tools" aria-hidden="true"></i>Compare Conversion Rate</a>
-                  <div class="dropdown-item kexo-nav-visitors" aria-live="polite">
-                    <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" aria-hidden="true"></i>
-                    <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
-                    <span id="online-count" class="is-hidden">0</span>
-                    <span>visitors</span>
-                  </div>
+                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/tools/ads"><i class="fa-jelly fa-rectangle-ad kexo-nav-svg me-2" data-icon-key="nav-item-ads" aria-hidden="true"></i>Google Ads</a>
+                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools/compare-conversion-rate"><i class="fa-jelly fa-toolbox kexo-nav-svg me-2" data-icon-key="nav-item-tools" aria-hidden="true"></i>Conversion Rate Compare</a>
                 </div>
               </li>
               <li class="nav-item dropdown kexo-accent-3">
@@ -126,6 +115,12 @@
             </ul>
           </div>
           <div class="col-auto kexo-desktop-nav-right">
+            <div class="kexo-nav-visitors kexo-nav-visitors-desktop" aria-live="polite" role="status" aria-label="Live visitors">
+              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" aria-hidden="true"></i>
+              <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
+              <span id="online-count" class="is-hidden">0</span>
+              <span>visitors</span>
+            </div>
             <ul class="navbar-nav kexo-desktop-nav-settings">
               <li class="nav-item d-none d-lg-flex align-items-center ms-2">
                 <div class="dropdown kexo-topbar-date">

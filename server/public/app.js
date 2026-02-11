@@ -255,7 +255,7 @@ const API = '';
     }
 
     // Shopify embedded app: keep the signed query params on internal navigation.
-    // Without this, moving from `/?shop=...&hmac=...` to `/dashboard` drops the signature and API calls can 401.
+    // Without this, moving from `/?shop=...&hmac=...` to `/dashboard/overview` drops the signature and API calls can 401.
     (function propagateShopifySignedQueryToLinks() {
       try {
         const cur = new URL(window.location.href);
@@ -9089,7 +9089,7 @@ const API = '';
               (apiVer ? rowKV('API version hint', codeInline(apiVer)) : rowKV('API version hint', pillInline('Auto', 'ok')))
             ));
 
-            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/dashboard');
+            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/dashboard/overview');
             googleAdsPanel += card('Actions', (
               '<div class="dm-bar-actions" style="justify-content:flex-start;">' +
                 '<a class="dm-copy-btn" href="' + escapeHtml(connectUrl) + '" title="Connect Google Ads (OAuth)">' + copyIcon + '<span>Connect</span></a>' +
@@ -9174,7 +9174,7 @@ const API = '';
           advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
           advancedDropdown +=   '<div class="dm-bar-actions">' +
                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                      '<a href="/auth/google?redirect=/dashboard" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
+                      '<a href="/auth/google?redirect=/dashboard/overview" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
                        (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
@@ -9848,10 +9848,10 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads'];
-        const TAB_LABELS = { dashboard: 'Dashboard', spy: 'Live', sales: 'Sales', date: 'Table', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Type', ads: 'Ads' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads', 'tools'];
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads', 'compare-conversion-rate': 'tools' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
@@ -9940,7 +9940,7 @@ const API = '';
 
         function syncMobileMenu(tab) {
           if (mobileCurrent) {
-            mobileCurrent.textContent = TAB_LABELS[tab] || 'Dashboard';
+            mobileCurrent.textContent = TAB_LABELS[tab] || 'Overview';
           }
           if (mobileMenu) {
             mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
@@ -10004,16 +10004,16 @@ const API = '';
             if (isDashboardChild) dashboardDropdownItem.classList.add('active');
             else dashboardDropdownItem.classList.remove('active');
           }
-          // Breakdown dropdown (Countries + Products)
-          var isBreakdownChild = (tab === 'stats' || tab === 'products');
-          var breakdownToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-breakdown-menu"]');
-          var breakdownDropdownItem = breakdownToggle ? breakdownToggle.closest('.nav-item') : null;
-          if (breakdownToggle) {
-            breakdownToggle.setAttribute('aria-current', isBreakdownChild ? 'page' : 'false');
+          // Insights dropdown (Countries + Products)
+          var isInsightsChild = (tab === 'stats' || tab === 'products');
+          var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
+          var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
+          if (insightsToggle) {
+            insightsToggle.setAttribute('aria-current', isInsightsChild ? 'page' : 'false');
           }
-          if (breakdownDropdownItem) {
-            if (isBreakdownChild) breakdownDropdownItem.classList.add('active');
-            else breakdownDropdownItem.classList.remove('active');
+          if (insightsDropdownItem) {
+            if (isInsightsChild) insightsDropdownItem.classList.add('active');
+            else insightsDropdownItem.classList.remove('active');
           }
           // Traffic dropdown
           var isTrafficChild = (tab === 'channels' || tab === 'type');
@@ -10027,20 +10027,8 @@ const API = '';
             else trafficDropdownItem.classList.remove('active');
           }
 
-          // Integrations dropdown (Google Ads)
-          var isIntegrationsChild = (tab === 'ads');
-          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations-menu"]');
-          var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
-          if (integrationsToggle) {
-            integrationsToggle.setAttribute('aria-current', isIntegrationsChild ? 'page' : 'false');
-          }
-          if (integrationsDropdownItem) {
-            if (isIntegrationsChild) integrationsDropdownItem.classList.add('active');
-            else integrationsDropdownItem.classList.remove('active');
-          }
-
           // Tools dropdown
-          var isToolsChild = (tab === 'tools');
+          var isToolsChild = (tab === 'ads' || tab === 'tools');
           var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
@@ -10094,7 +10082,7 @@ const API = '';
             ensureKpis();
             ensureAdsLoaded().then(function(ok) {
               if (!ok) return;
-              // IMPORTANT: if `/ads.js` is already present as a deferred script tag (e.g. on `/ads` page),
+              // IMPORTANT: if `/ads.js` is already present as a deferred script tag (e.g. on `/tools/ads` page),
               // the promise can resolve before the script executes (microtask checkpoint after this script),
               // leaving Ads blank until another event triggers a refresh. Defer one macrotask so Ads JS has run.
               setTimeout(function() {
@@ -10124,7 +10112,7 @@ const API = '';
           setHash(tab);
 
           if (pageTitleEl && !PAGE) {
-            pageTitleEl.textContent = TAB_LABELS[tab] || 'Dashboard';
+            pageTitleEl.textContent = TAB_LABELS[tab] || 'Overview';
           }
 
           updateNavSelection(tab);

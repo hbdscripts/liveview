@@ -5,8 +5,8 @@ Audit date: 2026-02-08. Updated: 2026-02-08 (Tabler UI rollout, page split, rout
 ## Summary
 
 - UI rebuilt on Tabler and split into per-page HTML routes.
-- Routing updated to serve `/dashboard`, `/live`, `/overview`, `/countries`, `/products`, `/traffic`, `/ads`, `/tools`.
-- Root `/` now serves login and redirects to `/dashboard` when authenticated.
+- Routing updated to serve canonical folder paths: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/tools/ads`, `/tools/compare-conversion-rate`, `/settings`.
+- Root `/` now serves login and redirects to `/dashboard/overview` when authenticated.
 - Shared JS bundle (`server/public/app.js`) bootstraps per page via `data-page`.
 - Tools page rebuilt with external `tools.css` styling.
 - Sticky navbar overlap layout enabled via `server/public/tabler-theme.css`.
