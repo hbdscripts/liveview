@@ -120,6 +120,77 @@
 
   var sortKey = 'sales';
   var sortDesc = true;
+  var adsPage = 1;
+  var ADS_ROW_OPTIONS = [20, 30, 40, 50];
+
+  function getAdsRowsStorageKey() {
+    return 'kexo:table-rows:v1:ads-root';
+  }
+
+  function getAdsPageSize() {
+    var raw = null;
+    try { raw = localStorage.getItem(getAdsRowsStorageKey()); } catch (_) { raw = null; }
+    var n = Number(raw);
+    if (!Number.isFinite(n)) return 20;
+    n = Math.round(n);
+    if (ADS_ROW_OPTIONS.indexOf(n) >= 0) return n;
+    return 20;
+  }
+
+  function clampPage(page, totalPages) {
+    var n = Number(page);
+    if (!Number.isFinite(n)) n = 1;
+    n = Math.round(n);
+    return Math.max(1, Math.min(Math.max(1, Number(totalPages) || 1), n));
+  }
+
+  function buildPagerHtml(page, totalPages) {
+    var fn = null;
+    try { fn = window.__kexoBuildPaginationHtml; } catch (_) { fn = null; }
+    if (typeof fn === 'function') return fn(page, totalPages);
+    var p = Math.max(1, page);
+    var tp = Math.max(1, totalPages);
+    var h = '<ul class="pagination m-0">';
+    h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">‹</a></li>';
+    for (var i = 1; i <= tp; i++) {
+      h += '<li class="page-item' + (i === p ? ' active' : '') + '"><a class="page-link" href="#" data-page="' + i + '">' + i + '</a></li>';
+    }
+    h += '<li class="page-item' + (p >= tp ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p + 1) + '" aria-label="Next">›</a></li>';
+    h += '</ul>';
+    return h;
+  }
+
+  function updateAdsPagination(totalRows) {
+    var wrap = document.getElementById('ads-pagination');
+    if (!wrap) return;
+    var pageSize = getAdsPageSize();
+    var totalPages = Math.max(1, Math.ceil(Math.max(0, Number(totalRows) || 0) / pageSize));
+    adsPage = clampPage(adsPage, totalPages);
+    var show = totalPages > 1;
+    wrap.classList.toggle('is-hidden', !show);
+    if (!show) {
+      wrap.innerHTML = '';
+      return;
+    }
+    wrap.innerHTML = buildPagerHtml(adsPage, totalPages);
+  }
+
+  (function bindAdsPagination() {
+    var wrap = document.getElementById('ads-pagination');
+    if (!wrap || wrap.getAttribute('data-ads-pagination-bound') === '1') return;
+    wrap.setAttribute('data-ads-pagination-bound', '1');
+    wrap.addEventListener('click', function(e) {
+      var link = e.target && e.target.closest ? e.target.closest('a[data-page]') : null;
+      if (!link) return;
+      e.preventDefault();
+      if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
+      var next = parseInt(link.getAttribute('data-page') || '0', 10);
+      if (!next || next < 1) return;
+      adsPage = next;
+      var root = document.getElementById('ads-root');
+      if (root && _lastSummary) render(root, _lastStatus, _lastSummary, _lastRefreshResult);
+    });
+  })();
 
   function sortCampaigns(campaigns) {
     var def = null;
@@ -566,7 +637,7 @@
       '.ads-campaign-table .grid-cell:nth-child(7){width:80px;}' +
       '.ads-campaign-table .grid-cell:nth-child(8){width:110px;}' +
       '@media (max-width:768px){' +
-        '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;width:100px;max-width:100px;min-width:100px;background:inherit;box-shadow:1px 0 0 var(--tblr-border-color, #e6e7e9);}' +
+        '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;min-width:var(--kexo-sticky-col-min-width,72px);width:var(--kexo-sticky-col-width,120px);max-width:var(--kexo-sticky-col-max-width,250px);background:inherit;box-shadow:inset -1px 0 0 rgba(15,23,42,.16),16px 0 20px -16px rgba(15,23,42,.5);}' +
         '.ads-campaign-table .grid-row--header .grid-cell:first-child{z-index:3;}' +
         '.ads-campaign-table .ads-totals-row .grid-cell:first-child{z-index:3;}' +
       '}' +
@@ -597,9 +668,11 @@
     try {
       var actions = document.getElementById('ads-actions');
       var footer = document.getElementById('ads-footer');
+      var pager = document.getElementById('ads-pagination');
       var noteEl = document.getElementById('ads-note');
       if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
+      if (pager) { pager.classList.add('is-hidden'); pager.innerHTML = ''; }
       if (noteEl) { noteEl.style.display = 'none'; patchText(noteEl, ''); }
     } catch (_) {}
     root.innerHTML =
@@ -627,9 +700,11 @@
     try {
       var actions = document.getElementById('ads-actions');
       var footer = document.getElementById('ads-footer');
+      var pager = document.getElementById('ads-pagination');
       var noteEl = document.getElementById('ads-note');
       if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
+      if (pager) { pager.classList.add('is-hidden'); pager.innerHTML = ''; }
       if (noteEl) { noteEl.style.display = 'none'; patchText(noteEl, ''); }
     } catch (_) {}
     root.innerHTML =
@@ -851,6 +926,12 @@
 
     // Sort campaigns
     campaigns = sortCampaigns(campaigns);
+    var pageSize = getAdsPageSize();
+    var totalPages = Math.max(1, Math.ceil(campaigns.length / pageSize));
+    adsPage = clampPage(adsPage, totalPages);
+    updateAdsPagination(campaigns.length);
+    var pageStart = (adsPage - 1) * pageSize;
+    var pagedCampaigns = campaigns.slice(pageStart, pageStart + pageSize);
 
     function gridRow(cells, isHeader, cssClass, attrs) {
       var role = isHeader ? 'columnheader' : 'cell';
@@ -921,8 +1002,8 @@
     ], false, 'ads-totals-row');
 
     // Campaign rows
-    for (var ci = 0; ci < campaigns.length; ci++) {
-      var c = campaigns[ci];
+    for (var ci = 0; ci < pagedCampaigns.length; ci++) {
+      var c = pagedCampaigns[ci];
       if (!c) continue;
       var cName = c.campaignName || c.campaignId || '—';
       var cId = c.campaignId || '';
@@ -1098,6 +1179,8 @@
         if (showPageLoader) setLoadingStep(root, 'Could not load ads');
         if (actions) actions.style.display = 'none';
         if (footer) footer.style.display = 'none';
+        var pager = document.getElementById('ads-pagination');
+        if (pager) { pager.classList.add('is-hidden'); pager.innerHTML = ''; }
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
         renderLoadError(root, _lastFetchError);
         try { clearAdsOverviewChart('Could not load chart'); } catch (_) {}
@@ -1111,6 +1194,23 @@
     inFlight = p;
     return p;
   }
+
+  function handleAdsRowsPerPageChanged(tableId) {
+    var id = String(tableId == null ? '' : tableId).trim();
+    if (id !== 'ads-root') return;
+    adsPage = 1;
+    var root = document.getElementById('ads-root');
+    if (root && _lastSummary) render(root, _lastStatus, _lastSummary, _lastRefreshResult);
+  }
+
+  window.__adsRowsPerPageChanged = handleAdsRowsPerPageChanged;
+  try {
+    window.addEventListener('kexo:table-rows-changed', function(e) {
+      var d = e && e.detail ? e.detail : null;
+      if (!d) return;
+      handleAdsRowsPerPageChanged(d.tableId);
+    });
+  } catch (_) {}
 
   window.__adsRefresh = refresh;
   window.__adsInit = function () {

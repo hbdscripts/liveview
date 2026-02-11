@@ -1,6 +1,125 @@
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
+    const TABLE_CLASS_CONFIG = Object.freeze({
+      dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
+      product: Object.freeze({ defaultRows: 10, rowOptions: Object.freeze([10, 15, 20]) }),
+      live: Object.freeze({ defaultRows: 20, rowOptions: Object.freeze([20, 30, 40, 50]) }),
+    });
+    const TABLE_ROWS_STORAGE_PREFIX = 'kexo:table-rows:v1';
+    const TABLE_CLASS_FALLBACK_BY_ID = Object.freeze({
+      'sessions-table': 'live',
+      'dash-top-products': 'dashboard',
+      'dash-top-countries': 'dashboard',
+      'dash-trending-up': 'dashboard',
+      'dash-trending-down': 'dashboard',
+      'best-sellers-table': 'product',
+      'best-variants-table': 'product',
+      'type-necklaces-table': 'product',
+      'type-bracelets-table': 'product',
+      'type-earrings-table': 'product',
+      'type-sets-table': 'product',
+      'type-charms-table': 'product',
+      'type-extras-table': 'product',
+      'country-table': 'live',
+      'best-geo-products-table': 'live',
+      'traffic-sources-table': 'live',
+      'traffic-types-table': 'live',
+      'ads-root': 'live',
+    });
+    const tableRowsCache = {};
+
+    function normalizeTableClass(classKey) {
+      var key = String(classKey == null ? '' : classKey).trim().toLowerCase();
+      if (key && TABLE_CLASS_CONFIG[key]) return key;
+      return 'live';
+    }
+
+    function tableClassConfig(classKey) {
+      return TABLE_CLASS_CONFIG[normalizeTableClass(classKey)] || TABLE_CLASS_CONFIG.live;
+    }
+
+    function clampTableRows(value, classKey) {
+      var cfg = tableClassConfig(classKey);
+      var opts = Array.isArray(cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
+      var n = Number(value);
+      if (!Number.isFinite(n)) return cfg.defaultRows;
+      n = Math.round(n);
+      if (opts.indexOf(n) >= 0) return n;
+      // Pick nearest allowed option for robustness against stale values.
+      var nearest = opts[0];
+      var nearestDiff = Math.abs(nearest - n);
+      for (var i = 1; i < opts.length; i++) {
+        var d = Math.abs(opts[i] - n);
+        if (d < nearestDiff) {
+          nearest = opts[i];
+          nearestDiff = d;
+        }
+      }
+      return nearest;
+    }
+
+    function inferTableIdFromCard(card) {
+      if (!card || !card.querySelector) return '';
+      if (card.dataset && card.dataset.tableId) return String(card.dataset.tableId).trim();
+      var el = card.querySelector('table[id], .grid-table[id], [id="ads-root"]');
+      return el && el.id ? String(el.id).trim() : '';
+    }
+
+    function findTableCardById(tableId) {
+      var id = String(tableId == null ? '' : tableId).trim();
+      if (!id || !document || !document.querySelector) return null;
+      var byCardAttr = document.querySelector('.card[data-table-id="' + id + '"]');
+      if (byCardAttr) return byCardAttr;
+      var tableEl = document.getElementById(id);
+      if (!tableEl || !tableEl.closest) return null;
+      return tableEl.closest('.card');
+    }
+
+    function getTableClassByTableId(tableId, fallbackClassKey) {
+      var id = String(tableId == null ? '' : tableId).trim();
+      var card = findTableCardById(id);
+      if (card && card.dataset && card.dataset.tableClass) return normalizeTableClass(card.dataset.tableClass);
+      if (id && TABLE_CLASS_FALLBACK_BY_ID[id]) return normalizeTableClass(TABLE_CLASS_FALLBACK_BY_ID[id]);
+      return normalizeTableClass(fallbackClassKey || 'live');
+    }
+
+    function tableRowsStorageKey(tableId) {
+      return TABLE_ROWS_STORAGE_PREFIX + ':' + String(tableId == null ? '' : tableId).trim().toLowerCase();
+    }
+
+    function getTableRowsPerPage(tableId, fallbackClassKey) {
+      var id = String(tableId == null ? '' : tableId).trim();
+      if (!id) return tableClassConfig(fallbackClassKey || 'live').defaultRows;
+      if (Object.prototype.hasOwnProperty.call(tableRowsCache, id)) return tableRowsCache[id];
+      var classKey = getTableClassByTableId(id, fallbackClassKey);
+      var cfg = tableClassConfig(classKey);
+      var raw = null;
+      try { raw = localStorage.getItem(tableRowsStorageKey(id)); } catch (_) { raw = null; }
+      var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), classKey);
+      tableRowsCache[id] = value;
+      return value;
+    }
+
+    function setTableRowsPerPage(tableId, rows, fallbackClassKey) {
+      var id = String(tableId == null ? '' : tableId).trim();
+      if (!id) return null;
+      var classKey = getTableClassByTableId(id, fallbackClassKey);
+      var next = clampTableRows(rows, classKey);
+      tableRowsCache[id] = next;
+      try { localStorage.setItem(tableRowsStorageKey(id), String(next)); } catch (_) {}
+      try {
+        window.dispatchEvent(new CustomEvent('kexo:table-rows-changed', {
+          detail: { tableId: id, rows: next, tableClass: classKey },
+        }));
+      } catch (_) {}
+      try {
+        if (typeof window.__kexoOnTableRowsPerPageChanged === 'function') {
+          window.__kexoOnTableRowsPerPageChanged(id, next, classKey);
+        }
+      } catch (_) {}
+      return next;
+    }
 
     // Desktop date picker is mounted into the page header right slot.
 
@@ -57,12 +176,12 @@ const API = '';
     let kpisSpinnerShownOnce = false;
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
-    const COUNTRY_PAGE_SIZE = 25;
-    const COUNTRY_PRODUCTS_PAGE_SIZE = 25;
+    const COUNTRY_PAGE_SIZE = 20;
+    const COUNTRY_PRODUCTS_PAGE_SIZE = 20;
     const BREAKDOWN_PAGE_SIZE = 25;
-    const ROWS_PER_PAGE_DEFAULT = 25;
+    const ROWS_PER_PAGE_DEFAULT = 20;
     function loadRowsPerPage() {
-      return ROWS_PER_PAGE_DEFAULT;
+      return getTableRowsPerPage('sessions-table', 'live');
     }
     let rowsPerPage = loadRowsPerPage();
     let sessions = [];
@@ -471,6 +590,100 @@ const API = '';
       setTimeout(function() { run(document); }, 1800);
     })();
 
+    (function initTableRowsPerPageControls() {
+      var CARD_SELECTOR = '.card[data-table-class][data-table-id]';
+
+      function getDirectHeader(card) {
+        if (!card || !card.querySelector) return null;
+        try { return card.querySelector(':scope > .card-header'); } catch (_) {}
+        return card.querySelector('.card-header');
+      }
+
+      function ensureActionsContainer(header) {
+        if (!header || !header.querySelector) return null;
+        var actions = null;
+        try { actions = header.querySelector(':scope > .card-actions'); } catch (_) { actions = null; }
+        if (actions && actions.parentElement === header) return actions;
+        actions = document.createElement('div');
+        actions.className = 'card-actions d-flex align-items-center gap-2 ms-auto kexo-table-actions';
+        header.appendChild(actions);
+        return actions;
+      }
+
+      function ensureRowsControl(card) {
+        if (!card) return;
+        var tableId = (card.dataset && card.dataset.tableId) ? String(card.dataset.tableId).trim() : inferTableIdFromCard(card);
+        if (!tableId) return;
+        var classKey = normalizeTableClass(card.dataset && card.dataset.tableClass ? card.dataset.tableClass : 'live');
+        var cfg = tableClassConfig(classKey);
+        var selectedRows = getTableRowsPerPage(tableId, classKey);
+        var header = getDirectHeader(card);
+        if (!header) return;
+        var actions = ensureActionsContainer(header);
+        if (!actions) return;
+
+        var collapseBtn = header.querySelector('.kexo-card-collapse-toggle');
+        if (collapseBtn && collapseBtn.parentElement !== actions) {
+          collapseBtn.classList.remove('ms-auto');
+          actions.appendChild(collapseBtn);
+        }
+
+        var control = actions.querySelector('.kexo-table-rows-control[data-table-id="' + tableId + '"]');
+        if (!control) {
+          control = document.createElement('label');
+          control.className = 'kexo-table-rows-control';
+          control.setAttribute('data-table-id', tableId);
+          control.innerHTML = '<span class="kexo-table-rows-label">Rows</span><select class="form-select form-select-sm kexo-table-rows-select" aria-label="Rows per table"></select>';
+          if (collapseBtn && collapseBtn.parentElement === actions) {
+            actions.insertBefore(control, collapseBtn);
+          } else {
+            actions.appendChild(control);
+          }
+        }
+
+        var selectEl = control.querySelector('.kexo-table-rows-select');
+        if (!selectEl) return;
+        var options = Array.isArray(cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
+        selectEl.innerHTML = options.map(function(opt) {
+          return '<option value="' + String(opt) + '">' + String(opt) + '</option>';
+        }).join('');
+        selectEl.value = String(clampTableRows(selectedRows, classKey));
+        if (selectEl.getAttribute('data-rows-bound') !== '1') {
+          selectEl.setAttribute('data-rows-bound', '1');
+          selectEl.addEventListener('change', function() {
+            var next = setTableRowsPerPage(tableId, Number(selectEl.value), classKey);
+            applyTableRowsPerPageChange(tableId, next);
+          });
+        }
+      }
+
+      function run(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+        var cards = scope.querySelectorAll(CARD_SELECTOR);
+        cards.forEach(function(card) { ensureRowsControl(card); });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { run(document); });
+      } else {
+        run(document);
+      }
+      var observer = new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+          m.addedNodes.forEach(function(n) {
+            if (!(n instanceof Element)) return;
+            run(n);
+          });
+        });
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      window.addEventListener('kexo:table-rows-changed', function() {
+        run(document);
+      });
+      setTimeout(function() { run(document); }, 900);
+      setTimeout(function() { run(document); }, 2000);
+    })();
+
     (function initStickyColumnResize() {
       var page = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
@@ -480,25 +693,66 @@ const API = '';
       var ABS_MAX_WIDTH = 420;
       var LS_KEY = 'kexo-sticky-col-width';
 
-      function getBounds(wrap) {
-        var viewport = 0;
-        try { viewport = Math.max(window.innerWidth || 0, document.documentElement ? (document.documentElement.clientWidth || 0) : 0); } catch (_) { viewport = 0; }
-        if (!viewport || !Number.isFinite(viewport)) viewport = 1280;
-        var wrapW = wrap && wrap.clientWidth ? wrap.clientWidth : viewport;
-        var base = Math.max(220, Math.min(viewport, wrapW || viewport));
-        var inHalfGrid = !!(wrap && wrap.closest && wrap.closest('.col-lg-6'));
-        var minFloor = inHalfGrid ? 64 : ABS_MIN_WIDTH;
-        var min = Math.max(minFloor, Math.min(180, Math.round(base * 0.18)));
-        var max = Math.max(min + 32, Math.min(ABS_MAX_WIDTH, Math.round(base * 0.40)));
-        var def = Math.max(min, Math.min(max, Math.round(base * 0.26)));
+      function getWrapTableId(wrap) {
+        if (!wrap) return '';
         try {
-          var table = wrap && wrap.querySelector ? wrap.querySelector('table, .grid-table') : null;
-          var tableW = table ? Number(table.scrollWidth || table.clientWidth || 0) : 0;
-          if (tableW > 0 && wrapW > 0 && tableW <= wrapW + 1) {
-            max = Math.max(min + 16, Math.min(max, Math.round(base * 0.34)));
-            def = Math.max(min, Math.min(def, max));
-          }
+          var table = wrap.querySelector ? wrap.querySelector('table[id], .grid-table[id]') : null;
+          if (table && table.id) return String(table.id).trim();
         } catch (_) {}
+        try {
+          if (wrap.id) return String(wrap.id).trim();
+        } catch (_) {}
+        try {
+          var card = wrap.closest ? wrap.closest('.card[data-table-id]') : null;
+          if (card && card.dataset && card.dataset.tableId) return String(card.dataset.tableId).trim();
+        } catch (_) {}
+        return '';
+      }
+
+      function getWrapTableClass(wrap) {
+        try {
+          var card = wrap && wrap.closest ? wrap.closest('.card') : null;
+          if (card && card.dataset && card.dataset.tableClass) return normalizeTableClass(card.dataset.tableClass);
+        } catch (_) {}
+        return getTableClassByTableId(getWrapTableId(wrap), 'live');
+      }
+
+      function getTableCardsInGroupCount(wrap) {
+        if (!wrap || !wrap.closest || !wrap.querySelectorAll) return 1;
+        var card = wrap.closest('.card');
+        if (!card) return 1;
+        var group = card.closest('.stats-row, .row');
+        if (!group || !group.querySelectorAll) return 1;
+        var cards = group.querySelectorAll('.card[data-table-id]');
+        var count = 0;
+        cards.forEach(function(c) {
+          if (!c || !c.closest) return;
+          var owner = c.closest('.stats-row, .row');
+          if (owner === group) count++;
+        });
+        return count > 0 ? count : 1;
+      }
+
+      function getBounds(wrap) {
+        var classKey = getWrapTableClass(wrap);
+        var gridCount = getTableCardsInGroupCount(wrap);
+        var min = classKey === 'dashboard' ? 90 : ABS_MIN_WIDTH;
+        var max = classKey === 'dashboard' ? 180 : (classKey === 'product' ? 240 : 280);
+        var def = classKey === 'dashboard' ? 120 : 120;
+
+        // Site-wide sticky sizing rules by table-grid cardinality.
+        if (gridCount === 1) max = Math.min(max, 250);
+        if (gridCount === 2) max = Math.min(max, 150);
+        if (gridCount >= 3) min = Math.max(min, 100);
+
+        var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
+        if (Number.isFinite(wrapW) && wrapW > 0) {
+          var softMax = Math.max(min + 16, Math.round(wrapW * 0.65));
+          max = Math.min(max, softMax);
+        }
+        min = Math.max(ABS_MIN_WIDTH, Math.min(min, ABS_MAX_WIDTH - 16));
+        max = Math.max(min + 16, Math.min(max, ABS_MAX_WIDTH));
+        def = Math.max(min, Math.min(max, def));
         return { min: min, max: max, def: def };
       }
 
@@ -517,8 +771,7 @@ const API = '';
       function getStorageKey(wrap) {
         var suffix = 'default';
         try {
-          var table = wrap && wrap.querySelector ? wrap.querySelector('table[id], .grid-table[id]') : null;
-          var tableId = table && table.id ? String(table.id).trim() : '';
+          var tableId = getWrapTableId(wrap);
           if (tableId) suffix = tableId;
           else if (page) suffix = String(page).trim().toLowerCase();
         } catch (_) {}
@@ -736,6 +989,12 @@ const API = '';
     let bestGeoProductsPage = 1;
     let bestSellersPage = 1;
     let bestVariantsPage = 1;
+    let trafficSourcesPage = 1;
+    let trafficTypesPage = 1;
+    let dashTopProductsPage = 1;
+    let dashTopCountriesPage = 1;
+    let dashTrendingUpPage = 1;
+    let dashTrendingDownPage = 1;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
     const tableSortState = {
@@ -754,6 +1013,82 @@ const API = '';
       trafficSources: { source: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
       trafficTypes: { type: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
     };
+
+    function applyTableRowsPerPageChange(tableId, rows) {
+      var id = String(tableId == null ? '' : tableId).trim();
+      var n = Number(rows);
+      if (!id || !Number.isFinite(n)) return;
+      if (id === 'sessions-table') {
+        rowsPerPage = n;
+        currentPage = 1;
+        if (sessionsTotal != null) fetchSessions();
+        else renderTable();
+        return;
+      }
+      if (id === 'best-sellers-table') {
+        bestSellersPage = 1;
+        fetchBestSellers({ force: true });
+        return;
+      }
+      if (id === 'best-variants-table') {
+        bestVariantsPage = 1;
+        fetchBestVariants({ force: true });
+        return;
+      }
+      if (id === 'country-table') {
+        countryPage = 1;
+        renderCountry(statsCache || {});
+        return;
+      }
+      if (id === 'best-geo-products-table') {
+        bestGeoProductsPage = 1;
+        renderBestGeoProducts(statsCache || {});
+        return;
+      }
+      if (id === 'traffic-sources-table') {
+        trafficSourcesPage = 1;
+        renderTrafficTables(trafficCache || {});
+        return;
+      }
+      if (id === 'traffic-types-table') {
+        trafficTypesPage = 1;
+        renderTrafficTables(trafficCache || {});
+        return;
+      }
+      if (id === 'dash-top-products') {
+        dashTopProductsPage = 1;
+        if (dashCache) renderDashboard(dashCache);
+        return;
+      }
+      if (id === 'dash-top-countries') {
+        dashTopCountriesPage = 1;
+        if (dashCache) renderDashboard(dashCache);
+        return;
+      }
+      if (id === 'dash-trending-up') {
+        dashTrendingUpPage = 1;
+        if (dashCache) renderDashboard(dashCache);
+        return;
+      }
+      if (id === 'dash-trending-down') {
+        dashTrendingDownPage = 1;
+        if (dashCache) renderDashboard(dashCache);
+        return;
+      }
+      var typeMatch = id.match(/^type-([a-z0-9-]+)-table$/i);
+      if (typeMatch && typeMatch[1]) {
+        var typeId = String(typeMatch[1]).toLowerCase();
+        typeTablePages[typeId] = 1;
+        var def = TYPE_TABLE_DEFS.find(function(d) { return d && d.id === typeId; });
+        if (def) renderTypeTable(leaderboardCache, def);
+        return;
+      }
+      try {
+        if (typeof window.__adsRowsPerPageChanged === 'function') {
+          window.__adsRowsPerPageChanged(id, n);
+        }
+      } catch (_) {}
+    }
     let saleAudio = null;
     let saleMuted = false;
     let saleAudioPrimed = false;
@@ -3116,10 +3451,11 @@ const API = '';
         renderBestSellers(null);
         return Promise.resolve(null);
       }
+      var pageSize = getTableRowsPerPage('best-sellers-table', 'product');
       let url = API + '/api/shopify-best-sellers?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(getStatsRange()) +
           '&page=' + encodeURIComponent(String(bestSellersPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE)) +
+          '&pageSize=' + encodeURIComponent(String(pageSize)) +
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
           '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
       if (force) url += '&_=' + Date.now();
@@ -3474,7 +3810,10 @@ const API = '';
       { id: 'charms',    keys: ['charms', 'charm'] },
       { id: 'extras',    keys: ['extras', 'extra'] },
     ];
-    var TYPE_TABLE_PAGE_SIZE = 10;
+    function getTypeTablePageSize(def) {
+      var id = def && def.id ? ('type-' + def.id + '-table') : '';
+      return getTableRowsPerPage(id, 'product');
+    }
     var typeTablePages = {};
     TYPE_TABLE_DEFS.forEach(function(d) { typeTablePages[d.id] = 1; });
 
@@ -3497,12 +3836,13 @@ const API = '';
         updateCardPagination('type-' + def.id, 1, 1);
         return;
       }
-      var totalPages = Math.max(1, Math.ceil(rows.length / TYPE_TABLE_PAGE_SIZE));
+      var pageSize = getTypeTablePageSize(def);
+      var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
       var page = clampPage(typeTablePages[def.id] || 1, totalPages);
       typeTablePages[def.id] = page;
       updateCardPagination('type-' + def.id, page, totalPages);
-      var start = (page - 1) * TYPE_TABLE_PAGE_SIZE;
-      var pageRows = rows.slice(start, start + TYPE_TABLE_PAGE_SIZE);
+      var start = (page - 1) * pageSize;
+      var pageRows = rows.slice(start, start + pageSize);
       const mainBase = getMainBaseUrl();
       tbody.innerHTML = pageRows.map(function(r) {
         var title = r && r.title ? String(r.title) : '—';
@@ -3656,10 +3996,11 @@ const API = '';
         renderBestVariants(null);
         return Promise.resolve(null);
       }
+      var pageSize = getTableRowsPerPage('best-variants-table', 'product');
       let url = API + '/api/shopify-best-variants?shop=' + encodeURIComponent(shop) +
           '&range=' + encodeURIComponent(getStatsRange()) +
           '&page=' + encodeURIComponent(String(bestVariantsPage || 1)) +
-          '&pageSize=' + encodeURIComponent(String(TOP_TABLE_PAGE_SIZE));
+          '&pageSize=' + encodeURIComponent(String(pageSize));
       if (force) url += '&_=' + Date.now();
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
@@ -3710,7 +4051,9 @@ const API = '';
           cmpNullableNumber(a && a.orders, b && b.orders, 'desc') ||
           cmpNullableText(displayVariantName(a), displayVariantName(b), 'asc');
       });
-      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
+      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0)
+        ? data.pageSize
+        : getTableRowsPerPage('best-variants-table', 'product');
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
       bestVariantsPage = clampPage((data && typeof data.page === 'number') ? data.page : bestVariantsPage, totalPages);
@@ -3931,7 +4274,9 @@ const API = '';
         }
         return 0;
       });
-      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0) ? data.pageSize : TOP_TABLE_PAGE_SIZE;
+      const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0)
+        ? data.pageSize
+        : getTableRowsPerPage('best-sellers-table', 'product');
       const totalCount = (data && typeof data.totalCount === 'number' && data.totalCount >= 0) ? data.totalCount : rows.length;
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
       bestSellersPage = clampPage((data && typeof data.page === 'number') ? data.page : bestSellersPage, totalPages);
@@ -4152,6 +4497,7 @@ const API = '';
       h += '</ul>';
       return h;
     }
+    try { window.__kexoBuildPaginationHtml = buildPaginationHtml; } catch (_) {}
 
     function updateCardPagination(prefix, page, totalPages) {
       var wrap = document.getElementById(prefix + '-pagination');
@@ -4504,11 +4850,12 @@ const API = '';
       });
 
       lastCountryRowCount = list.length;
-      var totalPages = Math.max(1, Math.ceil(list.length / COUNTRY_PAGE_SIZE));
+      var countryPageSize = getTableRowsPerPage('country-table', 'live');
+      var totalPages = Math.max(1, Math.ceil(list.length / countryPageSize));
       countryPage = clampPage(countryPage, totalPages);
       updateCardPagination('country', countryPage, totalPages);
-      var start = (countryPage - 1) * COUNTRY_PAGE_SIZE;
-      var pageRows = list.slice(start, start + COUNTRY_PAGE_SIZE);
+      var start = (countryPage - 1) * countryPageSize;
+      var pageRows = list.slice(start, start + countryPageSize);
       tbody.innerHTML = pageRows.map(r => {
         const code = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(code);
@@ -4761,7 +5108,7 @@ const API = '';
         return 0;
       });
 
-      const geoPageSize = Math.max(1, (lastCountryRowCount || COUNTRY_PAGE_SIZE) - 1);
+      const geoPageSize = getTableRowsPerPage('best-geo-products-table', 'live');
       const totalPages = Math.max(1, Math.ceil(list.length / geoPageSize));
       bestGeoProductsPage = clampPage(bestGeoProductsPage, totalPages);
       updateCardPagination('best-geo-products', bestGeoProductsPage, totalPages);
@@ -6854,6 +7201,7 @@ const API = '';
         });
         if (!list.length) {
           body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyText || '—') + '</div></div>';
+          updateCardPagination('traffic-sources', 1, 1);
           return;
         }
         var filtered = list.filter(function(r) {
@@ -6863,10 +7211,17 @@ const API = '';
         });
         if (!filtered.length) {
           body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyText || '—') + '</div></div>';
+          updateCardPagination('traffic-sources', 1, 1);
           return;
         }
+        var pageSize = getTableRowsPerPage('traffic-sources-table', 'live');
+        var totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        trafficSourcesPage = clampPage(trafficSourcesPage, totalPages);
+        updateCardPagination('traffic-sources', trafficSourcesPage, totalPages);
+        var pageStart = (trafficSourcesPage - 1) * pageSize;
+        var pagedRows = filtered.slice(pageStart, pageStart + pageSize);
         let html = '';
-        filtered.forEach(function(r) {
+        pagedRows.forEach(function(r) {
           const key = (r && r.key != null) ? String(r.key).trim().toLowerCase() : '';
           const labelText = (r && r.label) ? String(r.label) : (key || '—');
           const labelCell = trafficSourceIconHtml(key, labelText);
@@ -6911,6 +7266,7 @@ const API = '';
         const groups = types && Array.isArray(types.rows) ? types.rows.slice() : [];
         if (!groups.length) {
           body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml('Open Settings (footer) → Traffic to choose device types.') + '</div></div>';
+          updateCardPagination('traffic-types', 1, 1);
           return;
         }
         function typeLabel(r) {
@@ -6941,10 +7297,17 @@ const API = '';
         });
         if (!filteredGroups.length) {
           body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No traffic types with sessions or sales.</div></div>';
+          updateCardPagination('traffic-types', 1, 1);
           return;
         }
+        var groupPageSize = getTableRowsPerPage('traffic-types-table', 'live');
+        var groupPages = Math.max(1, Math.ceil(filteredGroups.length / groupPageSize));
+        trafficTypesPage = clampPage(trafficTypesPage, groupPages);
+        updateCardPagination('traffic-types', trafficTypesPage, groupPages);
+        var groupStart = (trafficTypesPage - 1) * groupPageSize;
+        var pageGroups = filteredGroups.slice(groupStart, groupStart + groupPageSize);
         let html = '';
-        filteredGroups.forEach(function(g) {
+        pageGroups.forEach(function(g) {
           const device = (g && g.device != null) ? String(g.device).trim().toLowerCase() : '';
           const open = trafficTypeExpanded === null ? true : !!(device && trafficTypeExpanded && trafficTypeExpanded[device]);
           const label = escapeHtml((g && g.label) ? String(g.label) : (g && g.key ? String(g.key) : '—'));
@@ -7830,6 +8193,12 @@ const API = '';
       bindDelegate('best-geo-products', function(pg) { bestGeoProductsPage = pg; renderBestGeoProducts(statsCache); });
       bindDelegate('best-sellers', function(pg) { bestSellersPage = pg; fetchBestSellers(); });
       bindDelegate('best-variants', function(pg) { bestVariantsPage = pg; fetchBestVariants(); });
+      bindDelegate('traffic-sources', function(pg) { trafficSourcesPage = pg; renderTrafficTables(trafficCache || {}); });
+      bindDelegate('traffic-types', function(pg) { trafficTypesPage = pg; renderTrafficTables(trafficCache || {}); });
+      bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; if (dashCache) renderDashboard(dashCache); });
+      bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; if (dashCache) renderDashboard(dashCache); });
+      bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; if (dashCache) renderDashboard(dashCache); });
+      bindDelegate('dash-trending-down', function(pg) { dashTrendingDownPage = pg; if (dashCache) renderDashboard(dashCache); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });
@@ -10740,10 +11109,16 @@ const API = '';
         var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
         if (prodTbody) {
           var products = data.topProducts || [];
+          var prodPageSize = getTableRowsPerPage('dash-top-products', 'dashboard');
+          var prodPages = Math.max(1, Math.ceil(products.length / prodPageSize));
+          dashTopProductsPage = clampPage(dashTopProductsPage, prodPages);
+          updateCardPagination('dash-top-products', dashTopProductsPage, prodPages);
+          var prodStart = (dashTopProductsPage - 1) * prodPageSize;
+          var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
           if (!products.length) {
             prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
-            prodTbody.innerHTML = products.map(function(p) {
+            prodTbody.innerHTML = productsPageRows.map(function(p) {
               var thumbHtml = '<span class="thumb-wrap">' +
                 (p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
               '</span>';
@@ -10755,10 +11130,16 @@ const API = '';
         var countryTbody = el('dash-top-countries') ? el('dash-top-countries').querySelector('tbody') : null;
         if (countryTbody) {
           var countries = data.topCountries || [];
+          var countryPageSize = getTableRowsPerPage('dash-top-countries', 'dashboard');
+          var countryPages = Math.max(1, Math.ceil(countries.length / countryPageSize));
+          dashTopCountriesPage = clampPage(dashTopCountriesPage, countryPages);
+          updateCardPagination('dash-top-countries', dashTopCountriesPage, countryPages);
+          var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
+          var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
           if (!countries.length) {
             countryTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
-            countryTbody.innerHTML = countries.map(function(c) {
+            countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = (c.country || 'XX').toUpperCase();
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
               return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td></tr>';
@@ -10771,6 +11152,15 @@ const API = '';
           var tbody = t ? t.querySelector('tbody') : null;
           if (!tbody) return;
           var rows = Array.isArray(items) ? items : [];
+          var pagePrefix = tableId;
+          var pageSize = getTableRowsPerPage(tableId, 'dashboard');
+          var pages = Math.max(1, Math.ceil(rows.length / pageSize));
+          if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
+          else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
+          var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+          updateCardPagination(pagePrefix, page, pages);
+          var pageStart = (page - 1) * pageSize;
+          var pageRows = rows.slice(pageStart, pageStart + pageSize);
           if (!rows.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
             return;
@@ -10796,7 +11186,7 @@ const API = '';
             var cls = d >= 0 ? 'text-green' : 'text-red';
             return '<span class="dash-trend-delta ' + cls + '">' + sign + String(d) + '</span>';
           }
-          tbody.innerHTML = rows.map(function(p) {
+          tbody.innerHTML = pageRows.map(function(p) {
             var title = p && p.title ? String(p.title) : 'Unknown';
             var thumbHtml = '<span class="thumb-wrap dash-thumb-wrap">' +
               '<span class="dash-thumb-placeholder" aria-hidden="true"></span>' +

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (main-nav Settings move + Compare Conversion Rate route rename + live online 5-min chart update)
+Last updated: 2026-02-11 (table-class sticky width/rows system + pagination standardization)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -208,6 +208,18 @@ Edge (optional):
 ---
 
 ## Changelog (summary)
+
+2026-02-11
+- Table standardization (site-wide):
+  - Added table metadata on table cards (`data-table-class`, `data-table-zone`, `data-table-id`) across dashboard/live/sales/date/countries/products/channels/type/ads to target table behavior by class/zone instead of page URL.
+  - Sticky first-column sizing in `server/public/app.js` is now grid-aware: 1-table groups cap at `250px`, 2-table groups cap at `150px`, and 3+-table groups enforce a `100px` minimum.
+  - Sticky resize affordance in `server/public/custom.css` now uses a `<->` SVG marker (no vertical border indicator), and sticky edge shadows are stronger for clear sticky perception.
+  - Added per-table row controls in card headers near the collapse chevron with class presets:
+    - dashboard: `5` default, options `5/10`
+    - product: `10` default, options `10/15/20`
+    - live: `20` default, options `20/30/40/50` (also mapped to countries/channels/type/ads)
+  - Added pagination where it was missing for Channels, Type, Ads, and dashboard table cards (`dash-top-products`, `dash-top-countries`, `dash-trending-up`, `dash-trending-down`).
+  - Added active pagination style override for `.active > .page-link, .page-link.active` in `server/public/custom.css`.
 
 2026-02-11
 - Main nav + tools/settings UX:

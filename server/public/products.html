@@ -77,7 +77,7 @@
       </div>
     </div>
   <div class="stats-row">
-    <div class="stats-card card" id="stats-best-sellers">
+    <div class="stats-card card" id="stats-best-sellers" data-table-class="product" data-table-zone="products-best-sellers" data-table-id="best-sellers-table">
       <div class="card-header">
         <h3 class="card-title">Best Sellers</h3>
       </div>
@@ -99,7 +99,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-best-variants">
+    <div class="stats-card card" id="stats-best-variants" data-table-class="product" data-table-zone="products-best-variants" data-table-id="best-variants-table">
       <div class="card-header">
         <h3 class="card-title">Variant</h3>
       </div>
@@ -123,7 +123,7 @@
     </div>
   </div>
   <div class="stats-row" id="products-type-tables-row">
-    <div class="stats-card card" id="stats-type-necklaces">
+    <div class="stats-card card" id="stats-type-necklaces" data-table-class="product" data-table-zone="products-type-necklaces" data-table-id="type-necklaces-table">
       <div class="card-header">
         <h3 class="card-title">Necklaces</h3>
       </div>
@@ -141,7 +141,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-type-bracelets">
+    <div class="stats-card card" id="stats-type-bracelets" data-table-class="product" data-table-zone="products-type-bracelets" data-table-id="type-bracelets-table">
       <div class="card-header">
         <h3 class="card-title">Bracelets</h3>
       </div>
@@ -159,7 +159,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-type-earrings">
+    <div class="stats-card card" id="stats-type-earrings" data-table-class="product" data-table-zone="products-type-earrings" data-table-id="type-earrings-table">
       <div class="card-header">
         <h3 class="card-title">Earrings</h3>
       </div>
@@ -177,7 +177,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-type-sets">
+    <div class="stats-card card" id="stats-type-sets" data-table-class="product" data-table-zone="products-type-sets" data-table-id="type-sets-table">
       <div class="card-header">
         <h3 class="card-title">Jewelry Sets</h3>
       </div>
@@ -195,7 +195,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-sets-pagination" aria-label="Sets pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-type-charms">
+    <div class="stats-card card" id="stats-type-charms" data-table-class="product" data-table-zone="products-type-charms" data-table-id="type-charms-table">
       <div class="card-header">
         <h3 class="card-title">Charms</h3>
       </div>
@@ -213,7 +213,7 @@
       </div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-charms-pagination" aria-label="Charms pagination"></div>
     </div>
-    <div class="stats-card card" id="stats-type-extras">
+    <div class="stats-card card" id="stats-type-extras" data-table-class="product" data-table-zone="products-type-extras" data-table-id="type-extras-table">
       <div class="card-header">
         <h3 class="card-title">Extras</h3>
       </div>
@@ -297,142 +297,6 @@
       <button type="button" class="btn-close sale-toast-close" id="sale-toast-close" aria-label="Close"></button>
     </div>
   </div>
-  <script>
-    (function () {
-      function onReady(fn) {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', fn, { once: true });
-        } else {
-          fn();
-        }
-      }
-
-      function $(id) {
-        return document.getElementById(id);
-      }
-
-      function isPlaceholderRow(rowEl) {
-        if (!rowEl) return true;
-        if (rowEl.querySelector && rowEl.querySelector('.grid-cell.empty')) return true;
-        var txt = (rowEl.textContent || '').replace(/\s+/g, ' ').trim();
-        return txt === '' || txt === '\u2014' || txt === '-';
-      }
-
-      function getRenderableRows(bodyEl) {
-        if (!bodyEl) return [];
-        var rows = Array.prototype.slice.call(bodyEl.children || []).filter(function (el) {
-          return el && el.classList && el.classList.contains('grid-row');
-        });
-        return rows.filter(function (r) { return !isPlaceholderRow(r); });
-      }
-
-      function setPagerDisabled(btn, disabled) {
-        if (!btn) return;
-        btn.disabled = !!disabled;
-        var li = btn.closest ? btn.closest('.page-item') : null;
-        if (li) li.classList.toggle('disabled', !!disabled);
-      }
-
-      function buildPaginationHtml(page, totalPages) {
-        var p = Math.max(1, page);
-        var tp = Math.max(1, totalPages);
-        var chevL = '<i class="fa-light fa-chevron-left" data-icon-key="pagination-prev"></i>';
-        var chevR = '<i class="fa-light fa-chevron-right" data-icon-key="pagination-next"></i>';
-        var h = '<ul class="pagination m-0">';
-        h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">' + chevL + '</a></li>';
-        var pages = [];
-        if (tp <= 7) { for (var i = 1; i <= tp; i++) pages.push(i); }
-        else {
-          pages.push(1);
-          if (p > 3) pages.push('...');
-          var start = Math.max(2, p - 1), end = Math.min(tp - 1, p + 1);
-          if (p <= 3) { start = 2; end = 4; }
-          if (p >= tp - 2) { start = tp - 3; end = tp - 1; }
-          for (var i = start; i <= end; i++) pages.push(i);
-          if (p < tp - 2) pages.push('...');
-          pages.push(tp);
-        }
-        for (var j = 0; j < pages.length; j++) {
-          var pg = pages[j];
-          if (pg === '...') { h += '<li class="page-item disabled"><span class="page-link">...</span></li>'; }
-          else { h += '<li class="page-item' + (pg === p ? ' active' : '') + '"><a class="page-link" href="#" data-page="' + pg + '">' + pg + '</a></li>'; }
-        }
-        h += '<li class="page-item' + (p >= tp ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p + 1) + '" aria-label="Next">' + chevR + '</a></li>';
-        h += '</ul>';
-        return h;
-      }
-
-      function createPaginator(cfg) {
-        var state = { page: 1 };
-
-        function render() {
-          var body = $(cfg.bodyId);
-          var pager = $(cfg.pagerId);
-
-          var rows = getRenderableRows(body);
-          var totalPages = Math.max(1, Math.ceil(rows.length / cfg.pageSize));
-          state.page = Math.min(Math.max(1, state.page), totalPages);
-
-          for (var i = 0; i < rows.length; i++) {
-            var start = (state.page - 1) * cfg.pageSize;
-            var end = start + cfg.pageSize;
-            var isVisible = i >= start && i < end;
-            rows[i].hidden = !isVisible;
-            rows[i].setAttribute('aria-hidden', isVisible ? 'false' : 'true');
-          }
-
-          if (pager) {
-            pager.classList.toggle('is-hidden', totalPages <= 1);
-            if (totalPages > 1) pager.innerHTML = buildPaginationHtml(state.page, totalPages);
-          }
-
-          return { rowsCount: rows.length, totalPages: totalPages };
-        }
-
-        function wire() {
-          var pager = $(cfg.pagerId);
-          if (!pager) return;
-          pager.addEventListener('click', function (e) {
-            var link = e.target.closest('a[data-page]');
-            if (!link) return;
-            e.preventDefault();
-            if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
-            var pg = parseInt(link.dataset.page, 10);
-            if (!pg || pg < 1) return;
-            state.page = pg;
-            render();
-          });
-        }
-
-        var mo = null;
-        function observe() {
-          var body = $(cfg.bodyId);
-          if (!body || !window.MutationObserver) return;
-          mo = new MutationObserver(function () {
-            render();
-          });
-          mo.observe(body, { childList: true, subtree: true });
-        }
-
-        return { render: render, wire: wire, observe: observe };
-      }
-
-      onReady(function () {
-        var pagers = [
-          { bodyId: 'best-sellers-body', pagerId: 'best-sellers-pagination', pageSize: 10 },
-          { bodyId: 'best-variants-body', pagerId: 'best-variants-pagination', pageSize: 10 },
-          { bodyId: 'type-necklaces-body', pagerId: 'type-necklaces-pagination', pageSize: 8 },
-          { bodyId: 'type-bracelets-body', pagerId: 'type-bracelets-pagination', pageSize: 8 },
-          { bodyId: 'type-earrings-body', pagerId: 'type-earrings-pagination', pageSize: 8 },
-          { bodyId: 'type-sets-body', pagerId: 'type-sets-pagination', pageSize: 8 },
-          { bodyId: 'type-charms-body', pagerId: 'type-charms-pagination', pageSize: 8 },
-          { bodyId: 'type-extras-body', pagerId: 'type-extras-pagination', pageSize: 8 },
-        ].map(createPaginator);
-
-        pagers.forEach(function (p) { p.wire(); p.observe(); p.render(); });
-      });
-    })();
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/theme-settings.js" defer></script>
