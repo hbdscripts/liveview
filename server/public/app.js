@@ -7411,8 +7411,8 @@ const API = '';
 
           html += '</div>'; // be-diag-root
 
-          const configStatusEl = document.getElementById('config-status');
-          if (configStatusEl) configStatusEl.innerHTML = html;
+          const targetEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
+          if (targetEl) targetEl.innerHTML = html;
 
           // ── Wire up tab switching ──
           (function initDiagTabs() {
@@ -7840,7 +7840,12 @@ const API = '';
         modal.setAttribute('aria-hidden', 'false');
       }
       function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
-      if (openBtn) openBtn.addEventListener('click', open);
+      if (openBtn) openBtn.addEventListener('click', function(e) {
+        var href = openBtn.getAttribute && openBtn.getAttribute('href');
+        if (openBtn.tagName === 'A' && href && String(href).indexOf('/settings') >= 0) return;
+        e.preventDefault();
+        open();
+      });
       if (closeBtn) closeBtn.addEventListener('click', close);
       modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
       document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });

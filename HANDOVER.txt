@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-10 (Settings Sources tab + config-status fetch error handling)
+Last updated: 2026-02-10 (Diagnostics on Settings + no modal flash)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -201,6 +201,8 @@ Edge (optional):
 2026-02-10
 - Settings: added Sources tab for traffic source mapping (UTM → source + icon); `initTrafficSourceMapping` exposed on window.
 - app.js: config-status fetch now checks `r.ok`; non-2xx throws so errors surface in Diagnostics.
+- Diagnostics on Settings: success path now writes to `#diagnostics-content` (was only `#config-status`); added styles for Settings diagnostics panel.
+- Modal flash fix: when config-open-btn is a link to /settings, skip opening modal and let navigation happen.
 
 2026-02-08
 - Tabler UI rollout and split-page architecture (per-page HTML routes).
