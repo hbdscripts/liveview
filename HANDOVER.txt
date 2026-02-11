@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (table-class sticky width/rows system + pagination standardization)
+Last updated: 2026-02-11 (table rows-control compact UI + live sticky max-width 400)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -220,6 +220,7 @@ Edge (optional):
     - live: `20` default, options `20/30/40/50` (also mapped to countries/channels/type/ads)
   - Added pagination where it was missing for Channels, Type, Ads, and dashboard table cards (`dash-top-products`, `dash-top-countries`, `dash-trending-up`, `dash-trending-down`).
   - Added active pagination style override for `.active > .page-link, .page-link.active` in `server/public/custom.css`.
+  - Follow-up polish: removed the visible `Rows` text label from card-header controls, tightened the rows selector to a compact ~35px field with no chevron background image, and increased live-class sticky first-column drag max-width to `400px`.
 
 2026-02-11
 - Main nav + tools/settings UX:

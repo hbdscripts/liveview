@@ -633,7 +633,7 @@ const API = '';
           control = document.createElement('label');
           control.className = 'kexo-table-rows-control';
           control.setAttribute('data-table-id', tableId);
-          control.innerHTML = '<span class="kexo-table-rows-label">Rows</span><select class="form-select form-select-sm kexo-table-rows-select" aria-label="Rows per table"></select>';
+          control.innerHTML = '<select class="form-select form-select-sm kexo-table-rows-select" aria-label="Rows per table"></select>';
           if (collapseBtn && collapseBtn.parentElement === actions) {
             actions.insertBefore(control, collapseBtn);
           } else {
@@ -740,9 +740,12 @@ const API = '';
         var max = classKey === 'dashboard' ? 180 : (classKey === 'product' ? 240 : 280);
         var def = classKey === 'dashboard' ? 120 : 120;
 
+        // Live-class tables (20/30/40/50 rows) can expand wider for sticky labels.
+        if (classKey === 'live') max = Math.max(max, 400);
+
         // Site-wide sticky sizing rules by table-grid cardinality.
-        if (gridCount === 1) max = Math.min(max, 250);
-        if (gridCount === 2) max = Math.min(max, 150);
+        if (classKey !== 'live' && gridCount === 1) max = Math.min(max, 250);
+        if (classKey !== 'live' && gridCount === 2) max = Math.min(max, 150);
         if (gridCount >= 3) min = Math.max(min, 100);
 
         var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
