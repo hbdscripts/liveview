@@ -64,6 +64,12 @@
             root.style.setProperty('--tblr-gray-' + k, palette[k]);
           }
         }
+
+        var iconSize = localStorage.getItem('tabler-theme-icon-size');
+        if (iconSize) root.style.setProperty('--kexo-theme-icon-size', iconSize);
+
+        var iconColor = localStorage.getItem('tabler-theme-icon-color');
+        if (iconColor) root.style.setProperty('--kexo-theme-icon-color', iconColor);
       } catch (e) {}
     })();
   </script>

@@ -26,6 +26,11 @@ html, body {
   height: 1em;
   vertical-align: -0.125em;
 }
+i.fa,
+i[class*="fa-"] {
+  font-size: var(--kexo-theme-icon-size, 1em);
+  color: var(--kexo-theme-icon-color, currentColor);
+}
 .card-header .card-title {
   display: flex;
   align-items: center;
@@ -125,6 +130,8 @@ a {
   --kexo-kpi-min-width: 148px;
   --kexo-kpi-width: 148px;
   --kexo-top-row-height: 2.65rem;
+  --kexo-theme-icon-size: 1em;
+  --kexo-theme-icon-color: currentColor;
 }
 
 /* Grid table system — Tabler invoice style */
@@ -1526,16 +1533,17 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav-list .dropdown-item,
 .kexo-desktop-nav-settings .dropdown-item {
   font-size: .8125rem;
-  font-weight: 500;
+  font-weight: 400;
   color: #fff;
-  padding-top: .5rem;
-  padding-bottom: .5rem;
+  padding-top: .4rem;
+  padding-bottom: .4rem;
   background: transparent !important;
+  transition: background-color .18s ease, color .18s ease;
 }
 .kexo-desktop-nav-list .dropdown-item:hover,
 .kexo-desktop-nav-settings .dropdown-item:hover {
   color: #fff;
-  background: transparent !important;
+  background: rgba(var(--tblr-primary-rgb, 62, 179, 171), .12) !important;
 }
 .kexo-desktop-nav-list .dropdown-item[aria-current="page"],
 .kexo-desktop-nav-settings .dropdown-item[aria-current="page"] {
@@ -1546,6 +1554,24 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav-list .dropdown-divider,
 .kexo-desktop-nav-settings .dropdown-divider {
   display: none;
+}
+.me-1 {
+  margin-right: .5rem !important;
+}
+.me-2 {
+  margin-right: .2rem !important;
+}
+.kexo-desktop-nav .nav-item.is-date-relocated {
+  display: none !important;
+}
+.page-header .kexo-page-header-date-col {
+  margin-left: auto;
+}
+.page-header .kexo-page-header-date-col .kexo-topbar-date {
+  position: relative;
+}
+.page-header .kexo-page-header-date-col .kexo-date-btn {
+  margin-right: 0;
 }
 
 @media (max-width: 1199.98px) {

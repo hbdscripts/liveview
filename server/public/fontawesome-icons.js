@@ -5,7 +5,11 @@
 (function () {
   'use strict';
 
-  var ICON_STYLE_CLASSES = ['fa-light', 'fa-solid', 'fa-jelly', 'fa-jelly-filled', 'fa-brands'];
+  var ICON_STYLE_CLASSES = [
+    'fa-light', 'fa-solid', 'fa-jelly', 'fa-jelly-filled', 'fa-brands',
+    'fa-regular', 'fa-thin', 'fa-duotone', 'fa-sharp', 'fa-sharp-light',
+    'fa-sharp-regular', 'fa-sharp-solid', 'fa-sharp-thin', 'fa-sharp-duotone'
+  ];
   var ICON_THEME_DEFAULTS = {
     iconDefault: 'fa-jelly',
     iconTopnav: 'fa-jelly-filled',
@@ -108,6 +112,34 @@
     'chart-type-area': 'fa-chart-area',
     'chart-type-bar': 'fa-chart-column',
     'chart-type-line': 'fa-chart-line',
+    'table-short-geo': 'fa-globe',
+    'table-short-country-product': 'fa-globe',
+    'table-short-source': 'fa-link',
+    'table-short-landing': 'fa-link',
+    'table-short-device': 'fa-mobile-screen',
+    'table-short-cart': 'fa-box-open',
+    'table-short-arrived': 'fa-circle-check',
+    'table-short-seen': 'fa-eye',
+    'table-short-history': 'fa-list',
+    'table-short-type': 'fa-table-cells',
+    'table-short-product': 'fa-box-open',
+    'table-short-consent': 'fa-circle-info',
+    'card-title-online': 'fa-jelly-filled fa-users',
+    'card-title-revenue': 'fa-jelly-filled fa-sterling-sign',
+    'card-title-orders': 'fa-jelly-filled fa-box-open',
+    'card-title-conversion': 'fa-jelly-filled fa-percent',
+    'card-title-sessions': 'fa-jelly-filled fa-users',
+    'card-title-countries': 'fa-jelly-filled fa-globe',
+    'card-title-products': 'fa-jelly-filled fa-box-open',
+    'card-title-channels': 'fa-jelly-filled fa-diagram-project',
+    'card-title-type': 'fa-jelly-filled fa-table-cells',
+    'card-title-ads': 'fa-brands fa-google',
+    'card-title-tools': 'fa-jelly-filled fa-toolbox',
+    'card-title-settings': 'fa-jelly-filled fa-gear',
+    'card-title-date': 'fa-jelly-filled fa-calendar-days',
+    'card-title-dashboard': 'fa-jelly-filled fa-gauge-high',
+    'card-title-traffic': 'fa-jelly-filled fa-route',
+    'card-title-chart': 'fa-jelly-filled fa-chart-line',
   };
 
   var TI_TO_FA = {
@@ -147,40 +179,40 @@
   };
 
   var CARD_TITLE_ICON_RULES = [
-    { test: /people online|online now|online trend/i, fa: 'fa-jelly-filled fa-users' },
-    { test: /\brevenue\b|\brev\b|sales total|sales trend/i, fa: 'fa-jelly-filled fa-sterling-sign' },
-    { test: /\borders?\b|order trend|purchases?/i, fa: 'fa-jelly-filled fa-box-open' },
-    { test: /\bconversion\b|\bcr(?:%| rate)?\b/i, fa: 'fa-jelly-filled fa-percent' },
-    { test: /\bsessions?\b|session trend|visitors?/i, fa: 'fa-jelly-filled fa-users' },
-    { test: /\bcountr(?:y|ies)\b|\bgeo\b/i, fa: 'fa-jelly-filled fa-globe' },
-    { test: /\bproducts?\b|\bvariants?\b|best sellers?/i, fa: 'fa-jelly-filled fa-box-open' },
-    { test: /\bchannels?\b|\bsources?\b|\butm\b/i, fa: 'fa-jelly-filled fa-diagram-project' },
-    { test: /\btype\b|\bdevices?\b|\bbrowsers?\b|\bos\b/i, fa: 'fa-jelly-filled fa-table-cells' },
-    { test: /\bads?\b|\bcampaigns?\b|google ads/i, fa: 'fa-brands fa-google' },
-    { test: /\btools?\b|utilities?/i, fa: 'fa-jelly-filled fa-toolbox' },
-    { test: /\bsettings?\b|configuration|diagnostics?|theme/i, fa: 'fa-jelly-filled fa-gear' },
-    { test: /\bdate\b|calendar|timeline|period/i, fa: 'fa-jelly-filled fa-calendar-days' },
-    { test: /dashboard|overview|kpi/i, fa: 'fa-jelly-filled fa-gauge-high' },
-    { test: /\btraffic\b|\blive\b/i, fa: 'fa-jelly-filled fa-route' },
-    { test: /\bchart\b|trend|sparkline/i, fa: 'fa-jelly-filled fa-chart-line' }
+    { key: 'card-title-online', test: /people online|online now|online trend/i, fa: 'fa-jelly-filled fa-users' },
+    { key: 'card-title-revenue', test: /\brevenue\b|\brev\b|sales total|sales trend/i, fa: 'fa-jelly-filled fa-sterling-sign' },
+    { key: 'card-title-orders', test: /\borders?\b|order trend|purchases?/i, fa: 'fa-jelly-filled fa-box-open' },
+    { key: 'card-title-conversion', test: /\bconversion\b|\bcr(?:%| rate)?\b/i, fa: 'fa-jelly-filled fa-percent' },
+    { key: 'card-title-sessions', test: /\bsessions?\b|session trend|visitors?/i, fa: 'fa-jelly-filled fa-users' },
+    { key: 'card-title-countries', test: /\bcountr(?:y|ies)\b|\bgeo\b/i, fa: 'fa-jelly-filled fa-globe' },
+    { key: 'card-title-products', test: /\bproducts?\b|\bvariants?\b|best sellers?/i, fa: 'fa-jelly-filled fa-box-open' },
+    { key: 'card-title-channels', test: /\bchannels?\b|\bsources?\b|\butm\b/i, fa: 'fa-jelly-filled fa-diagram-project' },
+    { key: 'card-title-type', test: /\btype\b|\bdevices?\b|\bbrowsers?\b|\bos\b/i, fa: 'fa-jelly-filled fa-table-cells' },
+    { key: 'card-title-ads', test: /\bads?\b|\bcampaigns?\b|google ads/i, fa: 'fa-brands fa-google' },
+    { key: 'card-title-tools', test: /\btools?\b|utilities?/i, fa: 'fa-jelly-filled fa-toolbox' },
+    { key: 'card-title-settings', test: /\bsettings?\b|configuration|diagnostics?|theme/i, fa: 'fa-jelly-filled fa-gear' },
+    { key: 'card-title-date', test: /\bdate\b|calendar|timeline|period/i, fa: 'fa-jelly-filled fa-calendar-days' },
+    { key: 'card-title-dashboard', test: /dashboard|overview|kpi/i, fa: 'fa-jelly-filled fa-gauge-high' },
+    { key: 'card-title-traffic', test: /\btraffic\b|\blive\b/i, fa: 'fa-jelly-filled fa-route' },
+    { key: 'card-title-chart', test: /\bchart\b|trend|sparkline/i, fa: 'fa-jelly-filled fa-chart-line' }
   ];
 
   function pageDefaultCardIcon() {
     var page = '';
     try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
     page = String(page || '').toLowerCase();
-    if (page === 'dashboard') return 'fa-jelly-filled fa-gauge-high';
-    if (page === 'live') return 'fa-jelly-filled fa-satellite-dish';
-    if (page === 'sales') return 'fa-jelly-filled fa-cart-shopping';
-    if (page === 'date') return 'fa-jelly-filled fa-calendar-days';
-    if (page === 'countries') return 'fa-jelly-filled fa-globe';
-    if (page === 'products') return 'fa-jelly-filled fa-box-open';
-    if (page === 'channels') return 'fa-jelly-filled fa-diagram-project';
-    if (page === 'type') return 'fa-jelly-filled fa-table-cells';
-    if (page === 'ads') return 'fa-jelly-filled fa-rectangle-ad';
-    if (page === 'tools') return 'fa-jelly-filled fa-toolbox';
-    if (page === 'settings') return 'fa-jelly-filled fa-gear';
-    return 'fa-jelly-filled fa-circle-info';
+    if (page === 'dashboard') return { key: 'card-title-dashboard', fa: 'fa-jelly-filled fa-gauge-high' };
+    if (page === 'live') return { key: 'card-title-traffic', fa: 'fa-jelly-filled fa-satellite-dish' };
+    if (page === 'sales') return { key: 'card-title-orders', fa: 'fa-jelly-filled fa-cart-shopping' };
+    if (page === 'date') return { key: 'card-title-date', fa: 'fa-jelly-filled fa-calendar-days' };
+    if (page === 'countries') return { key: 'card-title-countries', fa: 'fa-jelly-filled fa-globe' };
+    if (page === 'products') return { key: 'card-title-products', fa: 'fa-jelly-filled fa-box-open' };
+    if (page === 'channels') return { key: 'card-title-channels', fa: 'fa-jelly-filled fa-diagram-project' };
+    if (page === 'type') return { key: 'card-title-type', fa: 'fa-jelly-filled fa-table-cells' };
+    if (page === 'ads') return { key: 'card-title-ads', fa: 'fa-jelly-filled fa-rectangle-ad' };
+    if (page === 'tools') return { key: 'card-title-tools', fa: 'fa-jelly-filled fa-toolbox' };
+    if (page === 'settings') return { key: 'card-title-settings', fa: 'fa-jelly-filled fa-gear' };
+    return { key: 'card-title-chart', fa: 'fa-jelly-filled fa-circle-info' };
   }
 
   function resolveCardTitleIcon(cardTitleEl) {
@@ -188,7 +220,7 @@
     var text = (cardTitleEl.textContent || '').replace(/\s+/g, ' ').trim();
     for (var i = 0; i < CARD_TITLE_ICON_RULES.length; i += 1) {
       var rule = CARD_TITLE_ICON_RULES[i];
-      if (rule && rule.test && rule.test.test(text)) return rule.fa;
+      if (rule && rule.test && rule.test.test(text)) return { key: rule.key, fa: rule.fa };
     }
     return pageDefaultCardIcon();
   }
@@ -213,7 +245,7 @@
 
     var keep = [];
     Array.prototype.forEach.call(el.classList, function (cls) {
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fa-brands') return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad' || cls === 'fa-brands') return;
       if (cls.indexOf('fa-') === 0) return;
       keep.push(cls);
     });
@@ -242,7 +274,10 @@
         iconEl.setAttribute('data-icon-lib', 'font-awesome');
         titleEl.insertBefore(iconEl, titleEl.firstChild);
       }
-      applyFaSpec(iconEl, desired);
+      try {
+        if (desired && desired.key) iconEl.setAttribute('data-icon-key', desired.key);
+      } catch (_) {}
+      applyFaSpec(iconEl, desired && desired.fa ? desired.fa : desired);
     });
   }
 
@@ -265,10 +300,17 @@
     return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
   }
 
+  function isFontAwesomeSubsetToken(token) {
+    return token === 'fa-sharp' || token === 'fa-sharp-light' || token === 'fa-sharp-regular' ||
+      token === 'fa-sharp-solid' || token === 'fa-sharp-thin' || token === 'fa-sharp-duotone';
+  }
+
   function isIconStyleToken(token) {
     return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
-      token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
-      token === 'fal' || token === 'fab';
+      token === 'fa-solid' || token === 'fa-brands' || token === 'fa-regular' ||
+      token === 'fa-thin' || token === 'fa-duotone' || isFontAwesomeSubsetToken(token) ||
+      token === 'fas' || token === 'far' || token === 'fal' || token === 'fab' ||
+      token === 'fat' || token === 'fad';
   }
 
   function parseIconGlyphInput(value, fallback) {
@@ -276,7 +318,10 @@
     var safeFallback = fallback || 'fa-circle';
     if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
     var tokens = raw.split(/\s+/).filter(Boolean);
-    var faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+    var faTokens = tokens.filter(function (t) {
+      return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
+        t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad';
+    });
     var hasExplicitStyle = tokens.some(isIconStyleToken);
     if (hasExplicitStyle || faTokens.length >= 2) {
       var fullTokens = tokens.slice();
@@ -327,6 +372,7 @@
     if (el.closest('.grid-row--header .th-label-short')) return 'iconTableHeading';
     if (el.closest('.kexo-desktop-nav .nav-link.dropdown-toggle')) return 'iconTopnav';
     if (el.closest('.kexo-desktop-nav .kexo-date-btn')) return 'iconTopnav';
+    if (el.closest('.kexo-page-header-date-col .kexo-date-btn')) return 'iconTopnav';
     return 'iconDefault';
   }
 
@@ -334,7 +380,7 @@
     if (!el || !el.classList) return false;
     var hasFa = false;
     Array.prototype.forEach.call(el.classList, function (cls) {
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
       if (cls.indexOf('fa-') === 0) hasFa = true;
     });
     return hasFa;
@@ -374,8 +420,11 @@
 
   function faAliasToStyle(token) {
     if (token === 'fas') return 'fa-solid';
-    if (token === 'far' || token === 'fal') return 'fa-light';
+    if (token === 'far') return 'fa-regular';
+    if (token === 'fal') return 'fa-light';
     if (token === 'fab') return 'fa-brands';
+    if (token === 'fat') return 'fa-thin';
+    if (token === 'fad') return 'fa-duotone';
     return token;
   }
 
@@ -385,14 +434,14 @@
     var hadFaFw = el.classList.contains('fa-fw');
     Array.prototype.forEach.call(el.classList, function (cls) {
       if (cls.indexOf('fa-') === 0) return;
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
       keep.push(cls);
     });
     var tokens = sanitizeIconClassString(fullSpec).toLowerCase().split(/\s+/).filter(Boolean);
     var faTokens = [];
     tokens.forEach(function (t) {
       if (t === 'fa') return;
-      if (t === 'fas' || t === 'far' || t === 'fal' || t === 'fab') {
+      if (t === 'fas' || t === 'far' || t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad') {
         faTokens.push(faAliasToStyle(t));
         return;
       }
@@ -413,7 +462,7 @@
     var hadFaFw = el.classList.contains('fa-fw');
     Array.prototype.forEach.call(el.classList, function (cls) {
       if (cls.indexOf('fa-') === 0) return;
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
       keep.push(cls);
     });
     el.className = keep.join(' ').trim();

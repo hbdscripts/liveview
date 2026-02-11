@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (global loaders + table collapse persistence + KPI sparkline consistency)
+Last updated: 2026-02-11 (icon override hardening + KPI cache range fix + desktop date picker moved to page header)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -92,8 +92,8 @@ Platform start/min date clamp:
 
 ## KPI system (global, every page)
 
-Date control (topbar, far-right):
-- UI is in `server/public/partials/header.html` as a Tabler input-group dropdown in the desktop topbar right slot.
+Date control (desktop page header, right side):
+- UI markup remains in `server/public/partials/header.html`, but `server/public/app.js` now mounts the desktop date dropdown into the current `.page-header .row` right slot (`.kexo-page-header-date-col`) to keep it inline with page title/subtitle.
 - It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
 - Mobile: topbar date icon dropdown updates the same `select#global-date-select`.
 
@@ -207,6 +207,18 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Icon coverage + override hardening:
+  - Full class overrides now accept broader Font Awesome style/subset tokens (`fa-regular`, `fa-thin`, `fa-duotone`, `fa-sharp*`, `fat`, `fad`) in `server/public/fontawesome-icons.js`, `server/public/theme-settings.js`, and KPI trend icon parsing in `server/public/app.js`.
+  - Added missing short-header icon keys across Live/Sales/Date/Countries/Channels/Type/Products (including consent debug headers) and wired persistence keys in `server/routes/settings.js`.
+  - Card title auto-icons are now keyed (`card-title-*`) so they are overrideable from Theme -> Icons instead of being rule-only.
+- Theme icon controls:
+  - Added global icon visual defaults (`theme-icon-size`, `theme-icon-color`) with live runtime apply, server persistence, and startup restore.
+- KPI cache correctness:
+  - KPI cache now tracks range/source (`kpis` vs `stats` fallback) to prevent stale cross-range reuse that made multiple KPIs appear identical after range switches.
+- Desktop date control placement:
+  - Desktop date dropdown is moved at runtime into the page header right slot and keeps topnav icon context styling after relocation.
+- Navbar/dropdown polish:
+  - Applied requested `.me-1`/`.me-2` spacing, dropdown typography (weight 400, tighter vertical padding), and subtle theme-safe dropdown hover background in `server/public/custom.css`.
 - Global report/table loaders:
   - `server/public/app.js` now auto-upgrades loader overlays to a shared centered loader card (`report-build-spinner` + title + live step text) via `startReportBuild`, with page-aware defaults and a future-page contract using `data-loader-key`/`data-step-id`.
   - Traffic loader target mismatch fixed: `refreshTraffic()` now resolves `channels/type` overlay IDs correctly instead of relying on non-existent `traffic-loading-overlay`.

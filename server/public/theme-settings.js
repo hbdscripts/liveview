@@ -111,6 +111,34 @@
     'chart-type-area': 'fa-chart-area',
     'chart-type-bar': 'fa-chart-column',
     'chart-type-line': 'fa-chart-line',
+    'table-short-geo': 'fa-globe',
+    'table-short-country-product': 'fa-globe',
+    'table-short-source': 'fa-link',
+    'table-short-landing': 'fa-link',
+    'table-short-device': 'fa-mobile-screen',
+    'table-short-cart': 'fa-box-open',
+    'table-short-arrived': 'fa-circle-check',
+    'table-short-seen': 'fa-eye',
+    'table-short-history': 'fa-list',
+    'table-short-type': 'fa-table-cells',
+    'table-short-product': 'fa-box-open',
+    'table-short-consent': 'fa-circle-info',
+    'card-title-online': 'fa-jelly-filled fa-users',
+    'card-title-revenue': 'fa-jelly-filled fa-sterling-sign',
+    'card-title-orders': 'fa-jelly-filled fa-box-open',
+    'card-title-conversion': 'fa-jelly-filled fa-percent',
+    'card-title-sessions': 'fa-jelly-filled fa-users',
+    'card-title-countries': 'fa-jelly-filled fa-globe',
+    'card-title-products': 'fa-jelly-filled fa-box-open',
+    'card-title-channels': 'fa-jelly-filled fa-diagram-project',
+    'card-title-type': 'fa-jelly-filled fa-table-cells',
+    'card-title-ads': 'fa-brands fa-google',
+    'card-title-tools': 'fa-jelly-filled fa-toolbox',
+    'card-title-settings': 'fa-jelly-filled fa-gear',
+    'card-title-date': 'fa-jelly-filled fa-calendar-days',
+    'card-title-dashboard': 'fa-jelly-filled fa-gauge-high',
+    'card-title-traffic': 'fa-jelly-filled fa-route',
+    'card-title-chart': 'fa-jelly-filled fa-chart-line',
   };
   var ICON_GLYPH_META = {
     'mobile-menu': { title: 'Mobile menu button', help: 'Top-left mobile menu icon.', styleKey: 'theme-icon-default' },
@@ -157,6 +185,8 @@
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
+    'theme-icon-size': '1em',
+    'theme-icon-color': 'currentColor',
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -164,6 +194,7 @@
   var KEYS = Object.keys(DEFAULTS).filter(function (k) { return k !== 'theme'; });
   var ICON_STYLE_KEYS = Object.keys(ICON_STYLE_DEFAULTS);
   var ICON_GLYPH_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
+  var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
 
   // Primary color map: name -> [hex, r, g, b]
   var PRIMARY_COLORS = {
@@ -234,10 +265,17 @@
     return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
   }
 
+  function isFontAwesomeSubsetToken(token) {
+    return token === 'fa-sharp' || token === 'fa-sharp-light' || token === 'fa-sharp-regular' ||
+      token === 'fa-sharp-solid' || token === 'fa-sharp-thin' || token === 'fa-sharp-duotone';
+  }
+
   function isIconStyleToken(token) {
     return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
-      token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
-      token === 'fal' || token === 'fab';
+      token === 'fa-solid' || token === 'fa-brands' || token === 'fa-regular' ||
+      token === 'fa-thin' || token === 'fa-duotone' || isFontAwesomeSubsetToken(token) ||
+      token === 'fas' || token === 'far' || token === 'fal' || token === 'fab' ||
+      token === 'fat' || token === 'fad';
   }
 
   function parseIconGlyphInput(value, fallback) {
@@ -245,7 +283,10 @@
     var safeFallback = fallback || 'fa-circle';
     if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
     var tokens = raw.split(/\s+/).filter(Boolean);
-    var faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+    var faTokens = tokens.filter(function (t) {
+      return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
+        t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad';
+    });
     var hasExplicitStyle = tokens.some(isIconStyleToken);
     var styleOrSubset = hasExplicitStyle || faTokens.length >= 2;
     if (styleOrSubset) {
@@ -264,6 +305,24 @@
     return parseIconGlyphInput(value, fallback).value;
   }
 
+  function normalizeIconSize(value, fallback) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return fallback || '1em';
+    if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(raw)) return raw;
+    if (/^\d+(\.\d+)?$/.test(raw)) return raw + 'em';
+    return fallback || '1em';
+  }
+
+  function normalizeIconColor(value, fallback) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return fallback || 'currentColor';
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return raw;
+    if (/^(rgb|hsl)a?\(/i.test(raw)) return raw;
+    if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
+    if (/^[a-z-]+$/i.test(raw)) return raw;
+    return fallback || 'currentColor';
+  }
+
   function glyphNameFromThemeKey(themeKey) {
     return String(themeKey || '').replace(/^theme-icon-glyph-/, '');
   }
@@ -280,7 +339,7 @@
     if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'theme-icon-topnav';
     if (key.indexOf('nav-item-') === 0) return 'theme-icon-dropdown';
     if (key.indexOf('settings-tab-') === 0) return 'theme-icon-settings-menu';
-    if (key.indexOf('table-icon-') === 0) return 'theme-icon-table-heading';
+    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'theme-icon-table-heading';
     return 'theme-icon-default';
   }
 
@@ -351,6 +410,10 @@
           root.style.setProperty('--tblr-gray-' + k, palette[k]);
         });
       }
+    } else if (key === 'theme-icon-size') {
+      root.style.setProperty('--kexo-theme-icon-size', normalizeIconSize(value, DEFAULTS[key]));
+    } else if (key === 'theme-icon-color') {
+      root.style.setProperty('--kexo-theme-icon-color', normalizeIconColor(value, DEFAULTS[key]));
     } else if (ICON_STYLE_KEYS.indexOf(key) >= 0 || ICON_GLYPH_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
@@ -418,6 +481,13 @@
         if (glyphInput) glyphInput.value = normalizeIconGlyph(val, DEFAULTS[key]);
         return;
       }
+      if (ICON_VISUAL_KEYS.indexOf(key) >= 0) {
+        var visualInput = form.querySelector('[name="' + key + '"]');
+        if (!visualInput) return;
+        if (key === 'theme-icon-size') visualInput.value = normalizeIconSize(val, DEFAULTS[key]);
+        else visualInput.value = normalizeIconColor(val, DEFAULTS[key]);
+        return;
+      }
       var radios = form.querySelectorAll('[name="' + key + '"]');
       radios.forEach(function (r) { r.checked = (r.value === val); });
     });
@@ -459,6 +529,22 @@
     '</div>';
   }
 
+  function iconVisualInputCard(key, title, help, placeholder) {
+    var inputId = 'theme-input-' + key;
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<i class="fa-jelly fa-sliders me-2" aria-hidden="true"></i>' +
+            '<strong>' + title + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function radioCard(name, value, label) {
     var id = 'theme-opt-' + name + '-' + (value || 'default');
     return '<label class="form-selectgroup-item flex-fill">' +
@@ -487,6 +573,10 @@
   function getThemeFormHtml() {
     var styleGrid = ICON_STYLE_KEYS.map(function (k) { return styleInputCard(k); }).join('');
     var glyphGrid = ICON_GLYPH_KEYS.map(function (k) { return glyphInputCard(k); }).join('');
+    var visualGrid = [
+      iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
+      iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
+    ].join('');
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -498,6 +588,9 @@
         '<div class="text-secondary mb-3">Control icon style classes and specific icon glyphs with live preview. Enter a single glyph (for example <code>fa-gear</code>) or a full class override (for example <code>fa-etch fa-solid fa-address-card</code>). Desktop shows a 3-column grid; mobile stacks to one per line.</div>' +
         '<h4 class="mb-2">Style rules</h4>' +
         '<div class="row g-3">' + styleGrid + '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Global icon visuals</h4>' +
+        '<div class="row g-3">' + visualGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Icon glyph overrides</h4>' +
         '<div class="row g-3">' + glyphGrid + '</div>' +
@@ -640,18 +733,22 @@
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
+      if (name === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[name]);
+      if (name === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[name]);
       setStored(name, val);
       applyTheme(name, val);
       refreshIconPreviews(formEl);
     });
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
         var val = String(input.value || '').trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
         if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
+        if (key === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[key]);
+        if (key === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[key]);
         setStored(key, val);
         refreshIconPreviews(formEl);
         debouncedApply(key, val);

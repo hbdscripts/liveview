@@ -2,7 +2,7 @@
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
 
-    // Desktop date picker now lives in the top-right nav next to Settings.
+    // Desktop date picker is mounted into the page header right slot.
 
     // ── Page progress bar (Tabler turbo-style) ──
     var _progressEl = null;
@@ -644,8 +644,9 @@ const API = '';
     })();
 
     function getKpiData() {
-      if (kpiCache) return kpiCache;
-      if (getStatsRange() === 'today') return {};
+      const statsRange = getStatsRange();
+      if (kpiCache && kpiCacheRange === statsRange) return kpiCache;
+      if (statsRange === 'today') return {};
       return statsCache || {};
     }
     let activeMainTab = 'spy';
@@ -658,11 +659,14 @@ const API = '';
     let lastTrafficFetchedAt = 0;
     let lastProductsFetchedAt = 0;
     let kpiCache = null;
+    let kpiCacheRange = '';
+    let kpiCacheSource = '';
     let liveRefreshInFlight = null;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
     let kpisRefreshInFlight = null;
+    let kpisRefreshRangeKey = '';
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
     let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0, sessions: 0, diagnostics: 0, kpiCompare: 0 };
@@ -2771,6 +2775,8 @@ const API = '';
         // Sale toast indicates KPIs are about to change. Reset caches once the toast disappears.
         try { clearKpiLocalStorageCaches(); } catch (_) {}
         try { lastKpisFetchedAt = 0; } catch (_) {}
+        try { kpiCacheRange = ''; } catch (_) {}
+        try { kpiCacheSource = ''; } catch (_) {}
         try { kpiExpandedExtrasFetchedAt = 0; } catch (_) {}
 
         // Pull fresh KPI data (fast metrics) immediately after cache reset.
@@ -4929,6 +4935,28 @@ const API = '';
       });
     }
 
+    function mountDesktopDatePickerIntoPageHeader() {
+      try {
+        const dateWrap = document.querySelector('.kexo-desktop-nav .kexo-topbar-date');
+        if (!dateWrap) return;
+        const headerRow = document.querySelector('.page-header .row');
+        if (!headerRow) return;
+
+        let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
+        if (!dateCol) {
+          dateCol = document.createElement('div');
+          dateCol.className = 'col-auto d-none d-lg-flex align-items-center kexo-page-header-date-col';
+          headerRow.appendChild(dateCol);
+        }
+
+        if (dateWrap.parentElement !== dateCol) {
+          const sourceLi = dateWrap.closest('li.nav-item');
+          dateCol.appendChild(dateWrap);
+          if (sourceLi) sourceLi.classList.add('is-date-relocated');
+        }
+      } catch (_) {}
+    }
+
     function initHeaderDateMenu() {
       const sel = document.getElementById('global-date-select');
       const menu = document.getElementById('kexo-date-menu');
@@ -5383,10 +5411,15 @@ const API = '';
       statsCache = data || {};
       const statsRange = getStatsRange();
       if (statsRange !== 'today') {
-        if (kpiCache && kpiCache.compare && !statsCache.compare) {
-          kpiCache = { ...statsCache, compare: kpiCache.compare };
-        } else {
-          kpiCache = statsCache;
+        const hasTrustedKpiForRange = kpiCache && kpiCacheRange === statsRange && kpiCacheSource === 'kpis';
+        if (!hasTrustedKpiForRange) {
+          if (kpiCache && kpiCache.compare && !statsCache.compare) {
+            kpiCache = { ...statsCache, compare: kpiCache.compare };
+          } else {
+            kpiCache = statsCache;
+          }
+          kpiCacheRange = statsRange;
+          kpiCacheSource = 'stats';
         }
       }
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
@@ -5430,10 +5463,17 @@ const API = '';
       return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
     }
 
+    function isFontAwesomeSubsetToken(token) {
+      return token === 'fa-sharp' || token === 'fa-sharp-light' || token === 'fa-sharp-regular' ||
+        token === 'fa-sharp-solid' || token === 'fa-sharp-thin' || token === 'fa-sharp-duotone';
+    }
+
     function isIconStyleToken(token) {
       return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
-        token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
-        token === 'fal' || token === 'fab';
+        token === 'fa-solid' || token === 'fa-brands' || token === 'fa-regular' ||
+        token === 'fa-thin' || token === 'fa-duotone' || isFontAwesomeSubsetToken(token) ||
+        token === 'fas' || token === 'far' || token === 'fal' || token === 'fab' ||
+        token === 'fat' || token === 'fad';
     }
 
     function parseIconGlyphInput(value, fallbackGlyph) {
@@ -5441,7 +5481,10 @@ const API = '';
       const safeFallback = fallbackGlyph || 'fa-circle';
       if (!raw) return { mode: 'glyph', value: safeFallback };
       const tokens = raw.split(/\s+/).filter(Boolean);
-      const faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+      const faTokens = tokens.filter(function (t) {
+        return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
+          t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad';
+      });
       const hasExplicitStyle = tokens.some(isIconStyleToken);
       if (hasExplicitStyle || faTokens.length >= 2) {
         const full = tokens.slice();
@@ -5459,7 +5502,7 @@ const API = '';
       if (!iconEl) return;
       const keep = [];
       Array.prototype.forEach.call(iconEl.classList, function (cls) {
-        if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+        if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
         if (cls.indexOf('fa-') === 0) return;
         keep.push(cls);
       });
@@ -5480,6 +5523,7 @@ const API = '';
       const styleCls = getStoredIconStyleClass('icon-default', 'fa-jelly');
       const key = trendKind === 'down' ? 'kpi-trend-down' : (trendKind === 'flat' ? 'kpi-trend-flat' : 'kpi-trend-up');
       const fallback = trendKind === 'down' ? 'fa-arrow-trend-down' : (trendKind === 'flat' ? 'fa-minus' : 'fa-arrow-trend-up');
+      try { iconEl.setAttribute('data-icon-key', key); } catch (_) {}
       let raw = null;
       try { raw = localStorage.getItem('tabler-theme-icon-glyph-' + key); } catch (_) { raw = null; }
       const parsed = parseIconGlyphInput(raw, fallback);
@@ -6503,6 +6547,8 @@ const API = '';
       if (!entry.data || typeof entry.data !== 'object') return false;
       if (lastKpisFetchedAt && entry.at <= lastKpisFetchedAt) return false;
       kpiCache = entry.data;
+      kpiCacheRange = rangeKey;
+      kpiCacheSource = 'kpis';
       lastKpisFetchedAt = entry.at;
       // If we can paint real numbers immediately, don't flash KPI spinners.
       kpisSpinnerShownOnce = true;
@@ -6525,6 +6571,8 @@ const API = '';
     function clearKpiLocalStorageCaches() {
       try { localStorage.removeItem(KPI_CACHE_LS_KEY); } catch (_) {}
       try { localStorage.removeItem(KPI_EXTRAS_CACHE_LS_KEY); } catch (_) {}
+      try { kpiCacheRange = ''; } catch (_) {}
+      try { kpiCacheSource = ''; } catch (_) {}
     }
 
     function fetchKpisData(options = {}) {
@@ -6557,10 +6605,12 @@ const API = '';
         try { hydrateKpisFromLocalStorage(rangeKey, true); } catch (_) {}
       }
 
-      const stale = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_CACHE_TTL_MS;
+      const cacheMatchesRange = !!(kpiCache && kpiCacheRange === rangeKey);
+      const stale = !cacheMatchesRange || !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_CACHE_TTL_MS;
+      const trustedKpiCache = cacheMatchesRange && kpiCacheSource !== 'stats';
 
       // If cache is still fresh, avoid refetching.
-      if (!force && !stale && kpiCache) {
+      if (!force && !stale && trustedKpiCache) {
         try { renderLiveKpis(getKpiData()); } catch (_) {}
         try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
         try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
@@ -6569,11 +6619,11 @@ const API = '';
         return Promise.resolve(kpiCache);
       }
 
-      if (kpisRefreshInFlight) return kpisRefreshInFlight;
+      if (kpisRefreshInFlight && kpisRefreshRangeKey === rangeKey) return kpisRefreshInFlight;
 
       // Stale-while-revalidate: keep showing last known values while we refresh.
       try {
-        if (kpiCache) {
+        if (cacheMatchesRange) {
           renderLiveKpis(getKpiData());
           if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData());
           try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
@@ -6582,13 +6632,14 @@ const API = '';
       } catch (_) {}
 
       // Only show the KPI mini spinners on the very first load (avoid visual noise on refreshes).
-      const showSpinner = !kpisSpinnerShownOnce && !kpiCache;
+      const showSpinner = !kpisSpinnerShownOnce && !cacheMatchesRange;
       if (showSpinner) {
         kpisSpinnerShownOnce = true;
         setLiveKpisLoading();
       }
 
       const fetchP = fetchKpisData({ force });
+      kpisRefreshRangeKey = rangeKey;
       kpisRefreshInFlight = (showSpinner ? Promise.all([fetchP, delay(KPI_SPINNER_MIN_MS)]) : fetchP)
         .then(function(partsOrData) {
           const data = showSpinner
@@ -6597,6 +6648,8 @@ const API = '';
           if (data) {
             lastKpisFetchedAt = Date.now();
             kpiCache = data;
+            kpiCacheRange = rangeKey;
+            kpiCacheSource = 'kpis';
             maybeTriggerSaleToastFromStatsLikeData(kpiCache);
             try { setRangeCacheEntry(KPI_CACHE_LS_KEY, rangeKey, kpiCache, 12); } catch (_) {}
           }
@@ -6614,11 +6667,16 @@ const API = '';
           try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
           try { refreshKpiExtrasSoft(); } catch (_) {}
           return null;
-        })
-        .finally(function() {
-          kpisRefreshInFlight = null;
         });
-      return kpisRefreshInFlight;
+      var activeRequest = kpisRefreshInFlight;
+      var wrappedRequest = activeRequest.finally(function() {
+        if (kpisRefreshInFlight === wrappedRequest) {
+          kpisRefreshInFlight = null;
+          if (kpisRefreshRangeKey === rangeKey) kpisRefreshRangeKey = '';
+        }
+      });
+      kpisRefreshInFlight = wrappedRequest;
+      return wrappedRequest;
     }
 
     function refreshStats(options = {}) {
@@ -9242,6 +9300,7 @@ const API = '';
       })();
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
+        mountDesktopDatePickerIntoPageHeader();
         syncDateSelectOptions();
         applyRangeAvailable({ today: true, yesterday: true });
         updateLiveViewTitle();
