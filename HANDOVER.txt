@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (icon override hardening + KPI cache range fix + desktop date picker moved to page header)
+Last updated: 2026-02-11 (dashboard KPI sparkline compare styling + icon override hardening + KPI cache range fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,9 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Dashboard KPI sparkline styling:
+  - Homepage KPI card sparklines now render as trend lines (not forced two-point straight segments) using range history, with a dashed grey previous-period overlay line for visual comparison.
+  - Sparkline source selection now prefers historical series aligned to the current KPI value, and only falls back to two-point compare/current when history is unavailable.
 - Icon coverage + override hardening:
   - Full class overrides now accept broader Font Awesome style/subset tokens (`fa-regular`, `fa-thin`, `fa-duotone`, `fa-sharp*`, `fat`, `fad`) in `server/public/fontawesome-icons.js`, `server/public/theme-settings.js`, and KPI trend icon parsing in `server/public/app.js`.
   - Added missing short-header icon keys across Live/Sales/Date/Countries/Channels/Type/Products (including consent debug headers) and wired persistence keys in `server/routes/settings.js`.

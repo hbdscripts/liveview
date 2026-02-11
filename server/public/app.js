@@ -10302,24 +10302,43 @@ const API = '';
             }
           }).catch(function() {});
         }
-        function renderSparkline(elId, dataArr, color, type) {
+        function renderSparkline(elId, dataArr, color, type, compareArr) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
           var t = type === 'bar' ? 'bar' : (type === 'line' ? 'line' : 'area');
-          // Keep KPI background sparklines on the sharper/jagged style the UI expects.
-          var sparkCurve = 'straight';
+          var sparkCurve = 'smooth';
 
           var nums = dataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : 0;
           });
+          var compareNums = Array.isArray(compareArr)
+            ? compareArr.map(function(v) {
+                var n = (typeof v === 'number') ? v : Number(v);
+                return isFinite(n) ? n : 0;
+              })
+            : null;
+          if (compareNums && compareNums.length > 1 && compareNums.length !== nums.length) {
+            if (compareNums.length > nums.length) compareNums = compareNums.slice(compareNums.length - nums.length);
+            if (compareNums.length < nums.length) {
+              var lead = compareNums.length ? compareNums[0] : 0;
+              while (compareNums.length < nums.length) compareNums.unshift(lead);
+            }
+          }
+          if (compareNums && compareNums.length < 2) compareNums = null;
           var minVal = nums[0];
           var maxVal = nums[0];
           for (var i = 1; i < nums.length; i++) {
             if (nums[i] < minVal) minVal = nums[i];
             if (nums[i] > maxVal) maxVal = nums[i];
+          }
+          if (compareNums && compareNums.length) {
+            for (var j = 0; j < compareNums.length; j++) {
+              if (compareNums[j] < minVal) minVal = compareNums[j];
+              if (compareNums[j] > maxVal) maxVal = compareNums[j];
+            }
           }
           if (!isFinite(minVal)) minVal = 0;
           if (!isFinite(maxVal)) maxVal = 0;
@@ -10346,14 +10365,18 @@ const API = '';
           var fillCfg = t === 'bar'
             ? { type: 'solid', opacity: 1 }
             : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.58 : 0.36, opacityTo: t === 'area' ? 0.1 : 0.12 } };
+          var hasCompare = !!(compareNums && compareNums.length >= 2);
           var chart = new ApexCharts(sparkEl, {
-            chart: { type: t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: [{ data: nums }],
-            stroke: { width: t === 'bar' ? 0 : 2.3, curve: sparkCurve },
-            fill: fillCfg,
+            chart: { type: hasCompare ? 'line' : t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: hasCompare ? [{ name: 'Current', data: nums }, { name: 'Previous', data: compareNums }] : [{ data: nums }],
+            stroke: hasCompare
+              ? { width: [2.35, 1.45], curve: [sparkCurve, sparkCurve], dashArray: [0, 5] }
+              : { width: t === 'bar' ? 0 : 2.3, curve: sparkCurve },
+            fill: hasCompare ? { type: 'solid', opacity: [0.92, 0] } : fillCfg,
             plotOptions: t === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
-            colors: [color],
+            colors: hasCompare ? [color, '#9ca3af'] : [color],
             yaxis: { min: yMin, max: yMax },
+            markers: { size: 0 },
             tooltip: { enabled: false }
           });
           chart.render();
@@ -10430,8 +10453,48 @@ const API = '';
         function sparkSeriesFromCompare(current, baseline, fallbackDataArr) {
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
           var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
+          if (Array.isArray(fallbackDataArr) && fallbackDataArr.length >= 2) {
+            var hist = fallbackDataArr.map(function(v) {
+              var n = (typeof v === 'number') ? v : Number(v);
+              return Number.isFinite(n) ? n : 0;
+            });
+            if (cur != null) {
+              var lastVal = hist[hist.length - 1];
+              if (Math.abs(lastVal) < 1e-9) {
+                var offset = cur - lastVal;
+                hist = hist.map(function(v) { return v + offset; });
+              } else {
+                var ratio = cur / lastVal;
+                if (!Number.isFinite(ratio)) ratio = 1;
+                ratio = Math.max(-6, Math.min(6, ratio));
+                hist = hist.map(function(v) { return v * ratio; });
+              }
+              hist[hist.length - 1] = cur;
+            }
+            return hist;
+          }
           if (cur != null && base != null) return [base, cur];
           return Array.isArray(fallbackDataArr) ? fallbackDataArr : [];
+        }
+        function sparkCompareSeries(primaryDataArr, current, baseline) {
+          var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
+          if (base == null || !Array.isArray(primaryDataArr) || primaryDataArr.length < 2) return null;
+          var arr = primaryDataArr.map(function(v) {
+            var n = (typeof v === 'number') ? v : Number(v);
+            return Number.isFinite(n) ? n : 0;
+          });
+          var lastVal = arr[arr.length - 1];
+          if (Math.abs(lastVal) < 1e-9) {
+            var offset = base - lastVal;
+            arr = arr.map(function(v) { return v + offset; });
+          } else {
+            var ratio = base / lastVal;
+            if (!Number.isFinite(ratio)) ratio = 1;
+            ratio = Math.max(-6, Math.min(6, ratio));
+            arr = arr.map(function(v) { return v * ratio; });
+          }
+          arr[arr.length - 1] = base;
+          return arr;
         }
         var revenueHistorySpark = sparklineSeries.map(function(d) { return d.revenue; });
         var sessionsHistorySpark = sparklineSeries.map(function(d) { return d.sessions; });
@@ -10454,22 +10517,22 @@ const API = '';
         var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
-        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, []);
-        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, []);
-        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, []);
+        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, ordersHistorySpark);
+        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
+        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
-        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'area');
-        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'area');
-        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'area');
-        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'area');
-        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'area');
-        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'area');
-        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'area');
-        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'area');
-        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'area');
-        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'area');
-        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'area');
-        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'area');
+        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'line', sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone));
+        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'line', sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone));
+        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'line', sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone));
+        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'line', sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone));
+        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'line', sparkCompareSeries(convSpark, currentConvTone, compareConvTone));
+        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'line', sparkCompareSeries(aovSpark, currentAovTone, compareAovTone));
+        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'line', sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone));
+        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'line', sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone));
+        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'line', sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone));
+        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'line', sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone));
+        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'line', sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone));
+        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'line', sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone));
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
