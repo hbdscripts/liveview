@@ -94,6 +94,11 @@ const THEME_KEYS = [
   'theme_radius',
   'theme_font',
   'theme_base',
+  'theme_icon_default',
+  'theme_icon_topnav',
+  'theme_icon_dropdown',
+  'theme_icon_settings_menu',
+  'theme_icon_table_heading',
 ];
 
 async function getThemeDefaults(req, res) {

@@ -5,41 +5,108 @@
 (function () {
   'use strict';
 
-  var TI_TO_FA = {
-    'settings': 'fa-light fa-gear',
-    'settings-2': 'fa-light fa-sliders',
-    'palette': 'fa-light fa-palette',
-    'photo': 'fa-light fa-image',
-    'chart-bar': 'fa-light fa-chart-column',
-    'chart-dots': 'fa-light fa-chart-line',
-    'plug': 'fa-light fa-plug',
-    'map-2': 'fa-light fa-map-location-dot',
-    'gauge': 'fa-light fa-gauge-high',
-    'refresh': 'fa-light fa-rotate-right',
-    'adjustments': 'fa-light fa-sliders',
-    'menu-2': 'fa-light fa-bars',
-    'calendar': 'fa-light fa-calendar-days',
-    'volume': 'fa-light fa-volume-high',
-    'volume-off': 'fa-light fa-volume-xmark',
-    'logout': 'fa-light fa-right-from-bracket',
-    'chevron-down': 'fa-light fa-chevron-down',
-    'trending-up': 'fa-light fa-arrow-trend-up',
-    'trending-down': 'fa-light fa-arrow-trend-down',
-    'minus': 'fa-light fa-minus',
-    'x': 'fa-light fa-xmark',
-    'download': 'fa-light fa-download',
-    'info-circle': 'fa-light fa-circle-info',
-    'list': 'fa-light fa-list',
-    'user': 'fa-light fa-user',
-    'link': 'fa-light fa-link',
-    'cloud': 'fa-light fa-cloud',
-    'percentage': 'fa-light fa-percent',
-    'package': 'fa-light fa-box-open',
-    'users': 'fa-light fa-users',
-    'currency-pound': 'fa-light fa-sterling-sign',
-    'click': 'fa-light fa-hand-pointer',
-    'eye-off': 'fa-light fa-eye-slash'
+  var ICON_STYLE_CLASSES = ['fa-light', 'fa-solid', 'fa-jelly', 'fa-jelly-filled'];
+  var ICON_THEME_DEFAULTS = {
+    iconDefault: 'fa-jelly',
+    iconTopnav: 'fa-jelly-filled',
+    iconDropdown: 'fa-jelly',
+    iconSettingsMenu: 'fa-jelly-filled',
+    iconTableHeading: 'fa-jelly-filled',
   };
+
+  var TI_TO_FA = {
+    'settings': 'fa-jelly fa-gear',
+    'settings-2': 'fa-jelly fa-sliders',
+    'palette': 'fa-jelly fa-palette',
+    'photo': 'fa-jelly fa-image',
+    'chart-bar': 'fa-jelly fa-chart-column',
+    'chart-dots': 'fa-jelly fa-chart-line',
+    'plug': 'fa-jelly fa-plug',
+    'map-2': 'fa-jelly fa-map-location-dot',
+    'gauge': 'fa-jelly fa-gauge-high',
+    'refresh': 'fa-jelly fa-rotate-right',
+    'adjustments': 'fa-jelly fa-sliders',
+    'menu-2': 'fa-jelly fa-bars',
+    'calendar': 'fa-jelly fa-calendar-days',
+    'volume': 'fa-jelly fa-volume-high',
+    'volume-off': 'fa-jelly fa-volume-xmark',
+    'logout': 'fa-jelly fa-right-from-bracket',
+    'chevron-down': 'fa-jelly fa-chevron-down',
+    'trending-up': 'fa-jelly fa-arrow-trend-up',
+    'trending-down': 'fa-jelly fa-arrow-trend-down',
+    'minus': 'fa-jelly fa-minus',
+    'x': 'fa-jelly fa-xmark',
+    'download': 'fa-jelly fa-download',
+    'info-circle': 'fa-jelly fa-circle-info',
+    'list': 'fa-jelly fa-list',
+    'user': 'fa-jelly fa-user',
+    'link': 'fa-jelly fa-link',
+    'cloud': 'fa-jelly fa-cloud',
+    'percentage': 'fa-jelly fa-percent',
+    'package': 'fa-jelly fa-box-open',
+    'users': 'fa-jelly fa-users',
+    'currency-pound': 'fa-jelly fa-sterling-sign',
+    'click': 'fa-jelly fa-hand-pointer',
+    'eye-off': 'fa-jelly fa-eye-slash'
+  };
+
+  function normalizeIconStyle(value, fallback) {
+    var raw = value == null ? '' : String(value).trim().toLowerCase();
+    if (!raw) return fallback;
+    if (raw.indexOf('fa-jelly-filled') >= 0) return 'fa-jelly-filled';
+    if (raw.indexOf('fa-jelly') >= 0) return 'fa-jelly';
+    if (raw.indexOf('fa-solid') >= 0) return 'fa-solid';
+    if (raw.indexOf('fa-light') >= 0) return 'fa-light';
+    if (raw === 'jelly-filled') return 'fa-jelly-filled';
+    if (raw === 'jelly') return 'fa-jelly';
+    if (raw === 'solid') return 'fa-solid';
+    if (raw === 'light') return 'fa-light';
+    return fallback;
+  }
+
+  function readIconTheme() {
+    function read(lsKey, fallback) {
+      var v = null;
+      try { v = localStorage.getItem(lsKey); } catch (_) { v = null; }
+      return normalizeIconStyle(v, fallback);
+    }
+    return {
+      iconDefault: read('tabler-theme-icon-default', ICON_THEME_DEFAULTS.iconDefault),
+      iconTopnav: read('tabler-theme-icon-topnav', ICON_THEME_DEFAULTS.iconTopnav),
+      iconDropdown: read('tabler-theme-icon-dropdown', ICON_THEME_DEFAULTS.iconDropdown),
+      iconSettingsMenu: read('tabler-theme-icon-settings-menu', ICON_THEME_DEFAULTS.iconSettingsMenu),
+      iconTableHeading: read('tabler-theme-icon-table-heading', ICON_THEME_DEFAULTS.iconTableHeading),
+    };
+  }
+
+  function resolveIconContext(el) {
+    if (!el || !(el instanceof Element)) return 'iconDefault';
+    if (el.closest('.dropdown-menu .dropdown-item')) return 'iconDropdown';
+    if (el.closest('.list-group-item[data-settings-tab]')) return 'iconSettingsMenu';
+    if (el.closest('.grid-row--header .th-label-short')) return 'iconTableHeading';
+    if (el.closest('.kexo-desktop-nav .nav-link.dropdown-toggle')) return 'iconTopnav';
+    if (el.closest('.kexo-desktop-nav .kexo-date-btn')) return 'iconTopnav';
+    return 'iconDefault';
+  }
+
+  function iconHasFaGlyph(el) {
+    if (!el || !el.classList) return false;
+    var hasFa = false;
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      if (cls.indexOf('fa-') === 0) hasFa = true;
+    });
+    return hasFa;
+  }
+
+  function applyIconStyle(el, settings) {
+    if (!el || !iconHasFaGlyph(el)) return;
+    if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview')) return;
+    var ctx = resolveIconContext(el);
+    var style = settings && settings[ctx] ? settings[ctx] : ICON_THEME_DEFAULTS.iconDefault;
+    ICON_STYLE_CLASSES.forEach(function (cls) { el.classList.remove(cls); });
+    el.classList.add(style);
+  }
 
   function replaceTiIcons(root) {
     var nodes = (root || document).querySelectorAll('i[class*="ti "]');
@@ -49,7 +116,7 @@
         if (cls.indexOf('ti-') === 0) tiName = cls.slice(3);
       });
       if (!tiName) return;
-      var fa = TI_TO_FA[tiName] || 'fa-light fa-circle';
+      var fa = TI_TO_FA[tiName] || 'fa-jelly fa-circle';
       var preserve = [];
       Array.prototype.forEach.call(el.classList, function (cls) {
         if (cls === 'ti' || cls.indexOf('ti-') === 0) return;
@@ -68,33 +135,33 @@
     var nav = owner && owner.getAttribute ? owner.getAttribute('data-nav') : '';
     var text = owner && owner.textContent ? owner.textContent.toLowerCase() : '';
 
-    if (id === 'theme-settings-btn' || text.indexOf('theme') >= 0) return 'fa-solid fa-palette';
-    if (id === 'config-open-btn' || text.indexOf('diagnostics') >= 0 || text.indexOf('settings') >= 0) return 'fa-solid fa-gear';
-    if (id === 'refresh-btn' || text.indexOf('refresh') >= 0) return 'fa-solid fa-rotate-right';
-    if (id === 'audio-mute-btn' || text.indexOf('sound') >= 0) return 'fa-solid fa-volume-high';
-    if (id === 'logout-btn' || text.indexOf('sign out') >= 0) return 'fa-solid fa-right-from-bracket';
-    if (id === 'mobile-date-btn' || id === 'kexo-date-display' || text.indexOf('date') >= 0) return 'fa-solid fa-calendar-days';
-    if (id === 'footer-last-sale-toggle') return 'fa-light fa-eye';
+    if (id === 'theme-settings-btn' || text.indexOf('theme') >= 0) return 'fa-jelly fa-palette';
+    if (id === 'config-open-btn' || text.indexOf('diagnostics') >= 0 || text.indexOf('settings') >= 0) return 'fa-jelly fa-gear';
+    if (id === 'refresh-btn' || text.indexOf('refresh') >= 0) return 'fa-jelly fa-rotate-right';
+    if (id === 'audio-mute-btn' || text.indexOf('sound') >= 0) return 'fa-jelly fa-volume-high';
+    if (id === 'logout-btn' || text.indexOf('sign out') >= 0) return 'fa-jelly fa-right-from-bracket';
+    if (id === 'mobile-date-btn' || id === 'kexo-date-display' || text.indexOf('date') >= 0) return 'fa-jelly fa-calendar-days';
+    if (id === 'footer-last-sale-toggle') return 'fa-jelly fa-eye';
 
-    if (nav === 'dashboard' || id === 'nav-tab-dashboard') return 'fa-solid fa-gauge-high';
-    if (nav === 'live' || id === 'nav-tab-spy') return 'fa-solid fa-satellite-dish';
-    if (nav === 'sales' || id === 'nav-tab-sales') return 'fa-solid fa-cart-shopping';
-    if (nav === 'date' || id === 'nav-tab-date') return 'fa-solid fa-table';
-    if (nav === 'countries' || id === 'nav-tab-stats') return 'fa-solid fa-globe';
-    if (nav === 'products' || id === 'nav-tab-products') return 'fa-solid fa-box-open';
-    if (nav === 'channels' || id === 'nav-tab-channels') return 'fa-solid fa-diagram-project';
-    if (nav === 'type' || id === 'nav-tab-type') return 'fa-solid fa-table-cells';
-    if (nav === 'ads' || id === 'nav-tab-ads') return 'fa-solid fa-rectangle-ad';
-    if (nav === 'tools' || id === 'nav-tab-tools') return 'fa-solid fa-toolbox';
-    if (id === 'kexo-mobile-menu-btn') return 'fa-solid fa-bars';
+    if (nav === 'dashboard' || id === 'nav-tab-dashboard') return 'fa-jelly-filled fa-gauge-high';
+    if (nav === 'live' || id === 'nav-tab-spy') return 'fa-jelly-filled fa-satellite-dish';
+    if (nav === 'sales' || id === 'nav-tab-sales') return 'fa-jelly-filled fa-cart-shopping';
+    if (nav === 'date' || id === 'nav-tab-date') return 'fa-jelly-filled fa-table';
+    if (nav === 'countries' || id === 'nav-tab-stats') return 'fa-jelly-filled fa-globe';
+    if (nav === 'products' || id === 'nav-tab-products') return 'fa-jelly-filled fa-box-open';
+    if (nav === 'channels' || id === 'nav-tab-channels') return 'fa-jelly-filled fa-diagram-project';
+    if (nav === 'type' || id === 'nav-tab-type') return 'fa-jelly-filled fa-table-cells';
+    if (nav === 'ads' || id === 'nav-tab-ads') return 'fa-jelly-filled fa-rectangle-ad';
+    if (nav === 'tools' || id === 'nav-tab-tools') return 'fa-jelly-filled fa-toolbox';
+    if (id === 'kexo-mobile-menu-btn') return 'fa-jelly fa-bars';
 
-    if (text.indexOf('dashboard') >= 0) return 'fa-solid fa-table-cells-large';
-    if (text.indexOf('breakdown') >= 0) return 'fa-solid fa-chart-pie';
-    if (text.indexOf('traffic') >= 0) return 'fa-solid fa-route';
-    if (text.indexOf('integrations') >= 0) return 'fa-solid fa-puzzle-piece';
-    if (text.indexOf('tools') >= 0) return 'fa-solid fa-screwdriver-wrench';
+    if (text.indexOf('dashboard') >= 0) return 'fa-jelly-filled fa-table-cells-large';
+    if (text.indexOf('breakdown') >= 0) return 'fa-jelly-filled fa-chart-pie';
+    if (text.indexOf('traffic') >= 0) return 'fa-jelly-filled fa-route';
+    if (text.indexOf('integrations') >= 0) return 'fa-jelly-filled fa-puzzle-piece';
+    if (text.indexOf('tools') >= 0) return 'fa-jelly-filled fa-screwdriver-wrench';
 
-    return 'fa-light fa-circle';
+    return 'fa-jelly fa-circle';
   }
 
   function replaceSharedSvgIcons(root) {
@@ -112,9 +179,16 @@
     });
   }
 
+  function applyIconTheme(root) {
+    var settings = readIconTheme();
+    var icons = (root || document).querySelectorAll('i');
+    icons.forEach(function (el) { applyIconStyle(el, settings); });
+  }
+
   function run(root) {
     replaceTiIcons(root);
     replaceSharedSvgIcons(root);
+    applyIconTheme(root);
   }
 
   if (document.readyState === 'loading') {
@@ -132,4 +206,12 @@
     });
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  try {
+    window.KexoIconTheme = {
+      refresh: function () { run(document); },
+      getSettings: readIconTheme,
+    };
+    window.addEventListener('kexo:icon-theme-changed', function () { run(document); });
+  } catch (_) {}
 })();

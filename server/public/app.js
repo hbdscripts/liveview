@@ -4806,6 +4806,29 @@ const API = '';
       return diff / base;
     }
 
+    function normalizeIconStyleClass(value, fallback) {
+      const raw = value == null ? '' : String(value).trim().toLowerCase();
+      if (!raw) return fallback;
+      if (raw.indexOf('fa-jelly-filled') >= 0 || raw === 'jelly-filled') return 'fa-jelly-filled';
+      if (raw.indexOf('fa-jelly') >= 0 || raw === 'jelly') return 'fa-jelly';
+      if (raw.indexOf('fa-solid') >= 0 || raw === 'solid') return 'fa-solid';
+      if (raw.indexOf('fa-light') >= 0 || raw === 'light') return 'fa-light';
+      return fallback;
+    }
+
+    function getStoredIconStyleClass(lsSuffix, fallback) {
+      let v = null;
+      try { v = localStorage.getItem('tabler-theme-' + lsSuffix); } catch (_) { v = null; }
+      return normalizeIconStyleClass(v, fallback);
+    }
+
+    function setTrendIconClass(iconEl, glyphCls) {
+      if (!iconEl) return;
+      const styleCls = getStoredIconStyleClass('icon-default', 'fa-jelly');
+      iconEl.classList.remove('fa-solid', 'fa-light', 'fa-jelly', 'fa-jelly-filled');
+      iconEl.classList.add(styleCls, glyphCls);
+    }
+
     function applyCondensedKpiDelta(key, current, baseline, invert) {
       const deltaEl = document.getElementById('cond-kpi-' + key + '-delta');
       const barEl = document.getElementById('cond-kpi-' + key + '-bar');
@@ -4848,13 +4871,13 @@ const API = '';
         if (iconEl) {
           if (dir === 'up') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-down', 'fa-minus');
-            iconEl.classList.add('fa-solid', 'fa-arrow-trend-up');
+            setTrendIconClass(iconEl, 'fa-arrow-trend-up');
           } else if (dir === 'down') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-minus');
-            iconEl.classList.add('fa-solid', 'fa-arrow-trend-down');
+            setTrendIconClass(iconEl, 'fa-arrow-trend-down');
           } else if (dir === 'flat') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-arrow-trend-down');
-            iconEl.classList.add('fa-solid', 'fa-minus');
+            setTrendIconClass(iconEl, 'fa-minus');
           } else {
             iconEl.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
             iconEl.classList.add('is-hidden');
@@ -5112,7 +5135,8 @@ const API = '';
             deltaTextEl.textContent = 'new';
             if (iconEl) {
               iconEl.classList.remove('is-hidden');
-              iconEl.className = 'fa-solid fa-arrow-trend-up kexo-topbar-delta-icon';
+              iconEl.className = 'kexo-topbar-delta-icon';
+              setTrendIconClass(iconEl, 'fa-arrow-trend-up');
               iconEl.setAttribute('aria-hidden', 'true');
             }
             return;
@@ -5132,10 +5156,11 @@ const API = '';
         deltaTextEl.textContent = Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
         // Only show arrows when movement is meaningful.
         if (iconEl) {
+          iconEl.className = 'kexo-topbar-delta-icon';
+          if (up) setTrendIconClass(iconEl, 'fa-arrow-trend-up');
+          else if (down) setTrendIconClass(iconEl, 'fa-arrow-trend-down');
+          else setTrendIconClass(iconEl, 'fa-minus');
           iconEl.classList.toggle('is-hidden', !up && !down);
-          if (up) iconEl.className = 'fa-solid fa-arrow-trend-up kexo-topbar-delta-icon';
-          else if (down) iconEl.className = 'fa-solid fa-arrow-trend-down kexo-topbar-delta-icon';
-          else iconEl.className = 'fa-solid fa-minus kexo-topbar-delta-icon';
           iconEl.setAttribute('aria-hidden', 'true');
         }
       }

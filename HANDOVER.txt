@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (12 KPI parity across dashboard/header, Shopify-cost COGS, sparkline tone fixes)
+Last updated: 2026-02-11 (Jelly icon policy + Theme Icons tab with persisted mappings)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -24,7 +24,7 @@ Pages (new, Tabler layout):
 - `server/public/type.html`
 - `server/public/ads.html`
 - `server/public/tools.html`
-- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs, Diagnostics); Sources tab is the canonical traffic-source-mapping UI (UTM → source + icon); Integrations now uses inner tabs (Shopify, Google Ads).
+- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs, Diagnostics); Sources tab is the canonical traffic-source-mapping UI (UTM -> source + icon); Integrations now uses inner tabs (Shopify, Google Ads). Theme now also uses inner `nav-underline` tabs (`Icons`, `Color`, `Fonts`).
 - `server/public/settings-page.js`: Settings tab switching (standalone; no app.js changes).
 - `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
 
@@ -205,6 +205,11 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Theme + icon system:
+  - Restored Jelly icons with policy routing: global default `jelly`; top nav toggles + table heading icons + Settings left menu use `jelly-filled`; all dropdown menu items (including Settings dropdown) use `jelly`.
+  - Added persisted theme icon settings keys to `/api/theme-defaults` (`theme_icon_default`, `theme_icon_topnav`, `theme_icon_dropdown`, `theme_icon_settings_menu`, `theme_icon_table_heading`).
+  - `server/public/theme-settings.js` now renders Theme sub-tabs with Tabler underline tabs (`Icons`, `Color`, `Fonts`), includes icon-style input boxes with live preview, debounced apply, and persisted Save.
+  - `server/public/fontawesome-icons.js` now enforces icon context mapping at runtime and supports refresh via `kexo:icon-theme-changed`.
 - KPI parity + logic cleanup:
   - Dashboard now exposes all 12 KPI cards (adds COGS, Fulfilled, Returns, Items ordered) and uses label parity with condensed chips.
   - Condensed strip now includes ADS ROAS and COGS chips (12 total).
