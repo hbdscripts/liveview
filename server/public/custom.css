@@ -236,8 +236,8 @@ body:not([data-page="settings"]) .table-scroll-wrap,
 body:not([data-page="settings"]) .country-table-wrap,
 body:not([data-page="settings"]) .table-responsive {
   --kexo-sticky-col-width: 120px;
-  --kexo-sticky-col-min-width: 96px;
-  --kexo-sticky-col-max-width: 320px;
+  --kexo-sticky-col-min-width: 72px;
+  --kexo-sticky-col-max-width: 360px;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
@@ -245,14 +245,16 @@ body:not([data-page="settings"]) .table-responsive table thead th:first-child {
   position: sticky;
   left: 0;
   z-index: 6;
-  min-width: var(--kexo-sticky-col-min-width, 96px) !important;
+  min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
-  max-width: var(--kexo-sticky-col-max-width, 320px) !important;
+  max-width: var(--kexo-sticky-col-max-width, 360px) !important;
   overflow: visible !important;
   padding-right: 14px !important;
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  box-shadow: 12px 0 16px -10px rgba(15, 23, 42, 0.54);
+  box-shadow:
+    1px 0 0 var(--tblr-border-color, #e6e7e9),
+    18px 0 22px -18px rgba(15, 23, 42, 0.62);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
@@ -261,12 +263,14 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   position: sticky;
   left: 0;
   z-index: 5;
-  min-width: var(--kexo-sticky-col-min-width, 96px) !important;
+  min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
-  max-width: var(--kexo-sticky-col-max-width, 320px) !important;
+  max-width: var(--kexo-sticky-col-max-width, 360px) !important;
   background: var(--tblr-bg-surface, #fff) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  box-shadow: 12px 0 16px -10px rgba(15, 23, 42, 0.44);
+  box-shadow:
+    1px 0 0 var(--tblr-border-color, #e6e7e9),
+    18px 0 22px -18px rgba(15, 23, 42, 0.54);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child,
@@ -324,6 +328,16 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle:hover::before,
 body:not([data-page="settings"]) .is-resizing-first-col .kexo-sticky-resize-handle::before {
   background: rgba(var(--tblr-primary-rgb), 0.92);
   opacity: 1;
+}
+
+/* Dashboard tables: align headers + body consistently */
+body[data-page="dashboard"] .table-responsive table thead th,
+body[data-page="dashboard"] .table-responsive table tbody td {
+  text-align: center !important;
+}
+body[data-page="dashboard"] .table-responsive table thead th:first-child,
+body[data-page="dashboard"] .table-responsive table tbody td:first-child {
+  text-align: left !important;
 }
 .table-scroll-wrap.is-drag-scroll,
 .country-table-wrap.is-drag-scroll,

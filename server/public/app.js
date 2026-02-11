@@ -317,8 +317,8 @@ const API = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
       if (String(page || '').toLowerCase() === 'settings') return;
       var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
-      var ABS_MIN_WIDTH = 96;
-      var ABS_MAX_WIDTH = 460;
+      var ABS_MIN_WIDTH = 72;
+      var ABS_MAX_WIDTH = 420;
       var LS_KEY = 'kexo-sticky-col-width';
 
       function getBounds(wrap) {
@@ -326,10 +326,20 @@ const API = '';
         try { viewport = Math.max(window.innerWidth || 0, document.documentElement ? (document.documentElement.clientWidth || 0) : 0); } catch (_) { viewport = 0; }
         if (!viewport || !Number.isFinite(viewport)) viewport = 1280;
         var wrapW = wrap && wrap.clientWidth ? wrap.clientWidth : viewport;
-        var base = Math.max(280, Math.min(viewport, wrapW || viewport));
-        var min = Math.max(ABS_MIN_WIDTH, Math.min(220, Math.round(base * 0.2)));
-        var max = Math.max(min + 40, Math.min(ABS_MAX_WIDTH, Math.round(base * 0.42)));
-        var def = Math.max(min, Math.min(max, Math.round(base * 0.28)));
+        var base = Math.max(220, Math.min(viewport, wrapW || viewport));
+        var inHalfGrid = !!(wrap && wrap.closest && wrap.closest('.col-lg-6'));
+        var minFloor = inHalfGrid ? 64 : ABS_MIN_WIDTH;
+        var min = Math.max(minFloor, Math.min(180, Math.round(base * 0.18)));
+        var max = Math.max(min + 32, Math.min(ABS_MAX_WIDTH, Math.round(base * 0.40)));
+        var def = Math.max(min, Math.min(max, Math.round(base * 0.26)));
+        try {
+          var table = wrap && wrap.querySelector ? wrap.querySelector('table, .grid-table') : null;
+          var tableW = table ? Number(table.scrollWidth || table.clientWidth || 0) : 0;
+          if (tableW > 0 && wrapW > 0 && tableW <= wrapW + 1) {
+            max = Math.max(min + 16, Math.min(max, Math.round(base * 0.34)));
+            def = Math.max(min, Math.min(def, max));
+          }
+        } catch (_) {}
         return { min: min, max: max, def: def };
       }
 
@@ -345,17 +355,30 @@ const API = '';
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
       }
 
+      function getStorageKey(wrap) {
+        var suffix = 'default';
+        try {
+          var table = wrap && wrap.querySelector ? wrap.querySelector('table[id], .grid-table[id]') : null;
+          var tableId = table && table.id ? String(table.id).trim() : '';
+          if (tableId) suffix = tableId;
+          else if (page) suffix = String(page).trim().toLowerCase();
+        } catch (_) {}
+        return LS_KEY + ':' + suffix;
+      }
+
       function readSavedWidth(wrap) {
         var raw = null;
-        try { raw = localStorage.getItem(LS_KEY); } catch (_) { raw = null; }
+        var key = getStorageKey(wrap);
+        try { raw = localStorage.getItem(key); } catch (_) { raw = null; }
         var fallback = getBounds(wrap).def;
         return clampWidth(wrap, raw == null ? fallback : Number(raw));
       }
 
-      function saveWidth(width) {
+      function saveWidth(wrap, width) {
         var n = Number(width);
         if (!Number.isFinite(n)) return;
-        try { localStorage.setItem(LS_KEY, String(Math.round(n))); } catch (_) {}
+        var key = getStorageKey(wrap);
+        try { localStorage.setItem(key, String(Math.round(n))); } catch (_) {}
       }
 
       function wrapWidth(wrap) {
@@ -402,7 +425,7 @@ const API = '';
           wrap.classList.remove('is-resizing-first-col');
           try { if (e && e.pointerId != null) handle.releasePointerCapture(e.pointerId); } catch (_) {}
           markResizeInteraction(wrap);
-          saveWidth(wrapWidth(wrap));
+          saveWidth(wrap, wrapWidth(wrap));
         }
 
         handle.addEventListener('pointerdown', function(e) {
@@ -473,6 +496,7 @@ const API = '';
       function run() {
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
+      try { window.__kexoRunStickyColumnResize = run; } catch (_) {}
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -3651,34 +3675,15 @@ const API = '';
         };
       });
 
-      const chartHeight = Math.max(280, chartRows.length * 36);
-      el.innerHTML =
-        '<div class="products-chart-shell">' +
-          '<div class="products-chart-labels" id="products-chart-labels"></div>' +
-          '<div class="products-chart-plot" id="products-chart-plot"></div>' +
-        '</div>';
-      const labelsEl = document.getElementById('products-chart-labels');
+      const chartHeight = Math.max(280, chartRows.length * 30);
+      el.innerHTML = '<div class="products-chart-plot" id="products-chart-plot"></div>';
       const plotEl = document.getElementById('products-chart-plot');
-      if (!labelsEl || !plotEl) return;
-
-      labelsEl.style.height = chartHeight + 'px';
-      labelsEl.style.setProperty('--kexo-chart-product-rows', String(chartRows.length));
-      labelsEl.innerHTML = chartRows.map(function (row) {
-        const thumbHtml = row.thumb
-          ? '<img class="products-chart-label-thumb" src="' + escapeHtml(row.thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
-          : '<span class="products-chart-label-thumb products-chart-label-thumb--empty" aria-hidden="true"></span>';
-        const titleHtml = row.productUrl
-          ? '<a href="' + escapeHtml(row.productUrl) + '" target="_blank" rel="noopener">' + escapeHtml(row.titleShort) + '</a>'
-          : escapeHtml(row.titleShort);
-        return '<div class="products-chart-label-row">' +
-          thumbHtml +
-          '<span class="products-chart-label-title" title="' + escapeHtml(row.title) + '">' + titleHtml + '</span>' +
-        '</div>';
-      }).join('');
+      if (!plotEl) return;
+      const categories = chartRows.map(function(row) { return row.titleShort; });
 
       productsChartInstance = new ApexCharts(plotEl, {
         chart: {
-          type: 'bar',
+          type: 'line',
           height: chartHeight,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
@@ -3688,25 +3693,30 @@ const API = '';
           data: chartRows.map(function (row) { return row.revenue; })
         }],
         colors: ['#3eb3ab'],
-        plotOptions: {
-          bar: {
-            horizontal: true,
-            borderRadius: 5,
-            barHeight: '56%',
-          }
+        stroke: { width: 3, curve: 'smooth' },
+        markers: { size: 4, hover: { size: 6 } },
+        fill: {
+          type: 'gradient',
+          gradient: { opacityFrom: 0.38, opacityTo: 0.08, stops: [0, 100] }
         },
         dataLabels: { enabled: false },
-        stroke: { width: 0 },
         xaxis: {
+          categories: categories,
+          labels: {
+            style: { fontSize: '11px' },
+            rotate: -18,
+            trim: true,
+            hideOverlappingLabels: true,
+            formatter: function(value) { return value == null ? '—' : String(value); }
+          }
+        },
+        yaxis: {
+          min: 0,
+          forceNiceScale: true,
           labels: {
             style: { fontSize: '11px' },
             formatter: function(value) { return formatRevenue(Number(value)) || '—'; }
           }
-        },
-        yaxis: {
-          labels: { show: false },
-          axisBorder: { show: false },
-          axisTicks: { show: false }
         },
         tooltip: {
           custom: function(ctx) {
@@ -3727,7 +3737,7 @@ const API = '';
         grid: {
           borderColor: '#eef2f6',
           strokeDashArray: 3,
-          padding: { left: 2, right: 4, top: 8, bottom: 4 }
+          padding: { left: 4, right: 8, top: 8, bottom: 8 }
         }
       });
       productsChartInstance.render();
@@ -4496,8 +4506,8 @@ const API = '';
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        const primaryRgb = (rootCss.getPropertyValue('--tblr-primary-rgb') || '62,179,171').trim();
-        const primaryHex = (rootCss.getPropertyValue('--tblr-primary') || '#3eb3ab').trim();
+        const primaryRgb = '62,179,171';
+        const primaryHex = '#3eb3ab';
 
         countriesMapChartInstance = new jsVectorMap({
           selector: '#countries-map-chart',
@@ -4507,16 +4517,16 @@ const API = '';
           zoomOnScroll: false,
           zoomAnimate: false,
           regionStyle: {
-            initial: { fill: 'rgba(' + primaryRgb + ',0.12)', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(' + primaryRgb + ',0.34)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.58)' },
+            initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
+            selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
           },
           series: {
             regions: [
               {
                 attribute: 'fill',
                 values: revenueByIso2,
-                scale: ['rgba(' + primaryRgb + ',0.12)', 'rgba(' + primaryRgb + ',0.34)', primaryHex],
+                scale: ['rgba(' + primaryRgb + ',0.18)', 'rgba(' + primaryRgb + ',0.46)', 'rgba(' + primaryRgb + ',0.92)'],
                 normalizeFunction: 'polynomial',
               }
             ]
@@ -6763,7 +6773,7 @@ const API = '';
           yaxis: [
             {
               min: 0,
-              seriesName: 'Sessions',
+              forceNiceScale: true,
               labels: {
                 style: { fontSize: '11px' },
                 formatter: function(v) { return Number(v || 0).toLocaleString(); }
@@ -6771,8 +6781,14 @@ const API = '';
             },
             {
               min: 0,
+              forceNiceScale: true,
+              show: false,
+              labels: { show: false },
+            },
+            {
+              min: 0,
               opposite: true,
-              seriesName: 'Revenue',
+              forceNiceScale: true,
               labels: {
                 style: { fontSize: '11px' },
                 formatter: function(v) { return formatRevenue(Number(v)) || '—'; }
@@ -6862,13 +6878,19 @@ const API = '';
           yaxis: [
             {
               min: 0,
-              seriesName: 'Sessions',
+              forceNiceScale: true,
               labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
             },
             {
               min: 0,
+              forceNiceScale: true,
+              show: false,
+              labels: { show: false },
+            },
+            {
+              min: 0,
               opposite: true,
-              seriesName: 'Revenue',
+              forceNiceScale: true,
               labels: { style: { fontSize: '11px' }, formatter: function(v) { return formatRevenue(Number(v)) || '—'; } }
             }
           ],
@@ -9834,20 +9856,31 @@ const API = '';
         } catch (_) {}
 
         try {
-          var apexSeries = datasets.map(function(ds) { return { name: ds.label, data: ds.data || [] }; });
+          var apexSeries = datasets.map(function(ds) {
+            var safeData = Array.isArray(ds && ds.data) ? ds.data.map(function(v) {
+              var n = (typeof v === 'number') ? v : Number(v);
+              return isFinite(n) ? n : 0;
+            }) : [];
+            return { name: ds.label, data: safeData };
+          });
           var colors = datasets.map(function(ds) { return ds.borderColor || DASH_ACCENT; });
           var yMaxOverride = null;
+          var yMinOverride = 0;
           try {
             var maxV = null;
+            var minV = null;
             apexSeries.forEach(function(s) {
               (s.data || []).forEach(function(v) {
                 var n = (typeof v === 'number') ? v : Number(v);
                 if (!isFinite(n)) return;
                 if (maxV == null || n > maxV) maxV = n;
+                if (minV == null || n < minV) minV = n;
               });
             });
             if (maxV == null) maxV = 0;
             if (maxV <= 0) yMaxOverride = 1;
+            else yMaxOverride = maxV + Math.max(1e-6, Math.abs(maxV) * 0.12);
+            if (minV != null && minV < 0) yMinOverride = minV - Math.max(1e-6, Math.abs(minV) * 0.12);
           } catch (_) {}
           var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
             : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
@@ -9879,8 +9912,9 @@ const API = '';
             },
             yaxis: {
               labels: { style: { fontSize: '11px', cssClass: 'apexcharts-yaxis-label' }, formatter: yFmt },
-              min: 0,
-              max: yMaxOverride
+              min: yMinOverride,
+              max: yMaxOverride,
+              forceNiceScale: true
             },
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
             tooltip: { y: { formatter: yFmt } },
@@ -10253,6 +10287,9 @@ const API = '';
 
         renderTrendingTable('dash-trending-up', data.trendingUp || [], true);
         renderTrendingTable('dash-trending-down', data.trendingDown || [], false);
+        try {
+          if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize();
+        } catch (_) {}
       }
 
       function fetchDashboardData(rangeKey, force) {

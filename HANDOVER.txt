@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (dashboard regression fixes A-E)
+Last updated: 2026-02-11 (charts + sticky regressions: dashboard/channels/type/ads/products/countries)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -215,10 +215,18 @@ Edge (optional):
   - Reworked width bounds to responsive screen/container clamps with persisted width, shared min/max CSS vars, and aligned header/body sticky widths.
   - Added resize interaction suppression for sortable headers so pointer-up after drag does not trigger sort/re-order clicks.
   - Kept separator + stronger fixed-edge shadow and aligned adjacent second-column background treatment.
+  - Persisted sticky width per-table (prevents cross-table width conflicts on dashboard grids) and centered dashboard table header/body alignment.
 - Countries map styling:
   - Switched region/flow emphasis to `--tblr-primary`/`--tblr-primary-rgb` shades; removed non-primary dominant highlight tones.
 - Channels + Type charts:
   - Removed unsupported Apex series axis fields, normalized data arrays to finite numeric series, and added defensive render guards + Promise error handling to prevent `undefined.push` Apex runtime crashes.
+  - Stabilized y-axis wiring by providing one y-axis config per series (hide Orders axis) so `/channels` + `/type` render reliably.
+- Products page chart:
+  - Switched the `/products` overview chart to a line chart (instead of horizontal bars) while keeping the rich product tooltip content.
+- Dashboard overview charts:
+  - Added y-axis headroom + NaN/undefined sanitization in chart rendering to prevent clipped lines and “blank” sessions charts.
+- Google Ads overview chart:
+  - Removed fragile y-axis index wiring and added guards + render error fallbacks so the chart loads reliably.
 
 2026-02-11
 - Dashboard KPI sparkline behavior + styling:
@@ -233,7 +241,7 @@ Edge (optional):
   - Best/Geo card is now `Country + Product` in UI copy (`server/public/countries.html`), and first-column cell rendering now shows both country and product text.
 - Breakdown chart direction updates:
   - Channels and Type overview charts are now fixed multi-line charts (Sessions, Orders, Revenue) with dual-axis formatting.
-  - Products overview chart was rebuilt into a fixed style with thumbnail label rail + revenue bars; product thumbs are normalized to include `width=100` when missing.
+  - Products overview chart is now a line chart for revenue across top products (tooltip still includes thumb + title; thumbs are normalized to include `width=100` when missing).
   - Ads overview chart was redesigned from grouped bars to a mixed Sales/Spend/ROAS view for clearer campaign comparison.
 - Chart-type switchers:
   - Theme-wide chart type switcher UI is now disabled in runtime rendering paths (fallback chart types remain).

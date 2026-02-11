@@ -150,6 +150,13 @@
       var revenue = Number((c && c.revenue) || 0);
       return spend > 0 ? (revenue / spend) : 0;
     });
+    var valid = categories.length > 0 && [spendSeries, salesSeries, roasSeries].every(function (arr) {
+      return Array.isArray(arr) && arr.length === categories.length && arr.every(function(v) { return Number.isFinite(v); });
+    });
+    if (!valid) {
+      clearAdsOverviewChart('No campaign data for this range');
+      return;
+    }
 
     if (adsOverviewChart) {
       try { adsOverviewChart.destroy(); } catch (_) {}
@@ -157,71 +164,87 @@
     }
     el.innerHTML = '';
 
-    adsOverviewChart = new ApexCharts(el, {
-      chart: {
-        type: 'line',
-        height: 252,
-        fontFamily: 'Inter, sans-serif',
-        toolbar: { show: false },
-      },
-      series: [
-        { name: 'Sales', type: 'area', data: salesSeries, yAxisIndex: 0 },
-        { name: 'Spend', type: 'area', data: spendSeries, yAxisIndex: 0 },
-        { name: 'ROAS', type: 'line', data: roasSeries, yAxisIndex: 1 },
-      ],
-      colors: ['#3eb3ab', '#ef4444', '#4b94e4'],
-      stroke: { width: [2.6, 2.4, 3], curve: 'smooth' },
-      fill: {
-        type: ['gradient', 'gradient', 'solid'],
-        gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] }
-      },
-      markers: { size: 3, hover: { size: 5 } },
-      dataLabels: { enabled: false },
-      xaxis: {
-        categories: categories,
-        labels: {
-          style: { fontSize: '11px' },
-          rotate: -18,
-          hideOverlappingLabels: false,
-          trim: true,
+    try {
+      adsOverviewChart = new ApexCharts(el, {
+        chart: {
+          type: 'line',
+          height: 252,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false },
         },
-      },
-      yaxis: [
-        {
-          min: 0,
+        series: [
+          { name: 'Sales', type: 'area', data: salesSeries },
+          { name: 'Spend', type: 'area', data: spendSeries },
+          { name: 'ROAS', type: 'line', data: roasSeries },
+        ],
+        colors: ['#3eb3ab', '#ef4444', '#4b94e4'],
+        stroke: { width: [2.6, 2.4, 3], curve: 'smooth' },
+        fill: {
+          type: ['gradient', 'gradient', 'solid'],
+          gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] }
+        },
+        markers: { size: 3, hover: { size: 5 } },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: categories,
           labels: {
             style: { fontSize: '11px' },
-            formatter: function (v) { return fmtMoney(v, currency); },
+            rotate: -18,
+            hideOverlappingLabels: false,
+            trim: true,
           },
         },
-        {
-          min: 0,
-          opposite: true,
-          seriesName: 'ROAS',
-          labels: {
-            style: { fontSize: '11px' },
-            formatter: function (v) { return fmtRoas(v); },
+        yaxis: [
+          {
+            min: 0,
+            forceNiceScale: true,
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function (v) { return fmtMoney(v, currency); },
+            },
           },
-        }
-      ],
-      tooltip: {
-        shared: true,
-        intersect: false,
-        y: {
-          formatter: function (v, opts) {
-            var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
-            return idx === 2 ? fmtRoas(v) : fmtMoney(v, currency);
+          {
+            min: 0,
+            forceNiceScale: true,
+            show: false,
+            labels: { show: false },
+          },
+          {
+            min: 0,
+            opposite: true,
+            forceNiceScale: true,
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function (v) { return fmtRoas(v); },
+            },
+          }
+        ],
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function (v, opts) {
+              var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+              return idx === 2 ? fmtRoas(v) : fmtMoney(v, currency);
+            },
           },
         },
-      },
-      legend: {
-        position: 'top',
-        fontSize: '12px',
-        markers: { radius: 10 },
-      },
-      grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-    });
-    adsOverviewChart.render();
+        legend: {
+          position: 'top',
+          fontSize: '12px',
+          markers: { radius: 10 },
+        },
+        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+      });
+      var renderPromise = adsOverviewChart.render();
+      if (renderPromise && typeof renderPromise.then === 'function') {
+        renderPromise.catch(function () {
+          clearAdsOverviewChart('Chart rendering failed');
+        });
+      }
+    } catch (_) {
+      clearAdsOverviewChart('Chart rendering failed');
+    }
   }
 
   function ensureModalDom() {
