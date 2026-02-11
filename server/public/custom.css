@@ -754,6 +754,14 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 }
 
 /* Unified report/page loaders (content-centered, not viewport-centered) */
+.page-body {
+  position: relative;
+}
+
+.page-body.report-building > :not(.page-body-loader-overlay) {
+  visibility: hidden !important;
+}
+
 .page-body-loader-overlay {
   position: absolute;
   inset: 0;

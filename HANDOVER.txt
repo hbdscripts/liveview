@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (page-body loader now uses full body-color overlay between menu and footer)
+Last updated: 2026-02-11 (loader scope fix: page-body-only overlay no longer covers header/menu)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,6 +210,8 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader scope correction:
+  - Moved `.page-body` positioning + `.page-body.report-building` content-hide rules into `server/public/custom.css` (the stylesheet loaded by canonical pages), ensuring the loader overlay is truly bounded to page-body and does not cover header/top menu.
 - Loader overlay fill refinement:
   - `server/public/custom.css` now applies a full-size page-body loader overlay (`width/height: 100%`) with `background: var(--tblr-body-bg)` so content cannot bleed through during loading.
   - Overlay scope remains bounded to `.page-body`, so it fills under top navigation and above footer (not over global chrome).
