@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (loader center stabilized in page-body to avoid downward jump)
+Last updated: 2026-02-11 (loader text simplified to one non-bold status line)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,6 +210,9 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader text simplification:
+  - Page-body loader now shows a single non-bold status line above the progress bar (step text), with the bold title line hidden in `server/public/custom.css`.
+  - Updated shared loader markup/defaults in `server/public/partials/page-body-start.html` and `server/public/app.js` so the visible line starts at `Preparing application` and transitions via existing step updates.
 - Loader center stabilization:
   - `server/public/custom.css` now uses `display:none` gating (instead of `visibility:hidden`) for non-loader page-body children while loading, preventing mid-load center drift from hidden-content height changes.
   - `server/public/app.js` now computes and applies `--kexo-loader-page-top` on `.page-body` before/when loading starts; page-body min-height uses `calc(100vh - topOffset)` so the loader stays centered in the viewport region under nav and above footer.

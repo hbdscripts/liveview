@@ -838,6 +838,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: min(100%, 420px);
 }
 
+.page-body-loader-overlay .report-build-title {
+  display: none !important;
+}
+
+.page-body-loader-overlay .report-build-step {
+  font-size: .92rem;
+  font-weight: 400;
+}
+
 .page-body-loader-overlay .page-loader-progress {
   max-width: 260px;
   margin-inline: auto;

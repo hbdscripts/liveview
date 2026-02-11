@@ -60,7 +60,7 @@ const API = '';
       var titleEl = overlay.querySelector('.report-build-title');
       var stepEl = document.getElementById('page-body-build-step') || overlay.querySelector('.report-build-step');
       if (titleEl && !String(titleEl.textContent || '').trim()) titleEl.textContent = 'Preparing application';
-      if (stepEl && !String(stepEl.textContent || '').trim()) stepEl.textContent = 'Loading data';
+      if (stepEl && !String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
     })();
 
     function normalizeTableClass(classKey) {
@@ -6705,7 +6705,7 @@ const API = '';
           '<div class="container container-slim py-4 report-build-wrap">' +
             '<div class="text-center">' +
               '<div class="text-secondary mb-2 report-build-title">Preparing application</div>' +
-              '<div class="text-secondary small mb-3 report-build-step">&mdash;</div>' +
+              '<div class="text-secondary mb-3 report-build-step">Preparing application</div>' +
               '<div class="progress progress-sm page-loader-progress"><div class="progress-bar progress-bar-indeterminate"></div></div>' +
             '</div>' +
           '</div>';
@@ -6849,7 +6849,10 @@ const API = '';
 
       beginReportBuildScope(scope);
       if (overlay) overlay.classList.remove('is-hidden');
-      if (stepEl) stepEl.textContent = opts.initialStep != null ? String(opts.initialStep) : '';
+      if (stepEl) {
+        if (opts.initialStep != null) stepEl.textContent = String(opts.initialStep);
+        else if (!String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
+      }
       showPageProgress();
 
       function title(text) {
