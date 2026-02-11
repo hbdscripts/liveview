@@ -9,9 +9,16 @@ html, body {
 }
 .page {
   min-height: 100%;
+  width: 100%;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
 }
 .page-wrapper {
   min-width: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  align-self: stretch !important;
 }
 
 .kexo-nav-svg {

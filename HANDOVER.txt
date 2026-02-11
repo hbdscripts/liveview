@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (Dashboard charts default area + Top Products fallback + KPI sparkline trend colors)
+Last updated: 2026-02-11 (KPI same-time compare sparkline tones + page wrapper top alignment)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -203,6 +203,9 @@ Edge (optional):
 - Orders KPI sparkline on the dashboard card was restored to Area to match the other KPI sparkline cards.
 - KPI sparkline colors now use trend tone (green/red) based on positive/negative movement, with condensed strip colors using day-before compare values when available.
 - Dashboard series Top Products now has a safe fallback to aggregate from `orders_shopify.raw_json.line_items` when truth line-item sync is delayed, including in the bounds-based route path.
+- Dashboard KPI card background sparklines now color by same-time previous-period compare (from `/api/kpis` compare values) instead of last-point slope, so Today vs Yesterday-at-this-time is reflected in card tone.
+- Dashboard now re-renders from cache after KPI refresh so compare-driven sparkline tones update as soon as KPI compare data arrives.
+- Layout fix: `.page-wrapper` and `.page` are forced to full-width/top-flow alignment so inner pages render directly under header/KPIs instead of centering in the viewport.
 
 2026-02-10
 - Settings: added Sources tab for traffic source mapping (UTM → source + icon); `initTrafficSourceMapping` exposed on window.
