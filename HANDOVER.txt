@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (condensed KPI sparkline size/position tweak + dashboard KPI sparkline compare styling)
+Last updated: 2026-02-11 (dashboard KPI previous-period dashed compare fix + condensed KPI sparkline size/position tweak)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,9 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Dashboard KPI previous-period sparkline overlay:
+  - Dashboard cards now fetch and cache an explicit previous-period `dashboard-series` payload (derived from `/api/kpis` compare range) and use that real history as the dashed grey overlay line.
+  - This avoids hidden/overlapped dashed lines when only scalar compare values are available and keeps the compare sparkline distinct from the primary trend.
 - Condensed KPI sparkline sizing (non-dashboard strip):
   - Increased condensed KPI sparkline render height to `30px` in `server/public/app.js`.
   - Updated condensed sparkline container position/size to `top: 0` and `height: 30px` in `server/public/custom.css`.

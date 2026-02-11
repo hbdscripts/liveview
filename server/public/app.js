@@ -10114,6 +10114,10 @@ const API = '';
       var dashLoading = false;
       var dashLastRangeKey = null;
       var dashLastDayYmd = null;
+      var dashCompareSeriesCache = null;
+      var dashCompareRangeKey = null;
+      var dashCompareFetchedAt = 0;
+      var dashCompareSeriesInFlight = null;
       var dashCharts = {};
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
@@ -10145,6 +10149,57 @@ const API = '';
         var idx = s.indexOf(' ');
         if (idx >= 0) return s.slice(idx + 1);
         return s;
+      }
+      function ymdInAdminTzFromMs(ms) {
+        var n = Number(ms);
+        if (!Number.isFinite(n)) return null;
+        try {
+          return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n));
+        } catch (_) {
+          try {
+            return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n));
+          } catch (_) {
+            return null;
+          }
+        }
+      }
+      function compareRangeKeyFromKpiPayload(kpiObj) {
+        var cmp = kpiObj && kpiObj.compare && kpiObj.compare.range ? kpiObj.compare.range : null;
+        var startMs = cmp && cmp.start != null ? Number(cmp.start) : NaN;
+        var endMs = cmp && cmp.end != null ? Number(cmp.end) : NaN;
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || !(endMs > startMs)) return null;
+        var startYmd = ymdInAdminTzFromMs(startMs);
+        var endYmd = ymdInAdminTzFromMs(Math.max(startMs, endMs - 1));
+        if (!startYmd || !endYmd) return null;
+        if (startYmd === endYmd) return 'd:' + startYmd;
+        return 'r:' + startYmd + ':' + endYmd;
+      }
+      function ensureDashboardCompareSeries(kpiObj) {
+        var compareRangeKey = compareRangeKeyFromKpiPayload(kpiObj);
+        if (!compareRangeKey) return Promise.resolve(null);
+        var fresh = dashCompareRangeKey === compareRangeKey &&
+          Array.isArray(dashCompareSeriesCache) &&
+          dashCompareSeriesCache.length >= 2 &&
+          dashCompareFetchedAt &&
+          (Date.now() - dashCompareFetchedAt) < KPI_CACHE_TTL_MS;
+        if (fresh) return Promise.resolve(dashCompareSeriesCache);
+        if (dashCompareSeriesInFlight && dashCompareRangeKey === compareRangeKey) return dashCompareSeriesInFlight;
+        dashCompareRangeKey = compareRangeKey;
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey);
+        dashCompareSeriesInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 20000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(data) {
+            var s = data && Array.isArray(data.series) ? data.series : null;
+            if (s && s.length >= 2) {
+              dashCompareSeriesCache = s;
+              dashCompareFetchedAt = Date.now();
+              return s;
+            }
+            return null;
+          })
+          .catch(function() { return null; })
+          .finally(function() { dashCompareSeriesInFlight = null; });
+        return dashCompareSeriesInFlight;
       }
 
       function waitForApexCharts(cb, retries) {
@@ -10423,6 +10478,18 @@ const API = '';
         var kpiRangeForTone = null;
         try { kpiRangeForTone = getStatsRange(); } catch (_) { kpiRangeForTone = null; }
         var compareTone = kpiDataForTone && kpiDataForTone.compare ? kpiDataForTone.compare : null;
+        var compareSeriesRangeKey = compareRangeKeyFromKpiPayload(kpiDataForTone);
+        var compareSeriesHistory = (compareSeriesRangeKey && dashCompareRangeKey === compareSeriesRangeKey && Array.isArray(dashCompareSeriesCache))
+          ? dashCompareSeriesCache
+          : null;
+        if (compareSeriesRangeKey && !compareSeriesHistory) {
+          ensureDashboardCompareSeries(kpiDataForTone).then(function(series) {
+            if (!series || !series.length) return;
+            if (dashCache && dashLastRangeKey === dashRangeKeyFromDateRange()) {
+              try { renderDashboard(dashCache); } catch (_) {}
+            }
+          }).catch(function() {});
+        }
         var currentRevenueTone = numFromRangeMap(kpiDataForTone, 'sales', kpiRangeForTone);
         var currentOrdersTone = numFromRangeMap(kpiDataForTone, 'convertedCount', kpiRangeForTone);
         var currentSessionsTone = sessionsFromBreakdownMap(kpiDataForTone, kpiRangeForTone);
@@ -10504,11 +10571,24 @@ const API = '';
         var aovHistorySpark = sparklineSeries.map(function(d) { return d.aov; });
         var bounceHistorySpark = sparklineSeries.map(function(d) { return d.bounceRate; });
         var itemsHistorySpark = sparklineSeries.map(function(d) { return d.units || 0; });
+        var revenueCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.revenue; }) : null;
+        var sessionsCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.sessions; }) : null;
+        var ordersCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.orders; }) : null;
+        var returningCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.returningCustomerOrders || 0; }) : null;
+        var convCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.convRate; }) : null;
+        var aovCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.aov; }) : null;
+        var bounceCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.bounceRate; }) : null;
+        var itemsCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.units || 0; }) : null;
         var roasHistorySpark = sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
         });
+        var roasCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) {
+          var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
+          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+          return (spend > 0) ? (rev / spend) : 0;
+        }) : null;
         var revenueSpark = sparkSeriesFromCompare(currentRevenueTone, compareRevenueTone, revenueHistorySpark);
         var sessionsSpark = sparkSeriesFromCompare(currentSessionsTone, compareSessionsTone, sessionsHistorySpark);
         var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
@@ -10521,18 +10601,18 @@ const API = '';
         var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
         var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
-        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'line', sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone));
-        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'line', sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone));
-        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'line', sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone));
-        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'line', sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone));
-        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'line', sparkCompareSeries(convSpark, currentConvTone, compareConvTone));
-        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'line', sparkCompareSeries(aovSpark, currentAovTone, compareAovTone));
-        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'line', sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone));
-        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'line', sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone));
-        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'line', sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone));
-        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'line', sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone));
-        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'line', sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone));
-        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'line', sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone));
+        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone));
+        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'line', sessionsCompareHistorySpark || sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone));
+        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'line', ordersCompareHistorySpark || sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone));
+        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'line', returningCompareHistorySpark || sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone));
+        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'line', convCompareHistorySpark || sparkCompareSeries(convSpark, currentConvTone, compareConvTone));
+        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'line', aovCompareHistorySpark || sparkCompareSeries(aovSpark, currentAovTone, compareAovTone));
+        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'line', bounceCompareHistorySpark || sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone));
+        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'line', roasCompareHistorySpark || sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone));
+        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'line', itemsCompareHistorySpark || sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone));
+        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'line', ordersCompareHistorySpark || sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone));
+        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone));
+        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone));
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
