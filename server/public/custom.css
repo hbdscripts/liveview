@@ -66,6 +66,13 @@ html, body {
   width: 100%;
 }
 
+/* Grid tables: use fixed layout so sticky width is respected */
+.table-scroll-wrap .grid-table,
+.country-table-wrap .grid-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 #sale-toast-inline-flag { margin-right: 5px; }
 
 /* Global links: inherit surrounding text color (no blue link default). */
@@ -225,6 +232,17 @@ a {
   text-align: right;
 }
 
+/* Sessions-style tables (live/sales/date): center-align headers + body consistently */
+.table-scroll-wrap .grid-row--header .grid-cell:not(:first-child),
+.table-scroll-wrap .grid-body .grid-row .grid-cell:not(:first-child) {
+  text-align: center;
+}
+
+.table-scroll-wrap .grid-row--header .grid-cell:first-child,
+.table-scroll-wrap .grid-body .grid-row .grid-cell:first-child {
+  text-align: left;
+}
+
 /* But keep product/name columns left-aligned */
 .grid-body .grid-row .grid-cell.bs-product-col,
 .grid-body .grid-row .grid-cell:first-child {
@@ -338,6 +356,11 @@ body[data-page="dashboard"] .table-responsive table tbody td {
 body[data-page="dashboard"] .table-responsive table thead th:first-child,
 body[data-page="dashboard"] .table-responsive table tbody td:first-child {
   text-align: left !important;
+}
+
+/* Dashboard: keep first column width controllable (avoid auto-layout expanding it) */
+body[data-page="dashboard"] .table-responsive table {
+  table-layout: fixed;
 }
 .table-scroll-wrap.is-drag-scroll,
 .country-table-wrap.is-drag-scroll,
@@ -1743,7 +1766,11 @@ html[data-bs-theme="dark"] .landing-thumb {
 .card > .country-table-wrap .grid-header .grid-row--header .grid-cell {
   border-top: none !important;
 }
+.card > .table-scroll-wrap .grid-header .grid-row--header .grid-cell {
+  border-top: none !important;
+}
 .card > .country-table-wrap .grid-row--header .grid-cell,
+.card > .table-scroll-wrap .grid-row--header .grid-cell,
 .stats-card .grid-row--header .grid-cell {
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   height: 40px;
