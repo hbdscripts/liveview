@@ -61,7 +61,7 @@ i[class*="fa-"] {
 }
 
 .kexo-card-collapse-toggle.is-collapsed .kexo-card-collapse-chevron {
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
 }
 
 .card.kexo-card-collapsed > :not(.card-header) {
@@ -730,24 +730,24 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   justify-content: center;
   padding: 0.75rem;
   border-radius: var(--tblr-border-radius, .75rem);
-  background: rgba(255, 255, 255, 0.84);
+  background: transparent;
   z-index: 8;
 }
 
 .report-loading-overlay,
 .stats-loading-overlay,
 .sessions-loading-overlay {
-  background: rgba(255, 255, 255, 0.88);
+  background: transparent;
 }
 
 html[data-bs-theme="dark"] .table-loading-overlay {
-  background: rgba(26, 34, 52, 0.84);
+  background: transparent;
 }
 
 html[data-bs-theme="dark"] .report-loading-overlay,
 html[data-bs-theme="dark"] .stats-loading-overlay,
 html[data-bs-theme="dark"] .sessions-loading-overlay {
-  background: rgba(26, 34, 52, 0.9);
+  background: transparent;
 }
 
 /* Hide direct old spinner fallback used by legacy table overlays. */
@@ -762,19 +762,18 @@ html[data-bs-theme="dark"] .sessions-loading-overlay {
   justify-content: center;
   gap: 0.4rem;
   text-align: center;
-  padding: 0.95rem 1rem;
-  min-width: 220px;
+  padding: 0.2rem;
+  min-width: 0;
   max-width: min(92vw, 420px);
-  border-radius: 12px;
-  border: 1px solid var(--tblr-border-color, #dfe3ea);
-  background: var(--tblr-bg-surface, #fff);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-bs-theme="dark"] .report-build-wrap {
-  background: rgba(22, 30, 47, 0.96);
-  border-color: rgba(148, 163, 184, 0.35);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .report-build-spinner {
@@ -1596,6 +1595,11 @@ body[data-page="dashboard"] .page-body > .container-fluid {
   height: 100%;
 }
 
+#tab-panel-dashboard > .row > [class*="col"] > .card.kexo-card-collapsed {
+  height: auto !important;
+  align-self: flex-start;
+}
+
 /* ── Nav active state: rely on Tabler's outer border, remove inner box-shadow ── */
 
 /* ── Refresh icon spin ── */
@@ -1936,6 +1940,10 @@ html[data-bs-theme="dark"] .landing-thumb {
 .row > .col-lg-6 > .card:has(#dash-top-products),
 .row > .col-lg-6 > .card:has(#dash-top-countries) {
   height: 100%;
+}
+
+.row > .col-lg-6 > .card.kexo-card-collapsed {
+  height: auto !important;
 }
 #dash-top-products td,
 #dash-top-countries td {

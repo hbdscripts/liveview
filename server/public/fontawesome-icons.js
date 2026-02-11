@@ -140,6 +140,8 @@
     'card-title-dashboard': 'fa-jelly-filled fa-gauge-high',
     'card-title-traffic': 'fa-jelly-filled fa-route',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'card-collapse-expanded': 'fa-chevron-down',
+    'card-collapse-collapsed': 'fa-chevron-right',
   };
 
   var TI_TO_FA = {

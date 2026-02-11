@@ -69,6 +69,40 @@
     if (el.textContent !== next) el.textContent = next;
   }
 
+  var _panelLoaderActive = false;
+  function getPanelLoaderState() {
+    var panel = document.getElementById('tab-panel-ads');
+    var overlay = document.getElementById('ads-loading-overlay');
+    var titleEl = overlay ? overlay.querySelector('.report-build-title') : null;
+    var stepEl = document.getElementById('ads-build-step') || (overlay ? overlay.querySelector('.report-build-step') : null);
+    return { panel: panel, overlay: overlay, titleEl: titleEl, stepEl: stepEl };
+  }
+
+  function showPanelLoader(title, step) {
+    var st = getPanelLoaderState();
+    if (!st.panel || !st.overlay) return;
+    st.panel.classList.add('report-building');
+    st.overlay.classList.remove('is-hidden');
+    if (title != null) patchText(st.titleEl, String(title));
+    if (step != null) patchText(st.stepEl, String(step));
+    _panelLoaderActive = true;
+  }
+
+  function setPanelLoaderStep(step, title) {
+    var st = getPanelLoaderState();
+    if (!st.overlay || st.overlay.classList.contains('is-hidden')) return;
+    if (title != null) patchText(st.titleEl, String(title));
+    if (step != null) patchText(st.stepEl, String(step));
+  }
+
+  function hidePanelLoader() {
+    var st = getPanelLoaderState();
+    if (!st.panel || !st.overlay) return;
+    st.overlay.classList.add('is-hidden');
+    st.panel.classList.remove('report-building');
+    _panelLoaderActive = false;
+  }
+
   /* ── sort state ──────────────────────────────────────────── */
 
   // Column definitions: key, label, getter, format
@@ -579,6 +613,7 @@
   }
 
   function setLoadingStep(root, step, title) {
+    setPanelLoaderStep(step, title);
     if (!root || !root.querySelector) return;
     var stepEl = root.querySelector('[data-ads-loader-step]');
     var titleEl = root.querySelector('[data-ads-loader-title]');
@@ -986,6 +1021,7 @@
     if (inFlight) return inFlight;
 
     var isForce = !!(options && options.force);
+    var showPageLoader = !_lastSummary;
     var rangeKey = computeRangeKey();
     var now = Date.now();
 
@@ -1003,7 +1039,8 @@
     var footer = document.getElementById('ads-footer');
     var noteEl = document.getElementById('ads-note');
 
-    if (!_lastSummary) {
+    if (showPageLoader) {
+      showPanelLoader('Preparing Google Ads', 'Connecting to Google');
       if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
       if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
@@ -1014,7 +1051,7 @@
 
     var p = fetchJson('/api/ads/status')
       .then(function(status) {
-        if (!_lastSummary) setLoadingStep(root, 'Importing campaigns');
+        if (showPageLoader) setLoadingStep(root, 'Importing campaigns');
         return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : ''))
           .then(function(summary) { return { status: status, summary: summary }; });
       })
@@ -1025,24 +1062,24 @@
       if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
       else _lastRangeKey = rangeKey;
       if (summary) _lastFetchedAt = Date.now();
-      if (!_lastSummary) setLoadingStep(root, 'Loading campaign data');
+      if (showPageLoader) setLoadingStep(root, 'Loading campaign data');
 
       applyRefreshingUi(false, false);
       var nextStatus = status || _lastStatus;
       var nextSummary = summary || _lastSummary;
-      if (!_lastSummary) setLoadingStep(root, 'Analyzing spend');
+      if (showPageLoader) setLoadingStep(root, 'Analyzing spend');
 
       var didPatch = false;
       if (nextSummary && _lastSummary) {
         try {
-          if (!_lastSummary) setLoadingStep(root, 'Analyzing spend');
+          if (showPageLoader) setLoadingStep(root, 'Analyzing spend');
           didPatch = patchSpendProfitRoas(root, nextSummary);
           patchFooterAndNote(nextStatus, nextSummary);
         } catch (_) { didPatch = false; }
       }
 
       if (!didPatch) {
-        if (!_lastSummary) setLoadingStep(root, 'Building profit table');
+        if (showPageLoader) setLoadingStep(root, 'Building profit table');
         render(root, nextStatus, nextSummary, undefined);
       } else {
         _lastStatus = nextStatus;
@@ -1058,7 +1095,7 @@
         try { patchFooterAndNote(_lastStatus, _lastSummary); } catch (_) {}
         try { renderAdsOverviewChart(_lastSummary); } catch (_) {}
       } else {
-        setLoadingStep(root, 'Could not load ads');
+        if (showPageLoader) setLoadingStep(root, 'Could not load ads');
         if (actions) actions.style.display = 'none';
         if (footer) footer.style.display = 'none';
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
@@ -1068,6 +1105,7 @@
       return null;
     }).finally(function () {
       if (inFlight === p) inFlight = null;
+      if (showPageLoader || _panelLoaderActive) hidePanelLoader();
     });
 
     inFlight = p;

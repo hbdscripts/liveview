@@ -192,6 +192,8 @@ const THEME_KEYS = [
   'theme_icon_glyph_kpi_trend_up',
   'theme_icon_glyph_kpi_trend_down',
   'theme_icon_glyph_kpi_trend_flat',
+  'theme_icon_glyph_card_collapse_expanded',
+  'theme_icon_glyph_card_collapse_collapsed',
   'theme_icon_glyph_chart_type_area',
   'theme_icon_glyph_chart_type_bar',
   'theme_icon_glyph_chart_type_line',

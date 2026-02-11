@@ -316,6 +316,7 @@ const API = '';
       var STORAGE_PREFIX = 'kexo:table-collapse:v1';
       var CARD_SELECTOR = '.card';
       var TABLE_CONTENT_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .grid-table, table';
+      var CHART_CONTENT_SELECTOR = '.dash-chart-wrap, [id^="dash-chart-"], #live-online-chart, #sessions-overview-chart, #ads-overview-chart, #channels-chart, #type-chart, #products-chart, #countries-map-chart';
       var HEADER_SELECTOR = '.card-header';
 
       function getPageScope() {
@@ -346,7 +347,9 @@ const API = '';
 
       function hasTableContent(card) {
         if (!card || !card.querySelector) return false;
-        return !!card.querySelector(TABLE_CONTENT_SELECTOR);
+        if (card.querySelector(TABLE_CONTENT_SELECTOR)) return true;
+        if (card.querySelector(CHART_CONTENT_SELECTOR)) return true;
+        return false;
       }
 
       function getCollapseId(card, index) {
@@ -357,7 +360,7 @@ const API = '';
         if (!id) {
           var titleEl = card.querySelector('.card-header .card-title');
           var title = titleEl ? String(titleEl.textContent || '').trim() : '';
-          if (title) id = slugify(title);
+          if (title) id = slugify(title) + '-' + String(index || 0);
         }
         if (!id) id = 'table-card-' + String(index || 0);
         card.dataset.collapseId = id;
@@ -368,6 +371,25 @@ const API = '';
         return STORAGE_PREFIX + ':' + getPageScope() + ':' + getCollapseId(card, index);
       }
 
+      function refreshIconTheme() {
+        try {
+          window.dispatchEvent(new CustomEvent('kexo:icon-theme-changed'));
+          if (window.KexoIconTheme && typeof window.KexoIconTheme.refresh === 'function') window.KexoIconTheme.refresh();
+        } catch (_) {}
+      }
+
+      function setCollapseChevron(button, collapsed) {
+        if (!button || !button.querySelector) return;
+        var icon = button.querySelector('.kexo-card-collapse-chevron');
+        if (!icon) return;
+        var isCollapsed = !!collapsed;
+        var glyph = isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+        var key = isCollapsed ? 'card-collapse-collapsed' : 'card-collapse-expanded';
+        icon.setAttribute('data-icon-key', key);
+        icon.className = 'kexo-card-collapse-chevron fa-light ' + glyph;
+        refreshIconTheme();
+      }
+
       function setCollapsed(card, button, collapsed, persist, storageKey) {
         if (!card) return;
         var isCollapsed = !!collapsed;
@@ -375,8 +397,9 @@ const API = '';
         if (button) {
           button.classList.toggle('is-collapsed', isCollapsed);
           button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-          button.setAttribute('aria-label', isCollapsed ? 'Expand table' : 'Collapse table');
-          button.title = isCollapsed ? 'Expand table' : 'Collapse table';
+          button.setAttribute('aria-label', isCollapsed ? 'Expand section' : 'Collapse section');
+          button.title = isCollapsed ? 'Expand section' : 'Collapse section';
+          setCollapseChevron(button, isCollapsed);
         }
         if (persist && storageKey) {
           try { sessionStorage.setItem(storageKey, isCollapsed ? '1' : '0'); } catch (_) {}
@@ -400,7 +423,7 @@ const API = '';
           btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'btn btn-icon btn-ghost-secondary kexo-card-collapse-toggle';
-          btn.innerHTML = '<span class="kexo-card-collapse-chevron" aria-hidden="true">▾</span>';
+          btn.innerHTML = '<i class="kexo-card-collapse-chevron fa-light fa-chevron-down" data-icon-key="card-collapse-expanded" aria-hidden="true"></i>';
           var actions = null;
           try { actions = header.querySelector(':scope > .card-actions'); } catch (_) { actions = null; }
           if (actions && actions.parentElement === header) {
@@ -6412,6 +6435,57 @@ const API = '';
       return { overlayId: explicitId || '', overlayEl: explicitId ? document.getElementById(explicitId) : null };
     }
 
+    function resolveReportBuildScope(opts, overlay) {
+      if (opts && opts.scopeEl && opts.scopeEl instanceof Element) return opts.scopeEl;
+      const scopeId = opts && opts.scopeId ? String(opts.scopeId) : '';
+      if (scopeId) {
+        const byId = document.getElementById(scopeId);
+        if (byId) return byId;
+      }
+      if (overlay && overlay.closest) {
+        const panel = overlay.closest('.main-tab-panel');
+        if (panel) return panel;
+      }
+      return overlay ? (overlay.parentElement || null) : null;
+    }
+
+    const reportBuildScopeState = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+    function beginReportBuildScope(scope) {
+      if (!scope) return;
+      if (!reportBuildScopeState) {
+        scope.classList.add('report-building');
+        return;
+      }
+      let state = reportBuildScopeState.get(scope);
+      if (!state) state = { count: 0, prevMinHeight: '' };
+      if (state.count <= 0) {
+        state.prevMinHeight = scope.style.minHeight || '';
+        const h = Number(scope.offsetHeight || 0);
+        if (h > 0) scope.style.minHeight = String(Math.ceil(h)) + 'px';
+        scope.classList.add('report-building');
+      }
+      state.count += 1;
+      reportBuildScopeState.set(scope, state);
+    }
+
+    function endReportBuildScope(scope) {
+      if (!scope) return;
+      if (!reportBuildScopeState) {
+        scope.classList.remove('report-building');
+        return;
+      }
+      let state = reportBuildScopeState.get(scope);
+      if (!state) return;
+      state.count = Math.max(0, Number(state.count || 0) - 1);
+      if (state.count <= 0) {
+        scope.classList.remove('report-building');
+        scope.style.minHeight = state.prevMinHeight || '';
+        reportBuildScopeState.delete(scope);
+        return;
+      }
+      reportBuildScopeState.set(scope, state);
+    }
+
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
@@ -6423,14 +6497,19 @@ const API = '';
       const token = reportBuildTokens[key];
       const resolved = resolveReportBuildOverlay(opts, key);
       const overlay = resolved && resolved.overlayEl ? resolved.overlayEl : null;
-      const wrap = overlay ? (overlay.parentElement || overlay.closest('.card') || null) : null;
+      const scope = resolveReportBuildScope(opts, overlay);
+      let overlayOrigin = null;
+      if (overlay && scope && overlay.parentElement && overlay.parentElement !== scope && scope.contains(overlay)) {
+        overlayOrigin = { parent: overlay.parentElement, next: overlay.nextSibling };
+        try { scope.insertBefore(overlay, scope.firstChild); } catch (_) {}
+      }
       const stepId = opts.stepId ? String(opts.stepId) : (overlay && overlay.getAttribute('data-step-id') ? String(overlay.getAttribute('data-step-id')) : '');
       const titleText = opts.title != null ? String(opts.title) : defaultReportBuildTitleForKey(key);
       const ensured = ensureReportBuildMarkup(overlay, titleText, stepId);
       const titleEl = ensured.titleEl;
       const stepEl = ensured.stepEl;
 
-      if (wrap) wrap.classList.add('report-building');
+      beginReportBuildScope(scope);
       if (overlay) overlay.classList.remove('is-hidden');
       if (stepEl) stepEl.textContent = opts.initialStep != null ? String(opts.initialStep) : '';
       showPageProgress();
@@ -6451,7 +6530,13 @@ const API = '';
       function finish() {
         if (reportBuildTokens[key] !== token) return;
         if (overlay) overlay.classList.add('is-hidden');
-        if (wrap) wrap.classList.remove('report-building');
+        if (overlay && overlayOrigin && overlayOrigin.parent) {
+          try {
+            if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
+            else overlayOrigin.parent.appendChild(overlay);
+          } catch (_) {}
+        }
+        endReportBuildScope(scope);
         hidePageProgress();
       }
 

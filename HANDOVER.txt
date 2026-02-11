@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (dashboard KPI previous-period dashed compare fix + condensed KPI sparkline size/position tweak)
+Last updated: 2026-02-11 (strict report-loader gating + collapse icon theming + dashboard collapse layout fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,21 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader gating + staged reveal consistency:
+  - `startReportBuild` in `server/public/app.js` now scopes loading to the tab container (`.main-tab-panel`), temporarily hoists overlays into that scope during load, locks panel min-height, and only reveals content when `finish()` runs.
+  - `server/public/app.css` keeps `report-building` states hiding all non-loader siblings, so loaders are the only visible content while a report flow is building.
+  - Legacy inline products overlay polling in `server/public/products.html` was removed so loader visibility is controlled by shared report-build lifecycle only.
+- Loader visual simplification:
+  - `server/public/custom.css` report loaders no longer render card-style border/background/shadow chrome; spinner + dynamic title/step remain centered.
+- Ads page strict loader behavior:
+  - Added panel-level ads loader overlay in `server/public/ads.html` and wired `server/public/ads.js` to show staged steps (`Connecting`, `Importing`, `Loading`, `Analyzing`, `Building`) while page content is gated.
+- Collapse reliability + scope:
+  - Card collapse targeting in `server/public/app.js` now includes both table and chart cards, uses stable per-card keys with index suffixes to prevent sessionStorage collisions (fixes wrong-card collapse/vanish behavior), and keeps persisted state per page.
+- Theme icon integration for collapse controls:
+  - Added `card-collapse-expanded` / `card-collapse-collapsed` glyph keys in `server/public/theme-settings.js`, `server/public/fontawesome-icons.js`, and backend allowlist `server/routes/settings.js`.
+  - Collapse buttons now render `<i data-icon-key="...">` glyphs so Settings -> Theme -> Icons overrides apply at runtime.
+- Dashboard collapse layout whitespace fixes:
+  - `server/public/custom.css` now forces collapsed dashboard cards back to `height: auto` so mixed collapsed/expanded grid states no longer inherit equal-height blank space artifacts.
 - Dashboard KPI previous-period sparkline overlay:
   - Dashboard cards now fetch and cache an explicit previous-period `dashboard-series` payload (derived from `/api/kpis` compare range) and use that real history as the dashed grey overlay line.
   - This avoids hidden/overlapped dashed lines when only scalar compare values are available and keeps the compare sparkline distinct from the primary trend.

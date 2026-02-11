@@ -736,13 +736,13 @@
       .main-tabs-date-select { display: none; }
       .mobile-date-btn { display: inline-flex; }
     }
-    .main-tab-panel { display: none; }
+    .main-tab-panel { display: none; position: relative; }
     .main-tab-panel.active { display: block; }
     .stats-row-wrap { position: relative; }
     .sessions-table-wrap { position: relative; }
 
     /* Hide all content during loading/building - show only the loading overlay */
-    .report-building > :not(.report-loading-overlay):not(.stats-loading-overlay):not(.table-loading-overlay) {
+    .report-building > :not(.table-loading-overlay):not(.report-loading-overlay):not(.stats-loading-overlay):not(.sessions-loading-overlay) {
       display: none !important;
     }
     .dash-charts-row.report-building > *,

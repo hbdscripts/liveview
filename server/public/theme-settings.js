@@ -139,6 +139,8 @@
     'card-title-dashboard': 'fa-jelly-filled fa-gauge-high',
     'card-title-traffic': 'fa-jelly-filled fa-route',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'card-collapse-expanded': 'fa-chevron-down',
+    'card-collapse-collapsed': 'fa-chevron-right',
   };
   var ICON_GLYPH_META = {
     'mobile-menu': { title: 'Mobile menu button', help: 'Top-left mobile menu icon.', styleKey: 'theme-icon-default' },
@@ -174,6 +176,8 @@
     'kpi-trend-up': { title: 'KPI trend up', help: 'Up delta arrow on KPI chips/cards.', styleKey: 'theme-icon-default' },
     'kpi-trend-down': { title: 'KPI trend down', help: 'Down delta arrow on KPI chips/cards.', styleKey: 'theme-icon-default' },
     'kpi-trend-flat': { title: 'KPI trend flat', help: 'Flat/minus delta icon on KPI chips/cards.', styleKey: 'theme-icon-default' },
+    'card-collapse-expanded': { title: 'Card collapse expanded', help: 'Chevron shown when card content is open.', styleKey: 'theme-icon-default' },
+    'card-collapse-collapsed': { title: 'Card collapse collapsed', help: 'Chevron shown when card content is collapsed.', styleKey: 'theme-icon-default' },
     'chart-type-area': { title: 'Chart type: Area', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
     'chart-type-bar': { title: 'Chart type: Bar', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
     'chart-type-line': { title: 'Chart type: Line', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
