@@ -755,7 +755,7 @@ const API = '';
           var path = isExit
             ? '<path d="M19 12H5M11 6l-6 6 6 6"></path>'
             : '<path d="M5 12h14M13 6l6 6-6 6"></path>';
-          return '<svg class="' + cls + '" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+          return '<i class="fa-jelly fa-regular fa-circle-check ' + cls + '" aria-hidden="true"></i>';
         }
 
         function line(kind, meta) {
@@ -941,7 +941,7 @@ const API = '';
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
     const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
-    const BOUGHT_OVERLAY_SVG = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="currentColor"></circle><path d="M11.087 14.815v-2.332c0-3.676 2.219-5.983 6.075-5.983 2.932 0 4.57 1.242 5.838 2.84l-2.483 1.9c-.951-1.165-1.85-1.85-3.328-1.85-1.77 0-2.827 1.217-2.827 3.17v2.255h6.578v2.637h-6.578v4.335h8.585V24.5H9v-1.977l2.087-.609v-4.462H9v-2.637z" fill="#ffffff"></path></svg>';
+    const BOUGHT_OVERLAY_SVG = '<i class="fa-jelly fa-regular fa-cart-shopping" aria-hidden="true"></i>';
     const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
     const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
@@ -2244,8 +2244,8 @@ const API = '';
         btn.classList.toggle('is-on', isPinned);
         btn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
         btn.setAttribute('aria-label', isPinned ? 'Hide last sale toast' : 'Show last sale toast');
-        var eyeOn = btn.querySelector('.ti-eye');
-        var eyeOff = btn.querySelector('.ti-eye-off');
+        var eyeOn = btn.querySelector('.fa-eye');
+        var eyeOff = btn.querySelector('.fa-eye-slash');
         if (eyeOn) eyeOn.style.display = isPinned ? 'none' : '';
         if (eyeOff) eyeOff.style.display = isPinned ? '' : 'none';
       });
@@ -3362,9 +3362,9 @@ const API = '';
       var wrap = document.createElement('div');
       wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
       var types = [
-        { type: 'bar', icon: 'ti-chart-bar', label: 'Bar' },
-        { type: 'area', icon: 'ti-chart-area-line', label: 'Area' },
-        { type: 'line', icon: 'ti-chart-line', label: 'Line' }
+        { type: 'bar', icon: 'fa-jelly fa-regular fa-chart-column', label: 'Bar' },
+        { type: 'area', icon: 'fa-jelly fa-regular fa-chart-area', label: 'Area' },
+        { type: 'line', icon: 'fa-jelly fa-regular fa-chart-line', label: 'Line' }
       ];
       types.forEach(function(t) {
         var btn = document.createElement('button');
@@ -3593,8 +3593,8 @@ const API = '';
     function buildPaginationHtml(page, totalPages) {
       var p = Math.max(1, page);
       var tp = Math.max(1, totalPages);
-      var chevL = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg>';
-      var chevR = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>';
+      var chevL = '<i class="fa-jelly fa-regular fa-chevron-left"></i>';
+      var chevR = '<i class="fa-jelly fa-regular fa-chevron-right"></i>';
       var h = '<ul class="pagination m-0">';
       h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">' + chevL + '</a></li>';
       // Build page numbers with ellipsis
@@ -3804,7 +3804,7 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const placeholderSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 12l2.5 2.5L16 9"></path></svg>';
+        const placeholderSvg = '<i class="fa-jelly fa-regular fa-image" aria-hidden="true"></i>';
         const imgInner = '<span class="thumb-wrap">' +
           (thumb
             ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
@@ -3830,7 +3830,7 @@ const API = '';
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"></path><path d="M16 19l2 2 4-4"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-image"></i></span>';
       tbody.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
@@ -3860,7 +3860,7 @@ const API = '';
         if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
         if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
         if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
-        return '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 5.5H19l-4.4 3.2L16.4 16 12 12.8 7.6 16l1.8-5.3L5 7.5h5.2z"></path></svg></span>';
+        return '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-star"></i></span>';
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
@@ -3902,7 +3902,7 @@ const API = '';
       updateCardPagination('breakdown-length', breakdownLengthPage, totalPages);
       var start = (breakdownLengthPage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M6 7v10"></path><path d="M10 7v6"></path><path d="M14 7v6"></path><path d="M18 7v10"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-chart-column"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
@@ -3934,7 +3934,7 @@ const API = '';
       updateCardPagination('breakdown-chainstyle', breakdownChainStylePage, totalPages);
       var start = (breakdownChainStylePage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-link"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -4845,16 +4845,16 @@ const API = '';
 
         if (iconEl) {
           if (dir === 'up') {
-            iconEl.classList.remove('is-hidden', 'ti-trending-down', 'ti-minus');
-            iconEl.classList.add('ti-trending-up');
+            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-down', 'fa-minus');
+            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-arrow-trend-up');
           } else if (dir === 'down') {
-            iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-minus');
-            iconEl.classList.add('ti-trending-down');
+            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-minus');
+            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-arrow-trend-down');
           } else if (dir === 'flat') {
-            iconEl.classList.remove('is-hidden', 'ti-trending-up', 'ti-trending-down');
-            iconEl.classList.add('ti-minus');
+            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-arrow-trend-down');
+            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-minus');
           } else {
-            iconEl.classList.remove('ti-trending-up', 'ti-trending-down', 'ti-minus');
+            iconEl.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
             iconEl.classList.add('is-hidden');
           }
         }
@@ -5098,7 +5098,7 @@ const API = '';
             deltaTextEl.textContent = 'new';
             if (iconEl) {
               iconEl.classList.remove('is-hidden');
-              iconEl.className = 'ti ti-trending-up kexo-topbar-delta-icon';
+              iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-up kexo-topbar-delta-icon';
               iconEl.setAttribute('aria-hidden', 'true');
             }
             return;
@@ -5119,9 +5119,9 @@ const API = '';
         // Only show arrows when movement is meaningful.
         if (iconEl) {
           iconEl.classList.toggle('is-hidden', !up && !down);
-          if (up) iconEl.className = 'ti ti-trending-up kexo-topbar-delta-icon';
-          else if (down) iconEl.className = 'ti ti-trending-down kexo-topbar-delta-icon';
-          else iconEl.className = 'ti ti-minus kexo-topbar-delta-icon';
+          if (up) iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-up kexo-topbar-delta-icon';
+          else if (down) iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-down kexo-topbar-delta-icon';
+          else iconEl.className = 'fa-jelly fa-regular fa-minus kexo-topbar-delta-icon';
           iconEl.setAttribute('aria-hidden', 'true');
         }
       }
@@ -5829,19 +5829,19 @@ const API = '';
       function trafficTypeDeviceIcon(device) {
         var d = (device || '').trim().toLowerCase();
         var s = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-        if (d === 'desktop') return '<svg ' + s + '><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
-        if (d === 'mobile') return '<svg ' + s + '><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>';
-        if (d === 'tablet') return '<svg ' + s + '><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>';
-        return '<svg ' + s + '><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+        if (d === 'desktop') return '<i class="' + s + ' fa-jelly fa-regular fa-desktop"></i>';
+        if (d === 'mobile') return '<i class="' + s + ' fa-jelly fa-regular fa-mobile-screen"></i>';
+        if (d === 'tablet') return '<i class="' + s + ' fa-jelly fa-regular fa-tablet-screen-button"></i>';
+        return '<i class="' + s + ' fa-jelly fa-regular fa-globe"></i>';
       }
 
       function trafficTypePlatformIcon(platform) {
         var p = (platform || '').trim().toLowerCase();
-        if (p === 'ios' || p === 'mac') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>';
-        if (p === 'android') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.27-.86-.31-.16-.69-.04-.86.27l-1.87 3.23C14.83 8.34 13.45 8.01 12 8.01s-2.83.33-4.44.93L5.69 5.71c-.16-.31-.54-.43-.86-.27-.31.16-.43.55-.27.86l1.84 3.18C3.39 11.13 1.43 14.08 1 17.5h22c-.43-3.42-2.39-6.37-5.4-8.02zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>';
-        if (p === 'windows') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.5l8-1.1V12H3zm0 .5h8v6.6l-8-1.1V12.5zm9 0h9V21l-9-1.2V12.5zm0-.5V4l9-1.2V12h-9z"/></svg>';
-        if (p === 'linux') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 2C10 2 8.2 4.1 8.2 6.6c0 1.4.5 2.6.9 3.8.4 1.2.6 2.3.4 3-.5 1.2-2 2-2.4 3.3-.2.7-.1 1.5.5 2.1.7.7 1.6.6 2.2.4.6-.2 1.1-.5 1.7-.5s1.1.3 1.7.5c.6.2 1.5.3 2.2-.4.6-.6.7-1.4.5-2.1-.4-1.3-1.9-2.1-2.4-3.3-.2-.7 0-1.8.4-3 .4-1.2.9-2.4.9-3.8C14.8 4.1 15 2 12.5 2z"/></svg>';
-        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+        if (p === 'ios' || p === 'mac') return '<i class="fa-jelly fa-regular fa-apple"></i>';
+        if (p === 'android') return '<i class="fa-jelly fa-regular fa-android"></i>';
+        if (p === 'windows') return '<i class="fa-jelly fa-regular fa-windows"></i>';
+        if (p === 'linux') return '<i class="fa-jelly fa-regular fa-linux"></i>';
+        return '<i class="fa-jelly fa-regular fa-circle-question"></i>';
       }
 
       (function renderTypeTree() {
@@ -6049,7 +6049,7 @@ const API = '';
       if (!header || header.querySelector('.chart-type-switcher')) return;
       var wrap = document.createElement('div');
       wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
-      [{ type: 'bar', icon: 'ti-chart-bar', label: 'Bar' }, { type: 'area', icon: 'ti-chart-area-line', label: 'Area' }, { type: 'line', icon: 'ti-chart-line', label: 'Line' }].forEach(function(t) {
+      [{ type: 'bar', icon: 'fa-jelly fa-regular fa-chart-column', label: 'Bar' }, { type: 'area', icon: 'fa-jelly fa-regular fa-chart-area', label: 'Area' }, { type: 'line', icon: 'fa-jelly fa-regular fa-chart-line', label: 'Line' }].forEach(function(t) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === channelsChartType ? ' active' : '');
@@ -6526,18 +6526,18 @@ const API = '';
           }
           function icon(name, cls) {
             const map = {
-              shield: 'fa-solid fa-shield-halved',
-              columns: 'fa-solid fa-table-columns',
-              list: 'fa-solid fa-list',
-              bag: 'fa-solid fa-bag-shopping',
-              activity: 'fa-solid fa-wave-square',
-              bar: 'fa-solid fa-chart-column',
-              server: 'fa-solid fa-server',
-              key: 'fa-solid fa-key',
-              link: 'fa-solid fa-link',
-              chev: 'fa-solid fa-chevron-down'
+              shield: 'fa-jelly fa-regular fa-shield-halved',
+              columns: 'fa-jelly fa-regular fa-table-columns',
+              list: 'fa-jelly fa-regular fa-list',
+              bag: 'fa-jelly fa-regular fa-bag-shopping',
+              activity: 'fa-jelly fa-regular fa-wave-square',
+              bar: 'fa-jelly fa-regular fa-chart-column',
+              server: 'fa-jelly fa-regular fa-server',
+              key: 'fa-jelly fa-regular fa-key',
+              link: 'fa-jelly fa-regular fa-link',
+              chev: 'fa-jelly fa-regular fa-chevron-down'
             };
-            const fa = map[name] || 'fa-solid fa-circle';
+            const fa = map[name] || 'fa-jelly fa-regular fa-circle';
             const extra = cls ? (' ' + cls) : '';
             return '<i class="' + fa + extra + '" aria-hidden="true"></i>';
           }
@@ -6997,14 +6997,14 @@ const API = '';
 
           // Font Awesome icons for tabs
           var tabIcons = {
-            sales: '<i class="fa-solid fa-sterling-sign" aria-hidden="true"></i>',
-            compare: '<i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>',
-            traffic: '<i class="fa-solid fa-route" aria-hidden="true"></i>',
-            pixel: '<i class="fa-solid fa-crosshairs" aria-hidden="true"></i>',
-            googleads: '<i class="fa-solid fa-rectangle-ad" aria-hidden="true"></i>',
-            shopify: '<i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>',
-            system: '<i class="fa-solid fa-server" aria-hidden="true"></i>',
-            defs: '<i class="fa-solid fa-book-open" aria-hidden="true"></i>'
+            sales: '<i class="fa-jelly fa-regular fa-sterling-sign" aria-hidden="true"></i>',
+            compare: '<i class="fa-jelly fa-regular fa-scale-balanced" aria-hidden="true"></i>',
+            traffic: '<i class="fa-jelly fa-regular fa-route" aria-hidden="true"></i>',
+            pixel: '<i class="fa-jelly fa-regular fa-crosshairs" aria-hidden="true"></i>',
+            googleads: '<i class="fa-jelly fa-regular fa-rectangle-ad" aria-hidden="true"></i>',
+            shopify: '<i class="fa-jelly fa-regular fa-bag-shopping" aria-hidden="true"></i>',
+            system: '<i class="fa-jelly fa-regular fa-server" aria-hidden="true"></i>',
+            defs: '<i class="fa-jelly fa-regular fa-book-open" aria-hidden="true"></i>'
           };
 
           function diagTab(key, label) {
@@ -8892,8 +8892,8 @@ const API = '';
         if (!header) return;
         if (header.querySelector('.chart-type-switcher')) return;
 
-        var ICON_AREA = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.22 9.375a1 1 0 0 1 1.393 -.165l.094 .083l4 4a1 1 0 0 1 .284 .576l.009 .131v5a1 1 0 0 1 -.883 .993l-.117 .007h-16.022l-.11 -.009l-.11 -.02l-.107 -.034l-.105 -.046l-.1 -.059l-.094 -.07l-.06 -.055l-.072 -.082l-.064 -.089l-.054 -.096l-.016 -.035l-.04 -.103l-.027 -.106l-.015 -.108l-.004 -.11l.009 -.11l.019 -.105c.01 -.04 .022 -.077 .035 -.112l.046 -.105l.059 -.1l4 -6a1 1 0 0 1 1.165 -.39l.114 .05l3.277 1.638l3.495 -4.369z" /><path d="M15.232 3.36a1 1 0 0 1 1.382 -.15l.093 .083l4 4a1 1 0 0 1 -1.32 1.497l-.094 -.083l-3.226 -3.225l-4.299 5.158a1 1 0 0 1 -1.1 .303l-.115 -.049l-3.254 -1.626l-2.499 3.332a1 1 0 0 1 -1.295 .269l-.105 -.069a1 1 0 0 1 -.269 -1.295l.069 -.105l3 -4a1 1 0 0 1 1.137 -.341l.11 .047l3.291 1.645l4.494 -5.391z" /></svg>';
-        var ICON_BAR = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h2a1 1 0 0 1 1 1v18a1 1 0 0 1 -1 1h-2a2 2 0 0 1 -2 -2v-16a2 2 0 0 1 2 -2" /><path d="M9 3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v18a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M18 2h2a2 2 0 0 1 2 2v16a2 2 0 0 1 -2 2h-2a1 1 0 0 1 -1 -1v-18a1 1 0 0 1 1 -1" /></svg>';
+        var ICON_AREA = '<i class="fa-jelly fa-regular fa-chart-area"></i>';
+        var ICON_BAR = '<i class="fa-jelly fa-regular fa-chart-column"></i>';
 
         var wrap = document.createElement('div');
         wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';

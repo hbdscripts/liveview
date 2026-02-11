@@ -196,10 +196,8 @@
 }
 #config-modal .dm-section-summary::-webkit-details-marker { display: none; }
 #config-modal .dm-section-summary::before {
-  content: ''; width: 16px; height: 16px; flex: 0 0 16px;
-  background-color: #94a3b8;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
+  content: '\203A'; width: 16px; height: 16px; flex: 0 0 16px;
+  color: #94a3b8; font-weight: 700; line-height: 16px; text-align: center;
   transition: transform 0.18s ease;
 }
 #config-modal .dm-section-details[open] > .dm-section-summary::before { transform: rotate(90deg); }
@@ -216,10 +214,8 @@
 }
 #config-modal .dm-copy-dropdown-summary::-webkit-details-marker { display: none; }
 #config-modal .dm-copy-dropdown-summary::before {
-  content: ''; width: 14px; height: 14px; flex: 0 0 14px;
-  background-color: #94a3b8;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
+  content: '\203A'; width: 14px; height: 14px; flex: 0 0 14px;
+  color: #94a3b8; font-weight: 700; line-height: 14px; text-align: center;
   transition: transform 0.18s ease;
 }
 #config-modal .dm-copy-dropdown[open] .dm-copy-dropdown-summary::before { transform: rotate(90deg); }
@@ -355,10 +351,8 @@
   cursor: pointer; display: flex; align-items: center; gap: 12px; list-style: none;
 }
 #config-modal .dm-def-details summary::before {
-  content: ''; width: 14px; height: 14px; flex: 0 0 14px; margin-top: 1px;
-  background-color: #94a3b8;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
+  content: '\203A'; width: 14px; height: 14px; flex: 0 0 14px; margin-top: 1px;
+  color: #94a3b8; font-weight: 700; line-height: 14px; text-align: center;
   transition: transform 0.18s ease;
 }
 #config-modal .dm-def-details[open] > summary::before { transform: rotate(90deg); }
@@ -391,10 +385,8 @@
 }
 #config-modal .dm-missing-details summary::-webkit-details-marker { display: none; }
 #config-modal .dm-missing-details summary::before {
-  content: ''; width: 14px; height: 14px; flex: 0 0 14px;
-  background-color: #94a3b8;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") no-repeat center / contain;
+  content: '\203A'; width: 14px; height: 14px; flex: 0 0 14px;
+  color: #94a3b8; font-weight: 700; line-height: 14px; text-align: center;
   transition: transform 0.18s ease;
 }
 #config-modal .dm-missing-details[open] > summary::before { transform: rotate(90deg); }

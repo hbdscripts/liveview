@@ -1273,15 +1273,15 @@ html[data-bs-theme="dark"] .sale-toast-title { color: var(--tblr-body-color, #e2
 html[data-bs-theme="dark"] .sale-toast-close { filter: invert(1); }
 
 /* Sale-toast toggle eye icon states */
-#last-sale-toggle .ti-eye { display: inline; }
-#last-sale-toggle .ti-eye-off { display: none; }
-#last-sale-toggle.is-on .ti-eye { display: none; }
-#last-sale-toggle.is-on .ti-eye-off { display: inline; }
+#last-sale-toggle .fa-eye { display: inline; }
+#last-sale-toggle .fa-eye-slash { display: none; }
+#last-sale-toggle.is-on .fa-eye { display: none; }
+#last-sale-toggle.is-on .fa-eye-slash { display: inline; }
 
 #footer-last-sale-toggle svg { display: inline; }
-#footer-last-sale-toggle .ti-eye-off { display: none; }
+#footer-last-sale-toggle .fa-eye-slash { display: none; }
 #footer-last-sale-toggle.is-on svg { display: none; }
-#footer-last-sale-toggle.is-on .ti-eye-off { display: inline; }
+#footer-last-sale-toggle.is-on .fa-eye-slash { display: inline; }
 
 /* Mute button icon states */
 #audio-mute-btn .sound-icon-off { display: none; }

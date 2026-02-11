@@ -10,7 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
@@ -70,23 +69,23 @@
     <header class="side-panel-header">
       <h3 class="side-panel-title">Session</h3>
       <button type="button" class="side-panel-close" id="side-close" aria-label="Close">
-        <i class="ti ti-x" style="font-size:20px"></i>
+        <i class="fa-jelly fa-regular fa-xmark" style="font-size:20px"></i>
       </button>
     </header>
     <section class="side-panel-section">
-      <h4 class="side-panel-section-title"><i class="ti ti-list side-panel-icon"></i>Activity</h4>
+      <h4 class="side-panel-section-title"><i class="fa-jelly fa-regular fa-list side-panel-icon"></i>Activity</h4>
       <ul class="side-panel-events" id="side-events"></ul>
     </section>
     <section class="side-panel-section">
-      <h4 class="side-panel-section-title"><i class="ti ti-user side-panel-icon"></i>Details</h4>
+      <h4 class="side-panel-section-title"><i class="fa-jelly fa-regular fa-user side-panel-icon"></i>Details</h4>
       <div class="side-panel-meta" id="side-meta"></div>
     </section>
     <section class="side-panel-section">
-      <h4 class="side-panel-section-title"><i class="ti ti-link side-panel-icon"></i>Source</h4>
+      <h4 class="side-panel-section-title"><i class="fa-jelly fa-regular fa-link side-panel-icon"></i>Source</h4>
       <div class="side-panel-source" id="side-source"></div>
     </section>
     <section class="side-panel-section">
-      <h4 class="side-panel-section-title"><i class="ti ti-cloud side-panel-icon"></i>Network</h4>
+      <h4 class="side-panel-section-title"><i class="fa-jelly fa-regular fa-cloud side-panel-icon"></i>Network</h4>
       <div id="side-cf" class="side-panel-cf"></div>
     </section>
   </div>
@@ -102,9 +101,9 @@
         </div>
         <div class="kpi-compare-modal-actions">
           <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh comparison" aria-label="Refresh comparison">
-            <i class="ti ti-refresh"></i><span>Refresh</span>
+            <i class="fa-jelly fa-regular fa-rotate-right"></i><span>Refresh</span>
           </button>
-          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="fa-jelly fa-regular fa-xmark"></i></button>
         </div>
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
@@ -124,7 +123,7 @@
           <label class="form-label">Date Range (max 30 days)</label>
           <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly>
           <div class="text-muted small mt-2">
-            <i class="ti ti-info-circle"></i> Dates without data will be disabled
+            <i class="fa-jelly fa-regular fa-circle-info"></i> Dates without data will be disabled
           </div>
         </div>
         <div class="modal-footer">
@@ -146,10 +145,7 @@
       <div class="sale-toast-amount-wrap">
         <div class="sale-toast-amount" id="sale-toast-amount">&pound;&mdash;</div>
         <div class="sale-toast-time">
-          <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <title>time</title>
-            <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
-          </svg>
+          <i class="fa-jelly fa-regular fa-clock sale-toast-time-icon" aria-hidden="true"></i>
           <span id="sale-toast-time">&mdash;</span>
         </div>
       </div>

@@ -5,7 +5,7 @@
         <div class="kexo-topbar-row d-lg-none">
           <div class="kexo-topbar-slot kexo-topbar-slot-left">
             <button class="btn btn-icon kexo-mobile-menu-btn" type="button" id="kexo-mobile-menu-btn" aria-expanded="false" aria-controls="kexo-mobile-nav" aria-label="Open menu">
-              <i class="ti ti-menu-2" aria-hidden="true"></i>
+              <i class="fa-jelly fa-regular fa-bars" aria-hidden="true"></i>
             </button>
           </div>
 
@@ -18,7 +18,7 @@
           <div class="kexo-topbar-slot kexo-topbar-slot-right">
             <div class="dropdown">
               <button type="button" class="btn btn-icon kexo-mobile-date-btn" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="mobile-date-menu">
-                <i class="ti ti-calendar" aria-hidden="true"></i>
+                <i class="fa-jelly fa-regular fa-calendar-days" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
                 <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
@@ -60,39 +60,39 @@
             </a>
             <ul class="navbar-nav kexo-desktop-nav-list kexo-3color">
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-dashboard-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-dashboard-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M9 3h-4a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2z" /><path d="M9 13h-4a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2z" /><path d="M19 13h-4a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2z" /><path d="M17 3a1 1 0 0 1 .993 .883l.007 .117v2h2a1 1 0 0 1 .117 1.993l-.117 .007h-2v2a1 1 0 0 1 -1.993 .117l-.007 -.117v-2h-2a1 1 0 0 1 -.117 -1.993l.117 -.007h2v-2a1 1 0 0 1 1 -1z" /></svg>Dashboard</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-dashboard-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-dashboard-menu"><i class="fa-jelly fa-regular fa-table-cells-large kexo-nav-svg me-1" aria-hidden="true"></i>Dashboard</a>
                 <div class="dropdown-menu" id="navbar-dashboard-menu">
-                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M12.707 2.293l9 9c.63 .63 .184 1.707 -.707 1.707h-1v6a3 3 0 0 1 -3 3h-1v-7a3 3 0 0 0 -2.824 -2.995l-.176 -.005h-2a3 3 0 0 0 -3 3v7h-1a3 3 0 0 1 -3 -3v-6h-1c-.89 0 -1.337 -1.077 -.707 -1.707l9 -9a1 1 0 0 1 1.414 0m.293 11.707a1 1 0 0 1 1 1v7h-4v-7a1 1 0 0 1 .883 -.993l.117 -.007z" /></svg>Overview</a>
-                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M12 4c4.29 0 7.863 2.429 10.665 7.154l.22 .379l.045 .1l.03 .083l.014 .055l.014 .082l.011 .1v.11l-.014 .111a.992 .992 0 0 1 -.026 .11l-.039 .108l-.036 .075l-.016 .03c-2.764 4.836 -6.3 7.38 -10.555 7.499l-.313 .004c-4.396 0 -8.037 -2.549 -10.868 -7.504a1 1 0 0 1 0 -.992c2.831 -4.955 6.472 -7.504 10.868 -7.504zm0 5a3 3 0 1 0 0 6a3 3 0 0 0 0 -6" /></svg>Live View</a>
-                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M6 2a1 1 0 0 1 .993 .883l.007 .117v1.068l13.071 .935a1 1 0 0 1 .929 1.024l-.01 .114l-1 7a1 1 0 0 1 -.877 .853l-.113 .006h-12v2h10a3 3 0 1 1 -2.995 3.176l-.005 -.176l.005 -.176c.017 -.288 .074 -.564 .166 -.824h-5.342a3 3 0 1 1 -5.824 1.176l-.005 -.176l.005 -.176a3.002 3.002 0 0 1 1.995 -2.654v-12.17h-1a1 1 0 0 1 -.993 -.883l-.007 -.117a1 1 0 0 1 .883 -.993l.117 -.007h2zm0 16a1 1 0 1 0 0 2a1 1 0 0 0 0 -2m11 0a1 1 0 1 0 0 2a1 1 0 0 0 0 -2" /></svg>Recent Sales</a>
-                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M4 11h4a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-2a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-6a1 1 0 0 1 1 -1z" /><path d="M21 12v6a3 3 0 0 1 -2.824 2.995l-.176 .005h-6a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h8a1 1 0 0 1 1 1z" /><path d="M18 3a3 3 0 0 1 2.995 2.824l.005 .176v2a1 1 0 0 1 -1 1h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h6z" /><path d="M9 4v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a3 3 0 0 1 2.824 -2.995l.176 -.005h2a1 1 0 0 1 1 1z" /></svg>Table View</a>
+                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard"><i class="fa-jelly fa-regular fa-house kexo-nav-svg me-2" aria-hidden="true"></i>Overview</a>
+                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/live"><i class="fa-jelly fa-regular fa-satellite-dish kexo-nav-svg me-2" aria-hidden="true"></i>Live View</a>
+                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/sales"><i class="fa-jelly fa-regular fa-cart-shopping kexo-nav-svg me-2" aria-hidden="true"></i>Recent Sales</a>
+                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/date"><i class="fa-jelly fa-regular fa-table kexo-nav-svg me-2" aria-hidden="true"></i>Table View</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-breakdown-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-breakdown-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M9.883 2.207a1.9 1.9 0 0 1 2.087 1.522l.025 .167l.005 .104v7a1 1 0 0 0 .883 .993l.117 .007h6.8a2 2 0 0 1 2 2a1 1 0 0 1 -.026 .226a10 10 0 1 1 -12.27 -11.933l.27 -.067l.11 -.02z" /><path d="M14 3.5v5.5a1 1 0 0 0 1 1h5.5a1 1 0 0 0 .943 -1.332a10 10 0 0 0 -6.11 -6.111a1 1 0 0 0 -1.333 .943z" /></svg>Breakdown</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-breakdown-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-breakdown-menu"><i class="fa-jelly fa-regular fa-chart-pie kexo-nav-svg me-1" aria-hidden="true"></i>Breakdown</a>
                 <div class="dropdown-menu" id="navbar-breakdown-menu">
-                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M11 4a5 5 0 1 1 -4.995 5.217l-.005 -.217l.005 -.217a5 5 0 0 1 4.995 -4.783z" /><path d="M14.133 1.502a1 1 0 0 1 1.365 -.369a9.015 9.015 0 1 1 -10.404 14.622a1 1 0 1 1 1.312 -1.51a7.015 7.015 0 1 0 8.096 -11.378a1 1 0 0 1 -.369 -1.365z" /><path d="M11 16a1 1 0 0 1 .993 .883l.007 .117v4a1 1 0 0 1 -1.993 .117l-.007 -.117v-4a1 1 0 0 1 1 -1z" /><path d="M15 20a1 1 0 0 1 .117 1.993l-.117 .007h-8a1 1 0 0 1 -.117 -1.993l.117 -.007h8z" /></svg>Countries</a>
-                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M6 5.667a3.667 3.667 0 0 1 3.667 -3.667h8.666a3.667 3.667 0 0 1 3.667 3.667v8.666a3.667 3.667 0 0 1 -3.667 3.667h-8.666a3.667 3.667 0 0 1 -3.667 -3.667z" /><path d="M2 9c0 -1.094 .533 -1.828 1.514 -2.374a1 1 0 1 1 .972 1.748c-.398 .221 -.486 .342 -.486 .626v10c0 .548 .452 1 1 1h9.998c.32 0 .618 -.154 .805 -.407l.065 -.1a1 1 0 1 1 1.738 .99a3 3 0 0 1 -2.606 1.517h-10c-1.652 0 -3 -1.348 -3 -3z" /></svg>Products</a>
+                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/countries"><i class="fa-jelly fa-regular fa-globe kexo-nav-svg me-2" aria-hidden="true"></i>Countries</a>
+                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/products"><i class="fa-jelly fa-regular fa-box-open kexo-nav-svg me-2" aria-hidden="true"></i>Products</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-traffic-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-traffic-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M20 18a1 1 0 0 1 .117 1.993l-.117 .007h-16a1 1 0 0 1 -.117 -1.993l.117 -.007h16z" /><path d="M15.22 5.375a1 1 0 0 1 1.393 -.165l.094 .083l4 4a1 1 0 0 1 .284 .576l.009 .131v5a1 1 0 0 1 -.883 .993l-.117 .007h-16.022l-.11 -.009l-.11 -.02l-.107 -.034l-.105 -.046l-.1 -.059l-.094 -.07l-.06 -.055l-.072 -.082l-.064 -.089l-.054 -.096l-.016 -.035l-.04 -.103l-.027 -.106l-.015 -.108l-.004 -.11l.009 -.11l.019 -.105c.01 -.04 .022 -.077 .035 -.112l.046 -.105l.059 -.1l4 -6a1 1 0 0 1 1.165 -.39l.114 .05l3.277 1.638l3.495 -4.369z" /></svg>Traffic</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-traffic-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-traffic-menu"><i class="fa-jelly fa-regular fa-route kexo-nav-svg me-1" aria-hidden="true"></i>Traffic</a>
                 <div class="dropdown-menu" id="navbar-traffic-menu">
-                  <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M18.5 3a2.5 2.5 0 1 1 -.912 4.828l-4.556 4.555a5.475 5.475 0 0 1 .936 3.714l2.624 .787a2.5 2.5 0 1 1 -.575 1.916l-2.623 -.788a5.5 5.5 0 0 1 -10.39 -2.29l-.004 -.222l.004 -.221a5.5 5.5 0 0 1 2.984 -4.673l-.788 -2.624a2.498 2.498 0 0 1 -2.194 -2.304l-.006 -.178l.005 -.164a2.5 2.5 0 1 1 4.111 2.071l.787 2.625a5.475 5.475 0 0 1 3.714 .936l4.555 -4.556a2.487 2.487 0 0 1 -.167 -.748l-.005 -.164l.005 -.164a2.5 2.5 0 0 1 2.495 -2.336z" /></svg>Channels</a>
-                  <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M10 3h-6a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1 -1v-6a1 1 0 0 0 -1 -1z" /><path d="M20 3h-6a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1 -1v-6a1 1 0 0 0 -1 -1z" /><path d="M10 13h-6a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1 -1v-6a1 1 0 0 0 -1 -1z" /><path d="M17 13a4 4 0 1 1 -3.995 4.2l-.005 -.2l.005 -.2a4 4 0 0 1 3.995 -3.8z" /></svg>Type</a>
+                  <a class="dropdown-item" id="nav-tab-channels" data-nav="channels" href="/channels"><i class="fa-jelly fa-regular fa-diagram-project kexo-nav-svg me-2" aria-hidden="true"></i>Channels</a>
+                  <a class="dropdown-item" id="nav-tab-type" data-nav="type" href="/type"><i class="fa-jelly fa-regular fa-table-cells kexo-nav-svg me-2" aria-hidden="true"></i>Type</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-integrations-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-integrations-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M10 2a3 3 0 0 1 2.995 2.824l.005 .176v1h3a2 2 0 0 1 1.995 1.85l.005 .15v3h1a3 3 0 0 1 .176 5.995l-.176 .005h-1v3a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-1a1 1 0 0 0 -1.993 -.117l-.007 .117v1a2 2 0 0 1 -1.85 1.995l-.15 .005h-3a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h1a1 1 0 0 0 .117 -1.993l-.117 -.007h-1a2 2 0 0 1 -1.995 -1.85l-.005 -.15v-3a2 2 0 0 1 1.85 -1.995l.15 -.005h3v-1a3 3 0 0 1 3 -3z" /></svg>Integrations</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-integrations-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-integrations-menu"><i class="fa-jelly fa-regular fa-puzzle-piece kexo-nav-svg me-1" aria-hidden="true"></i>Integrations</a>
                 <div class="dropdown-menu" id="navbar-integrations-menu">
-                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M12 2a9.96 9.96 0 0 1 6.29 2.226a1 1 0 0 1 .04 1.52l-1.51 1.362a1 1 0 0 1 -1.265 .06a6 6 0 1 0 2.103 6.836l.001 -.004h-3.66a1 1 0 0 1 -.992 -.883l-.007 -.117v-2a1 1 0 0 1 1 -1h6.945a1 1 0 0 1 .994 .89c.04 .367 .061 .737 .061 1.11c0 5.523 -4.477 10 -10 10s-10 -4.477 -10 -10s4.477 -10 10 -10z" /></svg>Google Ads</a>
+                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/ads"><i class="fa-jelly fa-regular fa-rectangle-ad kexo-nav-svg me-2" aria-hidden="true"></i>Google Ads</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M3 2a1 1 0 0 1 1 1v17h17a1 1 0 0 1 .993 .883l.007 .117a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-18a1 1 0 0 1 1 -1z" /><path d="M19 4a3 3 0 1 1 -.651 5.93l-2.002 3.202a3 3 0 1 1 -4.927 .337l-1.378 -1.655a3 3 0 1 1 1.538 -1.282l1.378 1.654a2.994 2.994 0 0 1 1.693 -.115l2.002 -3.203a3 3 0 0 1 2.347 -4.868z" /></svg>Tools</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><i class="fa-jelly fa-regular fa-screwdriver-wrench kexo-nav-svg me-1" aria-hidden="true"></i>Tools</a>
                 <div class="dropdown-menu" id="navbar-tools-menu">
-                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-2" aria-hidden="true" focusable="false"><path d="M3 2a1 1 0 0 1 1 1v17h17a1 1 0 0 1 .993 .883l.007 .117a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-18a1 1 0 0 1 1 -1z" /><path d="M19 4a3 3 0 1 1 -.651 5.93l-2.002 3.202a3 3 0 1 1 -4.927 .337l-1.378 -1.655a3 3 0 1 1 1.538 -1.282l1.378 1.654a2.994 2.994 0 0 1 1.693 -.115l2.002 -3.203a3 3 0 0 1 2.347 -4.868z" /></svg>Compare Conv Rate</a>
-                  <a class="dropdown-item" id="nav-tab-settings" data-nav="settings" href="/settings"><i class="ti ti-settings me-2" aria-hidden="true"></i>Settings</a>
+                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools"><i class="fa-jelly fa-regular fa-toolbox kexo-nav-svg me-2" aria-hidden="true"></i>Compare Conv Rate</a>
+                  <a class="dropdown-item" id="nav-tab-settings" data-nav="settings" href="/settings"><i class="fa-jelly fa-regular fa-gear me-2" aria-hidden="true"></i>Settings</a>
                 </div>
               </li>
             </ul>
@@ -100,25 +100,25 @@
           <div class="col-auto kexo-desktop-nav-right">
             <ul class="navbar-nav kexo-desktop-nav-settings">
               <li class="nav-item dropdown kexo-accent-3">
-                <a class="nav-link dropdown-toggle" href="#navbar-settings-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="kexo-nav-svg me-1" aria-hidden="true" focusable="false"><path d="M14.647 4.081a.724 .724 0 0 0 1.08 .448c2.439 -1.485 5.23 1.305 3.745 3.744a.724 .724 0 0 0 .447 1.08c2.775 .673 2.775 4.62 0 5.294a.724 .724 0 0 0 -.448 1.08c1.485 2.439 -1.305 5.23 -3.744 3.745a.724 .724 0 0 0 -1.08 .447c-.673 2.775 -4.62 2.775 -5.294 0a.724 .724 0 0 0 -1.08 -.448c-2.439 1.485 -5.23 -1.305 -3.745 -3.744a.724 .724 0 0 0 -.447 -1.08c-2.775 -.673 -2.775 -4.62 0 -5.294a.724 .724 0 0 0 .448 -1.08c-1.485 -2.439 1.305 -5.23 3.744 -3.745a.722 .722 0 0 0 1.08 -.447c.673 -2.775 4.62 -2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0 -6" /></svg>Settings</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-settings-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu"><i class="fa-jelly fa-regular fa-gear kexo-nav-svg me-1" aria-hidden="true"></i>Settings</a>
                 <div class="dropdown-menu dropdown-menu-end" id="navbar-settings-menu">
                   <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
-                    <i class="ti ti-refresh me-2" aria-hidden="true"></i>Refresh
+                    <i class="fa-jelly fa-regular fa-rotate-right me-2" aria-hidden="true"></i>Refresh
                   </button>
                   <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
-                    <i class="ti ti-volume me-2 sound-icon-on" aria-hidden="true"></i>
-                    <i class="ti ti-volume-off me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
+                    <i class="fa-jelly fa-regular fa-volume-high me-2 sound-icon-on" aria-hidden="true"></i>
+                    <i class="fa-jelly fa-regular fa-volume-xmark me-2 sound-icon-off is-hidden" aria-hidden="true"></i>
                     Sound
                   </button>
                   <a href="/settings" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
-                    <i class="ti ti-palette me-2" aria-hidden="true"></i>Theme
+                    <i class="fa-jelly fa-regular fa-palette me-2" aria-hidden="true"></i>Theme
                   </a>
                   <a href="/settings" class="dropdown-item" id="config-open-btn" aria-label="Settings">
-                    <i class="ti ti-settings me-2" aria-hidden="true"></i>Settings
+                    <i class="fa-jelly fa-regular fa-gear me-2" aria-hidden="true"></i>Settings
                   </a>
                   <div class="dropdown-divider"></div>
                   <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
-                    <i class="ti ti-logout me-2" aria-hidden="true"></i>Sign out
+                    <i class="fa-jelly fa-regular fa-right-from-bracket me-2" aria-hidden="true"></i>Sign out
                   </a>
                 </div>
               </li>
@@ -126,7 +126,7 @@
                 <div class="dropdown kexo-topbar-date">
                   <button type="button" class="kexo-date-btn" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="kexo-date-menu">
                     <span class="kexo-date-btn-label">Today</span>
-                    <i class="ti ti-chevron-down kexo-date-btn-chevron" aria-hidden="true"></i>
+                    <i class="fa-jelly fa-regular fa-chevron-down kexo-date-btn-chevron" aria-hidden="true"></i>
                   </button>
                   <div class="dropdown-menu dropdown-menu-end" id="kexo-date-menu" aria-label="Date ranges">
                     <button class="dropdown-item" type="button" data-range="today">Today</button>
@@ -157,7 +157,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-orders-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -172,7 +172,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-revenue-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -187,7 +187,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-conv-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -202,7 +202,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-sessions-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -217,7 +217,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-returning-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -232,7 +232,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-aov-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -247,7 +247,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-items-sold-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -262,7 +262,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-bounce-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -277,7 +277,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-orders-fulfilled-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>
@@ -292,7 +292,7 @@
                   <div class="me-auto">
                     <span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1" id="cond-kpi-returns-delta">
                       <span class="kexo-kpi-chip-delta-text">&mdash;</span>
-                      <i class="ti ti-trending-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
+                      <i class="fa-jelly fa-regular fa-arrow-trend-up kexo-kpi-chip-delta-icon is-hidden" aria-hidden="true"></i>
                     </span>
                   </div>
                 </div>

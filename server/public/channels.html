@@ -10,7 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
@@ -61,10 +60,10 @@
           <div class="grid-header kexo-grid-header" role="rowgroup">
             <div class="grid-row grid-row--header" role="row">
               <div class="grid-cell sortable" role="columnheader" data-sort="source" aria-sort="none" tabindex="0" aria-label="Source"><span class="th-label-long">Source</span><span class="th-label-short">Src</span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19L19 5M9 7C9 8.10457 8.10457 9 7 9C5.89543 9 5 8.10457 5 7C5 5.89543 5.89543 5 7 5C8.10457 5 9 5.89543 9 7ZM19 17C19 18.1046 18.1046 19 17 19C15.8954 19 15 18.1046 15 17C15 15.8954 15.8954 15 17 15C18.1046 15 19 15.8954 19 17Z"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M29.4819,8.624l-10-5.5a1,1,0,0,0-.9638,0l-10,5.5a1,1,0,0,0,0,1.752L18,15.5913V26.3086l-3.0362-1.6693L14,26.3912l4.5181,2.4848a.9984.9984,0,0,0,.9638,0l10-5.5A1,1,0,0,0,30,22.5V9.5A1,1,0,0,0,29.4819,8.624ZM19,5.1416,26.9248,9.5,19,13.8584,11.0752,9.5Zm9,16.7671-8,4.4V15.5913l8-4.4Z"></path><rect x="2" y="14" width="8" height="2" transform="translate(12 30) rotate(-180)"></rect><rect x="4" y="22" width="8" height="2" transform="translate(16 46) rotate(-180)"></rect><rect x="6" y="18" width="8" height="2" transform="translate(20 38) rotate(-180)"></rect></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"></path></svg></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M192,208a8.00008,8.00008,0,0,1-8,8H56a8,8,0,0,1,0-16,28.03146,28.03146,0,0,0,28-28V140H56a8,8,0,0,1,0-16H84V84a52,52,0,0,1,88.76953-36.76953A8.00018,8.00018,0,0,1,161.45508,58.544,35.99961,35.99961,0,0,0,100,84v40h36a8,8,0,0,1,0,16H100v32a43.79679,43.79679,0,0,1-10.08447,28H184A8.00008,8.00008,0,0,1,192,208Z"></path></svg></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly fa-regular fa-percent" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly fa-regular fa-box-open" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly fa-regular fa-users" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly fa-regular fa-sterling-sign" aria-hidden="true"></i></span></div>
             </div>
           </div>
           <div id="traffic-sources-body" class="grid-body" role="rowgroup">
@@ -87,9 +86,9 @@
         </div>
         <div class="kpi-compare-modal-actions">
           <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh comparison" aria-label="Refresh comparison">
-            <i class="ti ti-refresh"></i><span>Refresh</span>
+            <i class="fa-jelly fa-regular fa-rotate-right"></i><span>Refresh</span>
           </button>
-          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="ti ti-x"></i></button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="fa-jelly fa-regular fa-xmark"></i></button>
         </div>
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
@@ -109,7 +108,7 @@
           <label class="form-label">Date Range (max 30 days)</label>
           <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly>
           <div class="text-muted small mt-2">
-            <i class="ti ti-info-circle"></i> Dates without data will be disabled
+            <i class="fa-jelly fa-regular fa-circle-info"></i> Dates without data will be disabled
           </div>
         </div>
         <div class="modal-footer">
@@ -131,10 +130,7 @@
       <div class="sale-toast-amount-wrap">
         <div class="sale-toast-amount" id="sale-toast-amount">&pound;&mdash;</div>
         <div class="sale-toast-time">
-          <svg class="sale-toast-time-icon" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <title>time</title>
-            <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
-          </svg>
+          <i class="fa-jelly fa-regular fa-clock sale-toast-time-icon" aria-hidden="true"></i>
           <span id="sale-toast-time">&mdash;</span>
         </div>
       </div>

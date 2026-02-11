@@ -533,36 +533,20 @@
   }
 
   function alertTriangleSvg() {
-    return (
-      '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle-filled" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-        '<path d="M12 1.67c.955 0 1.845 .467 2.39 1.247l.105 .16l8.114 13.548a2.914 2.914 0 0 1 -2.307 4.363l-.195 .008h-16.225a2.914 2.914 0 0 1 -2.582 -4.2l.099 -.185l8.11 -13.538a2.914 2.914 0 0 1 2.491 -1.403zm.01 13.33l-.127 .007a1 1 0 0 0 0 1.986l.117 .007l.127 -.007a1 1 0 0 0 0 -1.986l-.117 -.007zm-.01 -7a1 1 0 0 0 -.993 .883l-.007 .117v4l.007 .117a1 1 0 0 0 1.986 0l.007 -.117v-4l-.007 -.117a1 1 0 0 0 -.993 -.883z"></path>' +
-      '</svg>'
-    );
+    return '<i class="fa-jelly fa-regular fa-triangle-exclamation" aria-hidden="true"></i>';
   }
 
   function refreshSvg(extraClass, idAttr) {
-    var cls = 'icon icon-tabler icon-tabler-exchange-filled' + (extraClass ? (' ' + extraClass) : '');
+    var cls = 'fa-jelly fa-regular fa-rotate-right' + (extraClass ? (' ' + extraClass) : '');
     var id = idAttr ? (' id="' + idAttr + '"') : '';
-    return (
-      '<svg xmlns="http://www.w3.org/2000/svg"' + id + ' width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="' + cls + '" aria-hidden="true">' +
-        '<path d="M19 3a3 3 0 0 1 1 5.83v4.17a6 6 0 0 1 -6 6h-.585l1.292 1.293a1 1 0 0 1 .083 1.32l-.083 .094a1 1 0 0 1 -1.414 0l-2.959 -2.959a1 1 0 0 1 -.238 -.32l-.038 -.091l-.028 -.094a.98 .98 0 0 1 .187 -.866l.076 -.084l3 -3a1 1 0 0 1 1.414 1.414l-1.293 1.293h.586a4 4 0 0 0 3.995 -3.8l.005 -.2v-4.171a3 3 0 0 1 -2 -2.829l.005 -.176a3 3 0 0 1 2.995 -2.824m-8.293 -.707l3 3a.98 .98 0 0 1 .263 .95l-.01 .031l-.003 .018l-.008 .018l-.007 .027l-.016 .035l-.01 .032l-.007 .01l-.005 .014a1 1 0 0 1 -.232 .316l-2.965 2.963a1 1 0 0 1 -1.32 .083l-.094 -.083a1 1 0 0 1 0 -1.414l1.291 -1.293h-.584a4 4 0 0 0 -3.995 3.8l-.005 .2v4.171a3.001 3.001 0 1 1 -4 2.829l.005 -.176a3 3 0 0 1 1.995 -2.654v-4.17a6 6 0 0 1 6 -6h.585l-1.292 -1.293a1 1 0 0 1 -.083 -1.32l.083 -.094a1 1 0 0 1 1.414 0"></path>' +
-      '</svg>'
-    );
+    return '<i' + id + ' class="' + cls + '" aria-hidden="true"></i>';
   }
 
   function connectionStatusSvg(isConnected) {
     if (isConnected) {
-      return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icon-tabler-circle-check-filled" aria-hidden="true">' +
-          '<path d="M17 3.34a10 10 0 1 1 -14.995 8.984l-.005 -.324l.005 -.324a10 10 0 0 1 14.995 -8.336zm-1.293 5.953a1 1 0 0 0 -1.32 -.083l-.094 .083l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.403 1.403l.083 .094l2 2l.094 .083a1 1 0 0 0 1.226 0l.094 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z"></path>' +
-        '</svg>'
-      );
+      return '<i class="fa-jelly fa-regular fa-circle-check" aria-hidden="true"></i>';
     }
-    return (
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icon-tabler-circle-x-filled" aria-hidden="true">' +
-        '<path d="M17 3.34a10 10 0 1 1 -14.995 8.984l-.005 -.324l.005 -.324a10 10 0 0 1 14.995 -8.336zm-6.489 5.8a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z"></path>' +
-      '</svg>'
-    );
+    return '<i class="fa-jelly fa-regular fa-circle-xmark" aria-hidden="true"></i>';
   }
 
   function ensureActionsPlacement() {
