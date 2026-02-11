@@ -40,11 +40,21 @@ const API = '';
     });
     const tableRowsCache = {};
 
+    function syncPageBodyLoaderOffset(scope) {
+      try {
+        if (!scope || !scope.classList || !scope.classList.contains('page-body')) return;
+        var rect = scope.getBoundingClientRect ? scope.getBoundingClientRect() : null;
+        var top = rect && Number.isFinite(rect.top) ? Math.max(0, Math.round(rect.top)) : 0;
+        scope.style.setProperty('--kexo-loader-page-top', String(top) + 'px');
+      } catch (_) {}
+    }
+
     (function primePageBodyLoader() {
       if (!PAGE_LOADER_ENABLED[PAGE]) return;
       var pageBody = document.querySelector('.page-body');
       var overlay = document.getElementById('page-body-loader');
       if (!pageBody || !overlay) return;
+      syncPageBodyLoaderOffset(pageBody);
       pageBody.classList.add('report-building');
       overlay.classList.remove('is-hidden');
       var titleEl = overlay.querySelector('.report-build-title');
@@ -6782,8 +6792,14 @@ const API = '';
       if (!state) state = { count: 0, prevMinHeight: '' };
       if (state.count <= 0) {
         state.prevMinHeight = scope.style.minHeight || '';
-        const h = Number(scope.offsetHeight || 0);
-        if (h > 0) scope.style.minHeight = String(Math.ceil(h)) + 'px';
+        if (scope.classList && scope.classList.contains('page-body')) {
+          syncPageBodyLoaderOffset(scope);
+          var topPx = scope.style.getPropertyValue('--kexo-loader-page-top') || '0px';
+          scope.style.minHeight = 'calc(100vh - ' + topPx + ')';
+        } else {
+          const h = Number(scope.offsetHeight || 0);
+          if (h > 0) scope.style.minHeight = String(Math.ceil(h)) + 'px';
+        }
         scope.classList.add('report-building');
       }
       state.count += 1;

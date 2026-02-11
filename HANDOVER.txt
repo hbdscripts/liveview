@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (loader scope fix: page-body-only overlay no longer covers header/menu)
+Last updated: 2026-02-11 (loader center stabilized in page-body to avoid downward jump)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,6 +210,9 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader center stabilization:
+  - `server/public/custom.css` now uses `display:none` gating (instead of `visibility:hidden`) for non-loader page-body children while loading, preventing mid-load center drift from hidden-content height changes.
+  - `server/public/app.js` now computes and applies `--kexo-loader-page-top` on `.page-body` before/when loading starts; page-body min-height uses `calc(100vh - topOffset)` so the loader stays centered in the viewport region under nav and above footer.
 - Loader scope correction:
   - Moved `.page-body` positioning + `.page-body.report-building` content-hide rules into `server/public/custom.css` (the stylesheet loaded by canonical pages), ensuring the loader overlay is truly bounded to page-body and does not cover header/top menu.
 - Loader overlay fill refinement:
