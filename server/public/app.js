@@ -312,6 +312,142 @@ const API = '';
       setTimeout(run, 1800);
     })();
 
+    (function initTableCardCollapse() {
+      var STORAGE_PREFIX = 'kexo:table-collapse:v1';
+      var CARD_SELECTOR = '.card';
+      var TABLE_CONTENT_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .grid-table, table';
+      var HEADER_SELECTOR = '.card-header';
+
+      function getPageScope() {
+        var page = '';
+        try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
+        if (page) return String(page).trim().toLowerCase();
+        var path = '';
+        try { path = (window.location && window.location.pathname) ? String(window.location.pathname) : ''; } catch (_) { path = ''; }
+        path = path.replace(/^\/+/, '').trim().toLowerCase();
+        return path || 'dashboard';
+      }
+
+      function slugify(value) {
+        return String(value == null ? '' : value)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'table-card';
+      }
+
+      function getDirectHeader(card) {
+        if (!card || !card.querySelector) return null;
+        var header = null;
+        try { header = card.querySelector(':scope > .card-header'); } catch (_) { header = null; }
+        if (header) return header;
+        return card.querySelector(HEADER_SELECTOR);
+      }
+
+      function hasTableContent(card) {
+        if (!card || !card.querySelector) return false;
+        return !!card.querySelector(TABLE_CONTENT_SELECTOR);
+      }
+
+      function getCollapseId(card, index) {
+        if (!card || !card.dataset) return 'table-card-' + String(index || 0);
+        if (card.dataset.collapseId) return card.dataset.collapseId;
+        var id = '';
+        if (card.id) id = String(card.id).trim();
+        if (!id) {
+          var titleEl = card.querySelector('.card-header .card-title');
+          var title = titleEl ? String(titleEl.textContent || '').trim() : '';
+          if (title) id = slugify(title);
+        }
+        if (!id) id = 'table-card-' + String(index || 0);
+        card.dataset.collapseId = id;
+        return id;
+      }
+
+      function getStorageKey(card, index) {
+        return STORAGE_PREFIX + ':' + getPageScope() + ':' + getCollapseId(card, index);
+      }
+
+      function setCollapsed(card, button, collapsed, persist, storageKey) {
+        if (!card) return;
+        var isCollapsed = !!collapsed;
+        card.classList.toggle('kexo-card-collapsed', isCollapsed);
+        if (button) {
+          button.classList.toggle('is-collapsed', isCollapsed);
+          button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+          button.setAttribute('aria-label', isCollapsed ? 'Expand table' : 'Collapse table');
+          button.title = isCollapsed ? 'Expand table' : 'Collapse table';
+        }
+        if (persist && storageKey) {
+          try { sessionStorage.setItem(storageKey, isCollapsed ? '1' : '0'); } catch (_) {}
+        }
+      }
+
+      function restoreCollapsed(card, button, storageKey) {
+        var raw = null;
+        try { raw = sessionStorage.getItem(storageKey); } catch (_) { raw = null; }
+        setCollapsed(card, button, raw === '1', false, storageKey);
+      }
+
+      function ensureToggle(card, index) {
+        if (!card || card.getAttribute('data-no-card-collapse') === '1') return;
+        if (!hasTableContent(card)) return;
+        var header = getDirectHeader(card);
+        if (!header) return;
+        var storageKey = getStorageKey(card, index);
+        var btn = header.querySelector('.kexo-card-collapse-toggle');
+        if (!btn) {
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-icon btn-ghost-secondary kexo-card-collapse-toggle';
+          btn.innerHTML = '<span class="kexo-card-collapse-chevron" aria-hidden="true">▾</span>';
+          var actions = null;
+          try { actions = header.querySelector(':scope > .card-actions'); } catch (_) { actions = null; }
+          if (actions && actions.parentElement === header) {
+            header.appendChild(btn);
+          } else {
+            btn.classList.add('ms-auto');
+            header.appendChild(btn);
+          }
+        }
+        if (btn.getAttribute('data-collapse-bound') !== '1') {
+          btn.setAttribute('data-collapse-bound', '1');
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var next = !card.classList.contains('kexo-card-collapsed');
+            setCollapsed(card, btn, next, true, storageKey);
+          });
+        }
+        restoreCollapsed(card, btn, storageKey);
+      }
+
+      function run(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+        var cards = scope.querySelectorAll(CARD_SELECTOR);
+        cards.forEach(function(card, idx) { ensureToggle(card, idx); });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { run(document); });
+      } else {
+        run(document);
+      }
+
+      var observer = new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+          m.addedNodes.forEach(function(n) {
+            if (!(n instanceof Element)) return;
+            run(n);
+          });
+        });
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      try { window.addEventListener('hashchange', function() { setTimeout(function() { run(document); }, 0); }); } catch (_) {}
+      setTimeout(function() { run(document); }, 800);
+      setTimeout(function() { run(document); }, 1800);
+    })();
+
     (function initStickyColumnResize() {
       var page = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
@@ -529,7 +665,7 @@ const API = '';
     let kpisRefreshInFlight = null;
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
-    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0 };
+    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0, sessions: 0, diagnostics: 0, kpiCompare: 0 };
     var _intervals = [];
     var _eventSource = null;
     var _fetchAbortControllers = {};
@@ -6146,28 +6282,124 @@ const API = '';
       return fetch(url, opts).finally(function() { clearTimeout(timer); });
     }
 
+    function defaultReportBuildTitleForKey(key) {
+      const k = key != null ? String(key).trim().toLowerCase() : '';
+      if (k === 'stats') return 'Preparing country report';
+      if (k === 'products') return 'Preparing product report';
+      if (k === 'traffic') {
+        const page = (document.body && document.body.getAttribute('data-page')) || '';
+        if (page === 'channels') return 'Preparing channels report';
+        if (page === 'type') return 'Preparing traffic type report';
+        return 'Preparing traffic report';
+      }
+      if (k === 'sessions') return 'Preparing sessions table';
+      if (k === 'diagnostics') return 'Preparing diagnostics';
+      if (k === 'kpicompare') return 'Preparing KPI comparison';
+      return 'Preparing data';
+    }
+
+    function ensureReportBuildMarkup(overlay, titleText, stepId) {
+      if (!overlay) return { titleEl: null, stepEl: null };
+      let wrap = overlay.querySelector('.report-build-wrap');
+      if (!wrap) {
+        overlay.innerHTML = '';
+        wrap = document.createElement('div');
+        wrap.className = 'report-build-wrap';
+        overlay.appendChild(wrap);
+      }
+      try {
+        wrap.querySelectorAll('.spinner-border').forEach(function(node) {
+          if (node && node.parentNode) node.parentNode.removeChild(node);
+        });
+      } catch (_) {}
+      let spinnerEl = wrap.querySelector('.report-build-spinner');
+      if (!spinnerEl) {
+        spinnerEl = document.createElement('div');
+        spinnerEl.className = 'report-build-spinner';
+        spinnerEl.setAttribute('role', 'status');
+        spinnerEl.setAttribute('aria-label', 'Loading');
+        wrap.insertBefore(spinnerEl, wrap.firstChild);
+      }
+      let titleEl = wrap.querySelector('.report-build-title');
+      if (!titleEl) {
+        titleEl = document.createElement('div');
+        titleEl.className = 'report-build-title';
+        wrap.appendChild(titleEl);
+      }
+      if (titleText != null) titleEl.textContent = String(titleText);
+      let stepEl = null;
+      const sid = stepId ? String(stepId) : '';
+      if (sid) {
+        stepEl = document.getElementById(sid);
+        if (!stepEl) {
+          stepEl = document.createElement('div');
+          stepEl.id = sid;
+          stepEl.className = 'report-build-step';
+          wrap.appendChild(stepEl);
+        }
+      } else {
+        stepEl = wrap.querySelector('.report-build-step');
+        if (!stepEl) {
+          stepEl = document.createElement('div');
+          stepEl.className = 'report-build-step';
+          wrap.appendChild(stepEl);
+        }
+      }
+      try { overlay.setAttribute('aria-live', 'polite'); } catch (_) {}
+      return { titleEl: titleEl, stepEl: stepEl };
+    }
+
+    function resolveReportBuildOverlay(opts, key) {
+      const explicitId = opts.overlayId ? String(opts.overlayId) : '';
+      if (explicitId) {
+        const explicitEl = document.getElementById(explicitId);
+        if (explicitEl) return { overlayId: explicitId, overlayEl: explicitEl };
+      }
+      // Future-page convention: add `data-loader-key="<key>"` on the overlay container
+      // and optionally `data-step-id="<step-element-id>"` to auto-bind shared loader behavior.
+      if (key === 'traffic') {
+        const channelsOverlay = document.getElementById('channels-loading-overlay');
+        if (channelsOverlay) return { overlayId: 'channels-loading-overlay', overlayEl: channelsOverlay };
+        const typeOverlay = document.getElementById('type-loading-overlay');
+        if (typeOverlay) return { overlayId: 'type-loading-overlay', overlayEl: typeOverlay };
+      }
+      const keyed = document.querySelector('[data-loader-key="' + key + '"]');
+      if (keyed && keyed.id) return { overlayId: keyed.id, overlayEl: keyed };
+      return { overlayId: explicitId || '', overlayEl: explicitId ? document.getElementById(explicitId) : null };
+    }
+
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
       if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
-        return { step: function() {}, finish: function() {} };
+        return { step: function() {}, title: function() {}, finish: function() {} };
       }
 
       reportBuildTokens[key] = (reportBuildTokens[key] || 0) + 1;
       const token = reportBuildTokens[key];
-      const overlayId = opts.overlayId ? String(opts.overlayId) : '';
-      const stepId = opts.stepId ? String(opts.stepId) : '';
-      const overlay = overlayId ? document.getElementById(overlayId) : null;
-      const wrap = overlay ? overlay.parentElement : null;
-      const stepEl = stepId ? document.getElementById(stepId) : null;
+      const resolved = resolveReportBuildOverlay(opts, key);
+      const overlay = resolved && resolved.overlayEl ? resolved.overlayEl : null;
+      const wrap = overlay ? (overlay.parentElement || overlay.closest('.card') || null) : null;
+      const stepId = opts.stepId ? String(opts.stepId) : (overlay && overlay.getAttribute('data-step-id') ? String(overlay.getAttribute('data-step-id')) : '');
+      const titleText = opts.title != null ? String(opts.title) : defaultReportBuildTitleForKey(key);
+      const ensured = ensureReportBuildMarkup(overlay, titleText, stepId);
+      const titleEl = ensured.titleEl;
+      const stepEl = ensured.stepEl;
 
       if (wrap) wrap.classList.add('report-building');
       if (overlay) overlay.classList.remove('is-hidden');
-      if (stepEl) stepEl.textContent = '';
+      if (stepEl) stepEl.textContent = opts.initialStep != null ? String(opts.initialStep) : '';
       showPageProgress();
 
-      function step(text) {
+      function title(text) {
         if (reportBuildTokens[key] !== token) return;
+        if (!titleEl) return;
+        titleEl.textContent = text != null ? String(text) : '';
+      }
+
+      function step(text, nextTitle) {
+        if (reportBuildTokens[key] !== token) return;
+        if (typeof nextTitle === 'string') title(nextTitle);
         if (!stepEl) return;
         stepEl.textContent = text != null ? String(text) : '';
       }
@@ -6179,7 +6411,7 @@ const API = '';
         hidePageProgress();
       }
 
-      return { step: step, finish: finish };
+      return { step: step, title: title, finish: finish };
     }
 
     function fetchStatsData(options = {}) {
@@ -6393,15 +6625,19 @@ const API = '';
       const force = !!options.force;
       if (statsRefreshInFlight) return statsRefreshInFlight;
 
-      const build = startReportBuild({ key: 'stats', overlayId: 'stats-loading-overlay', stepId: 'stats-build-step' });
-      build.step('building countries...');
+      const build = startReportBuild({
+        key: 'stats',
+        overlayId: 'stats-loading-overlay',
+        stepId: 'stats-build-step',
+        title: 'Preparing country report',
+      });
+      build.step('Loading country performance data');
       statsRefreshInFlight = fetchStatsData({ force })
         .then(function(data) {
-          build.step('building countries... done');
+          build.step('Analyzing average order value');
           return delay(180).then(function() {
-            build.step('building average order...');
+            build.step('Building country table');
             return delay(120).then(function() {
-              build.step('building average order... done');
               return delay(180).then(function() { return data; });
             });
           });
@@ -6419,7 +6655,12 @@ const API = '';
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) return Promise.resolve(null);
 
-      const build = startReportBuild({ key: 'products', overlayId: 'products-loading-overlay', stepId: 'products-build-step' });
+      const build = startReportBuild({
+        key: 'products',
+        overlayId: 'products-loading-overlay',
+        stepId: 'products-build-step',
+        title: 'Preparing product report',
+      });
       let bestP = null;
       let variantsP = null;
       let leaderboardP = null;
@@ -6446,14 +6687,14 @@ const API = '';
       const variantCardsS = settled(variantCardsP);
 
       productsRefreshInFlight = Promise.resolve()
-        .then(function() { build.step('building best products...'); return bestS; })
-        .then(function() { build.step('building best products... done'); return delay(180); })
-        .then(function() { build.step('building best variants...'); return variantsS; })
-        .then(function() { build.step('building best variants... done'); return delay(180); })
-        .then(function() { build.step('building leaderboard...'); return leaderboardS; })
-        .then(function() { build.step('building leaderboard... done'); return delay(140); })
-        .then(function() { build.step('building variants...'); return variantCardsS; })
-        .then(function() { build.step('building variants... done'); return delay(140); })
+        .then(function() { build.step('Loading best-selling products'); return bestS; })
+        .then(function() { return delay(180); })
+        .then(function() { build.step('Loading top variants'); return variantsS; })
+        .then(function() { return delay(180); })
+        .then(function() { build.step('Analyzing product leaderboard'); return leaderboardS; })
+        .then(function() { return delay(140); })
+        .then(function() { build.step('Building product tables'); return variantCardsS; })
+        .then(function() { return delay(140); })
         .then(function() { lastProductsFetchedAt = Date.now(); })
         .catch(function(err) {
           console.error(err);
@@ -6955,15 +7196,24 @@ const API = '';
       const force = !!options.force;
       if (trafficRefreshInFlight) return trafficRefreshInFlight;
 
-      const build = startReportBuild({ key: 'traffic', overlayId: 'traffic-loading-overlay', stepId: 'traffic-build-step' });
-      build.step('building channels...');
+      const hasChannelsOverlay = !!document.getElementById('channels-loading-overlay');
+      const hasTypeOverlay = !!document.getElementById('type-loading-overlay');
+      const trafficOverlayId = hasChannelsOverlay ? 'channels-loading-overlay' : (hasTypeOverlay ? 'type-loading-overlay' : 'traffic-loading-overlay');
+      const trafficStepId = hasChannelsOverlay ? 'channels-build-step' : (hasTypeOverlay ? 'type-build-step' : 'traffic-build-step');
+      const trafficTitle = hasTypeOverlay ? 'Preparing traffic type report' : (hasChannelsOverlay ? 'Preparing channels report' : 'Preparing traffic report');
+      const build = startReportBuild({
+        key: 'traffic',
+        overlayId: trafficOverlayId,
+        stepId: trafficStepId,
+        title: trafficTitle,
+      });
+      build.step(hasTypeOverlay ? 'Loading traffic type data' : 'Loading channel performance data');
       trafficRefreshInFlight = fetchTrafficData({ force })
         .then(function(data) {
-          build.step('building channels... done');
+          build.step('Analyzing traffic quality');
           return delay(180).then(function() {
-            build.step('building traffic...');
+            build.step('Building traffic table');
             return delay(120).then(function() {
-              build.step('building traffic... done');
               return delay(180).then(function() { return data; });
             });
           });
@@ -7217,10 +7467,13 @@ const API = '';
 
     function fetchSessions() {
       if (liveRefreshInFlight) return liveRefreshInFlight;
-      var overlay = document.getElementById('sessions-loading-overlay');
-      if (overlay) overlay.classList.remove('is-hidden');
-      showPageProgress();
       var isLive = dateRange === 'live';
+      var build = startReportBuild({
+        key: 'sessions',
+        overlayId: 'sessions-loading-overlay',
+        title: isLive ? 'Preparing live sessions' : 'Preparing sessions table',
+      });
+      build.step(isLive ? 'Loading active visitors' : 'Loading selected date range');
       var url;
       if (isLive) {
         url = API + '/api/sessions?filter=active&_=' + Date.now();
@@ -7235,6 +7488,7 @@ const API = '';
       liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: ac ? ac.signal : undefined })
         .then(function(r) {
           if (!r.ok) {
+            build.step('Could not load sessions');
             sessionsLoadError = r.status === 502 ? 'Server error (502). Try again or refresh.' : 'Server error (' + r.status + ').';
             sessions = [];
             sessionsTotal = null;
@@ -7246,6 +7500,7 @@ const API = '';
         .then(function(data) {
           if (data == null) return null;
           sessionsLoadError = null;
+          build.step('Analyzing session activity');
           if (isLive) {
             sessionsTotal = null;
             var next = data.sessions || [];
@@ -7269,17 +7524,26 @@ const API = '';
           else if (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h') nextRangeAt = Date.now() + RANGE_REFRESH_MS;
           lastUpdateTime = new Date();
           updateServerTimeDisplay();
+          build.step('Building sessions table');
           renderTable();
           updateKpis();
           try { refreshSessionPageCharts({ force: isLive }); } catch (_) {}
           return sessions;
         })
-        .catch(function(err) { if (err && err.name === 'AbortError') return null; sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
+        .catch(function(err) {
+          if (err && err.name === 'AbortError') return null;
+          build.step('Could not load sessions');
+          sessionsLoadError = 'Could not load sessions. Check connection or refresh.';
+          sessions = [];
+          sessionsTotal = null;
+          currentPage = 1;
+          renderTable();
+          return null;
+        })
         .finally(function() {
           liveRefreshInFlight = null;
           if (_fetchAbortControllers.sessions === ac) _fetchAbortControllers.sessions = null;
-          if (overlay) overlay.classList.add('is-hidden');
-          hidePageProgress();
+          build.finish();
         });
       return liveRefreshInFlight;
     }
@@ -7538,13 +7802,21 @@ const API = '';
       const compareUpdatedEl = document.getElementById('kpi-compare-updated');
       const compareKickerEl = document.getElementById('kpi-compare-kicker');
       const compareOpen = !!(compareModalEl && compareModalEl.classList.contains('open'));
+      let diagnosticsStepEl = null;
+      let compareStepEl = null;
       const preserveView = !!(options && options.preserveView);
       const modalCardEl = null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
       if (configStatusEl && !preserveView) {
         configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
+        diagnosticsStepEl = configStatusEl.querySelector('.report-build-step');
+        if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Connecting to diagnostics services';
       }
-      if (compareOpen && compareStatusEl) compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
+      if (compareOpen && compareStatusEl) {
+        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
+        compareStepEl = compareStatusEl.querySelector('.report-build-step');
+        if (compareStepEl) compareStepEl.textContent = 'Loading KPI sources';
+      }
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
@@ -7554,6 +7826,8 @@ const API = '';
           return r.json();
         })
         .then(c => {
+          if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Analyzing diagnostics payload';
+          if (compareStepEl) compareStepEl.textContent = 'Comparing KPI values';
           function code(value) { return '<code>' + escapeHtml(value == null ? '' : String(value)) + '</code>'; }
           function pill(text, tone) {
             const t = (tone === 'bad' || tone === 'warn') ? tone : 'ok';
@@ -8429,6 +8703,7 @@ const API = '';
           html += '</div>'; // be-diag-root
 
           const targetEl = document.getElementById('diagnostics-content');
+          if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Building diagnostics panel';
           if (targetEl) targetEl.innerHTML = html;
 
           // ── Wire up tab switching ──
@@ -8603,6 +8878,7 @@ const API = '';
 
               cmpHtml += '</div>';
 
+              if (compareStepEl) compareStepEl.textContent = 'Building comparison view';
               compareStatusEl.innerHTML = cmpHtml;
             }
           } catch (_) {}
@@ -9973,6 +10249,8 @@ const API = '';
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
           var t = type === 'bar' ? 'bar' : (type === 'line' ? 'line' : 'area');
+          // Keep KPI background sparklines on the sharper/jagged style the UI expects.
+          var sparkCurve = 'straight';
 
           var nums = dataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
@@ -10012,7 +10290,7 @@ const API = '';
           var chart = new ApexCharts(sparkEl, {
             chart: { type: t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: nums }],
-            stroke: { width: t === 'bar' ? 0 : 2.3, curve: 'smooth' },
+            stroke: { width: t === 'bar' ? 0 : 2.3, curve: sparkCurve },
             fill: fillCfg,
             plotOptions: t === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             colors: [color],

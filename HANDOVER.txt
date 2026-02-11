@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (charts + sticky regressions: dashboard/channels/type/ads/products/countries)
+Last updated: 2026-02-11 (global loaders + table collapse persistence + KPI sparkline consistency)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,19 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Global report/table loaders:
+  - `server/public/app.js` now auto-upgrades loader overlays to a shared centered loader card (`report-build-spinner` + title + live step text) via `startReportBuild`, with page-aware defaults and a future-page contract using `data-loader-key`/`data-step-id`.
+  - Traffic loader target mismatch fixed: `refreshTraffic()` now resolves `channels/type` overlay IDs correctly instead of relying on non-existent `traffic-loading-overlay`.
+  - Session table refresh now uses shared staged loader messaging (`Preparing live sessions` / `Preparing sessions table` + active step updates).
+  - Diagnostics + KPI compare loading states now update step copy while waiting/building.
+- Ads loader stages:
+  - `server/public/ads.js` loading flow now uses staged progress text for actual phases: Connecting to Google → Importing campaigns → Loading campaign data → Analyzing spend → Building profit table.
+- Table collapse UX (session-persisted):
+  - `server/public/app.js` auto-initializes collapse toggles on cards that contain table content (`.table-scroll-wrap`, `.country-table-wrap`, `.table-responsive`, grid/table elements).
+  - Right-side chevron in card headers toggles collapse and persists per page/card in `sessionStorage` (`kexo:table-collapse:v1:<page>:<cardId>`).
+  - Shared collapse styles live in `server/public/custom.css` (`.kexo-card-collapse-toggle`, `.kexo-card-collapsed`).
+- Dashboard KPI sparkline consistency:
+  - Dashboard KPI background sparklines now lock to a straight/jagged stroke curve in `renderSparkline` so resize/reflow redraws do not revert to the smoother curve unexpectedly.
 - Dashboard KPI cards:
   - KPI card sparklines now use the same current-vs-compare values shown in-card (previous-period compare), so sparkline direction/tone matches the compare row.
   - Flat-zero guard: when current and compare are both zero, sparklines stay flat/neutral (no synthetic slope bump).

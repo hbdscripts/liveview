@@ -37,6 +37,32 @@ html, body {
   opacity: 0.9;
 }
 
+.kexo-card-collapse-toggle {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kexo-card-collapse-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.kexo-card-collapse-toggle.is-collapsed .kexo-card-collapse-chevron {
+  transform: rotate(-90deg);
+}
+
+.card.kexo-card-collapsed > :not(.card-header) {
+  display: none !important;
+}
+
 /* ── KEXO 3-color logic (reusable) ─────────────────────────────────── */
 /* Usage:
    - Apply `kexo-3color` to a container.
@@ -58,6 +84,12 @@ html, body {
 .country-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.card,
+.stats-row-wrap,
+.sessions-table-wrap {
+  position: relative;
 }
 
 /* Sessions table: fixed layout so header and body columns stay aligned when scrolling */
@@ -682,9 +714,36 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   transition: width 0.5s ease;
 }
 
-/* Hide spinner icons in report/modal contexts (KPI card spinners remain visible) */
-.report-build-wrap .spinner-border,
-.dm-loading-spinner .spinner-border,
+/* Unified report/page loaders (content-centered, not viewport-centered) */
+.table-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border-radius: var(--tblr-border-radius, .75rem);
+  background: rgba(255, 255, 255, 0.84);
+  z-index: 8;
+}
+
+.report-loading-overlay,
+.stats-loading-overlay,
+.sessions-loading-overlay {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+html[data-bs-theme="dark"] .table-loading-overlay {
+  background: rgba(26, 34, 52, 0.84);
+}
+
+html[data-bs-theme="dark"] .report-loading-overlay,
+html[data-bs-theme="dark"] .stats-loading-overlay,
+html[data-bs-theme="dark"] .sessions-loading-overlay {
+  background: rgba(26, 34, 52, 0.9);
+}
+
+/* Hide direct old spinner fallback used by legacy table overlays. */
 .table-loading-overlay > .spinner-border {
   display: none !important;
 }
@@ -693,20 +752,60 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 2rem;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  padding: 0.95rem 1rem;
+  min-width: 220px;
+  max-width: min(92vw, 420px);
+  border-radius: 12px;
+  border: 1px solid var(--tblr-border-color, #dfe3ea);
+  background: var(--tblr-bg-surface, #fff);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+html[data-bs-theme="dark"] .report-build-wrap {
+  background: rgba(22, 30, 47, 0.96);
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+}
+
+.report-build-spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #4592e9, #32bdb0, #fa9f2e, #4592e9);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+  animation: kexoLoaderSpin 0.9s linear infinite;
+}
+
+@keyframes kexoLoaderSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .report-build-title {
+  font-size: .92rem;
   font-weight: 600;
-  color: var(--tblr-body-color);
-  display: none;
+  color: var(--tblr-body-color, #1f2937);
+  line-height: 1.2;
+  display: block;
 }
 
 .report-build-step {
-  font-size: .875rem;
-  color: var(--tblr-secondary);
-  display: none;
+  font-size: .82rem;
+  color: var(--tblr-secondary, #64748b);
+  min-height: 1.2em;
+  display: block;
+}
+
+.ads-loading-wrap {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
 }
 
 /* Config/settings modal */

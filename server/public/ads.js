@@ -516,6 +516,8 @@
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +
       '.ads-campaign-row:hover{background:rgba(13,148,136,0.04);}' +
       '.ads-loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;padding:32px 12px;gap:12px;text-align:center;}' +
+      '.ads-loader-spinner{width:30px;height:30px;border-radius:50%;background:conic-gradient(from 0deg,#4592e9,#32bdb0,#fa9f2e,#4592e9);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px));animation:adsLoaderSpin .9s linear infinite;}' +
+      '@keyframes adsLoaderSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
       '.ads-refresh-mini{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(0,0,0,0.04);color:var(--muted,#555);}' +
       'html[data-bs-theme="dark"] .ads-refresh-mini{background:rgba(255,255,255,0.06);}' +
       '@keyframes adsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
@@ -555,7 +557,7 @@
   var _lastErrors = [];
   var _lastErrorsPayload = null;
 
-  function renderLoading(root, label) {
+  function renderLoading(root, title, step) {
     if (!root) return;
     ensureModalCss();
     try {
@@ -568,9 +570,20 @@
     } catch (_) {}
     root.innerHTML =
       '<div class="ads-loading-wrap">' +
-        '<div class="spinner-border text-primary" role="status" aria-label="Loading"></div>' +
-        '<div class="muted">' + esc(label || 'Loading…') + '</div>' +
+        '<div class="report-build-wrap">' +
+          '<div class="ads-loader-spinner" role="status" aria-label="Loading"></div>' +
+          '<div class="report-build-title" data-ads-loader-title>' + esc(title || 'Preparing ads') + '</div>' +
+          '<div class="report-build-step" data-ads-loader-step>' + esc(step || '') + '</div>' +
+        '</div>' +
       '</div>';
+  }
+
+  function setLoadingStep(root, step, title) {
+    if (!root || !root.querySelector) return;
+    var stepEl = root.querySelector('[data-ads-loader-step]');
+    var titleEl = root.querySelector('[data-ads-loader-title]');
+    if (titleEl && title != null) patchText(titleEl, String(title));
+    if (stepEl && step != null) patchText(stepEl, String(step));
   }
 
   function renderLoadError(root, msg) {
@@ -994,35 +1007,42 @@
       if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
       if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
-      renderLoading(root, 'Loading…');
+      renderLoading(root, 'Preparing Google Ads', 'Connecting to Google');
     } else {
       applyRefreshingUi(true, isForce);
     }
 
-    var p = Promise.all([
-      fetchJson('/api/ads/status'),
-      fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : '')),
-    ]).then(function (arr) {
-      var status = arr && arr[0] ? arr[0] : null;
-      var summary = arr && arr[1] ? arr[1] : null;
+    var p = fetchJson('/api/ads/status')
+      .then(function(status) {
+        if (!_lastSummary) setLoadingStep(root, 'Importing campaigns');
+        return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : ''))
+          .then(function(summary) { return { status: status, summary: summary }; });
+      })
+      .then(function (arr) {
+      var status = arr && arr.status ? arr.status : null;
+      var summary = arr && arr.summary ? arr.summary : null;
       if (!status || !summary) _lastFetchError = 'Failed to load ads data (status/summary).';
       if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
       else _lastRangeKey = rangeKey;
       if (summary) _lastFetchedAt = Date.now();
+      if (!_lastSummary) setLoadingStep(root, 'Loading campaign data');
 
       applyRefreshingUi(false, false);
       var nextStatus = status || _lastStatus;
       var nextSummary = summary || _lastSummary;
+      if (!_lastSummary) setLoadingStep(root, 'Analyzing spend');
 
       var didPatch = false;
       if (nextSummary && _lastSummary) {
         try {
+          if (!_lastSummary) setLoadingStep(root, 'Analyzing spend');
           didPatch = patchSpendProfitRoas(root, nextSummary);
           patchFooterAndNote(nextStatus, nextSummary);
         } catch (_) { didPatch = false; }
       }
 
       if (!didPatch) {
+        if (!_lastSummary) setLoadingStep(root, 'Building profit table');
         render(root, nextStatus, nextSummary, undefined);
       } else {
         _lastStatus = nextStatus;
@@ -1038,6 +1058,7 @@
         try { patchFooterAndNote(_lastStatus, _lastSummary); } catch (_) {}
         try { renderAdsOverviewChart(_lastSummary); } catch (_) {}
       } else {
+        setLoadingStep(root, 'Could not load ads');
         if (actions) actions.style.display = 'none';
         if (footer) footer.style.display = 'none';
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
