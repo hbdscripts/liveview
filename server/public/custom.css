@@ -1,5 +1,9 @@
 /* Minimal custom styles - Tabler-compatible */
 
+.gap-3 {
+  gap: 0.5rem !important;
+}
+
 /* Remove outer browser gap site-wide */
 html, body {
   margin: 0;
@@ -334,9 +338,7 @@ body:not([data-page="settings"]) .table-responsive table thead th:first-child {
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   box-shadow:
-    inset -1px 0 0 rgba(15, 23, 42, 0.20),
-    0 0 0 1px rgba(15, 23, 42, 0.06),
-    16px 0 20px -16px rgba(15, 23, 42, 0.72);
+    6px 0 16px -4px rgba(15, 23, 42, 0.22);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
@@ -351,9 +353,7 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   background: var(--tblr-bg-surface, #fff) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   box-shadow:
-    inset -1px 0 0 rgba(15, 23, 42, 0.16),
-    0 0 0 1px rgba(15, 23, 42, 0.05),
-    16px 0 20px -16px rgba(15, 23, 42, 0.58);
+    6px 0 16px -4px rgba(15, 23, 42, 0.2);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child,
@@ -460,6 +460,7 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   width: 124px !important;
   min-width: 124px !important;
   max-width: 124px !important;
+  text-align: center !important;
 }
 .table-scroll-wrap.is-drag-scroll,
 .country-table-wrap.is-drag-scroll,
