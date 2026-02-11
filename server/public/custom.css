@@ -1192,14 +1192,14 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-kpi-chip-sparkline {
   position: absolute;
-  top: 0;
+  top: -5px;
   right: 6px;
   left: auto;
   bottom: auto;
   width: clamp(36px, calc(var(--kexo-kpi-width) * 0.3), 45px);
   height: 30px;
   z-index: 0;
-  opacity: 0.48;
+  opacity: 0.72;
   pointer-events: none;
 }
 .kexo-kpi-chip > .subheader,
