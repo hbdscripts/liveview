@@ -11224,9 +11224,9 @@ const API = '';
             var revPrev = p && typeof p.revenuePrev === 'number' ? p.revenuePrev : 0;
             var ordNow = p && typeof p.ordersNow === 'number' ? p.ordersNow : 0;
             var ordPrev = p && typeof p.ordersPrev === 'number' ? p.ordersPrev : 0;
-            var revCell = '<div class="text-end">' + deltaText(p) + '<div class="text-muted small">' + fmtGbp(revNow) + ' vs ' + fmtGbp(revPrev) + '</div></div>';
-            var ordCell = '<div class="text-end">' + deltaOrdersText(p) + '<div class="text-muted small">' + String(ordNow) + ' vs ' + String(ordPrev) + '</div></div>';
-            return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(title) + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td></tr>';
+            var revCell = '<div>' + deltaText(p) + '<div class="text-muted small">' + fmtGbp(revNow) + ' vs ' + fmtGbp(revPrev) + '</div></div>';
+            var ordCell = '<div>' + deltaOrdersText(p) + '<div class="text-muted small">' + String(ordNow) + ' vs ' + String(ordPrev) + '</div></div>';
+            return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(title) + '</span></td><td>' + revCell + '</td><td>' + ordCell + '</td></tr>';
           }).join('');
         }
 
