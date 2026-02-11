@@ -1,6 +1,17 @@
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
+    const PAGE_LOADER_ENABLED = Object.freeze({
+      dashboard: true,
+      live: true,
+      sales: true,
+      date: true,
+      countries: true,
+      products: true,
+      channels: true,
+      type: true,
+      ads: true,
+    });
     const TABLE_CLASS_CONFIG = Object.freeze({
       dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
       product: Object.freeze({ defaultRows: 10, rowOptions: Object.freeze([10, 15, 20]) }),
@@ -28,6 +39,19 @@ const API = '';
       'ads-root': 'live',
     });
     const tableRowsCache = {};
+
+    (function primePageBodyLoader() {
+      if (!PAGE_LOADER_ENABLED[PAGE]) return;
+      var pageBody = document.querySelector('.page-body');
+      var overlay = document.getElementById('page-body-loader');
+      if (!pageBody || !overlay) return;
+      pageBody.classList.add('report-building');
+      overlay.classList.remove('is-hidden');
+      var titleEl = overlay.querySelector('.report-build-title');
+      var stepEl = document.getElementById('page-body-build-step') || overlay.querySelector('.report-build-step');
+      if (titleEl && !String(titleEl.textContent || '').trim()) titleEl.textContent = 'Preparing application';
+      if (stepEl && !String(stepEl.textContent || '').trim()) stepEl.textContent = 'Loading data';
+    })();
 
     function normalizeTableClass(classKey) {
       var key = String(classKey == null ? '' : classKey).trim().toLowerCase();
@@ -137,28 +161,11 @@ const API = '';
       _progressBarEl = _progressEl.querySelector('.page-progress-bar');
     }
     function showPageProgress() {
-      _ensureProgress();
-      _progressActive++;
-      if (_progressHideTimer) { clearTimeout(_progressHideTimer); _progressHideTimer = null; }
-      _progressBarEl.style.transition = 'none';
-      _progressBarEl.style.width = '0%';
-      _progressEl.classList.add('active');
-      requestAnimationFrame(function() {
-        _progressBarEl.style.transition = 'width 8s cubic-bezier(0.1, 0.05, 0, 1)';
-        _progressBarEl.style.width = '85%';
-      });
+      // Single-loader contract: do not show a separate top progress bar.
+      return;
     }
     function hidePageProgress() {
-      _ensureProgress();
-      _progressActive = Math.max(0, _progressActive - 1);
-      if (_progressActive > 0) return;
-      _progressBarEl.style.transition = 'width 0.2s ease';
-      _progressBarEl.style.width = '100%';
-      _progressHideTimer = setTimeout(function() {
-        _progressEl.classList.remove('active');
-        _progressBarEl.style.width = '0%';
-        _progressHideTimer = null;
-      }, 300);
+      return;
     }
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
@@ -948,7 +955,7 @@ const API = '';
     let kpisRefreshRangeKey = '';
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
-    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0, sessions: 0, diagnostics: 0, kpiCompare: 0 };
+    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0, sessions: 0, diagnostics: 0, kpiCompare: 0, dashboard: 0 };
     var _intervals = [];
     var _eventSource = null;
     var _fetchAbortControllers = {};
@@ -6667,6 +6674,7 @@ const API = '';
       const k = key != null ? String(key).trim().toLowerCase() : '';
       if (k === 'stats') return 'Preparing country report';
       if (k === 'products') return 'Preparing product report';
+      if (k === 'dashboard') return 'Preparing dashboard overview';
       if (k === 'traffic') {
         const page = (document.body && document.body.getAttribute('data-page')) || '';
         if (page === 'channels') return 'Preparing channels report';
@@ -6683,28 +6691,30 @@ const API = '';
       if (!overlay) return { titleEl: null, stepEl: null };
       let wrap = overlay.querySelector('.report-build-wrap');
       if (!wrap) {
-        overlay.innerHTML = '';
-        wrap = document.createElement('div');
-        wrap.className = 'report-build-wrap';
-        overlay.appendChild(wrap);
+        overlay.innerHTML = '' +
+          '<div class="container container-slim py-4 report-build-wrap">' +
+            '<div class="text-center">' +
+              '<div class="mb-3">' +
+                '<a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">' +
+                  '<img src="/assets/footer.png" height="36" alt="Kexo">' +
+                '</a>' +
+              '</div>' +
+              '<div class="text-secondary mb-2 report-build-title">Preparing application</div>' +
+              '<div class="text-secondary small mb-3 report-build-step">&mdash;</div>' +
+              '<div class="progress progress-sm page-loader-progress"><div class="progress-bar progress-bar-indeterminate"></div></div>' +
+            '</div>' +
+          '</div>';
+        wrap = overlay.querySelector('.report-build-wrap');
       }
       try {
-        wrap.querySelectorAll('.spinner-border').forEach(function(node) {
+        wrap.querySelectorAll('.spinner-border, .report-build-spinner, .ads-loader-spinner').forEach(function(node) {
           if (node && node.parentNode) node.parentNode.removeChild(node);
         });
       } catch (_) {}
-      let spinnerEl = wrap.querySelector('.report-build-spinner');
-      if (!spinnerEl) {
-        spinnerEl = document.createElement('div');
-        spinnerEl.className = 'report-build-spinner';
-        spinnerEl.setAttribute('role', 'status');
-        spinnerEl.setAttribute('aria-label', 'Loading');
-        wrap.insertBefore(spinnerEl, wrap.firstChild);
-      }
       let titleEl = wrap.querySelector('.report-build-title');
       if (!titleEl) {
         titleEl = document.createElement('div');
-        titleEl.className = 'report-build-title';
+        titleEl.className = 'text-secondary mb-2 report-build-title';
         wrap.appendChild(titleEl);
       }
       if (titleText != null) titleEl.textContent = String(titleText);
@@ -6722,27 +6732,28 @@ const API = '';
         stepEl = wrap.querySelector('.report-build-step');
         if (!stepEl) {
           stepEl = document.createElement('div');
-          stepEl.className = 'report-build-step';
+          stepEl.className = 'text-secondary small mb-3 report-build-step';
           wrap.appendChild(stepEl);
         }
+      }
+      let progressEl = wrap.querySelector('.page-loader-progress');
+      if (!progressEl) {
+        progressEl = document.createElement('div');
+        progressEl.className = 'progress progress-sm page-loader-progress';
+        progressEl.innerHTML = '<div class="progress-bar progress-bar-indeterminate"></div>';
+        wrap.appendChild(progressEl);
       }
       try { overlay.setAttribute('aria-live', 'polite'); } catch (_) {}
       return { titleEl: titleEl, stepEl: stepEl };
     }
 
     function resolveReportBuildOverlay(opts, key) {
+      const sharedOverlay = document.getElementById('page-body-loader');
+      if (sharedOverlay) return { overlayId: 'page-body-loader', overlayEl: sharedOverlay };
       const explicitId = opts.overlayId ? String(opts.overlayId) : '';
       if (explicitId) {
         const explicitEl = document.getElementById(explicitId);
         if (explicitEl) return { overlayId: explicitId, overlayEl: explicitEl };
-      }
-      // Future-page convention: add `data-loader-key="<key>"` on the overlay container
-      // and optionally `data-step-id="<step-element-id>"` to auto-bind shared loader behavior.
-      if (key === 'traffic') {
-        const channelsOverlay = document.getElementById('channels-loading-overlay');
-        if (channelsOverlay) return { overlayId: 'channels-loading-overlay', overlayEl: channelsOverlay };
-        const typeOverlay = document.getElementById('type-loading-overlay');
-        if (typeOverlay) return { overlayId: 'type-loading-overlay', overlayEl: typeOverlay };
       }
       const keyed = document.querySelector('[data-loader-key="' + key + '"]');
       if (keyed && keyed.id) return { overlayId: keyed.id, overlayEl: keyed };
@@ -6750,6 +6761,8 @@ const API = '';
     }
 
     function resolveReportBuildScope(opts, overlay) {
+      const pageBody = document.querySelector('.page-body');
+      if (pageBody) return pageBody;
       if (opts && opts.scopeEl && opts.scopeEl instanceof Element) return opts.scopeEl;
       const scopeId = opts && opts.scopeId ? String(opts.scopeId) : '';
       if (scopeId) {
@@ -6817,7 +6830,7 @@ const API = '';
         overlayOrigin = { parent: overlay.parentElement, next: overlay.nextSibling };
         try { scope.insertBefore(overlay, scope.firstChild); } catch (_) {}
       }
-      const stepId = opts.stepId ? String(opts.stepId) : (overlay && overlay.getAttribute('data-step-id') ? String(overlay.getAttribute('data-step-id')) : '');
+      const stepId = overlay && overlay.getAttribute('data-step-id') ? String(overlay.getAttribute('data-step-id')) : '';
       const titleText = opts.title != null ? String(opts.title) : defaultReportBuildTitleForKey(key);
       const ensured = ensureReportBuildMarkup(overlay, titleText, stepId);
       const titleEl = ensured.titleEl;
@@ -7669,18 +7682,13 @@ const API = '';
       const force = !!options.force;
       if (trafficRefreshInFlight) return trafficRefreshInFlight;
 
-      const hasChannelsOverlay = !!document.getElementById('channels-loading-overlay');
-      const hasTypeOverlay = !!document.getElementById('type-loading-overlay');
-      const trafficOverlayId = hasChannelsOverlay ? 'channels-loading-overlay' : (hasTypeOverlay ? 'type-loading-overlay' : 'traffic-loading-overlay');
-      const trafficStepId = hasChannelsOverlay ? 'channels-build-step' : (hasTypeOverlay ? 'type-build-step' : 'traffic-build-step');
-      const trafficTitle = hasTypeOverlay ? 'Preparing traffic type report' : (hasChannelsOverlay ? 'Preparing channels report' : 'Preparing traffic report');
+      const isTypePage = PAGE === 'type';
+      const trafficTitle = isTypePage ? 'Preparing traffic type report' : 'Preparing channels report';
       const build = startReportBuild({
         key: 'traffic',
-        overlayId: trafficOverlayId,
-        stepId: trafficStepId,
         title: trafficTitle,
       });
-      build.step(hasTypeOverlay ? 'Loading traffic type data' : 'Loading channel performance data');
+      build.step(isTypePage ? 'Loading traffic type data' : 'Loading channel performance data');
       trafficRefreshInFlight = fetchTrafficData({ force })
         .then(function(data) {
           build.step('Analyzing traffic quality');
@@ -11220,13 +11228,18 @@ const API = '';
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
         dashLoading = true;
-        showPageProgress();
+        var build = startReportBuild({
+          key: 'dashboard',
+          title: 'Preparing dashboard overview',
+          initialStep: 'Loading dashboard data',
+        });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
             dashLoading = false;
             if (data) {
+              build.step('Rendering dashboard panels');
               dashCache = data;
               dashLastRangeKey = rangeKey;
               renderDashboard(data);
@@ -11234,10 +11247,11 @@ const API = '';
           })
           .catch(function(err) {
             dashLoading = false;
+            build.step('Dashboard data unavailable');
             console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
-            hidePageProgress();
+            build.finish();
           });
       }
 

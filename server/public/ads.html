@@ -31,23 +31,6 @@
             </div>
           </div>
 <div id="tab-panel-ads" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-ads">
-  <div class="table-loading-overlay report-loading-overlay is-hidden" id="ads-loading-overlay">
-    <div class="report-build-wrap">
-      <div class="report-build-spinner" role="status" aria-label="Loading"></div>
-      <div class="report-build-title">Preparing Google Ads</div>
-      <div class="report-build-step" id="ads-build-step">&mdash;</div>
-    </div>
-  </div>
-  <script>
-    (function () {
-      var panel = document.getElementById('tab-panel-ads');
-      var overlay = document.getElementById('ads-loading-overlay');
-      var step = document.getElementById('ads-build-step');
-      if (panel) panel.classList.add('report-building');
-      if (step) step.textContent = 'Connecting to Google';
-      if (overlay) overlay.classList.remove('is-hidden');
-    })();
-  </script>
   <div class="card mb-3">
     <div class="card-header">
       <h3 class="card-title">Campaign Sales, Spend &amp; ROAS</h3>

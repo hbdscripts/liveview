@@ -741,14 +741,10 @@
     .main-tab-panel.active { display: block; }
     .stats-row-wrap { position: relative; }
     .sessions-table-wrap { position: relative; }
+    .page-body { position: relative; }
 
     /* Hide all content during loading/building - show only the loading overlay */
-    .report-building > :not(.table-loading-overlay):not(.report-loading-overlay):not(.stats-loading-overlay):not(.sessions-loading-overlay) {
-      display: none !important;
-    }
-    .dash-charts-row.report-building > *,
-    .dash-tables-row.report-building > *,
-    #tab-panel-dashboard.report-building > :not(.report-loading-overlay) {
+    .page-body.report-building > :not(.page-body-loader-overlay) {
       display: none !important;
     }
     /* KPI sub-text (comparison to yesterday) */

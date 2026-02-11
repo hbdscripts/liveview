@@ -38,13 +38,6 @@
       margin-top: 1rem;
     }
 
-    /* Make the loader visible without blocking interaction forever. */
-    #tab-panel-products #products-loading-overlay {
-      pointer-events: none;
-    }
-    #tab-panel-products #products-loading-overlay .report-build-wrap {
-      pointer-events: auto;
-    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
@@ -69,13 +62,6 @@
     </div>
   </div>
   <div class="stats-row-wrap">
-    <div class="table-loading-overlay stats-loading-overlay report-loading-overlay is-hidden" id="products-loading-overlay">
-      <div class="report-build-wrap">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div class="report-build-title">building reports</div>
-        <div class="report-build-step" id="products-build-step">&mdash;</div>
-      </div>
-    </div>
   <div class="stats-row">
     <div class="stats-card card" id="stats-best-sellers" data-table-class="product" data-table-zone="products-best-sellers" data-table-id="best-sellers-table">
       <div class="card-header">

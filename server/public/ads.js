@@ -71,10 +71,10 @@
 
   var _panelLoaderActive = false;
   function getPanelLoaderState() {
-    var panel = document.getElementById('tab-panel-ads');
-    var overlay = document.getElementById('ads-loading-overlay');
+    var panel = document.querySelector('.page-body');
+    var overlay = document.getElementById('page-body-loader');
     var titleEl = overlay ? overlay.querySelector('.report-build-title') : null;
-    var stepEl = document.getElementById('ads-build-step') || (overlay ? overlay.querySelector('.report-build-step') : null);
+    var stepEl = document.getElementById('page-body-build-step') || (overlay ? overlay.querySelector('.report-build-step') : null);
     return { panel: panel, overlay: overlay, titleEl: titleEl, stepEl: stepEl };
   }
 
@@ -1125,7 +1125,6 @@
       if (actions) actions.style.display = 'none';
       if (footer) footer.style.display = 'none';
       if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
-      renderLoading(root, 'Preparing Google Ads', 'Connecting to Google');
     } else {
       applyRefreshingUi(true, isForce);
     }

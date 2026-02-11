@@ -754,6 +754,17 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 }
 
 /* Unified report/page loaders (content-centered, not viewport-centered) */
+.page-body-loader-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tblr-body-bg, #f5f7fb);
+  padding: 1rem;
+}
+
 .table-loading-overlay {
   position: absolute;
   inset: 0;
@@ -806,6 +817,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+}
+
+.page-body-loader-overlay .report-build-wrap {
+  width: min(100%, 420px);
+}
+
+.page-body-loader-overlay .page-loader-progress {
+  max-width: 260px;
+  margin-inline: auto;
 }
 
 .report-build-spinner {
