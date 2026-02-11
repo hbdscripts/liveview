@@ -533,20 +533,20 @@
   }
 
   function alertTriangleSvg() {
-    return '<i class="fa-jelly fa-regular fa-triangle-exclamation" aria-hidden="true"></i>';
+    return '<i class="fa-light fa-triangle-exclamation" aria-hidden="true"></i>';
   }
 
   function refreshSvg(extraClass, idAttr) {
-    var cls = 'fa-jelly fa-regular fa-rotate-right' + (extraClass ? (' ' + extraClass) : '');
+    var cls = 'fa-light fa-rotate-right' + (extraClass ? (' ' + extraClass) : '');
     var id = idAttr ? (' id="' + idAttr + '"') : '';
     return '<i' + id + ' class="' + cls + '" aria-hidden="true"></i>';
   }
 
   function connectionStatusSvg(isConnected) {
     if (isConnected) {
-      return '<i class="fa-jelly fa-regular fa-circle-check" aria-hidden="true"></i>';
+      return '<i class="fa-light fa-circle-check" aria-hidden="true"></i>';
     }
-    return '<i class="fa-jelly fa-regular fa-circle-xmark" aria-hidden="true"></i>';
+    return '<i class="fa-light fa-circle-xmark" aria-hidden="true"></i>';
   }
 
   function ensureActionsPlacement() {

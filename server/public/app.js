@@ -755,7 +755,7 @@ const API = '';
           var path = isExit
             ? '<path d="M19 12H5M11 6l-6 6 6 6"></path>'
             : '<path d="M5 12h14M13 6l6 6-6 6"></path>';
-          return '<i class="fa-jelly fa-regular fa-circle-check ' + cls + '" aria-hidden="true"></i>';
+          return '<i class="fa-light fa-circle-check ' + cls + '" aria-hidden="true"></i>';
         }
 
         function line(kind, meta) {
@@ -941,7 +941,7 @@ const API = '';
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
     const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
-    const BOUGHT_OVERLAY_SVG = '<i class="fa-jelly fa-regular fa-cart-shopping" aria-hidden="true"></i>';
+    const BOUGHT_OVERLAY_SVG = '<i class="fa-light fa-cart-shopping" aria-hidden="true"></i>';
     const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
     const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
@@ -3362,9 +3362,9 @@ const API = '';
       var wrap = document.createElement('div');
       wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
       var types = [
-        { type: 'bar', icon: 'fa-jelly fa-regular fa-chart-column', label: 'Bar' },
-        { type: 'area', icon: 'fa-jelly fa-regular fa-chart-area', label: 'Area' },
-        { type: 'line', icon: 'fa-jelly fa-regular fa-chart-line', label: 'Line' }
+        { type: 'bar', icon: 'fa-light fa-chart-column', label: 'Bar' },
+        { type: 'area', icon: 'fa-light fa-chart-area', label: 'Area' },
+        { type: 'line', icon: 'fa-light fa-chart-line', label: 'Line' }
       ];
       types.forEach(function(t) {
         var btn = document.createElement('button');
@@ -3593,8 +3593,8 @@ const API = '';
     function buildPaginationHtml(page, totalPages) {
       var p = Math.max(1, page);
       var tp = Math.max(1, totalPages);
-      var chevL = '<i class="fa-jelly fa-regular fa-chevron-left"></i>';
-      var chevR = '<i class="fa-jelly fa-regular fa-chevron-right"></i>';
+      var chevL = '<i class="fa-light fa-chevron-left"></i>';
+      var chevR = '<i class="fa-light fa-chevron-right"></i>';
       var h = '<ul class="pagination m-0">';
       h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">' + chevL + '</a></li>';
       // Build page numbers with ellipsis
@@ -3804,7 +3804,7 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const placeholderSvg = '<i class="fa-jelly fa-regular fa-image" aria-hidden="true"></i>';
+        const placeholderSvg = '<i class="fa-light fa-image" aria-hidden="true"></i>';
         const imgInner = '<span class="thumb-wrap">' +
           (thumb
             ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
@@ -3830,7 +3830,7 @@ const API = '';
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-image"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-image"></i></span>';
       tbody.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
@@ -3860,7 +3860,7 @@ const API = '';
         if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
         if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
         if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
-        return '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-star"></i></span>';
+        return '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-star"></i></span>';
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
@@ -3902,7 +3902,7 @@ const API = '';
       updateCardPagination('breakdown-length', breakdownLengthPage, totalPages);
       var start = (breakdownLengthPage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-chart-column"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-chart-column"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
@@ -3934,7 +3934,7 @@ const API = '';
       updateCardPagination('breakdown-chainstyle', breakdownChainStylePage, totalPages);
       var start = (breakdownChainStylePage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-jelly fa-regular fa-link"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-link"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -4846,13 +4846,13 @@ const API = '';
         if (iconEl) {
           if (dir === 'up') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-down', 'fa-minus');
-            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-arrow-trend-up');
+            iconEl.classList.add('fa-solid', 'fa-arrow-trend-up');
           } else if (dir === 'down') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-minus');
-            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-arrow-trend-down');
+            iconEl.classList.add('fa-solid', 'fa-arrow-trend-down');
           } else if (dir === 'flat') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-arrow-trend-down');
-            iconEl.classList.add('fa-jelly', 'fa-regular', 'fa-minus');
+            iconEl.classList.add('fa-solid', 'fa-minus');
           } else {
             iconEl.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
             iconEl.classList.add('is-hidden');
@@ -5098,7 +5098,7 @@ const API = '';
             deltaTextEl.textContent = 'new';
             if (iconEl) {
               iconEl.classList.remove('is-hidden');
-              iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-up kexo-topbar-delta-icon';
+              iconEl.className = 'fa-solid fa-arrow-trend-up kexo-topbar-delta-icon';
               iconEl.setAttribute('aria-hidden', 'true');
             }
             return;
@@ -5119,9 +5119,9 @@ const API = '';
         // Only show arrows when movement is meaningful.
         if (iconEl) {
           iconEl.classList.toggle('is-hidden', !up && !down);
-          if (up) iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-up kexo-topbar-delta-icon';
-          else if (down) iconEl.className = 'fa-jelly fa-regular fa-arrow-trend-down kexo-topbar-delta-icon';
-          else iconEl.className = 'fa-jelly fa-regular fa-minus kexo-topbar-delta-icon';
+          if (up) iconEl.className = 'fa-solid fa-arrow-trend-up kexo-topbar-delta-icon';
+          else if (down) iconEl.className = 'fa-solid fa-arrow-trend-down kexo-topbar-delta-icon';
+          else iconEl.className = 'fa-solid fa-minus kexo-topbar-delta-icon';
           iconEl.setAttribute('aria-hidden', 'true');
         }
       }
@@ -5829,19 +5829,19 @@ const API = '';
       function trafficTypeDeviceIcon(device) {
         var d = (device || '').trim().toLowerCase();
         var s = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-        if (d === 'desktop') return '<i class="' + s + ' fa-jelly fa-regular fa-desktop"></i>';
-        if (d === 'mobile') return '<i class="' + s + ' fa-jelly fa-regular fa-mobile-screen"></i>';
-        if (d === 'tablet') return '<i class="' + s + ' fa-jelly fa-regular fa-tablet-screen-button"></i>';
-        return '<i class="' + s + ' fa-jelly fa-regular fa-globe"></i>';
+        if (d === 'desktop') return '<i class="' + s + ' fa-light fa-desktop"></i>';
+        if (d === 'mobile') return '<i class="' + s + ' fa-light fa-mobile-screen"></i>';
+        if (d === 'tablet') return '<i class="' + s + ' fa-light fa-tablet-screen-button"></i>';
+        return '<i class="' + s + ' fa-light fa-globe"></i>';
       }
 
       function trafficTypePlatformIcon(platform) {
         var p = (platform || '').trim().toLowerCase();
-        if (p === 'ios' || p === 'mac') return '<i class="fa-jelly fa-regular fa-apple"></i>';
-        if (p === 'android') return '<i class="fa-jelly fa-regular fa-android"></i>';
-        if (p === 'windows') return '<i class="fa-jelly fa-regular fa-windows"></i>';
-        if (p === 'linux') return '<i class="fa-jelly fa-regular fa-linux"></i>';
-        return '<i class="fa-jelly fa-regular fa-circle-question"></i>';
+        if (p === 'ios' || p === 'mac') return '<i class="fa-light fa-apple"></i>';
+        if (p === 'android') return '<i class="fa-light fa-android"></i>';
+        if (p === 'windows') return '<i class="fa-light fa-windows"></i>';
+        if (p === 'linux') return '<i class="fa-light fa-linux"></i>';
+        return '<i class="fa-light fa-circle-question"></i>';
       }
 
       (function renderTypeTree() {
@@ -6049,7 +6049,7 @@ const API = '';
       if (!header || header.querySelector('.chart-type-switcher')) return;
       var wrap = document.createElement('div');
       wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
-      [{ type: 'bar', icon: 'fa-jelly fa-regular fa-chart-column', label: 'Bar' }, { type: 'area', icon: 'fa-jelly fa-regular fa-chart-area', label: 'Area' }, { type: 'line', icon: 'fa-jelly fa-regular fa-chart-line', label: 'Line' }].forEach(function(t) {
+      [{ type: 'bar', icon: 'fa-light fa-chart-column', label: 'Bar' }, { type: 'area', icon: 'fa-light fa-chart-area', label: 'Area' }, { type: 'line', icon: 'fa-light fa-chart-line', label: 'Line' }].forEach(function(t) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === channelsChartType ? ' active' : '');
@@ -6526,18 +6526,18 @@ const API = '';
           }
           function icon(name, cls) {
             const map = {
-              shield: 'fa-jelly fa-regular fa-shield-halved',
-              columns: 'fa-jelly fa-regular fa-table-columns',
-              list: 'fa-jelly fa-regular fa-list',
-              bag: 'fa-jelly fa-regular fa-bag-shopping',
-              activity: 'fa-jelly fa-regular fa-wave-square',
-              bar: 'fa-jelly fa-regular fa-chart-column',
-              server: 'fa-jelly fa-regular fa-server',
-              key: 'fa-jelly fa-regular fa-key',
-              link: 'fa-jelly fa-regular fa-link',
-              chev: 'fa-jelly fa-regular fa-chevron-down'
+              shield: 'fa-light fa-shield-halved',
+              columns: 'fa-light fa-table-columns',
+              list: 'fa-light fa-list',
+              bag: 'fa-light fa-bag-shopping',
+              activity: 'fa-light fa-wave-square',
+              bar: 'fa-light fa-chart-column',
+              server: 'fa-light fa-server',
+              key: 'fa-light fa-key',
+              link: 'fa-light fa-link',
+              chev: 'fa-light fa-chevron-down'
             };
-            const fa = map[name] || 'fa-jelly fa-regular fa-circle';
+            const fa = map[name] || 'fa-light fa-circle';
             const extra = cls ? (' ' + cls) : '';
             return '<i class="' + fa + extra + '" aria-hidden="true"></i>';
           }
@@ -6993,18 +6993,18 @@ const API = '';
             aiCopyText = 'Kexo diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
           }
 
-          const copyIcon = '<i class="fa-regular fa-copy" aria-hidden="true"></i>';
+          const copyIcon = '<i class="fa-light fa-copy" aria-hidden="true"></i>';
 
           // Font Awesome icons for tabs
           var tabIcons = {
-            sales: '<i class="fa-jelly fa-regular fa-sterling-sign" aria-hidden="true"></i>',
-            compare: '<i class="fa-jelly fa-regular fa-scale-balanced" aria-hidden="true"></i>',
-            traffic: '<i class="fa-jelly fa-regular fa-route" aria-hidden="true"></i>',
-            pixel: '<i class="fa-jelly fa-regular fa-crosshairs" aria-hidden="true"></i>',
-            googleads: '<i class="fa-jelly fa-regular fa-rectangle-ad" aria-hidden="true"></i>',
-            shopify: '<i class="fa-jelly fa-regular fa-bag-shopping" aria-hidden="true"></i>',
-            system: '<i class="fa-jelly fa-regular fa-server" aria-hidden="true"></i>',
-            defs: '<i class="fa-jelly fa-regular fa-book-open" aria-hidden="true"></i>'
+            sales: '<i class="fa-light fa-sterling-sign" aria-hidden="true"></i>',
+            compare: '<i class="fa-light fa-scale-balanced" aria-hidden="true"></i>',
+            traffic: '<i class="fa-light fa-route" aria-hidden="true"></i>',
+            pixel: '<i class="fa-light fa-crosshairs" aria-hidden="true"></i>',
+            googleads: '<i class="fa-light fa-rectangle-ad" aria-hidden="true"></i>',
+            shopify: '<i class="fa-light fa-bag-shopping" aria-hidden="true"></i>',
+            system: '<i class="fa-light fa-server" aria-hidden="true"></i>',
+            defs: '<i class="fa-light fa-book-open" aria-hidden="true"></i>'
           };
 
           function diagTab(key, label) {
@@ -8892,8 +8892,8 @@ const API = '';
         if (!header) return;
         if (header.querySelector('.chart-type-switcher')) return;
 
-        var ICON_AREA = '<i class="fa-jelly fa-regular fa-chart-area"></i>';
-        var ICON_BAR = '<i class="fa-jelly fa-regular fa-chart-column"></i>';
+        var ICON_AREA = '<i class="fa-light fa-chart-area"></i>';
+        var ICON_BAR = '<i class="fa-light fa-chart-column"></i>';
 
         var wrap = document.createElement('div');
         wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (Settings-first diagnostics, legacy modal removal on main pages, Font Awesome migration baseline)
+Last updated: 2026-02-11 (Settings-first diagnostics, legacy modal removal on main pages, Font Awesome style split solid/light)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -201,6 +201,11 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Font Awesome icon pass (display fix):
+  - Removed Jelly classes (`fa-jelly` / `fa-regular`) from active UI pages and shared scripts.
+  - Icon convention is now: top menu + top KPI trend icons use `fa-solid`; the rest of the theme uses `fa-light`.
+  - Footer eye toggle + other shared controls were updated to `fa-light` classes.
+  - Runtime icon adapter (`server/public/fontawesome-icons.js`) now maps to solid/light classes instead of Jelly.
 - Settings/nav cleanup:
   - Header dropdown item previously used for Diagnostics now shows **Settings** and routes to `/settings` (no diagnostics query URL).
   - Theme action now routes to `/settings`.
