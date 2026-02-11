@@ -1160,12 +1160,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-kpi-chip-sparkline {
   position: absolute;
-  top: 6px;
+  top: 0;
   right: 6px;
   left: auto;
   bottom: auto;
   width: 56px;
-  height: 16px;
+  height: 30px;
   z-index: 0;
   opacity: 0.28;
   pointer-events: none;

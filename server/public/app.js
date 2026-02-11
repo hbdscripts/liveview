@@ -5691,7 +5691,7 @@ const API = '';
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
-            chart: { type: 'area', height: 16, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: 'area', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
             stroke: { width: 2.2, curve: 'smooth' },
             fill: { type: 'gradient', gradient: { opacityFrom: 0.52, opacityTo: 0.08 } },
