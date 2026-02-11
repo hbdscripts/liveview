@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (strict report-loader gating + collapse icon theming + dashboard collapse layout fixes)
+Last updated: 2026-02-11 (main-nav Settings move + Compare Conversion Rate route rename + live online 5-min chart update)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -45,7 +45,8 @@ Legacy/backup:
 
 Server routing (Express):
 - Root `/` now loads the login screen or redirects to `/dashboard` if already authenticated.
-- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/sales`, `/date`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/tools`, `/settings`.
+- Explicit routes serve the per-page HTML: `/dashboard`, `/live`, `/sales`, `/date`, `/countries`, `/products`, `/channels`, `/type`, `/ads`, `/compare-conversion-rate`, `/settings`.
+- `/tools` now redirects to `/compare-conversion-rate` for backward compatibility.
 - Mobile traffic: User-Agent detection redirects all mobile GET requests to `/mobile-unsupported` (logo + "Desktop only for now" copy).
 - See: `server/index.js`.
 
@@ -85,6 +86,8 @@ Platform start/min date clamp:
 
 - Rebuilt as Tabler layout (`server/public/tools.html`).
 - All inline styles moved to `server/public/tools.css`.
+- Route is now `/compare-conversion-rate` (legacy `/tools` redirects).
+- `tools.html` now uses `data-page="compare-conversion-rate"` and page title `Compare Conversion Rate`.
 - Back link points to `/dashboard`.
 - `server/public/tools.js` uses class toggles instead of inline styles.
 
@@ -185,7 +188,7 @@ Edge (optional):
 4) Dashboard queries
 - Live/SSE: `GET /api/stream`.
 - Reports: `GET /api/kpis`, `/api/stats`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`.
-- Live online trend: `GET /api/sessions/online-series?minutes=10` (bucketed active-session counts for the Live page chart).
+- Live online trend: `GET /api/sessions/online-series?minutes=60&stepMinutes=5` (5-minute buckets; chart shows 60 minutes, or 30 minutes on smaller viewports).
 
 ---
 
@@ -207,6 +210,25 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Main nav + tools/settings UX:
+  - `server/public/partials/header.html`: moved the Settings dropdown into the desktop main nav (next to Tools) using the same Refresh/Sound/Theme/Settings/Sign out actions.
+  - Tools dropdown now contains `Compare Conversion Rate` (`/compare-conversion-rate`) and a non-click visitors status row (`#kexo-online-icon`, `#online-count`, `#online-count-spinner`) that turns green when online count > 0 and grey when 0.
+  - `/tools` now redirects to `/compare-conversion-rate` (`server/index.js`), and auth/mobile allowlists include `/compare-conversion-rate`.
+- Live page online updates:
+  - `server/public/live.html` heading changed to `Online Now: <count>` (`#live-online-now-count`).
+  - `server/public/app.js` now renders the live online chart as vertical bars from `/api/sessions/online-series?minutes=60&stepMinutes=5`.
+  - Responsive behavior trims the live chart to the last 30 minutes (6 bars) on narrow viewports; standard view uses 60 minutes (12 bars).
+  - Frontend live active cutoff aligned to 5 minutes (`ACTIVE_WINDOW_MS = 5 * 60 * 1000`).
+  - `server/routes/sessions.js` + `server/store.js` now support `stepMinutes` bucket sizing for online series.
+- Session table sale-row marker:
+  - `server/public/app.js` adds `.converted-row` to the first grid cell for purchased rows on `/live`, `/date`, and `/sales`.
+  - Added `.converted-row { border-left: 3px solid color-mix(...) !important; }` styling in `server/public/custom.css` (and mirrored in `server/public/app.css`).
+- KPI visuals refresh (dashboard + condensed strip):
+  - `server/public/app.js` now renders KPI sparklines as line-only (no under-fill); dashboard compare mode draws previous period first as dashed grey so it sits behind the current line.
+  - `server/public/custom.css` narrows sparkline containers (dashboard cards now `80%` width; condensed chips now width-clamped from `--kexo-kpi-width`) and increases sparkline opacity for clearer visibility.
+- KPI trend icon removal:
+  - Removed trend icon markup from condensed KPI deltas in `server/public/partials/header.html` and removed icon-specific delta rendering branches in `server/public/app.js`.
+  - Removed `kpi-trend-up/down/flat` glyph keys from `server/public/theme-settings.js`, `server/public/fontawesome-icons.js`, and `/api/theme-defaults` allowlist in `server/routes/settings.js`.
 - Loader gating + staged reveal consistency:
   - `startReportBuild` in `server/public/app.js` now scopes loading to the tab container (`.main-tab-panel`), temporarily hoists overlays into that scope during load, locks panel min-height, and only reveals content when `finish()` runs.
   - `server/public/app.css` keeps `report-building` states hiding all non-loader siblings, so loaders are the only visible content while a report flow is building.

@@ -398,6 +398,7 @@
     .grid-row.converted:hover { background: var(--converted-hover); }
     .grid-row.converted .grid-cell { font-weight: 500; }
     .grid-row.converted .grid-cell:first-child { box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
+    .grid-row .grid-cell.converted-row { border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important; }
 
     /* Column alignment: keep first column left, rest centered */
     .grid-table .grid-cell:not(:first-child) { text-align: center; }

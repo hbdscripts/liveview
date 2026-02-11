@@ -85,7 +85,8 @@ function isProtectedPath(pathname) {
     pathname === '/products' ||
     pathname === '/traffic' ||
     pathname === '/ads' ||
-    pathname === '/tools'
+    pathname === '/tools' ||
+    pathname === '/compare-conversion-rate'
   ) return true;
   return false;
 }

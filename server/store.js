@@ -1334,14 +1334,16 @@ async function getActiveSessionCount() {
 
 /**
  * Time-bucketed active-online series for live chart.
- * Returns per-minute counts using the same active/arrived windows as listSessions('active').
+ * Returns bucketed counts using the same active/arrived windows as listSessions('active').
  */
-async function getActiveSessionSeries(minutes = 10) {
+async function getActiveSessionSeries(minutes = 10, stepMinutes = 1) {
   const db = getDb();
-  const safeMinutes = Math.max(2, Math.min(60, parseInt(String(minutes || 10), 10) || 10));
-  const stepMs = 60 * 1000;
+  const safeStepMinutes = Math.max(1, Math.min(15, parseInt(String(stepMinutes || 1), 10) || 1));
+  const safeMinutes = Math.max(safeStepMinutes * 2, Math.min(60, parseInt(String(minutes || 10), 10) || 10));
+  const stepMs = safeStepMinutes * 60 * 1000;
+  const bucketCount = Math.max(2, Math.floor(safeMinutes / safeStepMinutes));
   const end = Math.floor(Date.now() / stepMs) * stepMs;
-  const start = end - (safeMinutes - 1) * stepMs;
+  const start = end - (bucketCount - 1) * stepMs;
   const activeWindowMs = config.activeWindowMinutes * 60 * 1000;
   const arrivedWindowMs = config.liveArrivedWindowMinutes * 60 * 1000;
 
@@ -1380,7 +1382,7 @@ async function getActiveSessionSeries(minutes = 10) {
         AND COALESCE(s.started_at, 0) >= (b.ts - ?)
        GROUP BY b.ts
        ORDER BY b.ts ASC`,
-      [start, stepMs, safeMinutes, activeWindowMs, arrivedWindowMs]
+      [start, stepMs, bucketCount, activeWindowMs, arrivedWindowMs]
     );
   }
 

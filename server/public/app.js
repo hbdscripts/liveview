@@ -43,7 +43,7 @@ const API = '';
     }
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
-    const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // Live view: only show sessions seen in last 10 min
+    const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
     const KPI_REFRESH_MS = 120000; // 2 min: reduce repeated KPI queries during fast nav
@@ -2341,7 +2341,7 @@ const API = '';
         } catch (_) {}
       }
       return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
-        <div class="grid-cell" role="cell">${landingPageCell(s)}</div>
+        <div class="grid-cell ${s.has_purchased ? 'converted-row' : ''}" role="cell">${landingPageCell(s)}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
         <div class="grid-cell" role="cell">${escapeHtml(s.device || '')}</div>
@@ -5542,21 +5542,6 @@ const API = '';
       iconEl.className = keep.concat(parsed).join(' ').trim();
     }
 
-    function setTrendIconClass(iconEl, trendKind) {
-      const styleCls = getStoredIconStyleClass('icon-default', 'fa-jelly');
-      const key = trendKind === 'down' ? 'kpi-trend-down' : (trendKind === 'flat' ? 'kpi-trend-flat' : 'kpi-trend-up');
-      const fallback = trendKind === 'down' ? 'fa-arrow-trend-down' : (trendKind === 'flat' ? 'fa-minus' : 'fa-arrow-trend-up');
-      try { iconEl.setAttribute('data-icon-key', key); } catch (_) {}
-      let raw = null;
-      try { raw = localStorage.getItem('tabler-theme-icon-glyph-' + key); } catch (_) { raw = null; }
-      const parsed = parseIconGlyphInput(raw, fallback);
-      if (parsed.mode === 'full') {
-        applyIconClassSpec(iconEl, parsed.value, styleCls, fallback);
-      } else {
-        applyIconClassSpec(iconEl, styleCls + ' ' + parsed.value, styleCls, fallback);
-      }
-    }
-
     function applyCondensedKpiDelta(key, current, baseline, invert) {
       const deltaEl = document.getElementById('cond-kpi-' + key + '-delta');
       const barEl = document.getElementById('cond-kpi-' + key + '-bar');
@@ -5573,7 +5558,6 @@ const API = '';
 
       if (deltaEl) {
         const textEl = deltaEl.querySelector('.kexo-kpi-chip-delta-text');
-        const iconEl = deltaEl.querySelector('.kexo-kpi-chip-delta-icon');
         let text = '\u2014';
         let dir = 'none';
 
@@ -5594,22 +5578,6 @@ const API = '';
         deltaEl.setAttribute('data-dir', dir);
         if (textEl) textEl.textContent = text;
         else deltaEl.textContent = text;
-
-        if (iconEl) {
-          if (dir === 'up') {
-            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-down', 'fa-minus');
-            setTrendIconClass(iconEl, 'up');
-          } else if (dir === 'down') {
-            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-minus');
-            setTrendIconClass(iconEl, 'down');
-          } else if (dir === 'flat') {
-            iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-arrow-trend-down');
-            setTrendIconClass(iconEl, 'flat');
-          } else {
-            iconEl.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
-            iconEl.classList.add('is-hidden');
-          }
-        }
       }
 
       if (barEl) {
@@ -5714,11 +5682,12 @@ const API = '';
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
-            chart: { type: 'area', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
-            stroke: { width: 2.2, curve: 'smooth' },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.52, opacityTo: 0.08 } },
+            stroke: { width: 2.4, curve: 'smooth', lineCap: 'round' },
+            fill: { type: 'solid', opacity: 1 },
             colors: [sparkColor],
+            markers: { size: 0 },
             tooltip: { enabled: false }
           });
           chart.render();
@@ -5856,24 +5825,16 @@ const API = '';
       }
       function applyTopbarDelta(deltaWrap, deltaTextEl, pctVal) {
         if (!deltaWrap || !deltaTextEl) return;
-        const iconEl = deltaWrap.querySelector ? deltaWrap.querySelector('.kexo-topbar-delta-icon') : null;
         if (pctVal == null || !Number.isFinite(pctVal)) {
           if (pctVal === Infinity) {
             deltaWrap.classList.remove('is-hidden');
             deltaWrap.classList.add('is-up');
             deltaWrap.classList.remove('is-down', 'is-flat');
             deltaTextEl.textContent = 'new';
-            if (iconEl) {
-              iconEl.classList.remove('is-hidden');
-              iconEl.className = 'kexo-topbar-delta-icon';
-              setTrendIconClass(iconEl, 'up');
-              iconEl.setAttribute('aria-hidden', 'true');
-            }
             return;
           }
           deltaWrap.classList.add('is-hidden');
           deltaWrap.classList.remove('is-up', 'is-down', 'is-flat');
-          if (iconEl) iconEl.classList.add('is-hidden');
           return;
         }
         const p = Math.round(pctVal * 10) / 10;
@@ -5884,15 +5845,6 @@ const API = '';
         deltaWrap.classList.toggle('is-down', down);
         deltaWrap.classList.toggle('is-flat', !up && !down);
         deltaTextEl.textContent = Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
-        // Only show arrows when movement is meaningful.
-        if (iconEl) {
-          iconEl.className = 'kexo-topbar-delta-icon';
-          if (up) setTrendIconClass(iconEl, 'up');
-          else if (down) setTrendIconClass(iconEl, 'down');
-          else setTrendIconClass(iconEl, 'flat');
-          iconEl.classList.toggle('is-hidden', !up && !down);
-          iconEl.setAttribute('aria-hidden', 'true');
-        }
       }
 
       applyTopbarDelta(
@@ -7431,7 +7383,15 @@ const API = '';
         setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
         return;
       }
-      var points = payload && Array.isArray(payload.points) ? payload.points.slice() : [];
+      var allPoints = payload && Array.isArray(payload.points) ? payload.points.slice() : [];
+      var viewport = 0;
+      try {
+        viewport = Math.max(window.innerWidth || 0, document.documentElement ? (document.documentElement.clientWidth || 0) : 0);
+      } catch (_) {
+        viewport = 0;
+      }
+      var compactMode = viewport > 0 && viewport <= 960;
+      var points = compactMode && allPoints.length > 6 ? allPoints.slice(-6) : allPoints;
       if (liveOnlineChart) {
         try { liveOnlineChart.destroy(); } catch (_) {}
         liveOnlineChart = null;
@@ -7445,35 +7405,32 @@ const API = '';
         var n = p && p.online != null ? Number(p.online) : NaN;
         return Number.isFinite(n) ? n : 0;
       });
-      var liveChartType = ensureChartTypeControls('live-online-chart', 'live-online', 'area', function () {
-        renderLiveOnlineTrendChart(payload);
-      });
       el.innerHTML = '';
       liveOnlineChart = new ApexCharts(el, {
         chart: {
-          type: liveChartType,
+          type: 'bar',
           height: 220,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
           zoom: { enabled: false },
         },
-        series: [{ name: 'People online', data: values }],
+        series: [{ name: 'Online now', data: values }],
         xaxis: {
           categories: labels,
+          tickPlacement: 'between',
           labels: { style: { fontSize: '11px' } },
         },
         yaxis: {
           min: 0,
           forceNiceScale: true,
+          tickAmount: 5,
           labels: { style: { fontSize: '11px' } },
         },
-        stroke: { curve: 'smooth', width: liveChartType === 'bar' ? 0 : 2 },
+        stroke: { show: false },
         dataLabels: { enabled: false },
-        fill: liveChartType === 'area'
-          ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.1, stops: [0, 100] } }
-          : { type: 'solid', opacity: liveChartType === 'line' ? 0 : 1 },
-        plotOptions: liveChartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
-        markers: { size: liveChartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        fill: { type: 'solid', opacity: 1 },
+        plotOptions: { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } },
+        markers: { size: 0 },
         colors: ['#16a34a'],
         tooltip: {
           y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' online'; } },
@@ -7493,7 +7450,7 @@ const API = '';
         return Promise.resolve(null);
       }
       if (liveOnlineChartInFlight) return liveOnlineChartInFlight;
-      var url = API + '/api/sessions/online-series?minutes=10' + (force ? ('&_=' + Date.now()) : '');
+      var url = API + '/api/sessions/online-series?minutes=60&stepMinutes=5' + (force ? ('&_=' + Date.now()) : '');
       liveOnlineChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
@@ -7716,22 +7673,31 @@ const API = '';
       const el = document.getElementById('online-count');
       const spinner = document.getElementById('online-count-spinner');
       const iconEl = document.getElementById('kexo-online-icon');
-      if (!el) return;
+      const liveNowCountEl = document.getElementById('live-online-now-count');
+      if (!el && !liveNowCountEl) return;
+      function showLiveNowCount(n) {
+        if (!liveNowCountEl) return;
+        var safe = Number.isFinite(Number(n)) ? Math.max(0, Math.trunc(Number(n))) : 0;
+        liveNowCountEl.textContent = String(safe);
+      }
       function showSpinner() {
         if (spinner) { spinner.classList.remove('is-hidden'); }
-        el.classList.add('is-hidden');
+        if (el) el.classList.add('is-hidden');
         if (iconEl) { iconEl.classList.add('kexo-online-icon--offline'); iconEl.classList.remove('kexo-online-icon--online'); }
       }
       function showCount(n) {
         if (spinner) { spinner.classList.add('is-hidden'); }
-        el.classList.remove('is-hidden');
-        el.textContent = String(n);
+        if (el) {
+          el.classList.remove('is-hidden');
+          el.textContent = String(n);
+        }
         if (iconEl) {
           iconEl.classList.remove('kexo-online-icon--offline', 'kexo-online-icon--online');
           iconEl.classList.add(n > 0 ? 'kexo-online-icon--online' : 'kexo-online-icon--offline');
         }
+        showLiveNowCount(n);
       }
-      if (dateRange === 'live') {
+      if (activeMainTab === 'spy' && dateRange === 'live') {
         if (lastSessionsMode !== 'live') {
           showSpinner();
           fetchSessions();
@@ -9795,7 +9761,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : PAGE === 'compare-conversion-rate' ? 'tools' : PAGE;
           setTab(pageTab);
           return;
         }
@@ -9990,10 +9956,11 @@ const API = '';
     _intervals.push(setInterval(tickTimeOnSite, 30000));
     // Online count: when not on Live, refresh every 60s so Online always shows real people online
     _intervals.push(setInterval(function() {
-      if (activeMainTab !== 'spy' || dateRange === 'live') return;
+      if (document.visibilityState !== 'visible') return;
+      if (activeMainTab === 'spy' && dateRange === 'live') return;
       fetchOnlineCount();
     }, LIVE_REFRESH_MS));
-    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 10 min or if arrived too long ago
+    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
     _intervals.push(setInterval(function() {
       if (activeMainTab !== 'spy' || dateRange !== 'live') return;
       var cutoff = Date.now() - ACTIVE_WINDOW_MS;
@@ -10447,7 +10414,6 @@ const API = '';
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
-          var t = type === 'bar' ? 'bar' : (type === 'line' ? 'line' : 'area');
           var sparkCurve = 'smooth';
 
           var nums = dataArr.map(function(v) {
@@ -10502,19 +10468,15 @@ const API = '';
             yMax = maxVal + pad;
           }
 
-          var fillCfg = t === 'bar'
-            ? { type: 'solid', opacity: 1 }
-            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.58 : 0.36, opacityTo: t === 'area' ? 0.1 : 0.12 } };
           var hasCompare = !!(compareNums && compareNums.length >= 2);
           var chart = new ApexCharts(sparkEl, {
-            chart: { type: hasCompare ? 'line' : t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: hasCompare ? [{ name: 'Current', data: nums }, { name: 'Previous', data: compareNums }] : [{ data: nums }],
+            chart: { type: 'line', height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: hasCompare ? [{ name: 'Previous', data: compareNums }, { name: 'Current', data: nums }] : [{ name: 'Current', data: nums }],
             stroke: hasCompare
-              ? { width: [2.35, 1.45], curve: [sparkCurve, sparkCurve], dashArray: [0, 5] }
-              : { width: t === 'bar' ? 0 : 2.3, curve: sparkCurve },
-            fill: hasCompare ? { type: 'solid', opacity: [0.92, 0] } : fillCfg,
-            plotOptions: t === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
-            colors: hasCompare ? [color, '#9ca3af'] : [color],
+              ? { width: [1.6, 2.55], curve: [sparkCurve, sparkCurve], dashArray: [6, 0], lineCap: 'round' }
+              : { width: 2.45, curve: sparkCurve, lineCap: 'round' },
+            fill: { type: 'solid', opacity: 1 },
+            colors: hasCompare ? ['#9ca3af', color] : [color],
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
             tooltip: { enabled: false }

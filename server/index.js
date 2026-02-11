@@ -84,7 +84,7 @@ app.use('/api/ingest', ingestRouter);
 // Redirect mobile traffic to unsupported page (before auth)
 const MOBILE_REDIRECT_PATHS = new Set([
   '/', '/dashboard', '/live', '/sales', '/date', '/overview', '/countries',
-  '/products', '/channels', '/type', '/ads', '/tools', '/app/login'
+  '/products', '/channels', '/type', '/ads', '/tools', '/compare-conversion-rate', '/app/login'
 ]);
 const MOBILE_UA = /Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 app.use((req, res, next) => {
@@ -365,7 +365,8 @@ app.get('/products', (req, res) => sendPage(res, 'products.html'));
 app.get('/channels', (req, res) => sendPage(res, 'channels.html'));
 app.get('/type', (req, res) => sendPage(res, 'type.html'));
 app.get('/ads', (req, res) => sendPage(res, 'ads.html'));
-app.get('/tools', (req, res) => sendPage(res, 'tools.html'));
+app.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools.html'));
+app.get('/tools', (req, res) => res.redirect(302, '/compare-conversion-rate'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to dashboard

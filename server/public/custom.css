@@ -234,6 +234,9 @@ a {
 .grid-body .grid-row:hover {
   background: var(--row-hover, rgba(var(--tblr-primary-rgb), .024)) !important;
 }
+.grid-row .grid-cell.converted-row {
+  border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important;
+}
 
 .grid-cell.sortable {
   cursor: pointer;
@@ -1548,6 +1551,36 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav-list .dropdown-divider,
 .kexo-desktop-nav-settings .dropdown-divider {
   display: none;
+}
+.kexo-desktop-nav-list .kexo-nav-visitors {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+.kexo-desktop-nav-list .kexo-nav-visitors i {
+  margin-right: .1rem !important;
+}
+#kexo-online-icon.kexo-online-icon--online {
+  color: var(--tblr-success, #22c55e) !important;
+}
+#kexo-online-icon.kexo-online-icon--offline {
+  color: rgba(148, 163, 184, .95) !important;
+}
+#online-count-spinner {
+  display: inline-flex;
+  width: .66rem;
+  height: .66rem;
+  border: 2px solid rgba(148, 163, 184, .4);
+  border-top-color: rgba(148, 163, 184, .95);
+  border-radius: 50%;
+  animation: kexo-online-spin .8s linear infinite;
+}
+@keyframes kexo-online-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 .me-1 {
   margin-right: .5rem !important;

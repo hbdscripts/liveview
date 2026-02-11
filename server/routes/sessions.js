@@ -1,6 +1,6 @@
 /**
  * GET /api/sessions?filter=today|active|recent|abandoned|all
- * GET /api/sessions/online-series?minutes=10
+ * GET /api/sessions/online-series?minutes=60&stepMinutes=5
  * GET /api/sessions/:id/events?limit=20
  */
 
@@ -64,13 +64,16 @@ function events(req, res, next) {
 
 function onlineSeries(req, res) {
   const minutesRaw = req && req.query ? req.query.minutes : null;
-  const minutes = Math.max(2, Math.min(60, parseInt(String(minutesRaw || 10), 10) || 10));
+  const stepRaw = req && req.query ? req.query.stepMinutes : null;
+  const stepMinutes = Math.max(1, Math.min(15, parseInt(String(stepRaw || 1), 10) || 1));
+  const minutes = Math.max(stepMinutes * 2, Math.min(60, parseInt(String(minutesRaw || 10), 10) || 10));
   res.setHeader('Cache-Control', 'private, max-age=15');
   res.setHeader('Vary', 'Cookie');
-  store.getActiveSessionSeries(minutes)
+  store.getActiveSessionSeries(minutes, stepMinutes)
     .then((points) => {
       res.json({
         minutes,
+        stepMinutes,
         generatedAt: Date.now(),
         points: Array.isArray(points) ? points : [],
       });
