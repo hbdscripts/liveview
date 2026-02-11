@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (icon system v2 hardening + global chart-type controls)
+Last updated: 2026-02-11 (sparkline/table/map/chart build pass)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,22 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Dashboard KPI sparkline behavior + styling:
+  - Dashboard card sparkline tone now prefers previous-period compare values (neutral fallback when compare is missing) so cards no longer misread as downtrend from local point slope.
+  - Sparkline stroke/fill styling was strengthened (dashboard + condensed chips) for higher visual contrast.
+- Sticky first-column UX (all non-Settings tables):
+  - Sticky first column now supports resize by dragging a visible right-edge handle (`100px` min to `200px` max, default `120px`), with persisted width and resize cursor.
+  - Sticky header/body shadows were strengthened and first-column header background was aligned with shared table-header styling.
+- Countries page updates:
+  - Restored `jsVectorMap` world map rendering in `server/public/app.js` and removed the interim countries Apex chart replacement.
+  - Map now uses KEXO palette fills (no black dominant highlight) and overlays animated conversion flow lines from GB to top converting countries.
+  - Best/Geo card is now `Country + Product` in UI copy (`server/public/countries.html`), and first-column cell rendering now shows both country and product text.
+- Breakdown chart direction updates:
+  - Channels and Type overview charts are now fixed multi-line charts (Sessions, Orders, Revenue) with dual-axis formatting.
+  - Products overview chart was rebuilt into a fixed style with thumbnail label rail + revenue bars; product thumbs are normalized to include `width=100` when missing.
+  - Ads overview chart was redesigned from grouped bars to a mixed Sales/Spend/ROAS view for clearer campaign comparison.
+- Chart-type switchers:
+  - Theme-wide chart type switcher UI is now disabled in runtime rendering paths (fallback chart types remain).
 - Icon system V2 hardening:
   - Added exhaustive `data-icon-key` coverage across Settings tabs, footer controls, side panels, KPI compare modal actions, live landing ticks, diagnostics/tab icons, pagination arrows, and dynamic icon render paths in `server/public/app.js` + `server/public/ads.js`.
   - Theme Icons now supports both glyph input and full class override input (for example `fa-etch fa-solid fa-address-card`) with runtime priority of full override > glyph override + context style > context/default glyph.

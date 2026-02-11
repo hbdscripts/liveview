@@ -312,6 +312,135 @@ const API = '';
       setTimeout(run, 1800);
     })();
 
+    (function initStickyColumnResize() {
+      var page = '';
+      try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
+      if (String(page || '').toLowerCase() === 'settings') return;
+      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
+      var MIN_WIDTH = 100;
+      var MAX_WIDTH = 200;
+      var DEFAULT_WIDTH = 120;
+      var LS_KEY = 'kexo-sticky-col-width';
+
+      function clampWidth(n) {
+        var x = Number(n);
+        if (!Number.isFinite(x)) return DEFAULT_WIDTH;
+        return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(x)));
+      }
+
+      function getHeaderFirstCell(wrap) {
+        if (!wrap || !wrap.querySelector) return null;
+        return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
+      }
+
+      function readSavedWidth() {
+        var raw = null;
+        try { raw = localStorage.getItem(LS_KEY); } catch (_) { raw = null; }
+        return clampWidth(raw == null ? DEFAULT_WIDTH : Number(raw));
+      }
+
+      function saveWidth(width) {
+        try { localStorage.setItem(LS_KEY, String(clampWidth(width))); } catch (_) {}
+      }
+
+      function wrapWidth(wrap) {
+        var style = null;
+        try { style = getComputedStyle(wrap); } catch (_) { style = null; }
+        var raw = style ? style.getPropertyValue('--kexo-sticky-col-width') : '';
+        var n = parseFloat(String(raw || '').trim());
+        if (!Number.isFinite(n)) {
+          var cell = getHeaderFirstCell(wrap);
+          if (cell) {
+            try { n = parseFloat(getComputedStyle(cell).width); } catch (_) { n = NaN; }
+          }
+        }
+        return clampWidth(Number.isFinite(n) ? n : DEFAULT_WIDTH);
+      }
+
+      function applyWidth(wrap, width) {
+        if (!wrap || !wrap.style) return;
+        wrap.style.setProperty('--kexo-sticky-col-width', clampWidth(width) + 'px');
+      }
+
+      function bindHandle(wrap, handle) {
+        if (!wrap || !handle || handle.getAttribute('data-sticky-resize-bound') === '1') return;
+        handle.setAttribute('data-sticky-resize-bound', '1');
+        var startX = 0;
+        var startW = DEFAULT_WIDTH;
+        var resizing = false;
+
+        function stopResize(e) {
+          if (!resizing) return;
+          resizing = false;
+          wrap.classList.remove('is-resizing-first-col');
+          try { if (e && e.pointerId != null) handle.releasePointerCapture(e.pointerId); } catch (_) {}
+          saveWidth(wrapWidth(wrap));
+        }
+
+        handle.addEventListener('pointerdown', function(e) {
+          if (!e || e.button !== 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          resizing = true;
+          startX = e.clientX;
+          startW = wrapWidth(wrap);
+          wrap.classList.add('is-resizing-first-col');
+          try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        handle.addEventListener('pointermove', function(e) {
+          if (!resizing) return;
+          e.preventDefault();
+          var next = startW + (e.clientX - startX);
+          applyWidth(wrap, next);
+        });
+
+        handle.addEventListener('pointerup', stopResize);
+        handle.addEventListener('pointercancel', stopResize);
+        handle.addEventListener('lostpointercapture', stopResize);
+      }
+
+      function ensureHandle(wrap) {
+        var cell = getHeaderFirstCell(wrap);
+        if (!cell) return;
+        var handle = cell.querySelector('.kexo-sticky-resize-handle');
+        if (!handle) {
+          handle = document.createElement('span');
+          handle.className = 'kexo-sticky-resize-handle';
+          handle.setAttribute('aria-hidden', 'true');
+          handle.setAttribute('data-no-drag-scroll', '1');
+          cell.appendChild(handle);
+        }
+        bindHandle(wrap, handle);
+      }
+
+      function bind(wrap) {
+        if (!wrap || wrap.getAttribute('data-sticky-resize-wrap-bound') === '1') return;
+        wrap.setAttribute('data-sticky-resize-wrap-bound', '1');
+        applyWidth(wrap, readSavedWidth());
+        ensureHandle(wrap);
+        if (typeof ResizeObserver !== 'undefined') {
+          try {
+            var ro = new ResizeObserver(function() { ensureHandle(wrap); });
+            ro.observe(wrap);
+            wrap._stickyResizeObserver = ro;
+          } catch (_) {}
+        }
+      }
+
+      function run() {
+        document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+      } else {
+        run();
+      }
+      setTimeout(run, 700);
+      setTimeout(run, 1800);
+    })();
+
     function getKpiData() {
       if (kpiCache) return kpiCache;
       if (getStatsRange() === 'today') return {};
@@ -3358,76 +3487,36 @@ const API = '';
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
     }
 
-    const CHART_TYPE_OPTIONS = ['area', 'bar', 'line'];
-
     function normalizeChartType(value, fallback) {
       const v = String(value == null ? '' : value).trim().toLowerCase();
       if (v === 'area' || v === 'bar' || v === 'line') return v;
       return fallback || 'area';
     }
 
-    function chartTypeStorageKey(scope) {
-      return 'kexo-chart-type-' + String(scope || '').trim().toLowerCase();
-    }
-
-    function getChartTypePref(scope, fallback) {
-      let raw = null;
-      try { raw = localStorage.getItem(chartTypeStorageKey(scope)); } catch (_) { raw = null; }
-      return normalizeChartType(raw, fallback);
-    }
-
-    function setChartTypePref(scope, type) {
-      try { localStorage.setItem(chartTypeStorageKey(scope), normalizeChartType(type, 'area')); } catch (_) {}
-    }
-
-    function chartTypeButtonIcon(type) {
-      if (type === 'area') return '<i class="fa-light fa-chart-area me-1" data-icon-key="chart-type-area" aria-hidden="true"></i>';
-      if (type === 'line') return '<i class="fa-light fa-chart-line me-1" data-icon-key="chart-type-line" aria-hidden="true"></i>';
-      return '<i class="fa-light fa-chart-column me-1" data-icon-key="chart-type-bar" aria-hidden="true"></i>';
-    }
-
-    function ensureChartTypeControls(chartId, scope, fallbackType, onChange) {
-      const chartEl = document.getElementById(chartId);
-      if (!chartEl) return normalizeChartType(fallbackType, 'area');
-      const chartType = getChartTypePref(scope, fallbackType);
-      const card = chartEl.closest ? chartEl.closest('.card') : null;
-      const header = card ? card.querySelector('.card-header') : null;
-      if (!header) return chartType;
-      let wrap = header.querySelector('[data-chart-type-scope="' + scope + '"]');
-      if (!wrap) {
-        wrap = document.createElement('div');
-        wrap.className = 'btn-list chart-type-controls ms-auto';
-        wrap.setAttribute('data-chart-type-scope', scope);
-        wrap.innerHTML = CHART_TYPE_OPTIONS.map(function (type) {
-          return '<button type="button" class="btn btn-sm btn-outline-secondary" data-chart-type="' + type + '">' +
-            chartTypeButtonIcon(type) + type.charAt(0).toUpperCase() + type.slice(1) + '</button>';
-        }).join('');
-        wrap.addEventListener('click', function (event) {
-          const btn = event && event.target ? event.target.closest('[data-chart-type]') : null;
-          if (!btn) return;
-          const nextType = normalizeChartType(btn.getAttribute('data-chart-type'), chartType);
-          setChartTypePref(scope, nextType);
-          Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-            const active = normalizeChartType(node.getAttribute('data-chart-type'), '') === nextType;
-            node.classList.toggle('active', active);
-            node.classList.toggle('btn-primary', active);
-            node.classList.toggle('btn-outline-secondary', !active);
-          });
-          if (typeof onChange === 'function') onChange(nextType);
-        });
-        header.appendChild(wrap);
-      }
-      Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-        const active = normalizeChartType(node.getAttribute('data-chart-type'), '') === chartType;
-        node.classList.toggle('active', active);
-        node.classList.toggle('btn-primary', active);
-        node.classList.toggle('btn-outline-secondary', !active);
-      });
-      return chartType;
+    // Chart-type switchers were removed theme-wide; keep this helper as a
+    // compatibility shim so existing render paths can still pick defaults.
+    function ensureChartTypeControls(_chartId, _scope, fallbackType) {
+      return normalizeChartType(fallbackType, 'area');
     }
 
     let productsChartInstance = null;
     let productsChartData = null;
+
+    function ensureThumbWidthParam(url, width) {
+      const raw = url != null ? String(url).trim() : '';
+      if (!raw) return '';
+      const targetWidth = Math.max(32, Number(width) || 100);
+      if (/^data:/i.test(raw)) return raw;
+      if (/[?&]width=\d+/i.test(raw)) return raw;
+      try {
+        const u = new URL(raw, window.location.origin);
+        if (!u.searchParams.has('width')) u.searchParams.set('width', String(targetWidth));
+        return u.toString();
+      } catch (_) {
+        const joiner = raw.indexOf('?') === -1 ? '?' : '&';
+        return raw + joiner + 'width=' + targetWidth;
+      }
+    }
 
     function renderProductsChart(data) {
       const el = document.getElementById('products-chart');
@@ -3455,70 +3544,108 @@ const API = '';
         return (b.revenue || 0) - (a.revenue || 0);
       }).slice(0, 10);
 
-      const categories = products.map(function(p) {
-        const title = p.title || 'Unknown Product';
-        return title.length > 30 ? title.substring(0, 27) + '...' : title;
-      });
-      const revenues = products.map(function(p) { return p.revenue || 0; });
-      const chartType = ensureChartTypeControls('products-chart', 'products-main', 'bar', function () {
-        renderProductsChart(productsChartData);
+      if (!products.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        return;
+      }
+
+      const mainBase = getMainBaseUrl();
+      const chartRows = products.map(function (p) {
+        const handle = (p && p.handle != null) ? String(p.handle).trim() : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const srcRaw = (p && p.thumb_url) ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : '';
+        const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
+        const thumb = ensureThumbWidthParam(srcRaw || ogThumb || '', 100);
+        const titleRaw = (p && p.title != null) ? String(p.title).trim() : '';
+        const title = titleRaw || 'Unknown Product';
+        return {
+          title: title,
+          titleShort: title.length > 38 ? (title.slice(0, 35) + '...') : title,
+          revenue: Number((p && p.revenue) || 0),
+          thumb: thumb,
+          productUrl: productUrl,
+        };
       });
 
-      const options = {
+      const chartHeight = Math.max(280, chartRows.length * 36);
+      el.innerHTML =
+        '<div class="products-chart-shell">' +
+          '<div class="products-chart-labels" id="products-chart-labels"></div>' +
+          '<div class="products-chart-plot" id="products-chart-plot"></div>' +
+        '</div>';
+      const labelsEl = document.getElementById('products-chart-labels');
+      const plotEl = document.getElementById('products-chart-plot');
+      if (!labelsEl || !plotEl) return;
+
+      labelsEl.style.height = chartHeight + 'px';
+      labelsEl.style.setProperty('--kexo-chart-product-rows', String(chartRows.length));
+      labelsEl.innerHTML = chartRows.map(function (row) {
+        const thumbHtml = row.thumb
+          ? '<img class="products-chart-label-thumb" src="' + escapeHtml(row.thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
+          : '<span class="products-chart-label-thumb products-chart-label-thumb--empty" aria-hidden="true"></span>';
+        const titleHtml = row.productUrl
+          ? '<a href="' + escapeHtml(row.productUrl) + '" target="_blank" rel="noopener">' + escapeHtml(row.titleShort) + '</a>'
+          : escapeHtml(row.titleShort);
+        return '<div class="products-chart-label-row">' +
+          thumbHtml +
+          '<span class="products-chart-label-title" title="' + escapeHtml(row.title) + '">' + titleHtml + '</span>' +
+        '</div>';
+      }).join('');
+
+      productsChartInstance = new ApexCharts(plotEl, {
         chart: {
-          type: chartType,
-          height: 280,
+          type: 'bar',
+          height: chartHeight,
           fontFamily: 'Inter, sans-serif',
-          toolbar: { show: false }
+          toolbar: { show: false },
         },
         series: [{
           name: 'Revenue',
-          data: revenues
+          data: chartRows.map(function (row) { return row.revenue; })
         }],
-        colors: ['#0d9488'],
-        plotOptions: chartType === 'bar' ? {
+        colors: ['#3eb3ab'],
+        plotOptions: {
           bar: {
             horizontal: true,
-            borderRadius: 4,
-            barHeight: '70%'
+            borderRadius: 5,
+            barHeight: '56%',
           }
-        } : {},
-        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-        fill: chartType === 'area'
-          ? { type: 'gradient', gradient: { opacityFrom: 0.36, opacityTo: 0.08 } }
-          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        },
         dataLabels: { enabled: false },
+        stroke: { width: 0 },
         xaxis: {
-          categories: categories,
           labels: {
             style: { fontSize: '11px' },
-            formatter: function(value) {
-              return '£' + Number(value).toLocaleString();
-            }
+            formatter: function(value) { return formatRevenue(Number(value)) || '—'; }
           }
         },
         yaxis: {
-          labels: {
-            style: { fontSize: '11px' },
-            formatter: undefined
-          }
+          labels: { show: false },
+          axisBorder: { show: false },
+          axisTicks: { show: false }
         },
         tooltip: {
-          y: {
-            formatter: function(value) {
-              return '£' + Number(value).toFixed(2);
-            }
+          custom: function(ctx) {
+            var idx = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+            var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
+            if (!row) return '';
+            var thumb = row.thumb
+              ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+              : '';
+            return '<div style="padding:8px 10px;min-width:170px;">' +
+              '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
+                '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+              '</div>' +
+              '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '—') + '</strong></div>' +
+            '</div>';
           }
         },
         grid: {
-          borderColor: '#f1f1f1',
-          padding: { left: 0, right: 0 }
+          borderColor: '#eef2f6',
+          strokeDashArray: 3,
+          padding: { left: 2, right: 4, top: 8, bottom: 4 }
         }
-      };
-
-      el.innerHTML = '';
-      productsChartInstance = new ApexCharts(el, options);
+      });
       productsChartInstance.render();
     }
 
@@ -4144,84 +4271,200 @@ const API = '';
 
     // Countries map chart
     let countriesMapChartInstance = null;
+
+    function clearCountriesFlowOverlay(el) {
+      if (!el) return;
+      var existing = el.querySelector('.kexo-map-flow-overlay');
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    }
+
+    function mapRegionCenter(mapSvg, mapRect, iso2) {
+      if (!mapSvg || !mapRect) return null;
+      var iso = String(iso2 || '').trim().toUpperCase();
+      if (!iso) return null;
+      var lowerIso = iso.toLowerCase();
+      var node = mapSvg.querySelector('[data-code="' + iso + '"], [data-code="' + lowerIso + '"], .jvm-region-' + lowerIso + ', .jvm-region-' + iso);
+      if (!node) return null;
+      var rect = node.getBoundingClientRect();
+      if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+      return {
+        x: (rect.left - mapRect.left) + (rect.width / 2),
+        y: (rect.top - mapRect.top) + (rect.height / 2),
+      };
+    }
+
+    function renderCountriesFlowOverlay(el, rows, primaryRgb) {
+      if (!el) return;
+      clearCountriesFlowOverlay(el);
+      var mapSvg = el.querySelector('svg');
+      if (!mapSvg) return;
+      var mapRect = mapSvg.getBoundingClientRect();
+      if (!mapRect || !(mapRect.width > 20) || !(mapRect.height > 20)) return;
+
+      var NS = 'http://www.w3.org/2000/svg';
+      var overlay = document.createElementNS(NS, 'svg');
+      overlay.setAttribute('class', 'kexo-map-flow-overlay');
+      overlay.setAttribute('viewBox', '0 0 ' + mapRect.width + ' ' + mapRect.height);
+      overlay.setAttribute('width', String(mapRect.width));
+      overlay.setAttribute('height', String(mapRect.height));
+
+      var ranked = (Array.isArray(rows) ? rows : [])
+        .map(function (r) {
+          var rawIso = r && r.country_code != null ? String(r.country_code) : 'XX';
+          var iso = rawIso.trim().toUpperCase().slice(0, 2);
+          if (iso === 'UK') iso = 'GB';
+          return {
+            iso: iso,
+            orders: Number((r && r.converted) || 0),
+          };
+        })
+        .filter(function (r) { return r.iso && r.iso !== 'XX' && r.iso !== 'GB' && r.orders > 0; })
+        .sort(function (a, b) { return b.orders - a.orders; })
+        .slice(0, 8);
+
+      if (!ranked.length) {
+        el.appendChild(overlay);
+        return;
+      }
+
+      var origin = mapRegionCenter(mapSvg, mapRect, 'GB') ||
+        { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
+      var palette = [
+        'rgba(' + primaryRgb + ',0.72)',
+        'rgba(75,148,228,0.66)',
+        'rgba(245,159,0,0.62)',
+      ];
+
+      ranked.forEach(function (item, idx) {
+        var target = mapRegionCenter(mapSvg, mapRect, item.iso);
+        if (!target) return;
+        var midX = (origin.x + target.x) / 2;
+        var bend = Math.max(18, Math.min(74, (Math.abs(target.x - origin.x) * 0.16) + (idx * 3)));
+        var midY = (origin.y + target.y) / 2 - bend;
+        var stroke = palette[idx % palette.length];
+
+        var path = document.createElementNS(NS, 'path');
+        path.setAttribute('class', 'kexo-map-flow-line');
+        path.setAttribute('d', 'M ' + origin.x + ' ' + origin.y + ' Q ' + midX + ' ' + midY + ' ' + target.x + ' ' + target.y);
+        path.setAttribute('stroke', stroke);
+        path.style.animationDelay = String(idx * 0.24) + 's';
+        overlay.appendChild(path);
+
+        var dot = document.createElementNS(NS, 'circle');
+        dot.setAttribute('class', 'kexo-map-flow-dot');
+        dot.setAttribute('cx', String(target.x));
+        dot.setAttribute('cy', String(target.y));
+        dot.setAttribute('r', '3.2');
+        dot.setAttribute('fill', stroke);
+        dot.style.animationDelay = String(0.12 + idx * 0.24) + 's';
+        overlay.appendChild(dot);
+      });
+
+      var originDot = document.createElementNS(NS, 'circle');
+      originDot.setAttribute('class', 'kexo-map-flow-origin');
+      originDot.setAttribute('cx', String(origin.x));
+      originDot.setAttribute('cy', String(origin.y));
+      originDot.setAttribute('r', '4.2');
+      originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.86)');
+      overlay.appendChild(originDot);
+
+      el.appendChild(overlay);
+    }
+
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
-      if (typeof ApexCharts === 'undefined') {
+      if (typeof jsVectorMap === 'undefined') {
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
 
       if (countriesMapChartInstance) {
-        try {
-          countriesMapChartInstance.destroy();
-        } catch (_) {}
+        try { countriesMapChartInstance.destroy(); } catch (_) {}
         countriesMapChartInstance = null;
       }
+      clearCountriesFlowOverlay(el);
 
-      const c = data.country || {};
+      const c = data && data.country ? data.country : {};
       const rows = c[getStatsRange()] || [];
-
-      if (rows.length === 0) {
+      if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);">No data</div>';
         return;
       }
 
-      const topRows = rows
-        .slice()
-        .sort(function(a, b) { return (Number(b && b.revenue) || 0) - (Number(a && a.revenue) || 0); })
-        .slice(0, 12);
-      const labels = topRows.map(function(r) {
-        const code = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
-        return countryLabel(code);
-      });
-      const revenueSeries = topRows.map(function(r) { return Number((r && r.revenue) || 0); });
-      const ordersSeries = topRows.map(function(r) { return Number((r && r.converted) || 0); });
-      const chartType = ensureChartTypeControls('countries-map-chart', 'countries-main', 'bar', function () {
-        renderCountriesMapChart(data);
-      });
+      const revenueByIso2 = {};
+      const ordersByIso2 = {};
+      for (const r of rows || []) {
+        let iso = (r && r.country_code != null) ? String(r.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
+        if (!iso || iso === 'XX') continue;
+        if (iso === 'UK') iso = 'GB';
+        const rev = (r && typeof r.revenue === 'number') ? r.revenue : 0;
+        const ord = (r && r.converted != null) ? Number(r.converted) : 0;
+        if (!Number.isFinite(rev) && !Number.isFinite(ord)) continue;
+        revenueByIso2[iso] = (revenueByIso2[iso] || 0) + (Number.isFinite(rev) ? rev : 0);
+        ordersByIso2[iso] = (ordersByIso2[iso] || 0) + (Number.isFinite(ord) ? ord : 0);
+      }
 
       el.innerHTML = '';
-      countriesMapChartInstance = new ApexCharts(el, {
-        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: [
-          { name: 'Revenue', data: revenueSeries },
-          { name: 'Orders', data: ordersSeries },
-        ],
-        colors: ['#0d9488', '#3b82f6'],
-        plotOptions: chartType === 'bar' ? { bar: { borderRadius: 4, columnWidth: '55%' } } : {},
-        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-        fill: chartType === 'area'
-          ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
-          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
-        dataLabels: { enabled: false },
-        xaxis: { categories: labels, labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false } },
-        yaxis: {
-          min: 0,
-          labels: {
-            style: { fontSize: '11px' },
-            formatter: function(v, opts) {
-              if (opts && opts.seriesIndex === 0) return formatRevenue(Number(v)) || '—';
-              return Number(v || 0).toLocaleString();
+      try {
+        const rootCss = getComputedStyle(document.documentElement);
+        const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
+        const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
+        const primaryRgb = (rootCss.getPropertyValue('--tblr-primary-rgb') || '62,179,171').trim();
+        const primaryHex = (rootCss.getPropertyValue('--tblr-primary') || '#3eb3ab').trim();
+
+        countriesMapChartInstance = new jsVectorMap({
+          selector: '#countries-map-chart',
+          map: 'world',
+          backgroundColor: 'transparent',
+          zoomButtons: false,
+          zoomOnScroll: false,
+          zoomAnimate: false,
+          regionStyle: {
+            initial: { fill: '#e8f6f4', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(75,148,228,0.44)' },
+            selected: { fill: 'rgba(' + primaryRgb + ',0.52)' },
+          },
+          series: {
+            regions: [
+              {
+                attribute: 'fill',
+                values: revenueByIso2,
+                scale: ['#e8f6f4', '#8fd5cf', primaryHex],
+                normalizeFunction: 'polynomial',
+              }
+            ]
+          },
+          onRegionTooltipShow: function(tooltip, code) {
+            const iso = (code || '').toString().trim().toUpperCase();
+            const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
+              ? (countriesMapChartInstance.getRegionName(iso) || iso)
+              : iso;
+            const rev = revenueByIso2[iso] || 0;
+            const ord = ordersByIso2[iso] || 0;
+            if (!rev && !ord) {
+              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
+              return;
             }
+            const revHtml = formatRevenue(Number(rev) || 0) || '—';
+            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '—';
+            tooltip.html(
+              '<div style="min-width:180px">' +
+                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style="color:inherit">' + escapeHtml(revHtml) + '</span></div>' +
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style="color:inherit">' + escapeHtml(ordHtml) + '</span></div>' +
+              '</div>'
+            );
           }
-        },
-        tooltip: {
-          shared: true,
-          intersect: false,
-          y: {
-            formatter: function(v, opts) {
-              return opts && opts.seriesIndex === 0
-                ? (formatRevenue(Number(v)) || '—')
-                : (Number(v || 0).toLocaleString() + ' orders');
-            }
-          }
-        },
-        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-        legend: { position: 'top', fontSize: '12px' }
-      });
-      countriesMapChartInstance.render();
+        });
+
+        setTimeout(function () {
+          try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
+        }, 140);
+      } catch (err) {
+        console.error('[countries-map] map render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Map rendering failed</div>';
+      }
     }
 
     function renderBestGeoProducts(data) {
@@ -4268,7 +4511,6 @@ const API = '';
         const label = countryLabel(iso);
         const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
-        const productThumb = (r && r.product_thumb_url != null) ? String(r.product_thumb_url).trim() : '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '';
         const conversion = pct(r.conversion);
@@ -4279,7 +4521,11 @@ const API = '';
         const titleLink = productUrl
           ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + escapeHtml(productTitle) + '</a>'
           : escapeHtml(productTitle);
-        const labelHtml = '<span class="country-label">' + titleLink + '</span>';
+        const labelHtml =
+          '<span class="country-product-stack">' +
+            '<span class="country-label">' + escapeHtml(label) + '</span>' +
+            '<span class="country-product-label">' + titleLink + '</span>' +
+          '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
@@ -5135,8 +5381,9 @@ const API = '';
       if (typeof ApexCharts === 'undefined') return;
       var sourceSeries = getSparklineSeries(series);
       if (!sourceSeries || !sourceSeries.length) return;
-      var GREEN = '#22c55e';
-      var RED = '#ef4444';
+      var GREEN = '#16a34a';
+      var RED = '#dc2626';
+      var NEUTRAL = '#3eb3ab';
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
@@ -5163,18 +5410,16 @@ const API = '';
         if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
         var tone = String(el.getAttribute('data-tone') || '').toLowerCase();
         if (tone !== 'up' && tone !== 'down') {
-          var last = Number(dataArr[dataArr.length - 1]);
-          var prev = Number(dataArr[dataArr.length - 2]);
-          tone = (Number.isFinite(last) && Number.isFinite(prev) && last < prev) ? 'down' : 'up';
+          tone = 'neutral';
         }
-        var sparkColor = tone === 'down' ? RED : GREEN;
+        var sparkColor = tone === 'down' ? RED : (tone === 'up' ? GREEN : NEUTRAL);
         el.innerHTML = '';
         try {
           var chart = new ApexCharts(el, {
             chart: { type: 'area', height: 16, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
-            stroke: { width: 2, curve: 'smooth' },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+            stroke: { width: 2.2, curve: 'smooth' },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.52, opacityTo: 0.08 } },
             colors: [sparkColor],
             tooltip: { enabled: false }
           });
@@ -5265,6 +5510,10 @@ const API = '';
           return;
         }
         const delta = invert ? (base - cur) : (cur - base);
+        if (Math.abs(delta) < 1e-9) {
+          sparkEl.removeAttribute('data-tone');
+          return;
+        }
         sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
       }
 
@@ -6383,37 +6632,69 @@ const API = '';
       if (data) channelsChartData = data;
       var d = channelsChartData;
       var rows = d && d.sources && Array.isArray(d.sources.rows) ? d.sources.rows.slice() : [];
-      rows = rows.filter(function(r) { return r && (r.revenueGbp > 0 || r.sessions > 0); });
-      rows.sort(function(a, b) { return (b.revenueGbp || 0) - (a.revenueGbp || 0); });
-      rows = rows.slice(0, 10);
+      rows = rows.filter(function(r) {
+        return r && ((Number(r.revenueGbp) || 0) > 0 || (Number(r.sessions) || 0) > 0 || (Number(r.orders) || 0) > 0);
+      });
+      rows.sort(function(a, b) { return (Number(b && b.revenueGbp) || 0) - (Number(a && a.revenueGbp) || 0); });
+      rows = rows.slice(0, 8);
       if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
         return;
       }
       var categories = rows.map(function(r) {
         var lbl = r.label || r.key || '—';
-        return lbl.length > 25 ? lbl.substring(0, 22) + '...' : lbl;
+        return lbl.length > 22 ? lbl.substring(0, 19) + '...' : lbl;
       });
-      var revenues = rows.map(function(r) { return r.revenueGbp || 0; });
-      var chartType = ensureChartTypeControls('channels-chart', 'channels-main', 'bar', function () {
-        renderChannelsChart(channelsChartData);
-      });
+      var sessions = rows.map(function(r) { return Number((r && r.sessions) || 0); });
+      var orders = rows.map(function(r) { return Number((r && r.orders) || 0); });
+      var revenues = rows.map(function(r) { return Number((r && r.revenueGbp) || 0); });
       el.innerHTML = '';
       channelsChartInstance = new ApexCharts(el, {
-        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: [{ name: 'Revenue', data: revenues }],
-        colors: ['#4592e9'],
-        plotOptions: chartType === 'bar' ? { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } } : {},
-        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-        fill: chartType === 'area'
-          ? { type: 'gradient', gradient: { opacityFrom: 0.32, opacityTo: 0.08 } }
-          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: [
+          { name: 'Sessions', data: sessions, yAxisIndex: 0 },
+          { name: 'Orders', data: orders, yAxisIndex: 0 },
+          { name: 'Revenue', data: revenues, yAxisIndex: 1 }
+        ],
+        colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
+        stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
+        markers: { size: 3, hover: { size: 5 } },
         dataLabels: { enabled: false },
-        xaxis: { categories: categories, labels: { style: { fontSize: '11px' }, formatter: function(v) { return '\u00A3' + Number(v).toLocaleString(); } } },
-        yaxis: { labels: { style: { fontSize: '11px' } } },
-        tooltip: { y: { formatter: function(v) { return '\u00A3' + Number(v).toFixed(2); } } },
-        grid: { borderColor: '#f1f1f1', padding: { left: 0, right: 0 } }
+        xaxis: {
+          categories: categories,
+          labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false }
+        },
+        yaxis: [
+          {
+            min: 0,
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function(v) { return Number(v || 0).toLocaleString(); }
+            }
+          },
+          {
+            min: 0,
+            opposite: true,
+            seriesName: 'Revenue',
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function(v) { return formatRevenue(Number(v)) || '—'; }
+            }
+          }
+        ],
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function(v, opts) {
+              var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+              if (idx === 2) return formatRevenue(Number(v)) || '—';
+              return Number(v || 0).toLocaleString();
+            }
+          }
+        },
+        legend: { position: 'top', fontSize: '12px' },
+        grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
       });
       channelsChartInstance.render();
     }
@@ -6429,33 +6710,61 @@ const API = '';
       }
       if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
       var rows = data && data.types && Array.isArray(data.types.rows) ? data.types.rows.slice() : [];
-      rows = rows.filter(function(r) { return r && r.sessions > 0; });
-      rows.sort(function(a, b) { return (b.sessions || 0) - (a.sessions || 0); });
+      rows = rows.filter(function(r) {
+        return r && ((Number(r.sessions) || 0) > 0 || (Number(r.orders) || 0) > 0 || (Number(r.revenueGbp) || 0) > 0);
+      });
+      rows.sort(function(a, b) { return (Number(b && b.sessions) || 0) - (Number(a && a.sessions) || 0); });
       if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
         return;
       }
-      var labels = rows.map(function(r) { return r.label || r.key || '—'; });
-      var sessions = rows.map(function(r) { return r.sessions || 0; });
-      var chartType = ensureChartTypeControls('type-chart', 'type-main', 'bar', function () {
-        renderTypeChart(data);
+      var labels = rows.map(function(r) {
+        var lbl = r && (r.label || r.key) ? String(r.label || r.key) : '—';
+        return lbl.length > 22 ? lbl.slice(0, 19) + '...' : lbl;
       });
+      var sessions = rows.map(function(r) { return r.sessions || 0; });
+      var orders = rows.map(function(r) { return Number((r && r.orders) || 0); });
+      var revenues = rows.map(function(r) { return Number((r && r.revenueGbp) || 0); });
       el.innerHTML = '';
       typeChartInstance = new ApexCharts(el, {
-        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: [{ name: 'Sessions', data: sessions }],
-        colors: ['#4592e9'],
-        plotOptions: chartType === 'bar' ? { bar: { borderRadius: 4, columnWidth: '58%' } } : {},
-        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-        fill: chartType === 'area'
-          ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
-          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: [
+          { name: 'Sessions', data: sessions, yAxisIndex: 0 },
+          { name: 'Orders', data: orders, yAxisIndex: 0 },
+          { name: 'Revenue', data: revenues, yAxisIndex: 1 }
+        ],
+        colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
+        stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
+        markers: { size: 3, hover: { size: 5 } },
         dataLabels: { enabled: false },
-        xaxis: { categories: labels, labels: { style: { fontSize: '11px' } } },
-        yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+        xaxis: {
+          categories: labels,
+          labels: { style: { fontSize: '11px' }, rotate: -12, hideOverlappingLabels: false }
+        },
+        yaxis: [
+          {
+            min: 0,
+            labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
+          },
+          {
+            min: 0,
+            opposite: true,
+            seriesName: 'Revenue',
+            labels: { style: { fontSize: '11px' }, formatter: function(v) { return formatRevenue(Number(v)) || '—'; } }
+          }
+        ],
         legend: { position: 'top', fontSize: '12px' },
-        tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' sessions'; } } },
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function(v, opts) {
+              var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+              if (idx === 2) return formatRevenue(Number(v)) || '—';
+              return Number(v || 0).toLocaleString();
+            }
+          }
+        },
         grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
       });
       typeChartInstance.render();
@@ -9531,11 +9840,11 @@ const API = '';
 
           var fillCfg = t === 'bar'
             ? { type: 'solid', opacity: 1 }
-            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.4 : 0.24, opacityTo: t === 'area' ? 0.05 : 0.06 } };
+            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.58 : 0.36, opacityTo: t === 'area' ? 0.1 : 0.12 } };
           var chart = new ApexCharts(sparkEl, {
             chart: { type: t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: nums }],
-            stroke: { width: t === 'bar' ? 0 : 2, curve: 'smooth' },
+            stroke: { width: t === 'bar' ? 0 : 2.3, curve: 'smooth' },
             fill: fillCfg,
             plotOptions: t === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             colors: [color],
@@ -9545,23 +9854,29 @@ const API = '';
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = '#22c55e';
-          var RED = '#ef4444';
+          var GREEN = '#16a34a';
+          var RED = '#dc2626';
+          var NEUTRAL = '#3eb3ab';
           var vals = (dataArr || []).map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : null;
           }).filter(function(v) { return v != null; });
-          if (vals.length < 2) return GREEN;
-          return vals[vals.length - 1] >= vals[vals.length - 2] ? GREEN : RED;
+          if (vals.length < 2) return NEUTRAL;
+          var last = vals[vals.length - 1];
+          var prev = vals[vals.length - 2];
+          if (Math.abs(last - prev) < 1e-9) return NEUTRAL;
+          return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = '#22c55e';
-          var RED = '#ef4444';
+          var GREEN = '#16a34a';
+          var RED = '#dc2626';
+          var NEUTRAL = '#3eb3ab';
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
           var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
-          if (cur == null || base == null) return sparkToneColor(fallbackDataArr || []);
+          if (cur == null || base == null) return NEUTRAL;
           var delta = cur - base;
           if (invert) delta = -delta;
+          if (Math.abs(delta) < 1e-9) return NEUTRAL;
           return delta >= 0 ? GREEN : RED;
         }
         function numFromRangeMap(dataObj, keyName, rangeKey) {

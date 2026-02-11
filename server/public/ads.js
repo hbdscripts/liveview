@@ -49,68 +49,6 @@
     }).catch(function () { return null; });
   }
 
-  var CHART_TYPES = ['area', 'bar', 'line'];
-  function normalizeChartType(value, fallback) {
-    var v = String(value == null ? '' : value).trim().toLowerCase();
-    if (v === 'area' || v === 'bar' || v === 'line') return v;
-    return fallback || 'area';
-  }
-  function chartTypeStorageKey(scope) {
-    return 'kexo-chart-type-' + String(scope || '').trim().toLowerCase();
-  }
-  function getChartTypePref(scope, fallback) {
-    var raw = null;
-    try { raw = localStorage.getItem(chartTypeStorageKey(scope)); } catch (_) { raw = null; }
-    return normalizeChartType(raw, fallback);
-  }
-  function setChartTypePref(scope, type) {
-    try { localStorage.setItem(chartTypeStorageKey(scope), normalizeChartType(type, 'area')); } catch (_) {}
-  }
-  function chartTypeIcon(type) {
-    if (type === 'area') return '<i class="fa-light fa-chart-area me-1" data-icon-key="chart-type-area" aria-hidden="true"></i>';
-    if (type === 'line') return '<i class="fa-light fa-chart-line me-1" data-icon-key="chart-type-line" aria-hidden="true"></i>';
-    return '<i class="fa-light fa-chart-column me-1" data-icon-key="chart-type-bar" aria-hidden="true"></i>';
-  }
-  function ensureChartTypeControls(chartId, scope, fallbackType, onChange) {
-    var chartEl = document.getElementById(chartId);
-    if (!chartEl) return normalizeChartType(fallbackType, 'area');
-    var chartType = getChartTypePref(scope, fallbackType);
-    var card = chartEl.closest ? chartEl.closest('.card') : null;
-    var header = card ? card.querySelector('.card-header') : null;
-    if (!header) return chartType;
-    var wrap = header.querySelector('[data-chart-type-scope="' + scope + '"]');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.className = 'btn-list chart-type-controls ms-auto';
-      wrap.setAttribute('data-chart-type-scope', scope);
-      wrap.innerHTML = CHART_TYPES.map(function (type) {
-        return '<button type="button" class="btn btn-sm btn-outline-secondary" data-chart-type="' + type + '">' +
-          chartTypeIcon(type) + type.charAt(0).toUpperCase() + type.slice(1) + '</button>';
-      }).join('');
-      wrap.addEventListener('click', function (event) {
-        var btn = event && event.target ? event.target.closest('[data-chart-type]') : null;
-        if (!btn) return;
-        var next = normalizeChartType(btn.getAttribute('data-chart-type'), chartType);
-        setChartTypePref(scope, next);
-        Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-          var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === next;
-          node.classList.toggle('active', active);
-          node.classList.toggle('btn-primary', active);
-          node.classList.toggle('btn-outline-secondary', !active);
-        });
-        if (typeof onChange === 'function') onChange(next);
-      });
-      header.appendChild(wrap);
-    }
-    Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-      var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === chartType;
-      node.classList.toggle('active', active);
-      node.classList.toggle('btn-primary', active);
-      node.classList.toggle('btn-outline-secondary', !active);
-    });
-    return chartType;
-  }
-
   function profitClass(v) {
     var x = v != null ? Number(v) : 0;
     if (!Number.isFinite(x) || x === 0) return '';
@@ -207,8 +145,10 @@
     var categories = campaigns.map(function (c) { return shortCampaignLabel(c.campaignName || c.campaignId || '—', 24); });
     var spendSeries = campaigns.map(function (c) { return Number((c && c.spend) || 0); });
     var salesSeries = campaigns.map(function (c) { return Number((c && c.revenue) || 0); });
-    var chartType = ensureChartTypeControls('ads-overview-chart', 'ads-overview', 'bar', function () {
-      renderAdsOverviewChart(summary);
+    var roasSeries = campaigns.map(function (c) {
+      var spend = Number((c && c.spend) || 0);
+      var revenue = Number((c && c.revenue) || 0);
+      return spend > 0 ? (revenue / spend) : 0;
     });
 
     if (adsOverviewChart) {
@@ -219,50 +159,59 @@
 
     adsOverviewChart = new ApexCharts(el, {
       chart: {
-        type: chartType,
-        height: 240,
+        type: 'line',
+        height: 252,
         fontFamily: 'Inter, sans-serif',
         toolbar: { show: false },
       },
       series: [
-        { name: 'Spend', data: spendSeries },
-        { name: 'Sales', data: salesSeries },
+        { name: 'Sales', type: 'area', data: salesSeries, yAxisIndex: 0 },
+        { name: 'Spend', type: 'area', data: spendSeries, yAxisIndex: 0 },
+        { name: 'ROAS', type: 'line', data: roasSeries, yAxisIndex: 1 },
       ],
-      colors: ['#ef4444', '#0d9488'],
-      plotOptions: chartType === 'bar' ? {
-        bar: {
-          horizontal: false,
-          borderRadius: 4,
-          columnWidth: '48%',
-        },
-      } : {},
-      stroke: { show: chartType !== 'bar', width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-      fill: chartType === 'area'
-        ? { type: 'gradient', gradient: { opacityFrom: 0.28, opacityTo: 0.08 } }
-        : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-      markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+      colors: ['#3eb3ab', '#ef4444', '#4b94e4'],
+      stroke: { width: [2.6, 2.4, 3], curve: 'smooth' },
+      fill: {
+        type: ['gradient', 'gradient', 'solid'],
+        gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] }
+      },
+      markers: { size: 3, hover: { size: 5 } },
       dataLabels: { enabled: false },
       xaxis: {
         categories: categories,
         labels: {
           style: { fontSize: '11px' },
-          rotate: -20,
+          rotate: -18,
           hideOverlappingLabels: false,
           trim: true,
         },
       },
-      yaxis: {
-        min: 0,
-        labels: {
-          style: { fontSize: '11px' },
-          formatter: function (v) { return fmtMoney(v, currency); },
+      yaxis: [
+        {
+          min: 0,
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function (v) { return fmtMoney(v, currency); },
+          },
         },
-      },
+        {
+          min: 0,
+          opposite: true,
+          seriesName: 'ROAS',
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function (v) { return fmtRoas(v); },
+          },
+        }
+      ],
       tooltip: {
         shared: true,
         intersect: false,
         y: {
-          formatter: function (v) { return fmtMoney(v, currency); },
+          formatter: function (v, opts) {
+            var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+            return idx === 2 ? fmtRoas(v) : fmtMoney(v, currency);
+          },
         },
       },
       legend: {

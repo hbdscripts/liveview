@@ -51,66 +51,10 @@
       .catch(function () { return null; });
   }
 
-  var CHART_TYPES = ['area', 'bar', 'line'];
   function normalizeChartType(value, fallback) {
     var v = String(value == null ? '' : value).trim().toLowerCase();
     if (v === 'area' || v === 'bar' || v === 'line') return v;
     return fallback || 'area';
-  }
-  function chartTypeStorageKey(scope) {
-    return 'kexo-chart-type-' + String(scope || '').trim().toLowerCase();
-  }
-  function getChartTypePref(scope, fallback) {
-    var raw = null;
-    try { raw = localStorage.getItem(chartTypeStorageKey(scope)); } catch (_) { raw = null; }
-    return normalizeChartType(raw, fallback);
-  }
-  function setChartTypePref(scope, type) {
-    try { localStorage.setItem(chartTypeStorageKey(scope), normalizeChartType(type, 'area')); } catch (_) {}
-  }
-  function chartTypeIcon(type) {
-    if (type === 'area') return '<i class="fa-light fa-chart-area me-1" data-icon-key="chart-type-area" aria-hidden="true"></i>';
-    if (type === 'line') return '<i class="fa-light fa-chart-line me-1" data-icon-key="chart-type-line" aria-hidden="true"></i>';
-    return '<i class="fa-light fa-chart-column me-1" data-icon-key="chart-type-bar" aria-hidden="true"></i>';
-  }
-  function ensureChartTypeControls(chartId, scope, fallbackType, onChange) {
-    var chartEl = document.getElementById(chartId);
-    if (!chartEl) return normalizeChartType(fallbackType, 'area');
-    var chartType = getChartTypePref(scope, fallbackType);
-    var card = chartEl.closest ? chartEl.closest('.card') : null;
-    var header = card ? card.querySelector('.card-header') : null;
-    if (!header) return chartType;
-    var wrap = header.querySelector('[data-chart-type-scope="' + scope + '"]');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.className = 'btn-list chart-type-controls ms-auto';
-      wrap.setAttribute('data-chart-type-scope', scope);
-      wrap.innerHTML = CHART_TYPES.map(function (type) {
-        return '<button type="button" class="btn btn-sm btn-outline-secondary" data-chart-type="' + type + '">' +
-          chartTypeIcon(type) + type.charAt(0).toUpperCase() + type.slice(1) + '</button>';
-      }).join('');
-      wrap.addEventListener('click', function (event) {
-        var btn = event && event.target ? event.target.closest('[data-chart-type]') : null;
-        if (!btn) return;
-        var next = normalizeChartType(btn.getAttribute('data-chart-type'), chartType);
-        setChartTypePref(scope, next);
-        Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-          var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === next;
-          node.classList.toggle('active', active);
-          node.classList.toggle('btn-primary', active);
-          node.classList.toggle('btn-outline-secondary', !active);
-        });
-        if (typeof onChange === 'function') onChange(next);
-      });
-      header.appendChild(wrap);
-    }
-    Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
-      var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === chartType;
-      node.classList.toggle('active', active);
-      node.classList.toggle('btn-primary', active);
-      node.classList.toggle('btn-outline-secondary', !active);
-    });
-    return chartType;
   }
 
   var back = qs('#tools-back');
@@ -313,9 +257,7 @@
     var beforeCr = Number(before.cr) || 0;
     var afterCr = Number(after.cr) || 0;
     var crMax = Math.max(5, beforeCr, afterCr) * 1.25;
-    var chartType = ensureChartTypeControls('tools-compare-chart', 'tools-compare', 'line', function () {
-      renderCompareChart(summary);
-    });
+    var chartType = normalizeChartType('line', 'line');
 
     if (compareChart) {
       try { compareChart.destroy(); } catch (_) {}
