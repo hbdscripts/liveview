@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (canonical folder routes + navbar relabel + live visitors status moved to far-right desktop nav)
+Last updated: 2026-02-11 (live visitors navbar count now refreshes consistently across page/range navigation)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -208,6 +208,11 @@ Edge (optional):
 ---
 
 ## Changelog (summary)
+
+2026-02-11
+- Live visitors navbar consistency:
+  - `server/public/app.js` now triggers `updateKpis()` immediately on tab/page navigation, date-range changes, and when the tab becomes visible again.
+  - This prevents the top-right visitors count from staying blank on dashboard/tools/insights/traffic pages while waiting for the 60s background poll.
 
 2026-02-11
 - Canonical folder-style page routing + redirects:

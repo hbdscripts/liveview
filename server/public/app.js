@@ -5609,6 +5609,8 @@ const API = '';
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: true });
       try { refreshKpiExtrasSoft(); } catch (_) {}
+      // Keep the desktop navbar "visitors" status eager on every range change.
+      updateKpis();
 
       if (activeMainTab === 'dashboard') {
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
@@ -10126,6 +10128,8 @@ const API = '';
 
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
           runTabWork(tab);
+          // Ensure navbar live visitors status updates immediately on navigation.
+          try { updateKpis(); } catch (_) {}
         }
 
         try { window.setTab = setTab; } catch (_) {}
@@ -10374,6 +10378,7 @@ const API = '';
 
     function onBecameVisible() {
       updateNextUpdateUi();
+      try { updateKpis(); } catch (_) {}
       if (activeMainTab !== 'dashboard' && activeMainTab !== 'tools') refreshKpis({ force: false });
       if (activeMainTab === 'dashboard') {
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
