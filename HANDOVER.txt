@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (single page-body loader refined: no logo, centered, header/footer unaffected)
+Last updated: 2026-02-11 (page-body loader now uses full body-color overlay between menu and footer)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,9 +210,12 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Loader overlay fill refinement:
+  - `server/public/custom.css` now applies a full-size page-body loader overlay (`width/height: 100%`) with `background: var(--tblr-body-bg)` so content cannot bleed through during loading.
+  - Overlay scope remains bounded to `.page-body`, so it fills under top navigation and above footer (not over global chrome).
 - Loader UX refinement (post-unification):
   - Shared page-body loader (`#page-body-loader`) no longer renders the Kexo logo; it now shows only status text + Tabler indeterminate progress.
-  - Loader backdrop is transparent and non-interactive, so header/top menu/footer remain visually unaffected while loading happens in the center content region.
+  - Loader remains scoped to `.page-body` so header/top menu/footer stay outside the loading surface.
   - During loading, page-body content is hidden via `visibility` (not `display:none`) to preserve layout height and avoid footer/nav jump.
 - Single page-body loader unification (all canonical routes):
   - Added one shared Tabler-style loader in `server/public/partials/page-body-start.html` (`#page-body-loader`) that anchors to `.page-body` with dynamic title/step text.
