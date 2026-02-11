@@ -134,7 +134,7 @@ a {
 }
 .kexo-map-flow-origin {
   opacity: 0.9;
-  filter: drop-shadow(0 0 6px rgba(62, 179, 171, .45));
+  filter: drop-shadow(0 0 6px rgba(var(--tblr-primary-rgb, 62, 179, 171), .45));
 }
 @keyframes kexoMapFlowLine {
   0% { stroke-dashoffset: 24; opacity: 0; }
@@ -236,6 +236,8 @@ body:not([data-page="settings"]) .table-scroll-wrap,
 body:not([data-page="settings"]) .country-table-wrap,
 body:not([data-page="settings"]) .table-responsive {
   --kexo-sticky-col-width: 120px;
+  --kexo-sticky-col-min-width: 96px;
+  --kexo-sticky-col-max-width: 320px;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
@@ -243,12 +245,14 @@ body:not([data-page="settings"]) .table-responsive table thead th:first-child {
   position: sticky;
   left: 0;
   z-index: 6;
-  min-width: 100px;
-  width: var(--kexo-sticky-col-width, 120px);
-  max-width: 200px;
+  min-width: var(--kexo-sticky-col-min-width, 96px) !important;
+  width: var(--kexo-sticky-col-width, 120px) !important;
+  max-width: var(--kexo-sticky-col-max-width, 320px) !important;
+  overflow: visible !important;
+  padding-right: 14px !important;
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  box-shadow: 10px 0 14px -10px rgba(15, 23, 42, 0.48);
+  box-shadow: 12px 0 16px -10px rgba(15, 23, 42, 0.54);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
@@ -257,20 +261,30 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   position: sticky;
   left: 0;
   z-index: 5;
-  min-width: 100px;
-  width: var(--kexo-sticky-col-width, 120px);
-  max-width: 200px;
+  min-width: var(--kexo-sticky-col-min-width, 96px) !important;
+  width: var(--kexo-sticky-col-width, 120px) !important;
+  max-width: var(--kexo-sticky-col-max-width, 320px) !important;
   background: var(--tblr-bg-surface, #fff) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  box-shadow: 10px 0 14px -10px rgba(15, 23, 42, 0.4);
+  box-shadow: 12px 0 16px -10px rgba(15, 23, 42, 0.44);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child,
-body:not([data-page="settings"]) .table-responsive table :is(th:first-child, td:first-child) {
+body:not([data-page="settings"]) .table-responsive table td:first-child {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
+  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
+}
+body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .table-responsive table tbody td:nth-child(2) {
+  background: var(--tblr-bg-surface, #fff) !important;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell,
@@ -1734,7 +1748,7 @@ html[data-bs-theme="dark"] .landing-thumb {
   vertical-align: middle;
 }
 #dash-top-products .table td:first-child {
-  max-width: 0;
+  max-width: var(--kexo-sticky-col-width, 160px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -317,15 +317,27 @@ const API = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
       if (String(page || '').toLowerCase() === 'settings') return;
       var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
-      var MIN_WIDTH = 100;
-      var MAX_WIDTH = 200;
-      var DEFAULT_WIDTH = 120;
+      var ABS_MIN_WIDTH = 96;
+      var ABS_MAX_WIDTH = 460;
       var LS_KEY = 'kexo-sticky-col-width';
 
-      function clampWidth(n) {
+      function getBounds(wrap) {
+        var viewport = 0;
+        try { viewport = Math.max(window.innerWidth || 0, document.documentElement ? (document.documentElement.clientWidth || 0) : 0); } catch (_) { viewport = 0; }
+        if (!viewport || !Number.isFinite(viewport)) viewport = 1280;
+        var wrapW = wrap && wrap.clientWidth ? wrap.clientWidth : viewport;
+        var base = Math.max(280, Math.min(viewport, wrapW || viewport));
+        var min = Math.max(ABS_MIN_WIDTH, Math.min(220, Math.round(base * 0.2)));
+        var max = Math.max(min + 40, Math.min(ABS_MAX_WIDTH, Math.round(base * 0.42)));
+        var def = Math.max(min, Math.min(max, Math.round(base * 0.28)));
+        return { min: min, max: max, def: def };
+      }
+
+      function clampWidth(wrap, n) {
+        var bounds = getBounds(wrap);
         var x = Number(n);
-        if (!Number.isFinite(x)) return DEFAULT_WIDTH;
-        return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(x)));
+        if (!Number.isFinite(x)) return bounds.def;
+        return Math.max(bounds.min, Math.min(bounds.max, Math.round(x)));
       }
 
       function getHeaderFirstCell(wrap) {
@@ -333,14 +345,17 @@ const API = '';
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
       }
 
-      function readSavedWidth() {
+      function readSavedWidth(wrap) {
         var raw = null;
         try { raw = localStorage.getItem(LS_KEY); } catch (_) { raw = null; }
-        return clampWidth(raw == null ? DEFAULT_WIDTH : Number(raw));
+        var fallback = getBounds(wrap).def;
+        return clampWidth(wrap, raw == null ? fallback : Number(raw));
       }
 
       function saveWidth(width) {
-        try { localStorage.setItem(LS_KEY, String(clampWidth(width))); } catch (_) {}
+        var n = Number(width);
+        if (!Number.isFinite(n)) return;
+        try { localStorage.setItem(LS_KEY, String(Math.round(n))); } catch (_) {}
       }
 
       function wrapWidth(wrap) {
@@ -354,26 +369,39 @@ const API = '';
             try { n = parseFloat(getComputedStyle(cell).width); } catch (_) { n = NaN; }
           }
         }
-        return clampWidth(Number.isFinite(n) ? n : DEFAULT_WIDTH);
+        return clampWidth(wrap, Number.isFinite(n) ? n : getBounds(wrap).def);
       }
 
       function applyWidth(wrap, width) {
         if (!wrap || !wrap.style) return;
-        wrap.style.setProperty('--kexo-sticky-col-width', clampWidth(width) + 'px');
+        var bounds = getBounds(wrap);
+        var next = clampWidth(wrap, width);
+        wrap.style.setProperty('--kexo-sticky-col-min-width', bounds.min + 'px');
+        wrap.style.setProperty('--kexo-sticky-col-max-width', bounds.max + 'px');
+        wrap.style.setProperty('--kexo-sticky-col-width', next + 'px');
+      }
+
+      function markResizeInteraction(wrap) {
+        var ts = Date.now();
+        try { if (wrap) wrap.setAttribute('data-sticky-resize-at', String(ts)); } catch (_) {}
+        try { window.__kexoLastStickyResizeAt = ts; } catch (_) {}
       }
 
       function bindHandle(wrap, handle) {
         if (!wrap || !handle || handle.getAttribute('data-sticky-resize-bound') === '1') return;
         handle.setAttribute('data-sticky-resize-bound', '1');
         var startX = 0;
-        var startW = DEFAULT_WIDTH;
+        var startW = getBounds(wrap).def;
         var resizing = false;
 
         function stopResize(e) {
           if (!resizing) return;
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           resizing = false;
           wrap.classList.remove('is-resizing-first-col');
           try { if (e && e.pointerId != null) handle.releasePointerCapture(e.pointerId); } catch (_) {}
+          markResizeInteraction(wrap);
           saveWidth(wrapWidth(wrap));
         }
 
@@ -385,14 +413,17 @@ const API = '';
           startX = e.clientX;
           startW = wrapWidth(wrap);
           wrap.classList.add('is-resizing-first-col');
+          markResizeInteraction(wrap);
           try { handle.setPointerCapture(e.pointerId); } catch (_) {}
         });
 
         handle.addEventListener('pointermove', function(e) {
           if (!resizing) return;
           e.preventDefault();
+          e.stopPropagation();
           var next = startW + (e.clientX - startX);
           applyWidth(wrap, next);
+          markResizeInteraction(wrap);
         });
 
         handle.addEventListener('pointerup', stopResize);
@@ -415,15 +446,26 @@ const API = '';
       }
 
       function bind(wrap) {
-        if (!wrap || wrap.getAttribute('data-sticky-resize-wrap-bound') === '1') return;
-        wrap.setAttribute('data-sticky-resize-wrap-bound', '1');
-        applyWidth(wrap, readSavedWidth());
+        if (!wrap) return;
+        applyWidth(wrap, readSavedWidth(wrap));
         ensureHandle(wrap);
+        if (wrap.getAttribute('data-sticky-resize-wrap-bound') === '1') return;
+        wrap.setAttribute('data-sticky-resize-wrap-bound', '1');
         if (typeof ResizeObserver !== 'undefined') {
           try {
-            var ro = new ResizeObserver(function() { ensureHandle(wrap); });
+            var ro = new ResizeObserver(function() {
+              applyWidth(wrap, wrapWidth(wrap));
+              ensureHandle(wrap);
+            });
             ro.observe(wrap);
             wrap._stickyResizeObserver = ro;
+          } catch (_) {}
+        }
+        if (typeof MutationObserver !== 'undefined') {
+          try {
+            var mo = new MutationObserver(function() { ensureHandle(wrap); });
+            mo.observe(wrap, { childList: true, subtree: true });
+            wrap._stickyResizeMutationObserver = mo;
           } catch (_) {}
         }
       }
@@ -2241,6 +2283,15 @@ const API = '';
       });
     }
 
+    function shouldIgnoreStickyResizeSortClick(e) {
+      var target = e && e.target && e.target.closest ? e.target : null;
+      if (target && target.closest('.kexo-sticky-resize-handle')) return true;
+      var wrap = target ? target.closest('.table-scroll-wrap, .country-table-wrap, .table-responsive') : null;
+      var ts = wrap ? Number(wrap.getAttribute('data-sticky-resize-at') || '0') : 0;
+      if (!Number.isFinite(ts) || ts <= 0) ts = Number(window.__kexoLastStickyResizeAt || 0);
+      return Number.isFinite(ts) && ts > 0 && (Date.now() - ts) < 400;
+    }
+
     function setupSortableHeaders() {
       document.querySelectorAll('.table-scroll-wrap .grid-cell.sortable').forEach(function (th) {
         function activate() {
@@ -2252,6 +2303,7 @@ const API = '';
         }
         th.addEventListener('click', function (e) {
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          if (shouldIgnoreStickyResizeSortClick(e)) return;
           activate();
         });
         th.addEventListener('keydown', function (e) {
@@ -2282,6 +2334,38 @@ const API = '';
       } catch (_) {
         return '\u00A3' + String(Math.round(num));
       }
+    }
+
+    function isEffectivelyZero(value, epsilon) {
+      var n = (typeof value === 'number') ? value : Number(value);
+      if (!Number.isFinite(n)) return false;
+      var tol = (typeof epsilon === 'number' && Number.isFinite(epsilon) && epsilon >= 0) ? epsilon : 1e-9;
+      return Math.abs(n) <= tol;
+    }
+
+    function normalizeZeroNumber(value, epsilon) {
+      var n = (typeof value === 'number') ? value : Number(value);
+      if (!Number.isFinite(n)) return null;
+      return isEffectivelyZero(n, epsilon) ? 0 : n;
+    }
+
+    function formatSignedPercentOneDecimalFromRatio(rawRatio) {
+      var ratio = normalizeZeroNumber(rawRatio, 0.0005); // <0.05% should render as 0%
+      if (ratio == null) return '\u2014';
+      var pct = Math.round(ratio * 1000) / 10;
+      if (isEffectivelyZero(pct, 1e-9)) pct = 0;
+      var sign = pct > 0 ? '+' : (pct < 0 ? '-' : '');
+      return sign + Math.abs(pct).toFixed(1).replace(/\.0$/, '') + '%';
+    }
+
+    function formatNegativeCurrencyOrZero(value, useWholePounds) {
+      var n = (typeof value === 'number' && Number.isFinite(value)) ? Math.abs(value) : null;
+      if (n == null) return '\u2014';
+      var epsilon = useWholePounds ? 0.5 : 0.005;
+      if (n < epsilon) return useWholePounds ? '\u00A30' : '\u00A30.00';
+      var s = useWholePounds ? formatRevenue0(n) : formatRevenue(n);
+      if (!s) return '\u2014';
+      return '-' + s;
     }
 
     function crPillHtml(v) {
@@ -3738,6 +3822,7 @@ const API = '';
         }
         th.addEventListener('click', function(e) {
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          if (shouldIgnoreStickyResizeSortClick(e)) return;
           activate();
         });
         th.addEventListener('keydown', function(e) {
@@ -3808,6 +3893,7 @@ const API = '';
         }
         th.addEventListener('click', function(e) {
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          if (shouldIgnoreStickyResizeSortClick(e)) return;
           activate();
         });
         th.addEventListener('keydown', function(e) {
@@ -4330,9 +4416,9 @@ const API = '';
       var origin = mapRegionCenter(mapSvg, mapRect, 'GB') ||
         { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
       var palette = [
-        'rgba(' + primaryRgb + ',0.72)',
-        'rgba(75,148,228,0.66)',
-        'rgba(245,159,0,0.62)',
+        'rgba(' + primaryRgb + ',0.78)',
+        'rgba(' + primaryRgb + ',0.6)',
+        'rgba(' + primaryRgb + ',0.44)',
       ];
 
       ranked.forEach(function (item, idx) {
@@ -4421,16 +4507,16 @@ const API = '';
           zoomOnScroll: false,
           zoomAnimate: false,
           regionStyle: {
-            initial: { fill: '#e8f6f4', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(75,148,228,0.44)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.52)' },
+            initial: { fill: 'rgba(' + primaryRgb + ',0.12)', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(' + primaryRgb + ',0.34)' },
+            selected: { fill: 'rgba(' + primaryRgb + ',0.58)' },
           },
           series: {
             regions: [
               {
                 attribute: 'fill',
                 values: revenueByIso2,
-                scale: ['#e8f6f4', '#8fd5cf', primaryHex],
+                scale: ['rgba(' + primaryRgb + ',0.12)', 'rgba(' + primaryRgb + ',0.34)', primaryHex],
                 normalizeFunction: 'polynomial',
               }
             ]
@@ -5283,8 +5369,7 @@ const API = '';
             text = 'new';
             dir = isDown ? 'down' : 'up';
           } else {
-            const pct = Math.round(Math.abs(rawDelta) * 1000) / 10;
-            text = (rawDelta > 0 ? '+' : rawDelta < 0 ? '-' : '') + pct.toFixed(1).replace(/\.0$/, '') + '%';
+            text = formatSignedPercentOneDecimalFromRatio(rawDelta);
             dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
           }
         }
@@ -5759,7 +5844,7 @@ const API = '';
       if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014';
       if (el('dash-kpi-items')) el('dash-kpi-items').textContent = itemsVal != null ? Math.round(itemsVal).toLocaleString() : '\u2014';
       if (el('dash-kpi-fulfilled')) el('dash-kpi-fulfilled').textContent = fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : '\u2014';
-      if (el('dash-kpi-returns')) el('dash-kpi-returns').textContent = returnsVal != null ? ('-' + (formatRevenue0(Math.abs(returnsVal)) || '\u2014')) : '\u2014';
+      if (el('dash-kpi-returns')) el('dash-kpi-returns').textContent = returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : '\u2014';
       if (el('dash-kpi-cogs')) el('dash-kpi-cogs').textContent = cogsVal != null ? formatRevenue0(cogsVal) : '\u2014';
 
       function renderCompareSlot(slotSuffix, values) {
@@ -5787,7 +5872,7 @@ const API = '';
         if (el('dash-roas-' + slotSuffix)) el('dash-roas-' + slotSuffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
         if (el('dash-items-' + slotSuffix)) el('dash-items-' + slotSuffix).textContent = items != null ? Math.round(items).toLocaleString() : '\u2014';
         if (el('dash-fulfilled-' + slotSuffix)) el('dash-fulfilled-' + slotSuffix).textContent = fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014';
-        if (el('dash-returns-' + slotSuffix)) el('dash-returns-' + slotSuffix).textContent = returns != null ? ('-' + (formatRevenue0(Math.abs(returns)) || '\u2014')) : '\u2014';
+        if (el('dash-returns-' + slotSuffix)) el('dash-returns-' + slotSuffix).textContent = returns != null ? formatNegativeCurrencyOrZero(returns, true) : '\u2014';
         if (el('dash-cogs-' + slotSuffix)) el('dash-cogs-' + slotSuffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
       }
 
@@ -5933,11 +6018,7 @@ const API = '';
       const cogsCompare = compare && typeof compare.cogs === 'number' ? compare.cogs : null;
 
       function formatReturns(v) {
-        const n = (typeof v === 'number' && Number.isFinite(v)) ? Math.abs(v) : null;
-        if (n == null) return '\u2014';
-        const s = formatRevenue(n);
-        if (!s) return '\u2014';
-        return '-' + s;
+        return formatNegativeCurrencyOrZero(v, false);
       }
       if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
@@ -5958,6 +6039,10 @@ const API = '';
           return;
         }
         const delta = invert ? (base - cur) : (cur - base);
+        if (Math.abs(delta) < 1e-9) {
+          sparkEl.removeAttribute('data-tone');
+          return;
+        }
         sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
       }
       setTone('cond-kpi-items-sold-sparkline', itemsSold, itemsSoldCompare, false);
@@ -6648,55 +6733,77 @@ const API = '';
       var sessions = rows.map(function(r) { return Number((r && r.sessions) || 0); });
       var orders = rows.map(function(r) { return Number((r && r.orders) || 0); });
       var revenues = rows.map(function(r) { return Number((r && r.revenueGbp) || 0); });
+      var series = [
+        { name: 'Sessions', data: sessions },
+        { name: 'Orders', data: orders },
+        { name: 'Revenue', data: revenues }
+      ];
+      var valid = categories.length > 0 && series.every(function(s) {
+        return s && Array.isArray(s.data) && s.data.length === categories.length && s.data.every(function(v) {
+          return typeof v === 'number' && Number.isFinite(v);
+        });
+      });
+      if (!valid) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
+        return;
+      }
       el.innerHTML = '';
-      channelsChartInstance = new ApexCharts(el, {
-        chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: [
-          { name: 'Sessions', data: sessions, yAxisIndex: 0 },
-          { name: 'Orders', data: orders, yAxisIndex: 0 },
-          { name: 'Revenue', data: revenues, yAxisIndex: 1 }
-        ],
-        colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
-        stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
-        markers: { size: 3, hover: { size: 5 } },
-        dataLabels: { enabled: false },
-        xaxis: {
-          categories: categories,
-          labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false }
-        },
-        yaxis: [
-          {
-            min: 0,
-            labels: {
-              style: { fontSize: '11px' },
-              formatter: function(v) { return Number(v || 0).toLocaleString(); }
+      try {
+        channelsChartInstance = new ApexCharts(el, {
+          chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+          series: series,
+          colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
+          stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
+          markers: { size: 3, hover: { size: 5 } },
+          dataLabels: { enabled: false },
+          xaxis: {
+            categories: categories,
+            labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false }
+          },
+          yaxis: [
+            {
+              min: 0,
+              seriesName: 'Sessions',
+              labels: {
+                style: { fontSize: '11px' },
+                formatter: function(v) { return Number(v || 0).toLocaleString(); }
+              }
+            },
+            {
+              min: 0,
+              opposite: true,
+              seriesName: 'Revenue',
+              labels: {
+                style: { fontSize: '11px' },
+                formatter: function(v) { return formatRevenue(Number(v)) || '—'; }
+              }
+            }
+          ],
+          tooltip: {
+            shared: true,
+            intersect: false,
+            y: {
+              formatter: function(v, opts) {
+                var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+                if (idx === 2) return formatRevenue(Number(v)) || '—';
+                return Number(v || 0).toLocaleString();
+              }
             }
           },
-          {
-            min: 0,
-            opposite: true,
-            seriesName: 'Revenue',
-            labels: {
-              style: { fontSize: '11px' },
-              formatter: function(v) { return formatRevenue(Number(v)) || '—'; }
-            }
-          }
-        ],
-        tooltip: {
-          shared: true,
-          intersect: false,
-          y: {
-            formatter: function(v, opts) {
-              var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
-              if (idx === 2) return formatRevenue(Number(v)) || '—';
-              return Number(v || 0).toLocaleString();
-            }
-          }
-        },
-        legend: { position: 'top', fontSize: '12px' },
-        grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
-      });
-      channelsChartInstance.render();
+          legend: { position: 'top', fontSize: '12px' },
+          grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
+        });
+        var renderPromise = channelsChartInstance.render();
+        if (renderPromise && typeof renderPromise.then === 'function') {
+          renderPromise.catch(function(err) {
+            console.error('[channels] chart render error:', err);
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          });
+        }
+      } catch (err) {
+        console.error('[channels] chart render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+      }
     }
 
     var typeChartInstance = null;
@@ -6722,52 +6829,74 @@ const API = '';
         var lbl = r && (r.label || r.key) ? String(r.label || r.key) : '—';
         return lbl.length > 22 ? lbl.slice(0, 19) + '...' : lbl;
       });
-      var sessions = rows.map(function(r) { return r.sessions || 0; });
+      var sessions = rows.map(function(r) { return Number((r && r.sessions) || 0); });
       var orders = rows.map(function(r) { return Number((r && r.orders) || 0); });
       var revenues = rows.map(function(r) { return Number((r && r.revenueGbp) || 0); });
-      el.innerHTML = '';
-      typeChartInstance = new ApexCharts(el, {
-        chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: [
-          { name: 'Sessions', data: sessions, yAxisIndex: 0 },
-          { name: 'Orders', data: orders, yAxisIndex: 0 },
-          { name: 'Revenue', data: revenues, yAxisIndex: 1 }
-        ],
-        colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
-        stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
-        markers: { size: 3, hover: { size: 5 } },
-        dataLabels: { enabled: false },
-        xaxis: {
-          categories: labels,
-          labels: { style: { fontSize: '11px' }, rotate: -12, hideOverlappingLabels: false }
-        },
-        yaxis: [
-          {
-            min: 0,
-            labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
-          },
-          {
-            min: 0,
-            opposite: true,
-            seriesName: 'Revenue',
-            labels: { style: { fontSize: '11px' }, formatter: function(v) { return formatRevenue(Number(v)) || '—'; } }
-          }
-        ],
-        legend: { position: 'top', fontSize: '12px' },
-        tooltip: {
-          shared: true,
-          intersect: false,
-          y: {
-            formatter: function(v, opts) {
-              var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
-              if (idx === 2) return formatRevenue(Number(v)) || '—';
-              return Number(v || 0).toLocaleString();
-            }
-          }
-        },
-        grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
+      var series = [
+        { name: 'Sessions', data: sessions },
+        { name: 'Orders', data: orders },
+        { name: 'Revenue', data: revenues }
+      ];
+      var valid = labels.length > 0 && series.every(function(s) {
+        return s && Array.isArray(s.data) && s.data.length === labels.length && s.data.every(function(v) {
+          return typeof v === 'number' && Number.isFinite(v);
+        });
       });
-      typeChartInstance.render();
+      if (!valid) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
+        return;
+      }
+      el.innerHTML = '';
+      try {
+        typeChartInstance = new ApexCharts(el, {
+          chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+          series: series,
+          colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
+          stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
+          markers: { size: 3, hover: { size: 5 } },
+          dataLabels: { enabled: false },
+          xaxis: {
+            categories: labels,
+            labels: { style: { fontSize: '11px' }, rotate: -12, hideOverlappingLabels: false }
+          },
+          yaxis: [
+            {
+              min: 0,
+              seriesName: 'Sessions',
+              labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
+            },
+            {
+              min: 0,
+              opposite: true,
+              seriesName: 'Revenue',
+              labels: { style: { fontSize: '11px' }, formatter: function(v) { return formatRevenue(Number(v)) || '—'; } }
+            }
+          ],
+          legend: { position: 'top', fontSize: '12px' },
+          tooltip: {
+            shared: true,
+            intersect: false,
+            y: {
+              formatter: function(v, opts) {
+                var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
+                if (idx === 2) return formatRevenue(Number(v)) || '—';
+                return Number(v || 0).toLocaleString();
+              }
+            }
+          },
+          grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
+        });
+        var renderPromise = typeChartInstance.render();
+        if (renderPromise && typeof renderPromise.then === 'function') {
+          renderPromise.catch(function(err) {
+            console.error('[type] chart render error:', err);
+            el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          });
+        }
+      } catch (err) {
+        console.error('[type] chart render error:', err);
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+      }
     }
 
     function renderTraffic(data) {
@@ -9825,18 +9954,23 @@ const API = '';
           if (!isFinite(maxVal)) maxVal = 0;
 
           // Flat/near-flat series can render as visually empty at 40px height.
-          // Add a tiny delta to the last point and set a y-axis range so the stroke/fill is visible.
+          // Keep a truly zero series flat/neutral; only bump non-zero flat lines.
           var span = Math.abs(maxVal - minVal);
-          if (span < 1e-9) {
+          var allZero = span < 1e-9 && nums.every(function(v) { return Math.abs(v) < 1e-9; });
+          if (span < 1e-9 && !allZero) {
             var bump = (maxVal === 0) ? 1 : Math.max(0.01, Math.abs(maxVal) * 0.02);
             nums[nums.length - 1] = nums[nums.length - 1] + bump;
             minVal = Math.min(minVal, nums[nums.length - 1]);
             maxVal = Math.max(maxVal, nums[nums.length - 1]);
             span = Math.abs(maxVal - minVal);
           }
-          var pad = Math.max(1e-6, span * 0.25);
-          var yMin = minVal - pad;
-          var yMax = maxVal + pad;
+          var yMin = -1;
+          var yMax = 1;
+          if (!allZero) {
+            var pad = Math.max(1e-6, span * 0.25);
+            yMin = minVal - pad;
+            yMax = maxVal + pad;
+          }
 
           var fillCfg = t === 'bar'
             ? { type: 'solid', opacity: 1 }
@@ -9928,22 +10062,31 @@ const API = '';
           if (cur != null && base != null) return [base, cur];
           return Array.isArray(fallbackDataArr) ? fallbackDataArr : [];
         }
-        var revenueSpark = sparklineSeries.map(function(d) { return d.revenue; });
-        var sessionsSpark = sparklineSeries.map(function(d) { return d.sessions; });
-        var ordersSpark = sparklineSeries.map(function(d) { return d.orders; });
-        var returningSpark = sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; });
-        var convSpark = sparklineSeries.map(function(d) { return d.convRate; });
-        var aovSpark = sparklineSeries.map(function(d) { return d.aov; });
-        var bounceSpark = sparklineSeries.map(function(d) { return d.bounceRate; });
-        var itemsSpark = sparklineSeries.map(function(d) { return d.units || 0; });
-        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, []);
-        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, []);
-        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, []);
-        var roasSpark = sparklineSeries.map(function(d) {
+        var revenueHistorySpark = sparklineSeries.map(function(d) { return d.revenue; });
+        var sessionsHistorySpark = sparklineSeries.map(function(d) { return d.sessions; });
+        var ordersHistorySpark = sparklineSeries.map(function(d) { return d.orders; });
+        var returningHistorySpark = sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; });
+        var convHistorySpark = sparklineSeries.map(function(d) { return d.convRate; });
+        var aovHistorySpark = sparklineSeries.map(function(d) { return d.aov; });
+        var bounceHistorySpark = sparklineSeries.map(function(d) { return d.bounceRate; });
+        var itemsHistorySpark = sparklineSeries.map(function(d) { return d.units || 0; });
+        var roasHistorySpark = sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
         });
+        var revenueSpark = sparkSeriesFromCompare(currentRevenueTone, compareRevenueTone, revenueHistorySpark);
+        var sessionsSpark = sparkSeriesFromCompare(currentSessionsTone, compareSessionsTone, sessionsHistorySpark);
+        var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
+        var returningSpark = sparkSeriesFromCompare(currentReturningTone, compareReturningTone, returningHistorySpark);
+        var convSpark = sparkSeriesFromCompare(currentConvTone, compareConvTone, convHistorySpark);
+        var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
+        var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
+        var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
+        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, []);
+        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, []);
+        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, []);
+        var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
         renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'area');
         renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'area');
         renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'area');
@@ -10072,7 +10215,8 @@ const API = '';
             return;
           }
           function fmtSignedGbp(v) {
-            var d = (typeof v === 'number' && isFinite(v)) ? v : 0;
+            var d = normalizeZeroNumber(v, 0.005);
+            if (d == null) d = 0;
             var abs = Math.abs(d);
             var s = fmtGbp(abs);
             if (s === '\u2014') s = '£0.00';

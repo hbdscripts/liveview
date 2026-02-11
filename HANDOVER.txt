@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (sparkline/table/map/chart build pass)
+Last updated: 2026-02-11 (dashboard regression fixes A-E)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -205,6 +205,20 @@ Edge (optional):
 ---
 
 ## Changelog (summary)
+
+2026-02-11
+- Dashboard KPI cards:
+  - KPI card sparklines now use the same current-vs-compare values shown in-card (previous-period compare), so sparkline direction/tone matches the compare row.
+  - Flat-zero guard: when current and compare are both zero, sparklines stay flat/neutral (no synthetic slope bump).
+  - Returns and delta formatting now suppress negative zero (`£0` / `£0.00` / `0%` instead of `-£0`/`-£0.00`/`-0.0%`).
+- Sticky first-column resizing (dashboard + table/grid wrappers):
+  - Reworked width bounds to responsive screen/container clamps with persisted width, shared min/max CSS vars, and aligned header/body sticky widths.
+  - Added resize interaction suppression for sortable headers so pointer-up after drag does not trigger sort/re-order clicks.
+  - Kept separator + stronger fixed-edge shadow and aligned adjacent second-column background treatment.
+- Countries map styling:
+  - Switched region/flow emphasis to `--tblr-primary`/`--tblr-primary-rgb` shades; removed non-primary dominant highlight tones.
+- Channels + Type charts:
+  - Removed unsupported Apex series axis fields, normalized data arrays to finite numeric series, and added defensive render guards + Promise error handling to prevent `undefined.push` Apex runtime crashes.
 
 2026-02-11
 - Dashboard KPI sparkline behavior + styling:
