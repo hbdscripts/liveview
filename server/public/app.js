@@ -866,10 +866,8 @@ const API = '';
         function dirArrowSvg(kind) {
           var isExit = kind === 'exit';
           var cls = 'landing-dir-icon ' + (isExit ? 'landing-dir-icon-exit' : 'landing-dir-icon-entry');
-          var path = isExit
-            ? '<path d="M19 12H5M11 6l-6 6 6 6"></path>'
-            : '<path d="M5 12h14M13 6l6 6-6 6"></path>';
-          return '<i class="fa-light fa-circle-check ' + cls + '" aria-hidden="true"></i>';
+          var key = isExit ? 'live-landing-exit' : 'live-landing-entry';
+          return '<i class="fa-light fa-circle-check ' + cls + '" data-icon-key="' + key + '" aria-hidden="true"></i>';
         }
 
         function line(kind, meta) {
@@ -1055,7 +1053,7 @@ const API = '';
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
     const SOURCE_DIRECT_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/arrow-right.png?v=1770086632');
-    const BOUGHT_OVERLAY_SVG = '<i class="fa-light fa-cart-shopping" aria-hidden="true"></i>';
+    const BOUGHT_OVERLAY_SVG = '<i class="fa-light fa-cart-shopping" data-icon-key="live-bought-overlay" aria-hidden="true"></i>';
     const SOURCE_UNKNOWN_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/question.png?v=1770135816');
     const SOURCE_OMNISEND_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/omnisend.png?v=1770141052');
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
@@ -3360,6 +3358,74 @@ const API = '';
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
     }
 
+    const CHART_TYPE_OPTIONS = ['area', 'bar', 'line'];
+
+    function normalizeChartType(value, fallback) {
+      const v = String(value == null ? '' : value).trim().toLowerCase();
+      if (v === 'area' || v === 'bar' || v === 'line') return v;
+      return fallback || 'area';
+    }
+
+    function chartTypeStorageKey(scope) {
+      return 'kexo-chart-type-' + String(scope || '').trim().toLowerCase();
+    }
+
+    function getChartTypePref(scope, fallback) {
+      let raw = null;
+      try { raw = localStorage.getItem(chartTypeStorageKey(scope)); } catch (_) { raw = null; }
+      return normalizeChartType(raw, fallback);
+    }
+
+    function setChartTypePref(scope, type) {
+      try { localStorage.setItem(chartTypeStorageKey(scope), normalizeChartType(type, 'area')); } catch (_) {}
+    }
+
+    function chartTypeButtonIcon(type) {
+      if (type === 'area') return '<i class="fa-light fa-chart-area me-1" data-icon-key="chart-type-area" aria-hidden="true"></i>';
+      if (type === 'line') return '<i class="fa-light fa-chart-line me-1" data-icon-key="chart-type-line" aria-hidden="true"></i>';
+      return '<i class="fa-light fa-chart-column me-1" data-icon-key="chart-type-bar" aria-hidden="true"></i>';
+    }
+
+    function ensureChartTypeControls(chartId, scope, fallbackType, onChange) {
+      const chartEl = document.getElementById(chartId);
+      if (!chartEl) return normalizeChartType(fallbackType, 'area');
+      const chartType = getChartTypePref(scope, fallbackType);
+      const card = chartEl.closest ? chartEl.closest('.card') : null;
+      const header = card ? card.querySelector('.card-header') : null;
+      if (!header) return chartType;
+      let wrap = header.querySelector('[data-chart-type-scope="' + scope + '"]');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'btn-list chart-type-controls ms-auto';
+        wrap.setAttribute('data-chart-type-scope', scope);
+        wrap.innerHTML = CHART_TYPE_OPTIONS.map(function (type) {
+          return '<button type="button" class="btn btn-sm btn-outline-secondary" data-chart-type="' + type + '">' +
+            chartTypeButtonIcon(type) + type.charAt(0).toUpperCase() + type.slice(1) + '</button>';
+        }).join('');
+        wrap.addEventListener('click', function (event) {
+          const btn = event && event.target ? event.target.closest('[data-chart-type]') : null;
+          if (!btn) return;
+          const nextType = normalizeChartType(btn.getAttribute('data-chart-type'), chartType);
+          setChartTypePref(scope, nextType);
+          Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
+            const active = normalizeChartType(node.getAttribute('data-chart-type'), '') === nextType;
+            node.classList.toggle('active', active);
+            node.classList.toggle('btn-primary', active);
+            node.classList.toggle('btn-outline-secondary', !active);
+          });
+          if (typeof onChange === 'function') onChange(nextType);
+        });
+        header.appendChild(wrap);
+      }
+      Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
+        const active = normalizeChartType(node.getAttribute('data-chart-type'), '') === chartType;
+        node.classList.toggle('active', active);
+        node.classList.toggle('btn-primary', active);
+        node.classList.toggle('btn-outline-secondary', !active);
+      });
+      return chartType;
+    }
+
     let productsChartInstance = null;
     let productsChartData = null;
 
@@ -3394,10 +3460,13 @@ const API = '';
         return title.length > 30 ? title.substring(0, 27) + '...' : title;
       });
       const revenues = products.map(function(p) { return p.revenue || 0; });
+      const chartType = ensureChartTypeControls('products-chart', 'products-main', 'bar', function () {
+        renderProductsChart(productsChartData);
+      });
 
       const options = {
         chart: {
-          type: 'bar',
+          type: chartType,
           height: 280,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false }
@@ -3407,16 +3476,18 @@ const API = '';
           data: revenues
         }],
         colors: ['#0d9488'],
-        plotOptions: {
+        plotOptions: chartType === 'bar' ? {
           bar: {
             horizontal: true,
             borderRadius: 4,
             barHeight: '70%'
           }
-        },
-        stroke: { width: 0, curve: 'smooth' },
-        fill: { type: 'solid', opacity: 1 },
-        markers: { size: 0, hover: { size: 5 } },
+        } : {},
+        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        fill: chartType === 'area'
+          ? { type: 'gradient', gradient: { opacityFrom: 0.36, opacityTo: 0.08 } }
+          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
         xaxis: {
           categories: categories,
@@ -3662,8 +3733,8 @@ const API = '';
     function buildPaginationHtml(page, totalPages) {
       var p = Math.max(1, page);
       var tp = Math.max(1, totalPages);
-      var chevL = '<i class="fa-light fa-chevron-left"></i>';
-      var chevR = '<i class="fa-light fa-chevron-right"></i>';
+      var chevL = '<i class="fa-light fa-chevron-left" data-icon-key="pagination-prev"></i>';
+      var chevR = '<i class="fa-light fa-chevron-right" data-icon-key="pagination-next"></i>';
       var h = '<ul class="pagination m-0">';
       h += '<li class="page-item' + (p <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (p - 1) + '" tabindex="-1" aria-label="Previous">' + chevL + '</a></li>';
       // Build page numbers with ellipsis
@@ -3873,7 +3944,7 @@ const API = '';
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const placeholderSvg = '<i class="fa-light fa-image" aria-hidden="true"></i>';
+        const placeholderSvg = '<i class="fa-light fa-image" data-icon-key="breakdown-placeholder-image" aria-hidden="true"></i>';
         const imgInner = '<span class="thumb-wrap">' +
           (thumb
             ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
@@ -3899,7 +3970,7 @@ const API = '';
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         return;
       }
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-image"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-image" data-icon-key="breakdown-icon-image"></i></span>';
       tbody.innerHTML = list.map(function(row) {
         const label = row && (row.label || row.key) ? String(row.label || row.key) : 'Unknown';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
@@ -3929,7 +4000,7 @@ const API = '';
         if (k === 'silver') return '<span class="finish-icon finish-icon-silver" aria-hidden="true"></span>';
         if (k === 'vermeil') return '<span class="finish-icon finish-icon-vermeil" aria-hidden="true"></span>';
         if (k === 'solid_silver' || k === 'solid-silver') return '<span class="finish-icon finish-icon-solid-silver" aria-hidden="true"></span>';
-        return '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-star"></i></span>';
+        return '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-star" data-icon-key="breakdown-icon-star"></i></span>';
       }
       var ordered = rows.slice();
       ordered.sort(function(a, b) { return cmpNullableNumber(a && a.revenueGbp, b && b.revenueGbp, 'desc'); });
@@ -3971,7 +4042,7 @@ const API = '';
       updateCardPagination('breakdown-length', breakdownLengthPage, totalPages);
       var start = (breakdownLengthPage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-chart-column"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-chart-column" data-icon-key="breakdown-icon-chart-column"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '\u2014');
@@ -4003,7 +4074,7 @@ const API = '';
       updateCardPagination('breakdown-chainstyle', breakdownChainStylePage, totalPages);
       var start = (breakdownChainStylePage - 1) * BREAKDOWN_PAGE_SIZE;
       var pageRows = ordered.slice(start, start + BREAKDOWN_PAGE_SIZE);
-      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-link"></i></span>';
+      const iconSvg = '<span class="breakdown-icon" aria-hidden="true"><i class="fa-light fa-link" data-icon-key="breakdown-icon-link"></i></span>';
       tbody.innerHTML = pageRows.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '\u2014';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
@@ -4076,8 +4147,7 @@ const API = '';
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
-
-      if (typeof jsVectorMap === 'undefined') {
+      if (typeof ApexCharts === 'undefined') {
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
@@ -4097,75 +4167,61 @@ const API = '';
         return;
       }
 
-      // Vector map (Tabler-style): revenue by country with tooltip details.
-      const revenueByIso2 = {};
-      const ordersByIso2 = {};
-      for (const r of rows || []) {
-        let iso = (r && r.country_code != null) ? String(r.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
-        if (!iso || iso === 'XX') continue;
-        // Common alias
-        if (iso === 'UK') iso = 'GB';
-        const rev = (r && typeof r.revenue === 'number') ? r.revenue : 0;
-        const ord = (r && r.converted != null) ? Number(r.converted) : 0;
-        if (!Number.isFinite(rev) && !Number.isFinite(ord)) continue;
-        revenueByIso2[iso] = (revenueByIso2[iso] || 0) + (Number.isFinite(rev) ? rev : 0);
-        ordersByIso2[iso] = (ordersByIso2[iso] || 0) + (Number.isFinite(ord) ? ord : 0);
-      }
+      const topRows = rows
+        .slice()
+        .sort(function(a, b) { return (Number(b && b.revenue) || 0) - (Number(a && a.revenue) || 0); })
+        .slice(0, 12);
+      const labels = topRows.map(function(r) {
+        const code = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
+        return countryLabel(code);
+      });
+      const revenueSeries = topRows.map(function(r) { return Number((r && r.revenue) || 0); });
+      const ordersSeries = topRows.map(function(r) { return Number((r && r.converted) || 0); });
+      const chartType = ensureChartTypeControls('countries-map-chart', 'countries-main', 'bar', function () {
+        renderCountriesMapChart(data);
+      });
 
-      // Clean mount
       el.innerHTML = '';
-
-      try {
-        const border = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-border-color') || '#e6e7e9').trim();
-        const muted = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-secondary') || '#626976').trim();
-        var primaryRgb = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb') || '62,179,171').trim();
-        var primaryHex = (getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary') || '#3eb3ab').trim();
-        countriesMapChartInstance = new jsVectorMap({
-          selector: '#countries-map-chart',
-          map: 'world',
-          backgroundColor: 'transparent',
-          zoomButtons: true,
-          regionStyle: {
-            initial: { fill: '#e0f2f2', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(' + primaryRgb + ',0.35)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.45)' },
-          },
-          series: {
-            regions: [
-              {
-                attribute: 'fill',
-                values: revenueByIso2,
-                scale: ['#e0f2f2', primaryHex],
-                normalizeFunction: 'polynomial',
-              }
-            ]
-          },
-          onRegionTooltipShow: function(tooltip, code) {
-            const iso = (code || '').toString().trim().toUpperCase();
-            const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
-              ? (countriesMapChartInstance.getRegionName(iso) || iso)
-              : iso;
-            const rev = revenueByIso2[iso] || 0;
-            const ord = ordersByIso2[iso] || 0;
-            if (!rev && !ord) {
-              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
-              return;
+      countriesMapChartInstance = new ApexCharts(el, {
+        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: [
+          { name: 'Revenue', data: revenueSeries },
+          { name: 'Orders', data: ordersSeries },
+        ],
+        colors: ['#0d9488', '#3b82f6'],
+        plotOptions: chartType === 'bar' ? { bar: { borderRadius: 4, columnWidth: '55%' } } : {},
+        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        fill: chartType === 'area'
+          ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
+          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: labels, labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false } },
+        yaxis: {
+          min: 0,
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function(v, opts) {
+              if (opts && opts.seriesIndex === 0) return formatRevenue(Number(v)) || '—';
+              return Number(v || 0).toLocaleString();
             }
-            const revHtml = formatRevenue(Number(rev) || 0) || '—';
-            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '—';
-            tooltip.html(
-              '<div style="min-width:180px">' +
-                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style=\"color:inherit\">' + escapeHtml(revHtml) + '</span></div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style=\"color:inherit\">' + escapeHtml(ordHtml) + '</span></div>' +
-              '</div>'
-            );
           }
-        });
-      } catch (err) {
-        console.error('[countries-map] map render error:', err);
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Map rendering failed</div>';
-      }
+        },
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function(v, opts) {
+              return opts && opts.seriesIndex === 0
+                ? (formatRevenue(Number(v)) || '—')
+                : (Number(v || 0).toLocaleString() + ' orders');
+            }
+          }
+        },
+        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+        legend: { position: 'top', fontSize: '12px' }
+      });
+      countriesMapChartInstance.render();
     }
 
     function renderBestGeoProducts(data) {
@@ -4882,6 +4938,7 @@ const API = '';
       if (raw.indexOf('fa-jelly') >= 0 || raw === 'jelly') return 'fa-jelly';
       if (raw.indexOf('fa-solid') >= 0 || raw === 'solid') return 'fa-solid';
       if (raw.indexOf('fa-light') >= 0 || raw === 'light') return 'fa-light';
+      if (raw.indexOf('fa-brands') >= 0 || raw === 'brands' || raw === 'brand') return 'fa-brands';
       return fallback;
     }
 
@@ -4891,11 +4948,68 @@ const API = '';
       return normalizeIconStyleClass(v, fallback);
     }
 
-    function setTrendIconClass(iconEl, glyphCls) {
+    function sanitizeIconClassString(value) {
+      return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+    }
+
+    function isIconStyleToken(token) {
+      return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
+        token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
+        token === 'fal' || token === 'fab';
+    }
+
+    function parseIconGlyphInput(value, fallbackGlyph) {
+      const raw = sanitizeIconClassString(value).toLowerCase();
+      const safeFallback = fallbackGlyph || 'fa-circle';
+      if (!raw) return { mode: 'glyph', value: safeFallback };
+      const tokens = raw.split(/\s+/).filter(Boolean);
+      const faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+      const hasExplicitStyle = tokens.some(isIconStyleToken);
+      if (hasExplicitStyle || faTokens.length >= 2) {
+        const full = tokens.slice();
+        const hasGlyph = full.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
+        if (!hasGlyph) full.push(safeFallback);
+        return { mode: 'full', value: full.join(' ') };
+      }
+      const m = raw.match(/fa-[a-z0-9-]+/);
+      if (m && m[0]) return { mode: 'glyph', value: m[0] };
+      if (/^[a-z0-9-]+$/.test(raw)) return { mode: 'glyph', value: 'fa-' + raw };
+      return { mode: 'glyph', value: safeFallback };
+    }
+
+    function applyIconClassSpec(iconEl, classSpec, styleFallback, glyphFallback) {
       if (!iconEl) return;
+      const keep = [];
+      Array.prototype.forEach.call(iconEl.classList, function (cls) {
+        if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+        if (cls.indexOf('fa-') === 0) return;
+        keep.push(cls);
+      });
+      const tokens = sanitizeIconClassString(classSpec).toLowerCase().split(/\s+/).filter(Boolean);
+      const parsed = tokens.length ? tokens : [styleFallback || 'fa-jelly', glyphFallback || 'fa-circle'];
+      let hasStyle = false;
+      let hasGlyph = false;
+      parsed.forEach(function (t) {
+        if (isIconStyleToken(t)) hasStyle = true;
+        if (t.indexOf('fa-') === 0 && !isIconStyleToken(t)) hasGlyph = true;
+      });
+      if (!hasStyle) parsed.unshift(styleFallback || 'fa-jelly');
+      if (!hasGlyph) parsed.push(glyphFallback || 'fa-circle');
+      iconEl.className = keep.concat(parsed).join(' ').trim();
+    }
+
+    function setTrendIconClass(iconEl, trendKind) {
       const styleCls = getStoredIconStyleClass('icon-default', 'fa-jelly');
-      iconEl.classList.remove('fa-solid', 'fa-light', 'fa-jelly', 'fa-jelly-filled');
-      iconEl.classList.add(styleCls, glyphCls);
+      const key = trendKind === 'down' ? 'kpi-trend-down' : (trendKind === 'flat' ? 'kpi-trend-flat' : 'kpi-trend-up');
+      const fallback = trendKind === 'down' ? 'fa-arrow-trend-down' : (trendKind === 'flat' ? 'fa-minus' : 'fa-arrow-trend-up');
+      let raw = null;
+      try { raw = localStorage.getItem('tabler-theme-icon-glyph-' + key); } catch (_) { raw = null; }
+      const parsed = parseIconGlyphInput(raw, fallback);
+      if (parsed.mode === 'full') {
+        applyIconClassSpec(iconEl, parsed.value, styleCls, fallback);
+      } else {
+        applyIconClassSpec(iconEl, styleCls + ' ' + parsed.value, styleCls, fallback);
+      }
     }
 
     function applyCondensedKpiDelta(key, current, baseline, invert) {
@@ -4940,13 +5054,13 @@ const API = '';
         if (iconEl) {
           if (dir === 'up') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-down', 'fa-minus');
-            setTrendIconClass(iconEl, 'fa-arrow-trend-up');
+            setTrendIconClass(iconEl, 'up');
           } else if (dir === 'down') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-minus');
-            setTrendIconClass(iconEl, 'fa-arrow-trend-down');
+            setTrendIconClass(iconEl, 'down');
           } else if (dir === 'flat') {
             iconEl.classList.remove('is-hidden', 'fa-arrow-trend-up', 'fa-arrow-trend-down');
-            setTrendIconClass(iconEl, 'fa-minus');
+            setTrendIconClass(iconEl, 'flat');
           } else {
             iconEl.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
             iconEl.classList.add('is-hidden');
@@ -5205,7 +5319,7 @@ const API = '';
             if (iconEl) {
               iconEl.classList.remove('is-hidden');
               iconEl.className = 'kexo-topbar-delta-icon';
-              setTrendIconClass(iconEl, 'fa-arrow-trend-up');
+              setTrendIconClass(iconEl, 'up');
               iconEl.setAttribute('aria-hidden', 'true');
             }
             return;
@@ -5226,9 +5340,9 @@ const API = '';
         // Only show arrows when movement is meaningful.
         if (iconEl) {
           iconEl.className = 'kexo-topbar-delta-icon';
-          if (up) setTrendIconClass(iconEl, 'fa-arrow-trend-up');
-          else if (down) setTrendIconClass(iconEl, 'fa-arrow-trend-down');
-          else setTrendIconClass(iconEl, 'fa-minus');
+          if (up) setTrendIconClass(iconEl, 'up');
+          else if (down) setTrendIconClass(iconEl, 'down');
+          else setTrendIconClass(iconEl, 'flat');
           iconEl.classList.toggle('is-hidden', !up && !down);
           iconEl.setAttribute('aria-hidden', 'true');
         }
@@ -6096,19 +6210,19 @@ const API = '';
       function trafficTypeDeviceIcon(device) {
         var d = (device || '').trim().toLowerCase();
         var s = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-        if (d === 'desktop') return '<i class="' + s + ' fa-light fa-desktop"></i>';
-        if (d === 'mobile') return '<i class="' + s + ' fa-light fa-mobile-screen"></i>';
-        if (d === 'tablet') return '<i class="' + s + ' fa-light fa-tablet-screen-button"></i>';
-        return '<i class="' + s + ' fa-light fa-globe"></i>';
+        if (d === 'desktop') return '<i class="' + s + ' fa-light fa-desktop" data-icon-key="type-device-desktop"></i>';
+        if (d === 'mobile') return '<i class="' + s + ' fa-light fa-mobile-screen" data-icon-key="type-device-mobile"></i>';
+        if (d === 'tablet') return '<i class="' + s + ' fa-light fa-tablet-screen-button" data-icon-key="type-device-tablet"></i>';
+        return '<i class="' + s + ' fa-light fa-globe" data-icon-key="type-device-unknown"></i>';
       }
 
       function trafficTypePlatformIcon(platform) {
         var p = (platform || '').trim().toLowerCase();
-        if (p === 'ios' || p === 'mac') return '<i class="fa-light fa-apple"></i>';
-        if (p === 'android') return '<i class="fa-light fa-android"></i>';
-        if (p === 'windows') return '<i class="fa-light fa-windows"></i>';
-        if (p === 'linux') return '<i class="fa-light fa-linux"></i>';
-        return '<i class="fa-light fa-circle-question"></i>';
+        if (p === 'ios' || p === 'mac') return '<i class="fa-light fa-apple" data-icon-key="type-platform-ios"></i>';
+        if (p === 'android') return '<i class="fa-light fa-android" data-icon-key="type-platform-android"></i>';
+        if (p === 'windows') return '<i class="fa-light fa-windows" data-icon-key="type-platform-windows"></i>';
+        if (p === 'linux') return '<i class="fa-light fa-linux" data-icon-key="type-platform-linux"></i>';
+        return '<i class="fa-light fa-circle-question" data-icon-key="type-platform-unknown"></i>';
       }
 
       (function renderTypeTree() {
@@ -6281,15 +6395,20 @@ const API = '';
         return lbl.length > 25 ? lbl.substring(0, 22) + '...' : lbl;
       });
       var revenues = rows.map(function(r) { return r.revenueGbp || 0; });
+      var chartType = ensureChartTypeControls('channels-chart', 'channels-main', 'bar', function () {
+        renderChannelsChart(channelsChartData);
+      });
       el.innerHTML = '';
       channelsChartInstance = new ApexCharts(el, {
-        chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
         series: [{ name: 'Revenue', data: revenues }],
         colors: ['#4592e9'],
-        plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } },
-        stroke: { width: 0, curve: 'smooth' },
-        fill: { type: 'solid', opacity: 1 },
-        markers: { size: 0, hover: { size: 5 } },
+        plotOptions: chartType === 'bar' ? { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } } : {},
+        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        fill: chartType === 'area'
+          ? { type: 'gradient', gradient: { opacityFrom: 0.32, opacityTo: 0.08 } }
+          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
         xaxis: { categories: categories, labels: { style: { fontSize: '11px' }, formatter: function(v) { return '\u00A3' + Number(v).toLocaleString(); } } },
         yaxis: { labels: { style: { fontSize: '11px' } } },
@@ -6318,16 +6437,26 @@ const API = '';
       }
       var labels = rows.map(function(r) { return r.label || r.key || '—'; });
       var sessions = rows.map(function(r) { return r.sessions || 0; });
+      var chartType = ensureChartTypeControls('type-chart', 'type-main', 'bar', function () {
+        renderTypeChart(data);
+      });
       el.innerHTML = '';
       typeChartInstance = new ApexCharts(el, {
-        chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-        series: sessions,
-        labels: labels,
-        colors: ['#4592e9', '#1673b4', '#32bdb0', '#179ea8', '#fa9f2e', '#fab05d', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'],
-        plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total Sessions', fontSize: '14px', formatter: function(w) { return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0).toLocaleString(); } } } } } },
-        dataLabels: { enabled: true, formatter: function(val) { return val.toFixed(1) + '%'; } },
-        legend: { position: 'bottom', fontSize: '12px' },
-        tooltip: { y: { formatter: function(v) { return v.toLocaleString() + ' sessions'; } } }
+        chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        series: [{ name: 'Sessions', data: sessions }],
+        colors: ['#4592e9'],
+        plotOptions: chartType === 'bar' ? { bar: { borderRadius: 4, columnWidth: '58%' } } : {},
+        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        fill: chartType === 'area'
+          ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
+          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+        markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: labels, labels: { style: { fontSize: '11px' } } },
+        yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+        legend: { position: 'top', fontSize: '12px' },
+        tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' sessions'; } } },
+        grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
       });
       typeChartInstance.render();
     }
@@ -6463,10 +6592,13 @@ const API = '';
         var n = p && p.online != null ? Number(p.online) : NaN;
         return Number.isFinite(n) ? n : 0;
       });
+      var liveChartType = ensureChartTypeControls('live-online-chart', 'live-online', 'area', function () {
+        renderLiveOnlineTrendChart(payload);
+      });
       el.innerHTML = '';
       liveOnlineChart = new ApexCharts(el, {
         chart: {
-          type: 'area',
+          type: liveChartType,
           height: 220,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
@@ -6482,9 +6614,13 @@ const API = '';
           forceNiceScale: true,
           labels: { style: { fontSize: '11px' } },
         },
-        stroke: { curve: 'smooth', width: 2 },
+        stroke: { curve: 'smooth', width: liveChartType === 'bar' ? 0 : 2 },
         dataLabels: { enabled: false },
-        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.1, stops: [0, 100] } },
+        fill: liveChartType === 'area'
+          ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.1, stops: [0, 100] } }
+          : { type: 'solid', opacity: liveChartType === 'line' ? 0 : 1 },
+        plotOptions: liveChartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
+        markers: { size: liveChartType === 'line' ? 3 : 0, hover: { size: 5 } },
         colors: ['#16a34a'],
         tooltip: {
           y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' online'; } },
@@ -6561,10 +6697,14 @@ const API = '';
         };
       }
 
+      var overviewScope = PAGE === 'sales' ? 'sales-overview' : 'date-overview';
+      var overviewType = ensureChartTypeControls('sessions-overview-chart', overviewScope, 'area', function () {
+        renderSessionsOverviewChart(payload, rangeKey);
+      });
       el.innerHTML = '';
       rangeOverviewChart = new ApexCharts(el, {
         chart: {
-          type: 'area',
+          type: overviewType,
           height: 220,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
@@ -6572,8 +6712,12 @@ const API = '';
         },
         series: chartCfg.series,
         colors: chartCfg.colors,
-        stroke: { curve: 'smooth', width: 2 },
-        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } },
+        stroke: { curve: 'smooth', width: overviewType === 'bar' ? 0 : 2 },
+        fill: overviewType === 'area'
+          ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
+          : { type: 'solid', opacity: overviewType === 'line' ? 0 : 1 },
+        plotOptions: overviewType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
+        markers: { size: overviewType === 'line' ? 3 : 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
         xaxis: { categories: labels, labels: { style: { fontSize: '11px' } } },
         yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: chartCfg.yFormatter } },
@@ -6958,7 +7102,7 @@ const API = '';
           function kv(label, valueHtml) {
             return '<div class="diag-kv"><div class="k">' + escapeHtml(label) + '</div><div class="v">' + valueHtml + '</div></div>';
           }
-          function icon(name, cls) {
+          function icon(name, cls, iconKey) {
             const map = {
               shield: 'fa-light fa-shield-halved',
               columns: 'fa-light fa-table-columns',
@@ -6973,7 +7117,8 @@ const API = '';
             };
             const fa = map[name] || 'fa-light fa-circle';
             const extra = cls ? (' ' + cls) : '';
-            return '<i class="' + fa + extra + '" aria-hidden="true"></i>';
+            var keyAttr = iconKey ? (' data-icon-key="' + escapeHtml(String(iconKey)) + '"') : '';
+            return '<i class="' + fa + extra + '"' + keyAttr + ' aria-hidden="true"></i>';
           }
           function fmtSessions(n) { return (typeof n === 'number' && isFinite(n)) ? escapeHtml(formatSessions(n)) : '\u2014'; }
           function fmtRevenue(n) { return (typeof n === 'number' && isFinite(n)) ? escapeHtml(formatRevenue(n)) : '\u2014'; }
@@ -7427,18 +7572,18 @@ const API = '';
             aiCopyText = 'Kexo diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
           }
 
-          const copyIcon = '<i class="fa-light fa-copy" aria-hidden="true"></i>';
+          const copyIcon = '<i class="fa-light fa-copy" data-icon-key="diag-copy" aria-hidden="true"></i>';
 
           // Font Awesome icons for tabs
           var tabIcons = {
-            sales: '<i class="fa-light fa-sterling-sign" aria-hidden="true"></i>',
-            compare: '<i class="fa-light fa-scale-balanced" aria-hidden="true"></i>',
-            traffic: '<i class="fa-light fa-route" aria-hidden="true"></i>',
-            pixel: '<i class="fa-light fa-crosshairs" aria-hidden="true"></i>',
-            googleads: '<i class="fa-light fa-rectangle-ad" aria-hidden="true"></i>',
-            shopify: '<i class="fa-light fa-bag-shopping" aria-hidden="true"></i>',
-            system: '<i class="fa-light fa-server" aria-hidden="true"></i>',
-            defs: '<i class="fa-light fa-book-open" aria-hidden="true"></i>'
+            sales: '<i class="fa-light fa-sterling-sign" data-icon-key="diag-tab-sales" aria-hidden="true"></i>',
+            compare: '<i class="fa-light fa-scale-balanced" data-icon-key="diag-tab-compare" aria-hidden="true"></i>',
+            traffic: '<i class="fa-light fa-route" data-icon-key="diag-tab-traffic" aria-hidden="true"></i>',
+            pixel: '<i class="fa-light fa-crosshairs" data-icon-key="diag-tab-pixel" aria-hidden="true"></i>',
+            googleads: '<i class="fa-light fa-rectangle-ad" data-icon-key="diag-tab-googleads" aria-hidden="true"></i>',
+            shopify: '<i class="fa-light fa-bag-shopping" data-icon-key="diag-tab-shopify" aria-hidden="true"></i>',
+            system: '<i class="fa-light fa-server" data-icon-key="diag-tab-system" aria-hidden="true"></i>',
+            defs: '<i class="fa-light fa-book-open" data-icon-key="diag-tab-definitions" aria-hidden="true"></i>'
           };
 
           function diagTab(key, label) {
@@ -9224,9 +9369,17 @@ const API = '';
         if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
         el.innerHTML = '';
 
-        dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: opts };
+        var chartScope = (opts && opts.chartScope) ? String(opts.chartScope) : ('dashboard-' + chartId);
+        var defaultType = (opts && opts.chartType) || 'area';
+        var chartType = ensureChartTypeControls(chartId, chartScope, defaultType, function(nextType) {
+          var cfg = dashChartConfigs[chartId];
+          if (!cfg) return;
+          var nextOpts = Object.assign({}, cfg.opts || {}, { chartType: nextType, chartScope: chartScope });
+          makeChart(chartId, cfg.labels || [], cfg.datasets || [], nextOpts);
+        });
 
-        var chartType = (opts && opts.chartType) || 'area';
+        dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: Object.assign({}, opts || {}, { chartType: chartType, chartScope: chartScope }) };
+
         var areaOpacityFrom = (opts && typeof opts.areaOpacityFrom === 'number' && isFinite(opts.areaOpacityFrom)) ? opts.areaOpacityFrom : 0.15;
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
 

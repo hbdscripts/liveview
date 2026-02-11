@@ -44,6 +44,70 @@
     'table-icon-sessions': 'fa-users',
     'table-icon-revenue': 'fa-sterling-sign',
     'table-icon-clicks': 'fa-hand-pointer',
+    'settings-tab-general': 'fa-sliders',
+    'settings-tab-theme': 'fa-palette',
+    'settings-tab-assets': 'fa-image',
+    'settings-tab-data-reporting': 'fa-chart-column',
+    'settings-tab-integrations': 'fa-plug',
+    'settings-tab-sources': 'fa-map-location-dot',
+    'settings-tab-kpis': 'fa-gauge-high',
+    'settings-tab-diagnostics': 'fa-chart-line',
+    'settings-diagnostics-refresh': 'fa-rotate-right',
+    'settings-diagnostics-reconcile': 'fa-sliders',
+    'footer-refresh': 'fa-rotate-right',
+    'footer-sound': 'fa-volume-high',
+    'footer-theme': 'fa-palette',
+    'footer-settings': 'fa-gear',
+    'footer-signout': 'fa-right-from-bracket',
+    'footer-last-sale-show': 'fa-eye',
+    'footer-last-sale-hide': 'fa-eye-slash',
+    'side-panel-close': 'fa-xmark',
+    'side-panel-activity': 'fa-list',
+    'side-panel-details': 'fa-user',
+    'side-panel-source': 'fa-link',
+    'side-panel-network': 'fa-cloud',
+    'kpi-compare-refresh': 'fa-rotate-right',
+    'kpi-compare-close': 'fa-xmark',
+    'kpi-compare-date-info': 'fa-circle-info',
+    'sale-toast-time': 'fa-clock',
+    'live-landing-entry': 'fa-circle-check',
+    'live-landing-exit': 'fa-circle-check',
+    'live-bought-overlay': 'fa-cart-shopping',
+    'pagination-prev': 'fa-chevron-left',
+    'pagination-next': 'fa-chevron-right',
+    'breakdown-placeholder-image': 'fa-image',
+    'breakdown-icon-image': 'fa-image',
+    'breakdown-icon-star': 'fa-star',
+    'breakdown-icon-chart-column': 'fa-chart-column',
+    'breakdown-icon-link': 'fa-link',
+    'type-device-desktop': 'fa-desktop',
+    'type-device-mobile': 'fa-mobile-screen',
+    'type-device-tablet': 'fa-tablet-screen-button',
+    'type-device-unknown': 'fa-globe',
+    'type-platform-ios': 'fa-apple',
+    'type-platform-android': 'fa-android',
+    'type-platform-windows': 'fa-windows',
+    'type-platform-linux': 'fa-linux',
+    'type-platform-unknown': 'fa-circle-question',
+    'diag-copy': 'fa-copy',
+    'diag-tab-sales': 'fa-sterling-sign',
+    'diag-tab-compare': 'fa-scale-balanced',
+    'diag-tab-traffic': 'fa-route',
+    'diag-tab-pixel': 'fa-crosshairs',
+    'diag-tab-googleads': 'fa-rectangle-ad',
+    'diag-tab-shopify': 'fa-bag-shopping',
+    'diag-tab-system': 'fa-server',
+    'diag-tab-definitions': 'fa-book-open',
+    'ads-status-warning': 'fa-triangle-exclamation',
+    'ads-status-connected': 'fa-circle-check',
+    'ads-status-disconnected': 'fa-circle-xmark',
+    'ads-actions-refresh': 'fa-rotate-right',
+    'kpi-trend-up': 'fa-arrow-trend-up',
+    'kpi-trend-down': 'fa-arrow-trend-down',
+    'kpi-trend-flat': 'fa-minus',
+    'chart-type-area': 'fa-chart-area',
+    'chart-type-bar': 'fa-chart-column',
+    'chart-type-line': 'fa-chart-line',
   };
 
   var TI_TO_FA = {
@@ -189,6 +253,7 @@
     if (raw.indexOf('fa-jelly') >= 0) return 'fa-jelly';
     if (raw.indexOf('fa-solid') >= 0) return 'fa-solid';
     if (raw.indexOf('fa-light') >= 0) return 'fa-light';
+    if (raw.indexOf('fa-brands') >= 0 || raw === 'brands' || raw === 'brand') return 'fa-brands';
     if (raw === 'jelly-filled') return 'fa-jelly-filled';
     if (raw === 'jelly') return 'fa-jelly';
     if (raw === 'solid') return 'fa-solid';
@@ -196,13 +261,37 @@
     return fallback;
   }
 
-  function normalizeIconGlyph(value, fallback) {
-    var raw = value == null ? '' : String(value).trim().toLowerCase();
-    if (!raw) return fallback;
+  function sanitizeIconClassString(value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+  }
+
+  function isIconStyleToken(token) {
+    return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
+      token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
+      token === 'fal' || token === 'fab';
+  }
+
+  function parseIconGlyphInput(value, fallback) {
+    var raw = sanitizeIconClassString(value).toLowerCase();
+    var safeFallback = fallback || 'fa-circle';
+    if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var tokens = raw.split(/\s+/).filter(Boolean);
+    var faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+    var hasExplicitStyle = tokens.some(isIconStyleToken);
+    if (hasExplicitStyle || faTokens.length >= 2) {
+      var fullTokens = tokens.slice();
+      var hasGlyph = fullTokens.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
+      if (!hasGlyph) fullTokens.push(safeFallback);
+      return { mode: 'full', value: fullTokens.join(' '), full: fullTokens.join(' ') };
+    }
     var m = raw.match(/fa-[a-z0-9-]+/);
-    if (m && m[0]) return m[0];
-    if (/^[a-z0-9-]+$/.test(raw)) return 'fa-' + raw;
-    return fallback;
+    if (m && m[0]) return { mode: 'glyph', value: m[0], glyph: m[0] };
+    if (/^[a-z0-9-]+$/.test(raw)) return { mode: 'glyph', value: 'fa-' + raw, glyph: 'fa-' + raw };
+    return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+  }
+
+  function normalizeIconGlyph(value, fallback) {
+    return parseIconGlyphInput(value, fallback).value;
   }
 
   function readIconTheme() {
@@ -226,7 +315,7 @@
       var lsKey = 'tabler-theme-icon-glyph-' + key;
       var raw = null;
       try { raw = localStorage.getItem(lsKey); } catch (_) { raw = null; }
-      out[key] = normalizeIconGlyph(raw, ICON_GLYPH_DEFAULTS[key]);
+      out[key] = parseIconGlyphInput(raw, ICON_GLYPH_DEFAULTS[key]);
     });
     return out;
   }
@@ -262,6 +351,62 @@
     return glyph;
   }
 
+  var ICON_KEYS_FORCE_SOLID_FALLBACK = {
+    'settings-tab-general': true,
+    'settings-tab-theme': true,
+    'settings-tab-assets': true,
+    'settings-tab-data-reporting': true,
+    'settings-tab-integrations': true,
+    'settings-tab-sources': true,
+    'settings-tab-kpis': true,
+    'settings-tab-diagnostics': true,
+  };
+
+  function resolveCompatibleStyle(style, glyph, iconKey) {
+    var normalized = normalizeIconStyle(style, ICON_THEME_DEFAULTS.iconDefault);
+    if (!normalized || normalized === 'fa-brands') return normalized || ICON_THEME_DEFAULTS.iconDefault;
+    if (normalized === 'fa-jelly' || normalized === 'fa-jelly-filled') {
+      if (iconKey && ICON_KEYS_FORCE_SOLID_FALLBACK[iconKey]) return 'fa-solid';
+      if (glyph === 'fa-chart-column' || glyph === 'fa-map-location-dot' || glyph === 'fa-gauge-high' || glyph === 'fa-chart-line') return 'fa-solid';
+    }
+    return normalized;
+  }
+
+  function faAliasToStyle(token) {
+    if (token === 'fas') return 'fa-solid';
+    if (token === 'far' || token === 'fal') return 'fa-light';
+    if (token === 'fab') return 'fa-brands';
+    return token;
+  }
+
+  function applyFullOverrideClasses(el, fullSpec, fallbackGlyph) {
+    if (!el || !el.classList) return;
+    var keep = [];
+    var hadFaFw = el.classList.contains('fa-fw');
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls.indexOf('fa-') === 0) return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      keep.push(cls);
+    });
+    var tokens = sanitizeIconClassString(fullSpec).toLowerCase().split(/\s+/).filter(Boolean);
+    var faTokens = [];
+    tokens.forEach(function (t) {
+      if (t === 'fa') return;
+      if (t === 'fas' || t === 'far' || t === 'fal' || t === 'fab') {
+        faTokens.push(faAliasToStyle(t));
+        return;
+      }
+      if (t.indexOf('fa-') === 0) faTokens.push(t);
+    });
+    if (!faTokens.length) faTokens.push(ICON_THEME_DEFAULTS.iconDefault, fallbackGlyph || 'fa-circle');
+    var hasStyle = faTokens.some(function (t) { return isIconStyleToken(t); });
+    if (!hasStyle) faTokens.unshift(ICON_THEME_DEFAULTS.iconDefault);
+    var hasGlyph = faTokens.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
+    if (!hasGlyph) faTokens.push(fallbackGlyph || 'fa-circle');
+    el.className = keep.concat(faTokens).join(' ').trim();
+    if (hadFaFw) el.classList.add('fa-fw');
+  }
+
   function applyIconClasses(el, style, glyph) {
     if (!el || !el.classList) return;
     var keep = [];
@@ -272,7 +417,7 @@
       keep.push(cls);
     });
     el.className = keep.join(' ').trim();
-    el.classList.add(style || ICON_THEME_DEFAULTS.iconDefault);
+    el.classList.add(resolveCompatibleStyle(style || ICON_THEME_DEFAULTS.iconDefault, glyph || 'fa-circle', el.getAttribute ? (el.getAttribute('data-icon-key') || '') : ''));
     el.classList.add(glyph || 'fa-circle');
     if (hadFaFw) el.classList.add('fa-fw');
   }
@@ -286,10 +431,16 @@
     var style = settings && settings[ctx] ? settings[ctx] : ICON_THEME_DEFAULTS.iconDefault;
     var iconKey = el.getAttribute ? (el.getAttribute('data-icon-key') || '') : '';
     var glyph = currentGlyphClass(el);
+    if (!glyph) glyph = 'fa-circle';
     if (iconKey) {
-      glyph = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : (ICON_GLYPH_DEFAULTS[iconKey] || glyph);
+      var parsed = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : parseIconGlyphInput(null, ICON_GLYPH_DEFAULTS[iconKey] || glyph);
+      if (parsed && parsed.mode === 'full') {
+        applyFullOverrideClasses(el, parsed.value, ICON_GLYPH_DEFAULTS[iconKey] || glyph || 'fa-circle');
+        return;
+      }
+      glyph = parsed && parsed.value ? parsed.value : (ICON_GLYPH_DEFAULTS[iconKey] || glyph);
     }
-    applyIconClasses(el, style, glyph);
+    applyIconClasses(el, style, normalizeIconGlyph(glyph, 'fa-circle'));
   }
 
   function replaceTiIcons(root) {

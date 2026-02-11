@@ -49,6 +49,68 @@
     }).catch(function () { return null; });
   }
 
+  var CHART_TYPES = ['area', 'bar', 'line'];
+  function normalizeChartType(value, fallback) {
+    var v = String(value == null ? '' : value).trim().toLowerCase();
+    if (v === 'area' || v === 'bar' || v === 'line') return v;
+    return fallback || 'area';
+  }
+  function chartTypeStorageKey(scope) {
+    return 'kexo-chart-type-' + String(scope || '').trim().toLowerCase();
+  }
+  function getChartTypePref(scope, fallback) {
+    var raw = null;
+    try { raw = localStorage.getItem(chartTypeStorageKey(scope)); } catch (_) { raw = null; }
+    return normalizeChartType(raw, fallback);
+  }
+  function setChartTypePref(scope, type) {
+    try { localStorage.setItem(chartTypeStorageKey(scope), normalizeChartType(type, 'area')); } catch (_) {}
+  }
+  function chartTypeIcon(type) {
+    if (type === 'area') return '<i class="fa-light fa-chart-area me-1" data-icon-key="chart-type-area" aria-hidden="true"></i>';
+    if (type === 'line') return '<i class="fa-light fa-chart-line me-1" data-icon-key="chart-type-line" aria-hidden="true"></i>';
+    return '<i class="fa-light fa-chart-column me-1" data-icon-key="chart-type-bar" aria-hidden="true"></i>';
+  }
+  function ensureChartTypeControls(chartId, scope, fallbackType, onChange) {
+    var chartEl = document.getElementById(chartId);
+    if (!chartEl) return normalizeChartType(fallbackType, 'area');
+    var chartType = getChartTypePref(scope, fallbackType);
+    var card = chartEl.closest ? chartEl.closest('.card') : null;
+    var header = card ? card.querySelector('.card-header') : null;
+    if (!header) return chartType;
+    var wrap = header.querySelector('[data-chart-type-scope="' + scope + '"]');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'btn-list chart-type-controls ms-auto';
+      wrap.setAttribute('data-chart-type-scope', scope);
+      wrap.innerHTML = CHART_TYPES.map(function (type) {
+        return '<button type="button" class="btn btn-sm btn-outline-secondary" data-chart-type="' + type + '">' +
+          chartTypeIcon(type) + type.charAt(0).toUpperCase() + type.slice(1) + '</button>';
+      }).join('');
+      wrap.addEventListener('click', function (event) {
+        var btn = event && event.target ? event.target.closest('[data-chart-type]') : null;
+        if (!btn) return;
+        var next = normalizeChartType(btn.getAttribute('data-chart-type'), chartType);
+        setChartTypePref(scope, next);
+        Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
+          var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === next;
+          node.classList.toggle('active', active);
+          node.classList.toggle('btn-primary', active);
+          node.classList.toggle('btn-outline-secondary', !active);
+        });
+        if (typeof onChange === 'function') onChange(next);
+      });
+      header.appendChild(wrap);
+    }
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-chart-type]'), function (node) {
+      var active = normalizeChartType(node.getAttribute('data-chart-type'), '') === chartType;
+      node.classList.toggle('active', active);
+      node.classList.toggle('btn-primary', active);
+      node.classList.toggle('btn-outline-secondary', !active);
+    });
+    return chartType;
+  }
+
   function profitClass(v) {
     var x = v != null ? Number(v) : 0;
     if (!Number.isFinite(x) || x === 0) return '';
@@ -145,6 +207,9 @@
     var categories = campaigns.map(function (c) { return shortCampaignLabel(c.campaignName || c.campaignId || '—', 24); });
     var spendSeries = campaigns.map(function (c) { return Number((c && c.spend) || 0); });
     var salesSeries = campaigns.map(function (c) { return Number((c && c.revenue) || 0); });
+    var chartType = ensureChartTypeControls('ads-overview-chart', 'ads-overview', 'bar', function () {
+      renderAdsOverviewChart(summary);
+    });
 
     if (adsOverviewChart) {
       try { adsOverviewChart.destroy(); } catch (_) {}
@@ -154,7 +219,7 @@
 
     adsOverviewChart = new ApexCharts(el, {
       chart: {
-        type: 'bar',
+        type: chartType,
         height: 240,
         fontFamily: 'Inter, sans-serif',
         toolbar: { show: false },
@@ -164,14 +229,18 @@
         { name: 'Sales', data: salesSeries },
       ],
       colors: ['#ef4444', '#0d9488'],
-      plotOptions: {
+      plotOptions: chartType === 'bar' ? {
         bar: {
           horizontal: false,
           borderRadius: 4,
           columnWidth: '48%',
         },
-      },
-      stroke: { show: false },
+      } : {},
+      stroke: { show: chartType !== 'bar', width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+      fill: chartType === 'area'
+        ? { type: 'gradient', gradient: { opacityFrom: 0.28, opacityTo: 0.08 } }
+        : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+      markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
       dataLabels: { enabled: false },
       xaxis: {
         categories: categories,
@@ -635,20 +704,20 @@
   }
 
   function alertTriangleSvg() {
-    return '<i class="fa-light fa-triangle-exclamation" aria-hidden="true"></i>';
+    return '<i class="fa-light fa-triangle-exclamation" data-icon-key="ads-status-warning" aria-hidden="true"></i>';
   }
 
   function refreshSvg(extraClass, idAttr) {
     var cls = 'fa-light fa-rotate-right' + (extraClass ? (' ' + extraClass) : '');
     var id = idAttr ? (' id="' + idAttr + '"') : '';
-    return '<i' + id + ' class="' + cls + '" aria-hidden="true"></i>';
+    return '<i' + id + ' class="' + cls + '" data-icon-key="ads-actions-refresh" aria-hidden="true"></i>';
   }
 
   function connectionStatusSvg(isConnected) {
     if (isConnected) {
-      return '<i class="fa-light fa-circle-check" aria-hidden="true"></i>';
+      return '<i class="fa-light fa-circle-check" data-icon-key="ads-status-connected" aria-hidden="true"></i>';
     }
-    return '<i class="fa-light fa-circle-xmark" aria-hidden="true"></i>';
+    return '<i class="fa-light fa-circle-xmark" data-icon-key="ads-status-disconnected" aria-hidden="true"></i>';
   }
 
   function ensureActionsPlacement() {

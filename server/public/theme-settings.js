@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid'];
+  var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid', 'fa-brands'];
   var ICON_STYLE_DEFAULTS = {
     'theme-icon-default': 'fa-jelly',
     'theme-icon-topnav': 'fa-jelly-filled',
@@ -47,6 +47,70 @@
     'table-icon-sessions': 'fa-users',
     'table-icon-revenue': 'fa-sterling-sign',
     'table-icon-clicks': 'fa-hand-pointer',
+    'settings-tab-general': 'fa-sliders',
+    'settings-tab-theme': 'fa-palette',
+    'settings-tab-assets': 'fa-image',
+    'settings-tab-data-reporting': 'fa-chart-column',
+    'settings-tab-integrations': 'fa-plug',
+    'settings-tab-sources': 'fa-map-location-dot',
+    'settings-tab-kpis': 'fa-gauge-high',
+    'settings-tab-diagnostics': 'fa-chart-line',
+    'settings-diagnostics-refresh': 'fa-rotate-right',
+    'settings-diagnostics-reconcile': 'fa-sliders',
+    'footer-refresh': 'fa-rotate-right',
+    'footer-sound': 'fa-volume-high',
+    'footer-theme': 'fa-palette',
+    'footer-settings': 'fa-gear',
+    'footer-signout': 'fa-right-from-bracket',
+    'footer-last-sale-show': 'fa-eye',
+    'footer-last-sale-hide': 'fa-eye-slash',
+    'side-panel-close': 'fa-xmark',
+    'side-panel-activity': 'fa-list',
+    'side-panel-details': 'fa-user',
+    'side-panel-source': 'fa-link',
+    'side-panel-network': 'fa-cloud',
+    'kpi-compare-refresh': 'fa-rotate-right',
+    'kpi-compare-close': 'fa-xmark',
+    'kpi-compare-date-info': 'fa-circle-info',
+    'sale-toast-time': 'fa-clock',
+    'live-landing-entry': 'fa-circle-check',
+    'live-landing-exit': 'fa-circle-check',
+    'live-bought-overlay': 'fa-cart-shopping',
+    'pagination-prev': 'fa-chevron-left',
+    'pagination-next': 'fa-chevron-right',
+    'breakdown-placeholder-image': 'fa-image',
+    'breakdown-icon-image': 'fa-image',
+    'breakdown-icon-star': 'fa-star',
+    'breakdown-icon-chart-column': 'fa-chart-column',
+    'breakdown-icon-link': 'fa-link',
+    'type-device-desktop': 'fa-desktop',
+    'type-device-mobile': 'fa-mobile-screen',
+    'type-device-tablet': 'fa-tablet-screen-button',
+    'type-device-unknown': 'fa-globe',
+    'type-platform-ios': 'fa-apple',
+    'type-platform-android': 'fa-android',
+    'type-platform-windows': 'fa-windows',
+    'type-platform-linux': 'fa-linux',
+    'type-platform-unknown': 'fa-circle-question',
+    'diag-copy': 'fa-copy',
+    'diag-tab-sales': 'fa-sterling-sign',
+    'diag-tab-compare': 'fa-scale-balanced',
+    'diag-tab-traffic': 'fa-route',
+    'diag-tab-pixel': 'fa-crosshairs',
+    'diag-tab-googleads': 'fa-rectangle-ad',
+    'diag-tab-shopify': 'fa-bag-shopping',
+    'diag-tab-system': 'fa-server',
+    'diag-tab-definitions': 'fa-book-open',
+    'ads-status-warning': 'fa-triangle-exclamation',
+    'ads-status-connected': 'fa-circle-check',
+    'ads-status-disconnected': 'fa-circle-xmark',
+    'ads-actions-refresh': 'fa-rotate-right',
+    'kpi-trend-up': 'fa-arrow-trend-up',
+    'kpi-trend-down': 'fa-arrow-trend-down',
+    'kpi-trend-flat': 'fa-minus',
+    'chart-type-area': 'fa-chart-area',
+    'chart-type-bar': 'fa-chart-column',
+    'chart-type-line': 'fa-chart-line',
   };
   var ICON_GLYPH_META = {
     'mobile-menu': { title: 'Mobile menu button', help: 'Top-left mobile menu icon.', styleKey: 'theme-icon-default' },
@@ -79,6 +143,12 @@
     'table-icon-sessions': { title: 'Table sessions icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
     'table-icon-revenue': { title: 'Table revenue icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
     'table-icon-clicks': { title: 'Table clicks icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+    'kpi-trend-up': { title: 'KPI trend up', help: 'Up delta arrow on KPI chips/cards.', styleKey: 'theme-icon-default' },
+    'kpi-trend-down': { title: 'KPI trend down', help: 'Down delta arrow on KPI chips/cards.', styleKey: 'theme-icon-default' },
+    'kpi-trend-flat': { title: 'KPI trend flat', help: 'Flat/minus delta icon on KPI chips/cards.', styleKey: 'theme-icon-default' },
+    'chart-type-area': { title: 'Chart type: Area', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
+    'chart-type-bar': { title: 'Chart type: Bar', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
+    'chart-type-line': { title: 'Chart type: Line', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
   };
 
   var DEFAULTS = {
@@ -156,20 +226,72 @@
     if (raw.indexOf('fa-jelly') >= 0 || raw === 'jelly') return 'fa-jelly';
     if (raw.indexOf('fa-solid') >= 0 || raw === 'solid') return 'fa-solid';
     if (raw.indexOf('fa-light') >= 0 || raw === 'light') return 'fa-light';
+    if (raw.indexOf('fa-brands') >= 0 || raw === 'brands' || raw === 'brand') return 'fa-brands';
     return fallback;
   }
 
-  function normalizeIconGlyph(value, fallback) {
-    var raw = value == null ? '' : String(value).trim().toLowerCase();
-    if (!raw) return fallback;
+  function sanitizeIconClassString(value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
+  }
+
+  function isIconStyleToken(token) {
+    return token === 'fa-jelly' || token === 'fa-jelly-filled' || token === 'fa-light' ||
+      token === 'fa-solid' || token === 'fa-brands' || token === 'fas' || token === 'far' ||
+      token === 'fal' || token === 'fab';
+  }
+
+  function parseIconGlyphInput(value, fallback) {
+    var raw = sanitizeIconClassString(value).toLowerCase();
+    var safeFallback = fallback || 'fa-circle';
+    if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var tokens = raw.split(/\s+/).filter(Boolean);
+    var faTokens = tokens.filter(function (t) { return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' || t === 'fal' || t === 'fab'; });
+    var hasExplicitStyle = tokens.some(isIconStyleToken);
+    var styleOrSubset = hasExplicitStyle || faTokens.length >= 2;
+    if (styleOrSubset) {
+      var full = tokens.slice();
+      var hasGlyph = full.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
+      if (!hasGlyph) full.push(safeFallback);
+      return { mode: 'full', value: full.join(' '), full: full.join(' ') };
+    }
     var m = raw.match(/fa-[a-z0-9-]+/);
-    if (m && m[0]) return m[0];
-    if (/^[a-z0-9-]+$/.test(raw)) return 'fa-' + raw;
-    return fallback;
+    if (m && m[0]) return { mode: 'glyph', value: m[0], glyph: m[0] };
+    if (/^[a-z0-9-]+$/.test(raw)) return { mode: 'glyph', value: 'fa-' + raw, glyph: 'fa-' + raw };
+    return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+  }
+
+  function normalizeIconGlyph(value, fallback) {
+    return parseIconGlyphInput(value, fallback).value;
   }
 
   function glyphNameFromThemeKey(themeKey) {
     return String(themeKey || '').replace(/^theme-icon-glyph-/, '');
+  }
+
+  function titleizeIconKey(name) {
+    var s = String(name || '').replace(/-/g, ' ').trim();
+    if (!s) return 'Icon';
+    return s.replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+  }
+
+  function defaultStyleKeyForGlyph(name) {
+    var key = String(name || '').trim().toLowerCase();
+    if (!key) return 'theme-icon-default';
+    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'theme-icon-topnav';
+    if (key.indexOf('nav-item-') === 0) return 'theme-icon-dropdown';
+    if (key.indexOf('settings-tab-') === 0) return 'theme-icon-settings-menu';
+    if (key.indexOf('table-icon-') === 0) return 'theme-icon-table-heading';
+    return 'theme-icon-default';
+  }
+
+  function glyphMetaFor(name) {
+    var custom = ICON_GLYPH_META[name];
+    if (custom) return custom;
+    return {
+      title: titleizeIconKey(name),
+      help: 'Glyph class or full class override.',
+      styleKey: defaultStyleKeyForGlyph(name),
+    };
   }
 
   function triggerIconThemeRefresh() {
@@ -321,7 +443,7 @@
 
   function glyphInputCard(key) {
     var name = glyphNameFromThemeKey(key);
-    var meta = ICON_GLYPH_META[name] || { title: name, help: '', styleKey: 'theme-icon-default' };
+    var meta = glyphMetaFor(name);
     var inputId = 'theme-input-' + key;
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
@@ -373,7 +495,7 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Control icon style classes and specific icon glyphs with live preview. Desktop shows a 3-column grid; mobile stacks to one per line.</div>' +
+        '<div class="text-secondary mb-3">Control icon style classes and specific icon glyphs with live preview. Enter a single glyph (for example <code>fa-gear</code>) or a full class override (for example <code>fa-etch fa-solid fa-address-card</code>). Desktop shows a 3-column grid; mobile stacks to one per line.</div>' +
         '<h4 class="mb-2">Style rules</h4>' +
         '<div class="row g-3">' + styleGrid + '</div>' +
         '<hr class="my-3" />' +
@@ -468,12 +590,15 @@
 
   function setPreviewIconClass(previewEl, styleCls, glyphCls) {
     if (!previewEl) return;
-    previewEl.className = normalizeIconStyle(styleCls, 'fa-jelly') + ' ' + normalizeIconGlyph(glyphCls, 'fa-circle');
+    var parsed = parseIconGlyphInput(glyphCls, 'fa-circle');
+    previewEl.className = parsed.mode === 'full'
+      ? parsed.value
+      : (normalizeIconStyle(styleCls, 'fa-jelly') + ' ' + parsed.value);
   }
 
   function styleForGlyphPreview(formEl, glyphThemeKey) {
     var glyphName = glyphNameFromThemeKey(glyphThemeKey);
-    var meta = ICON_GLYPH_META[glyphName] || { styleKey: 'theme-icon-default' };
+    var meta = glyphMetaFor(glyphName);
     var styleKey = meta.styleKey || 'theme-icon-default';
     var styleInput = formEl ? formEl.querySelector('[name="' + styleKey + '"]') : null;
     var styleVal = styleInput && styleInput.value ? styleInput.value : (getStored(styleKey) || DEFAULTS[styleKey] || 'fa-jelly');

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (table/chart standardization + live online series endpoint)
+Last updated: 2026-02-11 (icon system v2 hardening + global chart-type controls)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -207,6 +207,14 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Icon system V2 hardening:
+  - Added exhaustive `data-icon-key` coverage across Settings tabs, footer controls, side panels, KPI compare modal actions, live landing ticks, diagnostics/tab icons, pagination arrows, and dynamic icon render paths in `server/public/app.js` + `server/public/ads.js`.
+  - Theme Icons now supports both glyph input and full class override input (for example `fa-etch fa-solid fa-address-card`) with runtime priority of full override > glyph override + context style > context/default glyph.
+  - Expanded persisted theme icon keys in `server/routes/settings.js` for all newly covered icon surfaces (settings tabs, KPI trend states, live ticks, diagnostics icons, footer/actions, chart-type icons).
+  - `server/public/fontawesome-icons.js` now includes compatibility fallback logic to avoid blank settings-tab icons in Jelly mode (auto-fallback to solid for problematic settings-tab glyphs).
+- Chart controls everywhere:
+  - Added Area/Bar/Line chart-type switch controls with localStorage persistence on all chart pages/surfaces: dashboard cards, live online trend, sales/date overview charts, ads overview, channels, products, countries, type, and tools compare chart.
+  - Chart-type control buttons include icon keys (`chart-type-area`, `chart-type-bar`, `chart-type-line`) so they are fully theme-configurable.
 - Table + chart standardization:
   - Added a dedicated live trend API route `GET /api/sessions/online-series?minutes=10` (server: `server/routes/sessions.js`, `server/store.js`, mounted in `server/index.js`) with short private cache headers.
   - Added a new full-width Live chart card above the sessions table in `server/public/live.html` (`#live-online-chart`) and wired it to the new endpoint in `server/public/app.js`.
