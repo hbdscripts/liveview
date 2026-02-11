@@ -1,5 +1,6 @@
 /**
  * GET /api/sessions?filter=today|active|recent|abandoned|all
+ * GET /api/sessions/online-series?minutes=10
  * GET /api/sessions/:id/events?limit=20
  */
 
@@ -61,4 +62,23 @@ function events(req, res, next) {
     });
 }
 
-module.exports = { list, events };
+function onlineSeries(req, res) {
+  const minutesRaw = req && req.query ? req.query.minutes : null;
+  const minutes = Math.max(2, Math.min(60, parseInt(String(minutesRaw || 10), 10) || 10));
+  res.setHeader('Cache-Control', 'private, max-age=15');
+  res.setHeader('Vary', 'Cookie');
+  store.getActiveSessionSeries(minutes)
+    .then((points) => {
+      res.json({
+        minutes,
+        generatedAt: Date.now(),
+        points: Array.isArray(points) ? points : [],
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ error: 'Internal error' });
+    });
+}
+
+module.exports = { list, onlineSeries, events };

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var ICON_STYLE_CLASSES = ['fa-light', 'fa-solid', 'fa-jelly', 'fa-jelly-filled'];
+  var ICON_STYLE_CLASSES = ['fa-light', 'fa-solid', 'fa-jelly', 'fa-jelly-filled', 'fa-brands'];
   var ICON_THEME_DEFAULTS = {
     iconDefault: 'fa-jelly',
     iconTopnav: 'fa-jelly-filled',
@@ -81,6 +81,106 @@
     'click': 'fa-jelly fa-hand-pointer',
     'eye-off': 'fa-jelly fa-eye-slash'
   };
+
+  var CARD_TITLE_ICON_RULES = [
+    { test: /people online|online now|online trend/i, fa: 'fa-jelly-filled fa-users' },
+    { test: /\brevenue\b|\brev\b|sales total|sales trend/i, fa: 'fa-jelly-filled fa-sterling-sign' },
+    { test: /\borders?\b|order trend|purchases?/i, fa: 'fa-jelly-filled fa-box-open' },
+    { test: /\bconversion\b|\bcr(?:%| rate)?\b/i, fa: 'fa-jelly-filled fa-percent' },
+    { test: /\bsessions?\b|session trend|visitors?/i, fa: 'fa-jelly-filled fa-users' },
+    { test: /\bcountr(?:y|ies)\b|\bgeo\b/i, fa: 'fa-jelly-filled fa-globe' },
+    { test: /\bproducts?\b|\bvariants?\b|best sellers?/i, fa: 'fa-jelly-filled fa-box-open' },
+    { test: /\bchannels?\b|\bsources?\b|\butm\b/i, fa: 'fa-jelly-filled fa-diagram-project' },
+    { test: /\btype\b|\bdevices?\b|\bbrowsers?\b|\bos\b/i, fa: 'fa-jelly-filled fa-table-cells' },
+    { test: /\bads?\b|\bcampaigns?\b|google ads/i, fa: 'fa-brands fa-google' },
+    { test: /\btools?\b|utilities?/i, fa: 'fa-jelly-filled fa-toolbox' },
+    { test: /\bsettings?\b|configuration|diagnostics?|theme/i, fa: 'fa-jelly-filled fa-gear' },
+    { test: /\bdate\b|calendar|timeline|period/i, fa: 'fa-jelly-filled fa-calendar-days' },
+    { test: /dashboard|overview|kpi/i, fa: 'fa-jelly-filled fa-gauge-high' },
+    { test: /\btraffic\b|\blive\b/i, fa: 'fa-jelly-filled fa-route' },
+    { test: /\bchart\b|trend|sparkline/i, fa: 'fa-jelly-filled fa-chart-line' }
+  ];
+
+  function pageDefaultCardIcon() {
+    var page = '';
+    try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
+    page = String(page || '').toLowerCase();
+    if (page === 'dashboard') return 'fa-jelly-filled fa-gauge-high';
+    if (page === 'live') return 'fa-jelly-filled fa-satellite-dish';
+    if (page === 'sales') return 'fa-jelly-filled fa-cart-shopping';
+    if (page === 'date') return 'fa-jelly-filled fa-calendar-days';
+    if (page === 'countries') return 'fa-jelly-filled fa-globe';
+    if (page === 'products') return 'fa-jelly-filled fa-box-open';
+    if (page === 'channels') return 'fa-jelly-filled fa-diagram-project';
+    if (page === 'type') return 'fa-jelly-filled fa-table-cells';
+    if (page === 'ads') return 'fa-jelly-filled fa-rectangle-ad';
+    if (page === 'tools') return 'fa-jelly-filled fa-toolbox';
+    if (page === 'settings') return 'fa-jelly-filled fa-gear';
+    return 'fa-jelly-filled fa-circle-info';
+  }
+
+  function resolveCardTitleIcon(cardTitleEl) {
+    if (!cardTitleEl) return pageDefaultCardIcon();
+    var text = (cardTitleEl.textContent || '').replace(/\s+/g, ' ').trim();
+    for (var i = 0; i < CARD_TITLE_ICON_RULES.length; i += 1) {
+      var rule = CARD_TITLE_ICON_RULES[i];
+      if (rule && rule.test && rule.test.test(text)) return rule.fa;
+    }
+    return pageDefaultCardIcon();
+  }
+
+  function applyFaSpec(el, spec) {
+    if (!el || !el.classList) return;
+    var parts = String(spec || '').trim().split(/\s+/).filter(Boolean);
+    var style = ICON_THEME_DEFAULTS.iconDefault;
+    var glyph = 'fa-circle';
+    var brand = false;
+    parts.forEach(function (cls) {
+      if (cls === 'fa-brands' || cls === 'fab') {
+        brand = true;
+        return;
+      }
+      if (ICON_STYLE_CLASSES.indexOf(cls) >= 0) {
+        style = cls;
+        return;
+      }
+      if (cls.indexOf('fa-') === 0) glyph = cls;
+    });
+
+    var keep = [];
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fa-brands') return;
+      if (cls.indexOf('fa-') === 0) return;
+      keep.push(cls);
+    });
+    el.className = keep.join(' ').trim();
+    if (brand) el.classList.add('fa-brands');
+    else el.classList.add(style || ICON_THEME_DEFAULTS.iconDefault);
+    el.classList.add(glyph || 'fa-circle');
+  }
+
+  function ensureCardTitleIcons(root) {
+    var titles = (root || document).querySelectorAll('.card-header .card-title');
+    titles.forEach(function (titleEl) {
+      if (!titleEl || !titleEl.classList) return;
+      if (titleEl.hasAttribute('data-no-title-icon')) return;
+      var desired = resolveCardTitleIcon(titleEl);
+      var iconEl = titleEl.querySelector('.kexo-card-title-icon');
+      if (!iconEl) {
+        var firstIcon = null;
+        Array.prototype.forEach.call(titleEl.children || [], function (child) {
+          if (!firstIcon && child && child.tagName === 'I') firstIcon = child;
+        });
+        if (firstIcon && !firstIcon.classList.contains('kexo-card-title-icon')) return;
+        iconEl = document.createElement('i');
+        iconEl.className = 'kexo-card-title-icon';
+        iconEl.setAttribute('aria-hidden', 'true');
+        iconEl.setAttribute('data-icon-lib', 'font-awesome');
+        titleEl.insertBefore(iconEl, titleEl.firstChild);
+      }
+      applyFaSpec(iconEl, desired);
+    });
+  }
 
   function normalizeIconStyle(value, fallback) {
     var raw = value == null ? '' : String(value).trim().toLowerCase();
@@ -273,6 +373,7 @@
   function run(root) {
     replaceTiIcons(root);
     replaceSharedSvgIcons(root);
+    ensureCardTitleIcons(root);
     applyIconTheme(root);
   }
 

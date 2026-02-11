@@ -101,8 +101,110 @@
 
   /* ── modal ───────────────────────────────────────────────── */
 
+  var adsOverviewChart = null;
   var modalChart = null;
   var chartJsLoading = null;
+
+  function shortCampaignLabel(value, maxLen) {
+    var raw = value == null ? '' : String(value).trim();
+    var cap = Math.max(10, Number(maxLen) || 24);
+    if (!raw) return '—';
+    if (raw.length <= cap) return raw;
+    return raw.slice(0, cap - 1) + '…';
+  }
+
+  function clearAdsOverviewChart(message) {
+    var el = document.getElementById('ads-overview-chart');
+    if (!el) return;
+    if (adsOverviewChart) {
+      try { adsOverviewChart.destroy(); } catch (_) {}
+      adsOverviewChart = null;
+    }
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:var(--tblr-secondary);font-size:.875rem;">' +
+      esc(message || 'No campaign data for this range') +
+      '</div>';
+  }
+
+  function renderAdsOverviewChart(summary) {
+    var el = document.getElementById('ads-overview-chart');
+    if (!el) return;
+    if (typeof ApexCharts === 'undefined') {
+      setTimeout(function () { renderAdsOverviewChart(summary); }, 180);
+      return;
+    }
+    var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns.slice() : [];
+    var currency = summary && summary.currency ? String(summary.currency) : 'GBP';
+    campaigns = campaigns.filter(Boolean).sort(function (a, b) {
+      return (Number((b && b.revenue) || 0) - Number((a && a.revenue) || 0));
+    }).slice(0, 8);
+    if (!campaigns.length) {
+      clearAdsOverviewChart('No campaign data for this range');
+      return;
+    }
+
+    var categories = campaigns.map(function (c) { return shortCampaignLabel(c.campaignName || c.campaignId || '—', 24); });
+    var spendSeries = campaigns.map(function (c) { return Number((c && c.spend) || 0); });
+    var salesSeries = campaigns.map(function (c) { return Number((c && c.revenue) || 0); });
+
+    if (adsOverviewChart) {
+      try { adsOverviewChart.destroy(); } catch (_) {}
+      adsOverviewChart = null;
+    }
+    el.innerHTML = '';
+
+    adsOverviewChart = new ApexCharts(el, {
+      chart: {
+        type: 'bar',
+        height: 240,
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false },
+      },
+      series: [
+        { name: 'Spend', data: spendSeries },
+        { name: 'Sales', data: salesSeries },
+      ],
+      colors: ['#ef4444', '#0d9488'],
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          borderRadius: 4,
+          columnWidth: '48%',
+        },
+      },
+      stroke: { show: false },
+      dataLabels: { enabled: false },
+      xaxis: {
+        categories: categories,
+        labels: {
+          style: { fontSize: '11px' },
+          rotate: -20,
+          hideOverlappingLabels: false,
+          trim: true,
+        },
+      },
+      yaxis: {
+        min: 0,
+        labels: {
+          style: { fontSize: '11px' },
+          formatter: function (v) { return fmtMoney(v, currency); },
+        },
+      },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: function (v) { return fmtMoney(v, currency); },
+        },
+      },
+      legend: {
+        position: 'top',
+        fontSize: '12px',
+        markers: { radius: 10 },
+      },
+      grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+    });
+    adsOverviewChart.render();
+  }
 
   function ensureModalDom() {
     if (document.getElementById('ads-campaign-modal')) return;
@@ -770,6 +872,7 @@
 
     patchFooterAndNote(status, summary);
     syncFooterScroll();
+    renderAdsOverviewChart(summary);
 
     // Bind sortable headers
     var headers = root.querySelectorAll('[data-sort]');
@@ -883,6 +986,7 @@
       } else {
         _lastStatus = nextStatus;
         _lastSummary = nextSummary;
+        try { renderAdsOverviewChart(nextSummary); } catch (_) {}
       }
 
       return { status: status, summary: summary };
@@ -891,11 +995,13 @@
       applyRefreshingUi(false, false);
       if (_lastSummary) {
         try { patchFooterAndNote(_lastStatus, _lastSummary); } catch (_) {}
+        try { renderAdsOverviewChart(_lastSummary); } catch (_) {}
       } else {
         if (actions) actions.style.display = 'none';
         if (footer) footer.style.display = 'none';
         if (noteEl) { noteEl.style.display = 'none'; noteEl.textContent = ''; }
         renderLoadError(root, _lastFetchError);
+        try { clearAdsOverviewChart('Could not load chart'); } catch (_) {}
       }
       return null;
     }).finally(function () {

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (Theme Icons grid + per-icon glyph overrides)
+Last updated: 2026-02-11 (table/chart standardization + live online series endpoint)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -142,7 +142,8 @@ KPI caching (perf + UX):
 
 ## Deployment
 
-- Pushes to `main` trigger deploy (GitHub Actions + Railway).
+- GitHub Actions workflows are manual (`workflow_dispatch`); pushes to `main` alone do not auto-run workflows.
+- Railway may auto-deploy from GitHub depending on service config.
 
 ---
 
@@ -184,12 +185,13 @@ Edge (optional):
 4) Dashboard queries
 - Live/SSE: `GET /api/stream`.
 - Reports: `GET /api/kpis`, `/api/stats`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`.
+- Live online trend: `GET /api/sessions/online-series?minutes=10` (bucketed active-session counts for the Live page chart).
 
 ---
 
 ## Deployment + ops notes
 
-- Pushes to `main` trigger deploy (GitHub Actions + Railway).
+- GitHub Actions workflows are manual (`workflow_dispatch`); trigger them explicitly when needed.
 - `npm start` runs `scripts/prune-runtime-files.js` (removes non-runtime files from the runtime image).
 - SQLite is ephemeral on Railway; use Postgres (`DB_URL`) for persistence.
 
@@ -205,6 +207,17 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Table + chart standardization:
+  - Added a dedicated live trend API route `GET /api/sessions/online-series?minutes=10` (server: `server/routes/sessions.js`, `server/store.js`, mounted in `server/index.js`) with short private cache headers.
+  - Added a new full-width Live chart card above the sessions table in `server/public/live.html` (`#live-online-chart`) and wired it to the new endpoint in `server/public/app.js`.
+  - Added overview chart cards above the table on `server/public/sales.html` and `server/public/date.html` (`#sessions-overview-chart`), using the existing range-aware dashboard series endpoint.
+  - Added Ads overview chart card (`#ads-overview-chart`) in `server/public/ads.html` and render logic in `server/public/ads.js` (top campaigns, Spend vs Sales).
+  - Added Tools comparison chart rendering in `server/public/tools.js` (`#tools-compare-chart`) for before/after Sessions, Orders, and CR during conversion-rate comparisons.
+  - Kept sticky-first-column behavior active on mobile (except Settings) by removing the old mobile card-table transform in `server/public/custom.css`; horizontal swipe/scroll now remains available on all table pages.
+  - `server/public/fontawesome-icons.js` now auto-injects contextual Font Awesome icons into `.card-header .card-title` across pages (including Settings), while preserving explicit existing title icons.
+- Dashboard KPI compare model/UI:
+  - Compare labels now use previous-period wording (e.g. Yesterday, Previous 7 days), and the secondary compare slot is shown only for `today`/`yesterday`.
+  - Dashboard KPI cards now use consistent primary compare values/labels from the API compare payload.
 - Theme + icon system:
   - Restored Jelly icons with policy routing: global default `jelly`; top nav toggles + table heading icons + Settings left menu use `jelly-filled`; all dropdown menu items (including Settings dropdown) use `jelly`.
   - Added persisted theme icon settings keys to `/api/theme-defaults` (`theme_icon_default`, `theme_icon_topnav`, `theme_icon_dropdown`, `theme_icon_settings_menu`, `theme_icon_table_heading`).

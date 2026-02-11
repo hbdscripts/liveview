@@ -1332,6 +1332,68 @@ async function getActiveSessionCount() {
   return row ? Number(row.n) || 0 : 0;
 }
 
+/**
+ * Time-bucketed active-online series for live chart.
+ * Returns per-minute counts using the same active/arrived windows as listSessions('active').
+ */
+async function getActiveSessionSeries(minutes = 10) {
+  const db = getDb();
+  const safeMinutes = Math.max(2, Math.min(60, parseInt(String(minutes || 10), 10) || 10));
+  const stepMs = 60 * 1000;
+  const end = Math.floor(Date.now() / stepMs) * stepMs;
+  const start = end - (safeMinutes - 1) * stepMs;
+  const activeWindowMs = config.activeWindowMinutes * 60 * 1000;
+  const arrivedWindowMs = config.liveArrivedWindowMinutes * 60 * 1000;
+
+  let rows = [];
+  if (config.dbUrl) {
+    rows = await db.all(
+      `WITH buckets AS (
+         SELECT generate_series($1::bigint, $2::bigint, $3::bigint) AS ts
+       )
+       SELECT b.ts::bigint AS ts,
+              COUNT(s.session_id)::bigint AS online
+       FROM buckets b
+       LEFT JOIN sessions s
+         ON COALESCE(s.started_at, 0) <= b.ts
+        AND COALESCE(s.last_seen, s.started_at, 0) >= (b.ts - $4::bigint)
+        AND COALESCE(s.started_at, 0) >= (b.ts - $5::bigint)
+       GROUP BY b.ts
+       ORDER BY b.ts ASC`,
+      [start, end, stepMs, activeWindowMs, arrivedWindowMs]
+    );
+  } else {
+    rows = await db.all(
+      `WITH RECURSIVE buckets(ts, n) AS (
+         SELECT ? AS ts, 0
+         UNION ALL
+         SELECT ts + ?, n + 1
+         FROM buckets
+         WHERE n + 1 < ?
+       )
+       SELECT b.ts AS ts,
+              COUNT(s.session_id) AS online
+       FROM buckets b
+       LEFT JOIN sessions s
+         ON COALESCE(s.started_at, 0) <= b.ts
+        AND COALESCE(s.last_seen, s.started_at, 0) >= (b.ts - ?)
+        AND COALESCE(s.started_at, 0) >= (b.ts - ?)
+       GROUP BY b.ts
+       ORDER BY b.ts ASC`,
+      [start, stepMs, safeMinutes, activeWindowMs, arrivedWindowMs]
+    );
+  }
+
+  return (rows || []).map((r) => {
+    const ts = r && r.ts != null ? Number(r.ts) : null;
+    const online = r && r.online != null ? Number(r.online) : 0;
+    return {
+      ts: Number.isFinite(ts) ? ts : null,
+      online: Number.isFinite(online) ? Math.max(0, Math.trunc(online)) : 0,
+    };
+  }).filter((p) => Number.isFinite(p.ts));
+}
+
 async function getSessionEvents(sessionId, limit = 20) {
   const db = getDb();
   const rows = await db.all(
@@ -2952,6 +3014,7 @@ module.exports = {
   listSessions,
   listSessionsByRange,
   getActiveSessionCount,
+  getActiveSessionSeries,
   getSessionEvents,
   // Traffic source mapping (custom sources)
   TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS,

@@ -106,7 +106,33 @@ const API = '';
       const rk = normalizeRangeKeyForApi(rangeKey);
       if (rk === 'today') return 'Yesterday';
       if (rk === 'yesterday') return 'Day before';
-      return 'Previous';
+      if (rk === '3d') return 'Previous 3 days';
+      if (rk === '7d') return 'Previous 7 days';
+      if (rk === '14d') return 'Previous 14 days';
+      if (rk === '30d') return 'Previous 30 days';
+      if (rk === 'month') return 'Previous month';
+      if (/^d:\d{4}-\d{2}-\d{2}$/.test(rk)) return 'Previous day';
+      if (/^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(rk)) {
+        var m = rk.match(/^r:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/);
+        if (m && m[1] && m[2]) {
+          try {
+            var a = Date.parse(m[1] + 'T00:00:00Z');
+            var b = Date.parse(m[2] + 'T00:00:00Z');
+            if (Number.isFinite(a) && Number.isFinite(b)) {
+              var spanDays = Math.abs(Math.round((b - a) / 86400000)) + 1;
+              if (spanDays <= 1) return 'Previous day';
+              return 'Previous ' + String(spanDays) + ' days';
+            }
+          } catch (_) {}
+        }
+        return 'Previous period';
+      }
+      return 'Previous period';
+    }
+
+    function showDashboardSecondaryCompare(rangeKey) {
+      const rk = normalizeRangeKeyForApi(rangeKey);
+      return rk === 'today' || rk === 'yesterday';
     }
 
     // Shopify embedded app: keep the signed query params on internal navigation.
@@ -204,6 +230,88 @@ const API = '';
       setTimeout(run, 2000);
     })();
 
+    (function initHorizontalDragScroll() {
+      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
+
+      function shouldIgnoreTarget(target) {
+        if (!target || !target.closest) return false;
+        return !!target.closest('a, button, input, select, textarea, label, [role="button"], [data-no-drag-scroll]');
+      }
+
+      function setDragEnabledClass(wrap) {
+        if (!wrap) return;
+        var canDrag = (wrap.scrollWidth || 0) > ((wrap.clientWidth || 0) + 1);
+        wrap.classList.toggle('is-drag-scroll', !!canDrag);
+      }
+
+      function bind(wrap) {
+        if (!wrap || wrap.getAttribute('data-drag-scroll-bound') === '1') return;
+        wrap.setAttribute('data-drag-scroll-bound', '1');
+        setDragEnabledClass(wrap);
+
+        var startX = 0;
+        var startScrollLeft = 0;
+        var dragging = false;
+        var moved = false;
+
+        wrap.addEventListener('pointerdown', function(e) {
+          if (!e || e.button !== 0) return;
+          if ((e.pointerType || '') === 'touch') return; // mobile already supports native swipe
+          if (!wrap.classList.contains('is-drag-scroll')) return;
+          if (shouldIgnoreTarget(e.target)) return;
+          dragging = true;
+          moved = false;
+          startX = e.clientX;
+          startScrollLeft = wrap.scrollLeft;
+          wrap.classList.add('is-dragging');
+          try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        wrap.addEventListener('pointermove', function(e) {
+          if (!dragging) return;
+          var dx = e.clientX - startX;
+          if (!moved && Math.abs(dx) > 3) moved = true;
+          wrap.scrollLeft = startScrollLeft - dx;
+          if (moved) e.preventDefault();
+        });
+
+        function endDrag(e) {
+          if (!dragging) return;
+          dragging = false;
+          wrap.classList.remove('is-dragging');
+          try { if (e && e.pointerId != null) wrap.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+
+        wrap.addEventListener('pointerup', endDrag);
+        wrap.addEventListener('pointercancel', endDrag);
+        wrap.addEventListener('pointerleave', function(e) {
+          if (!dragging) return;
+          if (e && e.buttons === 1) return;
+          endDrag(e);
+        });
+
+        if (typeof ResizeObserver !== 'undefined') {
+          try {
+            var ro = new ResizeObserver(function() { setDragEnabledClass(wrap); });
+            ro.observe(wrap);
+            wrap._dragScrollObserver = ro;
+          } catch (_) {}
+        }
+      }
+
+      function run() {
+        document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+      } else {
+        run();
+      }
+      setTimeout(run, 700);
+      setTimeout(run, 1800);
+    })();
+
     function getKpiData() {
       if (kpiCache) return kpiCache;
       if (getStatsRange() === 'today') return {};
@@ -237,6 +345,12 @@ const API = '';
     let lastSaleAt = null; // ms; authoritative timestamp of most recent sale we know about (Shopify truth preferred)
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let onlineCountInFlight = false;
+    let liveOnlineChart = null;
+    let liveOnlineChartFetchedAt = 0;
+    let liveOnlineChartInFlight = null;
+    let rangeOverviewChart = null;
+    let rangeOverviewChartKey = '';
+    let rangeOverviewChartInFlight = null;
     let shopifySalesToday = null;
     let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
@@ -3013,10 +3127,10 @@ const API = '';
         var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumbHtml + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + formatSessions(orders) + '</div>' +
           '<div class="grid-cell" role="cell">' + formatSessions(sessions) + '</div>' +
-          '<div class="grid-cell" role="cell">' + rev + '</div>' +
+          '<div class="grid-cell" role="cell">' + formatSessions(orders) + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + rev + '</div>' +
         '</div>';
       }).join('');
     }
@@ -3237,10 +3351,10 @@ const API = '';
 
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
-          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
       updateSortHeadersInContainer(document.getElementById('best-variants-table'), bvBy, bvDir);
@@ -3248,14 +3362,13 @@ const API = '';
 
     let productsChartInstance = null;
     let productsChartData = null;
-    let productsChartType = 'bar';
 
-    function renderProductsChart(data, chartType) {
+    function renderProductsChart(data) {
       const el = document.getElementById('products-chart');
       if (!el) return;
 
       if (typeof ApexCharts === 'undefined') {
-        setTimeout(function() { renderProductsChart(data, chartType); }, 200);
+        setTimeout(function() { renderProductsChart(data); }, 200);
         return;
       }
 
@@ -3265,7 +3378,6 @@ const API = '';
       }
 
       if (data) productsChartData = data;
-      if (chartType) productsChartType = chartType;
       var d = productsChartData;
 
       if (!d || !Array.isArray(d.bestSellers) || d.bestSellers.length === 0) {
@@ -3283,18 +3395,9 @@ const API = '';
       });
       const revenues = products.map(function(p) { return p.revenue || 0; });
 
-      var ct = productsChartType;
-      var isBar = ct === 'bar';
-      var isLine = ct === 'line';
-      var isArea = ct === 'area';
-
-      var fillConfig = isLine ? { type: 'solid', opacity: 0 }
-        : isArea ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } }
-        : { type: 'solid', opacity: 1 };
-
       const options = {
         chart: {
-          type: isBar ? 'bar' : ct,
+          type: 'bar',
           height: 280,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false }
@@ -3304,32 +3407,30 @@ const API = '';
           data: revenues
         }],
         colors: ['#0d9488'],
-        plotOptions: isBar ? {
+        plotOptions: {
           bar: {
             horizontal: true,
             borderRadius: 4,
             barHeight: '70%'
           }
-        } : {},
-        stroke: { width: isBar ? 0 : 2, curve: 'smooth' },
-        fill: fillConfig,
-        markers: { size: isLine ? 3 : 0, hover: { size: 5 } },
+        },
+        stroke: { width: 0, curve: 'smooth' },
+        fill: { type: 'solid', opacity: 1 },
+        markers: { size: 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
         xaxis: {
           categories: categories,
           labels: {
             style: { fontSize: '11px' },
-            formatter: isBar ? function(value) {
+            formatter: function(value) {
               return '£' + Number(value).toLocaleString();
-            } : undefined
+            }
           }
         },
         yaxis: {
           labels: {
             style: { fontSize: '11px' },
-            formatter: !isBar ? function(value) {
-              return '£' + Number(value).toLocaleString();
-            } : undefined
+            formatter: undefined
           }
         },
         tooltip: {
@@ -3348,38 +3449,6 @@ const API = '';
       el.innerHTML = '';
       productsChartInstance = new ApexCharts(el, options);
       productsChartInstance.render();
-      initProductsChartSwitcher();
-    }
-
-    function initProductsChartSwitcher() {
-      var el = document.getElementById('products-chart');
-      if (!el) return;
-      var card = el.closest('.card');
-      if (!card) return;
-      var header = card.querySelector('.card-header');
-      if (!header || header.querySelector('.chart-type-switcher')) return;
-
-      var wrap = document.createElement('div');
-      wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
-      var types = [
-        { type: 'bar', icon: 'fa-light fa-chart-column', label: 'Bar' },
-        { type: 'area', icon: 'fa-light fa-chart-area', label: 'Area' },
-        { type: 'line', icon: 'fa-light fa-chart-line', label: 'Line' }
-      ];
-      types.forEach(function(t) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === productsChartType ? ' active' : '');
-        btn.setAttribute('aria-label', t.label);
-        btn.innerHTML = '<i class="ti ' + t.icon + '"></i>';
-        btn.addEventListener('click', function() {
-          wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          renderProductsChart(null, t.type);
-        });
-        wrap.appendChild(btn);
-      });
-      header.appendChild(wrap);
     }
 
     function renderBestSellers(data, errorMessage) {
@@ -3440,10 +3509,10 @@ const API = '';
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
-          '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
-          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
+          '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
       updateBestSellersSortHeaders();
@@ -3992,9 +4061,9 @@ const API = '';
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
-          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
+          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -4157,9 +4226,9 @@ const API = '';
         const labelHtml = '<span class="country-label">' + titleLink + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
-          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
+          '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
+          '<div class="grid-cell" role="cell">' + conversion + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -5182,15 +5251,15 @@ const API = '';
       );
     }
 
-    // Dashboard KPI cards: selected range (primary) plus fixed comparisons (Yesterday + 7 Day)
-    let _dashKpiCompareFetchedAt = 0;
-    let _dashKpiCompareInFlight = null;
-    let _dashKpisYesterday = null;
-    let _dashKpis7d = null;
-    let _dashKpiExtrasCompareFetchedAt = 0;
-    let _dashKpiExtrasCompareInFlight = null;
-    let _dashKpiExtrasYesterday = null;
-    let _dashKpiExtras7d = null;
+    // Dashboard KPI cards:
+    // - Left compare slot always uses true previous-period values from /api/kpis compare payload.
+    // - Right compare slot is optional context (Previous 7 days) shown only on today/yesterday.
+    let _dashKpiSecondaryFetchedAt = 0;
+    let _dashKpiSecondaryInFlight = null;
+    let _dashKpisSecondary = null; // /api/kpis?range=7d
+    let _dashKpiExtrasSecondaryFetchedAt = 0;
+    let _dashKpiExtrasSecondaryInFlight = null;
+    let _dashKpiExtrasSecondary = null; // /api/kpis-expanded-extra?range=7d
 
     function fetchKpisForRangeKey(rangeKey) {
       rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
@@ -5218,50 +5287,65 @@ const API = '';
         });
     }
 
-    function ensureDashboardCompareKpis() {
+    function ensureDashboardSecondaryKpis() {
       const ttlMs = 120 * 1000;
-      const fresh = _dashKpiCompareFetchedAt && (Date.now() - _dashKpiCompareFetchedAt) < ttlMs;
-      if (fresh && _dashKpisYesterday && _dashKpis7d) return Promise.resolve({ yesterday: _dashKpisYesterday, d7: _dashKpis7d });
-      if (_dashKpiCompareInFlight) return _dashKpiCompareInFlight;
-      _dashKpiCompareInFlight = Promise.all([
-        fetchKpisForRangeKey('yesterday').catch(function() { return null; }),
-        fetchKpisForRangeKey('7d').catch(function() { return null; }),
-      ]).then(function(parts) {
-        _dashKpisYesterday = parts && parts[0] ? parts[0] : null;
-        _dashKpis7d = parts && parts[1] ? parts[1] : null;
-        _dashKpiCompareFetchedAt = Date.now();
-        return { yesterday: _dashKpisYesterday, d7: _dashKpis7d };
-      }).finally(function() {
-        _dashKpiCompareInFlight = null;
-      });
-      return _dashKpiCompareInFlight;
+      const fresh = _dashKpiSecondaryFetchedAt && (Date.now() - _dashKpiSecondaryFetchedAt) < ttlMs;
+      if (fresh && _dashKpisSecondary) return Promise.resolve(_dashKpisSecondary);
+      if (_dashKpiSecondaryInFlight) return _dashKpiSecondaryInFlight;
+      _dashKpiSecondaryInFlight = fetchKpisForRangeKey('7d')
+        .catch(function() { return null; })
+        .then(function(part) {
+          _dashKpisSecondary = part || null;
+          _dashKpiSecondaryFetchedAt = Date.now();
+          return _dashKpisSecondary;
+        }).finally(function() {
+          _dashKpiSecondaryInFlight = null;
+        });
+      return _dashKpiSecondaryInFlight;
     }
 
-    function ensureDashboardCompareExtras() {
+    function ensureDashboardSecondaryExtras() {
       const ttlMs = 120 * 1000;
-      const fresh = _dashKpiExtrasCompareFetchedAt && (Date.now() - _dashKpiExtrasCompareFetchedAt) < ttlMs;
-      if (fresh && _dashKpiExtrasYesterday && _dashKpiExtras7d) {
-        return Promise.resolve({ yesterday: _dashKpiExtrasYesterday, d7: _dashKpiExtras7d });
-      }
-      if (_dashKpiExtrasCompareInFlight) return _dashKpiExtrasCompareInFlight;
-      _dashKpiExtrasCompareInFlight = Promise.all([
-        fetchExpandedExtrasForRangeKey('yesterday').catch(function() { return null; }),
-        fetchExpandedExtrasForRangeKey('7d').catch(function() { return null; }),
-      ]).then(function(parts) {
-        _dashKpiExtrasYesterday = parts && parts[0] ? parts[0] : null;
-        _dashKpiExtras7d = parts && parts[1] ? parts[1] : null;
-        _dashKpiExtrasCompareFetchedAt = Date.now();
-        return { yesterday: _dashKpiExtrasYesterday, d7: _dashKpiExtras7d };
-      }).finally(function() {
-        _dashKpiExtrasCompareInFlight = null;
+      const fresh = _dashKpiExtrasSecondaryFetchedAt && (Date.now() - _dashKpiExtrasSecondaryFetchedAt) < ttlMs;
+      if (fresh && _dashKpiExtrasSecondary) return Promise.resolve(_dashKpiExtrasSecondary);
+      if (_dashKpiExtrasSecondaryInFlight) return _dashKpiExtrasSecondaryInFlight;
+      _dashKpiExtrasSecondaryInFlight = fetchExpandedExtrasForRangeKey('7d')
+        .catch(function() { return null; })
+        .then(function(part) {
+          _dashKpiExtrasSecondary = part || null;
+          _dashKpiExtrasSecondaryFetchedAt = Date.now();
+          return _dashKpiExtrasSecondary;
+        }).finally(function() {
+          _dashKpiExtrasSecondaryInFlight = null;
+        });
+      return _dashKpiExtrasSecondaryInFlight;
+    }
+
+    function setDashboardCompareLabels(primaryLabel, secondaryLabel, showSecondary) {
+      var p = String(primaryLabel || 'Previous period').trim() || 'Previous period';
+      var s = String(secondaryLabel || 'Previous 7 days').trim() || 'Previous 7 days';
+      document.querySelectorAll('.dash-kpi-compare-row').forEach(function(row) {
+        if (!row) return;
+        var items = row.querySelectorAll('.dash-kpi-compare-item');
+        var left = items && items[0] ? items[0] : null;
+        var right = items && items[1] ? items[1] : null;
+        if (left) {
+          var leftLabel = left.querySelector('.text-muted.small');
+          if (leftLabel) leftLabel.textContent = p + ':';
+        }
+        if (right) {
+          right.classList.toggle('is-hidden', !showSecondary);
+          var rightLabel = right.querySelector('.text-muted.small');
+          if (rightLabel) rightLabel.textContent = s + ':';
+        }
       });
-      return _dashKpiExtrasCompareInFlight;
     }
 
     function renderDashboardKpisFromApi(primaryData) {
       if (!primaryData || PAGE !== 'dashboard') return;
       var el = function(id) { return document.getElementById(id); };
       var kpiRange = getStatsRange();
+      var showSecondary = showDashboardSecondaryCompare(kpiRange);
 
       function numFromMap(dataObj, keyName, rangeKey) {
         var map = dataObj && dataObj[keyName] ? dataObj[keyName] : null;
@@ -5269,24 +5353,28 @@ const API = '';
         return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
       }
 
-      function sessionsFromBreakdown(dataObj, rangeKey) {
+      function sessionsFromBreakdownMap(dataObj, rangeKey) {
         var br = dataObj && dataObj.trafficBreakdown ? dataObj.trafficBreakdown : null;
         var r = br && br[rangeKey] ? br[rangeKey] : null;
         var v = r && typeof r.human_sessions === 'number' ? r.human_sessions : null;
         return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
       }
 
-      function forKey(rangeKey) {
-        if (rangeKey === kpiRange) return primaryData;
-        if (rangeKey === 'yesterday') return _dashKpisYesterday;
-        if (rangeKey === '7d') return _dashKpis7d;
-        return null;
+      function sessionsFromBreakdownCompare(compareObj) {
+        var br = compareObj && compareObj.trafficBreakdown ? compareObj.trafficBreakdown : null;
+        var v = br && typeof br.human_sessions === 'number' ? br.human_sessions : null;
+        return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
       }
 
-      var main = forKey(kpiRange) || primaryData;
+      function numFromCompare(compareObj, keyName) {
+        var v = compareObj && typeof compareObj[keyName] === 'number' ? compareObj[keyName] : null;
+        return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+      }
+
+      var main = primaryData;
       var salesVal = numFromMap(main, 'sales', kpiRange);
       var ordersVal = numFromMap(main, 'convertedCount', kpiRange);
-      var sessionsVal = sessionsFromBreakdown(main, kpiRange);
+      var sessionsVal = sessionsFromBreakdownMap(main, kpiRange);
       var convVal = numFromMap(main, 'conversion', kpiRange);
       var aovVal = numFromMap(main, 'aov', kpiRange);
       var bounceVal = numFromMap(main, 'bounce', kpiRange);
@@ -5311,54 +5399,95 @@ const API = '';
       if (el('dash-kpi-returns')) el('dash-kpi-returns').textContent = returnsVal != null ? ('-' + (formatRevenue0(Math.abs(returnsVal)) || '\u2014')) : '\u2014';
       if (el('dash-kpi-cogs')) el('dash-kpi-cogs').textContent = cogsVal != null ? formatRevenue0(cogsVal) : '\u2014';
 
-      function renderCompare(rangeKey, suffix) {
-        var d = forKey(rangeKey);
-        var sales = numFromMap(d, 'sales', rangeKey);
-        var orders = numFromMap(d, 'convertedCount', rangeKey);
-        var sessions = sessionsFromBreakdown(d, rangeKey);
-        var conv = numFromMap(d, 'conversion', rangeKey);
-        var aov = numFromMap(d, 'aov', rangeKey);
-        var bounce = numFromMap(d, 'bounce', rangeKey);
-        var returning = numFromMap(d, 'returningCustomerCount', rangeKey);
-        var roas = numFromMap(d, 'roas', rangeKey);
-        var x = (rangeKey === kpiRange)
-          ? ((kpiExpandedExtrasRange === kpiRange) ? (kpiExpandedExtrasCache || null) : null)
-          : (rangeKey === 'yesterday' ? _dashKpiExtrasYesterday : (rangeKey === '7d' ? _dashKpiExtras7d : null));
-        var items = x && typeof x.itemsSold === 'number' ? x.itemsSold : null;
-        var fulfilled = x && typeof x.ordersFulfilled === 'number' ? x.ordersFulfilled : null;
-        var returns = x && typeof x.returns === 'number' ? x.returns : null;
-        var cogs = x && typeof x.cogs === 'number' ? x.cogs : null;
+      function renderCompareSlot(slotSuffix, values) {
+        values = values || {};
+        var sales = values.sales;
+        var orders = values.orders;
+        var sessions = values.sessions;
+        var conv = values.conv;
+        var aov = values.aov;
+        var bounce = values.bounce;
+        var returning = values.returning;
+        var roas = values.roas;
+        var items = values.items;
+        var fulfilled = values.fulfilled;
+        var returns = values.returns;
+        var cogs = values.cogs;
 
-        if (el('dash-revenue-' + suffix)) el('dash-revenue-' + suffix).textContent = sales != null ? formatRevenue0(sales) : '\u2014';
-        if (el('dash-orders-' + suffix)) el('dash-orders-' + suffix).textContent = orders != null ? Math.round(orders).toLocaleString() : '\u2014';
-        if (el('dash-sessions-' + suffix)) el('dash-sessions-' + suffix).textContent = sessions != null ? formatSessions(sessions) : '\u2014';
-        if (el('dash-conv-' + suffix)) el('dash-conv-' + suffix).textContent = conv != null ? pct(conv) : '\u2014';
-        if (el('dash-aov-' + suffix)) el('dash-aov-' + suffix).textContent = aov != null ? formatRevenue0(aov) : '\u2014';
-        if (el('dash-bounce-' + suffix)) el('dash-bounce-' + suffix).textContent = bounce != null ? pct(bounce) : '\u2014';
-        if (el('dash-returning-' + suffix)) el('dash-returning-' + suffix).textContent = returning != null ? Math.round(returning).toLocaleString() : '\u2014';
-        if (el('dash-roas-' + suffix)) el('dash-roas-' + suffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
-        if (el('dash-items-' + suffix)) el('dash-items-' + suffix).textContent = items != null ? Math.round(items).toLocaleString() : '\u2014';
-        if (el('dash-fulfilled-' + suffix)) el('dash-fulfilled-' + suffix).textContent = fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014';
-        if (el('dash-returns-' + suffix)) el('dash-returns-' + suffix).textContent = returns != null ? ('-' + (formatRevenue0(Math.abs(returns)) || '\u2014')) : '\u2014';
-        if (el('dash-cogs-' + suffix)) el('dash-cogs-' + suffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
+        if (el('dash-revenue-' + slotSuffix)) el('dash-revenue-' + slotSuffix).textContent = sales != null ? formatRevenue0(sales) : '\u2014';
+        if (el('dash-orders-' + slotSuffix)) el('dash-orders-' + slotSuffix).textContent = orders != null ? Math.round(orders).toLocaleString() : '\u2014';
+        if (el('dash-sessions-' + slotSuffix)) el('dash-sessions-' + slotSuffix).textContent = sessions != null ? formatSessions(sessions) : '\u2014';
+        if (el('dash-conv-' + slotSuffix)) el('dash-conv-' + slotSuffix).textContent = conv != null ? pct(conv) : '\u2014';
+        if (el('dash-aov-' + slotSuffix)) el('dash-aov-' + slotSuffix).textContent = aov != null ? formatRevenue0(aov) : '\u2014';
+        if (el('dash-bounce-' + slotSuffix)) el('dash-bounce-' + slotSuffix).textContent = bounce != null ? pct(bounce) : '\u2014';
+        if (el('dash-returning-' + slotSuffix)) el('dash-returning-' + slotSuffix).textContent = returning != null ? Math.round(returning).toLocaleString() : '\u2014';
+        if (el('dash-roas-' + slotSuffix)) el('dash-roas-' + slotSuffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
+        if (el('dash-items-' + slotSuffix)) el('dash-items-' + slotSuffix).textContent = items != null ? Math.round(items).toLocaleString() : '\u2014';
+        if (el('dash-fulfilled-' + slotSuffix)) el('dash-fulfilled-' + slotSuffix).textContent = fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014';
+        if (el('dash-returns-' + slotSuffix)) el('dash-returns-' + slotSuffix).textContent = returns != null ? ('-' + (formatRevenue0(Math.abs(returns)) || '\u2014')) : '\u2014';
+        if (el('dash-cogs-' + slotSuffix)) el('dash-cogs-' + slotSuffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
       }
 
-      renderCompare('yesterday', 'yesterday');
-      renderCompare('7d', '7d');
+      var primaryCompare = main && main.compare ? main.compare : null;
+      var primaryExtrasCompare = extrasMain && extrasMain.compare ? extrasMain.compare : null;
+      renderCompareSlot('yesterday', {
+        sales: numFromCompare(primaryCompare, 'sales'),
+        orders: numFromCompare(primaryCompare, 'convertedCount'),
+        sessions: sessionsFromBreakdownCompare(primaryCompare),
+        conv: numFromCompare(primaryCompare, 'conversion'),
+        aov: numFromCompare(primaryCompare, 'aov'),
+        bounce: numFromCompare(primaryCompare, 'bounce'),
+        returning: numFromCompare(primaryCompare, 'returningCustomerCount'),
+        roas: numFromCompare(primaryCompare, 'roas'),
+        items: primaryExtrasCompare && typeof primaryExtrasCompare.itemsSold === 'number' ? primaryExtrasCompare.itemsSold : null,
+        fulfilled: primaryExtrasCompare && typeof primaryExtrasCompare.ordersFulfilled === 'number' ? primaryExtrasCompare.ordersFulfilled : null,
+        returns: primaryExtrasCompare && typeof primaryExtrasCompare.returns === 'number' ? primaryExtrasCompare.returns : null,
+        cogs: primaryExtrasCompare && typeof primaryExtrasCompare.cogs === 'number' ? primaryExtrasCompare.cogs : null,
+      });
 
-      // Fetch compare data in background (cacheable), then repaint once.
-      if (!_dashKpisYesterday || !_dashKpis7d) {
-        ensureDashboardCompareKpis().then(function() {
+      setDashboardCompareLabels(
+        getCompareDisplayLabel(kpiRange),
+        'Previous 7 days',
+        showSecondary
+      );
+
+      if (showSecondary) {
+        var secondary = _dashKpisSecondary;
+        var secondaryRangeKey = '7d';
+        var secondaryExtras = _dashKpiExtrasSecondary;
+        renderCompareSlot('7d', {
+          sales: numFromMap(secondary, 'sales', secondaryRangeKey),
+          orders: numFromMap(secondary, 'convertedCount', secondaryRangeKey),
+          sessions: sessionsFromBreakdownMap(secondary, secondaryRangeKey),
+          conv: numFromMap(secondary, 'conversion', secondaryRangeKey),
+          aov: numFromMap(secondary, 'aov', secondaryRangeKey),
+          bounce: numFromMap(secondary, 'bounce', secondaryRangeKey),
+          returning: numFromMap(secondary, 'returningCustomerCount', secondaryRangeKey),
+          roas: numFromMap(secondary, 'roas', secondaryRangeKey),
+          items: secondaryExtras && typeof secondaryExtras.itemsSold === 'number' ? secondaryExtras.itemsSold : null,
+          fulfilled: secondaryExtras && typeof secondaryExtras.ordersFulfilled === 'number' ? secondaryExtras.ordersFulfilled : null,
+          returns: secondaryExtras && typeof secondaryExtras.returns === 'number' ? secondaryExtras.returns : null,
+          cogs: secondaryExtras && typeof secondaryExtras.cogs === 'number' ? secondaryExtras.cogs : null,
+        });
+      } else {
+        renderCompareSlot('7d', {});
+      }
+
+      // Fetch optional secondary compare in background only when slot is visible.
+      if (showSecondary && !_dashKpisSecondary) {
+        ensureDashboardSecondaryKpis().then(function() {
           try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
         }).catch(function() {});
       }
+      if (showSecondary && !_dashKpiExtrasSecondary) {
+        ensureDashboardSecondaryExtras().then(function() {
+          try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
+        }).catch(function() {});
+      }
+
+      // Main extras are fetched on-demand from the selected range.
       if (!extrasMain) {
         fetchExpandedKpiExtras({ force: false }).then(function() {
-          try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
-        }).catch(function() {});
-      }
-      if (!_dashKpiExtrasYesterday || !_dashKpiExtras7d) {
-        ensureDashboardCompareExtras().then(function() {
           try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
         }).catch(function() {});
       }
@@ -5953,9 +6082,9 @@ const API = '';
           const rev = (r && typeof r.revenueGbp === 'number') ? formatRevenueTableHtml(r.revenueGbp) : '—';
           html += '<div class="grid-row" role="row">' +
             '<div class="grid-cell" role="cell">' + labelCell + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
             '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
             '</div>';
         });
@@ -6036,9 +6165,9 @@ const API = '';
                 '<span>' + label + '</span>' +
               '</button>' +
             '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
             '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
           '</div>';
 
@@ -6064,9 +6193,9 @@ const API = '';
             const crev = (c && typeof c.revenueGbp === 'number') ? formatRevenueTableHtml(c.revenueGbp) : '—';
             html += '<div class="grid-row traffic-type-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(device) + '">' +
               '<div class="grid-cell" role="cell">' + clabel + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
               '<div class="grid-cell" role="cell">' + (crev || '—') + '</div>' +
             '</div>';
           });
@@ -6128,18 +6257,16 @@ const API = '';
 
     var channelsChartInstance = null;
     var channelsChartData = null;
-    var channelsChartType = 'bar';
 
-    function renderChannelsChart(data, chartType) {
+    function renderChannelsChart(data) {
       var el = document.getElementById('channels-chart');
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
-        setTimeout(function() { renderChannelsChart(data, chartType); }, 200);
+        setTimeout(function() { renderChannelsChart(data); }, 200);
         return;
       }
       if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
       if (data) channelsChartData = data;
-      if (chartType) channelsChartType = chartType;
       var d = channelsChartData;
       var rows = d && d.sources && Array.isArray(d.sources.rows) ? d.sources.rows.slice() : [];
       rows = rows.filter(function(r) { return r && (r.revenueGbp > 0 || r.sessions > 0); });
@@ -6154,53 +6281,22 @@ const API = '';
         return lbl.length > 25 ? lbl.substring(0, 22) + '...' : lbl;
       });
       var revenues = rows.map(function(r) { return r.revenueGbp || 0; });
-      var ct = channelsChartType;
-      var isBar = ct === 'bar';
-      var fillConfig = ct === 'line' ? { type: 'solid', opacity: 0 }
-        : ct === 'area' ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } }
-        : { type: 'solid', opacity: 1 };
       el.innerHTML = '';
       channelsChartInstance = new ApexCharts(el, {
-        chart: { type: isBar ? 'bar' : ct, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
         series: [{ name: 'Revenue', data: revenues }],
         colors: ['#4592e9'],
-        plotOptions: isBar ? { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } } : {},
-        stroke: { width: isBar ? 0 : 2, curve: 'smooth' },
-        fill: fillConfig,
-        markers: { size: ct === 'line' ? 3 : 0, hover: { size: 5 } },
+        plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: '65%' } },
+        stroke: { width: 0, curve: 'smooth' },
+        fill: { type: 'solid', opacity: 1 },
+        markers: { size: 0, hover: { size: 5 } },
         dataLabels: { enabled: false },
-        xaxis: { categories: categories, labels: { style: { fontSize: '11px' }, formatter: isBar ? function(v) { return '\u00A3' + Number(v).toLocaleString(); } : undefined } },
-        yaxis: { labels: { style: { fontSize: '11px' }, formatter: !isBar ? function(v) { return '\u00A3' + Number(v).toLocaleString(); } : undefined } },
+        xaxis: { categories: categories, labels: { style: { fontSize: '11px' }, formatter: function(v) { return '\u00A3' + Number(v).toLocaleString(); } } },
+        yaxis: { labels: { style: { fontSize: '11px' } } },
         tooltip: { y: { formatter: function(v) { return '\u00A3' + Number(v).toFixed(2); } } },
         grid: { borderColor: '#f1f1f1', padding: { left: 0, right: 0 } }
       });
       channelsChartInstance.render();
-      initChannelsChartSwitcher();
-    }
-
-    function initChannelsChartSwitcher() {
-      var el = document.getElementById('channels-chart');
-      if (!el) return;
-      var card = el.closest('.card');
-      if (!card) return;
-      var header = card.querySelector('.card-header');
-      if (!header || header.querySelector('.chart-type-switcher')) return;
-      var wrap = document.createElement('div');
-      wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
-      [{ type: 'bar', icon: 'fa-light fa-chart-column', label: 'Bar' }, { type: 'area', icon: 'fa-light fa-chart-area', label: 'Area' }, { type: 'line', icon: 'fa-light fa-chart-line', label: 'Line' }].forEach(function(t) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === channelsChartType ? ' active' : '');
-        btn.setAttribute('aria-label', t.label);
-        btn.innerHTML = '<i class="ti ' + t.icon + '"></i>';
-        btn.addEventListener('click', function() {
-          wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-          renderChannelsChart(null, t.type);
-        });
-        wrap.appendChild(btn);
-      });
-      header.appendChild(wrap);
     }
 
     var typeChartInstance = null;
@@ -6316,6 +6412,205 @@ const API = '';
       return true;
     }
 
+    function shortTimeLabel(tsMs) {
+      var ts = Number(tsMs);
+      if (!Number.isFinite(ts)) return '';
+      try {
+        return new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(new Date(ts));
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function shortDateTimeLabel(tsMs) {
+      var ts = Number(tsMs);
+      if (!Number.isFinite(ts)) return '';
+      try {
+        return new Intl.DateTimeFormat('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(new Date(ts));
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function renderLiveOnlineTrendChart(payload) {
+      var el = document.getElementById('live-online-chart');
+      if (!el) return;
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
+        return;
+      }
+      var points = payload && Array.isArray(payload.points) ? payload.points.slice() : [];
+      if (liveOnlineChart) {
+        try { liveOnlineChart.destroy(); } catch (_) {}
+        liveOnlineChart = null;
+      }
+      if (!points.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No live activity yet</div>';
+        return;
+      }
+      var labels = points.map(function(p) { return shortTimeLabel(p && p.ts); });
+      var values = points.map(function(p) {
+        var n = p && p.online != null ? Number(p.online) : NaN;
+        return Number.isFinite(n) ? n : 0;
+      });
+      el.innerHTML = '';
+      liveOnlineChart = new ApexCharts(el, {
+        chart: {
+          type: 'area',
+          height: 220,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false },
+          zoom: { enabled: false },
+        },
+        series: [{ name: 'People online', data: values }],
+        xaxis: {
+          categories: labels,
+          labels: { style: { fontSize: '11px' } },
+        },
+        yaxis: {
+          min: 0,
+          forceNiceScale: true,
+          labels: { style: { fontSize: '11px' } },
+        },
+        stroke: { curve: 'smooth', width: 2 },
+        dataLabels: { enabled: false },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.1, stops: [0, 100] } },
+        colors: ['#16a34a'],
+        tooltip: {
+          y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' online'; } },
+        },
+        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+      });
+      liveOnlineChart.render();
+    }
+
+    function refreshLiveOnlineTrendChart(options) {
+      var el = document.getElementById('live-online-chart');
+      if (!el) return Promise.resolve(null);
+      options = options || {};
+      var force = !!options.force;
+      var ttlMs = 30 * 1000;
+      if (!force && liveOnlineChartFetchedAt && (Date.now() - liveOnlineChartFetchedAt) < ttlMs) {
+        return Promise.resolve(null);
+      }
+      if (liveOnlineChartInFlight) return liveOnlineChartInFlight;
+      var url = API + '/api/sessions/online-series?minutes=10' + (force ? ('&_=' + Date.now()) : '');
+      liveOnlineChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          liveOnlineChartFetchedAt = Date.now();
+          renderLiveOnlineTrendChart(data || null);
+          return data;
+        })
+        .catch(function() { return null; })
+        .finally(function() { liveOnlineChartInFlight = null; });
+      return liveOnlineChartInFlight;
+    }
+
+    function renderSessionsOverviewChart(payload, rangeKey) {
+      var el = document.getElementById('sessions-overview-chart');
+      if (!el) return;
+      if (typeof ApexCharts === 'undefined') {
+        setTimeout(function() { renderSessionsOverviewChart(payload, rangeKey); }, 180);
+        return;
+      }
+      var rows = payload && Array.isArray(payload.series) ? payload.series.slice() : [];
+      if (rangeOverviewChart) {
+        try { rangeOverviewChart.destroy(); } catch (_) {}
+        rangeOverviewChart = null;
+      }
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No data for this range</div>';
+        return;
+      }
+
+      var bucket = payload && payload.bucket ? String(payload.bucket) : 'day';
+      var labels = rows.map(function(row) {
+        var ts = row && row.ts != null ? Number(row.ts) : NaN;
+        if (!Number.isFinite(ts)) return '';
+        return bucket === 'hour' ? shortTimeLabel(ts) : shortDateTimeLabel(ts);
+      });
+
+      var chartCfg;
+      if (PAGE === 'sales') {
+        chartCfg = {
+          series: [{ name: 'Revenue', data: rows.map(function(r) { return Number(r && r.revenue) || 0; }) }],
+          colors: ['#0d9488'],
+          yFormatter: function(v) { return formatRevenue(Number(v)) || '—'; },
+          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '—'; },
+        };
+      } else {
+        chartCfg = {
+          series: [
+            { name: 'Sessions', data: rows.map(function(r) { return Number(r && r.sessions) || 0; }) },
+            { name: 'Orders', data: rows.map(function(r) { return Number(r && r.orders) || 0; }) },
+          ],
+          colors: ['#4b94e4', '#f59e34'],
+          yFormatter: function(v) { return Number(v || 0).toLocaleString(); },
+          tooltipFormatter: function(v) { return Number(v || 0).toLocaleString(); },
+        };
+      }
+
+      el.innerHTML = '';
+      rangeOverviewChart = new ApexCharts(el, {
+        chart: {
+          type: 'area',
+          height: 220,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false },
+          zoom: { enabled: false },
+        },
+        series: chartCfg.series,
+        colors: chartCfg.colors,
+        stroke: { curve: 'smooth', width: 2 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: labels, labels: { style: { fontSize: '11px' } } },
+        yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: chartCfg.yFormatter } },
+        tooltip: { y: { formatter: chartCfg.tooltipFormatter } },
+        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+      });
+      rangeOverviewChart.render();
+      rangeOverviewChartKey = String(rangeKey || '');
+    }
+
+    function refreshSessionsOverviewChart(options) {
+      var el = document.getElementById('sessions-overview-chart');
+      if (!el) return Promise.resolve(null);
+      options = options || {};
+      var force = !!options.force;
+      var rangeKey = getStatsRange();
+      var cacheKey = (PAGE || 'page') + '|' + rangeKey;
+      if (!force && rangeOverviewChart && rangeOverviewChartKey === cacheKey) return Promise.resolve(null);
+      if (rangeOverviewChartInFlight) return rangeOverviewChartInFlight;
+      var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+      rangeOverviewChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          renderSessionsOverviewChart(data || null, cacheKey);
+          return data;
+        })
+        .catch(function() { return null; })
+        .finally(function() { rangeOverviewChartInFlight = null; });
+      return rangeOverviewChartInFlight;
+    }
+
+    function refreshSessionPageCharts(options) {
+      if (document.getElementById('live-online-chart')) return refreshLiveOnlineTrendChart(options || {});
+      if (document.getElementById('sessions-overview-chart')) return refreshSessionsOverviewChart(options || {});
+      return Promise.resolve(null);
+    }
+
     function fetchSessions() {
       if (liveRefreshInFlight) return liveRefreshInFlight;
       var overlay = document.getElementById('sessions-loading-overlay');
@@ -6372,6 +6667,7 @@ const API = '';
           updateServerTimeDisplay();
           renderTable();
           updateKpis();
+          try { refreshSessionPageCharts({ force: isLive }); } catch (_) {}
           return sessions;
         })
         .catch(function(err) { if (err && err.name === 'AbortError') return null; sessionsLoadError = 'Could not load sessions. Check connection or refresh.'; sessions = []; sessionsTotal = null; currentPage = 1; renderTable(); return null; })
@@ -9006,57 +9302,11 @@ const API = '';
           var chart = new ApexCharts(el, apexOpts);
           chart.render();
           dashCharts[chartId] = chart;
-          initChartTypeSwitcher(chartId);
           return chart;
         } catch (err) {
           console.error('[dashboard] chart render error:', chartId, err);
           return null;
         }
-      }
-
-      function switchChartType(chartId, newType) {
-        var cfg = dashChartConfigs[chartId];
-        if (!cfg) return;
-        var o = Object.assign({}, cfg.opts || {}, { chartType: newType });
-        makeChart(chartId, cfg.labels, cfg.datasets, o);
-      }
-
-      function initChartTypeSwitcher(chartId) {
-        var el = document.getElementById(chartId);
-        if (!el) return;
-        var card = el.closest('.card');
-        if (!card) return;
-        var header = card.querySelector('.card-header');
-        if (!header) return;
-        if (header.querySelector('.chart-type-switcher')) return;
-
-        var ICON_AREA = '<i class="fa-light fa-chart-area"></i>';
-        var ICON_BAR = '<i class="fa-light fa-chart-column"></i>';
-
-        var wrap = document.createElement('div');
-        wrap.className = 'chart-type-switcher ms-auto d-flex gap-1';
-        var cfg = dashChartConfigs[chartId];
-        var currentType = (cfg && cfg.opts && cfg.opts.chartType) ? String(cfg.opts.chartType) : 'area';
-        var types = null;
-        types = [
-          { type: 'area', icon: ICON_AREA, label: 'Area' },
-          { type: 'bar', icon: ICON_BAR, label: 'Bar' },
-        ];
-        types.forEach(function(t) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'btn btn-icon btn-ghost-secondary btn-sm' + (t.type === currentType ? ' active' : '');
-          btn.setAttribute('aria-label', t.label);
-          btn.setAttribute('data-chart-type', t.type);
-          btn.innerHTML = t.icon;
-          btn.addEventListener('click', function() {
-            wrap.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            switchChartType(chartId, t.type);
-          });
-          wrap.appendChild(btn);
-        });
-        header.appendChild(wrap);
       }
 
       function renderDashboard(data) {

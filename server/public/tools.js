@@ -68,6 +68,7 @@
   var compareBtn = qs('#compare-btn');
   var compareNote = qs('#compare-note');
   var resultsEl = qs('#results');
+  var compareChart = null;
 
   var state = {
     shop: getShopParam(),
@@ -225,19 +226,110 @@
     else setNote(compareNote, '');
   }
 
+  function destroyCompareChart() {
+    if (compareChart) {
+      try { compareChart.destroy(); } catch (_) {}
+      compareChart = null;
+    }
+    var el = qs('#tools-compare-chart');
+    if (el) el.innerHTML = '';
+  }
+
+  function renderCompareChart(summary) {
+    var el = qs('#tools-compare-chart');
+    if (!el) return;
+    if (typeof ApexCharts === 'undefined') {
+      setTimeout(function () { renderCompareChart(summary); }, 180);
+      return;
+    }
+    var before = summary && summary.before ? summary.before : {};
+    var after = summary && summary.after ? summary.after : {};
+    var beforeSessions = Number(before.sessions) || 0;
+    var afterSessions = Number(after.sessions) || 0;
+    var beforeOrders = Number(before.orders) || 0;
+    var afterOrders = Number(after.orders) || 0;
+    var beforeCr = Number(before.cr) || 0;
+    var afterCr = Number(after.cr) || 0;
+    var crMax = Math.max(5, beforeCr, afterCr) * 1.25;
+
+    if (compareChart) {
+      try { compareChart.destroy(); } catch (_) {}
+      compareChart = null;
+    }
+    el.innerHTML = '';
+
+    compareChart = new ApexCharts(el, {
+      chart: {
+        type: 'line',
+        height: 240,
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false },
+      },
+      series: [
+        { name: 'Sessions', type: 'column', data: [beforeSessions, afterSessions] },
+        { name: 'Orders', type: 'column', data: [beforeOrders, afterOrders] },
+        { name: 'CR', type: 'line', data: [beforeCr, afterCr] },
+      ],
+      colors: ['#4b94e4', '#f59e34', '#0d9488'],
+      stroke: { width: [0, 0, 3], curve: 'smooth' },
+      plotOptions: { bar: { columnWidth: '42%', borderRadius: 4 } },
+      markers: { size: [0, 0, 4], hover: { size: 6 } },
+      dataLabels: { enabled: false },
+      xaxis: {
+        categories: ['Before', 'After'],
+        labels: { style: { fontSize: '11px' } },
+      },
+      yaxis: [
+        {
+          min: 0,
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function (v) { return fmtNum(v); },
+          },
+        },
+        {
+          opposite: true,
+          min: 0,
+          max: crMax,
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function (v) { return (Number(v) || 0).toFixed(1) + '%'; },
+          },
+        },
+      ],
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: function (v, opts) {
+            var seriesIdx = opts && opts.seriesIndex;
+            if (seriesIdx === 2) return (Number(v) || 0).toFixed(1) + '%';
+            return fmtNum(v);
+          },
+        },
+      },
+      legend: { position: 'top', fontSize: '12px' },
+      grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+    });
+    compareChart.render();
+  }
+
   function renderResults(data) {
     if (!resultsEl) return;
     if (!data) {
+      destroyCompareChart();
       resultsEl.classList.add('is-hidden');
       resultsEl.innerHTML = '';
       return;
     }
     if (!data.ok) {
+      destroyCompareChart();
       resultsEl.classList.remove('is-hidden');
       resultsEl.innerHTML = '<div class="tools-note tools-note--spaced">' + esc(data.error || 'Failed') + '</div>';
       return;
     }
     if (data.insufficient) {
+      destroyCompareChart();
       resultsEl.classList.remove('is-hidden');
       resultsEl.innerHTML = '<div class="tools-note tools-note--spaced">Insufficient data for comparison</div>';
       return;
@@ -250,6 +342,7 @@
     var after = s.after || {};
 
     var summaryHtml = '' +
+      '<div class="dash-chart-wrap mb-3" id="tools-compare-chart" style="min-height:240px"></div>' +
       '<div class="tools-summary">' +
         '<div class="tools-metric"><div class="k">Before CR</div><div class="v">' + fmtPct(before.cr) + '</div></div>' +
         '<div class="tools-metric"><div class="k">After CR</div><div class="v">' + fmtPct(after.cr) + '</div></div>' +
@@ -293,6 +386,7 @@
 
     resultsEl.classList.remove('is-hidden');
     resultsEl.innerHTML = summaryHtml + variantsHtml;
+    renderCompareChart(s);
   }
 
   function renderSuggestResults(data) {

@@ -103,6 +103,7 @@ app.use(dashboardAuth.middleware);
 // Admin API
 app.get('/api/stream', streamRouter);
 app.get('/api/sessions', sessionsRouter.list);
+app.get('/api/sessions/online-series', sessionsRouter.onlineSeries);
 app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/config-status', configStatus);
 app.get('/api/settings', settings.getSettings);
