@@ -4746,12 +4746,7 @@ const API = '';
           try { fetchSessions(); } catch (_) {}
         }
         // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
-        // Don't refresh Diagnostics in the background while the modal is open (avoid disrupting viewing).
-        try {
-          if (!(typeof isConfigModalOpen === 'function' && isConfigModalOpen())) {
-            refreshConfigStatus();
-          }
-        } catch (_) {}
+        try { refreshConfigStatus(); } catch (_) {}
       }
       lastConvertedCountToday = conv.today;
       hasSeenConvertedCountToday = true;
@@ -6493,19 +6488,12 @@ const API = '';
 
     var activeDiagTabKey = 'sales';
 
-    function isConfigModalOpen() {
-      try {
-        const m = document.getElementById('config-modal');
-        return !!(m && m.classList && m.classList.contains('open'));
-      } catch (_) {
-        return false;
-      }
-    }
+    function isConfigModalOpen() { return false; }
 
     function refreshConfigStatus(options = {}) {
       if (configStatusRefreshInFlight && !options.force) return configStatusRefreshInFlight;
       const refreshBtn = document.getElementById('config-refresh-btn');
-      const configStatusEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
+      const configStatusEl = document.getElementById('diagnostics-content');
       const compareModalEl = document.getElementById('kpi-compare-modal');
       const compareRefreshBtn = document.getElementById('kpi-compare-refresh-btn');
       const compareStatusEl = document.getElementById('kpi-compare-status');
@@ -6513,7 +6501,7 @@ const API = '';
       const compareKickerEl = document.getElementById('kpi-compare-kicker');
       const compareOpen = !!(compareModalEl && compareModalEl.classList.contains('open'));
       const preserveView = !!(options && options.preserveView);
-      const modalCardEl = preserveView ? document.querySelector('#config-modal .config-modal-card') : null;
+      const modalCardEl = null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
       if (configStatusEl && !preserveView) {
         configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
@@ -6537,38 +6525,21 @@ const API = '';
             return '<div class="diag-kv"><div class="k">' + escapeHtml(label) + '</div><div class="v">' + valueHtml + '</div></div>';
           }
           function icon(name, cls) {
-            const k = cls ? (' class="' + cls + '"') : '';
-            if (name === 'shield') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
-            }
-            if (name === 'columns') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M3 4h18v16H3z"/></svg>';
-            }
-            if (name === 'list') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
-            }
-            if (name === 'bag') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
-            }
-            if (name === 'activity') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
-            }
-            if (name === 'bar') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
-            }
-            if (name === 'server') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>';
-            }
-            if (name === 'key') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.5 7.5a4.5 4.5 0 1 1 0-6.36A4.5 4.5 0 0 1 11.5 11.5z"/><path d="M15 7l4 4"/><path d="M13 9l2 2"/></svg>';
-            }
-            if (name === 'link') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
-            }
-            if (name === 'chev') {
-              return '<svg' + k + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
-            }
-            return '';
+            const map = {
+              shield: 'fa-solid fa-shield-halved',
+              columns: 'fa-solid fa-table-columns',
+              list: 'fa-solid fa-list',
+              bag: 'fa-solid fa-bag-shopping',
+              activity: 'fa-solid fa-wave-square',
+              bar: 'fa-solid fa-chart-column',
+              server: 'fa-solid fa-server',
+              key: 'fa-solid fa-key',
+              link: 'fa-solid fa-link',
+              chev: 'fa-solid fa-chevron-down'
+            };
+            const fa = map[name] || 'fa-solid fa-circle';
+            const extra = cls ? (' ' + cls) : '';
+            return '<i class="' + fa + extra + '" aria-hidden="true"></i>';
           }
           function fmtSessions(n) { return (typeof n === 'number' && isFinite(n)) ? escapeHtml(formatSessions(n)) : '\u2014'; }
           function fmtRevenue(n) { return (typeof n === 'number' && isFinite(n)) ? escapeHtml(formatRevenue(n)) : '\u2014'; }
@@ -7022,19 +6993,18 @@ const API = '';
             aiCopyText = 'Kexo diagnostics (AI)\nGenerated: ' + aiCopyGeneratedAt + '\nError building payload: ' + (err && err.message ? String(err.message) : String(err)) + '\n';
           }
 
-          const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+          const copyIcon = '<i class="fa-regular fa-copy" aria-hidden="true"></i>';
 
-          // SVG icons for tabs
+          // Font Awesome icons for tabs
           var tabIcons = {
-            sales: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-            compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-            traffic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-            pixel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
-            googleads: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-            shopify: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
-            sources: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
-            system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-            defs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+            sales: '<i class="fa-solid fa-sterling-sign" aria-hidden="true"></i>',
+            compare: '<i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>',
+            traffic: '<i class="fa-solid fa-route" aria-hidden="true"></i>',
+            pixel: '<i class="fa-solid fa-crosshairs" aria-hidden="true"></i>',
+            googleads: '<i class="fa-solid fa-rectangle-ad" aria-hidden="true"></i>',
+            shopify: '<i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>',
+            system: '<i class="fa-solid fa-server" aria-hidden="true"></i>',
+            defs: '<i class="fa-solid fa-book-open" aria-hidden="true"></i>'
           };
 
           function diagTab(key, label) {
@@ -7283,13 +7253,6 @@ const API = '';
           ));
           shopifyPanel += '</div>';
 
-          // Sources
-          let sourcesPanel = '';
-          sourcesPanel += card('Traffic source mapping', (
-            '<div class="dm-hint">Map URL UTMs into custom sources + icons (affects Traffic + Home source icons). Unmapped tokens appear first.</div>' +
-            '<div id="traffic-source-mapping-root"><div class="dm-loading">Loading…</div></div>'
-          ));
-
           // Google Ads
           let googleAdsPanel = '';
           try {
@@ -7396,7 +7359,6 @@ const API = '';
           html +=   diagTab('pixel', 'Pixel');
           html +=   diagTab('googleads', 'Google Ads');
           html +=   diagTab('shopify', 'Shopify');
-          html +=   diagTab('sources', 'Sources');
           html +=   diagTab('system', 'System');
           html +=   diagTab('defs', 'Definitions');
           html += '</div>';
@@ -7422,13 +7384,12 @@ const API = '';
           html += diagTabPanel('pixel', pixelPanel);
           html += diagTabPanel('googleads', googleAdsPanel);
           html += diagTabPanel('shopify', shopifyPanel);
-          html += diagTabPanel('sources', sourcesPanel);
           html += diagTabPanel('system', systemPanel);
           html += diagTabPanel('defs', defsPanel);
 
           html += '</div>'; // be-diag-root
 
-          const targetEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
+          const targetEl = document.getElementById('diagnostics-content');
           if (targetEl) targetEl.innerHTML = html;
 
           // ── Wire up tab switching ──
@@ -7666,7 +7627,6 @@ const API = '';
               };
             }
           } catch (_) {}
-          try { initTrafficSourceMappingPanel(); } catch (_) {}
           try {
             function setGaMsg(t, ok) {
               const msgEl = document.getElementById('ga-msg');
@@ -7787,13 +7747,8 @@ const API = '';
                   })
                   .finally(function() {
                     toggle.disabled = false;
-                    // If the modal is open, refresh diagnostics so the UI reflects the saved setting,
-                    // but preserve the current tab/scroll to avoid disrupting viewing.
-                    try {
-                      if (typeof isConfigModalOpen === 'function' && isConfigModalOpen()) {
-                        refreshConfigStatus({ force: true, preserveView: true });
-                      }
-                    } catch (_) {}
+                    // Refresh diagnostics so the UI reflects the saved setting.
+                    try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
                   });
               };
             }
@@ -7804,7 +7759,7 @@ const API = '';
           return c;
         })
         .catch(() => {
-          const errEl = document.getElementById('config-status') || document.getElementById('diagnostics-content');
+          const errEl = document.getElementById('diagnostics-content');
           if (errEl) {
             errEl.innerHTML =
               '<div class="dm-error">' +
@@ -7835,37 +7790,21 @@ const API = '';
     try { window.refreshConfigStatus = refreshConfigStatus; } catch (_) {}
     try { window.initTrafficSourceMapping = function(opts) { initTrafficSourceMappingPanel(opts || {}); }; } catch (_) {}
 
-    // Best-effort: prime Diagnostics data in the background (modal is closed at load).
+    // Best-effort: prime Diagnostics data in the background for Settings.
     try { refreshConfigStatus(); } catch (_) {}
 
     updateLastSaleAgo();
     _intervals.push(setInterval(updateLastSaleAgo, 10000));
 
-    (function initConfigModal() {
-      const modal = document.getElementById('config-modal');
+    (function initDiagnosticsActions() {
       const openBtn = document.getElementById('config-open-btn');
       const refreshBtn = document.getElementById('config-refresh-btn');
       const reconcileBtn = document.getElementById('config-reconcile-btn');
-      const closeBtn = document.getElementById('config-close-btn');
       if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
-      if (!modal) return;
-      function open() {
-        try { refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
-        try { fetchTrafficData({ force: true }); } catch (_) {}
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
+      if (openBtn && openBtn.tagName === 'A') {
+        try { openBtn.setAttribute('href', '/settings'); } catch (_) {}
       }
-      function close() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
-      if (openBtn) openBtn.addEventListener('click', function(e) {
-        var href = openBtn.getAttribute && openBtn.getAttribute('href');
-        if (openBtn.tagName === 'A' && href && String(href).indexOf('/settings') >= 0) return;
-        e.preventDefault();
-        open();
-      });
-      if (closeBtn) closeBtn.addEventListener('click', close);
-      modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
-      document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
     })();
 
     (function initKpiCompareModal() {
@@ -8503,12 +8442,7 @@ const API = '';
           btn.addEventListener('click', function() {
             btn.classList.add('refresh-spinning');
             setTimeout(function() { btn.classList.remove('refresh-spinning'); }, 600);
-            // If Settings/Diagnostics modal is open, refresh diagnostics too (but keep the user's view).
-            try {
-              if (typeof isConfigModalOpen === 'function' && isConfigModalOpen()) {
-                refreshConfigStatus({ force: true, preserveView: true });
-              }
-            } catch (_) {}
+            try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
             if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
             else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
@@ -8777,12 +8711,7 @@ const API = '';
                 }
                 if (hasSeenConvertedCountToday) lastConvertedCountToday = (Number(lastConvertedCountToday) || 0) + 1;
               } catch (_) {}
-              // Avoid background refreshes while the Diagnostics modal is open (don't disrupt reading).
-              try {
-                if (!(typeof isConfigModalOpen === 'function' && isConfigModalOpen())) {
-                  refreshConfigStatus();
-                }
-              } catch (_) {}
+              try { refreshConfigStatus(); } catch (_) {}
               // Pull updated KPIs so Sales/Orders can animate immediately.
               try { refreshKpis({ force: true }); } catch (_) {}
             }

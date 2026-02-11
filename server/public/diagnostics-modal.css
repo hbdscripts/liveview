@@ -468,6 +468,7 @@
 #diagnostics-content .dm-compare-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; background: #f8fafc; border: 1px solid rgba(0,0,0,0.06); border-radius: 14px; }
 #diagnostics-content .dm-tabs-bar { display: flex; gap: 4px; padding: 12px 24px 0; border-bottom: 1px solid rgba(0,0,0,0.06); background: #ffffff; flex-wrap: wrap; }
 #diagnostics-content .dm-tab-btn { padding: 8px 14px; font-size: 12px; font-weight: 550; border-radius: 10px 10px 0 0; border: 1px solid transparent; background: transparent; color: #64748b; cursor: pointer; }
+#diagnostics-content .dm-tab-btn i { width: 14px; margin-right: 6px; }
 #diagnostics-content .dm-tab-btn[aria-selected="true"] { background: #f1f5f9; border-color: rgba(0,0,0,0.06); border-bottom-color: #f1f5f9; color: #0f172a; }
 #diagnostics-content .dm-tab-panel { display: none; padding: 24px; background: #fafbfc; min-height: 120px; }
 #diagnostics-content .dm-tab-panel.dm-tab-panel--active { display: block; }
@@ -477,3 +478,4 @@
 #diagnostics-content .dm-pill.dm-pill-ok { border-color: rgba(15,118,110,0.25); background: rgba(15,118,110,0.08); color: #0f766e; }
 #diagnostics-content .dm-pill.dm-pill-bad { border-color: rgba(220,38,38,0.2); background: rgba(220,38,38,0.06); color: #dc2626; }
 #diagnostics-content .dm-pill.dm-pill-warn { border-color: rgba(161,98,7,0.2); background: rgba(161,98,7,0.08); color: #a16207; }
+#diagnostics-content .dm-copy-btn i { margin-right: 6px; }

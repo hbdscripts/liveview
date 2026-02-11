@@ -69,6 +69,186 @@
     return div.innerHTML;
   }
 
+  function formatTs(ms) {
+    try {
+      if (typeof ms !== 'number' || !isFinite(ms)) return '\u2014';
+      return new Date(ms).toLocaleString();
+    } catch (_) {
+      return '\u2014';
+    }
+  }
+
+  function setHtml(id, html) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = String(html || '');
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text == null ? '\u2014' : String(text);
+  }
+
+  function badge(text, tone) {
+    var cls = 'bg-secondary-lt';
+    if (tone === 'ok') cls = 'bg-success-lt';
+    else if (tone === 'bad') cls = 'bg-danger-lt';
+    else if (tone === 'warn') cls = 'bg-warning-lt';
+    return '<span class="badge ' + cls + '">' + escapeHtml(String(text || '')) + '</span>';
+  }
+
+  function wireIntegrationsSubTabs() {
+    var tabs = document.querySelectorAll('[data-settings-integrations-tab]');
+    if (!tabs.length) return;
+    function activate(key) {
+      tabs.forEach(function (tab) {
+        var active = tab.getAttribute('data-settings-integrations-tab') === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      ['shopify', 'googleads'].forEach(function (k) {
+        var panel = document.getElementById('settings-integrations-panel-' + k);
+        if (panel) panel.classList.toggle('active', k === key);
+      });
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-settings-integrations-tab') || 'shopify');
+      });
+    });
+    activate('shopify');
+  }
+
+  function wireGoogleAdsActions() {
+    var msgEl = document.getElementById('settings-ga-msg');
+    var outEl = document.getElementById('settings-ga-output');
+    if (!msgEl || !outEl) return;
+
+    function setMsg(t, ok) {
+      msgEl.textContent = t || '';
+      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+    }
+
+    function setOut(obj) {
+      try { outEl.textContent = JSON.stringify(obj, null, 2); }
+      catch (_) { outEl.textContent = String(obj || ''); }
+    }
+
+    function fetchJson(url, opts) {
+      return fetch(url, opts || { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var j = null;
+            try { j = t ? JSON.parse(t) : null; } catch (_) {}
+            return { ok: r.ok, status: r.status, json: j, text: t };
+          });
+        });
+    }
+
+    var statusBtn = document.getElementById('settings-ga-status-btn');
+    if (statusBtn) {
+      statusBtn.addEventListener('click', function () {
+        setMsg('Fetching status…', true);
+        fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) {
+            setOut({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
+            setMsg(r.ok ? 'Status OK' : ('Status failed (' + r.status + ')'), r.ok);
+          })
+          .catch(function (err) {
+            setMsg('Status failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    var summaryBtn = document.getElementById('settings-ga-summary-btn');
+    if (summaryBtn) {
+      summaryBtn.addEventListener('click', function () {
+        setMsg('Fetching summary…', true);
+        fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) {
+            setOut({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
+            setMsg(r.ok ? 'Summary OK' : ('Summary failed (' + r.status + ')'), r.ok);
+          })
+          .catch(function (err) {
+            setMsg('Summary failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    function wireRefresh(btnId, range) {
+      var btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        setMsg('Refreshing ' + range + '…', true);
+        fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(range), {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        })
+          .then(function (r) {
+            setOut({ endpoint: 'POST /api/ads/refresh?range=' + range, status: r.status, ok: r.ok, body: r.json || r.text });
+            setMsg(r.ok ? ('Refresh ' + range + ' complete') : ('Refresh failed (' + r.status + ')'), r.ok);
+          })
+          .catch(function (err) {
+            setMsg('Refresh failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    wireRefresh('settings-ga-refresh-7d-btn', '7d');
+    wireRefresh('settings-ga-refresh-month-btn', 'month');
+  }
+
+  function renderIntegrationsFromConfig(c) {
+    var shopify = c && c.shopify ? c.shopify : {};
+    var health = c && c.sales && c.sales.truth && c.sales.truth.health ? c.sales.truth.health : {};
+    var pixel = c && c.pixel ? c.pixel : {};
+    var settings = c && c.settings ? c.settings : {};
+    var ingest = c && c.ingest ? c.ingest : {};
+    var ads = c && c.ads && c.ads.status ? c.ads.status : {};
+    var providers = Array.isArray(ads.providers) ? ads.providers : [];
+    var ga = providers.find(function (p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || {};
+
+    var storedScopes = shopify && shopify.storedScopes ? String(shopify.storedScopes) : '';
+    var requiredScopes = shopify && shopify.serverScopes ? String(shopify.serverScopes) : '';
+    var storedList = storedScopes ? storedScopes.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+    var requiredList = requiredScopes ? requiredScopes.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+    var missing = requiredList.filter(function (s) { return storedList.indexOf(s) === -1; });
+
+    setText('settings-int-shopify-shop', shopify && shopify.shop ? shopify.shop : '\u2014');
+    setHtml('settings-int-shopify-token', shopify && shopify.hasToken ? badge('Stored', 'ok') : badge('Missing', 'bad'));
+    setText('settings-int-shopify-scopes', storedScopes || '\u2014');
+    setHtml('settings-int-shopify-missing-scopes', missing.length ? badge(missing.join(', '), 'bad') : badge('None', 'ok'));
+
+    var staleSec = (health && typeof health.staleMs === 'number' && isFinite(health.staleMs)) ? Math.round(health.staleMs / 1000) : null;
+    setText('settings-int-shopify-sync-age', staleSec == null ? '\u2014' : (staleSec + 's'));
+    setText('settings-int-shopify-last-sync', health && health.lastSuccessAt ? formatTs(health.lastSuccessAt) : '\u2014');
+    setText('settings-int-shopify-last-error', health && health.lastError ? String(health.lastError).slice(0, 220) : '\u2014');
+
+    var pixelIngestUrl = pixel && pixel.ingestUrl != null ? String(pixel.ingestUrl) : '';
+    var expectedIngestUrl = ingest && ingest.effectiveIngestUrl != null ? String(ingest.effectiveIngestUrl) : '';
+    var match = pixelIngestUrl && expectedIngestUrl ? pixelIngestUrl === expectedIngestUrl : null;
+    setHtml('settings-int-pixel-installed', pixel && pixel.installed === true ? badge('Installed', 'ok') : badge('Not installed', 'bad'));
+    setText('settings-int-pixel-ingest', pixelIngestUrl || '\u2014');
+    setText('settings-int-expected-ingest', expectedIngestUrl || '\u2014');
+    setHtml('settings-int-pixel-match', match == null ? badge('Unknown', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
+    setText('settings-int-session-mode', settings && settings.pixelSessionMode === 'shared_ttl' ? 'shared_ttl (cross-tab)' : 'legacy');
+
+    setHtml('settings-int-ga-configured', ga && ga.configured ? badge('Yes', 'ok') : badge('No', 'bad'));
+    setHtml('settings-int-ga-connected', ga && ga.connected ? badge('Yes', 'ok') : badge('No', 'bad'));
+    setText('settings-int-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
+    setText('settings-int-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
+    setHtml('settings-int-ga-dev-token', ga && ga.hasDeveloperToken ? badge('Set', 'ok') : badge('Missing', 'bad'));
+    setHtml('settings-int-ga-refresh-token', ga && ga.hasRefreshToken ? badge('Present', 'ok') : badge('Missing', 'bad'));
+
+    var outEl = document.getElementById('settings-ga-output');
+    if (outEl) {
+      try { outEl.textContent = JSON.stringify({ ads: ads }, null, 2); }
+      catch (_) { outEl.textContent = 'Could not format Ads status'; }
+    }
+  }
+
   function getShopParam() {
     try {
       var m = /[?&]shop=([^&]+)/.exec(window.location.search || '');
@@ -107,24 +287,7 @@
           el.value = (cd.trafficMode || 'all') + (cd.dbEngine ? ' \u00b7 ' + cd.dbEngine : '');
         });
 
-        var reporting = c && c.reporting ? c.reporting : {};
-        var pixel = c && c.pixel ? c.pixel : {};
-        var ads = c && c.ads && c.ads.status ? c.ads.status : null;
-        var providers = ads && Array.isArray(ads.providers) ? ads.providers : [];
-        var ga = providers.find(function (p) {
-          return p && String(p.key || '').toLowerCase() === 'google_ads';
-        }) || null;
-
-        document.querySelectorAll('#settings-integrations-pixel').forEach(function (el) {
-          var ok = pixel && pixel.installed === true;
-          var match = c && c.ingest && c.pixel && pixel.ingestUrl === (c.ingest.effectiveIngestUrl || '');
-          el.innerHTML = (ok ? '<span class="badge bg-success">Installed</span>' : '<span class="badge bg-danger">Not installed</span>') +
-            (match != null ? (match ? ' <span class="badge bg-success">Ingest URL match</span>' : ' <span class="badge bg-danger">Ingest URL mismatch</span>') : '');
-        });
-        document.querySelectorAll('#settings-integrations-googleads').forEach(function (el) {
-          var conn = ga && ga.connected === true;
-          el.innerHTML = conn ? '<span class="badge bg-success">Connected</span>' : '<span class="badge bg-primary-lt">Not connected</span>';
-        });
+        renderIntegrationsFromConfig(c || {});
       })
       .catch(function () {});
   }
@@ -231,6 +394,8 @@
     loadSettingsAndPopulate();
     wireDataReporting();
     wireAssets();
+    wireIntegrationsSubTabs();
+    wireGoogleAdsActions();
   }
 
   if (document.readyState === 'loading') {

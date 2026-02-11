@@ -19,6 +19,8 @@
   <style>
     .settings-panel { display: none; }
     .settings-panel.active { display: block; }
+    .settings-integrations-panel { display: none; }
+    .settings-integrations-panel.active { display: block; }
   </style>
 </head>
 <body class="" data-page="settings">
@@ -187,14 +189,76 @@
             <h3 class="card-title">Integrations</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Pixel and Google Ads status from config-status.</p>
-            <div class="mb-3">
-              <strong>Pixel</strong> <span id="settings-integrations-pixel"><span class="text-muted">—</span></span>
+            <p class="text-secondary mb-3">Shopify + Google Ads integration status and controls.</p>
+            <ul class="nav nav-underline mb-3" id="settings-integrations-tabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" type="button" role="tab" data-settings-integrations-tab="shopify" aria-selected="true">Shopify</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" role="tab" data-settings-integrations-tab="googleads" aria-selected="false">Google Ads</button>
+              </li>
+            </ul>
+
+            <div id="settings-integrations-panel-shopify" class="settings-integrations-panel active" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-12 col-xl-6">
+                  <div class="card card-sm">
+                    <div class="card-header"><h4 class="card-title">Shopify Auth</h4></div>
+                    <div class="card-body">
+                      <div class="mb-2"><strong>Shop</strong> <span id="settings-int-shopify-shop" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Token</strong> <span id="settings-int-shopify-token" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Stored scopes</strong> <span id="settings-int-shopify-scopes" class="text-muted">—</span></div>
+                      <div class="mb-0"><strong>Missing scopes</strong> <span id="settings-int-shopify-missing-scopes" class="text-muted">—</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-xl-6">
+                  <div class="card card-sm">
+                    <div class="card-header"><h4 class="card-title">Truth Sync</h4></div>
+                    <div class="card-body">
+                      <div class="mb-2"><strong>Sync age</strong> <span id="settings-int-shopify-sync-age" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Last sync</strong> <span id="settings-int-shopify-last-sync" class="text-muted">—</span></div>
+                      <div class="mb-0"><strong>Last error</strong> <span id="settings-int-shopify-last-error" class="text-muted">—</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="card card-sm">
+                    <div class="card-header"><h4 class="card-title">Pixel</h4></div>
+                    <div class="card-body">
+                      <div class="mb-2"><strong>Installed</strong> <span id="settings-int-pixel-installed" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Pixel ingestUrl</strong> <span id="settings-int-pixel-ingest" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Expected ingestUrl</strong> <span id="settings-int-expected-ingest" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Ingest URL match</strong> <span id="settings-int-pixel-match" class="text-muted">—</span></div>
+                      <div class="mb-0"><strong>Session mode</strong> <span id="settings-int-session-mode" class="text-muted">—</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mb-3">
-              <strong>Google Ads</strong> <span id="settings-integrations-googleads"><span class="text-muted">—</span></span>
+
+            <div id="settings-integrations-panel-googleads" class="settings-integrations-panel" role="tabpanel">
+              <div class="card card-sm mb-3">
+                <div class="card-header"><h4 class="card-title">Google Ads Connection</h4></div>
+                <div class="card-body">
+                  <div class="mb-2"><strong>Configured</strong> <span id="settings-int-ga-configured" class="text-muted">—</span></div>
+                  <div class="mb-2"><strong>Connected</strong> <span id="settings-int-ga-connected" class="text-muted">—</span></div>
+                  <div class="mb-2"><strong>Customer ID</strong> <span id="settings-int-ga-customer-id" class="text-muted">—</span></div>
+                  <div class="mb-2"><strong>Login Customer ID</strong> <span id="settings-int-ga-login-customer-id" class="text-muted">—</span></div>
+                  <div class="mb-2"><strong>Developer token</strong> <span id="settings-int-ga-dev-token" class="text-muted">—</span></div>
+                  <div class="mb-0"><strong>Refresh token</strong> <span id="settings-int-ga-refresh-token" class="text-muted">—</span></div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                <a class="btn btn-outline-primary btn-sm" id="settings-ga-connect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations">Connect</a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-status-btn">Status</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-summary-btn">Summary</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-refresh-7d-btn">Refresh 7d</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-refresh-month-btn">Refresh month</button>
+                <span id="settings-ga-msg" class="form-hint"></span>
+              </div>
+              <pre id="settings-ga-output" class="dm-json-pre mb-0">Loading…</pre>
             </div>
-            <p class="text-muted small">API keys: <span class="badge bg-primary-lt">TODO</span></p>
           </div>
         </div>
       </div>

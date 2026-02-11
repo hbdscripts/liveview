@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (KPI same-time compare sparkline tones + page wrapper top alignment)
+Last updated: 2026-02-11 (Settings-first diagnostics, legacy modal removal on main pages, Font Awesome migration baseline)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -24,7 +24,7 @@ Pages (new, Tabler layout):
 - `server/public/type.html`
 - `server/public/ads.html`
 - `server/public/tools.html`
-- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs, Diagnostics); Sources tab has traffic-source-mapping UI (UTM → source + icon).
+- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs, Diagnostics); Sources tab is the canonical traffic-source-mapping UI (UTM → source + icon); Integrations now uses inner tabs (Shopify, Google Ads).
 - `server/public/settings-page.js`: Settings tab switching (standalone; no app.js changes).
 - `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
 
@@ -34,7 +34,7 @@ Shared assets:
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
 - `server/public/tabler-theme.css`: Tabler theme overrides + default primary teal (`#3eb3ab`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
-- `server/public/diagnostics-modal.css`: diagnostics modal styling (still used across pages).
+- `server/public/diagnostics-modal.css`: diagnostics styling used by Settings diagnostics panel and shared compare modal shell styles.
 
 Legacy/backup:
 - `server/public/live-visitors.html` kept as backup of the monolithic page.
@@ -121,10 +121,12 @@ KPI caching (perf + UX):
 
 ---
 
-## Diagnostics modal
+## Diagnostics location
 
-- Still uses `server/public/diagnostics-modal.css` and existing HTML hooks.
-- If restyling is requested, update the modal markup + CSS to match Tabler components.
+- The old `#config-modal` diagnostics modal is removed from main pages (`dashboard/live/sales/products/channels/countries/type/date/ads`).
+- Diagnostics is now Settings-first (`/settings`, Diagnostics tab using `#diagnostics-content`).
+- `server/public/app.js` no longer opens a diagnostics modal; header/footer settings actions route to `/settings`.
+- KPI compare modal (`#kpi-compare-modal`) remains on pages and continues to use shared modal shell styles.
 
 ---
 
@@ -199,6 +201,20 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- Settings/nav cleanup:
+  - Header dropdown item previously used for Diagnostics now shows **Settings** and routes to `/settings` (no diagnostics query URL).
+  - Theme action now routes to `/settings`.
+  - Footer settings shortcut (`footer-diagnostics-btn`) now routes via header Settings link to `/settings`.
+- Diagnostics consolidation:
+  - Removed Diagnostics Sources tab from `refreshConfigStatus` output; Sources mapping now lives only in Settings Sources tab.
+  - Retired `initConfigModal` open/close behavior in `app.js`; kept diagnostics refresh/reconcile handlers for Settings diagnostics panel.
+  - Removed legacy diagnostics modal markup (`#config-modal` / `#config-status`) from main pages: `dashboard.html`, `live.html`, `sales.html`, `products.html`, `channels.html`, `countries.html`, `type.html`, `date.html`, `ads.html`.
+- Settings Integrations UX:
+  - Integrations panel now uses Tabler `nav-underline` inner tabs (`Shopify`, `Google Ads`) with richer status details.
+  - Added Settings Google Ads action buttons (`status/summary/refresh`) + output panel in `settings-page.js`.
+- Font Awesome migration baseline:
+  - Added Font Awesome kit load globally via `partials/head-theme.html`.
+  - Added `server/public/fontawesome-icons.js` runtime adapter that converts Tabler icon classes and shared nav SVG icon slots to Font Awesome equivalents.
 - Dashboard charts (Revenue/Orders/Sessions/Conversion) now default to Area, with chart-type switcher ordering aligned (Area first, Bar second).
 - Orders KPI sparkline on the dashboard card was restored to Area to match the other KPI sparkline cards.
 - KPI sparkline colors now use trend tone (green/red) based on positive/negative movement, with condensed strip colors using day-before compare values when available.
