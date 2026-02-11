@@ -9,12 +9,16 @@
  * - returns: Shopify "Returns" value (refund transactions CREATED in range; returned as positive amount)
  */
 const { getDb } = require('../db');
+const config = require('../config');
 const store = require('../store');
 const reportCache = require('../reportCache');
 const salesTruth = require('../salesTruth');
+const fx = require('../fx');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 const SHOPIFY_API_VERSION = '2024-01';
+const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const variantCostCache = new Map();
 
 function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';
@@ -63,6 +67,163 @@ function parseMoneyAmount(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+function chunkArray(arr, size) {
+  const out = [];
+  const n = Math.max(1, Number(size) || 1);
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+function parseLegacyVariantId(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/\/(\d+)(?:\D.*)?$/);
+  return m && m[1] ? m[1] : '';
+}
+
+async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6 } = {}) {
+  const url = `https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds = retryAfter ? parseInt(String(retryAfter), 10) : NaN;
+    const waitMs = Number.isFinite(waitSeconds) && waitSeconds > 0 ? waitSeconds * 1000 : 1000;
+    await sleep(Math.min(waitMs, 10000));
+  }
+}
+
+async function fetchVariantUnitCosts(shop, accessToken, variantIds) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !accessToken || !Array.isArray(variantIds) || !variantIds.length) return new Map();
+  const normalizedIds = Array.from(new Set(
+    variantIds.map(parseLegacyVariantId).filter(Boolean)
+  ));
+  const result = new Map();
+  const missing = [];
+  const now = Date.now();
+  for (const vid of normalizedIds) {
+    const key = `${safeShop}:${vid}`;
+    const cached = variantCostCache.get(key);
+    if (cached && cached.expiresAt > now && Number.isFinite(cached.amount)) {
+      result.set(vid, { amount: Number(cached.amount), currency: cached.currency || 'GBP' });
+    } else {
+      missing.push(vid);
+    }
+  }
+  if (!missing.length) return result;
+
+  const chunks = chunkArray(missing, 75);
+  const query = `
+    query VariantUnitCosts($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on ProductVariant {
+          id
+          legacyResourceId
+          inventoryItem {
+            unitCost {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+    }
+  `;
+  for (const part of chunks) {
+    const gqlIds = part.map((id) => `gid://shopify/ProductVariant/${id}`);
+    try {
+      const res = await shopifyGraphqlWithRetry(safeShop, accessToken, query, { ids: gqlIds }, { maxRetries: 6 });
+      const text = await res.text();
+      if (!res.ok) continue;
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      const nodes = json && json.data && Array.isArray(json.data.nodes) ? json.data.nodes : [];
+      for (const n of nodes) {
+        if (!n || typeof n !== 'object') continue;
+        const vid = parseLegacyVariantId(n.legacyResourceId || n.id);
+        if (!vid) continue;
+        const unitCost = n.inventoryItem && n.inventoryItem.unitCost ? n.inventoryItem.unitCost : null;
+        const amount = unitCost && unitCost.amount != null ? Number(unitCost.amount) : NaN;
+        const currency = unitCost && unitCost.currencyCode ? String(unitCost.currencyCode).toUpperCase() : 'GBP';
+        if (!Number.isFinite(amount)) continue;
+        result.set(vid, { amount, currency });
+        variantCostCache.set(`${safeShop}:${vid}`, {
+          amount,
+          currency,
+          expiresAt: Date.now() + VARIANT_COST_CACHE_TTL_MS,
+        });
+      }
+    } catch (_) {}
+  }
+  return result;
+}
+
+async function computeCogsFromLineItems(db, shop, accessToken, startMs, endMs) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!safeShop || !accessToken || !Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+  let rows = [];
+  try {
+    rows = await db.all(
+      config.dbUrl
+        ? `SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
+                  UPPER(COALESCE(currency, 'GBP')) AS currency,
+                  COALESCE(SUM(quantity), 0) AS qty
+           FROM orders_shopify_line_items
+           WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
+             AND (order_test IS NULL OR order_test = 0) AND order_cancelled_at IS NULL AND order_financial_status = 'paid'
+             AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+           GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))`
+        : `SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
+                  UPPER(COALESCE(currency, 'GBP')) AS currency,
+                  COALESCE(SUM(quantity), 0) AS qty
+           FROM orders_shopify_line_items
+           WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+             AND (order_test IS NULL OR order_test = 0) AND order_cancelled_at IS NULL AND order_financial_status = 'paid'
+             AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+           GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))`,
+      [safeShop, start, end]
+    );
+  } catch (_) {
+    return null;
+  }
+  const variantIds = Array.from(new Set((rows || []).map((r) => parseLegacyVariantId(r && r.variant_id)).filter(Boolean)));
+  if (!variantIds.length) return 0;
+  const ratesToGbp = await fx.getRatesToGbp();
+  const costMap = await fetchVariantUnitCosts(safeShop, accessToken, variantIds);
+  let total = 0;
+  let matchedQty = 0;
+  for (const row of (rows || [])) {
+    const vid = parseLegacyVariantId(row && row.variant_id);
+    const qty = row && row.qty != null ? Number(row.qty) : NaN;
+    if (!vid || !Number.isFinite(qty) || qty <= 0) continue;
+    const cost = costMap.get(vid);
+    if (!cost || !Number.isFinite(Number(cost.amount))) continue;
+    const raw = Number(cost.amount) * qty;
+    const currency = fx.normalizeCurrency(cost.currency) || fx.normalizeCurrency(row && row.currency) || 'GBP';
+    const gbp = fx.convertToGbp(raw, currency, ratesToGbp);
+    if (!Number.isFinite(gbp)) continue;
+    total += gbp;
+    matchedQty += qty;
+  }
+  if (matchedQty <= 0) return null;
+  return Math.round(total * 100) / 100;
+}
+
 function ordersUpdatedApiUrl(shop, updatedMinIso, updatedMaxIso) {
   const params = new URLSearchParams();
   params.set('status', 'any');
@@ -99,7 +260,7 @@ function sumRefundAmount(refund) {
   return total;
 }
 
-async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs) {
+async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, endMs) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   if (!safeShop) return { ok: false, error: 'missing_shop' };
   if (!accessToken) return { ok: false, error: 'missing_token' };
@@ -169,12 +330,15 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
   // Shopify UI shows Returns as negative currency; return positive amount so the UI can render "-£X".
   const returns = Math.round(Math.abs(returnsAmount) * 100) / 100;
 
+  const cogs = await computeCogsFromLineItems(db, safeShop, accessToken, start, end);
+
   return {
     ok: true,
     fetched,
     itemsSold: Math.trunc(itemsSold),
     ordersFulfilled: fulfilledOrderIds.size,
     returns,
+    cogs: (typeof cogs === 'number' && Number.isFinite(cogs)) ? cogs : null,
   };
 }
 
@@ -182,16 +346,17 @@ async function computeExpandedExtras(bounds, shop, accessToken) {
   const start = bounds && bounds.start != null ? Number(bounds.start) : NaN;
   const end = bounds && bounds.end != null ? Number(bounds.end) : NaN;
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-    return { itemsSold: null, ordersFulfilled: null, returns: null };
+    return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null };
   }
 
   try {
-    const r = await fetchExtrasFromShopifyOrdersApi(shop, accessToken, start, end);
+    const r = await fetchExtrasFromShopifyOrdersApi(getDb(), shop, accessToken, start, end);
     if (r && r.ok) {
       return {
         itemsSold: typeof r.itemsSold === 'number' ? r.itemsSold : null,
         ordersFulfilled: typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null,
         returns: typeof r.returns === 'number' ? r.returns : null,
+        cogs: typeof r.cogs === 'number' ? r.cogs : null,
       };
     }
   } catch (err) {
@@ -200,7 +365,7 @@ async function computeExpandedExtras(bounds, shop, accessToken) {
   }
 
   // Fail-open: show "—" rather than misleading zeros.
-  return { itemsSold: null, ordersFulfilled: null, returns: null };
+  return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null };
 }
 
 async function getKpisExpandedExtra(req, res) {
@@ -261,6 +426,7 @@ async function getKpisExpandedExtra(req, res) {
             itemsSold: typeof compare.itemsSold === 'number' ? compare.itemsSold : null,
             ordersFulfilled: typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null,
             returns: typeof compare.returns === 'number' ? compare.returns : null,
+            cogs: typeof compare.cogs === 'number' ? compare.cogs : null,
           } : null,
         };
       }

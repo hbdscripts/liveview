@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (Settings-first diagnostics, Font Awesome solid/light split, legacy backup pages removed)
+Last updated: 2026-02-11 (12 KPI parity across dashboard/header, Shopify-cost COGS, sparkline tone fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -101,10 +101,14 @@ KPI component (below dark nav, every page):
 - Markup lives directly in `server/public/partials/header.html` (pages do not include KPIs directly).
 - Condensed KPI strip is always visible; expanded KPI overlay/toggle were removed.
 - Condensed chips include value + delta + a small progress bar.
+- KPI parity: condensed header strip now carries the same 12 KPI labels as dashboard cards: Orders, Revenue, Conversion Rate, ADS ROAS, Sessions, Returning, AOV, COGS, Bounce Rate, Fulfilled, Returns, Items ordered.
 - Extra KPIs (Items ordered / Orders fulfilled / Returns value):
   - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
   - Computed from Shopify Orders API (not KEXO tables): items ordered = line-item qty (orders created in range), orders fulfilled = distinct orders with fulfillments created in range, returns = refund transaction value (shown as negative in UI).
   - Warmed in the background so condensed chips render without blanks.
+- COGS:
+  - Also served by `GET /api/kpis-expanded-extra` and calculated from Shopify variant inventory `unitCost` (GraphQL) multiplied by paid, non-cancelled line-item quantities in range, converted to GBP.
+  - If unit costs are unavailable (scope/data gap), COGS fails open to `—` instead of showing a misleading zero.
 
 KPI caching (perf + UX):
 - `/api/kpis` is cached (server-side) for 2 minutes and also painted from `localStorage` on navigation to avoid empty KPI boxes.
@@ -201,6 +205,12 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-11
+- KPI parity + logic cleanup:
+  - Dashboard now exposes all 12 KPI cards (adds COGS, Fulfilled, Returns, Items ordered) and uses label parity with condensed chips.
+  - Condensed strip now includes ADS ROAS and COGS chips (12 total).
+  - KPI sparkline direction semantics fixed for "lower is better" metrics (Bounce Rate + Returns, plus COGS as an expense).
+  - Dashboard sparkline styling now matches condensed chip sparkline gradient treatment for consistent rendering.
+  - `/api/kpis-expanded-extra` now includes COGS sourced from Shopify variant unit costs.
 - Legacy cleanup:
   - Removed obsolete backup files from `server/public`: `live-visitors.html`, `sales-backup.html`, `date-sparklines-template.txt`.
 - Font Awesome icon pass (display fix):

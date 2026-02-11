@@ -4759,8 +4759,10 @@ const API = '';
         'cond-kpi-revenue',
         'cond-kpi-sessions',
         'cond-kpi-conv',
+        'cond-kpi-roas',
         'cond-kpi-returning',
         'cond-kpi-aov',
+        'cond-kpi-cogs',
         'cond-kpi-bounce',
         'cond-kpi-items-sold',
         'cond-kpi-orders-fulfilled',
@@ -4882,6 +4884,7 @@ const API = '';
     var condensedSeriesCache = null;
     var condensedSeriesRange = null;
     var condensedSeriesFetchedAt = 0;
+    var condensedSparklineOverrides = {};
     var sparklineHistorySeriesCache = null;
     var sparklineHistorySeriesRange = null;
     var sparklineHistorySeriesFetchedAt = 0;
@@ -4932,18 +4935,25 @@ const API = '';
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
         'cond-kpi-conv-sparkline': function(d) { return d.convRate; },
+        'cond-kpi-roas-sparkline': function(d) {
+          var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
+          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+          return (spend > 0) ? (rev / spend) : 0;
+        },
         'cond-kpi-sessions-sparkline': function(d) { return d.sessions; },
         'cond-kpi-returning-sparkline': function(d) { return d.returningCustomerOrders || 0; },
         'cond-kpi-aov-sparkline': function(d) { return d.aov; },
-        'cond-kpi-items-sold-sparkline': function(d) { return d.orders; },
+        'cond-kpi-cogs-sparkline': function() { return null; },
         'cond-kpi-bounce-sparkline': function(d) { return d.bounceRate; },
-        'cond-kpi-orders-fulfilled-sparkline': function(d) { return d.orders; },
-        'cond-kpi-returns-sparkline': function(d) { return d.revenue; }
+        'cond-kpi-orders-fulfilled-sparkline': function() { return null; },
+        'cond-kpi-returns-sparkline': function() { return null; },
+        'cond-kpi-items-sold-sparkline': function(d) { return d.units || 0; }
       };
       Object.keys(map).forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
-        var dataArr = sourceSeries.map(map[id]);
+        var overrideData = condensedSparklineOverrides && Array.isArray(condensedSparklineOverrides[id]) ? condensedSparklineOverrides[id] : null;
+        var dataArr = overrideData && overrideData.length ? overrideData.slice() : sourceSeries.map(map[id]);
         if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
         var tone = String(el.getAttribute('data-tone') || '').toLowerCase();
         if (tone !== 'up' && tone !== 'down') {
@@ -5008,6 +5018,7 @@ const API = '';
       const condSessionsEl = document.getElementById('cond-kpi-sessions');
       const condReturningEl = document.getElementById('cond-kpi-returning');
       const condAovEl = document.getElementById('cond-kpi-aov');
+      const condRoasEl = document.getElementById('cond-kpi-roas');
       const condBounceEl = document.getElementById('cond-kpi-bounce');
       const topbarOrdersEl = document.getElementById('topbar-kpi-orders');
       const topbarClicksEl = document.getElementById('topbar-kpi-clicks');
@@ -5026,6 +5037,7 @@ const API = '';
       const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
+      const roasVal = data && data.roas && typeof data.roas[kpiRange] === 'number' ? data.roas[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
       const compare = data && data.compare ? data.compare : null;
       const compareBreakdown = compare && compare.trafficBreakdown ? compare.trafficBreakdown : null;
@@ -5035,8 +5047,9 @@ const API = '';
       const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
+      const compareRoasVal = compare && typeof compare.roas === 'number' ? compare.roas : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
-      function setCondensedSparklineTone(id, current, baseline) {
+      function setCondensedSparklineTone(id, current, baseline, invert) {
         const sparkEl = document.getElementById(id);
         if (!sparkEl) return;
         const cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
@@ -5045,7 +5058,8 @@ const API = '';
           sparkEl.removeAttribute('data-tone');
           return;
         }
-        sparkEl.setAttribute('data-tone', cur < base ? 'down' : 'up');
+        const delta = invert ? (base - cur) : (cur - base);
+        sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
       }
 
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
@@ -5054,6 +5068,7 @@ const API = '';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
+      if (condRoasEl) condRoasEl.textContent = roasVal != null ? Number(roasVal).toFixed(2) + 'x' : '\u2014';
       if (condBounceEl) condBounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
       applyCondensedKpiDelta('orders', orderCountVal, compareOrdersVal, false);
       applyCondensedKpiDelta('revenue', revenueVal, compareRevenueVal, false);
@@ -5061,17 +5076,16 @@ const API = '';
       applyCondensedKpiDelta('conv', convVal, compareConvVal, false);
       applyCondensedKpiDelta('returning', returningVal, compareReturningVal, false);
       applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
+      applyCondensedKpiDelta('roas', roasVal, compareRoasVal, false);
       applyCondensedKpiDelta('bounce', bounceVal, compareBounceVal, true);
       setCondensedSparklineTone('cond-kpi-orders-sparkline', orderCountVal, compareOrdersVal);
       setCondensedSparklineTone('cond-kpi-revenue-sparkline', revenueVal, compareRevenueVal);
       setCondensedSparklineTone('cond-kpi-conv-sparkline', convVal, compareConvVal);
+      setCondensedSparklineTone('cond-kpi-roas-sparkline', roasVal, compareRoasVal);
       setCondensedSparklineTone('cond-kpi-sessions-sparkline', sessionsVal, compareSessionsVal);
       setCondensedSparklineTone('cond-kpi-returning-sparkline', returningVal, compareReturningVal);
       setCondensedSparklineTone('cond-kpi-aov-sparkline', aovVal, compareAovVal);
-      setCondensedSparklineTone('cond-kpi-bounce-sparkline', bounceVal, compareBounceVal);
-      setCondensedSparklineTone('cond-kpi-items-sold-sparkline', orderCountVal, compareOrdersVal);
-      setCondensedSparklineTone('cond-kpi-orders-fulfilled-sparkline', orderCountVal, compareOrdersVal);
-      setCondensedSparklineTone('cond-kpi-returns-sparkline', revenueVal, compareRevenueVal);
+      setCondensedSparklineTone('cond-kpi-bounce-sparkline', bounceVal, compareBounceVal, true);
       try { updateCondensedKpiOverflow(); } catch (_) {}
 
       // Header quick KPIs (compact)
@@ -5148,6 +5162,10 @@ const API = '';
     let _dashKpiCompareInFlight = null;
     let _dashKpisYesterday = null;
     let _dashKpis7d = null;
+    let _dashKpiExtrasCompareFetchedAt = 0;
+    let _dashKpiExtrasCompareInFlight = null;
+    let _dashKpiExtrasYesterday = null;
+    let _dashKpiExtras7d = null;
 
     function fetchKpisForRangeKey(rangeKey) {
       rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
@@ -5156,6 +5174,21 @@ const API = '';
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
         .then(function(r) {
           if (!r || !r.ok) throw new Error('KPIs HTTP ' + (r ? r.status : '0'));
+          return r.json();
+        });
+    }
+
+    function fetchExpandedExtrasForRangeKey(rangeKey) {
+      rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+      if (!rangeKey) rangeKey = 'today';
+      let url = API + '/api/kpis-expanded-extra?range=' + encodeURIComponent(rangeKey);
+      try {
+        const shop = getShopForSales();
+        if (shop) url += '&shop=' + encodeURIComponent(shop);
+      } catch (_) {}
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
+        .then(function(r) {
+          if (!r || !r.ok) throw new Error('KPI extras HTTP ' + (r ? r.status : '0'));
           return r.json();
         });
     }
@@ -5177,6 +5210,27 @@ const API = '';
         _dashKpiCompareInFlight = null;
       });
       return _dashKpiCompareInFlight;
+    }
+
+    function ensureDashboardCompareExtras() {
+      const ttlMs = 120 * 1000;
+      const fresh = _dashKpiExtrasCompareFetchedAt && (Date.now() - _dashKpiExtrasCompareFetchedAt) < ttlMs;
+      if (fresh && _dashKpiExtrasYesterday && _dashKpiExtras7d) {
+        return Promise.resolve({ yesterday: _dashKpiExtrasYesterday, d7: _dashKpiExtras7d });
+      }
+      if (_dashKpiExtrasCompareInFlight) return _dashKpiExtrasCompareInFlight;
+      _dashKpiExtrasCompareInFlight = Promise.all([
+        fetchExpandedExtrasForRangeKey('yesterday').catch(function() { return null; }),
+        fetchExpandedExtrasForRangeKey('7d').catch(function() { return null; }),
+      ]).then(function(parts) {
+        _dashKpiExtrasYesterday = parts && parts[0] ? parts[0] : null;
+        _dashKpiExtras7d = parts && parts[1] ? parts[1] : null;
+        _dashKpiExtrasCompareFetchedAt = Date.now();
+        return { yesterday: _dashKpiExtrasYesterday, d7: _dashKpiExtras7d };
+      }).finally(function() {
+        _dashKpiExtrasCompareInFlight = null;
+      });
+      return _dashKpiExtrasCompareInFlight;
     }
 
     function renderDashboardKpisFromApi(primaryData) {
@@ -5213,6 +5267,11 @@ const API = '';
       var bounceVal = numFromMap(main, 'bounce', kpiRange);
       var returningVal = numFromMap(main, 'returningCustomerCount', kpiRange);
       var roasVal = numFromMap(main, 'roas', kpiRange);
+      var extrasMain = (kpiExpandedExtrasRange === kpiRange) ? (kpiExpandedExtrasCache || null) : null;
+      var itemsVal = extrasMain && typeof extrasMain.itemsSold === 'number' ? extrasMain.itemsSold : null;
+      var fulfilledVal = extrasMain && typeof extrasMain.ordersFulfilled === 'number' ? extrasMain.ordersFulfilled : null;
+      var returnsVal = extrasMain && typeof extrasMain.returns === 'number' ? extrasMain.returns : null;
+      var cogsVal = extrasMain && typeof extrasMain.cogs === 'number' ? extrasMain.cogs : null;
 
       if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue0(salesVal) : '\u2014';
       if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014';
@@ -5222,6 +5281,10 @@ const API = '';
       if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
       if (el('dash-kpi-returning')) el('dash-kpi-returning').textContent = returningVal != null ? Math.round(returningVal).toLocaleString() : '\u2014';
       if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014';
+      if (el('dash-kpi-items')) el('dash-kpi-items').textContent = itemsVal != null ? Math.round(itemsVal).toLocaleString() : '\u2014';
+      if (el('dash-kpi-fulfilled')) el('dash-kpi-fulfilled').textContent = fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : '\u2014';
+      if (el('dash-kpi-returns')) el('dash-kpi-returns').textContent = returnsVal != null ? ('-' + (formatRevenue0(Math.abs(returnsVal)) || '\u2014')) : '\u2014';
+      if (el('dash-kpi-cogs')) el('dash-kpi-cogs').textContent = cogsVal != null ? formatRevenue0(cogsVal) : '\u2014';
 
       function renderCompare(rangeKey, suffix) {
         var d = forKey(rangeKey);
@@ -5233,6 +5296,13 @@ const API = '';
         var bounce = numFromMap(d, 'bounce', rangeKey);
         var returning = numFromMap(d, 'returningCustomerCount', rangeKey);
         var roas = numFromMap(d, 'roas', rangeKey);
+        var x = (rangeKey === kpiRange)
+          ? ((kpiExpandedExtrasRange === kpiRange) ? (kpiExpandedExtrasCache || null) : null)
+          : (rangeKey === 'yesterday' ? _dashKpiExtrasYesterday : (rangeKey === '7d' ? _dashKpiExtras7d : null));
+        var items = x && typeof x.itemsSold === 'number' ? x.itemsSold : null;
+        var fulfilled = x && typeof x.ordersFulfilled === 'number' ? x.ordersFulfilled : null;
+        var returns = x && typeof x.returns === 'number' ? x.returns : null;
+        var cogs = x && typeof x.cogs === 'number' ? x.cogs : null;
 
         if (el('dash-revenue-' + suffix)) el('dash-revenue-' + suffix).textContent = sales != null ? formatRevenue0(sales) : '\u2014';
         if (el('dash-orders-' + suffix)) el('dash-orders-' + suffix).textContent = orders != null ? Math.round(orders).toLocaleString() : '\u2014';
@@ -5242,6 +5312,10 @@ const API = '';
         if (el('dash-bounce-' + suffix)) el('dash-bounce-' + suffix).textContent = bounce != null ? pct(bounce) : '\u2014';
         if (el('dash-returning-' + suffix)) el('dash-returning-' + suffix).textContent = returning != null ? Math.round(returning).toLocaleString() : '\u2014';
         if (el('dash-roas-' + suffix)) el('dash-roas-' + suffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
+        if (el('dash-items-' + suffix)) el('dash-items-' + suffix).textContent = items != null ? Math.round(items).toLocaleString() : '\u2014';
+        if (el('dash-fulfilled-' + suffix)) el('dash-fulfilled-' + suffix).textContent = fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014';
+        if (el('dash-returns-' + suffix)) el('dash-returns-' + suffix).textContent = returns != null ? ('-' + (formatRevenue0(Math.abs(returns)) || '\u2014')) : '\u2014';
+        if (el('dash-cogs-' + suffix)) el('dash-cogs-' + suffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
       }
 
       renderCompare('yesterday', 'yesterday');
@@ -5250,6 +5324,16 @@ const API = '';
       // Fetch compare data in background (cacheable), then repaint once.
       if (!_dashKpisYesterday || !_dashKpis7d) {
         ensureDashboardCompareKpis().then(function() {
+          try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
+        }).catch(function() {});
+      }
+      if (!extrasMain) {
+        fetchExpandedKpiExtras({ force: false }).then(function() {
+          try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
+        }).catch(function() {});
+      }
+      if (!_dashKpiExtrasYesterday || !_dashKpiExtras7d) {
+        ensureDashboardCompareExtras().then(function() {
           try { if (PAGE === 'dashboard') renderDashboardKpisFromApi(primaryData); } catch (_) {}
         }).catch(function() {});
       }
@@ -5318,15 +5402,18 @@ const API = '';
       const condItemsEl = document.getElementById('cond-kpi-items-sold');
       const condFulfilledEl = document.getElementById('cond-kpi-orders-fulfilled');
       const condReturnsEl = document.getElementById('cond-kpi-returns');
-      if (!condItemsEl && !condFulfilledEl && !condReturnsEl) return;
+      const condCogsEl = document.getElementById('cond-kpi-cogs');
+      if (!condItemsEl && !condFulfilledEl && !condReturnsEl && !condCogsEl) return;
 
       const itemsSold = extras && typeof extras.itemsSold === 'number' ? extras.itemsSold : null;
       const ordersFulfilled = extras && typeof extras.ordersFulfilled === 'number' ? extras.ordersFulfilled : null;
       const returnsAmount = extras && typeof extras.returns === 'number' ? extras.returns : null;
+      const cogsAmount = extras && typeof extras.cogs === 'number' ? extras.cogs : null;
       const compare = extras && extras.compare ? extras.compare : null;
       const itemsSoldCompare = compare && typeof compare.itemsSold === 'number' ? compare.itemsSold : null;
       const ordersFulfilledCompare = compare && typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null;
       const returnsCompare = compare && typeof compare.returns === 'number' ? compare.returns : null;
+      const cogsCompare = compare && typeof compare.cogs === 'number' ? compare.cogs : null;
 
       function formatReturns(v) {
         const n = (typeof v === 'number' && Number.isFinite(v)) ? Math.abs(v) : null;
@@ -5338,9 +5425,35 @@ const API = '';
       if (condItemsEl) condItemsEl.textContent = itemsSold != null ? formatSessions(itemsSold) : '\u2014';
       if (condFulfilledEl) condFulfilledEl.textContent = ordersFulfilled != null ? formatSessions(ordersFulfilled) : '\u2014';
       if (condReturnsEl) condReturnsEl.textContent = returnsAmount != null ? formatReturns(returnsAmount) : '\u2014';
+      if (condCogsEl) condCogsEl.textContent = cogsAmount != null ? formatRevenue(cogsAmount) : '\u2014';
       applyCondensedKpiDelta('items-sold', itemsSold, itemsSoldCompare, false);
       applyCondensedKpiDelta('orders-fulfilled', ordersFulfilled, ordersFulfilledCompare, false);
       applyCondensedKpiDelta('returns', returnsAmount, returnsCompare, true);
+      applyCondensedKpiDelta('cogs', cogsAmount, cogsCompare, true);
+
+      function setTone(id, current, baseline, invert) {
+        const sparkEl = document.getElementById(id);
+        if (!sparkEl) return;
+        const cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
+        const base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
+        if (cur == null || base == null) {
+          sparkEl.removeAttribute('data-tone');
+          return;
+        }
+        const delta = invert ? (base - cur) : (cur - base);
+        sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
+      }
+      setTone('cond-kpi-items-sold-sparkline', itemsSold, itemsSoldCompare, false);
+      setTone('cond-kpi-orders-fulfilled-sparkline', ordersFulfilled, ordersFulfilledCompare, false);
+      setTone('cond-kpi-returns-sparkline', returnsAmount, returnsCompare, true);
+      setTone('cond-kpi-cogs-sparkline', cogsAmount, cogsCompare, true);
+
+      if (!condensedSparklineOverrides || typeof condensedSparklineOverrides !== 'object') condensedSparklineOverrides = {};
+      condensedSparklineOverrides['cond-kpi-orders-fulfilled-sparkline'] = (ordersFulfilled != null && ordersFulfilledCompare != null) ? [ordersFulfilledCompare, ordersFulfilled] : null;
+      condensedSparklineOverrides['cond-kpi-returns-sparkline'] = (returnsAmount != null && returnsCompare != null) ? [returnsCompare, returnsAmount] : null;
+      condensedSparklineOverrides['cond-kpi-cogs-sparkline'] = (cogsAmount != null && cogsCompare != null) ? [cogsCompare, cogsAmount] : null;
+
+      try { renderCondensedSparklines(condensedSeriesCache || sparklineHistorySeriesCache || []); } catch (_) {}
 
       try { updateCondensedKpiOverflow(); } catch (_) {}
     }
@@ -8990,7 +9103,7 @@ const API = '';
 
           var fillCfg = t === 'bar'
             ? { type: 'solid', opacity: 1 }
-            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.52 : 0.24, opacityTo: t === 'area' ? 0.14 : 0.06 } };
+            : { type: 'gradient', gradient: { opacityFrom: t === 'area' ? 0.4 : 0.24, opacityTo: t === 'area' ? 0.05 : 0.06 } };
           var chart = new ApexCharts(sparkEl, {
             chart: { type: t, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: nums }],
@@ -9057,6 +9170,21 @@ const API = '';
         var compareAovTone = compareTone && typeof compareTone.aov === 'number' ? compareTone.aov : null;
         var compareBounceTone = compareTone && typeof compareTone.bounce === 'number' ? compareTone.bounce : null;
         var compareRoasTone = compareTone && typeof compareTone.roas === 'number' ? compareTone.roas : null;
+        var extrasTone = (kpiExpandedExtrasRange === kpiRangeForTone) ? (kpiExpandedExtrasCache || null) : null;
+        var currentItemsTone = extrasTone && typeof extrasTone.itemsSold === 'number' ? extrasTone.itemsSold : null;
+        var compareItemsTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.itemsSold === 'number' ? extrasTone.compare.itemsSold : null;
+        var currentFulfilledTone = extrasTone && typeof extrasTone.ordersFulfilled === 'number' ? extrasTone.ordersFulfilled : null;
+        var compareFulfilledTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.ordersFulfilled === 'number' ? extrasTone.compare.ordersFulfilled : null;
+        var currentReturnsTone = extrasTone && typeof extrasTone.returns === 'number' ? extrasTone.returns : null;
+        var compareReturnsTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.returns === 'number' ? extrasTone.compare.returns : null;
+        var currentCogsTone = extrasTone && typeof extrasTone.cogs === 'number' ? extrasTone.cogs : null;
+        var compareCogsTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.cogs === 'number' ? extrasTone.compare.cogs : null;
+        function sparkSeriesFromCompare(current, baseline, fallbackDataArr) {
+          var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
+          var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
+          if (cur != null && base != null) return [base, cur];
+          return Array.isArray(fallbackDataArr) ? fallbackDataArr : [];
+        }
         var revenueSpark = sparklineSeries.map(function(d) { return d.revenue; });
         var sessionsSpark = sparklineSeries.map(function(d) { return d.sessions; });
         var ordersSpark = sparklineSeries.map(function(d) { return d.orders; });
@@ -9064,6 +9192,10 @@ const API = '';
         var convSpark = sparklineSeries.map(function(d) { return d.convRate; });
         var aovSpark = sparklineSeries.map(function(d) { return d.aov; });
         var bounceSpark = sparklineSeries.map(function(d) { return d.bounceRate; });
+        var itemsSpark = sparklineSeries.map(function(d) { return d.units || 0; });
+        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, []);
+        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, []);
+        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, []);
         var roasSpark = sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
@@ -9077,6 +9209,10 @@ const API = '';
         renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'area');
         renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'area');
         renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'area');
+        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'area');
+        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'area');
+        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'area');
+        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'area');
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
