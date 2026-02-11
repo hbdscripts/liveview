@@ -228,6 +228,10 @@ Edge (optional):
   - Added y-axis headroom + NaN/undefined sanitization in chart rendering to prevent clipped lines and “blank” sessions charts.
 - Google Ads overview chart:
   - Removed fragile y-axis index wiring and added guards + render error fallbacks so the chart loads reliably.
+- Google Ads table:
+  - Restored totals-row alignment by using the same sticky-width wrapper rules for the footer totals row as the main table.
+- Channels/Type tables:
+  - Fixed hover highlight for the Sessions column (2nd column) so it matches the rest of the row.
 
 2026-02-11
 - Dashboard KPI sparkline behavior + styling:
