@@ -13,6 +13,38 @@
     iconSettingsMenu: 'fa-jelly-filled',
     iconTableHeading: 'fa-jelly-filled',
   };
+  var ICON_GLYPH_DEFAULTS = {
+    'mobile-menu': 'fa-bars',
+    'mobile-date': 'fa-calendar-days',
+    'topnav-date-chevron': 'fa-chevron-down',
+    'nav-toggle-dashboard': 'fa-table-cells-large',
+    'nav-toggle-breakdown': 'fa-chart-pie',
+    'nav-toggle-traffic': 'fa-route',
+    'nav-toggle-integrations': 'fa-puzzle-piece',
+    'nav-toggle-tools': 'fa-screwdriver-wrench',
+    'nav-toggle-settings': 'fa-gear',
+    'nav-item-overview': 'fa-house',
+    'nav-item-live': 'fa-satellite-dish',
+    'nav-item-sales': 'fa-cart-shopping',
+    'nav-item-table': 'fa-table',
+    'nav-item-countries': 'fa-globe',
+    'nav-item-products': 'fa-box-open',
+    'nav-item-channels': 'fa-diagram-project',
+    'nav-item-type': 'fa-table-cells',
+    'nav-item-ads': 'fa-rectangle-ad',
+    'nav-item-tools': 'fa-toolbox',
+    'nav-item-settings': 'fa-gear',
+    'nav-item-refresh': 'fa-rotate-right',
+    'nav-item-sound-on': 'fa-volume-high',
+    'nav-item-sound-off': 'fa-volume-xmark',
+    'nav-item-theme': 'fa-palette',
+    'nav-item-signout': 'fa-right-from-bracket',
+    'table-icon-cr': 'fa-percent',
+    'table-icon-orders': 'fa-box-open',
+    'table-icon-sessions': 'fa-users',
+    'table-icon-revenue': 'fa-sterling-sign',
+    'table-icon-clicks': 'fa-hand-pointer',
+  };
 
   var TI_TO_FA = {
     'settings': 'fa-jelly fa-gear',
@@ -64,6 +96,15 @@
     return fallback;
   }
 
+  function normalizeIconGlyph(value, fallback) {
+    var raw = value == null ? '' : String(value).trim().toLowerCase();
+    if (!raw) return fallback;
+    var m = raw.match(/fa-[a-z0-9-]+/);
+    if (m && m[0]) return m[0];
+    if (/^[a-z0-9-]+$/.test(raw)) return 'fa-' + raw;
+    return fallback;
+  }
+
   function readIconTheme() {
     function read(lsKey, fallback) {
       var v = null;
@@ -77,6 +118,17 @@
       iconSettingsMenu: read('tabler-theme-icon-settings-menu', ICON_THEME_DEFAULTS.iconSettingsMenu),
       iconTableHeading: read('tabler-theme-icon-table-heading', ICON_THEME_DEFAULTS.iconTableHeading),
     };
+  }
+
+  function readIconGlyphTheme() {
+    var out = {};
+    Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (key) {
+      var lsKey = 'tabler-theme-icon-glyph-' + key;
+      var raw = null;
+      try { raw = localStorage.getItem(lsKey); } catch (_) { raw = null; }
+      out[key] = normalizeIconGlyph(raw, ICON_GLYPH_DEFAULTS[key]);
+    });
+    return out;
   }
 
   function resolveIconContext(el) {
@@ -99,13 +151,45 @@
     return hasFa;
   }
 
-  function applyIconStyle(el, settings) {
+  function currentGlyphClass(el) {
+    if (!el || !el.classList) return null;
+    var glyph = null;
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls === 'fa-fw') return;
+      if (ICON_STYLE_CLASSES.indexOf(cls) >= 0) return;
+      if (cls.indexOf('fa-') === 0) glyph = cls;
+    });
+    return glyph;
+  }
+
+  function applyIconClasses(el, style, glyph) {
+    if (!el || !el.classList) return;
+    var keep = [];
+    var hadFaFw = el.classList.contains('fa-fw');
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls.indexOf('fa-') === 0) return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab') return;
+      keep.push(cls);
+    });
+    el.className = keep.join(' ').trim();
+    el.classList.add(style || ICON_THEME_DEFAULTS.iconDefault);
+    el.classList.add(glyph || 'fa-circle');
+    if (hadFaFw) el.classList.add('fa-fw');
+  }
+
+  function applyIconStyle(el, settings, glyphSettings) {
     if (!el || !iconHasFaGlyph(el)) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview')) return;
+    if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview-glyph')) return;
+    if (el.classList.contains('fa-brands') || el.classList.contains('fab')) return;
     var ctx = resolveIconContext(el);
     var style = settings && settings[ctx] ? settings[ctx] : ICON_THEME_DEFAULTS.iconDefault;
-    ICON_STYLE_CLASSES.forEach(function (cls) { el.classList.remove(cls); });
-    el.classList.add(style);
+    var iconKey = el.getAttribute ? (el.getAttribute('data-icon-key') || '') : '';
+    var glyph = currentGlyphClass(el);
+    if (iconKey) {
+      glyph = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : (ICON_GLYPH_DEFAULTS[iconKey] || glyph);
+    }
+    applyIconClasses(el, style, glyph);
   }
 
   function replaceTiIcons(root) {
@@ -181,8 +265,9 @@
 
   function applyIconTheme(root) {
     var settings = readIconTheme();
+    var glyphSettings = readIconGlyphTheme();
     var icons = (root || document).querySelectorAll('i');
-    icons.forEach(function (el) { applyIconStyle(el, settings); });
+    icons.forEach(function (el) { applyIconStyle(el, settings, glyphSettings); });
   }
 
   function run(root) {

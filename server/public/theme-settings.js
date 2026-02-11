@@ -1,35 +1,99 @@
 (function () {
   'use strict';
 
-  var DEFAULTS = {
-    theme: 'light',
-    'theme-primary': 'green',
-    'theme-radius': '1',
-    'theme-font': 'sans',
-    'theme-base': 'slate',
+  var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid'];
+  var ICON_STYLE_DEFAULTS = {
     'theme-icon-default': 'fa-jelly',
     'theme-icon-topnav': 'fa-jelly-filled',
     'theme-icon-dropdown': 'fa-jelly',
     'theme-icon-settings-menu': 'fa-jelly-filled',
     'theme-icon-table-heading': 'fa-jelly-filled',
   };
+  var ICON_STYLE_META = {
+    'theme-icon-default': { title: 'Global default', help: 'All icon contexts not matched below.', icon: 'fa-circle-info' },
+    'theme-icon-topnav': { title: 'Top nav toggles', help: 'Top nav menu titles.', icon: 'fa-table-cells-large' },
+    'theme-icon-dropdown': { title: 'Dropdown menu items', help: 'All dropdown item icons.', icon: 'fa-list' },
+    'theme-icon-settings-menu': { title: 'Settings left menu', help: 'Settings page sidebar icon style.', icon: 'fa-sliders' },
+    'theme-icon-table-heading': { title: 'Table heading icons', help: 'Compact sortable table heading icons.', icon: 'fa-percent' },
+  };
+  var ICON_GLYPH_DEFAULTS = {
+    'mobile-menu': 'fa-bars',
+    'mobile-date': 'fa-calendar-days',
+    'topnav-date-chevron': 'fa-chevron-down',
+    'nav-toggle-dashboard': 'fa-table-cells-large',
+    'nav-toggle-breakdown': 'fa-chart-pie',
+    'nav-toggle-traffic': 'fa-route',
+    'nav-toggle-integrations': 'fa-puzzle-piece',
+    'nav-toggle-tools': 'fa-screwdriver-wrench',
+    'nav-toggle-settings': 'fa-gear',
+    'nav-item-overview': 'fa-house',
+    'nav-item-live': 'fa-satellite-dish',
+    'nav-item-sales': 'fa-cart-shopping',
+    'nav-item-table': 'fa-table',
+    'nav-item-countries': 'fa-globe',
+    'nav-item-products': 'fa-box-open',
+    'nav-item-channels': 'fa-diagram-project',
+    'nav-item-type': 'fa-table-cells',
+    'nav-item-ads': 'fa-rectangle-ad',
+    'nav-item-tools': 'fa-toolbox',
+    'nav-item-settings': 'fa-gear',
+    'nav-item-refresh': 'fa-rotate-right',
+    'nav-item-sound-on': 'fa-volume-high',
+    'nav-item-sound-off': 'fa-volume-xmark',
+    'nav-item-theme': 'fa-palette',
+    'nav-item-signout': 'fa-right-from-bracket',
+    'table-icon-cr': 'fa-percent',
+    'table-icon-orders': 'fa-box-open',
+    'table-icon-sessions': 'fa-users',
+    'table-icon-revenue': 'fa-sterling-sign',
+    'table-icon-clicks': 'fa-hand-pointer',
+  };
+  var ICON_GLYPH_META = {
+    'mobile-menu': { title: 'Mobile menu button', help: 'Top-left mobile menu icon.', styleKey: 'theme-icon-default' },
+    'mobile-date': { title: 'Mobile date button', help: 'Top-right mobile date icon.', styleKey: 'theme-icon-default' },
+    'topnav-date-chevron': { title: 'Desktop date chevron', help: 'Chevron in desktop date selector.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-dashboard': { title: 'Dashboard toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-breakdown': { title: 'Breakdown toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-traffic': { title: 'Traffic toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-integrations': { title: 'Integrations toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-tools': { title: 'Tools toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-toggle-settings': { title: 'Settings toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
+    'nav-item-overview': { title: 'Overview menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-live': { title: 'Live view menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-sales': { title: 'Recent sales menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-table': { title: 'Table view menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-countries': { title: 'Countries menu item', help: 'Breakdown dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-products': { title: 'Products menu item', help: 'Breakdown dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-channels': { title: 'Channels menu item', help: 'Traffic dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-type': { title: 'Type menu item', help: 'Traffic dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-ads': { title: 'Google Ads menu item', help: 'Integrations dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-tools': { title: 'Tools menu item', help: 'Tools dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-settings': { title: 'Settings menu item', help: 'Tools dropdown icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-refresh': { title: 'Refresh action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-sound-on': { title: 'Sound on action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-sound-off': { title: 'Sound off action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-theme': { title: 'Theme action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
+    'nav-item-signout': { title: 'Sign out action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
+    'table-icon-cr': { title: 'Table CR icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+    'table-icon-orders': { title: 'Table orders icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+    'table-icon-sessions': { title: 'Table sessions icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+    'table-icon-revenue': { title: 'Table revenue icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+    'table-icon-clicks': { title: 'Table clicks icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
+  };
+
+  var DEFAULTS = {
+    theme: 'light',
+    'theme-primary': 'green',
+    'theme-radius': '1',
+    'theme-font': 'sans',
+    'theme-base': 'slate',
+  };
+  Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
+  Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
 
   var KEYS = Object.keys(DEFAULTS).filter(function (k) { return k !== 'theme'; });
-  var ICON_THEME_KEYS = [
-    'theme-icon-default',
-    'theme-icon-topnav',
-    'theme-icon-dropdown',
-    'theme-icon-settings-menu',
-    'theme-icon-table-heading',
-  ];
-  var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid'];
-  var ICON_ROW_META = {
-    'theme-icon-default': { title: 'Global default', help: 'All icon contexts not matched below.', icon: 'fa-circle-info' },
-    'theme-icon-topnav': { title: 'Top nav toggles', help: 'Top nav menu titles (Dashboard/Breakdown/Traffic/etc).', icon: 'fa-table-cells-large' },
-    'theme-icon-dropdown': { title: 'Dropdown menu items', help: 'All dropdown item icons including Settings menu.', icon: 'fa-list' },
-    'theme-icon-settings-menu': { title: 'Settings left menu', help: 'Left-side Settings page tab icons.', icon: 'fa-sliders' },
-    'theme-icon-table-heading': { title: 'Table heading short icons', help: 'Compact icons in sortable table headers.', icon: 'fa-percent' },
-  };
+  var ICON_STYLE_KEYS = Object.keys(ICON_STYLE_DEFAULTS);
+  var ICON_GLYPH_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
 
   // Primary color map: name -> [hex, r, g, b]
   var PRIMARY_COLORS = {
@@ -95,6 +159,19 @@
     return fallback;
   }
 
+  function normalizeIconGlyph(value, fallback) {
+    var raw = value == null ? '' : String(value).trim().toLowerCase();
+    if (!raw) return fallback;
+    var m = raw.match(/fa-[a-z0-9-]+/);
+    if (m && m[0]) return m[0];
+    if (/^[a-z0-9-]+$/.test(raw)) return 'fa-' + raw;
+    return fallback;
+  }
+
+  function glyphNameFromThemeKey(themeKey) {
+    return String(themeKey || '').replace(/^theme-icon-glyph-/, '');
+  }
+
   function triggerIconThemeRefresh() {
     try {
       window.dispatchEvent(new CustomEvent('kexo:icon-theme-changed'));
@@ -152,7 +229,7 @@
           root.style.setProperty('--tblr-gray-' + k, palette[k]);
         });
       }
-    } else if (ICON_THEME_KEYS.indexOf(key) >= 0) {
+    } else if (ICON_STYLE_KEYS.indexOf(key) >= 0 || ICON_GLYPH_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
   }
@@ -180,12 +257,8 @@
         KEYS.forEach(function (key) {
           var dbKey = key.replace(/-/g, '_');
           var val = data[dbKey] || data[key];
-          if (val) {
-            setStored(key, val);
-            applyTheme(key, val);
-          } else {
-            applyTheme(key, DEFAULTS[key]);
-          }
+          if (val) setStored(key, val);
+          applyTheme(key, val || DEFAULTS[key]);
         });
         syncUI();
       })
@@ -213,9 +286,14 @@
     if (!form) return;
     KEYS.forEach(function (key) {
       var val = getStored(key) || DEFAULTS[key];
-      if (ICON_THEME_KEYS.indexOf(key) >= 0) {
-        var input = form.querySelector('[name="' + key + '"]');
-        if (input) input.value = normalizeIconStyle(val, DEFAULTS[key]);
+      if (ICON_STYLE_KEYS.indexOf(key) >= 0) {
+        var styleInput = form.querySelector('[name="' + key + '"]');
+        if (styleInput) styleInput.value = normalizeIconStyle(val, DEFAULTS[key]);
+        return;
+      }
+      if (ICON_GLYPH_KEYS.indexOf(key) >= 0) {
+        var glyphInput = form.querySelector('[name="' + key + '"]');
+        if (glyphInput) glyphInput.value = normalizeIconGlyph(val, DEFAULTS[key]);
         return;
       }
       var radios = form.querySelectorAll('[name="' + key + '"]');
@@ -224,7 +302,69 @@
     refreshIconPreviews(form);
   }
 
+  function styleInputCard(key) {
+    var meta = ICON_STYLE_META[key] || { title: key, help: '', icon: 'fa-circle-info' };
+    var inputId = 'theme-input-' + key;
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<i class="fa-jelly ' + meta.icon + ' me-2" data-theme-icon-preview="' + key + '" aria-hidden="true"></i>' +
+            '<strong>' + meta.title + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
+          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" data-theme-icon-style-input="' + key + '" placeholder="' + DEFAULTS[key] + '" />' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function glyphInputCard(key) {
+    var name = glyphNameFromThemeKey(key);
+    var meta = ICON_GLYPH_META[name] || { title: name, help: '', styleKey: 'theme-icon-default' };
+    var inputId = 'theme-input-' + key;
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<i class="fa-jelly ' + ICON_GLYPH_DEFAULTS[name] + ' me-2" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></i>' +
+            '<strong>' + meta.title + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
+          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '" />' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function radioCard(name, value, label) {
+    var id = 'theme-opt-' + name + '-' + (value || 'default');
+    return '<label class="form-selectgroup-item flex-fill">' +
+      '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
+      '<div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">' +
+        '<span class="form-selectgroup-label-content">' + label + '</span>' +
+      '</div>' +
+    '</label>';
+  }
+
+  function colorCard(name, value, label) {
+    var color = PRIMARY_COLORS[value];
+    var swatch = color ? '<span class="avatar avatar-xs rounded-circle me-2" style="background:' + color[0] + '"></span>' : '';
+    var id = 'theme-opt-' + name + '-' + (value || 'default');
+    return '<div class="col-4">' +
+      '<label class="form-selectgroup-item flex-fill">' +
+        '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
+        '<div class="form-selectgroup-label d-flex align-items-center p-2">' +
+          swatch +
+          '<span class="form-selectgroup-label-content" style="font-size:.8125rem">' + label + '</span>' +
+        '</div>' +
+      '</label>' +
+    '</div>';
+  }
+
   function getThemeFormHtml() {
+    var styleGrid = ICON_STYLE_KEYS.map(function (k) { return styleInputCard(k); }).join('');
+    var glyphGrid = ICON_GLYPH_KEYS.map(function (k) { return glyphInputCard(k); }).join('');
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -233,15 +373,15 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Control icon style classes with live preview. Applies immediately, and Save persists defaults for all users.</div>' +
-        iconInputRow('theme-icon-default') +
-        iconInputRow('theme-icon-topnav') +
-        iconInputRow('theme-icon-dropdown') +
-        iconInputRow('theme-icon-settings-menu') +
-        iconInputRow('theme-icon-table-heading') +
+        '<div class="text-secondary mb-3">Control icon style classes and specific icon glyphs with live preview. Desktop shows a 3-column grid; mobile stacks to one per line.</div>' +
+        '<h4 class="mb-2">Style rules</h4>' +
+        '<div class="row g-3">' + styleGrid + '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Icon glyph overrides</h4>' +
+        '<div class="row g-3">' + glyphGrid + '</div>' +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh">Refresh previews</button>' +
-          '<span class="text-secondary small">Debounced preview updates when typing stops.</span>' +
+          '<span class="text-secondary small">Debounced preview updates after typing stops.</span>' +
         '</div>' +
       '</div>' +
 
@@ -303,42 +443,6 @@
     '</div>';
   }
 
-  function iconInputRow(key) {
-    var meta = ICON_ROW_META[key] || { title: key, help: '', icon: 'fa-circle-info' };
-    var inputId = 'theme-input-' + key;
-    return '<div class="input-group mb-2">' +
-      '<span class="input-group-text"><i class="fa-jelly ' + meta.icon + '" data-theme-icon-preview="' + key + '" aria-hidden="true"></i></span>' +
-      '<span class="input-group-text" style="min-width:160px;justify-content:flex-start;">' + meta.title + '</span>' +
-      '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" data-theme-icon-input="' + key + '" placeholder="' + DEFAULTS[key] + '" />' +
-      '<span class="input-group-text text-secondary">' + meta.help + '</span>' +
-    '</div>';
-  }
-
-  function radioCard(name, value, label) {
-    var id = 'theme-opt-' + name + '-' + (value || 'default');
-    return '<label class="form-selectgroup-item flex-fill">' +
-      '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
-      '<div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">' +
-        '<span class="form-selectgroup-label-content">' + label + '</span>' +
-      '</div>' +
-    '</label>';
-  }
-
-  function colorCard(name, value, label) {
-    var color = PRIMARY_COLORS[value];
-    var swatch = color ? '<span class="avatar avatar-xs rounded-circle me-2" style="background:' + color[0] + '"></span>' : '';
-    var id = 'theme-opt-' + name + '-' + (value || 'default');
-    return '<div class="col-4">' +
-      '<label class="form-selectgroup-item flex-fill">' +
-        '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
-        '<div class="form-selectgroup-label d-flex align-items-center p-2">' +
-          swatch +
-          '<span class="form-selectgroup-label-content" style="font-size:.8125rem">' + label + '</span>' +
-        '</div>' +
-      '</label>' +
-    '</div>';
-  }
-
   function wireThemeSubTabs(root) {
     var tabs = root ? root.querySelectorAll('[data-theme-subtab]') : null;
     var panels = root ? root.querySelectorAll('[data-theme-subpanel]') : null;
@@ -362,19 +466,35 @@
     activate('icons');
   }
 
-  function setPreviewIconStyle(previewEl, styleCls) {
+  function setPreviewIconClass(previewEl, styleCls, glyphCls) {
     if (!previewEl) return;
-    ICON_STYLE_CLASSES.forEach(function (cls) { previewEl.classList.remove(cls); });
-    previewEl.classList.add(normalizeIconStyle(styleCls, 'fa-jelly'));
+    previewEl.className = normalizeIconStyle(styleCls, 'fa-jelly') + ' ' + normalizeIconGlyph(glyphCls, 'fa-circle');
+  }
+
+  function styleForGlyphPreview(formEl, glyphThemeKey) {
+    var glyphName = glyphNameFromThemeKey(glyphThemeKey);
+    var meta = ICON_GLYPH_META[glyphName] || { styleKey: 'theme-icon-default' };
+    var styleKey = meta.styleKey || 'theme-icon-default';
+    var styleInput = formEl ? formEl.querySelector('[name="' + styleKey + '"]') : null;
+    var styleVal = styleInput && styleInput.value ? styleInput.value : (getStored(styleKey) || DEFAULTS[styleKey] || 'fa-jelly');
+    return normalizeIconStyle(styleVal, DEFAULTS[styleKey] || 'fa-jelly');
   }
 
   function refreshIconPreviews(formEl) {
     if (!formEl) return;
-    ICON_THEME_KEYS.forEach(function (key) {
+    ICON_STYLE_KEYS.forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       var preview = formEl.querySelector('[data-theme-icon-preview="' + key + '"]');
-      var v = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
-      setPreviewIconStyle(preview, v);
+      var styleVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
+      var glyphVal = (ICON_STYLE_META[key] && ICON_STYLE_META[key].icon) ? ICON_STYLE_META[key].icon : 'fa-circle-info';
+      setPreviewIconClass(preview, styleVal, glyphVal);
+    });
+    ICON_GLYPH_KEYS.forEach(function (key) {
+      var input = formEl.querySelector('[name="' + key + '"]');
+      var preview = formEl.querySelector('[data-theme-icon-preview-glyph="' + key + '"]');
+      var glyphVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
+      var styleVal = styleForGlyphPreview(formEl, key);
+      setPreviewIconClass(preview, styleVal, glyphVal);
     });
   }
 
@@ -382,7 +502,7 @@
     if (!formEl) return;
     var debounceTimers = {};
 
-    function debouncedIconApply(name, value) {
+    function debouncedApply(name, value) {
       if (debounceTimers[name]) clearTimeout(debounceTimers[name]);
       debounceTimers[name] = setTimeout(function () {
         applyTheme(name, value);
@@ -393,19 +513,23 @@
       var name = e && e.target ? e.target.name : '';
       var val = e && e.target && e.target.value != null ? String(e.target.value).trim() : '';
       if (!name) return;
+      if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
+      if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
       setStored(name, val);
       applyTheme(name, val);
-      if (ICON_THEME_KEYS.indexOf(name) >= 0) refreshIconPreviews(formEl);
+      refreshIconPreviews(formEl);
     });
 
-    ICON_THEME_KEYS.forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
         var val = String(input.value || '').trim();
+        if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
+        if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
         setStored(key, val);
         refreshIconPreviews(formEl);
-        debouncedIconApply(key, val);
+        debouncedApply(key, val);
       });
     });
 
@@ -444,7 +568,6 @@
   // Build offcanvas and inject into page
   function injectOffcanvas() {
     if (document.getElementById('theme-offcanvas')) return;
-
     var html = '<div class="offcanvas offcanvas-end" tabindex="-1" id="theme-offcanvas" aria-labelledby="theme-offcanvas-label">' +
       '<div class="offcanvas-header">' +
         '<h2 class="offcanvas-title" id="theme-offcanvas-label">Theme Settings</h2>' +
@@ -452,7 +575,6 @@
       '</div>' +
       '<div class="offcanvas-body">' + getThemeFormHtml() + '</div>' +
     '</div>';
-
     document.body.insertAdjacentHTML('beforeend', html);
     bindThemeForm(document.getElementById('theme-settings-form'));
   }
@@ -477,7 +599,6 @@
   function bindThemeButtons() {
     var isSettingsPage = document.body.getAttribute('data-page') === 'settings';
     if (!isSettingsPage) injectOffcanvas();
-
     var sidebarBtn = document.getElementById('theme-settings-btn');
     var isSettingsLink = sidebarBtn && sidebarBtn.getAttribute('href') && String(sidebarBtn.getAttribute('href')).indexOf('/settings') >= 0;
     if (sidebarBtn && !isSettingsLink) {

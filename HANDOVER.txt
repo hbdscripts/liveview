@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-11 (Jelly icon policy + Theme Icons tab with persisted mappings)
+Last updated: 2026-02-11 (Theme Icons grid + per-icon glyph overrides)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -210,6 +210,9 @@ Edge (optional):
   - Added persisted theme icon settings keys to `/api/theme-defaults` (`theme_icon_default`, `theme_icon_topnav`, `theme_icon_dropdown`, `theme_icon_settings_menu`, `theme_icon_table_heading`).
   - `server/public/theme-settings.js` now renders Theme sub-tabs with Tabler underline tabs (`Icons`, `Color`, `Fonts`), includes icon-style input boxes with live preview, debounced apply, and persisted Save.
   - `server/public/fontawesome-icons.js` now enforces icon context mapping at runtime and supports refresh via `kexo:icon-theme-changed`.
+  - Theme `Icons` tab now uses a responsive grid (`3` columns on desktop, one-per-line on mobile) for both style rules and per-icon glyph inputs.
+  - Added persisted per-icon glyph overrides (`theme_icon_glyph_*`) for mobile controls, top-nav toggles, dropdown items, and compact table heading icons.
+  - Header/table icon nodes now include `data-icon-key` hooks so glyph overrides apply immediately via runtime refresh.
 - KPI parity + logic cleanup:
   - Dashboard now exposes all 12 KPI cards (adds COGS, Fulfilled, Returns, Items ordered) and uses label parity with condensed chips.
   - Condensed strip now includes ADS ROAS and COGS chips (12 total).
