@@ -15,7 +15,7 @@ IMPORTANT (for future agents)
 ## What KEXO looks like today (UX)
 
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
-- Top strip: live visitor count (left), centered logo, Settings dropdown (right).
+- Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with flag – product – sale value (10s auto-close; MP3 cha-ching).
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 
@@ -221,6 +221,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Sale notification rework: replaced top-right toast modal with **tblr-banner** overlay on the desktop top strip. Banner shows flag – product – sale value, center-aligned, with close button far right; auto-closes after 10s; MP3 cha-ching preserved. Markup moved to `header.html` so it appears on all pages (fixes no-show on settings/variants/compare-conversion-rate). Removed old toast from 10 page templates; removed `sale-toast-time` icon key.
 
 2026-02-12 (latest)
 - Variants mappings now start **blank/custom-first** (no shipped default mapping tables/rules). Seed tables using Suggestions or build manually.

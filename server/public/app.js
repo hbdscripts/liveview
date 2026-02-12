@@ -3207,8 +3207,6 @@ const API = '';
       const product = data.productTitle != null ? String(data.productTitle) : '';
       const amountRaw = data.amountGbp != null ? Number(data.amountGbp) : null;
       const amountGbp = (amountRaw != null && Number.isFinite(amountRaw)) ? amountRaw : null;
-      const thumbSrc = resolveSaleToastThumbSrc(data);
-      const timeText = formatSaleTime(data.createdAt);
 
       saleToastLastPayload = {
         ...data,
@@ -3218,22 +3216,11 @@ const API = '';
       };
 
       const inlineFlagEl = document.getElementById('sale-toast-inline-flag');
-      const titleEl = document.getElementById('sale-toast-title');
       const productEl = document.getElementById('sale-toast-product');
       const amountEl = document.getElementById('sale-toast-amount');
-      const thumbEl = document.getElementById('sale-toast-thumb');
-      const timeEl = document.getElementById('sale-toast-time');
-      const titleText = (cc && cc !== 'XX') ? countryLabelFull(cc) : 'Unknown';
       if (inlineFlagEl) inlineFlagEl.innerHTML = flagImgSmall(cc);
-      if (titleEl) titleEl.textContent = titleText || 'Unknown';
       if (productEl) productEl.textContent = product && product.trim() ? product : '\u2014';
       if (amountEl) amountEl.textContent = (amountGbp != null) ? (formatRevenue(amountGbp) || '\u00A3\u2014') : '\u00A3\u2014';
-      if (thumbEl) {
-        thumbEl.innerHTML = thumbSrc
-          ? '<img src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.classList.add(\'is-hidden\')">'
-          : '<span class="sale-toast-thumb-placeholder" aria-hidden="true"></span>';
-      }
-      if (timeEl) timeEl.textContent = timeText;
       if (data.createdAt != null) {
         try { setLastSaleAt(data.createdAt); } catch (_) {}
       }
@@ -3255,38 +3242,34 @@ const API = '';
     }
 
     function showSaleToast() {
-      const overlay = document.getElementById('sale-toast-overlay');
-      const toast = document.getElementById('sale-toast');
-      if (!overlay || !toast) return;
+      const banner = document.getElementById('sale-toast-banner');
+      if (!banner) return;
       saleToastActive = true;
       saleToastLastShownAt = Date.now();
-      toast.classList.remove('settled');
-      overlay.setAttribute('aria-hidden', 'false');
-      toast.setAttribute('aria-hidden', 'false');
-      requestAnimationFrame(function() { toast.classList.add('active'); });
+      banner.removeAttribute('hidden');
+      banner.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(function() { banner.classList.add('active'); });
     }
 
     function hideSaleToast() {
-      const overlay = document.getElementById('sale-toast-overlay');
-      const toast = document.getElementById('sale-toast');
+      const banner = document.getElementById('sale-toast-banner');
       if (saleToastHideTimer) {
         clearTimeout(saleToastHideTimer);
         saleToastHideTimer = null;
       }
-      if (!overlay || !toast) {
+      if (!banner) {
         saleToastActive = false;
         saleToastSessionId = null;
         return;
       }
-      toast.classList.remove('settled');
-      toast.classList.remove('active');
-      toast.setAttribute('aria-hidden', 'true');
-      overlay.setAttribute('aria-hidden', 'true');
+      banner.classList.remove('active');
+      banner.setAttribute('aria-hidden', 'true');
       setTimeout(function() {
+        banner.setAttribute('hidden', '');
         saleToastActive = false;
         saleToastSessionId = null;
 
-        // Sale toast indicates KPIs are about to change. Reset caches once the toast disappears.
+        // Sale banner indicates KPIs are about to change. Reset caches once the banner disappears.
         try { clearKpiLocalStorageCaches(); } catch (_) {}
         try { lastKpisFetchedAt = 0; } catch (_) {}
         try { kpiCacheRange = ''; } catch (_) {}
@@ -3300,17 +3283,6 @@ const API = '';
         try { refreshKpiExtrasSoft(); } catch (_) {}
       }, 320);
     }
-
-    (function initSaleToastTextCrispFix() {
-      const toast = document.getElementById('sale-toast');
-      if (!toast || !toast.addEventListener) return;
-      toast.addEventListener('transitionend', function(e) {
-        // When the toast finishes sliding in, drop the transform layer so text stays crisp.
-        if (!toast.classList.contains('active')) return;
-        if (e && e.propertyName && e.propertyName !== 'transform') return;
-        toast.classList.add('settled');
-      });
-    })();
 
     let latestSaleFetchInFlight = null;
     function fetchLatestSaleForToast(options = {}) {
@@ -3448,7 +3420,10 @@ const API = '';
         } catch (_) {}
       }
 
-      if (playSound) playSaleSound({ deferOnClick: true });
+      if (playSound) {
+        try { primeSaleAudio(); } catch (_) {}
+        playSaleSound({ deferOnClick: true });
+      }
 
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
       if (!persist) saleToastHideTimer = setTimeout(hideSaleToast, 10000);

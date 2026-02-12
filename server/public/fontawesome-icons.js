@@ -91,7 +91,6 @@
     'kpi-compare-refresh': 'fa-rotate-right',
     'kpi-compare-close': 'fa-xmark',
     'kpi-compare-date-info': 'fa-circle-info',
-    'sale-toast-time': 'fa-clock',
     'live-landing-entry': 'fa-circle-check',
     'live-landing-exit': 'fa-circle-check',
     'live-bought-overlay': 'fa-cart-shopping',
@@ -180,7 +179,7 @@
     if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('footer-') === 0) return 'fa-jelly';
     if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
-    if (key.indexOf('kpi-compare-') === 0 || key === 'sale-toast-time') return 'fa-light';
+    if (key.indexOf('kpi-compare-') === 0) return 'fa-light';
     if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
     if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0) return 'fa-light';
     if (key.indexOf('diag-') === 0 || key.indexOf('ads-') === 0) return 'fa-light';

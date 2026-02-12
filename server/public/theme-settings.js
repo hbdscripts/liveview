@@ -80,7 +80,6 @@
     'kpi-compare-refresh': 'fa-rotate-right',
     'kpi-compare-close': 'fa-xmark',
     'kpi-compare-date-info': 'fa-circle-info',
-    'sale-toast-time': 'fa-clock',
     'live-landing-entry': 'fa-circle-check',
     'live-landing-exit': 'fa-circle-check',
     'live-bought-overlay': 'fa-cart-shopping',
@@ -181,7 +180,7 @@
     if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('footer-') === 0) return 'fa-jelly';
     if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
-    if (key.indexOf('kpi-compare-') === 0 || key === 'sale-toast-time') return 'fa-light';
+    if (key.indexOf('kpi-compare-') === 0) return 'fa-light';
     if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
     if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0) return 'fa-light';
     if (key.indexOf('diag-') === 0 || key.indexOf('ads-') === 0) return 'fa-light';
@@ -590,7 +589,6 @@
     if (key.indexOf('footer-') === 0) return 'Footer quick-action icon. Shows in the bottom action bar on all pages.';
     if (key.indexOf('side-panel-') === 0) return 'Session details side panel icon. Shows on /dashboard/live, /dashboard/sales, and /dashboard/table.';
     if (key.indexOf('kpi-compare-') === 0) return 'KPI compare modal icon. Shows on /dashboard/overview, /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /traffic/channels, /traffic/device, /integrations/google-ads, and /tools/ads.';
-    if (key === 'sale-toast-time') return 'Sale toast time icon. Shows in the sale notification toast across dashboard, insights, traffic, integrations, and tools pages.';
     if (key === 'live-landing-entry') return 'Live table entry icon. Shows in the Landing direction column on /dashboard/live.';
     if (key === 'live-landing-exit') return 'Live table exit icon. Shows in the Landing direction column on /dashboard/live.';
     if (key === 'live-bought-overlay') return 'Live table bought overlay icon. Shows in bought-state overlays on /dashboard/live.';
