@@ -12536,7 +12536,7 @@ const API = '';
                 '<div id="product-insights-status" class="text-muted">Loading…</div>' +
                 '<div id="product-insights-body" style="display:none">' +
                   '<div class="row g-3">' +
-                    '<div class="col-12 col-lg-5">' +
+                    '<div class="col-12 col-lg-5" id="product-insights-col-left">' +
                       '<div class="card">' +
                         '<div class="card-body">' +
                           '<div class="kexo-product-gallery">' +
@@ -12568,7 +12568,7 @@ const API = '';
                         '<div class="card-body"><div id="product-insights-chart-activity" class="dash-chart-wrap" style="min-height:240px"></div></div>' +
                       '</div>' +
                     '</div>' +
-                    '<div class="col-12 col-lg-7">' +
+                    '<div class="col-12 col-lg-7" id="product-insights-col-right">' +
                       '<div class="card" data-no-card-collapse="1">' +
                         '<div class="card-header"><h3 class="card-title">Performance</h3></div>' +
                         '<div class="card-body">' +
@@ -12652,7 +12652,7 @@ const API = '';
           }, { passive: true });
         }
         try {
-          window.addEventListener('resize', function() { syncThumbStripArrows(); });
+          window.addEventListener('resize', function() { syncThumbStripArrows(); syncMainImageBalance(); });
         } catch (_) {}
 
         // When collapsed chart cards are expanded, render charts at the right size.
@@ -12660,6 +12660,7 @@ const API = '';
           var btn = e && e.target && e.target.closest ? e.target.closest('.kexo-card-collapse-toggle') : null;
           if (!btn) return;
           setTimeout(function() {
+            try { syncMainImageBalance(); } catch (_) {}
             try { if (lastPayload) renderCharts(lastPayload); } catch (_) {}
           }, 160);
         });
@@ -12876,6 +12877,137 @@ const API = '';
         rightBtn.disabled = !hasOverflow || (strip.scrollLeft || 0) >= (max - 1);
       }
 
+      function isDesktopModalLayout() {
+        try { return !!(window.matchMedia && window.matchMedia('(min-width: 992px)').matches); } catch (_) { return false; }
+      }
+
+      function isVisibleEl(el) {
+        if (!el) return false;
+        if (!el.offsetParent) return false;
+        if ((el.clientWidth || 0) < 8 || (el.clientHeight || 0) < 8) return false;
+        return true;
+      }
+
+      function unionHeightOfCards(cards) {
+        var top = null;
+        var bottom = null;
+        (cards || []).forEach(function(card) {
+          if (!card || !card.getBoundingClientRect) return;
+          if (!isVisibleEl(card)) return;
+          var r = card.getBoundingClientRect();
+          if (top == null || r.top < top) top = r.top;
+          if (bottom == null || r.bottom > bottom) bottom = r.bottom;
+        });
+        if (top == null || bottom == null) return 0;
+        return Math.max(0, bottom - top);
+      }
+
+      function syncMainImageBalance() {
+        ensureDom();
+        var wrap = modalEl ? modalEl.querySelector('.product-insights-main-img-wrap') : null;
+        if (!wrap) return;
+
+        if (!isDesktopModalLayout()) {
+          wrap.style.height = '';
+          return;
+        }
+
+        var colLeft = document.getElementById('product-insights-col-left');
+        var colRight = document.getElementById('product-insights-col-right');
+        if (!colLeft || !colRight) {
+          wrap.style.height = '';
+          return;
+        }
+
+        // If charts are expanded, let the gallery be its natural size (square).
+        var revCard = colLeft.querySelector('[data-collapse-id="product-insights-revenue"]');
+        var demCard = colLeft.querySelector('[data-collapse-id="product-insights-demand"]');
+        var hasExpandedCharts =
+          (revCard && !revCard.classList.contains('kexo-card-collapsed')) ||
+          (demCard && !demCard.classList.contains('kexo-card-collapsed'));
+        if (hasExpandedCharts) {
+          wrap.style.height = '';
+          return;
+        }
+
+        var leftCards = Array.from(colLeft.querySelectorAll(':scope > .card'));
+        var rightCards = Array.from(colRight.querySelectorAll(':scope > .card'));
+        if (!leftCards.length || !rightCards.length) {
+          wrap.style.height = '';
+          return;
+        }
+
+        var leftHeight = unionHeightOfCards(leftCards);
+        var rightHeight = unionHeightOfCards(rightCards);
+        if (!leftHeight || !rightHeight) {
+          wrap.style.height = '';
+          return;
+        }
+
+        var wrapRect = wrap.getBoundingClientRect();
+        var wrapH = wrapRect.height || 0;
+        var wrapW = wrapRect.width || 0;
+        if (!wrapH || !wrapW) {
+          wrap.style.height = '';
+          return;
+        }
+
+        var fixedLeft = leftHeight - wrapH;
+        if (!isFinite(fixedLeft)) fixedLeft = 0;
+        var naturalSquare = wrapW; // default via aspect-ratio: 1/1
+
+        // Target = right content height, but clamp so the image doesn't exceed a square.
+        var target = rightHeight - fixedLeft;
+        var minH = Math.max(220, Math.round(naturalSquare * 0.6));
+        if (!isFinite(target)) target = naturalSquare;
+        target = Math.max(minH, Math.min(naturalSquare, target));
+
+        // If we're basically square, clear the override.
+        if (Math.abs(target - naturalSquare) < 10) {
+          wrap.style.height = '';
+          return;
+        }
+
+        wrap.style.height = String(Math.round(target)) + 'px';
+      }
+
+      function urlWithWidth(rawUrl, width) {
+        var raw = rawUrl != null ? String(rawUrl).trim() : '';
+        if (!raw) return '';
+        var w = Math.max(32, Math.floor(Number(width) || 1000));
+        try {
+          var u = new URL(raw, window.location.origin);
+          u.searchParams.set('width', String(w));
+          if (u.searchParams.has('height')) u.searchParams.delete('height');
+          return u.toString();
+        } catch (_) {
+          if (/[?&]width=\d+/i.test(raw)) return raw.replace(/([?&]width=)(\d+)/i, '$1' + String(w));
+          return raw;
+        }
+      }
+
+      function setMainImg(imgEl, rawUrl, alt) {
+        if (!imgEl) return;
+        var u = rawUrl != null ? String(rawUrl).trim() : '';
+        imgEl.alt = alt || '';
+        if (!u) {
+          imgEl.removeAttribute('src');
+          imgEl.removeAttribute('srcset');
+          imgEl.removeAttribute('sizes');
+          imgEl.style.opacity = '0.35';
+          return;
+        }
+
+        var widths = [360, 540, 720, 900, 1100, 1400];
+        imgEl.src = urlWithWidth(u, 900) || u;
+        imgEl.srcset = widths.map(function(w) {
+          var uu = urlWithWidth(u, w) || u;
+          return uu + ' ' + String(w) + 'w';
+        }).join(', ');
+        imgEl.sizes = '(min-width: 992px) 480px, 92vw';
+        imgEl.style.opacity = '1';
+      }
+
       function scrollThumbStrip(dir) {
         ensureDom();
         var strip = document.getElementById('product-insights-thumbs');
@@ -12959,13 +13091,11 @@ const API = '';
         if (mainImg) {
           if (isPage) {
             var u = currentPageUrl || (page && page.url ? String(page.url) : '');
-            mainImg.src = u ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(u) + '&width=1000') : '';
+            var src = u ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(u) + '&width=1000') : '';
+            setMainImg(mainImg, src, title);
           } else {
-            mainImg.src = (first && first.url) ? String(first.url) : '';
+            setMainImg(mainImg, (first && first.url) ? String(first.url) : '', title);
           }
-          mainImg.alt = title;
-          if (!mainImg.src) mainImg.style.opacity = '0.35';
-          else mainImg.style.opacity = '1';
         }
         if (thumbsEl) {
           thumbsEl.innerHTML = isPage ? '' : (images || []).slice(0, 20).map(function(img, i) {
@@ -12986,7 +13116,7 @@ const API = '';
               if (!u || !mainImg) return;
               thumbsEl.querySelectorAll('.product-insights-thumb').forEach(function(x) { x.classList.remove('active'); });
               a.classList.add('active');
-              mainImg.src = u;
+              setMainImg(mainImg, u, title);
             });
           });
         }
@@ -13072,6 +13202,7 @@ const API = '';
           }
         }
 
+        syncMainImageBalance();
         renderCharts(payload);
       }
 

@@ -501,6 +501,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 
 
 /* Product Insights modal */
+#product-insights-modal.show {
+  background: rgba(0, 0, 0, 0.78);
+}
 #product-insights-modal .kexo-product-gallery {
   display: flex;
   flex-direction: column;
@@ -577,6 +580,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 }
 #product-insights-modal .kexo-product-insights-metrics td:last-child {
   font-variant-numeric: tabular-nums;
+}
+#product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
+  padding-bottom: 1.1rem;
 }
 
 #product-insights-modal .modal-footer .btn {
