@@ -12,6 +12,8 @@
     if (typeof window !== 'undefined' && window.API) API = String(window.API || '');
   } catch (_) {}
 
+  var kpiUiConfigCache = null;
+
   var TAB_MAP = {
     general: 'settings-panel-general',
     theme: 'settings-panel-theme',
@@ -300,6 +302,7 @@
         var reporting = data.reporting || {};
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
+        kpiUiConfigCache = data.kpiUiConfig || null;
 
         var ordSel = document.getElementById('settings-orders-source');
         if (ordSel) ordSel.value = reporting.ordersSource || 'orders_shopify';
@@ -316,6 +319,8 @@
         document.querySelectorAll('#settings-asset-logo').forEach(function (el) {
           el.value = overrides.logo || '';
         });
+
+        try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
       })
       .catch(function () {});
   }
@@ -374,6 +379,295 @@
     });
   }
 
+  function defaultKpiUiConfigV1() {
+    return {
+      v: 1,
+      options: {
+        condensed: { showDelta: true, showProgress: true, showSparkline: true },
+        dashboard: { showDelta: true },
+      },
+      kpis: {
+        header: [
+          { key: 'orders', label: 'Orders', enabled: true },
+          { key: 'revenue', label: 'Revenue', enabled: true },
+          { key: 'conv', label: 'Conversion Rate', enabled: true },
+          { key: 'roas', label: 'ADS ROAS', enabled: true },
+          { key: 'sessions', label: 'Sessions', enabled: true },
+          { key: 'returning', label: 'Returning', enabled: true },
+          { key: 'aov', label: 'AOV', enabled: true },
+          { key: 'cogs', label: 'COGS', enabled: true },
+          { key: 'bounce', label: 'Bounce Rate', enabled: true },
+          { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+          { key: 'returns', label: 'Returns', enabled: true },
+          { key: 'items', label: 'Items ordered', enabled: true },
+        ],
+        dashboard: [
+          { key: 'revenue', label: 'Revenue', enabled: true },
+          { key: 'orders', label: 'Orders', enabled: true },
+          { key: 'conv', label: 'Conversion Rate', enabled: true },
+          { key: 'aov', label: 'Average Order Value', enabled: true },
+          { key: 'sessions', label: 'Sessions', enabled: true },
+          { key: 'bounce', label: 'Bounce Rate', enabled: true },
+          { key: 'returning', label: 'Returning', enabled: true },
+          { key: 'roas', label: 'ADS ROAS', enabled: true },
+          { key: 'cogs', label: 'COGS', enabled: true },
+          { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+          { key: 'returns', label: 'Returns', enabled: true },
+          { key: 'items', label: 'Items ordered', enabled: true },
+        ],
+      },
+      dateRanges: [
+        { key: 'today', label: 'Today', enabled: true },
+        { key: 'yesterday', label: 'Yesterday', enabled: true },
+        { key: '7days', label: 'Last 7 days', enabled: true },
+        { key: '14days', label: 'Last 14 days', enabled: true },
+        { key: '30days', label: 'Last 30 days', enabled: true },
+        { key: 'custom', label: 'Custom\u2026', enabled: true },
+      ],
+    };
+  }
+
+  function wireKpisLayoutSubTabs() {
+    var tabs = document.querySelectorAll('[data-settings-kpis-layout-tab]');
+    if (!tabs.length) return;
+    function activate(key) {
+      tabs.forEach(function (tab) {
+        var active = tab.getAttribute('data-settings-kpis-layout-tab') === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      ['dashboard', 'header'].forEach(function (k) {
+        var panel = document.getElementById('settings-kpis-layout-panel-' + k);
+        if (panel) panel.classList.toggle('active', k === key);
+      });
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-settings-kpis-layout-tab') || 'dashboard');
+      });
+    });
+    activate('dashboard');
+  }
+
+  function moveRow(row, dir) {
+    if (!row || !row.parentElement) return;
+    var tbody = row.parentElement;
+    if (dir === 'up') {
+      var prev = row.previousElementSibling;
+      if (prev) tbody.insertBefore(row, prev);
+    } else if (dir === 'down') {
+      var next = row.nextElementSibling;
+      if (next) tbody.insertBefore(next, row);
+    }
+  }
+
+  function wireReorderButtons(rootEl) {
+    if (!rootEl) return;
+    if (rootEl.getAttribute('data-kexo-reorder-wired') === '1') return;
+    try { rootEl.setAttribute('data-kexo-reorder-wired', '1'); } catch (_) {}
+    rootEl.addEventListener('click', function (e) {
+      var target = e && e.target ? e.target : null;
+      var btn = target && target.closest ? target.closest('button[data-action]') : null;
+      if (!btn) return;
+      var action = btn.getAttribute('data-action') || '';
+      if (action !== 'up' && action !== 'down') return;
+      var row = btn.closest('tr[data-kpi-key], tr[data-range-key]');
+      if (!row) return;
+      e.preventDefault();
+      moveRow(row, action);
+    });
+  }
+
+  function renderKpiTable(rootId, items, kind) {
+    var root = document.getElementById(rootId);
+    if (!root) return;
+    var rows = Array.isArray(items) ? items : [];
+    var html = '<div class="table-responsive">' +
+      '<table class="table table-sm table-vcenter mb-0">' +
+      '<thead><tr>' +
+      '<th class="w-1">On</th>' +
+      '<th>Label</th>' +
+      '<th class="text-muted">Key</th>' +
+      '<th class="text-end w-1">Order</th>' +
+      '</tr></thead><tbody>';
+    rows.forEach(function (it) {
+      if (!it) return;
+      var key = String(it.key || '').trim().toLowerCase();
+      if (!key) return;
+      var label = it.label != null ? String(it.label) : key;
+      var enabled = !!it.enabled;
+      html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
+        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+        '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+        '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+        '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+          '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+          '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+        '</div></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    root.innerHTML = html;
+    wireReorderButtons(root);
+  }
+
+  function renderDateRangesTable(rootId, items) {
+    var root = document.getElementById(rootId);
+    if (!root) return;
+    var rows = Array.isArray(items) ? items : [];
+    var html = '<div class="table-responsive">' +
+      '<table class="table table-sm table-vcenter mb-0">' +
+      '<thead><tr>' +
+      '<th class="w-1">On</th>' +
+      '<th>Label</th>' +
+      '<th class="text-muted">Key</th>' +
+      '<th class="text-end w-1">Order</th>' +
+      '</tr></thead><tbody>';
+    rows.forEach(function (it) {
+      if (!it) return;
+      var key = String(it.key || '').trim().toLowerCase();
+      if (!key) return;
+      var label = it.label != null ? String(it.label) : key;
+      var enabled = !!it.enabled;
+      var locked = key === 'today' || key === 'custom';
+      html += '<tr data-range-key="' + escapeHtml(key) + '">' +
+        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (locked ? ' disabled' : '') + '></label></td>' +
+        '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+        '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+        '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+          '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+          '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+        '</div></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    root.innerHTML = html;
+    wireReorderButtons(root);
+  }
+
+  function readKpiTable(rootId) {
+    var root = document.getElementById(rootId);
+    if (!root) return [];
+    var out = [];
+    root.querySelectorAll('tr[data-kpi-key]').forEach(function (tr) {
+      var key = (tr.getAttribute('data-kpi-key') || '').trim().toLowerCase();
+      if (!key) return;
+      var enabledEl = tr.querySelector('input[data-field="enabled"]');
+      var labelEl = tr.querySelector('input[data-field="label"]');
+      out.push({
+        key: key,
+        enabled: !!(enabledEl && enabledEl.checked),
+        label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
+      });
+    });
+    return out;
+  }
+
+  function readDateRangesTable(rootId) {
+    var root = document.getElementById(rootId);
+    if (!root) return [];
+    var out = [];
+    root.querySelectorAll('tr[data-range-key]').forEach(function (tr) {
+      var key = (tr.getAttribute('data-range-key') || '').trim().toLowerCase();
+      if (!key) return;
+      var enabledEl = tr.querySelector('input[data-field="enabled"]');
+      var labelEl = tr.querySelector('input[data-field="label"]');
+      out.push({
+        key: key,
+        enabled: !!(enabledEl && enabledEl.checked),
+        label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
+      });
+    });
+    return out;
+  }
+
+  function renderKpisUiPanel(cfg) {
+    var dashRoot = document.getElementById('settings-kpis-dashboard-root');
+    var headRoot = document.getElementById('settings-kpis-header-root');
+    var rangesRoot = document.getElementById('settings-date-ranges-root');
+    if (!dashRoot || !headRoot || !rangesRoot) return;
+    var c = cfg && typeof cfg === 'object' ? cfg : defaultKpiUiConfigV1();
+    var options = c.options || {};
+    var condensed = options.condensed || {};
+    var dashboard = options.dashboard || {};
+
+    var optCondDelta = document.getElementById('settings-kpi-opt-condensed-delta');
+    var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
+    var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
+    var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
+    if (optCondDelta) optCondDelta.checked = condensed.showDelta !== false;
+    if (optCondProg) optCondProg.checked = condensed.showProgress !== false;
+    if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
+    if (optDashDelta) optDashDelta.checked = dashboard.showDelta !== false;
+
+    renderKpiTable('settings-kpis-dashboard-root', (c.kpis && c.kpis.dashboard) ? c.kpis.dashboard : [], 'dashboard');
+    renderKpiTable('settings-kpis-header-root', (c.kpis && c.kpis.header) ? c.kpis.header : [], 'header');
+    renderDateRangesTable('settings-date-ranges-root', c.dateRanges || []);
+  }
+
+  function buildKpiUiConfigFromDom() {
+    var optCondDelta = document.getElementById('settings-kpi-opt-condensed-delta');
+    var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
+    var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
+    var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
+    return {
+      v: 1,
+      options: {
+        condensed: {
+          showDelta: !!(optCondDelta && optCondDelta.checked),
+          showProgress: !!(optCondProg && optCondProg.checked),
+          showSparkline: !!(optCondSpark && optCondSpark.checked),
+        },
+        dashboard: {
+          showDelta: !!(optDashDelta && optDashDelta.checked),
+        },
+      },
+      kpis: {
+        dashboard: readKpiTable('settings-kpis-dashboard-root'),
+        header: readKpiTable('settings-kpis-header-root'),
+      },
+      dateRanges: readDateRangesTable('settings-date-ranges-root'),
+    };
+  }
+
+  function wireKpisSaveReset() {
+    var saveBtn = document.getElementById('settings-kpis-save-btn');
+    var resetBtn = document.getElementById('settings-kpis-reset-btn');
+    var msgEl = document.getElementById('settings-kpis-msg');
+    if (!saveBtn || !resetBtn) return;
+
+    function setMsg(t, ok) {
+      if (!msgEl) return;
+      msgEl.textContent = t || '';
+      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+    }
+
+    saveBtn.addEventListener('click', function () {
+      var cfg = buildKpiUiConfigFromDom();
+      setMsg('Saving\u2026', true);
+      saveSettings({ kpiUiConfig: cfg })
+        .then(function (r) {
+          if (r && r.ok) {
+            kpiUiConfigCache = r.kpiUiConfig || cfg;
+            setMsg('Saved.', true);
+            try {
+              if (window && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('kexo:kpiUiConfigUpdated', { detail: kpiUiConfigCache }));
+              }
+            } catch (_) {}
+          } else {
+            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+          }
+        })
+        .catch(function () { setMsg('Save failed', false); });
+    });
+
+    resetBtn.addEventListener('click', function () {
+      renderKpisUiPanel(defaultKpiUiConfigV1());
+      setMsg('Defaults loaded. Press Save to apply.', true);
+    });
+  }
+
   function init() {
     var initialTab = getTabFromQuery() || getTabFromHash() || 'general';
     activateTab(initialTab);
@@ -396,6 +690,8 @@
     wireAssets();
     wireIntegrationsSubTabs();
     wireGoogleAdsActions();
+    wireKpisLayoutSubTabs();
+    wireKpisSaveReset();
   }
 
   if (document.readyState === 'loading') {

@@ -1016,6 +1016,29 @@ html[data-bs-theme="dark"] .report-build-wrap {
   align-items: flex-end;
 }
 
+.dash-kpi-delta {
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  white-space: nowrap;
+  color: var(--tblr-secondary, #626976);
+}
+.dash-kpi-delta i {
+  font-size: .85em;
+}
+.dash-kpi-delta.is-up {
+  color: var(--tblr-primary, #3eb3ab);
+}
+.dash-kpi-delta.is-down {
+  color: var(--tblr-danger, #d63939);
+}
+.dash-kpi-delta.is-flat {
+  color: var(--tblr-secondary, #626976);
+}
+
 .dash-trend-delta {
   white-space: nowrap;
   display: inline-block;
@@ -1254,6 +1277,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   z-index: 1;
 }
 .kexo-kpi-chip.is-hidden { display: none !important; }
+.kexo-kpi-chip.is-user-disabled { display: none !important; }
 .kexo-kpi-chip-label {
   font-size: .6rem;
   text-transform: uppercase;
@@ -1288,6 +1312,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
   height: 4px;
   margin: 0;
   background: rgba(100, 116, 139, .16);
+}
+
+#dash-kpi-grid > .is-user-disabled {
+  display: none !important;
 }
 
 @media (max-width: 991.98px) {

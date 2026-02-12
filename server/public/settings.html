@@ -20,6 +20,8 @@
     .settings-panel.active { display: block; }
     .settings-integrations-panel { display: none; }
     .settings-integrations-panel.active { display: block; }
+    .settings-kpis-layout-panel { display: none; }
+    .settings-kpis-layout-panel.active { display: block; }
   </style>
 </head>
 <body class="" data-page="settings">
@@ -66,7 +68,6 @@
         <a href="/settings?tab=kpis" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="kpis">
           <i class="fa-jelly-filled fa-gauge-high me-2" data-icon-key="settings-tab-kpis"></i>
           KPIs &amp; Date Ranges
-          <span class="badge bg-primary-lt ms-auto">TODO</span>
         </a>
         <a href="/settings?tab=diagnostics" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="diagnostics">
           <i class="fa-jelly-filled fa-chart-line me-2" data-icon-key="settings-tab-diagnostics"></i>
@@ -280,10 +281,78 @@
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">KPIs &amp; Date Ranges</h3>
-            <span class="badge bg-primary-lt ms-auto">TODO</span>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Configure which KPIs appear in the header and which date ranges are available. Coming in a future update.</p>
+            <div class="row g-3">
+              <div class="col-12">
+                <h4 class="mb-2">KPIs</h4>
+                <p class="text-secondary mb-3">Configure labels and visibility for the dashboard KPI cards and the header KPI chips.</p>
+
+                <div class="card card-sm mb-3">
+                  <div class="card-body">
+                    <div class="row g-3">
+                      <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label mb-1">Header</label>
+                        <label class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-delta" />
+                          <span class="form-check-label">Show % change</span>
+                        </label>
+                        <label class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-progress" />
+                          <span class="form-check-label">Show progress bars</span>
+                        </label>
+                        <label class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-sparkline" />
+                          <span class="form-check-label">Show sparklines</span>
+                        </label>
+                      </div>
+                      <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label mb-1">Dashboard</label>
+                        <label class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-dashboard-delta" />
+                          <span class="form-check-label">Show % change badges</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <ul class="nav nav-underline mb-3" id="settings-kpis-layout-tabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" type="button" role="tab" data-settings-kpis-layout-tab="dashboard" aria-selected="true">Dashboard</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" type="button" role="tab" data-settings-kpis-layout-tab="header" aria-selected="false">Header</button>
+                  </li>
+                </ul>
+
+                <div id="settings-kpis-layout-panel-dashboard" class="settings-kpis-layout-panel active" role="tabpanel">
+                  <div id="settings-kpis-dashboard-root" class="dm-root">
+                    <div class="dm-loading">Loading KPIs…</div>
+                  </div>
+                </div>
+                <div id="settings-kpis-layout-panel-header" class="settings-kpis-layout-panel" role="tabpanel">
+                  <div id="settings-kpis-header-root" class="dm-root">
+                    <div class="dm-loading">Loading KPIs…</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <hr class="my-4" />
+                <h4 class="mb-2">Date Ranges</h4>
+                <p class="text-secondary mb-3">Configure which date ranges are available in the date dropdown.</p>
+                <div id="settings-date-ranges-root" class="dm-root">
+                  <div class="dm-loading">Loading date ranges…</div>
+                </div>
+              </div>
+
+              <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary" id="settings-kpis-save-btn">Save</button>
+                <button type="button" class="btn btn-outline-secondary" id="settings-kpis-reset-btn">Reset to defaults</button>
+                <span id="settings-kpis-msg" class="form-hint"></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -448,7 +448,7 @@ app.get('/', async (req, res, next) => {
     await auth.handleAppUrl(req, res, next);
     if (res.headersSent) return;
     if (res.locals && res.locals.renderEmbeddedDashboard) {
-      return sendPage(res, 'dashboard.html');
+      return sendPage(res, 'dashboard/overview.html');
     }
     if (isLoggedIn(req)) {
       return res.redirect(302, '/dashboard/overview');

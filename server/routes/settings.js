@@ -8,6 +8,191 @@ const store = require('../store');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
+const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
+
+const KPI_UI_KEYS = [
+  'orders',
+  'revenue',
+  'conv',
+  'roas',
+  'sessions',
+  'returning',
+  'aov',
+  'cogs',
+  'bounce',
+  'fulfilled',
+  'returns',
+  'items',
+];
+const KPI_UI_KEY_SET = new Set(KPI_UI_KEYS);
+const DATE_RANGE_UI_KEYS = ['today', 'yesterday', '7days', '14days', '30days', 'custom'];
+const DATE_RANGE_UI_KEY_SET = new Set(DATE_RANGE_UI_KEYS);
+
+function defaultKpiUiConfigV1() {
+  return {
+    v: 1,
+    options: {
+      condensed: {
+        showDelta: true,
+        showProgress: true,
+        showSparkline: true,
+      },
+      dashboard: {
+        showDelta: true,
+      },
+    },
+    kpis: {
+      header: [
+        { key: 'orders', label: 'Orders', enabled: true },
+        { key: 'revenue', label: 'Revenue', enabled: true },
+        { key: 'conv', label: 'Conversion Rate', enabled: true },
+        { key: 'roas', label: 'ADS ROAS', enabled: true },
+        { key: 'sessions', label: 'Sessions', enabled: true },
+        { key: 'returning', label: 'Returning', enabled: true },
+        { key: 'aov', label: 'AOV', enabled: true },
+        { key: 'cogs', label: 'COGS', enabled: true },
+        { key: 'bounce', label: 'Bounce Rate', enabled: true },
+        { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+        { key: 'returns', label: 'Returns', enabled: true },
+        { key: 'items', label: 'Items ordered', enabled: true },
+      ],
+      dashboard: [
+        { key: 'revenue', label: 'Revenue', enabled: true },
+        { key: 'orders', label: 'Orders', enabled: true },
+        { key: 'conv', label: 'Conversion Rate', enabled: true },
+        { key: 'aov', label: 'Average Order Value', enabled: true },
+        { key: 'sessions', label: 'Sessions', enabled: true },
+        { key: 'bounce', label: 'Bounce Rate', enabled: true },
+        { key: 'returning', label: 'Returning', enabled: true },
+        { key: 'roas', label: 'ADS ROAS', enabled: true },
+        { key: 'cogs', label: 'COGS', enabled: true },
+        { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+        { key: 'returns', label: 'Returns', enabled: true },
+        { key: 'items', label: 'Items ordered', enabled: true },
+      ],
+    },
+    dateRanges: [
+      { key: 'today', label: 'Today', enabled: true },
+      { key: 'yesterday', label: 'Yesterday', enabled: true },
+      { key: '7days', label: 'Last 7 days', enabled: true },
+      { key: '14days', label: 'Last 14 days', enabled: true },
+      { key: '30days', label: 'Last 30 days', enabled: true },
+      { key: 'custom', label: 'Custom\u2026', enabled: true },
+    ],
+  };
+}
+
+function safeJsonParseObject(raw) {
+  try {
+    if (!raw) return null;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (parsed && typeof parsed === 'object') return parsed;
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeText(v, fallback) {
+  const s = v == null ? '' : String(v);
+  const t = s.trim();
+  return t ? t.slice(0, 80) : (fallback || '');
+}
+
+function normalizeBool(v, fallback) {
+  if (typeof v === 'boolean') return v;
+  return !!fallback;
+}
+
+function normalizeKpiList(rawList, defaults) {
+  const byKey = {};
+  for (const d of defaults) byKey[d.key] = { key: d.key, label: d.label, enabled: !!d.enabled };
+  const out = [];
+  const seen = new Set();
+  if (Array.isArray(rawList)) {
+    for (const item of rawList) {
+      if (!item || typeof item !== 'object') continue;
+      const key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+      if (!KPI_UI_KEY_SET.has(key)) continue;
+      if (seen.has(key)) continue;
+      const def = byKey[key] || { key, label: key, enabled: true };
+      out.push({
+        key,
+        label: normalizeText(item.label, def.label),
+        enabled: normalizeBool(item.enabled, def.enabled),
+      });
+      seen.add(key);
+    }
+  }
+  for (const d of defaults) {
+    if (seen.has(d.key)) continue;
+    out.push({ key: d.key, label: d.label, enabled: !!d.enabled });
+  }
+  return out;
+}
+
+function normalizeDateRangeList(rawList, defaults) {
+  const byKey = {};
+  for (const d of defaults) byKey[d.key] = { key: d.key, label: d.label, enabled: !!d.enabled };
+  const out = [];
+  const seen = new Set();
+  if (Array.isArray(rawList)) {
+    for (const item of rawList) {
+      if (!item || typeof item !== 'object') continue;
+      const key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+      if (!DATE_RANGE_UI_KEY_SET.has(key)) continue;
+      if (seen.has(key)) continue;
+      const def = byKey[key] || { key, label: key, enabled: true };
+      out.push({
+        key,
+        label: normalizeText(item.label, def.label),
+        enabled: normalizeBool(item.enabled, def.enabled),
+      });
+      seen.add(key);
+    }
+  }
+  for (const d of defaults) {
+    if (seen.has(d.key)) continue;
+    out.push({ key: d.key, label: d.label, enabled: !!d.enabled });
+  }
+  // Guardrails: never allow disabling Today/Custom.
+  for (const it of out) {
+    if (!it || typeof it !== 'object') continue;
+    if (it.key === 'today' || it.key === 'custom') it.enabled = true;
+  }
+  return out;
+}
+
+function normalizeKpiUiConfigV1(raw) {
+  const def = defaultKpiUiConfigV1();
+  const obj = safeJsonParseObject(raw);
+  if (!obj || obj.v !== 1) return def;
+  const options = obj.options && typeof obj.options === 'object' ? obj.options : {};
+  const condensed = options.condensed && typeof options.condensed === 'object' ? options.condensed : {};
+  const dashboard = options.dashboard && typeof options.dashboard === 'object' ? options.dashboard : {};
+  const kpis = obj.kpis && typeof obj.kpis === 'object' ? obj.kpis : {};
+  const header = normalizeKpiList(kpis.header, def.kpis.header);
+  const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard);
+  const dateRanges = normalizeDateRangeList(obj.dateRanges, def.dateRanges);
+  return {
+    v: 1,
+    options: {
+      condensed: {
+        showDelta: normalizeBool(condensed.showDelta, def.options.condensed.showDelta),
+        showProgress: normalizeBool(condensed.showProgress, def.options.condensed.showProgress),
+        showSparkline: normalizeBool(condensed.showSparkline, def.options.condensed.showSparkline),
+      },
+      dashboard: {
+        showDelta: normalizeBool(dashboard.showDelta, def.options.dashboard.showDelta),
+      },
+    },
+    kpis: {
+      header,
+      dashboard: dash,
+    },
+    dateRanges,
+  };
+}
 
 function normalizePixelSessionMode(v) {
   const s = v == null ? '' : String(v).trim().toLowerCase();
@@ -15,28 +200,36 @@ function normalizePixelSessionMode(v) {
   return 'legacy';
 }
 
-async function getSettings(req, res) {
+async function readSettingsPayload() {
   let pixelSessionMode = 'legacy';
   let assetOverrides = {};
+  let kpiUiConfig = defaultKpiUiConfigV1();
   try {
     pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
   } catch (_) {}
   try {
     const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
-    if (raw && typeof raw === 'string') {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') assetOverrides = parsed;
-    }
+    const parsed = safeJsonParseObject(raw);
+    if (parsed) assetOverrides = parsed;
+  } catch (_) {}
+  try {
+    const raw = await store.getSetting(KPI_UI_CONFIG_V1_KEY);
+    kpiUiConfig = normalizeKpiUiConfigV1(raw);
   } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
-  res.setHeader('Cache-Control', 'no-store');
-  res.json({
+  return {
     ok: true,
     pixelSessionMode,
     sharedSessionTtlMinutes: 30,
     assetOverrides,
     reporting,
-  });
+    kpiUiConfig,
+  };
+}
+
+async function getSettings(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await readSettingsPayload());
 }
 
 async function postSettings(req, res) {
@@ -46,13 +239,17 @@ async function postSettings(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
 
   // Pixel session mode
-  let nextMode = body.pixelSessionMode;
-  if (typeof nextMode === 'boolean') nextMode = nextMode ? 'shared_ttl' : 'legacy';
-  if (typeof body.sharedSessionFixEnabled === 'boolean') nextMode = body.sharedSessionFixEnabled ? 'shared_ttl' : 'legacy';
-
-  const normalized = normalizePixelSessionMode(nextMode);
   try {
-    await store.setSetting(PIXEL_SESSION_MODE_KEY, normalized);
+    const hasPixelModeField =
+      Object.prototype.hasOwnProperty.call(body, 'pixelSessionMode') ||
+      Object.prototype.hasOwnProperty.call(body, 'sharedSessionFixEnabled');
+    if (hasPixelModeField) {
+      let nextMode = body.pixelSessionMode;
+      if (typeof nextMode === 'boolean') nextMode = nextMode ? 'shared_ttl' : 'legacy';
+      if (typeof body.sharedSessionFixEnabled === 'boolean') nextMode = body.sharedSessionFixEnabled ? 'shared_ttl' : 'legacy';
+      const normalized = normalizePixelSessionMode(nextMode);
+      await store.setSetting(PIXEL_SESSION_MODE_KEY, normalized);
+    }
   } catch (err) {
     return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save setting' });
   }
@@ -82,8 +279,24 @@ async function postSettings(req, res) {
     }
   }
 
+  // KPI + date range UI config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'kpiUiConfig')) {
+    try {
+      if (body.kpiUiConfig == null) {
+        await store.setSetting(KPI_UI_CONFIG_V1_KEY, '');
+      } else {
+        const normalized = normalizeKpiUiConfigV1(body.kpiUiConfig);
+        const json = JSON.stringify(normalized);
+        if (json.length > 50000) throw new Error('KPI UI config too large');
+        await store.setSetting(KPI_UI_CONFIG_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save KPI UI config' });
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, pixelSessionMode: normalized });
+  res.json(await readSettingsPayload());
 }
 
 // ── Theme defaults (shared across all logins) ──────────────────────────────

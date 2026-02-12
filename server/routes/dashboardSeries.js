@@ -1176,36 +1176,47 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     }
   }
 
-  if (bucket === 'day') {
-    let adSpendPerDay = {};
-    try {
-      const adsDb = require('../ads/adsDb');
-      if (adsDb && typeof adsDb.getAdsPool === 'function') {
-        const pool = adsDb.getAdsPool();
-        if (pool) {
-          const spendRows = await pool.query(
-            `SELECT (hour_ts AT TIME ZONE 'UTC')::date::text AS day, COALESCE(SUM(spend_gbp), 0) AS spend_gbp
-             FROM google_ads_spend_hourly
-             WHERE (hour_ts AT TIME ZONE 'UTC')::date >= $1::date AND (hour_ts AT TIME ZONE 'UTC')::date <= $2::date
-             GROUP BY (hour_ts AT TIME ZONE 'UTC')::date
-             ORDER BY day`,
-            [bucketBounds[0].label, bucketBounds[bucketBounds.length - 1].label]
-          );
-          if (spendRows && spendRows.rows) {
-            for (const r of spendRows.rows) {
-              adSpendPerDay[r.day] = Math.round((Number(r.spend_gbp) || 0) * 100) / 100;
+  // Ad spend per bucket (hour/day/week): allocate hourly spend across bucket windows.
+  let adSpendByBucketLabel = {};
+  for (const b of bucketBounds) adSpendByBucketLabel[b.label] = 0;
+  try {
+    const adsDb = require('../ads/adsDb');
+    if (adsDb && typeof adsDb.getAdsPool === 'function') {
+      const pool = adsDb.getAdsPool();
+      if (pool) {
+        const startSec = overallStart / 1000;
+        const endSec = overallEnd / 1000;
+        const queryStart = startSec - 3600; // include the prior hour for partial-hour buckets
+        const spendRows = await pool.query(
+          `SELECT EXTRACT(EPOCH FROM date_trunc('hour', hour_ts))::bigint AS hour_sec,
+                  COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+           FROM google_ads_spend_hourly
+           WHERE hour_ts >= to_timestamp($1) AND hour_ts < to_timestamp($2)
+           GROUP BY 1
+           ORDER BY 1`,
+          [queryStart, endSec]
+        );
+        if (spendRows && spendRows.rows) {
+          for (const r of spendRows.rows) {
+            const hourStartMs = (Number(r.hour_sec) || 0) * 1000;
+            const hourEndMs = hourStartMs + 60 * 60 * 1000;
+            const spend = Number(r.spend_gbp) || 0;
+            if (!(spend > 0)) continue;
+            for (const b of bucketBounds) {
+              const overlapStart = Math.max(hourStartMs, b.start);
+              const overlapEnd = Math.min(hourEndMs, b.end);
+              const overlapMs = overlapEnd - overlapStart;
+              if (!(overlapMs > 0)) continue;
+              adSpendByBucketLabel[b.label] += spend * (overlapMs / (60 * 60 * 1000));
             }
           }
         }
       }
-    } catch (_) {}
-    for (const s of series) {
-      s.adSpend = adSpendPerDay[s.date] || 0;
     }
-  } else {
-    for (const s of series) {
-      s.adSpend = 0;
-    }
+  } catch (_) {}
+  for (const s of series) {
+    const v = adSpendByBucketLabel[s.date] || 0;
+    s.adSpend = Math.round(v * 100) / 100;
   }
 
   // Device breakdown (desktop vs mobile vs tablet)
@@ -1318,9 +1329,5 @@ function zonedTimeToUtcMs(year, month, day, hour, minute, second, timeZone) {
   const offset = getTimeZoneOffsetMs(timeZone, utcGuess);
   return utcGuess.getTime() - offset;
 }
-
-
-module.exports = { getDashboardSeries };
-module.exports = { getDashboardSeries };
 
 module.exports = { getDashboardSeries };

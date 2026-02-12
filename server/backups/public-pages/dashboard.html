@@ -32,8 +32,8 @@
           </div>
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
 
-    <!-- Enhanced KPI Cards Row 1 -->
-    <div class="row g-3 mb-3">
+    <!-- Enhanced KPI Cards -->
+    <div class="row g-3 mb-3" id="dash-kpi-grid">
       <!-- Revenue Card with Trend -->
       <div class="col-sm-6 col-lg-3">
         <div class="card">
@@ -43,6 +43,10 @@
             </div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-revenue">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-revenue-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-revenue-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-revenue-sparkline" style="height:40px"></div>
@@ -70,6 +74,10 @@
             </div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-orders">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-orders-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-orders-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-orders-sparkline" style="height:40px"></div>
@@ -95,6 +103,10 @@
             <div class="subheader">Conversion Rate</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-conv">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-conv-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-conv-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-conv-sparkline" style="height:40px"></div>
@@ -120,6 +132,10 @@
             <div class="subheader">Average Order Value</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-aov">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-aov-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-aov-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-aov-sparkline" style="height:40px"></div>
@@ -137,16 +153,19 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Enhanced KPI Cards Row 2 -->
-    <div class="row g-3 mb-3">
       <!-- Sessions Card with Device Breakdown -->
       <div class="col-sm-6 col-lg-3">
         <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
           <div class="card-body">
             <div class="subheader">Sessions</div>
-            <div class="h1 mb-0" id="dash-kpi-sessions">&mdash;</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-sessions">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-sessions-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-sessions-delta-text">&mdash;</span>
+              </div>
+            </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-sessions-sparkline" style="height:40px"></div>
             </div>
@@ -171,6 +190,10 @@
             <div class="subheader">Bounce Rate</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-bounce">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-bounce-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-bounce-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-bounce-sparkline" style="height:40px"></div>
@@ -196,6 +219,10 @@
             <div class="subheader">Returning</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-returning">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returning-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-returning-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-returning-sparkline" style="height:40px"></div>
@@ -221,6 +248,10 @@
             <div class="subheader">ADS ROAS</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-roas">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-roas-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-roas-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-roas-sparkline" style="height:40px"></div>
@@ -238,16 +269,17 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Enhanced KPI Cards Row 3 -->
-    <div class="row g-3 mb-3">
       <div class="col-sm-6 col-lg-3">
         <div class="card">
           <div class="card-body">
             <div class="subheader">COGS</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-cogs">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-cogs-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-cogs-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-cogs-sparkline" style="height:40px"></div>
@@ -272,6 +304,10 @@
             <div class="subheader">Fulfilled</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-fulfilled">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-fulfilled-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-fulfilled-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-fulfilled-sparkline" style="height:40px"></div>
@@ -296,6 +332,10 @@
             <div class="subheader">Returns</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-returns">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returns-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-returns-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-returns-sparkline" style="height:40px"></div>
@@ -320,6 +360,10 @@
             <div class="subheader">Items ordered</div>
             <div class="d-flex align-items-baseline">
               <div class="h1 mb-0 me-2" id="dash-kpi-items">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-items-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i>
+                <span id="dash-kpi-items-delta-text">&mdash;</span>
+              </div>
             </div>
             <div class="dash-kpi-sparkline-wrap">
               <div id="dash-items-sparkline" style="height:40px"></div>

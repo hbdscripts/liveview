@@ -1,1 +1,137 @@
-<!--#include type.html-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+  <title>Kexo · Device &amp; Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
+</head>
+<body class="" data-page="type">
+    <!--#include partials/header.html-->
+    <!--#include partials/page-body-start.html-->
+          <div class="page-header mb-3">
+            <div class="row align-items-center">
+              <div class="col">
+                <div class="page-pretitle">Traffic</div>
+                <h2 class="page-title">Device &amp; Platform</h2>
+              </div>
+            </div>
+          </div>
+<div id="tab-panel-type" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-type">
+  <div class="stats-row-wrap">
+    <!-- Chart Card -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Device &amp; Platform Performance</h3>
+      </div>
+      <div class="card-body">
+        <div class="dash-chart-wrap" id="type-chart" style="min-height:320px"></div>
+      </div>
+    </div>
+
+    <!-- Traffic Type Table Card -->
+    <div class="stats-card card" id="traffic-types-card" data-table-class="live" data-table-zone="type-main" data-table-id="traffic-types-table">
+      <div class="card-header">
+        <h3 class="card-title">Device &amp; Platform</h3>
+      </div>
+      <div class="country-table-wrap">
+        <div id="traffic-types-table" class="grid-table by-country-table" role="table" aria-label="Traffic types">
+          <div class="grid-header kexo-grid-header" role="rowgroup">
+            <div class="grid-row grid-row--header" role="row">
+              <div class="grid-cell sortable" role="columnheader" data-sort="type" aria-sort="none" tabindex="0" aria-label="Type"><span class="th-label-long">Type</span><span class="th-label-short"><i class="fa-solid fa-table-cells" data-icon-key="table-short-type" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-cr" aria-hidden="true"></i></span></div>
+              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
+            </div>
+          </div>
+          <div id="traffic-types-body" class="grid-body" role="rowgroup">
+            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Open Settings (footer) â†’ Traffic to choose device types.</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="traffic-types-pagination" aria-label="Type pagination"></div>
+    </div>
+  </div>
+  </div>
+    <!--#include partials/page-body-end.html-->
+      <!--#include partials/footer.html-->
+  <div class="config-modal" id="kpi-compare-modal" aria-hidden="true">
+    <div class="config-modal-card kpi-compare-modal-card" role="dialog" aria-modal="true" aria-label="KPI comparison">
+      <div class="kpi-compare-modal-header">
+        <div class="kpi-compare-modal-header-left">
+          <div class="kpi-compare-kicker" id="kpi-compare-kicker">KPI</div>
+          <h3 class="kpi-compare-title">Shopify vs Kexo</h3>
+          <div class="kpi-compare-meta" id="kpi-compare-updated">Updated &mdash;</div>
+        </div>
+        <div class="kpi-compare-modal-actions">
+          <button type="button" id="kpi-compare-refresh-btn" class="btn btn-icon btn-ghost-secondary" title="Refresh comparison" aria-label="Refresh comparison">
+            <i class="fa-light fa-rotate-right" data-icon-key="kpi-compare-refresh"></i><span>Refresh</span>
+          </button>
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kpi-compare-close-btn" aria-label="Close"><i class="fa-light fa-xmark" data-icon-key="kpi-compare-close"></i></button>
+        </div>
+      </div>
+      <div class="kpi-compare-modal-body" id="kpi-compare-status">
+        <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">&mdash;</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal modal-blur" id="date-custom-modal" tabindex="-1" style="display:none">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose dates</h5>
+          <button type="button" class="btn-close" id="date-custom-close-btn" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Date Range (max 30 days)</label>
+          <input type="text" id="date-range-picker" class="form-control" placeholder="Select dates..." readonly>
+          <div class="text-muted small mt-2">
+            <i class="fa-light fa-circle-info" data-icon-key="kpi-compare-date-info"></i> Dates without data will be disabled
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small" id="date-custom-summary"></div>
+          <button type="button" class="btn btn-ghost-secondary" id="date-custom-clear">Clear</button>
+          <button type="button" class="btn btn-primary" id="date-custom-apply" disabled>Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sale-toast-overlay" id="sale-toast-overlay" aria-hidden="true">
+    <div class="sale-toast" id="sale-toast" aria-hidden="true">
+      <div class="sale-toast-thumb" id="sale-toast-thumb" aria-hidden="true"></div>
+      <div class="sale-toast-mid">
+        <div class="sale-toast-title"><span id="sale-toast-inline-flag" aria-hidden="true"></span><span id="sale-toast-title">&mdash;</span></div>
+        <div class="sale-toast-product" id="sale-toast-product">&mdash;</div>
+      </div>
+      <div class="sale-toast-amount-wrap">
+        <div class="sale-toast-amount" id="sale-toast-amount">&pound;&mdash;</div>
+        <div class="sale-toast-time">
+          <i class="fa-light fa-clock sale-toast-time-icon" data-icon-key="sale-toast-time" aria-hidden="true"></i>
+          <span id="sale-toast-time">&mdash;</span>
+        </div>
+      </div>
+      <button type="button" class="btn-close sale-toast-close" id="sale-toast-close" aria-label="Close"></button>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>

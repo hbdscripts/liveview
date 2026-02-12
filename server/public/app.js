@@ -5300,11 +5300,13 @@ const API = '';
       const menu = document.getElementById('kexo-date-menu');
       if (!sel || !menu) return;
 
-      // Yesterday visibility/disabled mirrors the <select> option.
+      // Mirror visibility/disabled + labels from the <select> options.
       try {
-        const opt = sel.querySelector('option[value="yesterday"]');
-        const item = menu.querySelector('[data-range="yesterday"]');
-        if (opt && item) {
+        menu.querySelectorAll('[data-range]').forEach(function(item) {
+          const key = String(item.getAttribute('data-range') || '').trim();
+          if (!key) return;
+          const opt = sel.querySelector('option[value="' + key + '"]');
+          if (!opt) return;
           const hidden = !!opt.hidden;
           const disabled = !!opt.disabled;
           item.style.display = hidden ? 'none' : '';
@@ -5312,7 +5314,8 @@ const API = '';
           else item.removeAttribute('disabled');
           item.classList.toggle('disabled', disabled);
           item.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-        }
+          if (opt.textContent) item.textContent = String(opt.textContent).trim();
+        });
       } catch (_) {}
 
       // Active item highlight: custom ranges map to the "Custom…" item.
@@ -5323,6 +5326,28 @@ const API = '';
         const v = String(btn.getAttribute('data-range') || '').trim();
         btn.classList.toggle('active', isCustom ? (v === 'custom') : (v === active));
       });
+    }
+
+    function syncMobileDateMenuAvailability() {
+      const sel = document.getElementById('global-date-select');
+      const menu = document.getElementById('mobile-date-menu');
+      if (!sel || !menu) return;
+      try {
+        menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
+          const key = String(it.getAttribute('data-value') || '').trim();
+          if (!key) return;
+          const opt = sel.querySelector('option[value="' + key + '"]');
+          if (!opt) return;
+          const hidden = !!opt.hidden;
+          const disabled = !!opt.disabled;
+          it.style.display = hidden ? 'none' : '';
+          if (disabled) it.setAttribute('disabled', 'disabled');
+          else it.removeAttribute('disabled');
+          it.classList.toggle('disabled', disabled);
+          it.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+          if (opt.textContent) it.textContent = String(opt.textContent).trim();
+        });
+      } catch (_) {}
     }
 
     function mountDesktopDatePickerIntoPageHeader() {
@@ -5414,10 +5439,14 @@ const API = '';
         sel.value = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : String(dateRange || 'today');
       }
 
+      // Apply user-configured labels/visibility for the standard date ranges.
+      try { applyDateRangeUiConfigToSelect(sel); } catch (_) {}
+
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
       syncHeaderDateDisplay();
       syncHeaderDateMenuAvailability();
+      syncMobileDateMenuAvailability();
     }
 
     function applyRangeAvailable(available) {
@@ -5951,10 +5980,25 @@ const API = '';
 
       if (barEl) {
         barEl.classList.remove('bg-success', 'bg-danger', 'bg-secondary');
+        const progressEl = (barEl.closest && barEl.closest('.progress')) ? barEl.closest('.progress') : null;
+        const srText = barEl.querySelector ? barEl.querySelector('.visually-hidden') : null;
+
+        // When compare is missing, avoid misleading "0% complete" semantics.
+        if (rawDelta == null) {
+          if (progressEl) progressEl.classList.add('is-hidden');
+          barEl.style.width = '0%';
+          barEl.classList.add('bg-secondary');
+          barEl.setAttribute('aria-valuenow', '0');
+          barEl.setAttribute('aria-label', 'No comparison available');
+          if (srText) srText.textContent = 'No comparison available';
+          return;
+        }
+
+        if (progressEl) progressEl.classList.remove('is-hidden');
         let widthPct = 0;
         let barClass = 'bg-secondary';
 
-        if (rawDelta != null && !isFlat) {
+        if (!isFlat) {
           widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
           barClass = isUp ? 'bg-success' : 'bg-danger';
         }
@@ -5962,9 +6006,8 @@ const API = '';
         barEl.style.width = String(widthPct) + '%';
         barEl.classList.add(barClass);
         barEl.setAttribute('aria-valuenow', String(widthPct));
-        barEl.setAttribute('aria-label', String(widthPct) + '% complete');
-        const srText = barEl.querySelector('.visually-hidden');
-        if (srText) srText.textContent = String(widthPct) + '% complete';
+        barEl.setAttribute('aria-label', String(widthPct) + '% change');
+        if (srText) srText.textContent = String(widthPct) + '% change';
       }
     }
 
@@ -6412,21 +6455,96 @@ const API = '';
         if (el('dash-cogs-' + slotSuffix)) el('dash-cogs-' + slotSuffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
       }
 
+      function applyDashDelta(key, current, baseline, invert) {
+        var wrap = el('dash-kpi-' + key + '-delta');
+        var textEl = el('dash-kpi-' + key + '-delta-text');
+        if (!wrap || !textEl) return;
+
+        var cur = typeof current === 'number' && Number.isFinite(current) ? current : null;
+        var base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
+        var rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
+        var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
+        var isNew = cur != null && base === 0 && cur !== 0;
+        var isUp = toneDelta != null && toneDelta > 0.005;
+        var isDown = toneDelta != null && toneDelta < -0.005;
+        var isFlat = toneDelta != null && !isUp && !isDown;
+
+        var dir = 'none';
+        var text = '\u2014';
+        if (rawDelta != null) {
+          if (isNew) {
+            text = 'new';
+            dir = isDown ? 'down' : 'up';
+          } else {
+            text = formatSignedPercentOneDecimalFromRatio(rawDelta);
+            dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
+          }
+        }
+
+        wrap.classList.remove('is-up', 'is-down', 'is-flat');
+        if (rawDelta == null) {
+          wrap.classList.add('is-hidden');
+          wrap.setAttribute('data-dir', 'none');
+          textEl.textContent = '\u2014';
+          return;
+        }
+
+        wrap.classList.remove('is-hidden');
+        if (dir === 'up') wrap.classList.add('is-up');
+        else if (dir === 'down') wrap.classList.add('is-down');
+        else if (dir === 'flat') wrap.classList.add('is-flat');
+        wrap.setAttribute('data-dir', dir);
+        textEl.textContent = text;
+
+        var icon = wrap.querySelector ? wrap.querySelector('i') : null;
+        if (icon) {
+          icon.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
+          if (dir === 'down') icon.classList.add('fa-arrow-trend-down');
+          else if (dir === 'flat') icon.classList.add('fa-minus');
+          else icon.classList.add('fa-arrow-trend-up');
+        }
+      }
+
       var primaryCompare = main && main.compare ? main.compare : null;
       var primaryExtrasCompare = extrasMain && extrasMain.compare ? extrasMain.compare : null;
+      var salesBase = numFromCompare(primaryCompare, 'sales');
+      var ordersBase = numFromCompare(primaryCompare, 'convertedCount');
+      var sessionsBase = sessionsFromBreakdownCompare(primaryCompare);
+      var convBase = numFromCompare(primaryCompare, 'conversion');
+      var aovBase = numFromCompare(primaryCompare, 'aov');
+      var bounceBase = numFromCompare(primaryCompare, 'bounce');
+      var returningBase = numFromCompare(primaryCompare, 'returningCustomerCount');
+      var roasBase = numFromCompare(primaryCompare, 'roas');
+      var itemsBase = primaryExtrasCompare && typeof primaryExtrasCompare.itemsSold === 'number' ? primaryExtrasCompare.itemsSold : null;
+      var fulfilledBase = primaryExtrasCompare && typeof primaryExtrasCompare.ordersFulfilled === 'number' ? primaryExtrasCompare.ordersFulfilled : null;
+      var returnsBase = primaryExtrasCompare && typeof primaryExtrasCompare.returns === 'number' ? primaryExtrasCompare.returns : null;
+      var cogsBase = primaryExtrasCompare && typeof primaryExtrasCompare.cogs === 'number' ? primaryExtrasCompare.cogs : null;
+
+      applyDashDelta('revenue', salesVal, salesBase, false);
+      applyDashDelta('orders', ordersVal, ordersBase, false);
+      applyDashDelta('sessions', sessionsVal, sessionsBase, false);
+      applyDashDelta('conv', convVal, convBase, false);
+      applyDashDelta('aov', aovVal, aovBase, false);
+      applyDashDelta('bounce', bounceVal, bounceBase, true);
+      applyDashDelta('returning', returningVal, returningBase, false);
+      applyDashDelta('roas', roasVal, roasBase, false);
+      applyDashDelta('items', itemsVal, itemsBase, false);
+      applyDashDelta('fulfilled', fulfilledVal, fulfilledBase, false);
+      applyDashDelta('returns', returnsVal, returnsBase, true);
+      applyDashDelta('cogs', cogsVal, cogsBase, true);
       renderCompareSlot('yesterday', {
-        sales: numFromCompare(primaryCompare, 'sales'),
-        orders: numFromCompare(primaryCompare, 'convertedCount'),
-        sessions: sessionsFromBreakdownCompare(primaryCompare),
-        conv: numFromCompare(primaryCompare, 'conversion'),
-        aov: numFromCompare(primaryCompare, 'aov'),
-        bounce: numFromCompare(primaryCompare, 'bounce'),
-        returning: numFromCompare(primaryCompare, 'returningCustomerCount'),
-        roas: numFromCompare(primaryCompare, 'roas'),
-        items: primaryExtrasCompare && typeof primaryExtrasCompare.itemsSold === 'number' ? primaryExtrasCompare.itemsSold : null,
-        fulfilled: primaryExtrasCompare && typeof primaryExtrasCompare.ordersFulfilled === 'number' ? primaryExtrasCompare.ordersFulfilled : null,
-        returns: primaryExtrasCompare && typeof primaryExtrasCompare.returns === 'number' ? primaryExtrasCompare.returns : null,
-        cogs: primaryExtrasCompare && typeof primaryExtrasCompare.cogs === 'number' ? primaryExtrasCompare.cogs : null,
+        sales: salesBase,
+        orders: ordersBase,
+        sessions: sessionsBase,
+        conv: convBase,
+        aov: aovBase,
+        bounce: bounceBase,
+        returning: returningBase,
+        roas: roasBase,
+        items: itemsBase,
+        fulfilled: fulfilledBase,
+        returns: returnsBase,
+        cogs: cogsBase,
       });
 
       setDashboardCompareLabels(
@@ -6483,7 +6601,8 @@ const API = '';
     function updateCondensedKpiOverflow() {
       const strip = document.getElementById('kexo-condensed-kpis');
       if (!strip) return;
-      const chips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
+      const chipsAll = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
+      const chips = chipsAll.filter(function(ch) { return ch && ch.classList ? !ch.classList.contains('is-user-disabled') : true; });
       if (!chips.length) return;
       // Auto-fit chips to available width; hide overflow chips from the end.
       const avail = strip.clientWidth || 0;
@@ -6538,6 +6657,255 @@ const API = '';
         updateCondensedKpiOverflow();
       });
     }
+
+    // ── KPI + date range UI config (stored in /api/settings) ───────────────
+    var uiSettingsCache = null;
+    var uiSettingsFetchedAt = 0;
+    var uiSettingsInFlight = null;
+    var kpiUiConfigV1 = null;
+
+    function applyDateRangeUiConfigToSelect(sel) {
+      if (!sel) return;
+      var cfg = kpiUiConfigV1;
+      if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.dateRanges)) return;
+      var byKey = {};
+      cfg.dateRanges.forEach(function(it) {
+        if (!it || typeof it !== 'object') return;
+        var k = it.key != null ? String(it.key).trim().toLowerCase() : '';
+        if (!k) return;
+        byKey[k] = it;
+      });
+
+      function labelOf(key, fallback) {
+        var it = byKey[key] || null;
+        var lbl = it && it.label != null ? String(it.label).trim() : '';
+        return lbl || fallback || '';
+      }
+      function enabledOf(key, defaultEnabled) {
+        var it = byKey[key] || null;
+        if (it && it.enabled === false) return false;
+        return defaultEnabled !== false;
+      }
+
+      function applyOne(key, fallbackLabel, defaultEnabled, preserveExistingDisabledHidden) {
+        var opt = sel.querySelector('option[value="' + key + '"]');
+        if (!opt) return;
+        opt.textContent = labelOf(key, fallbackLabel);
+        var enabled = enabledOf(key, defaultEnabled);
+        // Guardrails: never allow disabling Today/Custom via UI config.
+        if (key === 'today' || key === 'custom') enabled = true;
+
+        if (!enabled) {
+          opt.disabled = true;
+          try { opt.hidden = true; } catch (_) {}
+          return;
+        }
+        if (preserveExistingDisabledHidden) return;
+        opt.disabled = false;
+        try { opt.hidden = false; } catch (_) {}
+      }
+
+      applyOne('today', 'Today', true, false);
+      // For yesterday, keep availability rules from applyRangeAvailable (floor + rangeAvailable)
+      applyOne('yesterday', 'Yesterday', true, true);
+      applyOne('7days', 'Last 7 days', true, false);
+      applyOne('14days', 'Last 14 days', true, false);
+      applyOne('30days', 'Last 30 days', true, false);
+      applyOne('custom', 'Custom\u2026', true, false);
+    }
+
+    function applyCondensedKpiUiConfig(cfg) {
+      var strip = document.getElementById('kexo-condensed-kpis');
+      if (!strip || !cfg || cfg.v !== 1) return;
+      var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.header) ? cfg.kpis.header : null;
+      if (!list) return;
+
+      var idByKey = {
+        orders: 'cond-kpi-orders',
+        revenue: 'cond-kpi-revenue',
+        conv: 'cond-kpi-conv',
+        roas: 'cond-kpi-roas',
+        sessions: 'cond-kpi-sessions',
+        returning: 'cond-kpi-returning',
+        aov: 'cond-kpi-aov',
+        cogs: 'cond-kpi-cogs',
+        bounce: 'cond-kpi-bounce',
+        fulfilled: 'cond-kpi-orders-fulfilled',
+        returns: 'cond-kpi-returns',
+        items: 'cond-kpi-items-sold',
+      };
+      var chipByKey = {};
+      Object.keys(idByKey).forEach(function(key) {
+        var valueEl = document.getElementById(idByKey[key]);
+        var chip = valueEl && valueEl.closest ? valueEl.closest('.kexo-kpi-chip') : null;
+        if (chip) chipByKey[key] = chip;
+      });
+
+      var allChips = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
+      var seen = new Set();
+      var frag = document.createDocumentFragment();
+
+      list.forEach(function(item) {
+        if (!item || typeof item !== 'object') return;
+        var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+        if (!key) return;
+        var chip = chipByKey[key] || null;
+        if (!chip) return;
+        var labelEl = chip.querySelector ? chip.querySelector('.kexo-kpi-chip-label') : null;
+        if (labelEl && item.label != null) {
+          var lbl = String(item.label).trim();
+          if (lbl) labelEl.textContent = lbl;
+        }
+        var enabled = item.enabled !== false;
+        chip.classList.toggle('is-user-disabled', !enabled);
+        frag.appendChild(chip);
+        seen.add(chip);
+      });
+
+      allChips.forEach(function(chip) {
+        if (!chip || seen.has(chip)) return;
+        frag.appendChild(chip);
+      });
+
+      strip.appendChild(frag);
+      scheduleCondensedKpiOverflowUpdate();
+
+      // Options: hide/show common elements via inline style so other logic doesn't flip them back.
+      var opt = cfg.options && cfg.options.condensed ? cfg.options.condensed : {};
+      var showDelta = opt.showDelta !== false;
+      var showProgress = opt.showProgress !== false;
+      var showSparkline = opt.showSparkline !== false;
+      strip.querySelectorAll('.kexo-kpi-chip').forEach(function(chip) {
+        if (!chip) return;
+        var deltaEl = chip.querySelector ? chip.querySelector('.kexo-kpi-chip-delta') : null;
+        var progEl = chip.querySelector ? chip.querySelector('.kexo-kpi-chip-progress') : null;
+        var sparkEl = chip.querySelector ? chip.querySelector('.kexo-kpi-chip-sparkline') : null;
+        if (deltaEl) deltaEl.style.display = showDelta ? '' : 'none';
+        if (progEl) progEl.style.display = showProgress ? '' : 'none';
+        if (sparkEl) sparkEl.style.display = showSparkline ? '' : 'none';
+      });
+    }
+
+    function applyDashboardKpiUiConfig(cfg) {
+      var grid = document.getElementById('dash-kpi-grid');
+      if (!grid || !cfg || cfg.v !== 1) return;
+      var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
+      if (!list) return;
+
+      var idByKey = {
+        revenue: 'dash-kpi-revenue',
+        orders: 'dash-kpi-orders',
+        conv: 'dash-kpi-conv',
+        aov: 'dash-kpi-aov',
+        sessions: 'dash-kpi-sessions',
+        bounce: 'dash-kpi-bounce',
+        returning: 'dash-kpi-returning',
+        roas: 'dash-kpi-roas',
+        cogs: 'dash-kpi-cogs',
+        fulfilled: 'dash-kpi-fulfilled',
+        returns: 'dash-kpi-returns',
+        items: 'dash-kpi-items',
+      };
+      var colByKey = {};
+      Object.keys(idByKey).forEach(function(key) {
+        var valueEl = document.getElementById(idByKey[key]);
+        var col = valueEl && valueEl.closest ? valueEl.closest('.col-sm-6') : null;
+        if (col) colByKey[key] = col;
+      });
+
+      var allCols = Array.prototype.slice.call(grid.children || []).filter(function(el) {
+        return el && el.classList && el.classList.contains('col-sm-6');
+      });
+      var seen = new Set();
+      var frag = document.createDocumentFragment();
+
+      list.forEach(function(item) {
+        if (!item || typeof item !== 'object') return;
+        var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+        if (!key) return;
+        var col = colByKey[key] || null;
+        if (!col) return;
+        var labelEl = col.querySelector ? col.querySelector('.subheader') : null;
+        if (labelEl && item.label != null) {
+          var lbl = String(item.label).trim();
+          if (lbl) labelEl.textContent = lbl;
+        }
+        var enabled = item.enabled !== false;
+        col.classList.toggle('is-user-disabled', !enabled);
+        frag.appendChild(col);
+        seen.add(col);
+      });
+      allCols.forEach(function(col) {
+        if (!col || seen.has(col)) return;
+        frag.appendChild(col);
+      });
+      grid.appendChild(frag);
+
+      var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
+      grid.querySelectorAll('.dash-kpi-delta').forEach(function(el) {
+        if (!el) return;
+        el.style.display = showDelta ? '' : 'none';
+      });
+    }
+
+    function isStandardDateRangeKey(key) {
+      var k = key != null ? String(key).trim().toLowerCase() : '';
+      return k === 'today' || k === 'yesterday' || k === '7days' || k === '14days' || k === '30days' || k === 'custom';
+    }
+
+    function ensureDateRangeAllowedByUiConfig() {
+      var cfg = kpiUiConfigV1;
+      if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.dateRanges)) return;
+      if (!isStandardDateRangeKey(dateRange)) return;
+      if (dateRange === 'today' || dateRange === 'custom') return;
+      var key = String(dateRange || '').trim().toLowerCase();
+      var item = cfg.dateRanges.find(function(it) { return it && typeof it === 'object' && String(it.key || '').trim().toLowerCase() === key; }) || null;
+      if (item && item.enabled === false) {
+        dateRange = 'today';
+        try { syncDateSelectOptions(); } catch (_) {}
+        try { applyDateRangeChange(); } catch (_) {}
+      }
+    }
+
+    function applyKpiUiConfigV1(cfg) {
+      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1) return;
+      kpiUiConfigV1 = cfg;
+      try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
+      try { applyCondensedKpiUiConfig(cfg); } catch (_) {}
+      try { applyDashboardKpiUiConfig(cfg); } catch (_) {}
+      try { syncDateSelectOptions(); } catch (_) {}
+      try { ensureDateRangeAllowedByUiConfig(); } catch (_) {}
+    }
+
+    function ensureUiSettingsLoaded(options) {
+      options = options && typeof options === 'object' ? options : {};
+      var force = !!options.force;
+      var ttlMs = 5 * 60 * 1000;
+      if (!force && uiSettingsCache && uiSettingsFetchedAt && (Date.now() - uiSettingsFetchedAt) < ttlMs) {
+        if (options.apply && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
+        return Promise.resolve(uiSettingsCache);
+      }
+      if (uiSettingsInFlight) return uiSettingsInFlight;
+      var url = API + '/api/settings' + (force ? ('?_=' + Date.now()) : '');
+      uiSettingsInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 15000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          uiSettingsCache = (data && data.ok) ? data : null;
+          uiSettingsFetchedAt = Date.now();
+          if (options.apply && uiSettingsCache && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
+          return uiSettingsCache;
+        })
+        .catch(function() { return null; })
+        .finally(function() { uiSettingsInFlight = null; });
+      return uiSettingsInFlight;
+    }
+
+    try {
+      window.addEventListener('kexo:kpiUiConfigUpdated', function(e) {
+        var cfg = e && e.detail ? e.detail : null;
+        try { applyKpiUiConfigV1(cfg); } catch (_) {}
+      });
+    } catch (_) {}
 
     let kpiExpandedExtrasCache = null;
     let kpiExpandedExtrasRange = null;
@@ -9791,6 +10159,7 @@ const API = '';
         });
         initCustomDateModal();
         initHeaderDateMenu();
+        try { ensureUiSettingsLoaded({ apply: true }); } catch (_) {}
       }
       (function initMobileDateMenu() {
         const btn = document.getElementById('mobile-date-btn');
