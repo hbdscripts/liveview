@@ -58,6 +58,7 @@
     'table-icon-orders': 'fa-box-open',
     'table-icon-sessions': 'fa-users',
     'table-icon-revenue': 'fa-sterling-sign',
+    'table-icon-converted-sale': 'fa-solid fa-sterling-sign',
     'table-icon-clicks': 'fa-hand-pointer',
     'table-icon-variants-variant': 'fa-shapes',
     'table-icon-variants-sessions': 'fa-users',

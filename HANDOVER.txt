@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Compare CR tool uses Variants mappings)
+Last updated: 2026-02-12 (Converted sale row icon + gradient)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -20,8 +20,10 @@ Desktop chrome (shared header across pages via `server/public/partials/header.ht
 - KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 
 Mobile:
-- Mobile topbar (hamburger + centered logo + date dropdown) + full-screen nav overlay (`#kexo-mobile-nav`).
-- Mobile UA GET requests for dashboard/settings/tools/etc are redirected to `/mobile-unsupported` (see `server/index.js`).
+- Uses the same shared top strip + main nav as desktop (no mobile-only hamburger header/overlay).
+- Main nav is horizontally swipeable on touch screens; date-range control stays in the header row.
+- Mobile UA requests are no longer redirected to `/mobile-unsupported`; dashboard/settings/tools routes render directly on mobile.
+- Header/nav stack is sticky via a shared wrapper (`.kexo-header-stack`) so strip + nav stay pinned together.
 
 KEXO “5-color” accents:
 - The desktop nav uses a rotating 5-color accent for the active underline and related styling via `.kexo-5color`:
@@ -222,6 +224,24 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Converted sale row styling/icons:
+  - Live/session converted rows now prepend a configurable sale icon in the first converted cell (`data-icon-key="table-icon-converted-sale"`) via `server/public/app.js`.
+  - Added new icon key default to both icon registries (`server/public/fontawesome-icons.js`, `server/public/theme-settings.js`) so it is editable in Settings → Theme → Icons.
+  - Updated converted-row cell styling to a gradient background `#d8ecdb` (left) → `#f3f9f4` (right) in `server/public/custom.css` (and mirrored in `server/public/app.css` for legacy parity).
+
+2026-02-12 (latest)
+- Header/footer polish:
+  - Added shared sticky wrapper in `server/public/partials/header.html` (`.kexo-header-stack`) around strip + nav; sticky behavior is applied to wrapper in `server/public/custom.css` to avoid split/staggered sticky glitches.
+  - Removed desktop-only footer hiding rules in `server/public/custom.css`; desktop now shows the same footer structure as mobile.
+
+2026-02-12 (latest)
+- Mobile UX overhaul:
+  - Removed UA-based mobile redirect gate in `server/index.js`; `/mobile-unsupported` now redirects to `/dashboard/overview`.
+  - Removed mobile-only hamburger/overlay header markup from `server/public/partials/header.html`; shared desktop strip/nav now render on mobile.
+  - Added touch horizontal scrolling behavior for top nav and condensed KPI strip in `server/public/custom.css` + `server/public/app.js`.
+  - Tightened mobile table responsiveness across shared/page-specific styles (`custom.css`, `app.css`, `settings.html`, `settings-page.js`, `ads.js`, products/variants inline styles) to prevent viewport overflow and keep scroll within table wrappers.
 
 2026-02-12 (latest)
 - Sentry debugging: added browser SDK (CDN) + `sentry-helpers.js` (breadcrumbs, kexoCaptureError, fetch wrapper). All pages set `kexoSetContext(page)`; app.js, ads.js, settings-page.js, theme-settings.js, tools.js, variants-page.js instrumented. Backend routes: stats, kpis, sessions, insightsVariants, ads, dashboardSeries, tools get Sentry breadcrumbs + captureException in catch blocks. `GET /api/version` returns `sentryDsn` when SENTRY_DSN is set. `sendPage()` supports `{{SENTRY_DSN}}` template for sentry-init partial.

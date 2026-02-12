@@ -81,50 +81,7 @@ app.use('/api/ingest', express.json({ limit: config.maxEventPayloadBytes }));
 
 app.use('/api/ingest', ingestRouter);
 
-// Redirect mobile traffic to unsupported page (before auth)
-const MOBILE_REDIRECT_PATHS = new Set([
-  '/',
-  '/dashboard',
-  '/dashboard/overview',
-  '/dashboard/live',
-  '/dashboard/sales',
-  '/dashboard/table',
-  '/insights/countries',
-  '/insights/products',
-  '/insights/variants',
-  '/traffic/channels',
-  '/traffic/device',
-  '/integrations',
-  '/integrations/google-ads',
-  '/tools/ads',
-  '/tools/compare-conversion-rate',
-  '/settings',
-  // Legacy paths still accepted so mobile users land on unsupported page consistently.
-  '/live',
-  '/sales',
-  '/date',
-  '/overview',
-  '/countries',
-  '/products',
-  '/variants',
-  '/channels',
-  '/type',
-  '/ads',
-  '/traffic',
-  '/tools',
-  '/compare-conversion-rate',
-  '/app/login',
-]);
-const MOBILE_UA = /Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-app.use((req, res, next) => {
-  if (req.method !== 'GET') return next();
-  const pathname = (req.path || '').split('?')[0];
-  if (pathname === '/mobile-unsupported') return next();
-  if (!MOBILE_REDIRECT_PATHS.has(pathname)) return next();
-  const ua = req.get('User-Agent') || '';
-  if (!MOBILE_UA.test(ua)) return next();
-  res.redirect(302, '/mobile-unsupported');
-});
+// Mobile support is now enabled; keep route compatibility but do not gate by UA.
 
 // Protect dashboard + admin API: only from Shopify admin (Referer/Origin) or Google OAuth cookie (direct visits)
 app.use(dashboardAuth.middleware);
@@ -418,7 +375,7 @@ function redirectWithQuery(statusCode, targetPath) {
   };
 }
 
-app.get('/mobile-unsupported', (req, res) => sendPage(res, 'mobile-unsupported.html'));
+app.get('/mobile-unsupported', redirectWithQuery(302, '/dashboard/overview'));
 
 // Canonical page routes (folder-style URLs)
 const dashboardPagesRouter = express.Router();

@@ -2835,6 +2835,9 @@ const API = '';
       const cartOrSaleCell = s.has_purchased
         ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
         : cartVal;
+      const convertedLeadIcon = s.has_purchased
+        ? '<i class="fa-solid fa-sterling-sign converted-row-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
+        : '';
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -2844,7 +2847,7 @@ const API = '';
         } catch (_) {}
       }
       return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
-        <div class="grid-cell ${s.has_purchased ? 'converted-row' : ''}" role="cell">${landingPageCell(s)}</div>
+        <div class="grid-cell ${s.has_purchased ? 'converted-row' : ''}" role="cell">${convertedLeadIcon}${landingPageCell(s)}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
         <div class="grid-cell" role="cell">${escapeHtml(s.device || '')}</div>
@@ -6838,6 +6841,18 @@ const API = '';
       const chipsAll = Array.prototype.slice.call(strip.querySelectorAll('.kexo-kpi-chip'));
       const chips = chipsAll.filter(function(ch) { return ch && ch.classList ? !ch.classList.contains('is-user-disabled') : true; });
       if (!chips.length) return;
+      const isMobileViewport = !!(window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+      if (isMobileViewport) {
+        strip.style.removeProperty('--kexo-kpi-width');
+        strip.style.removeProperty('--kexo-kpi-min-width');
+        strip.style.setProperty('--kexo-kpi-spark-width', '36px');
+        strip.style.setProperty('--kexo-kpi-spark-right', '4px');
+        for (let i = 0; i < chips.length; i++) {
+          chips[i].classList.remove('is-hidden');
+          chips[i].setAttribute('aria-hidden', 'false');
+        }
+        return;
+      }
       // Auto-fit chips to available width; hide overflow chips from the end.
       const avail = strip.clientWidth || 0;
       if (!Number.isFinite(avail) || avail <= 0) return;
@@ -11290,51 +11305,6 @@ const API = '';
             closeMobileMenu();
           });
         }
-      })();
-      (function initMobileMenu() {
-        var btn = document.getElementById('kexo-mobile-menu-btn');
-        var nav = document.getElementById('kexo-mobile-nav');
-        if (!btn || !nav) return;
-        var backdrop = null;
-        function close() {
-          nav.hidden = true;
-          btn.setAttribute('aria-expanded', 'false');
-          document.body.classList.remove('kexo-mobile-nav-open');
-          if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-          backdrop = null;
-        }
-        function open() {
-          nav.hidden = false;
-          btn.setAttribute('aria-expanded', 'true');
-          document.body.classList.add('kexo-mobile-nav-open');
-          if (!backdrop) {
-            backdrop = document.createElement('div');
-            backdrop.className = 'kexo-mobile-nav-backdrop';
-            backdrop.setAttribute('aria-hidden', 'true');
-            backdrop.addEventListener('click', close);
-            document.body.appendChild(backdrop);
-          }
-        }
-        function toggle() {
-          if (nav.hidden) open(); else close();
-        }
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          toggle();
-        });
-        var settingsBtn = document.getElementById('kexo-mobile-nav-settings');
-        if (settingsBtn && settingsBtn.tagName !== 'A') {
-          settingsBtn.addEventListener('click', function() {
-            close();
-            var configBtn = document.getElementById('config-open-btn');
-            if (configBtn) {
-              try { configBtn.click(); } catch (_) {}
-            }
-          });
-        }
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Escape') close();
-        });
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');

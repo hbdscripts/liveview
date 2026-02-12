@@ -78,7 +78,7 @@
     .stats-divider { height: 1px; /* background: var(--border); */ margin: 0.6rem 0; }
     .stats-select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); font-size: 0.8125rem; }
     .muted { color: var(--muted); font-size: 0.8rem; }
-    .country-table-wrap { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin-bottom: 0; }
+    .country-table-wrap { overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0; margin-bottom: 0; -webkit-overflow-scrolling: touch; }
     /* Breakdown tables: same padding/th style; border only on card so no double border */
     .by-country-table { width: 100%; border-collapse: collapse; font-size: var(--table-font-size); table-layout: fixed; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
     .stats-card .by-country-table { border: none; box-shadow: none; }
@@ -398,7 +398,8 @@
     .grid-row.converted:hover { background: var(--converted-hover); }
     .grid-row.converted .grid-cell { font-weight: 500; }
     .grid-row.converted .grid-cell:first-child { box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
-    .grid-row .grid-cell.converted-row { border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important; }
+    .grid-row .grid-cell.converted-row { border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important; background: linear-gradient(90deg, #d8ecdb 0%, #f3f9f4 100%) !important; }
+    .grid-row .grid-cell.converted-row .converted-row-sale-icon { color: #2f7d50; margin-right: .45rem; font-size: .85rem; vertical-align: -0.05em; }
 
     /* Column alignment: keep first column left, rest centered */
     .grid-table .grid-cell:not(:first-child) { text-align: center; }
@@ -416,7 +417,7 @@
     #sessions-table .grid-body .grid-row { background: #ffffff; }
     #sessions-table .grid-body .grid-row.converted { background: var(--converted-hover); }
     #sessions-table .grid-body .grid-row.converted:hover { background: var(--converted-hover); }
-    .table-scroll-wrap .grid-table { border: none; box-shadow: none; border-radius: 0; min-width: 800px; }
+    .table-scroll-wrap .grid-table { border: none; box-shadow: none; border-radius: 0; min-width: 640px; }
 
     /* Breakdown/product/traffic tables */
     .by-country-table { --grid-cols: minmax(180px, 1.4fr) repeat(4, minmax(64px, 0.65fr)); }

@@ -1,60 +1,13 @@
 <div class="page">
   <div class="page-wrapper">
     <header class="navbar navbar-expand-lg d-print-none kexo-top-navbar">
-      <div class="container-fluid">
-        <div class="kexo-topbar-row d-lg-none">
-          <div class="kexo-topbar-slot kexo-topbar-slot-left">
-            <button class="btn btn-icon kexo-mobile-menu-btn" type="button" id="kexo-mobile-menu-btn" aria-expanded="false" aria-controls="kexo-mobile-nav" aria-label="Open menu">
-              <i class="fa-jelly fa-bars" data-icon-key="mobile-menu" aria-hidden="true"></i>
-            </button>
-          </div>
-
-          <div class="kexo-mobile-logo-wrap">
-            <a href="/dashboard/overview" class="kexo-mobile-logo-link" aria-label="Kexo dashboard">
-              <img src="/assets/footer.png" alt="Kexo" width="80" height="29">
-            </a>
-          </div>
-
-          <div class="kexo-topbar-slot kexo-topbar-slot-right">
-            <div class="dropdown">
-              <button type="button" class="btn btn-icon kexo-mobile-date-btn" id="mobile-date-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="mobile-date-menu">
-                <i class="fa-jelly fa-calendar-days" data-icon-key="mobile-date" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end" id="mobile-date-menu" aria-label="Date ranges">
-                <button type="button" class="dropdown-item mobile-date-item" data-value="today">Today</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="yesterday">Yesterday</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="7days">Last 7 days</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="14days">Last 14 days</button>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="30days">Last 30 days</button>
-                <div class="dropdown-divider"></div>
-                <button type="button" class="dropdown-item mobile-date-item" data-value="custom">Custom…</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="kexo-mobile-nav" class="kexo-mobile-nav" aria-label="Navigation" hidden>
-          <a href="/dashboard/overview" class="kexo-mobile-nav-item" data-nav="dashboard">Overview</a>
-          <a href="/dashboard/live" class="kexo-mobile-nav-item" data-nav="live">Live View</a>
-          <a href="/dashboard/sales" class="kexo-mobile-nav-item" data-nav="sales">Recent Sales</a>
-          <a href="/dashboard/table" class="kexo-mobile-nav-item" data-nav="date">Table View</a>
-          <a href="/insights/countries" class="kexo-mobile-nav-item" data-nav="countries">Countries</a>
-          <a href="/insights/products" class="kexo-mobile-nav-item" data-nav="products">Products</a>
-          <a href="/insights/variants" class="kexo-mobile-nav-item" data-nav="variants">Variants</a>
-          <a href="/traffic/channels" class="kexo-mobile-nav-item" data-nav="channels">Channels</a>
-          <a href="/traffic/device" class="kexo-mobile-nav-item" data-nav="type">Device &amp; Platform</a>
-          <a href="/integrations/google-ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
-          <a href="/tools/compare-conversion-rate" class="kexo-mobile-nav-item" data-nav="tools">Conversion Rate Compare</a>
-          <div class="kexo-mobile-nav-divider"></div>
-          <a href="/settings" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</a>
-          <a href="/app/logout" class="kexo-mobile-nav-item">Sign out</a>
-        </div>
-      </div>
+      <div class="container-fluid"></div>
     </header>
 
-    <div class="kexo-desktop-top-strip d-none d-lg-flex d-print-none" aria-label="Desktop top strip">
-      <div class="container-xl kexo-desktop-top-strip-container">
-        <div class="kexo-desktop-top-strip-row">
+    <div class="kexo-header-stack d-print-none">
+      <div class="kexo-desktop-top-strip" aria-label="Desktop top strip">
+        <div class="container-xl kexo-desktop-top-strip-container">
+          <div class="kexo-desktop-top-strip-row">
           <div class="kexo-desktop-top-strip-left">
             <div class="kexo-top-strip-online" aria-live="polite" role="status" aria-label="Users online">
               <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline kexo-top-strip-online-icon" data-icon-key="online-status-indicator" aria-hidden="true"></i>
@@ -95,25 +48,25 @@
               </div>
             </div>
           </div>
+          </div>
+        </div>
+        <!-- Sale banner: overlays strip when active -->
+        <div class="tblr-banner kexo-sale-banner" id="sale-toast-banner" aria-hidden="true" hidden>
+          <span class="tblr-banner-text" id="sale-toast-banner-text">
+            <span id="sale-toast-inline-flag" aria-hidden="true"></span>
+            <span class="kexo-sale-banner-label">New Sale: </span>
+            <span id="sale-toast-product" class="kexo-sale-banner-product">&mdash;</span>
+            <span id="sale-toast-amount">&pound;&mdash;</span>
+          </span>
+          <button type="button" class="tblr-banner-close" id="sale-toast-close" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
+          </button>
         </div>
       </div>
-      <!-- Sale banner: overlays strip when active -->
-      <div class="tblr-banner kexo-sale-banner" id="sale-toast-banner" aria-hidden="true" hidden>
-        <span class="tblr-banner-text" id="sale-toast-banner-text">
-          <span id="sale-toast-inline-flag" aria-hidden="true"></span>
-          <span class="kexo-sale-banner-label">New Sale: </span>
-          <span id="sale-toast-product" class="kexo-sale-banner-product">&mdash;</span>
-          <span id="sale-toast-amount">&pound;&mdash;</span>
-        </span>
-        <button type="button" class="tblr-banner-close" id="sale-toast-close" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
-        </button>
-      </div>
-    </div>
 
-    <nav class="navbar navbar-expand-md d-none d-lg-flex kexo-desktop-nav d-print-none" aria-label="Desktop navigation">
-      <div class="container-xl kexo-desktop-nav-container">
-        <div class="row flex-row flex-nowrap flex-fill align-items-center kexo-desktop-nav-row">
+      <nav class="navbar navbar-expand-md kexo-desktop-nav" aria-label="Desktop navigation">
+        <div class="container-xl kexo-desktop-nav-container">
+          <div class="row flex-row flex-nowrap flex-fill align-items-center kexo-desktop-nav-row">
           <div class="col kexo-desktop-nav-left">
             <ul class="navbar-nav kexo-desktop-nav-list kexo-5color">
               <li class="nav-item dropdown">
@@ -156,7 +109,7 @@
           </div>
           <div class="col-auto kexo-desktop-nav-right">
             <ul class="navbar-nav kexo-desktop-nav-settings">
-              <li class="nav-item d-none d-lg-flex align-items-center ms-2">
+              <li class="nav-item d-flex align-items-center ms-2">
                 <div class="dropdown kexo-topbar-date">
                   <button type="button" class="kexo-date-btn" id="kexo-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="kexo-date-menu">
                     <span class="kexo-date-btn-label">Today</span>
@@ -175,9 +128,10 @@
               </li>
             </ul>
           </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </div>
 
     <div id="kexo-kpis" class="kexo-kpis-navbar" aria-label="KPIs for selected date range">
       <div class="container-fluid">

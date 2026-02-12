@@ -720,7 +720,7 @@
       'html[data-bs-theme="dark"] .ads-refresh-mini{background:rgba(255,255,255,0.06);}' +
       '@keyframes adsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
       '.ads-spin{animation:adsSpin 1s linear infinite;transform-origin:50% 50%;}' +
-      '.ads-campaign-table{table-layout:fixed;min-width:760px;}' +
+      '.ads-campaign-table{table-layout:fixed;min-width:640px;}' +
       '#ads-footer{overflow-x:auto;-webkit-overflow-scrolling:touch;}' +
       '.ads-campaign-table .grid-cell:nth-child(2){width:110px;}' +
       '.ads-campaign-table .grid-cell:nth-child(3){width:90px;}' +

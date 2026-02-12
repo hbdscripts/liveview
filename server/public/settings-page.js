@@ -1047,7 +1047,7 @@
 
         rowsHtml += '' +
           '<tr data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
-            '<td style="min-width:260px">' +
+            '<td style="min-width:200px">' +
               '<input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '">' +
               '<div class="text-muted small mt-1">' +
                 '<code>' + escapeHtml(tableId) + '</code>' +
@@ -1055,7 +1055,7 @@
                 (zone ? ' \u00b7 zone <code>' + escapeHtml(zone) + '</code>' : '') +
               '</div>' +
             '</td>' +
-            '<td style="min-width:320px">' +
+            '<td style="min-width:260px">' +
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
                 '<span class="text-muted small">Default</span>' +
                 '<select class="form-select form-select-sm" style="max-width:110px" data-field="rows-default">' + defaultOptsHtml + '</select>' +
@@ -1063,7 +1063,7 @@
                 '<input type="text" class="form-control form-control-sm" style="max-width:190px" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5,10,15,20,25">' +
               '</div>' +
             '</td>' +
-            '<td style="min-width:240px">' +
+            '<td style="min-width:190px">' +
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
                 '<input type="number" class="form-control form-control-sm" style="max-width:96px" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '">' +
                 '<span class="text-muted small">\u2192</span>' +
@@ -1072,7 +1072,7 @@
               '</div>' +
               '<div class="text-muted small mt-1">Leave blank for auto sizing.</div>' +
             '</td>' +
-            '<td style="min-width:140px">' +
+            '<td style="min-width:120px">' +
               '<label class="form-check form-switch m-0">' +
                 '<input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '>' +
                 '<span class="form-check-label small ms-2">Grid</span>' +
@@ -1772,7 +1772,7 @@
           '<div class="text-muted small mb-2">Key: <code>' + escapeHtml(table.id || '') + '</code></div>' +
           '<div class="table-responsive">' +
             '<table class="table table-sm table-vcenter mb-0">' +
-              '<thead><tr><th style="min-width:160px">Output</th><th style="min-width:220px">Include aliases</th><th class="text-end w-1">Actions</th></tr></thead>' +
+              '<thead><tr><th style="min-width:140px">Output</th><th style="min-width:180px">Include aliases</th><th class="text-end w-1">Actions</th></tr></thead>' +
               '<tbody>';
 
       if (!rules.length) {
