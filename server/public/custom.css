@@ -748,14 +748,6 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   gap: .5rem;
 }
 
-/* Sticky header: header + top strip + nav + KPIs + date bar */
-.kexo-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 1020;
-  background: var(--tblr-body-bg, #f9fafb);
-}
-
 /* Sale banner: Tabler tblr-banner overlay on top strip */
 .tblr-banner.kexo-sale-banner {
   position: absolute;
