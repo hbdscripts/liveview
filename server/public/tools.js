@@ -1,4 +1,7 @@
 (function () {
+  try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext('tools', { page: 'tools', tool: 'compare-conversion-rate' }); } catch (_) {}
+  try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('tools', 'init', { tool: 'compare-conversion-rate' }); } catch (_) {}
+
   function qs(sel) { return document.querySelector(sel); }
   function esc(s) {
     return String(s == null ? '' : s)
@@ -48,7 +51,10 @@
         if (!r || !r.ok) return null;
         return r.json().catch(function () { return null; });
       })
-      .catch(function () { return null; });
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'tools.fetchJson', path: path }); } catch (_) {}
+        return null;
+      });
   }
 
   function normalizeChartType(value, fallback) {

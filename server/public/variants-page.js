@@ -2,6 +2,8 @@
   'use strict';
 
   if (!document.body || document.body.getAttribute('data-page') !== 'variants') return;
+  try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext('variants', { page: 'variants' }); } catch (_) {}
+  try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('variants', 'init', { page: 'variants' }); } catch (_) {}
 
   var API = '';
   try {
@@ -757,6 +759,7 @@
         });
       })
       .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'variants.ignoreSave', page: 'variants' }); } catch (_) {}
         setIssuesStatus(err && err.message ? String(err.message) : 'Ignore save failed', true);
         return false;
       })
@@ -807,7 +810,8 @@
             return data;
           });
       })
-      .catch(function () {
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'variants.fetch', page: 'variants' }); } catch (_) {}
         renderAllTables({ tables: [] });
         return null;
       })

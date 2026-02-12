@@ -1,3 +1,4 @@
+const Sentry = require('@sentry/node');
 const express = require('express');
 const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
@@ -19,6 +20,7 @@ router.get('/catalog-search', async (req, res) => {
     const out = await compareCr.catalogSearch({ shop, q, limit: req.query.limit });
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.catalog-search' } });
     console.error('[tools.catalog-search]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -33,6 +35,7 @@ router.get('/compare-cr/variants', async (req, res) => {
     const out = await compareCr.getProductVariants({ shop, productId });
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.compare-cr.variants' } });
     console.error('[tools.compare-cr.variants]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -57,6 +60,7 @@ router.post('/compare-cr/compare', async (req, res) => {
     });
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.compare-cr.compare' } });
     console.error('[tools.compare-cr.compare]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }

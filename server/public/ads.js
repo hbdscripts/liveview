@@ -1,5 +1,7 @@
 (function () {
   if (window.__adsInit) return;
+  try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext('ads', { page: 'ads' }); } catch (_) {}
+  try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('ads', 'init', { page: 'ads' }); } catch (_) {}
 
   /* ── helpers ─────────────────────────────────────────────── */
 
@@ -46,7 +48,10 @@
     return fetch(url, opts).then(function (r) {
       if (!r || !r.ok) return null;
       return r.json().catch(function () { return null; });
-    }).catch(function () { return null; });
+    }).catch(function (err) {
+      try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'ads.fetchJson', path: path }); } catch (_) {}
+      return null;
+    });
   }
 
   function profitClass(v) {

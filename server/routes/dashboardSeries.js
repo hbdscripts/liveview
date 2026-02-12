@@ -3,6 +3,7 @@
  * Returns daily time-series data for the dashboard overview charts.
  * Each day includes: revenue, orders, sessions, convRate, aov, bounceRate.
  */
+const Sentry = require('@sentry/node');
 const { getDb } = require('../db');
 const config = require('../config');
 const store = require('../store');
@@ -181,6 +182,7 @@ async function getDashboardSeries(req, res) {
     );
     res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [] });
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'dashboard-series', days, rangeKey } });
     console.error('[dashboard-series]', err);
     res.status(500).json({ error: 'Internal error' });
   }

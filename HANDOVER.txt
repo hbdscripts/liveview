@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Google Ads GCLID per-day backfill + Ads diagnostics readability + Countries map load guard)
+Last updated: 2026-02-12 (Sentry browser + route instrumentation)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -181,6 +181,7 @@ KPI data:
 - `server/public/settings-page.js`: Settings tab logic + saving to `/api/settings`
 - `server/public/theme-settings.js`: Theme UI
 - `server/public/variants-page.js`: Insights → Variants rendering/paging/sorting (driven by `/api/insights-variants`)
+- `server/public/sentry-helpers.js`: Sentry browser helpers (breadcrumbs, capture, fetch wrapper); loaded in head-theme.html
 - `server/public/ads.js`: Google Ads page logic
 - `server/public/tools.js`: Conversion Rate Compare tool logic
 
@@ -221,6 +222,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Sentry debugging: added browser SDK (CDN) + `sentry-helpers.js` (breadcrumbs, kexoCaptureError, fetch wrapper). All pages set `kexoSetContext(page)`; app.js, ads.js, settings-page.js, theme-settings.js, tools.js, variants-page.js instrumented. Backend routes: stats, kpis, sessions, insightsVariants, ads, dashboardSeries, tools get Sentry breadcrumbs + captureException in catch blocks. `GET /api/version` returns `sentryDsn` when SENTRY_DSN is set. `sendPage()` supports `{{SENTRY_DSN}}` template for sentry-init partial.
 
 2026-02-12 (latest)
 - Sale notification rework: replaced top-right toast modal with **tblr-banner** overlay on the desktop top strip. Banner shows flag – product – sale value, center-aligned, with close button far right; auto-closes after 10s; MP3 cha-ching preserved. Markup moved to `header.html` so it appears on all pages (fixes no-show on settings/variants/compare-conversion-rate). Removed old toast from 10 page templates; removed `sale-toast-time` icon key.

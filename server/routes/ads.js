@@ -1,3 +1,4 @@
+const Sentry = require('@sentry/node');
 const express = require('express');
 const adsService = require('../ads/adsService');
 const store = require('../store');
@@ -19,6 +20,7 @@ router.get('/google/connect', async (req, res) => {
     }
     res.redirect(302, out.url);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.connect' } });
     console.error('[ads.google.connect]', err);
     res.status(500).send('Internal error');
   }
@@ -36,6 +38,7 @@ router.get('/google/callback', async (req, res) => {
     }
     res.redirect(302, redirect + (redirect.includes('?') ? '&' : '?') + 'ads_oauth=ok');
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.callback' } });
     console.error('[ads.google.callback]', err);
     res.status(500).send('Internal error');
   }
@@ -47,6 +50,7 @@ router.get('/status', async (req, res) => {
     const out = await adsService.getStatus();
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.status' } });
     console.error('[ads.status]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -69,6 +73,7 @@ router.get('/summary', async (req, res) => {
     const out = await adsService.getSummary({ rangeKey });
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.summary', rangeKey } });
     console.error('[ads.summary]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -123,6 +128,7 @@ router.get('/debug-landing-sites', async (req, res) => {
     });
     res.json({ ok: true, count: samples.length, samples });
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.debug-landing-sites' } });
     console.error('[ads.debug-landing-sites]', err);
     res.status(500).json({ ok: false, error: String(err.message).slice(0, 200) });
   }
@@ -137,6 +143,7 @@ router.get('/campaign-detail', async (req, res) => {
     const out = await adsService.getCampaignDetail({ rangeKey, campaignId });
     res.json(out);
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.campaign-detail' } });
     console.error('[ads.campaign-detail]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -210,6 +217,7 @@ router.post('/refresh', async (req, res) => {
 
     res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, gclidBackfill, orderAttribution });
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.refresh' } });
     console.error('[ads.refresh]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }

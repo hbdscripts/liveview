@@ -3,6 +3,7 @@
  * Human-only (exclude cf_known_bot=1); bots are blocked at the edge.
  */
 
+const Sentry = require('@sentry/node');
 const store = require('../store');
 const reportCache = require('../reportCache');
 
@@ -45,6 +46,7 @@ function maybePruneStatsMemo(now) {
 }
 
 function getStats(req, res, next) {
+  Sentry.addBreadcrumb({ category: 'api', message: 'stats.get', data: { range: req?.query?.range, force: !!req?.query?.force } });
   const trafficMode = 'human_only';
   // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
   res.setHeader('Cache-Control', 'private, max-age=900');
@@ -66,6 +68,7 @@ function getStats(req, res, next) {
     memo.inflight
       .then((data) => res.json(data))
       .catch((err) => {
+        Sentry.captureException(err, { extra: { route: 'stats', rangeKey } });
         console.error(err);
         res.status(500).json({ error: 'Internal error' });
       });
@@ -117,6 +120,7 @@ function getStats(req, res, next) {
   inflight
     .then((data) => res.json(data))
     .catch((err) => {
+      Sentry.captureException(err, { extra: { route: 'stats', rangeKey } });
       console.error(err);
       res.status(500).json({ error: 'Internal error' });
     });

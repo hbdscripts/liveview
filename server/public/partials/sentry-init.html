@@ -1,0 +1,13 @@
+<script>
+(function(){
+  var dsn = {{SENTRY_DSN}};
+  if (dsn && typeof Sentry !== 'undefined') {
+    Sentry.init({
+      dsn: dsn,
+      environment: (window.location && window.location.hostname === 'localhost') ? 'development' : 'production',
+      tracesSampleRate: 0.2,
+      maxBreadcrumbs: 100
+    });
+  }
+})();
+</script>

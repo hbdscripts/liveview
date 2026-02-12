@@ -1,6 +1,8 @@
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
+    try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext(PAGE || 'unknown', { page: PAGE || 'unknown' }); } catch (_) {}
+    try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('app', 'init', { page: PAGE }); } catch (_) {}
     const PAGE_LOADER_ENABLED = Object.freeze({
       dashboard: true,
       live: true,
@@ -1997,6 +1999,7 @@ const API = '';
           return { ok: true, metaCount: m.size, ruleCount: rules.length };
         })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficSourceMeta', page: PAGE }); } catch (_) {}
           console.error(err);
           return { ok: false, error: err && err.message ? String(err.message) : 'Failed' };
         })
@@ -2461,6 +2464,7 @@ const API = '';
             return state;
           })
           .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficSourceMappingPanel', page: PAGE }); } catch (_) {}
             console.error(err);
             root.innerHTML = '<div class="diag-note">Failed to load source mapping. ' + escapeHtml(err && err.message ? String(err.message) : '') + '</div>';
             return null;
@@ -2475,6 +2479,7 @@ const API = '';
           return json;
         })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficSourceMapsFetch', page: PAGE }); } catch (_) {}
           console.error(err);
           return null;
         })
@@ -2684,6 +2689,7 @@ const API = '';
             .then(function() { try { refreshTraffic({ force: true }); } catch (_) {} })
             .then(function() { return refreshTrafficSourceMappingPanel({ force: true, rootId: rootId }); })
             .catch(function(err) {
+              try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficSourceMapSave', page: PAGE }); } catch (_) {}
               console.error(err);
               setTsmSaveMsg(rootEl, 'Save failed: ' + (err && err.message ? String(err.message) : 'error'));
             })
@@ -7651,6 +7657,7 @@ const API = '';
           return data;
         })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'reportBuildStats', page: PAGE }); } catch (_) {}
           console.error(err);
           renderStats(statsCache || {});
           return null;
@@ -7836,6 +7843,7 @@ const API = '';
           return data;
         })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'reportBuildKpis', page: PAGE }); } catch (_) {}
           console.error(err);
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
@@ -7930,6 +7938,7 @@ const API = '';
         .then(function() { return delay(140); })
         .then(function() { lastProductsFetchedAt = Date.now(); })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficSourceMapsFetch', page: PAGE }); } catch (_) {}
           console.error(err);
           return null;
         })
@@ -8370,6 +8379,7 @@ const API = '';
         var renderPromise = channelsChartInstance.render();
         if (renderPromise && typeof renderPromise.then === 'function') {
           renderPromise.catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'channelsChartRender', page: PAGE }); } catch (_) {}
             console.error('[channels] chart render error:', err);
             el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
           });
@@ -8537,6 +8547,7 @@ const API = '';
         var renderPromise = typeChartInstance.render();
         if (renderPromise && typeof renderPromise.then === 'function') {
           renderPromise.catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'typeChartRender', page: PAGE }); } catch (_) {}
             console.error('[type] chart render error:', err);
             el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
           });
@@ -8571,6 +8582,7 @@ const API = '';
           return data;
         })
         .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'trafficPrefsSave', page: PAGE }); } catch (_) {}
           console.error(err);
           renderTraffic(trafficCache || null);
           return null;
@@ -8995,6 +9007,7 @@ const API = '';
         })
         .catch(function(err) {
           if (err && err.name === 'AbortError') return null;
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'sessionsFetch', page: PAGE }); } catch (_) {}
           build.step('Could not load sessions');
           sessionsLoadError = 'Could not load sessions. Check connection or refresh.';
           sessions = [];
@@ -12369,6 +12382,7 @@ const API = '';
             }
           })
           .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
             dashLoading = false;
             build.step('Dashboard data unavailable');
             console.error('[dashboard] fetch error:', err);

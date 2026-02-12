@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext('theme', { page: 'theme' }); } catch (_) {}
+  try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('theme', 'init', {}); } catch (_) {}
+
   var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid', 'fa-brands'];
   var ICON_STYLE_DEFAULTS = {};
   var ICON_STYLE_META = {};

@@ -1,3 +1,4 @@
+const Sentry = require('@sentry/node');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
@@ -12,6 +13,7 @@ const {
 } = require('../variantInsightsService');
 
 async function getInsightsVariants(req, res) {
+  Sentry.addBreadcrumb({ category: 'api', message: 'insights-variants.get', data: { shop: req?.query?.shop, range: req?.query?.range } });
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
   let range = (req.query.range || 'today').toLowerCase();
@@ -68,6 +70,7 @@ async function getInsightsVariants(req, res) {
     res.setHeader('Vary', 'Cookie');
     return res.json(cached && cached.ok ? cached.data : { ok: true, range, tables: [], diagnostics: [], attribution: null });
   } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'insights-variants', shop, range } });
     console.error('[insights-variants]', err);
     return res.status(500).json({ error: 'Failed to fetch variants insights' });
   }

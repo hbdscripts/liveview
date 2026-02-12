@@ -314,7 +314,7 @@ const ASSET_VERSION = (() => {
 
   try {
     const base = path.join(__dirname, 'public');
-    const files = ['app.js', 'custom.css', 'tabler-theme.css', 'theme-settings.js', 'diagnostics-modal.css'];
+    const files = ['app.js', 'custom.css', 'tabler-theme.css', 'theme-settings.js', 'diagnostics-modal.css', 'sentry-helpers.js'];
     const stamps = files.map((f) => {
       const stat = fs.statSync(path.join(base, f));
       return Math.trunc(stat.mtimeMs).toString(36);
@@ -332,10 +332,13 @@ const ASSET_VERSION = (() => {
 // Expose a deploy/version signal for clients (helps recover from long-idle tabs + embed caching).
 app.get('/api/version', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({
+  const payload = {
     version: String((pkg && pkg.version) || '0.0.0'),
     assetVersion: ASSET_VERSION ? String(ASSET_VERSION) : null,
-  });
+  };
+  const dsn = (config.sentryDsn || '').trim();
+  if (dsn) payload.sentryDsn = dsn;
+  res.json(payload);
 });
 
 function applyAssetVersionToHtml(html) {
@@ -385,11 +388,19 @@ function resolveIncludes(html, depth = 0) {
   });
 }
 
+function applySentryTemplate(html) {
+  const dsn = (config.sentryDsn || '').trim();
+  const dsnJson = JSON.stringify(dsn);
+  return String(html || '').replace(/\{\{SENTRY_DSN\}\}/g, dsnJson);
+}
+
 function sendPage(res, filename) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const filePath = path.join(__dirname, 'public', filename);
   const raw = fs.readFileSync(filePath, 'utf8');
-  res.type('html').send(applyAssetVersionToHtml(resolveIncludes(raw)));
+  let html = resolveIncludes(raw);
+  html = applySentryTemplate(html);
+  res.type('html').send(applyAssetVersionToHtml(html));
 }
 
 function appendOriginalQuery(targetPath, req) {

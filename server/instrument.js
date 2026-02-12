@@ -12,8 +12,8 @@ if (config.sentryDsn && config.sentryDsn.trim() !== '') {
   Sentry.init({
     dsn: config.sentryDsn,
     environment: process.env.NODE_ENV || 'development',
-    tracesSampleRate: 0.1,
-    maxBreadcrumbs: 50,
+    tracesSampleRate: 0.2,
+    maxBreadcrumbs: 100,
     sendDefaultPii: false,
   });
   console.log('[Sentry] Enabled – errors will be sent to Sentry');

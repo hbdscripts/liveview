@@ -6,6 +6,8 @@
   'use strict';
 
   if (document.body.getAttribute('data-page') !== 'settings') return;
+  try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext('settings', { page: 'settings' }); } catch (_) {}
+  try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('settings', 'init', { page: 'settings' }); } catch (_) {}
 
   var API = '';
   try {

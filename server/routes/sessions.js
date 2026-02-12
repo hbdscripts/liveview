@@ -4,6 +4,7 @@
  * GET /api/sessions/:id/events?limit=20
  */
 
+const Sentry = require('@sentry/node');
 const store = require('../store');
 
 function list(req, res, next) {
@@ -19,9 +20,11 @@ function list(req, res, next) {
     const limit = req.query.limit || '25';
     const offset = req.query.offset || '0';
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    Sentry.addBreadcrumb({ category: 'api', message: 'sessions.listByRange', data: { range } });
     store.listSessionsByRange(range, timezone || undefined, limit, offset)
       .then(({ sessions, total }) => res.json({ sessions, total }))
       .catch(err => {
+        Sentry.captureException(err, { extra: { route: 'sessions', filter: 'range' } });
         console.error(err);
         res.status(500).json({ error: 'Internal error' });
       });
@@ -35,17 +38,21 @@ function list(req, res, next) {
   }
   if (filter === 'active' && countOnly) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    Sentry.addBreadcrumb({ category: 'api', message: 'sessions.activeCount' });
     return store.getActiveSessionCount()
       .then(count => res.json({ count }))
       .catch(err => {
+        Sentry.captureException(err, { extra: { route: 'sessions', filter: 'active' } });
         console.error(err);
         res.status(500).json({ error: 'Internal error' });
       });
   }
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  Sentry.addBreadcrumb({ category: 'api', message: 'sessions.list', data: { filter } });
   store.listSessions(filter)
     .then(rows => res.json({ sessions: rows }))
     .catch(err => {
+      Sentry.captureException(err, { extra: { route: 'sessions', filter } });
       console.error(err);
       res.status(500).json({ error: 'Internal error' });
     });
@@ -54,9 +61,11 @@ function list(req, res, next) {
 function events(req, res, next) {
   const sessionId = req.params.id;
   const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+  Sentry.addBreadcrumb({ category: 'api', message: 'sessions.events', data: { sessionId } });
   store.getSessionEvents(sessionId, limit)
     .then(rows => res.json({ events: rows }))
     .catch(err => {
+      Sentry.captureException(err, { extra: { route: 'sessions.events', sessionId } });
       console.error(err);
       res.status(500).json({ error: 'Internal error' });
     });
@@ -69,6 +78,7 @@ function onlineSeries(req, res) {
   const minutes = Math.max(stepMinutes * 2, Math.min(60, parseInt(String(minutesRaw || 10), 10) || 10));
   res.setHeader('Cache-Control', 'private, max-age=15');
   res.setHeader('Vary', 'Cookie');
+  Sentry.addBreadcrumb({ category: 'api', message: 'sessions.onlineSeries', data: { minutes } });
   store.getActiveSessionSeries(minutes, stepMinutes)
     .then((points) => {
       res.json({
@@ -79,6 +89,7 @@ function onlineSeries(req, res) {
       });
     })
     .catch((err) => {
+      Sentry.captureException(err, { extra: { route: 'sessions.onlineSeries', minutes } });
       console.error(err);
       res.status(500).json({ error: 'Internal error' });
     });
