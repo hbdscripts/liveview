@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (variants ignore flow + rows selector stability)
+Last updated: 2026-02-12 (product-name modal links + Product Insights upgrades)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -222,6 +222,11 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12 (latest)
+- Product names across dashboard + insights tables are now clickable links that open the large Product Insights modal; removed product image thumbnails from those tables (modal is now the primary way to view product imagery).
+- Product Insights modal now defaults to the **global** date range, shows KPI-style Clicks / Conversions / Conversion Rate, and includes a Top Countries section (when available) plus footer buttons for the storefront page + Shopify admin product page.
+- API updates:
+  - `/api/product-insights`: supports `14d` + `30d`, returns `topCountries` and `links.adminProductUrl`.
+  - `/api/dashboard-series`: includes `handle` in `topProducts` and trending items so the frontend can open Product Insights from Dashboard tables.
 - Insights -> Variants mapping-issues badge now uses dark style, cleaner header spacing, and per-item **Ignore** actions in the modal.
 - Added persistent table-scoped ignored variant titles in `insights_variants_config_v1` (`table.ignored`), with save-time validation and runtime diagnostics excluding ignored titles from unmapped/ambiguous counts.
 - Settings -> Insights -> Variants now includes an **Ignore List** button + modal to review/remove ignored titles and save.

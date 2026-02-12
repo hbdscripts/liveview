@@ -3871,22 +3871,18 @@ const API = '';
         var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '—';
         var cr = r && r.cr != null ? pct(r.cr) : '—';
         var handle = r && r.handle ? String(r.handle) : '';
-        var thumb = r && r.thumb_url ? String(r.thumb_url) : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        var thumbUrl = thumb ? (hotImgSquare(thumb) || thumb) : '';
-        var thumbImg = '<span class="thumb-wrap">' +
-          (thumbUrl ? '<img class="landing-thumb" src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
-        '</span>';
-        var thumbHtml = productUrl
-          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
-            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
-            (thumb ? (' data-product-thumb="' + escapeHtml(thumb) + '"') : '') +
-          '>' + thumbImg + '</a>'
-          : thumbImg;
-        var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>';
+        var nameInner = handle
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(title) + '</a>'
+            )
+          : escapeHtml(title);
+        var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + nameInner + '</span>';
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumbHtml + ' ' + name + '</div></div>' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + formatSessions(sessions) + '</div>' +
           '<div class="grid-cell" role="cell">' + formatSessions(orders) + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
@@ -4086,24 +4082,19 @@ const API = '';
       tbody.innerHTML = rows.map(function(v) {
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && v && v.handle) ? (mainBase + '/products/' + encodeURIComponent(String(v.handle))) : '';
-        const thumbUrl = (v && v.thumb_url) ? (hotImgSquare(String(v.thumb_url)) || String(v.thumb_url)) : null;
-        const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
-        const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap">' +
-          (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
-        '</span>';
         const handle = (v && v.handle) ? String(v.handle).trim().toLowerCase() : '';
         const title = (v && v.title) ? String(v.title).trim() : '';
-        const thumb = productUrl
-          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
-            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
-            (thumbSrc ? (' data-product-thumb="' + escapeHtml(thumbSrc) + '"') : '') +
-          '>' + thumbImg + '</a>'
-          : thumbImg;
 
         const nameText = displayVariantName(v);
-        const name = '<span class="bs-name" title="' + escapeHtml(nameText) + '">' + escapeHtml(nameText) + '</span>';
+        const nameInner = handle
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(nameText) + '</a>'
+            )
+          : escapeHtml(nameText);
+        const name = '<span class="bs-name" title="' + escapeHtml(nameText) + '">' + nameInner + '</span>';
 
         const ordersNum = (v && typeof v.orders === 'number') ? v.orders : (v && v.orders != null ? Number(v.orders) : 0);
         const orders = formatSessions(Number(ordersNum) || 0);
@@ -4113,7 +4104,7 @@ const API = '';
         const cr = crVal != null ? pct(crVal) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
@@ -4369,28 +4360,23 @@ const API = '';
       tbody.innerHTML = rows.map(function(p) {
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && p.handle) ? (mainBase + '/products/' + encodeURIComponent(String(p.handle))) : '';
-        const thumbUrl = p.thumb_url ? (hotImgSquare(String(p.thumb_url)) || String(p.thumb_url)) : null;
-        const ogThumb = productUrl ? ((API || '') + '/api/og-thumb?url=' + encodeURIComponent(productUrl) + '&width=100') : '';
-        const thumbSrc = thumbUrl || ogThumb || '';
-        const thumbImg = '<span class="thumb-wrap">' +
-          (thumbSrc ? '<img class="landing-thumb" src="' + escapeHtml(thumbSrc) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
-        '</span>';
         const handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
         const title = (p && p.title) ? String(p.title).trim() : '';
-        const thumb = productUrl
-          ? '<a class="js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
-            (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-            (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
-            (thumbSrc ? (' data-product-thumb="' + escapeHtml(thumbSrc) + '"') : '') +
-          '>' + thumbImg + '</a>'
-          : thumbImg;
-        const name = '<span class="bs-name" title="' + escapeHtml(p.title) + '">' + escapeHtml(p.title) + '</span>';
+        const nameInner = handle
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(title) + '</a>'
+            )
+          : escapeHtml(title);
+        const name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + nameInner + '</span>';
         const orders = String(p.orders != null ? p.orders : 0);
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + thumb + ' ' + name + '</div></div>' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
@@ -4753,22 +4739,20 @@ const API = '';
       tbody.innerHTML = pageRows.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
         const handle = row && row.handle ? String(row.handle) : '';
-        const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const placeholderSvg = '<i class="fa-light fa-image" data-icon-key="breakdown-placeholder-image" aria-hidden="true"></i>';
-        const imgInner = '<span class="thumb-wrap">' +
-          (thumb
-            ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
-            : '') +
-          '</span>';
-        const img = productUrl
-          ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '">' + imgInner + '</a>'
-          : imgInner;
+        const normalizedHandle = handle ? String(handle).trim().toLowerCase() : '';
+        const titleLink = normalizedHandle
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
+              (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+            '>' + escapeHtml(title) + '</a>'
+          : escapeHtml(title);
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell"><span class="breakdown-cell">' + img + '<span class="breakdown-label"><span class="breakdown-product-name">' + escapeHtml(title) + '</span><span class="sr-only">' + escapeHtml(title) + '</span></span></span></div>' +
+          '<div class="grid-cell" role="cell"><span class="breakdown-cell"><span class="breakdown-thumb-wrap" aria-hidden="true">' + placeholderSvg + '</span><span class="breakdown-label"><span class="breakdown-product-name">' + titleLink + '</span><span class="sr-only">' + escapeHtml(title) + '</span></span></span></div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(value) + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
         '</div>';
@@ -5242,8 +5226,12 @@ const API = '';
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(iso, label);
-        const titleLink = productUrl
-          ? '<a href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener">' + escapeHtml(productTitle) + '</a>'
+        const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
+        const titleLink = normalizedHandle
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
+              (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
+            '>' + escapeHtml(productTitle) + '</a>'
           : escapeHtml(productTitle);
         const labelHtml =
           '<span class="country-product-stack">' +
@@ -11926,11 +11914,20 @@ const API = '';
           if (!products.length) {
             prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
           } else {
+            var mainBase = getMainBaseUrl();
             prodTbody.innerHTML = productsPageRows.map(function(p) {
-              var thumbHtml = '<span class="thumb-wrap">' +
-                (p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
-              '</span>';
-              return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(p.title) + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
+              var title = p && p.title ? String(p.title) : 'Unknown';
+              var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+              var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+              var titleHtml = handle
+                ? (
+                    '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                      (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                      (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+                    '>' + escapeHtml(title) + '</a>'
+                  )
+                : escapeHtml(title);
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
             }).join('');
           }
         }
@@ -11994,19 +11991,26 @@ const API = '';
             var cls = d >= 0 ? 'text-green' : 'text-red';
             return '<span class="dash-trend-delta ' + cls + '">' + sign + String(d) + '</span>';
           }
+          var mainBase = getMainBaseUrl();
           tbody.innerHTML = pageRows.map(function(p) {
             var title = p && p.title ? String(p.title) : 'Unknown';
-            var thumbHtml = '<span class="thumb-wrap dash-thumb-wrap">' +
-              '<span class="dash-thumb-placeholder" aria-hidden="true"></span>' +
-              (p && p.thumb_url ? '<img class="landing-thumb" src="' + escapeHtml(hotImg(p.thumb_url)) + '" loading="lazy" alt="" onerror="this.remove()">' : '') +
-            '</span>';
+            var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+            var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+            var titleHtml = handle
+              ? (
+                  '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                    (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                    (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+                  '>' + escapeHtml(title) + '</a>'
+                )
+              : escapeHtml(title);
             var revNow = p && typeof p.revenueNow === 'number' ? p.revenueNow : 0;
             var revPrev = p && typeof p.revenuePrev === 'number' ? p.revenuePrev : 0;
             var ordNow = p && typeof p.ordersNow === 'number' ? p.ordersNow : 0;
             var ordPrev = p && typeof p.ordersPrev === 'number' ? p.ordersPrev : 0;
             var revCell = '<div>' + deltaText(p) + '<div class="text-muted small">' + fmtGbp(revNow) + ' vs ' + fmtGbp(revPrev) + '</div></div>';
             var ordCell = '<div>' + deltaOrdersText(p) + '<div class="text-muted small">' + String(ordNow) + ' vs ' + String(ordPrev) + '</div></div>';
-            return '<tr><td><span class="product-cell">' + thumbHtml + ' ' + escapeHtml(title) + '</span></td><td>' + revCell + '</td><td>' + ordCell + '</td></tr>';
+            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td>' + revCell + '</td><td>' + ordCell + '</td></tr>';
           }).join('');
         }
 
@@ -12225,9 +12229,9 @@ const API = '';
                     '<option value="yesterday">Yesterday</option>' +
                     '<option value="3d">Last 3 days</option>' +
                     '<option value="7d">Last 7 days</option>' +
-                    '<option value="month">Last 30 days</option>' +
+                    '<option value="14d">Last 14 days</option>' +
+                    '<option value="30d">Last 30 days</option>' +
                   '</select>' +
-                  '<a class="btn btn-ghost-secondary btn-sm" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product</a>' +
                   '<button type="button" class="btn-close" id="product-insights-close" aria-label="Close"></button>' +
                 '</div>' +
               '</div>' +
@@ -12258,10 +12262,32 @@ const API = '';
                     '<div class="col-12 col-lg-7">' +
                       '<div class="card">' +
                         '<div class="card-header"><h3 class="card-title">Performance</h3></div>' +
+                        '<div class="card-body">' +
+                          '<div class="row g-2" id="product-insights-kpi-row">' +
+                            '<div class="col-4">' +
+                              '<div class="text-muted small">Clicks</div>' +
+                              '<div class="h3 m-0" id="product-insights-kpi-clicks">—</div>' +
+                            '</div>' +
+                            '<div class="col-4">' +
+                              '<div class="text-muted small">Conversions</div>' +
+                              '<div class="h3 m-0" id="product-insights-kpi-conversions">—</div>' +
+                            '</div>' +
+                            '<div class="col-4">' +
+                              '<div class="text-muted small">Conversion rate</div>' +
+                              '<div class="h3 m-0" id="product-insights-kpi-cr">—</div>' +
+                            '</div>' +
+                          '</div>' +
+                        '</div>' +
                         '<div class="table-responsive">' +
                           '<table class="table table-vcenter card-table table-sm">' +
                             '<tbody id="product-insights-metrics-table"></tbody>' +
                           '</table>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="card mt-3" id="product-insights-top-countries-card" style="display:none">' +
+                        '<div class="card-header"><h3 class="card-title">Top countries</h3></div>' +
+                        '<div class="card-body">' +
+                          '<div id="product-insights-top-countries" class="d-grid gap-2"></div>' +
                         '</div>' +
                       '</div>' +
                       '<div class="card mt-3">' +
@@ -12271,6 +12297,10 @@ const API = '';
                     '</div>' +
                   '</div>' +
                 '</div>' +
+              '</div>' +
+              '<div class="modal-footer d-flex align-items-center justify-content-end gap-2">' +
+                '<a class="btn btn-ghost-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product page</a>' +
+                '<a class="btn btn-primary" id="product-insights-open-admin" href="#" target="_blank" rel="noopener" style="display:none">Open in Shopify admin</a>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12419,6 +12449,61 @@ const API = '';
         });
       }
 
+      function rangeLabelForKey(rangeKey) {
+        var rk = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+        if (!rk) rk = 'today';
+        try {
+          if (typeof isCustomRangeKey === 'function' && isCustomRangeKey(rk)) {
+            var r = ymdRangeFromRangeKey(rk);
+            if (r && r.startYmd && r.endYmd) return formatYmdRangeLabel(r.startYmd, r.endYmd) || 'Selected dates';
+          }
+          if (typeof isCustomDayRangeKey === 'function' && isCustomDayRangeKey(rk)) {
+            var ymd = ymdFromDayKey(rk);
+            if (ymd) return formatYmdLabel(ymd) || 'Selected day';
+          }
+        } catch (_) {}
+        try { return getRangeDisplayLabel(rk); } catch (_) {}
+        return rk;
+      }
+
+      function globalRangeKeyOrToday() {
+        try {
+          var rk = getStatsRange();
+          rk = (rk == null ? '' : String(rk)).trim().toLowerCase();
+          return rk || 'today';
+        } catch (_) {
+          return 'today';
+        }
+      }
+
+      function syncRangeSelect(key) {
+        ensureDom();
+        var sel = document.getElementById('product-insights-range');
+        if (!sel) return;
+        var k = (key == null ? '' : String(key)).trim().toLowerCase();
+        if (!k) k = 'today';
+        try {
+          Array.from(sel.querySelectorAll('option[data-dynamic="1"]')).forEach(function(o) { o.remove(); });
+        } catch (_) {}
+        var found = false;
+        try {
+          for (var i = 0; i < sel.options.length; i++) {
+            var ov = (sel.options[i] && sel.options[i].value != null) ? String(sel.options[i].value).trim().toLowerCase() : '';
+            if (ov === k) { found = true; break; }
+          }
+        } catch (_) {}
+        if (!found) {
+          try {
+            var opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = rangeLabelForKey(k) || k;
+            opt.setAttribute('data-dynamic', '1');
+            sel.appendChild(opt);
+          } catch (_) {}
+        }
+        try { sel.value = k; } catch (_) {}
+      }
+
       function render(payload) {
         var status = document.getElementById('product-insights-status');
         var body = document.getElementById('product-insights-body');
@@ -12430,8 +12515,15 @@ const API = '';
         var typeEl = document.getElementById('product-insights-type');
         var subtitleEl = document.getElementById('product-insights-subtitle');
         var openLink = document.getElementById('product-insights-open-store');
+        var adminLink = document.getElementById('product-insights-open-admin');
         var mainImg = document.getElementById('product-insights-main-img');
         var thumbsEl = document.getElementById('product-insights-thumbs');
+        var kpiRow = document.getElementById('product-insights-kpi-row');
+        var kpiClicksEl = document.getElementById('product-insights-kpi-clicks');
+        var kpiConvEl = document.getElementById('product-insights-kpi-conversions');
+        var kpiCrEl = document.getElementById('product-insights-kpi-cr');
+        var topCountriesCard = document.getElementById('product-insights-top-countries-card');
+        var topCountriesEl = document.getElementById('product-insights-top-countries');
 
         var prod = payload && payload.product ? payload.product : null;
         var metrics = payload && payload.metrics ? payload.metrics : {};
@@ -12456,14 +12548,22 @@ const API = '';
           var rk = (payload && payload.rangeKey) ? String(payload.rangeKey) : currentRangeKey;
           var lk2 = isPage ? (page && page.landingKind ? String(page.landingKind) : (currentLandingKind || '')) : (currentLandingKind || '');
           var prefix = lk2 ? (lk2 === 'exit' ? 'Exit' : 'Entry') + ' · ' : '';
-          subtitleEl.textContent = prefix + rk;
+          syncRangeSelect(rk);
+          subtitleEl.textContent = prefix + (rangeLabelForKey(rk) || rk);
         }
 
         if (openLink) {
           var href = isPage ? (currentPageUrl || '#') : (currentProductUrl || '#');
           openLink.href = href;
           openLink.style.display = href && href !== '#' ? 'inline-flex' : 'none';
-          openLink.textContent = isPage ? 'Open page' : 'Open product';
+          openLink.textContent = isPage ? 'Open page' : 'Open product page';
+        }
+        if (adminLink) {
+          var adminHref = (!isPage && payload && payload.links && payload.links.adminProductUrl)
+            ? String(payload.links.adminProductUrl)
+            : '';
+          adminLink.href = adminHref || '#';
+          adminLink.style.display = adminHref && adminHref !== '#' ? 'inline-flex' : 'none';
         }
 
         // Images
@@ -12540,7 +12640,7 @@ const API = '';
             var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
             mt.innerHTML =
               row('Revenue (GBP)', revenue) +
-              row('Orders', orders) +
+              row('Conversions', orders) +
               row('Units sold', units) +
               '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
               row('Clicks (landings)', clicks) +
@@ -12548,10 +12648,48 @@ const API = '';
               row('Add to cart', atc) +
               row('Checkout started', cs) +
               '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-              row('Conversion rate (Orders / Clicks)', cr) +
+              row('Conversion rate (Conversions / Clicks)', cr) +
               row('View → Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv);
+          }
+        }
+
+        // KPI row + top countries (product mode only)
+        if (kpiRow) kpiRow.style.display = isPage ? 'none' : '';
+        if (!isPage) {
+          if (kpiClicksEl) kpiClicksEl.textContent = (metrics && metrics.clicks != null) ? fmtNum(Number(metrics.clicks) || 0) : '—';
+          if (kpiConvEl) kpiConvEl.textContent = (metrics && metrics.orders != null) ? fmtNum(Number(metrics.orders) || 0) : '—';
+          if (kpiCrEl) kpiCrEl.textContent = (metrics && metrics.cr != null) ? fmtPct(Number(metrics.cr)) : '—';
+        }
+
+        if (topCountriesCard && topCountriesEl) {
+          var top = (!isPage && payload && Array.isArray(payload.topCountries)) ? payload.topCountries : [];
+          if (top && top.length) {
+            topCountriesCard.style.display = '';
+            topCountriesEl.innerHTML = top.slice(0, 5).map(function(r) {
+              var iso = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
+              if (iso === 'UK') iso = 'GB';
+              var name = countryLabel(iso);
+              var flag = flagImg(iso, name);
+              var conv = (r && r.orders != null) ? (Number(r.orders) || 0) : 0;
+              var rev = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
+              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '—';
+              return '' +
+                '<div class="d-flex align-items-center justify-content-between">' +
+                  '<div class="d-flex align-items-center gap-2 min-w-0">' +
+                    flag +
+                    '<span class="text-truncate">' + escapeHtml(name) + '</span>' +
+                  '</div>' +
+                  '<div class="text-end">' +
+                    '<div class="fw-semibold" style="font-size:.875rem">' + escapeHtml(fmtNum(conv)) + ' conversions</div>' +
+                    '<div class="text-muted small">' + escapeHtml(revText) + '</div>' +
+                  '</div>' +
+                '</div>';
+            }).join('');
+          } else {
+            topCountriesCard.style.display = 'none';
+            topCountriesEl.innerHTML = '';
           }
         }
 
@@ -12600,10 +12738,9 @@ const API = '';
         currentTitle = options.title ? String(options.title) : null;
         currentProductUrl = options.productUrl ? String(options.productUrl) : null;
         currentLandingKind = options.landingKind ? String(options.landingKind) : null;
-        currentRangeKey = 'today';
+        currentRangeKey = globalRangeKeyOrToday();
         ensureDom();
-        var sel = document.getElementById('product-insights-range');
-        if (sel) sel.value = 'today';
+        syncRangeSelect(currentRangeKey);
         show();
         load();
       }
@@ -12618,15 +12755,14 @@ const API = '';
         currentTitle = options.title ? String(options.title) : null;
         currentProductUrl = null;
         currentLandingKind = options.landingKind ? String(options.landingKind) : null;
-        currentRangeKey = 'today';
+        currentRangeKey = globalRangeKeyOrToday();
         ensureDom();
-        var sel = document.getElementById('product-insights-range');
-        if (sel) sel.value = 'today';
+        syncRangeSelect(currentRangeKey);
         show();
         load();
       }
 
-      // Delegate clicks from product thumbnail links
+      // Delegate clicks from product links (tables, breakdowns, etc.)
       document.addEventListener('click', function(e) {
         var a = e && e.target && e.target.closest ? e.target.closest('a.js-product-modal-link') : null;
         if (!a) return;

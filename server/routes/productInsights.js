@@ -1,5 +1,5 @@
 /**
- * GET /api/product-insights?handle=...&range=today|yesterday|3d|7d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD&shop=...
+ * GET /api/product-insights?handle=...&range=today|yesterday|3d|7d|14d|30d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD&shop=...
  *
  * Returns a product analytics payload for the shared Product modal:
  * - Product metadata (title + images) from Shopify Admin API (best-effort, cached by Shopify).
@@ -14,7 +14,38 @@ const fx = require('../fx');
 
 const API_VERSION = '2025-01';
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', 'month'];
+const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', '14d', '30d', 'month'];
+
+function safeJsonParse(str) {
+  if (!str || typeof str !== 'string') return null;
+  try { return JSON.parse(str); } catch (_) { return null; }
+}
+
+function normalizeCountry(raw) {
+  const cc = raw != null ? String(raw).trim().toUpperCase().slice(0, 2) : '';
+  if (!cc) return 'XX';
+  if (cc === 'UK') return 'GB';
+  if (!/^[A-Z]{2}$/.test(cc)) return 'XX';
+  return cc;
+}
+
+function orderCountryCodeFromRawJson(rawJson) {
+  const raw = safeJsonParse(rawJson);
+  if (!raw || typeof raw !== 'object') return 'XX';
+  const ship =
+    raw?.shipping_address?.country_code ??
+    raw?.shipping_address?.countryCode ??
+    raw?.shippingAddress?.countryCode ??
+    raw?.shippingAddress?.country_code ??
+    null;
+  const bill =
+    raw?.billing_address?.country_code ??
+    raw?.billing_address?.countryCode ??
+    raw?.billingAddress?.countryCode ??
+    raw?.billingAddress?.country_code ??
+    null;
+  return normalizeCountry(ship || bill);
+}
 
 function normalizeHandle(v) {
   if (typeof v !== 'string') return null;
@@ -181,6 +212,72 @@ async function getProductInsights(req, res) {
     units += Number.isFinite(u) ? Math.trunc(u) : 0;
   }
   revenueGbp = Math.round(revenueGbp * 100) / 100;
+
+  // Top countries by product revenue (Shopify truth orders -> order country).
+  let topCountries = [];
+  if (shop && productId) {
+    try {
+      const rows = await db.all(
+        `
+          SELECT
+            o.order_id AS order_id,
+            MAX(o.raw_json) AS raw_json,
+            COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
+            COALESCE(SUM(li.line_revenue), 0) AS revenue
+          FROM orders_shopify_line_items li
+          INNER JOIN orders_shopify o
+            ON o.shop = li.shop AND o.order_id = li.order_id
+          WHERE li.shop = ?
+            AND li.order_created_at >= ? AND li.order_created_at < ?
+            AND (li.order_test IS NULL OR li.order_test = 0)
+            AND li.order_cancelled_at IS NULL
+            AND li.order_financial_status = 'paid'
+            AND li.product_id IS NOT NULL AND TRIM(li.product_id) = ?
+            AND o.created_at >= ? AND o.created_at < ?
+            AND (o.test IS NULL OR o.test = 0)
+            AND o.cancelled_at IS NULL
+            AND o.financial_status = 'paid'
+          GROUP BY o.order_id, COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')
+        `,
+        [shop, start, end, productId, start, end]
+      );
+
+      const orderCountry = new Map(); // order_id -> CC
+      const byCountry = new Map(); // CC -> { country_code, orderIds:Set, revenueGbp }
+      for (const r of rows || []) {
+        const oid = r && r.order_id != null ? String(r.order_id).trim() : '';
+        if (!oid) continue;
+        let cc = orderCountry.get(oid);
+        if (!cc) {
+          cc = orderCountryCodeFromRawJson(r && r.raw_json != null ? String(r.raw_json) : '');
+          orderCountry.set(oid, cc);
+        }
+        if (!cc || cc === 'XX') continue;
+
+        const cur = fx.normalizeCurrency(r && r.currency != null ? String(r.currency) : '') || 'GBP';
+        const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
+        const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
+        const gbpAmt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+
+        const curRow = byCountry.get(cc) || { country_code: cc, orderIds: new Set(), revenueGbp: 0 };
+        curRow.orderIds.add(oid);
+        curRow.revenueGbp += gbpAmt;
+        byCountry.set(cc, curRow);
+      }
+
+      topCountries = Array.from(byCountry.values())
+        .map((r) => ({
+          country_code: r.country_code,
+          orders: r.orderIds ? r.orderIds.size : 0,
+          revenueGbp: Math.round((Number(r.revenueGbp) || 0) * 100) / 100,
+        }))
+        .sort((a, b) => (b.revenueGbp - a.revenueGbp) || (b.orders - a.orders));
+      topCountries = topCountries.slice(0, 5);
+    } catch (e) {
+      console.warn('[product-insights] top countries query failed:', e && e.message ? e.message : e);
+      topCountries = [];
+    }
+  }
 
   // Clicks / landings (sessions whose first page was that product)
   let clicks = 0;
@@ -385,7 +482,11 @@ async function getProductInsights(req, res) {
     rangeEndTs: end,
     timeZone,
     currency: 'GBP',
+    links: {
+      adminProductUrl: (shop && productId) ? (`https://${shop}/admin/products/${encodeURIComponent(String(productId))}`) : null,
+    },
     product,
+    topCountries,
     metrics: {
       revenueGbp,
       orders,

@@ -502,6 +502,24 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   box-shadow: 0 0 0 2px rgba(var(--tblr-primary-rgb), .12);
 }
 
+/* Product-name links (open Product Insights modal) */
+.kexo-product-link {
+  display: inline-block;
+  max-width: 100%;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.kexo-product-link:hover {
+  text-decoration: underline;
+  color: var(--tblr-link-color, var(--tblr-primary));
+}
+.kexo-product-link:focus-visible {
+  outline: 2px solid rgba(var(--tblr-primary-rgb), .55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .th-label-short {
   display: none;
   align-items: center;

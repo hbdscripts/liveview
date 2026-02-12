@@ -323,6 +323,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
   base.forEach(function(r) {
     const meta = metaMap.get(r.product_id);
     r.thumb_url = meta && meta.thumb_url ? String(meta.thumb_url) : null;
+    r.handle = meta && meta.handle ? String(meta.handle) : null;
     if ((!r.title || r.title === 'Unknown') && meta && meta.title) r.title = String(meta.title);
   });
 
@@ -599,6 +600,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         const meta = metaMap.get(pid);
         return {
           title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+          handle: meta && meta.handle ? String(meta.handle) : null,
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
           thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
@@ -626,6 +628,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
             const meta = fallbackMetaMap.get(pid);
             return {
               title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+              handle: meta && meta.handle ? String(meta.handle) : null,
               revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
               orders: Number(r.orders) || 0,
               thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
@@ -1082,6 +1085,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         const meta = metaMap.get(pid);
         return {
           title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+          handle: meta && meta.handle ? String(meta.handle) : null,
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
           orders: Number(r.orders) || 0,
           thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
@@ -1109,6 +1113,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
             const meta = fallbackMetaMap.get(pid);
             return {
               title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
+              handle: meta && meta.handle ? String(meta.handle) : null,
               revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
               orders: Number(r.orders) || 0,
               thumb_url: meta && meta.thumb_url ? String(meta.thumb_url) : null,
