@@ -24,6 +24,8 @@
   var insightsIgnoreModalBackdropEl = null;
   var insightsSuggestModalBackdropEl = null;
   var insightsSuggestPayload = null;
+  var insightsVariantsWarningsCache = null;
+  var insightsWarningsModalBackdropEl = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -246,6 +248,7 @@
       var enabled = table.enabled !== false;
       var orderRaw = parseInt(String(table.order), 10);
       var order = Number.isFinite(orderRaw) ? Math.max(0, orderRaw) : (idx + 1);
+      var aliases = Array.isArray(table.aliases) ? normalizeTokenList(table.aliases) : parseAliasesFromText(table.aliases);
       var ignored = normalizeIgnoredList(table.ignored);
       var rules = [];
       var seenRuleIds = {};
@@ -260,7 +263,7 @@
         var exclude = normalizeTokenList(rule.exclude);
         rules.push({ id: ruleId, label: label, include: include, exclude: exclude });
       });
-      out.push({ id: id, name: name, enabled: enabled, order: order, ignored: ignored, rules: rules });
+      out.push({ id: id, name: name, enabled: enabled, order: order, aliases: aliases, ignored: ignored, rules: rules });
     });
     defaults.tables.forEach(function (table) {
       if (seenIds[table.id]) return;
@@ -1276,6 +1279,90 @@
     msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
   }
 
+  function countCoverageWarningTables(details) {
+    var tables = details && Array.isArray(details.tables) ? details.tables : [];
+    var n = 0;
+    tables.forEach(function (t) {
+      if (!t) return;
+      var unmapped = Number(t.unmappedCount) || 0;
+      var ambiguous = Number(t.ambiguousCount) || 0;
+      if ((unmapped + ambiguous) > 0) n += 1;
+    });
+    return n;
+  }
+
+  function setInsightsVariantsWarnings(details) {
+    var btn = document.getElementById('settings-insights-variants-warnings-btn');
+    if (details && typeof details === 'object' && details.stage === 'coverage') {
+      insightsVariantsWarningsCache = details;
+    } else {
+      insightsVariantsWarningsCache = null;
+    }
+    if (!btn) return;
+    if (!insightsVariantsWarningsCache) {
+      btn.disabled = true;
+      btn.textContent = 'Warnings';
+      btn.classList.remove('btn-warning');
+      btn.classList.add('btn-outline-warning');
+      return;
+    }
+    var n = countCoverageWarningTables(insightsVariantsWarningsCache);
+    btn.disabled = false;
+    btn.textContent = n > 0 ? ('Warnings (' + String(n) + ')') : 'Warnings';
+    btn.classList.remove('btn-outline-warning');
+    btn.classList.add('btn-warning');
+  }
+
+  function buildInsightsVariantsCoverageWarningsHtml(details) {
+    var d = details && typeof details === 'object' ? details : null;
+    if (!d || d.stage !== 'coverage') return '<div class="text-secondary">No warnings loaded yet.</div>';
+    var tables = Array.isArray(d.tables) ? d.tables : [];
+    var html = '';
+    html += '<div class="alert alert-warning mb-3">';
+    html += '<div class="fw-semibold mb-2">Saved with coverage warnings</div>';
+    html += '<div class="text-secondary small mb-2">These warnings do not block saving. Until you map or ignore them, Insights → Variants may show inflated CR (because unmapped sessions/orders are excluded from table rows).</div>';
+    if (typeof d.observedCount === 'number') {
+      html += '<div class="text-secondary small mb-2">Validated against ' + escapeHtml(String(d.observedCount)) + ' recent variant titles.</div>';
+    }
+    tables.forEach(function (table) {
+      if (!table) return;
+      var ignoredCount = Number(table.ignoredCount) || 0;
+      var outOfScopeCount = Number(table.outOfScopeCount) || 0;
+      var resolvedCount = Number(table.resolvedCount) || 0;
+      var unmappedCount = Number(table.unmappedCount) || 0;
+      var ambiguousCount = Number(table.ambiguousCount) || 0;
+      if (unmappedCount <= 0 && ambiguousCount <= 0) return;
+      html += '<div class="mb-2"><strong>' + escapeHtml(table.tableName || table.tableId || 'Table') + '</strong>: ' +
+        escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous' +
+        (outOfScopeCount > 0 ? ' (' + escapeHtml(String(outOfScopeCount)) + ' out-of-scope)' : '') +
+        (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') +
+        (resolvedCount > 0 ? ' (' + escapeHtml(String(resolvedCount)) + ' overlap-resolved)' : '') + '</div>';
+      var unmapped = Array.isArray(table.unmappedExamples) ? table.unmappedExamples.slice(0, 6) : [];
+      var ambiguous = Array.isArray(table.ambiguousExamples) ? table.ambiguousExamples.slice(0, 6) : [];
+      if (unmapped.length) {
+        html += '<div class="small fw-semibold">Unmapped examples</div><ul class="small mb-2">';
+        unmapped.forEach(function (ex) {
+          html += '<li>' + escapeHtml(ex.variant_title || 'Unknown title') +
+            ' (orders: ' + escapeHtml(String(Number(ex.orders) || 0)) + ')</li>';
+        });
+        html += '</ul>';
+      }
+      if (ambiguous.length) {
+        html += '<div class="small fw-semibold">Ambiguous examples</div><ul class="small mb-2">';
+        ambiguous.forEach(function (ex) {
+          var matchLabels = Array.isArray(ex.matches)
+            ? ex.matches.map(function (m) { return m && (m.label || m.id) ? String(m.label || m.id) : ''; }).filter(Boolean).join(', ')
+            : '';
+          html += '<li>' + escapeHtml(ex.variant_title || 'Unknown title') +
+            (matchLabels ? ' \u2192 ' + escapeHtml(matchLabels) : '') + '</li>';
+        });
+        html += '</ul>';
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
   function renderInsightsVariantsErrors(details) {
     var container = document.getElementById('settings-insights-variants-errors');
     if (!container) return;
@@ -1285,6 +1372,7 @@
     }
     var html = '';
     if (details.stage === 'structure') {
+      // Structure errors block save – keep inline.
       var errors = Array.isArray(details.errors) ? details.errors : [];
       html += '<div class="alert alert-danger mb-3"><div class="fw-semibold mb-1">Cannot save: invalid structure</div>';
       if (errors.length) {
@@ -1302,50 +1390,9 @@
       return;
     }
     if (details.stage === 'coverage') {
-      var tables = Array.isArray(details.tables) ? details.tables : [];
-      html += '<div class="alert alert-warning mb-3">';
-      html += '<div class="fw-semibold mb-2">Saved with coverage warnings</div>';
-      html += '<div class="text-secondary small mb-2">You can save even when some enabled tables have unmapped in-scope variants. Until you map or ignore them, Insights → Variants may show inflated CR (because unmapped sessions/orders are excluded from the table rows).</div>';
-      if (typeof details.observedCount === 'number') {
-        html += '<div class="text-secondary small mb-2">Validated against ' + escapeHtml(String(details.observedCount)) + ' recent variant titles.</div>';
-      }
-      tables.forEach(function (table) {
-        if (!table) return;
-        var ignoredCount = Number(table.ignoredCount) || 0;
-        var outOfScopeCount = Number(table.outOfScopeCount) || 0;
-        var resolvedCount = Number(table.resolvedCount) || 0;
-        var unmappedCount = Number(table.unmappedCount) || 0;
-        var ambiguousCount = Number(table.ambiguousCount) || 0;
-        if (unmappedCount <= 0 && ambiguousCount <= 0) return;
-        html += '<div class="mb-2"><strong>' + escapeHtml(table.tableName || table.tableId || 'Table') + '</strong>: ' +
-          escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous' +
-          (outOfScopeCount > 0 ? ' (' + escapeHtml(String(outOfScopeCount)) + ' out-of-scope)' : '') +
-          (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') +
-          (resolvedCount > 0 ? ' (' + escapeHtml(String(resolvedCount)) + ' overlap-resolved)' : '') + '</div>';
-        var unmapped = Array.isArray(table.unmappedExamples) ? table.unmappedExamples.slice(0, 6) : [];
-        var ambiguous = Array.isArray(table.ambiguousExamples) ? table.ambiguousExamples.slice(0, 6) : [];
-        if (unmapped.length) {
-          html += '<div class="small fw-semibold">Unmapped examples</div><ul class="small mb-2">';
-          unmapped.forEach(function (ex) {
-            html += '<li>' + escapeHtml(ex.variant_title || 'Unknown title') +
-              ' (orders: ' + escapeHtml(String(Number(ex.orders) || 0)) + ')</li>';
-          });
-          html += '</ul>';
-        }
-        if (ambiguous.length) {
-          html += '<div class="small fw-semibold">Ambiguous examples</div><ul class="small mb-2">';
-          ambiguous.forEach(function (ex) {
-            var matchLabels = Array.isArray(ex.matches)
-              ? ex.matches.map(function (m) { return m && (m.label || m.id) ? String(m.label || m.id) : ''; }).filter(Boolean).join(', ')
-              : '';
-            html += '<li>' + escapeHtml(ex.variant_title || 'Unknown title') +
-              (matchLabels ? ' \u2192 ' + escapeHtml(matchLabels) : '') + '</li>';
-          });
-          html += '</ul>';
-        }
-      });
-      html += '</div>';
-      container.innerHTML = html;
+      // Coverage warnings no longer render inline (too noisy). Store for Warnings modal.
+      setInsightsVariantsWarnings(details);
+      container.innerHTML = '';
       return;
     }
     container.innerHTML = '';
@@ -1362,7 +1409,7 @@
           insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
           renderInsightsVariantsPanel(insightsVariantsDraft);
           var warnings = r && r.insightsVariantsWarnings ? r.insightsVariantsWarnings : null;
-          if (warnings) renderInsightsVariantsErrors(warnings);
+          setInsightsVariantsWarnings(warnings);
           setInsightsVariantsMsg(opts.successText || (warnings ? 'Saved (warnings).' : 'Saved.'), true);
           if (typeof opts.onSuccess === 'function') opts.onSuccess(r);
           return true;
@@ -1484,6 +1531,40 @@
       insightsSuggestModalBackdropEl.parentNode.removeChild(insightsSuggestModalBackdropEl);
     }
     insightsSuggestModalBackdropEl = null;
+  }
+
+  function ensureInsightsWarningsModalBackdrop() {
+    if (insightsWarningsModalBackdropEl && insightsWarningsModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    insightsWarningsModalBackdropEl = el;
+  }
+
+  function closeInsightsWarningsModal() {
+    var modal = document.getElementById('settings-insights-variants-warnings-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (insightsWarningsModalBackdropEl && insightsWarningsModalBackdropEl.parentNode) {
+      insightsWarningsModalBackdropEl.parentNode.removeChild(insightsWarningsModalBackdropEl);
+    }
+    insightsWarningsModalBackdropEl = null;
+  }
+
+  function openInsightsWarningsModal() {
+    var modal = document.getElementById('settings-insights-variants-warnings-modal');
+    var body = document.getElementById('settings-insights-variants-warnings-body');
+    if (!modal || !body) return;
+    var html = buildInsightsVariantsCoverageWarningsHtml(insightsVariantsWarningsCache);
+    body.innerHTML = html;
+    ensureInsightsWarningsModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
   function setInsightsSuggestMsg(text, ok) {
@@ -1622,7 +1703,7 @@
         insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
         renderInsightsVariantsPanel(insightsVariantsDraft);
         setInsightsVariantsMsg('Suggestions applied.', true);
-        if (r.warnings) renderInsightsVariantsErrors(r.warnings);
+        setInsightsVariantsWarnings(r && r.warnings ? r.warnings : null);
         closeInsightsSuggestModal();
       })
       .catch(function () {
@@ -1666,7 +1747,10 @@
       '<div id="settings-insights-variants-errors"></div>' +
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
         '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped.</div>' +
-        '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
+        '<div class="d-flex align-items-center gap-2">' +
+          '<button type="button" class="btn btn-outline-danger btn-sm" data-action="fresh-start">Fresh start</button>' +
+          '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
+        '</div>' +
       '</div>';
 
     tables.forEach(function (table, tableIdx) {
@@ -1676,6 +1760,7 @@
         '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-grow-1">' +
             '<input type="text" class="form-control form-control-sm" style="max-width:280px" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
+            '<input type="text" class="form-control form-control-sm" style="max-width:360px" placeholder="Aliases (e.g. Size, Chain Length)" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml((table.aliases || []).join(', ')) + '">' +
             '<span class="badge bg-secondary-lt">Custom</span>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
@@ -1733,6 +1818,10 @@
       table.enabled = !!checked;
       return;
     }
+    if (field === 'table-aliases') {
+      table.aliases = parseAliasesFromText(rawValue);
+      return;
+    }
     var rIdx = parseInt(String(ruleIdx), 10);
     var rules = Array.isArray(table.rules) ? table.rules : [];
     if (!Number.isFinite(rIdx) || rIdx < 0 || rIdx >= rules.length) return;
@@ -1763,8 +1852,10 @@
       if (!card) return;
       var tIdx = card.getAttribute('data-table-idx');
       var nameEl = card.querySelector('input[data-field="table-name"][data-table-idx="' + String(tIdx) + '"]');
+      var aliasesEl = card.querySelector('input[data-field="table-aliases"][data-table-idx="' + String(tIdx) + '"]');
       var enabledEl = card.querySelector('input[data-field="table-enabled"][data-table-idx="' + String(tIdx) + '"]');
       if (nameEl) updateDraftValue(tIdx, null, 'table-name', nameEl.value, false);
+      if (aliasesEl) updateDraftValue(tIdx, null, 'table-aliases', aliasesEl.value, false);
       if (enabledEl) updateDraftValue(tIdx, null, 'table-enabled', '', !!enabledEl.checked);
 
       card.querySelectorAll('tr[data-rule-idx]').forEach(function (tr) {
@@ -1803,12 +1894,27 @@
           name: 'Custom Table',
           enabled: true,
           order: tables.length + 1,
+          aliases: [],
           rules: [
             { id: 'new-rule', label: 'New Rule', include: [], exclude: [] },
           ],
+          ignored: [],
         });
         insightsVariantsDraft = normalizeInsightsVariantsConfig(cfg);
         renderInsightsVariantsPanel(insightsVariantsDraft);
+        return;
+      }
+
+      if (action === 'fresh-start') {
+        var ok = true;
+        try {
+          ok = window.confirm('Fresh start will remove ALL variant mapping tables, rules, and ignores. This does NOT delete any database data. Continue?');
+        } catch (_) { ok = false; }
+        if (!ok) return;
+        insightsVariantsDraft = defaultInsightsVariantsConfigV1();
+        setInsightsVariantsWarnings(null);
+        renderInsightsVariantsPanel(insightsVariantsDraft);
+        persistInsightsVariantsConfig(insightsVariantsDraft, { successText: 'Fresh start applied.' });
         return;
       }
 
@@ -1870,8 +1976,9 @@
 
     resetBtn.addEventListener('click', function () {
       insightsVariantsDraft = defaultInsightsVariantsConfigV1();
+      setInsightsVariantsWarnings(null);
       renderInsightsVariantsPanel(insightsVariantsDraft);
-      setInsightsVariantsMsg('Defaults loaded. Press Save to apply.', true);
+      setInsightsVariantsMsg('Reset loaded. Press Save to apply.', true);
     });
   }
 
@@ -1993,6 +2100,41 @@
       applyBtn.setAttribute('data-suggest-apply-wired', '1');
       applyBtn.addEventListener('click', function () {
         applySelectedSuggestions();
+      });
+    }
+  }
+
+  function wireInsightsVariantsWarningsModal() {
+    var openBtn = document.getElementById('settings-insights-variants-warnings-btn');
+    var modal = document.getElementById('settings-insights-variants-warnings-modal');
+    if (!openBtn || !modal) return;
+
+    if (openBtn.getAttribute('data-warnings-wired') !== '1') {
+      openBtn.setAttribute('data-warnings-wired', '1');
+      openBtn.addEventListener('click', function () {
+        if (openBtn.disabled) return;
+        openInsightsWarningsModal();
+      });
+    }
+
+    if (modal.getAttribute('data-warnings-wired') !== '1') {
+      modal.setAttribute('data-warnings-wired', '1');
+      modal.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target === modal) {
+          closeInsightsWarningsModal();
+          return;
+        }
+        var closeBtn = target.closest ? target.closest('[data-close-insights-warnings]') : null;
+        if (closeBtn) {
+          closeInsightsWarningsModal();
+        }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        closeInsightsWarningsModal();
       });
     }
   }
@@ -2246,6 +2388,7 @@
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();
     wireInsightsVariantsSuggestModal();
+    wireInsightsVariantsWarningsModal();
     wireChartsSaveReset();
     wireLayoutTablesSaveReset();
   }

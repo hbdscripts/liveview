@@ -156,9 +156,10 @@ function normalizeTable(rawTable, index) {
   const enabled = typeof obj.enabled === 'boolean' ? obj.enabled : true;
   const orderRaw = Number(obj.order);
   const order = Number.isFinite(orderRaw) ? Math.max(0, Math.trunc(orderRaw)) : index + 1;
+  const aliases = normalizeTokenList(obj.aliases);
   const rules = normalizeRules(obj.rules);
   const ignored = normalizeIgnoredList(obj.ignored);
-  return { id, name, enabled, order, rules, ignored };
+  return { id, name, enabled, order, aliases, rules, ignored };
 }
 
 function sortTablesByOrderThenName(a, b) {
@@ -251,7 +252,8 @@ function ruleSpecificityForTitle(rule, preparedTitle) {
 function tableKind(table) {
   const id = table && table.id ? String(table.id).toLowerCase() : '';
   const name = table && table.name ? String(table.name).toLowerCase() : '';
-  const key = `${id} ${name}`;
+  const aliases = Array.isArray(table && table.aliases) ? table.aliases.map((a) => String(a || '')).join(' ') : '';
+  const key = `${id} ${name} ${aliases}`.toLowerCase();
   if (key.includes('length')) return 'length';
   if (key.includes('style')) return 'style';
   if (key.includes('finish') || key.includes('metal')) return 'finish';

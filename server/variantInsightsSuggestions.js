@@ -446,6 +446,7 @@ async function buildVariantMappingSuggestions({ shop, start, end, maxVariants = 
         name: tableName,
         enabled: true,
         order: order,
+        aliases: [g.optionName],
         rules,
         ignored: [],
       },

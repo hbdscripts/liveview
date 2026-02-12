@@ -47,9 +47,19 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
   const incoming = Array.isArray(seedTables) ? seedTables : [];
   const tables = Array.isArray(base.tables) ? base.tables.slice() : [];
   const byId = new Map();
+  const byNameOrAlias = new Map();
   for (const t of tables) {
     if (!t || !t.id) continue;
-    byId.set(String(t.id).trim().toLowerCase(), t);
+    const idKey = String(t.id).trim().toLowerCase();
+    byId.set(idKey, t);
+    const nameKey = String(t.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (nameKey && !byNameOrAlias.has(nameKey)) byNameOrAlias.set(nameKey, t);
+    const aliases = Array.isArray(t.aliases) ? t.aliases : [];
+    for (const a of aliases) {
+      const ak = String(a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (!ak) continue;
+      if (!byNameOrAlias.has(ak)) byNameOrAlias.set(ak, t);
+    }
   }
 
   let maxOrder = 0;
@@ -61,7 +71,25 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
   for (const seed of incoming) {
     if (!seed || !seed.id) continue;
     const idKey = String(seed.id).trim().toLowerCase();
-    const existing = byId.get(idKey) || null;
+    let existing = byId.get(idKey) || null;
+    if (!existing) {
+      const candidates = [];
+      const seedNameKey = String(seed.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (seedNameKey) candidates.push(seedNameKey);
+      const seedAliases = Array.isArray(seed.aliases) ? seed.aliases : [];
+      for (const a of seedAliases) {
+        const ak = String(a || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (ak) candidates.push(ak);
+      }
+      for (const k of candidates) {
+        if (!k) continue;
+        const hit = byNameOrAlias.get(k);
+        if (hit) {
+          existing = hit;
+          break;
+        }
+      }
+    }
     if (!existing) {
       maxOrder += 1;
       tables.push({
@@ -69,11 +97,17 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
         name: seed.name || seed.id,
         enabled: seed.enabled !== false,
         order: maxOrder,
+        aliases: Array.isArray(seed.aliases) ? seed.aliases : [],
         rules: Array.isArray(seed.rules) ? seed.rules : [],
         ignored: Array.isArray(seed.ignored) ? seed.ignored : [],
       });
       continue;
     }
+
+    // Merge table aliases additively (helps map multiple Shopify option labels to one table).
+    const existingAliases = Array.isArray(existing.aliases) ? existing.aliases : [];
+    const seedAliases = Array.isArray(seed.aliases) ? seed.aliases : [];
+    existing.aliases = uniqueByLower(existingAliases.concat(seedAliases));
 
     // Merge rules additively (do not delete existing).
     const existingRules = Array.isArray(existing.rules) ? existing.rules : [];
