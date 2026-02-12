@@ -253,6 +253,8 @@ Ops/reliability:
   - Groups by Shopify `shipping_lines[].title` and charged shipping price (so “Standard Tracked Delivery” can appear as both Free and Paid).
   - Uses a dedicated fact table `orders_shopify_shipping_options` populated during Shopify truth reconcile (fast queries; avoids parsing orders JSON at request-time).
   - Date filter uses `orders_shopify.processed_at` when present (fallback to `created_at` when NULL). Added index on `(shop, processed_at)` for paid orders.
+  - UI polish: country input shows an inline flag after ISO2 is recognized; results include a Sessions column (checkout-started sessions for that country+range; constant per row).
+  - Flatpickr: tool date pickers are styled to match Tabler and hide adjacent-month days to avoid confusing month grids.
 - Migrations: startup/manual migration runners now include migration 039 (sessions index) and 040 (orders processed_at index).
 - Restored session details drawer behavior on `/dashboard/live`, `/dashboard/sales`, and `/dashboard/table` by adding active `.side-panel` styling in `server/public/custom.css` (these pages do not load `app.css`).
 - Refined the drawer with Tabler-aligned spacing, borders, section cards, and improved long URL wrapping so activity/source/network details remain readable.

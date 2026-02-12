@@ -107,6 +107,11 @@
         clickOpens: true,
         disableMobile: true,
         minDate: MIN_YMD,
+        onReady: function (_selectedDates, _dateStr, instance) {
+          try {
+            if (instance && instance.calendarContainer) instance.calendarContainer.classList.add('kexo-flatpickr-single');
+          } catch (_) {}
+        },
         onChange: function (selectedDates, dateStr) {
           try { if (typeof onValue === 'function') onValue(String(dateStr || '')); } catch (_) {}
         },

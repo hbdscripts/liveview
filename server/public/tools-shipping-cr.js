@@ -67,6 +67,12 @@
     return x.toFixed(1) + '%';
   }
 
+  function formatCount(n) {
+    var x = n == null ? null : Number(n);
+    if (x == null || !Number.isFinite(x)) return '—';
+    try { return new Intl.NumberFormat('en').format(Math.round(x)); } catch (_) { return String(Math.round(x)); }
+  }
+
   var state = {
     shop: getShopParam(),
     country_code: '',
@@ -77,6 +83,7 @@
   var MIN_YMD = '2025-02-01';
 
   var countryEl = qs('#country-code');
+  var countryFlagEl = qs('#country-flag');
   var countryNote = qs('#country-note');
   var startEl = qs('#start-date');
   var endEl = qs('#end-date');
@@ -87,9 +94,20 @@
   var backfillNote = qs('#backfill-note');
   var resultsEl = qs('#results');
 
+  function setCountryFlag(code) {
+    if (!countryFlagEl) return;
+    var raw = String(code || '').trim().toLowerCase();
+    if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
+      countryFlagEl.className = 'flag flag-xs ms-2 flag-country-xx is-hidden';
+      return;
+    }
+    countryFlagEl.className = 'flag flag-xs ms-2 flag-country-' + raw;
+  }
+
   function updateCountryNote() {
     var cc = normalizeCountry(state.country_code);
-    if (!cc) { setNote(countryNote, ''); return; }
+    if (!cc) { setCountryFlag(''); setNote(countryNote, ''); return; }
+    setCountryFlag(cc);
     setNote(countryNote, countryNameFromIso2(cc) + ' • ' + cc);
   }
 
@@ -123,6 +141,11 @@
         clickOpens: true,
         disableMobile: true,
         minDate: MIN_YMD,
+        onReady: function (_selectedDates, _dateStr, instance) {
+          try {
+            if (instance && instance.calendarContainer) instance.calendarContainer.classList.add('kexo-flatpickr-single');
+          } catch (_) {}
+        },
         onChange: function (selectedDates, dateStr) {
           try { if (typeof onValue === 'function') onValue(dateStr); } catch (_) {}
         },
@@ -154,10 +177,13 @@
     var cc = normalizeCountry(data.country_code || state.country_code);
     var countryName = countryNameFromIso2(cc);
     var totalOrders = (data.total_orders != null ? Number(data.total_orders) : 0) || 0;
+    var checkoutStartedSessions = (data.checkout_started_sessions != null ? Number(data.checkout_started_sessions) : 0) || 0;
     var rows = Array.isArray(data.rows) ? data.rows : [];
 
     var summary = '<div class="tools-note tools-note--spaced"><strong>' + esc(countryName) + '</strong> • ' + esc(cc) +
-      ' — ' + esc(String(totalOrders)) + (totalOrders === 1 ? ' order' : ' orders') + '</div>';
+      ' — ' + esc(formatCount(totalOrders)) + (totalOrders === 1 ? ' order' : ' orders') +
+      ' • ' + esc(formatCount(checkoutStartedSessions)) + (checkoutStartedSessions === 1 ? ' checkout-started session' : ' checkout-started sessions') +
+      '</div>';
 
     if (!rows.length) {
       resultsEl.classList.remove('is-hidden');
@@ -172,6 +198,7 @@
             '<th>Country</th>' +
             '<th>Shipping label</th>' +
             '<th>Shipping price</th>' +
+            '<th class="text-end">Sessions</th>' +
             '<th>CR%</th>' +
           '</tr></thead><tbody>';
 
@@ -185,6 +212,7 @@
         '<td>' + esc(countryName) + '</td>' +
         '<td>' + esc(label || '—') + '</td>' +
         '<td>' + esc(formatMoney(price, cur)) + '</td>' +
+        '<td class="text-end">' + esc(formatCount(checkoutStartedSessions)) + '</td>' +
         '<td>' + esc(fmtPct(pct)) + '</td>' +
       '</tr>';
     }

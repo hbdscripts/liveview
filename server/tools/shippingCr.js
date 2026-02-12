@@ -126,6 +126,26 @@ async function getShippingOptionsByCountry({
         aggRows = [];
       }
 
+      // Sessions: checkout-started sessions in range for country (constant per shipping option).
+      // Note: sessions are not shop-scoped; we filter by country + timestamp and exclude known bots.
+      let checkoutStartedSessions = 0;
+      try {
+        const row = await db.get(
+          `
+            SELECT COUNT(*) AS c
+            FROM sessions s
+            WHERE s.checkout_started_at IS NOT NULL
+              AND s.checkout_started_at >= ? AND s.checkout_started_at < ?
+              AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
+              AND s.country_code = ?
+          `,
+          [startMs, endMs, cc]
+        );
+        checkoutStartedSessions = row && row.c != null ? Number(row.c) || 0 : 0;
+      } catch (_) {
+        checkoutStartedSessions = 0;
+      }
+
       const totalOrders = (aggRows || []).reduce((sum, r) => sum + (r && r.orders != null ? Number(r.orders) || 0 : 0), 0);
       const outRows = (aggRows || [])
         .map((r) => {
@@ -149,6 +169,7 @@ async function getShippingOptionsByCountry({
         country_code: cc,
         range: { start: startMs, end: endMs },
         total_orders: totalOrders,
+        checkout_started_sessions: checkoutStartedSessions,
         rows: outRows,
       };
     }

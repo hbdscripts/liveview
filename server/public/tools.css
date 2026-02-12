@@ -191,6 +191,44 @@
   display: none !important;
 }
 
+/* Flatpickr (Tabler-style) — scoped to single-date pickers */
+.flatpickr-calendar.kexo-flatpickr-single {
+  background: var(--tblr-bg-surface, #fff);
+  border: 1px solid var(--tblr-border-color, rgba(15, 23, 42, 0.12));
+  border-radius: var(--tblr-border-radius, 10px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  overflow: hidden;
+}
+
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-months {
+  padding: 0.4rem 0.5rem 0.25rem;
+}
+
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-weekdays {
+  background: transparent;
+  padding: 0 0.25rem 0.25rem;
+}
+
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-days {
+  padding: 0 0.25rem 0.35rem;
+}
+
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-day {
+  border-radius: 6px;
+  line-height: 32px;
+  height: 32px;
+  margin: 1px 0;
+}
+
+/* Hide adjacent month days (avoid "Feb header but mostly Jan" confusion) */
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-day.prevMonthDay,
+.flatpickr-calendar.kexo-flatpickr-single .flatpickr-day.nextMonthDay {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 @media (max-width: 720px) {
   .tools-row {
     grid-template-columns: 1fr;
