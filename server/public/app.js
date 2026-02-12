@@ -4286,9 +4286,18 @@ const API = '';
       if (!el) return;
 
       if (typeof ApexCharts === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+        const tries = (el.__kexoApexWaitTries || 0) + 1;
+        el.__kexoApexWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoApexWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderProductsChart(data); }, 200);
         return;
       }
+      try { el.__kexoApexWaitTries = 0; } catch (_) {}
       var chartKey = 'products-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (productsChartInstance) { try { productsChartInstance.destroy(); } catch (_) {} productsChartInstance = null; }
@@ -5183,9 +5192,18 @@ const API = '';
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
       if (typeof jsVectorMap === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
+        const tries = (el.__kexoJvmWaitTries || 0) + 1;
+        el.__kexoJvmWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoJvmWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);text-align:center;padding:0 18px;">Map library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
+      try { el.__kexoJvmWaitTries = 0; } catch (_) {}
       var chartKey = 'countries-map-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (countriesMapChartInstance) {
@@ -8217,9 +8235,18 @@ const API = '';
       var el = document.getElementById('channels-chart');
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+        const tries = (el.__kexoApexWaitTries || 0) + 1;
+        el.__kexoApexWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoApexWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderChannelsChart(data); }, 200);
         return;
       }
+      try { el.__kexoApexWaitTries = 0; } catch (_) {}
       var chartKey = 'channels-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
@@ -8384,9 +8411,18 @@ const API = '';
       var el = document.getElementById('type-chart');
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+        const tries = (el.__kexoApexWaitTries || 0) + 1;
+        el.__kexoApexWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoApexWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderTypeChart(data); }, 200);
         return;
       }
+      try { el.__kexoApexWaitTries = 0; } catch (_) {}
       var chartKey = 'type-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
@@ -8654,9 +8690,18 @@ const API = '';
       var el = document.getElementById('live-online-chart');
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+        const tries = (el.__kexoApexWaitTries || 0) + 1;
+        el.__kexoApexWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoApexWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
         return;
       }
+      try { el.__kexoApexWaitTries = 0; } catch (_) {}
       var chartKey = 'live-online-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
@@ -8780,9 +8825,18 @@ const API = '';
       var el = document.getElementById('sessions-overview-chart');
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
+        // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+        const tries = (el.__kexoApexWaitTries || 0) + 1;
+        el.__kexoApexWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoApexWaitTries = 0;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          return;
+        }
         setTimeout(function() { renderSessionsOverviewChart(payload, rangeKey); }, 180);
         return;
       }
+      try { el.__kexoApexWaitTries = 0; } catch (_) {}
       var chartKey = PAGE === 'sales' ? 'sales-overview-chart' : 'date-overview-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (rangeOverviewChart) { try { rangeOverviewChart.destroy(); } catch (_) {} rangeOverviewChart = null; }

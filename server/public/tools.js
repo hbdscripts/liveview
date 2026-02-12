@@ -245,9 +245,18 @@
     var el = qs('#tools-compare-chart');
     if (!el) return;
     if (typeof ApexCharts === 'undefined') {
+      // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+      const tries = (el.__kexoApexWaitTries || 0) + 1;
+      el.__kexoApexWaitTries = tries;
+      if (tries >= 25) {
+        el.__kexoApexWaitTries = 0;
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+        return;
+      }
       setTimeout(function () { renderCompareChart(summary); }, 180);
       return;
     }
+    try { el.__kexoApexWaitTries = 0; } catch (_) {}
     var before = summary && summary.before ? summary.before : {};
     var after = summary && summary.after ? summary.after : {};
     var beforeSessions = Number(before.sessions) || 0;

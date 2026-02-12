@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Product Insights modal parity + lifetime product details)
+Last updated: 2026-02-12 (Google Ads GCLID per-day backfill + Ads diagnostics readability + Countries map load guard)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -254,6 +254,7 @@ Ops/reliability:
 2026-02-12 (latest)
 - Countries -> Country + Product no longer hard-caps to top 3 products per country in backend output; table row selector can now surface larger datasets (bounded by a global safety cap).
 - Google Ads page refresh path now runs backend sync (`POST /api/ads/refresh`) on force refresh, with a guarded yesterday auto-sync when summary first returns empty.
+- Google Ads GCLID backfill now queries ClickView **per-day** (required by the Google Ads API) to avoid refresh failures/misleading “endpoint not found” errors; Ads error modal diagnostics JSON is readable even in dark theme.
 - Charts UI config apply now triggers active-view re-render in `app.js`, fixing stale chart mode/color/enable states (including Countries map) after settings changes.
 - Row-per-page controls now rebind after icon/theme refresh events (`kexo:icon-theme-changed`) to prevent disappearing selectors.
 - Settings -> Diagnostics now includes clearer Refresh vs Reconcile semantics, reconcile action feedback, enriched diagnostics payload metadata, and a Download JSON handoff action for AI/agent workflows.

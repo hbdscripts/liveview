@@ -269,9 +269,18 @@
     var el = document.getElementById('ads-overview-chart');
     if (!el) return;
     if (typeof ApexCharts === 'undefined') {
+      // Avoid an unbounded retry loop if the CDN is blocked (adblock/network).
+      const tries = (el.__kexoApexWaitTries || 0) + 1;
+      el.__kexoApexWaitTries = tries;
+      if (tries >= 25) {
+        el.__kexoApexWaitTries = 0;
+        clearAdsOverviewChart('Chart library failed to load.');
+        return;
+      }
       setTimeout(function () { renderAdsOverviewChart(summary); }, 180);
       return;
     }
+    try { el.__kexoApexWaitTries = 0; } catch (_) {}
     var chartKey = 'ads-overview-chart';
     if (!isChartEnabledByUiConfig(chartKey, true)) {
       clearAdsOverviewChart('Chart disabled in Settings');
@@ -724,7 +733,8 @@
       '.ads-errors-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px;}' +
       '.ads-errors-title{font-weight:600;}' +
       '.ads-errors-detail{margin-top:2px;color:var(--muted,#555);font-size:12px;white-space:pre-wrap;word-break:break-word;}' +
-      '.ads-errors-pre{font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:0;padding:10px;background:#f8f8f8;border-radius:8px;border:1px solid #e5e5e5;}';
+      // Diagnostics JSON: force readable text even in dark theme (pre box is intentionally light).
+      '.ads-errors-pre{font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:0;padding:10px;background:#f8f8f8;color:#0f172a;border-radius:8px;border:1px solid #e5e5e5;}';
     document.head.appendChild(style);
   }
 
