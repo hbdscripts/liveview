@@ -776,16 +776,28 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem 1rem;
+  gap: 0.25rem;
   text-align: center;
-  font-size: .875rem;
+  font-size: 12px;
   font-weight: 500;
   text-decoration: none;
   transition: opacity 0.3s ease;
 }
+.kexo-sale-banner .tblr-banner-text .kexo-sale-banner-label {
+  font-weight: 600;
+  font-size: 13px;
+}
 .kexo-sale-banner .tblr-banner-text #sale-toast-amount {
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
+  font-size: 12px;
+  margin-left: 5px;
+  background: #3eb3ab;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.kexo-sale-banner .flag-xs {
+  height: 1.1rem;
 }
 .kexo-sale-banner .tblr-banner-text .kexo-sale-banner-product {
   max-width: none;

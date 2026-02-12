@@ -2,6 +2,11 @@ const store = require('../store');
 const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
+const {
+  VARIANTS_CONFIG_KEY,
+  normalizeVariantsConfigV1,
+  classifyTitleForTable,
+} = require('../variantInsightsConfig');
 
 const GRAPHQL_API_VERSION = '2024-01';
 
@@ -230,6 +235,157 @@ async function getProductVariants({ shop, productId } = {}) {
           .filter((o) => !!o.name && !!o.value)
         : [],
     })).filter((v) => !!v.variant_id),
+  };
+}
+
+function normalizeLooseToken(s) {
+  return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 120);
+}
+
+function scoreTableForOptionNames(table, optionNames) {
+  const set = optionNames instanceof Set ? optionNames : new Set();
+  if (!set.size) return 0;
+  const name = normalizeLooseToken(table && table.name);
+  const aliases = Array.isArray(table && table.aliases) ? table.aliases.map(normalizeLooseToken).filter(Boolean) : [];
+  const hay = new Set([name, ...aliases].filter(Boolean));
+  let score = 0;
+  for (const n of set) {
+    if (!n) continue;
+    if (hay.has(n)) score += 1;
+  }
+  return score;
+}
+
+async function getProductMappedVariantGroups({ shop, productId, tableId } = {}) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop) return { ok: false, error: 'missing_shop' };
+  const pid = safeStr(productId, 64);
+  if (!pid) return { ok: false, error: 'missing_product_id' };
+
+  const rawCfg = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
+  const cfg = normalizeVariantsConfigV1(rawCfg);
+  const enabledTables = Array.isArray(cfg && cfg.tables)
+    ? cfg.tables.filter((t) => t && t.enabled && Array.isArray(t.rules) && t.rules.length)
+    : [];
+
+  if (!enabledTables.length) {
+    return {
+      ok: false,
+      error: 'no_variant_mappings',
+      message: 'No variant mapping tables configured. Open Settings → Insights → Variants.',
+      tables: [],
+      table_id: null,
+      groups: [],
+    };
+  }
+
+  const vars = await getProductVariants({ shop: safeShop, productId: pid });
+  if (!vars.ok) return { ok: false, error: vars.error || 'variants_fetch_failed' };
+  const product = vars.product || null;
+  const variants = Array.isArray(vars.variants) ? vars.variants : [];
+
+  const optionNames = new Set();
+  for (const v of variants) {
+    for (const o of (Array.isArray(v && v.selected_options) ? v.selected_options : [])) {
+      const n = normalizeLooseToken(o && o.name);
+      if (n) optionNames.add(n);
+    }
+  }
+
+  const requested = normalizeLooseToken(tableId);
+  let selected = null;
+  if (requested) {
+    selected = enabledTables.find((t) => normalizeLooseToken(t && t.id) === requested) || null;
+  }
+  if (!selected) {
+    let best = enabledTables[0];
+    let bestScore = -1;
+    for (const t of enabledTables) {
+      const score = scoreTableForOptionNames(t, optionNames);
+      if (score > bestScore) {
+        bestScore = score;
+        best = t;
+      }
+    }
+    selected = best || enabledTables[0];
+  }
+
+  const ignoredSet = new Set(Array.isArray(selected && selected.ignored) ? selected.ignored.map(normalizeLooseToken).filter(Boolean) : []);
+
+  const groupsByRuleId = new Map();
+  let outOfScopeCount = 0;
+  let unmappedCount = 0;
+  let ignoredCount = 0;
+  const unmappedExamples = [];
+  const outOfScopeExamples = [];
+  const ignoredExamples = [];
+
+  for (const v of variants) {
+    const vid = safeStr(v && v.variant_id, 64);
+    if (!vid) continue;
+    const title = safeStr(v && v.title, 240) || vid;
+
+    if (ignoredSet.has(normalizeLooseToken(title))) {
+      ignoredCount += 1;
+      if (ignoredExamples.length < 10) ignoredExamples.push({ variant_id: vid, title });
+      continue;
+    }
+
+    const classified = classifyTitleForTable(selected, title);
+    if (!classified || !classified.kind) continue;
+
+    if (classified.kind === 'out_of_scope') {
+      outOfScopeCount += 1;
+      if (outOfScopeExamples.length < 10) outOfScopeExamples.push({ variant_id: vid, title });
+      continue;
+    }
+
+    if (classified.kind === 'unmapped') {
+      unmappedCount += 1;
+      if (unmappedExamples.length < 10) unmappedExamples.push({ variant_id: vid, title });
+      continue;
+    }
+
+    if (classified.kind === 'matched' && classified.rule) {
+      const rid = safeStr(classified.rule.id, 120) || '';
+      if (!rid) continue;
+      const label = safeStr(classified.rule.label, 200) || rid;
+      const cur = groupsByRuleId.get(rid) || { group_id: rid, label, variant_count: 0 };
+      cur.variant_count += 1;
+      groupsByRuleId.set(rid, cur);
+    }
+  }
+
+  const groups = Array.from(groupsByRuleId.values()).sort((a, b) => {
+    const an = String(a && a.label ? a.label : a && a.group_id ? a.group_id : '');
+    const bn = String(b && b.label ? b.label : b && b.group_id ? b.group_id : '');
+    return an.localeCompare(bn);
+  });
+
+  return {
+    ok: true,
+    shop: safeShop,
+    product,
+    tables: enabledTables.map((t) => ({
+      id: safeStr(t && t.id, 120),
+      name: safeStr(t && t.name, 120),
+      aliases: Array.isArray(t && t.aliases) ? t.aliases.slice(0, 12) : [],
+      enabled: !!(t && t.enabled),
+      rule_count: Array.isArray(t && t.rules) ? t.rules.length : 0,
+    })),
+    table_id: safeStr(selected && selected.id, 120),
+    table_name: safeStr(selected && selected.name, 160),
+    groups,
+    coverage: {
+      total_variants: variants.length,
+      mapped_variants: groups.reduce((sum, g) => sum + (Number(g && g.variant_count) || 0), 0),
+      unmapped_variants: unmappedCount,
+      out_of_scope_variants: outOfScopeCount,
+      ignored_variants: ignoredCount,
+    },
+    unmapped_examples: unmappedExamples,
+    out_of_scope_examples: outOfScopeExamples,
+    ignored_examples: ignoredExamples,
   };
 }
 
@@ -545,6 +701,7 @@ async function compareConversionRate({
   target,
   mode,
   variantIds,
+  variantMapping,
 } = {}) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   const eventYmd = parseYmd(eventDateYmd);
@@ -567,12 +724,19 @@ async function compareConversionRate({
 
   let notice = '';
 
+  const vm = (variantMapping && typeof variantMapping === 'object') ? variantMapping : null;
   const cacheKeyParams = {
     shop: safeShop,
     eventDateYmd: eventYmd,
     target: tgt,
     mode: mode || '',
     variantIds: Array.isArray(variantIds) ? variantIds.slice().sort() : null,
+    variantMapping: vm
+      ? {
+        table_id: safeStr(vm.table_id, 120) || null,
+        group_ids: Array.isArray(vm.group_ids) ? vm.group_ids.map((v) => safeStr(v, 120)).filter(Boolean).sort() : null,
+      }
+      : null,
   };
 
   const cached = await reportCache.getOrComputeJson(
@@ -705,6 +869,76 @@ async function compareConversionRate({
         });
       }
 
+      if (targetType === 'product' && m === 'mapped') {
+        const rawCfg = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
+        const cfg = normalizeVariantsConfigV1(rawCfg);
+        const tables = Array.isArray(cfg && cfg.tables) ? cfg.tables.filter((t) => t && t.enabled) : [];
+        if (!tables.length) return { ok: false, error: 'no_variant_mappings', message: 'No variant mapping tables configured. Open Settings → Insights → Variants.' };
+
+        const tableIdReq = safeStr(vm && vm.table_id, 120).trim().toLowerCase();
+        const table = tableIdReq
+          ? (tables.find((t) => String(t.id || '').trim().toLowerCase() === tableIdReq) || null)
+          : (tables[0] || null);
+        if (!table) return { ok: false, error: 'variant_mapping_table_not_found' };
+        const wanted = Array.isArray(vm && vm.group_ids) ? new Set(vm.group_ids.map((x) => safeStr(x, 120)).filter(Boolean)) : null;
+
+        const vars = await getProductVariants({ shop: safeShop, productId: productIds[0] });
+        if (!vars.ok) return { ok: false, error: vars.error || 'variants_fetch_failed' };
+        const allVariants = Array.isArray(vars.variants) ? vars.variants : [];
+
+        const groupsByRuleId = new Map(); // rule_id -> { rule_id, label, variant_ids: [] }
+        const unmapped = [];
+        for (const v of allVariants) {
+          const vid = safeStr(v && v.variant_id, 64);
+          if (!vid) continue;
+          const title = safeStr(v && v.title, 240) || vid;
+          const classified = classifyTitleForTable(table, title);
+          if (classified && classified.kind === 'matched' && classified.rule) {
+            const rid = safeStr(classified.rule.id, 120) || '';
+            if (!rid) continue;
+            if (wanted && wanted.size && !wanted.has(rid)) continue;
+            const label = safeStr(classified.rule.label, 200) || rid;
+            const cur = groupsByRuleId.get(rid) || { rule_id: rid, label, variant_ids: [] };
+            cur.variant_ids.push(vid);
+            groupsByRuleId.set(rid, cur);
+          } else if (classified && classified.kind === 'unmapped') {
+            unmapped.push({ variant_id: vid, title });
+          }
+        }
+
+        const groups = Array.from(groupsByRuleId.values()).sort((a, b) => String(a.label || a.rule_id).localeCompare(String(b.label || b.rule_id)));
+        const allVids = Array.from(new Set(groups.flatMap((g) => g.variant_ids || []))).filter(Boolean);
+        const variantIdSet = new Set(allVids);
+
+        const beforeSessionsByVid = await countVariantLandingSessions({ startMs: beforeStart, endMs: beforeEnd, handle: handles[0], variantIdSet });
+        const afterSessionsByVid = await countVariantLandingSessions({ startMs: afterStart, endMs: afterEnd, handle: handles[0], variantIdSet });
+        const beforeByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: beforeStart, endMs: beforeEnd, productId: productIds[0], variantIds: allVids });
+        const afterByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: afterStart, endMs: afterEnd, productId: productIds[0], variantIds: allVids });
+
+        variantsOut = groups.map((g) => {
+          let bSessions = 0;
+          let aSessions = 0;
+          let bOrders = 0;
+          let aOrders = 0;
+          for (const vid of (g.variant_ids || [])) {
+            bSessions += beforeSessionsByVid && beforeSessionsByVid.has(vid) ? beforeSessionsByVid.get(vid) : 0;
+            aSessions += afterSessionsByVid && afterSessionsByVid.has(vid) ? afterSessionsByVid.get(vid) : 0;
+            bOrders += beforeByVid && beforeByVid.has(vid) ? beforeByVid.get(vid) : 0;
+            aOrders += afterByVid && afterByVid.has(vid) ? afterByVid.get(vid) : 0;
+          }
+          const b = metricBlock({ sessions: bSessions, orders: bOrders });
+          const a = metricBlock({ sessions: aSessions, orders: aOrders });
+          return {
+            variant_id: g.rule_id,
+            variant_name: g.label,
+            before: b,
+            after: a,
+            abs_change: (b.cr != null && a.cr != null) ? (a.cr - b.cr) : null,
+            pct_change: pctChange(b.cr, a.cr),
+          };
+        });
+      }
+
       const summary = {
         before,
         after,
@@ -735,5 +969,6 @@ async function compareConversionRate({
 module.exports = {
   catalogSearch,
   getProductVariants,
+  getProductMappedVariantGroups,
   compareConversionRate,
 };

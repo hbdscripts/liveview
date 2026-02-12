@@ -41,6 +41,22 @@ router.get('/compare-cr/variants', async (req, res) => {
   }
 });
 
+router.get('/compare-cr/mapped-groups', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const shop = safeShopParam(req);
+    const productId = req && req.query && req.query.product_id != null ? String(req.query.product_id) : '';
+    const tableId = req && req.query && req.query.table_id != null ? String(req.query.table_id) : '';
+    const out = await compareCr.getProductMappedVariantGroups({ shop, productId, tableId });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.compare-cr.mapped-groups' } });
+    console.error('[tools.compare-cr.mapped-groups]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.post('/compare-cr/compare', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
@@ -50,6 +66,9 @@ router.post('/compare-cr/compare', async (req, res) => {
     const target = req && req.body && req.body.target ? req.body.target : null;
     const mode = req && req.body && req.body.mode != null ? String(req.body.mode) : '';
     const variantIds = req && req.body && Array.isArray(req.body.variant_ids) ? req.body.variant_ids : null;
+    const variantMapping = req && req.body && req.body.variant_mapping && typeof req.body.variant_mapping === 'object'
+      ? req.body.variant_mapping
+      : null;
 
     const out = await compareCr.compareConversionRate({
       shop,
@@ -57,6 +76,7 @@ router.post('/compare-cr/compare', async (req, res) => {
       target,
       mode,
       variantIds,
+      variantMapping,
     });
     res.json(out);
   } catch (err) {

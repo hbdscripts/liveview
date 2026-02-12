@@ -74,6 +74,8 @@
   var productModeRow = qs('#product-mode-row');
   var variantsRow = qs('#variants-row');
   var variantsList = qs('#variants-list');
+  var variantsNoteEl = qs('#variants-note');
+  var variantsMappedTableSel = qs('#variants-mapped-table');
   var variantsRefresh = qs('#variants-refresh');
   var variantsSelectAll = qs('#variants-select-all');
   var variantsClear = qs('#variants-clear');
@@ -89,6 +91,8 @@
     mode: 'product',
     variants: [],
     variantSelected: new Set(),
+    mappedTables: [],
+    mappedTableId: '',
   };
 
   var MIN_YMD = '2025-02-01';
@@ -96,6 +100,9 @@
   function setNote(el, msg) {
     if (!el) return;
     el.textContent = msg || '';
+  }
+  function setVariantsNote(msg) {
+    setNote(variantsNoteEl, msg || '');
   }
 
   function ymdToMs(ymd) {
@@ -151,6 +158,8 @@
         state.mode = 'product';
         state.variants = [];
         state.variantSelected = new Set();
+        state.mappedTables = [];
+        state.mappedTableId = '';
         renderSelectedTarget();
         renderVariants();
         updateUi();
@@ -170,22 +179,38 @@
   function currentProductMode() {
     var sel = document.querySelector('input[name="product_mode"]:checked');
     var v = sel && sel.value ? String(sel.value) : 'product';
-    return v === 'variants' ? 'variants' : 'product';
+    if (v === 'variants' || v === 'mapped') return v;
+    return 'product';
   }
 
   function renderVariants() {
     if (!variantsRow || !variantsList) return;
-    if (!state.target || state.target.type !== 'product' || currentProductMode() !== 'variants') {
+    var mode = currentProductMode();
+    if (!state.target || state.target.type !== 'product' || (mode !== 'variants' && mode !== 'mapped')) {
       variantsRow.classList.add('is-hidden');
       variantsList.innerHTML = '';
+      setVariantsNote('');
       if (variantsSelectAll) variantsSelectAll.disabled = true;
       if (variantsClear) variantsClear.disabled = true;
       return;
     }
     variantsRow.classList.remove('is-hidden');
 
+    // Toggle mapping table selector visibility
+    if (variantsMappedTableSel) {
+      variantsMappedTableSel.style.display = mode === 'mapped' ? '' : 'none';
+    }
+    if (variantsRefresh) {
+      variantsRefresh.textContent = mode === 'mapped' ? 'Load labels' : 'Load variants';
+    }
+
     if (!state.variants || !state.variants.length) {
-      variantsList.innerHTML = '<div class="tools-note">No variants loaded.</div>';
+      variantsList.innerHTML = '<div class="tools-note">' + (mode === 'mapped' ? 'No labels loaded.' : 'No variants loaded.') + '</div>';
+      if (mode === 'mapped') {
+        if (!state.mappedTables || !state.mappedTables.length) {
+          setVariantsNote('Load variant labels from your Insights → Variants mappings.');
+        }
+      }
       if (variantsSelectAll) variantsSelectAll.disabled = true;
       if (variantsClear) variantsClear.disabled = true;
       return;
@@ -229,7 +254,7 @@
       compareBtn.disabled = !(hasDate && hasTarget);
     }
 
-    if (mode === 'variants') {
+    if (mode === 'variants' || mode === 'mapped') {
       if (variantsRow) variantsRow.classList.remove('is-hidden');
     }
 
@@ -456,6 +481,8 @@
           state.mode = 'product';
           state.variants = [];
           state.variantSelected = new Set();
+          state.mappedTables = [];
+          state.mappedTableId = '';
           closeSuggest();
           if (searchEl) searchEl.value = '';
           renderSelectedTarget();
@@ -517,8 +544,12 @@
       updateUi();
       renderResults(null);
       try {
-        if (state && state.target && state.target.type === 'product' && currentProductMode() === 'variants') {
+        if (!state || !state.target || state.target.type !== 'product') return;
+        var m = currentProductMode();
+        if (m === 'variants') {
           if (!state.variants || !state.variants.length) loadVariants();
+        } else if (m === 'mapped') {
+          if (!state.variants || !state.variants.length) loadMappedGroups();
         }
       } catch (_) {}
     });
@@ -532,9 +563,11 @@
         if (!data || !data.ok) {
           state.variants = [];
           state.variantSelected = new Set();
+          setVariantsNote('');
           renderVariants();
           return;
         }
+        setVariantsNote('');
         state.variants = Array.isArray(data.variants) ? data.variants.map(function (v) {
           var title = '';
           if (v && v.selected_options && v.selected_options.length) {
@@ -554,7 +587,97 @@
       });
   }
 
-  if (variantsRefresh) variantsRefresh.addEventListener('click', function () { loadVariants(); });
+  function ensureMappedTableOptions(tables, selectedId) {
+    if (!variantsMappedTableSel) return;
+    var t = Array.isArray(tables) ? tables : [];
+    var html = '';
+    for (var i = 0; i < t.length; i++) {
+      var row = t[i] || {};
+      var id = row.id ? String(row.id) : '';
+      var name = row.name ? String(row.name) : id;
+      if (!id) continue;
+      var sel = selectedId && String(selectedId) === id ? ' selected' : '';
+      html += '<option value="' + esc(id) + '"' + sel + '>' + esc(name) + '</option>';
+    }
+    variantsMappedTableSel.innerHTML = html;
+    if (selectedId) {
+      try { variantsMappedTableSel.value = String(selectedId); } catch (_) {}
+    }
+  }
+
+  function loadMappedGroups(opts) {
+    if (!state.target || state.target.type !== 'product') return;
+    var o = opts || {};
+    var tableId = o.table_id != null ? String(o.table_id) : (state.mappedTableId || '');
+    var prefix = state.shop ? ('?shop=' + encodeURIComponent(state.shop)) : '?';
+    var url = '/api/tools/compare-cr/mapped-groups' + prefix + (state.shop ? '&' : '') + 'product_id=' + encodeURIComponent(state.target.product_id);
+    if (tableId) url += '&table_id=' + encodeURIComponent(tableId);
+
+    setVariantsNote('Loading labels…');
+    fetchJson(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          state.mappedTables = [];
+          state.mappedTableId = '';
+          state.variants = [];
+          state.variantSelected = new Set();
+          if (data && data.error === 'no_variant_mappings') {
+            setVariantsNote('No variant mappings found. Configure in Settings → Insights → Variants, then click “Suggest mappings”.');
+          } else {
+            setVariantsNote(data && data.message ? String(data.message) : 'Failed to load variant labels.');
+          }
+          ensureMappedTableOptions([], '');
+          renderVariants();
+          updateUi();
+          return;
+        }
+
+        state.mappedTables = Array.isArray(data.tables) ? data.tables : [];
+        state.mappedTableId = data.table_id ? String(data.table_id) : '';
+        ensureMappedTableOptions(state.mappedTables, state.mappedTableId);
+
+        var groups = Array.isArray(data.groups) ? data.groups : [];
+        state.variants = groups.map(function (g) {
+          var gid = g && (g.group_id || g.id) ? String(g.group_id || g.id) : '';
+          var label = g && g.label ? String(g.label) : gid;
+          var n = g && g.variant_count != null ? Number(g.variant_count) || 0 : 0;
+          var title = label;
+          if (n > 0) title += ' (' + n + ')';
+          return { variant_id: gid, title: title };
+        }).filter(function (x) { return x && x.variant_id; });
+
+        state.variantSelected = new Set();
+
+        var cov = data.coverage || {};
+        var mapped = cov.mapped_variants != null ? Number(cov.mapped_variants) || 0 : null;
+        var total = cov.total_variants != null ? Number(cov.total_variants) || 0 : null;
+        var unmapped = cov.unmapped_variants != null ? Number(cov.unmapped_variants) || 0 : null;
+        var note = '';
+        if (total != null && mapped != null) {
+          note = 'Using mapping table: ' + (data.table_name ? String(data.table_name) : state.mappedTableId) + '. Mapped: ' + fmtNum(mapped) + '/' + fmtNum(total) + ' variants';
+          if (unmapped) note += ' (' + fmtNum(unmapped) + ' unmapped)';
+          note += '.';
+        }
+        setVariantsNote(note);
+
+        renderVariants();
+        updateUi();
+      });
+  }
+
+  if (variantsRefresh) variantsRefresh.addEventListener('click', function () {
+    if (currentProductMode() === 'mapped') loadMappedGroups();
+    else loadVariants();
+  });
+
+  if (variantsMappedTableSel) {
+    variantsMappedTableSel.addEventListener('change', function () {
+      var next = variantsMappedTableSel.value ? String(variantsMappedTableSel.value) : '';
+      state.mappedTableId = next;
+      state.variantSelected = new Set();
+      loadMappedGroups({ table_id: next });
+    });
+  }
   if (variantsSelectAll) variantsSelectAll.addEventListener('click', function () {
     state.variantSelected = new Set((state.variants || []).map(function (v) { return String(v.variant_id); }));
     renderVariants();
@@ -570,9 +693,17 @@
     if (!state.event_date || !state.target) return;
     var mode = state.target.type === 'collection' ? 'collection' : currentProductMode();
     var variantIds = null;
+    var variantMapping = null;
     if (state.target.type === 'product' && mode === 'variants') {
       variantIds = Array.from(state.variantSelected);
       if (!variantIds.length) variantIds = null;
+    }
+    if (state.target.type === 'product' && mode === 'mapped') {
+      var gids = Array.from(state.variantSelected);
+      variantMapping = {
+        table_id: state.mappedTableId || undefined,
+        group_ids: gids.length ? gids : undefined,
+      };
     }
 
     compareBtn.disabled = true;
@@ -584,6 +715,7 @@
       target: state.target,
       mode: mode,
       variant_ids: variantIds || undefined,
+      variant_mapping: variantMapping || undefined,
     };
 
     fetch('/api/tools/compare-cr/compare', {

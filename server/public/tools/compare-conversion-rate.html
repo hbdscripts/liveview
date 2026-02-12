@@ -59,22 +59,25 @@
                   </div>
                 </div>
 
-                <div class="tools-row" id="product-mode-row" style="display:none">
+                <div class="tools-row is-hidden" id="product-mode-row">
                   <div class="tools-label form-label">Mode</div>
                   <div class="tools-radio-row">
                     <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="product" checked /> Compare whole product</label>
-                    <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="variants" /> Drill into variants</label>
+                    <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="mapped" /> Drill into variant labels</label>
+                    <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="product_mode" value="variants" /> Drill into Shopify variants</label>
                   </div>
                 </div>
 
-                <div class="tools-row" id="variants-row" style="display:none">
+                <div class="tools-row is-hidden" id="variants-row">
                   <div class="tools-label form-label">Variants</div>
                   <div>
                     <div class="tools-actions tools-actions--spaced">
+                      <select class="form-select form-select-sm" id="variants-mapped-table" style="max-width:260px;display:none" aria-label="Variant labels table"></select>
                       <button class="btn btn-outline-primary btn-sm" type="button" id="variants-refresh">Load variants</button>
                       <button class="btn btn-outline-primary btn-sm" type="button" id="variants-select-all" disabled>Select all</button>
                       <button class="btn btn-outline-primary btn-sm" type="button" id="variants-clear" disabled>Clear</button>
                     </div>
+                    <div class="tools-note tools-note--tight" id="variants-note"></div>
                     <div id="variants-list"></div>
                   </div>
                 </div>
