@@ -24,8 +24,12 @@
   var insightsIgnoreModalBackdropEl = null;
   var insightsSuggestModalBackdropEl = null;
   var insightsSuggestPayload = null;
+  var insightsSuggestLoadingInterval = null;
+  var insightsSuggestLoadingStartMs = 0;
   var insightsVariantsWarningsCache = null;
   var insightsWarningsModalBackdropEl = null;
+  var insightsMergeModalBackdropEl = null;
+  var insightsMergeContext = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -1279,6 +1283,14 @@
     msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
   }
 
+  function setInsightsVariantsResetVariantsVisibility(cfg) {
+    var btn = document.getElementById('settings-insights-variants-reset-variants-btn');
+    if (!btn) return;
+    var tables = cfg && Array.isArray(cfg.tables) ? cfg.tables : [];
+    var show = tables.length > 0;
+    btn.classList.toggle('is-hidden', !show);
+  }
+
   function countCoverageWarningTables(details) {
     var tables = details && Array.isArray(details.tables) ? details.tables : [];
     var n = 0;
@@ -1302,15 +1314,15 @@
     if (!insightsVariantsWarningsCache) {
       btn.disabled = true;
       btn.textContent = 'Warnings';
-      btn.classList.remove('btn-warning');
-      btn.classList.add('btn-outline-warning');
+      btn.classList.remove('btn-danger');
+      btn.classList.add('btn-outline-danger');
       return;
     }
     var n = countCoverageWarningTables(insightsVariantsWarningsCache);
     btn.disabled = false;
     btn.textContent = n > 0 ? ('Warnings (' + String(n) + ')') : 'Warnings';
-    btn.classList.remove('btn-outline-warning');
-    btn.classList.add('btn-warning');
+    btn.classList.remove('btn-outline-danger');
+    btn.classList.add('btn-danger');
   }
 
   function buildInsightsVariantsCoverageWarningsHtml(details) {
@@ -1523,6 +1535,7 @@
   function closeInsightsSuggestModal() {
     var modal = document.getElementById('settings-insights-variants-suggest-modal');
     if (!modal) return;
+    stopInsightsSuggestLoadingTimer();
     modal.classList.remove('show');
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
@@ -1531,6 +1544,167 @@
       insightsSuggestModalBackdropEl.parentNode.removeChild(insightsSuggestModalBackdropEl);
     }
     insightsSuggestModalBackdropEl = null;
+  }
+
+  function ensureInsightsMergeModalBackdrop() {
+    if (insightsMergeModalBackdropEl && insightsMergeModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    insightsMergeModalBackdropEl = el;
+  }
+
+  function closeInsightsMergeModal() {
+    var modal = document.getElementById('settings-insights-variants-merge-modal');
+    if (!modal) return;
+    insightsMergeContext = null;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (insightsMergeModalBackdropEl && insightsMergeModalBackdropEl.parentNode) {
+      insightsMergeModalBackdropEl.parentNode.removeChild(insightsMergeModalBackdropEl);
+    }
+    insightsMergeModalBackdropEl = null;
+  }
+
+  function setInsightsMergeMsg(text, ok) {
+    var msg = document.getElementById('settings-insights-variants-merge-msg');
+    if (!msg) return;
+    msg.textContent = text || '';
+    msg.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  function renderInsightsMergeModalBody() {
+    var body = document.getElementById('settings-insights-variants-merge-body');
+    if (!body) return;
+    setInsightsMergeMsg('', true);
+
+    var ctx = insightsMergeContext && typeof insightsMergeContext === 'object' ? insightsMergeContext : null;
+    var cfg = insightsVariantsDraft && typeof insightsVariantsDraft === 'object'
+      ? insightsVariantsDraft
+      : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    var tables = Array.isArray(cfg.tables) ? cfg.tables : [];
+    var tIdx = ctx && Number.isFinite(ctx.tableIdx) ? ctx.tableIdx : -1;
+    var rIdx = ctx && Number.isFinite(ctx.ruleIdx) ? ctx.ruleIdx : -1;
+    if (!Number.isFinite(tIdx) || tIdx < 0 || tIdx >= tables.length) {
+      body.innerHTML = '<div class="text-danger">Invalid table selection.</div>';
+      return;
+    }
+    var table = tables[tIdx];
+    var rules = table && Array.isArray(table.rules) ? table.rules : [];
+    if (!Number.isFinite(rIdx) || rIdx < 0 || rIdx >= rules.length) {
+      body.innerHTML = '<div class="text-danger">Invalid rule selection.</div>';
+      return;
+    }
+    if (rules.length <= 1) {
+      body.innerHTML = '<div class="text-secondary">Nothing to merge (only one label in this table).</div>';
+      return;
+    }
+
+    var src = rules[rIdx] || {};
+    var srcLabel = src && src.label ? String(src.label) : ('Rule ' + String(rIdx + 1));
+    var srcCount = Array.isArray(src.include) ? src.include.length : 0;
+
+    var options = [];
+    for (var i = 0; i < rules.length; i += 1) {
+      if (i === rIdx) continue;
+      var rr = rules[i] || {};
+      var label = rr && rr.label ? String(rr.label) : ('Rule ' + String(i + 1));
+      var n = Array.isArray(rr.include) ? rr.include.length : 0;
+      options.push({ idx: i, label: label, n: n });
+    }
+    if (!options.length) {
+      body.innerHTML = '<div class="text-secondary">No other labels to merge into.</div>';
+      return;
+    }
+
+    var radios = options.map(function (o, i) {
+      return '' +
+        '<label class="form-check mb-2">' +
+          '<input class="form-check-input" type="radio" name="insights-variants-merge-target" value="' + escapeHtml(String(o.idx)) + '"' + (i === 0 ? ' checked' : '') + '>' +
+          '<span class="form-check-label">' +
+            '<div class="fw-semibold">' + escapeHtml(o.label) + '</div>' +
+            '<div class="text-secondary small">' + escapeHtml(String(o.n)) + ' include aliases</div>' +
+          '</span>' +
+        '</label>';
+    }).join('');
+
+    body.innerHTML = '' +
+      '<div class="text-secondary small mb-3">Merge <strong>' + escapeHtml(srcLabel) + '</strong> (' + escapeHtml(String(srcCount)) + ' include aliases) into the selected label below. This will move include aliases into the target and remove the source row.</div>' +
+      '<div>' + radios + '</div>';
+  }
+
+  function openInsightsMergeModal(context) {
+    var modal = document.getElementById('settings-insights-variants-merge-modal');
+    var body = document.getElementById('settings-insights-variants-merge-body');
+    if (!modal || !body) return;
+    syncInsightsVariantsDraftFromDom();
+    var ctx = context && typeof context === 'object' ? context : {};
+    insightsMergeContext = {
+      tableIdx: parseInt(String(ctx.tableIdx), 10),
+      ruleIdx: parseInt(String(ctx.ruleIdx), 10),
+    };
+    renderInsightsMergeModalBody();
+    ensureInsightsMergeModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+  }
+
+  function applyInsightsMerge() {
+    var modal = document.getElementById('settings-insights-variants-merge-modal');
+    if (!modal) return;
+    syncInsightsVariantsDraftFromDom();
+    var ctx = insightsMergeContext && typeof insightsMergeContext === 'object' ? insightsMergeContext : null;
+    if (!ctx) {
+      setInsightsMergeMsg('Nothing selected to merge.', false);
+      return;
+    }
+    var cfg = insightsVariantsDraft && typeof insightsVariantsDraft === 'object'
+      ? insightsVariantsDraft
+      : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    var tables = Array.isArray(cfg.tables) ? cfg.tables : [];
+    var tIdx = Number(ctx.tableIdx);
+    var srcIdx = Number(ctx.ruleIdx);
+    if (!Number.isFinite(tIdx) || tIdx < 0 || tIdx >= tables.length) {
+      setInsightsMergeMsg('Invalid table.', false);
+      return;
+    }
+    var table = tables[tIdx];
+    if (!table || !Array.isArray(table.rules)) {
+      setInsightsMergeMsg('Invalid table rules.', false);
+      return;
+    }
+    var rules = table.rules;
+    if (!Number.isFinite(srcIdx) || srcIdx < 0 || srcIdx >= rules.length) {
+      setInsightsMergeMsg('Invalid source label.', false);
+      return;
+    }
+    var sel = modal.querySelector('input[name="insights-variants-merge-target"]:checked');
+    var targetIdx = sel && sel.value != null ? parseInt(String(sel.value), 10) : NaN;
+    if (!Number.isFinite(targetIdx) || targetIdx < 0 || targetIdx >= rules.length) {
+      setInsightsMergeMsg('Select a target label.', false);
+      return;
+    }
+    if (targetIdx === srcIdx) {
+      setInsightsMergeMsg('Select a different target label.', false);
+      return;
+    }
+
+    var src = rules[srcIdx] || {};
+    var tgt = rules[targetIdx] || {};
+    var mergedInc = normalizeTokenList((Array.isArray(tgt.include) ? tgt.include : []).concat(Array.isArray(src.include) ? src.include : []));
+    var mergedExc = normalizeTokenList((Array.isArray(tgt.exclude) ? tgt.exclude : []).concat(Array.isArray(src.exclude) ? src.exclude : []));
+    tgt.include = mergedInc;
+    tgt.exclude = mergedExc;
+
+    rules.splice(srcIdx, 1);
+    insightsVariantsDraft = normalizeInsightsVariantsConfig(cfg);
+    renderInsightsVariantsPanel(insightsVariantsDraft);
+    closeInsightsMergeModal();
+    setInsightsVariantsMsg('Merged. Press Save to apply.', true);
   }
 
   function ensureInsightsWarningsModalBackdrop() {
@@ -1574,13 +1748,88 @@
     msg.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
   }
 
-  function fetchInsightsVariantsSuggestions(rangeKey) {
+  function stopInsightsSuggestLoadingTimer() {
+    if (insightsSuggestLoadingInterval) {
+      try { clearInterval(insightsSuggestLoadingInterval); } catch (_) {}
+    }
+    insightsSuggestLoadingInterval = null;
+    insightsSuggestLoadingStartMs = 0;
+  }
+
+  function startInsightsSuggestLoadingTimer() {
+    stopInsightsSuggestLoadingTimer();
+    insightsSuggestLoadingStartMs = Date.now();
+    function tick() {
+      var el = document.getElementById('settings-insights-variants-suggest-elapsed');
+      if (!el || !insightsSuggestLoadingStartMs) return;
+      var s = Math.max(0, Math.floor((Date.now() - insightsSuggestLoadingStartMs) / 1000));
+      el.textContent = String(s) + 's';
+    }
+    tick();
+    insightsSuggestLoadingInterval = setInterval(tick, 500);
+  }
+
+  function renderInsightsSuggestLoadingBody(kind) {
+    var hint = kind === 'refresh'
+      ? 'Refreshing from Shopify: reconciling orders before generating suggestions. This can take up to ~2 minutes.'
+      : 'Building suggestions from cached/local data (fast). Use “Refresh from Shopify” for the freshest result.';
+    return '' +
+      '<div class="d-flex align-items-start gap-2">' +
+        '<div class="spinner-border spinner-border-sm text-primary mt-1" role="status" aria-hidden="true"></div>' +
+        '<div>' +
+          '<div class="fw-semibold">Loading suggestions…</div>' +
+          '<div class="text-secondary small">' + escapeHtml(hint) + '</div>' +
+          '<div class="text-muted small mt-1">Elapsed: <span id="settings-insights-variants-suggest-elapsed">0s</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="progress progress-sm mt-3">' +
+        '<div class="progress-bar progress-bar-indeterminate"></div>' +
+      '</div>';
+  }
+
+  function setInsightsSuggestLoadingState(isLoading) {
+    var applyBtn = document.getElementById('settings-insights-variants-suggest-apply-btn');
+    var refreshBtn = document.getElementById('settings-insights-variants-suggest-refresh-btn');
+    if (applyBtn) applyBtn.disabled = !!isLoading;
+    if (refreshBtn) refreshBtn.disabled = !!isLoading;
+  }
+
+  function fetchInsightsVariantsSuggestions(rangeKey, options) {
     var range = rangeKey || '30d';
-    return fetch((API || '') + '/api/insights-variants-suggestions?range=' + encodeURIComponent(range), {
+    var opts = options && typeof options === 'object' ? options : {};
+    var refresh = !!opts.refresh;
+    var url = (API || '') + '/api/insights-variants-suggestions?range=' + encodeURIComponent(range);
+    if (refresh) url += '&refresh=1&force=1';
+    return fetch(url, {
       method: 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
     }).then(function (r) { return r.json(); });
+  }
+
+  function loadInsightsVariantsSuggestionsIntoModal(rangeKey, options) {
+    var modal = document.getElementById('settings-insights-variants-suggest-modal');
+    var body = document.getElementById('settings-insights-variants-suggest-body');
+    if (!modal || !body) return;
+    var opts = options && typeof options === 'object' ? options : {};
+    var refresh = !!opts.refresh;
+    setInsightsSuggestMsg('', true);
+    setInsightsSuggestLoadingState(true);
+    body.innerHTML = renderInsightsSuggestLoadingBody(refresh ? 'refresh' : 'fast');
+    startInsightsSuggestLoadingTimer();
+    fetchInsightsVariantsSuggestions(rangeKey || '30d', { refresh: refresh })
+      .then(function (r) {
+        stopInsightsSuggestLoadingTimer();
+        setInsightsSuggestLoadingState(false);
+        if (!modal.classList.contains('show')) return;
+        renderInsightsSuggestModalBody(r || {});
+      })
+      .catch(function () {
+        stopInsightsSuggestLoadingTimer();
+        setInsightsSuggestLoadingState(false);
+        body.innerHTML = '<div class="text-danger">Failed to load suggestions.</div>';
+        setInsightsSuggestMsg('Failed to load suggestions.', false);
+      });
   }
 
   function renderInsightsSuggestModalBody(payload) {
@@ -1635,21 +1884,12 @@
     if (!modal || !body) return;
     syncInsightsVariantsDraftFromDom();
     setInsightsSuggestMsg('', true);
-    body.innerHTML = '<div class="text-secondary">Loading suggestions…</div>';
     ensureInsightsSuggestModalBackdrop();
     modal.style.display = 'block';
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
     try { document.body.classList.add('modal-open'); } catch (_) {}
-
-    fetchInsightsVariantsSuggestions('30d')
-      .then(function (r) {
-        renderInsightsSuggestModalBody(r || {});
-      })
-      .catch(function () {
-        body.innerHTML = '<div class="text-danger">Failed to load suggestions.</div>';
-        setInsightsSuggestMsg('Failed to load suggestions.', false);
-      });
+    loadInsightsVariantsSuggestionsIntoModal('30d', { refresh: false });
   }
 
   function readSelectedSuggestIds() {
@@ -1748,7 +1988,6 @@
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
         '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped.</div>' +
         '<div class="d-flex align-items-center gap-2">' +
-          '<button type="button" class="btn btn-outline-danger btn-sm" data-action="fresh-start">Fresh start</button>' +
           '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
         '</div>' +
       '</div>';
@@ -1779,10 +2018,18 @@
         html += '<tr><td colspan="3" class="text-secondary small">No rules yet.</td></tr>';
       } else {
         rules.forEach(function (rule, ruleIdx) {
+          var mergeBtn = rules.length > 1
+            ? ('<button type="button" class="btn btn-sm btn-outline-primary" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
+            : '';
           html += '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
             '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
             '<td><textarea class="form-control form-control-sm" rows="2" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
-            '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button></td>' +
+            '<td class="text-end">' +
+              '<div class="d-inline-flex align-items-center gap-2">' +
+                mergeBtn +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
+              '</div>' +
+            '</td>' +
           '</tr>';
         });
       }
@@ -1798,6 +2045,7 @@
 
     root.innerHTML = html;
     renderInsightsVariantsErrors(null);
+    setInsightsVariantsResetVariantsVisibility(insightsVariantsDraft);
   }
 
   function updateDraftValue(tableIdx, ruleIdx, field, rawValue, checked) {
@@ -1871,6 +2119,18 @@
     insightsVariantsDraft = normalizeInsightsVariantsConfig(insightsVariantsDraft);
   }
 
+  function applyInsightsVariantsResetNow() {
+    var ok = true;
+    try {
+      ok = window.confirm('Reset Variants will remove ALL variant mapping tables, rules, and ignores. This does NOT delete any database data. Continue?');
+    } catch (_) { ok = false; }
+    if (!ok) return;
+    insightsVariantsDraft = defaultInsightsVariantsConfigV1();
+    setInsightsVariantsWarnings(null);
+    renderInsightsVariantsPanel(insightsVariantsDraft);
+    persistInsightsVariantsConfig(insightsVariantsDraft, { successText: 'Variants reset.' });
+  }
+
   function wireInsightsVariantsEditor() {
     var root = document.getElementById('settings-insights-variants-root');
     if (!root || root.getAttribute('data-insights-variants-wired') === '1') return;
@@ -1905,19 +2165,6 @@
         return;
       }
 
-      if (action === 'fresh-start') {
-        var ok = true;
-        try {
-          ok = window.confirm('Fresh start will remove ALL variant mapping tables, rules, and ignores. This does NOT delete any database data. Continue?');
-        } catch (_) { ok = false; }
-        if (!ok) return;
-        insightsVariantsDraft = defaultInsightsVariantsConfigV1();
-        setInsightsVariantsWarnings(null);
-        renderInsightsVariantsPanel(insightsVariantsDraft);
-        persistInsightsVariantsConfig(insightsVariantsDraft, { successText: 'Fresh start applied.' });
-        return;
-      }
-
       if (!Number.isFinite(tIdx) || tIdx < 0 || tIdx >= tables.length) return;
       var table = tables[tIdx];
       if (!table) return;
@@ -1927,6 +2174,13 @@
         tables.splice(tIdx, 1);
         insightsVariantsDraft = normalizeInsightsVariantsConfig(cfg);
         renderInsightsVariantsPanel(insightsVariantsDraft);
+        return;
+      }
+
+      if (action === 'merge-rule') {
+        if (!Array.isArray(table.rules)) table.rules = [];
+        if (!Number.isFinite(rIdx) || rIdx < 0 || rIdx >= table.rules.length) return;
+        openInsightsMergeModal({ tableIdx: tIdx, ruleIdx: rIdx });
         return;
       }
 
@@ -1965,21 +2219,25 @@
 
   function wireInsightsVariantsSaveReset() {
     var saveBtn = document.getElementById('settings-insights-variants-save-btn');
-    var resetBtn = document.getElementById('settings-insights-variants-reset-btn');
-    if (!saveBtn || !resetBtn) return;
+    var resetVariantsBtn = document.getElementById('settings-insights-variants-reset-variants-btn');
+    if (!saveBtn) return;
 
-    saveBtn.addEventListener('click', function () {
-      syncInsightsVariantsDraftFromDom();
-      var payloadCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
-      persistInsightsVariantsConfig(payloadCfg);
-    });
+    if (saveBtn.getAttribute('data-variants-save-wired') !== '1') {
+      saveBtn.setAttribute('data-variants-save-wired', '1');
+      saveBtn.addEventListener('click', function () {
+        syncInsightsVariantsDraftFromDom();
+        var payloadCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+        persistInsightsVariantsConfig(payloadCfg);
+      });
+    }
 
-    resetBtn.addEventListener('click', function () {
-      insightsVariantsDraft = defaultInsightsVariantsConfigV1();
-      setInsightsVariantsWarnings(null);
-      renderInsightsVariantsPanel(insightsVariantsDraft);
-      setInsightsVariantsMsg('Reset loaded. Press Save to apply.', true);
-    });
+    if (resetVariantsBtn && resetVariantsBtn.getAttribute('data-variants-reset-wired') !== '1') {
+      resetVariantsBtn.setAttribute('data-variants-reset-wired', '1');
+      resetVariantsBtn.addEventListener('click', function () {
+        if (resetVariantsBtn.classList.contains('is-hidden')) return;
+        applyInsightsVariantsResetNow();
+      });
+    }
   }
 
   function wireInsightsVariantsIgnoreModal() {
@@ -2066,6 +2324,7 @@
     var openBtn = document.getElementById('settings-insights-variants-suggest-btn');
     var modal = document.getElementById('settings-insights-variants-suggest-modal');
     var applyBtn = document.getElementById('settings-insights-variants-suggest-apply-btn');
+    var refreshBtn = document.getElementById('settings-insights-variants-suggest-refresh-btn');
     if (!openBtn || !modal || !applyBtn) return;
 
     if (openBtn.getAttribute('data-suggest-wired') !== '1') {
@@ -2100,6 +2359,46 @@
       applyBtn.setAttribute('data-suggest-apply-wired', '1');
       applyBtn.addEventListener('click', function () {
         applySelectedSuggestions();
+      });
+    }
+
+    if (refreshBtn && refreshBtn.getAttribute('data-suggest-refresh-wired') !== '1') {
+      refreshBtn.setAttribute('data-suggest-refresh-wired', '1');
+      refreshBtn.addEventListener('click', function () {
+        if (!modal.classList.contains('show')) return;
+        loadInsightsVariantsSuggestionsIntoModal('30d', { refresh: true });
+      });
+    }
+  }
+
+  function wireInsightsVariantsMergeModal() {
+    var modal = document.getElementById('settings-insights-variants-merge-modal');
+    var applyBtn = document.getElementById('settings-insights-variants-merge-apply-btn');
+    if (!modal || !applyBtn) return;
+
+    if (modal.getAttribute('data-merge-wired') !== '1') {
+      modal.setAttribute('data-merge-wired', '1');
+      modal.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target === modal) {
+          closeInsightsMergeModal();
+          return;
+        }
+        var closeBtn = target.closest ? target.closest('[data-close-insights-merge]') : null;
+        if (closeBtn) closeInsightsMergeModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        closeInsightsMergeModal();
+      });
+    }
+
+    if (applyBtn.getAttribute('data-merge-apply-wired') !== '1') {
+      applyBtn.setAttribute('data-merge-apply-wired', '1');
+      applyBtn.addEventListener('click', function () {
+        applyInsightsMerge();
       });
     }
   }
@@ -2388,6 +2687,7 @@
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();
     wireInsightsVariantsSuggestModal();
+    wireInsightsVariantsMergeModal();
     wireInsightsVariantsWarningsModal();
     wireChartsSaveReset();
     wireLayoutTablesSaveReset();

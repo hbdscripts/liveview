@@ -190,7 +190,8 @@ async function getInsightsVariantsSuggestions(req, res) {
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
   const range = normalizeRange(req.query.range);
-  const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
+  const refresh = !!(req.query && (req.query.refresh === '1' || req.query.refresh === 'true'));
+  const force = refresh || !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ ok: false, error: 'invalid_shop', message: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
@@ -214,9 +215,11 @@ async function getInsightsVariantsSuggestions(req, res) {
         force,
       },
       async () => {
-        try {
-          await salesTruth.ensureReconciled(shop, start, end, `insights_variants_suggest_${range}`);
-        } catch (_) {}
+        if (refresh) {
+          try {
+            await salesTruth.ensureReconciled(shop, start, end, `insights_variants_suggest_${range}`);
+          } catch (_) {}
+        }
 
         const suggestions = await buildVariantMappingSuggestions({ shop, start, end, maxVariants });
         return {

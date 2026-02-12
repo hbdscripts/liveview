@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Converted sale row icon + gradient)
+Last updated: 2026-02-12 (Variants reset + faster suggestions + merge)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -263,9 +263,11 @@ Ops/reliability:
 - New API endpoints:
   - `GET /api/insights-variants-suggestions` (build suggestions)
   - `POST /api/insights-variants-suggestions/apply` (apply selected seed tables into config)
+- Suggest mappings now defaults to a **fast** build (skips truth reconcile); the modal includes a loader with elapsed time plus a **Refresh from Shopify** button for the slower/accurate refresh.
 - Variants settings save is no longer blocked by unmapped coverage; it saves and returns **coverage warnings** to guide mapping/ignore.
 - Coverage warnings no longer spam inline at the top of Settings → Variants; they are accessible via a **Warnings** button + modal.
-- Settings → Variants: added **Fresh start** button to wipe all mapping tables/rules/ignores (config only; no DB changes).
+- Settings → Variants: **Reset Variants** button (footer-right; only shows when tables exist) wipes all mapping tables/rules/ignores (config only; no DB changes).
+- Settings → Variants: added per-row **Merge** action to merge include aliases into another label and remove the source row (helps clean up seeded duplicates).
 - Fixed settings editor escaping so Output labels can safely include quotes/ranges (e.g. `7.5" - 9" inches`).
 - Insights → Variants: All Variant Stats now shows **Mapped+Ignored %** and a per-table **Top Unmapped (by sessions)** section.
 
