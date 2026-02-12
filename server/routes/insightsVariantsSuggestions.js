@@ -77,6 +77,13 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
 
     // Merge rules additively (do not delete existing).
     const existingRules = Array.isArray(existing.rules) ? existing.rules : [];
+    const existingByLabel = new Map();
+    for (const er of existingRules) {
+      if (!er) continue;
+      const labelKey = String(er.label || er.id || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (!labelKey) continue;
+      if (!existingByLabel.has(labelKey)) existingByLabel.set(labelKey, er);
+    }
     const existingIncludeFingerprints = new Set(
       existingRules.map((r) => {
         const inc = Array.isArray(r && r.include) ? r.include : [];
@@ -88,6 +95,18 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
     for (const r of (Array.isArray(seed.rules) ? seed.rules : [])) {
       if (!r) continue;
       const inc = Array.isArray(r.include) ? r.include : [];
+      const exc = Array.isArray(r.exclude) ? r.exclude : [];
+
+      // If a rule with the same output label already exists, merge aliases into it (avoid duplicate rows like "Gold" twice).
+      const seedLabelKey = String(r.label || r.id || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const byLabel = seedLabelKey ? existingByLabel.get(seedLabelKey) : null;
+      if (byLabel) {
+        const mergedInc = uniqueByLower([...(Array.isArray(byLabel.include) ? byLabel.include : []), ...inc]);
+        const mergedExc = uniqueByLower([...(Array.isArray(byLabel.exclude) ? byLabel.exclude : []), ...exc]);
+        byLabel.include = mergedInc;
+        byLabel.exclude = mergedExc;
+        continue;
+      }
       const fp = inc.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean).sort().join('|');
       if (fp && existingIncludeFingerprints.has(fp)) continue;
       let rid = r.id ? String(r.id) : '';
@@ -113,7 +132,7 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
         id: rid,
         label: r.label || r.id || 'Rule',
         include: uniqueByLower(inc),
-        exclude: uniqueByLower(Array.isArray(r.exclude) ? r.exclude : []),
+        exclude: uniqueByLower(exc),
       });
     }
     existing.rules = existingRules.concat(additions);

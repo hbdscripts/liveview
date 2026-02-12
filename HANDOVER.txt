@@ -225,6 +225,7 @@ Ops/reliability:
 2026-02-12 (latest)
 - Variants mappings now start **blank/custom-first** (no shipped default mapping tables/rules). Seed tables using Suggestions or build manually.
 - Settings → Insights → Variants: added **Suggest mappings** (Shopify selectedOptions + recent observed activity) with one-click seed into editable custom tables.
+- Applying suggestions now **merges by Output label** when possible (prevents duplicates like Gold/Vermeil being added twice; new aliases are folded into the existing row).
 - New API endpoints:
   - `GET /api/insights-variants-suggestions` (build suggestions)
   - `POST /api/insights-variants-suggestions/apply` (apply selected seed tables into config)
