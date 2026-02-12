@@ -1620,7 +1620,10 @@ const API = '';
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
               if (link) link.href = '/assets/favicon.png';
-              if (typeof saleAudio !== 'undefined' && saleAudio) saleAudio.src = CASH_REGISTER_MP3_URL;
+              if (typeof saleAudio !== 'undefined' && saleAudio && typeof getCashRegisterMp3Url === 'function') {
+                saleAudio.src = getCashRegisterMp3Url();
+                try { saleAudio.load(); } catch (_) {}
+              }
             }
             if (shopForSalesFallback) {
               if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
@@ -1656,8 +1659,11 @@ const API = '';
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
-    // Sale toast chime: load from Shopify CDN (do not rely on a repo-local MP3 file).
-    var CASH_REGISTER_MP3_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
+    // Sale toast chime: try assets/cash-register.mp3 first, fall back to Shopify CDN.
+    var CASH_REGISTER_MP3_CDN = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
+    function getCashRegisterMp3Url() {
+      return (typeof getAssetsBase === 'function' ? getAssetsBase() : (API || '') + '/assets') + '/cash-register.mp3';
+    }
 
     function titleCaseFromHandle(handle) {
       if (typeof handle !== 'string') return null;
@@ -3476,17 +3482,15 @@ const API = '';
     function triggerManualSaleToast(persist) {
       const keep = !!persist;
       const cached = saleToastLastPayload;
-      const cachedAt = cached && cached.createdAt != null ? toMs(cached.createdAt) : null;
-      const latestAt = toMs(lastSaleAt);
-      const cacheIsFresh = cachedAt != null && latestAt != null && Math.abs(cachedAt - latestAt) < 1000;
-      if (cached && (cached.productTitle || cached.amountGbp != null || cached.productHandle || cached.productThumbUrl) && cacheIsFresh) {
-        triggerSaleToast({ origin: 'manual', payload: cached, playSound: false, skipLatest: true, persist: keep });
-        return;
-      }
+      const hasCache = cached && (cached.productTitle || cached.amountGbp != null || cached.productHandle || cached.productThumbUrl);
+      const placeholder = { countryCode: 'XX', productTitle: 'Loading\u2026', amountGbp: null, productHandle: '', productThumbUrl: '', createdAt: null };
+      const payload = hasCache ? cached : placeholder;
+      // Show banner immediately (no wait for API), then refresh when fetch completes.
+      triggerSaleToast({ origin: 'manual', payload: payload, playSound: true, skipLatest: true, persist: keep });
       fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
-        const payload = buildSaleToastPayloadFromSale(sale);
-        if (!payload) return;
-        triggerSaleToast({ origin: 'manual', payload: payload, playSound: false, skipLatest: true, persist: keep });
+        const next = buildSaleToastPayloadFromSale(sale);
+        if (!next) return;
+        if (saleToastActive) setSaleToastContent(next);
       });
     }
 
@@ -10760,10 +10764,17 @@ const API = '';
 
     (function initTopBar() {
       try { saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true'; } catch (_) { saleMuted = false; }
-      try { saleAudio = new Audio(CASH_REGISTER_MP3_URL); } catch (_) { saleAudio = null; }
+      try { saleAudio = new Audio(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3'); } catch (_) { saleAudio = null; }
       if (saleAudio) {
         try { saleAudio.preload = 'auto'; } catch (_) {}
         try { saleAudio.load(); } catch (_) {}
+        saleAudio.addEventListener('error', function fallbackToCdn() {
+          saleAudio.removeEventListener('error', fallbackToCdn);
+          if (saleAudio && CASH_REGISTER_MP3_CDN) {
+            saleAudio.src = CASH_REGISTER_MP3_CDN;
+            try { saleAudio.load(); } catch (_) {}
+          }
+        }, { once: true });
         // Prime/unlock audio on the first user interaction so sale sounds can play later.
         (function primeOnFirstGesture() {
           function prime() { try { primeSaleAudio(); } catch (_) {} }

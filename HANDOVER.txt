@@ -268,6 +268,7 @@ Ops/reliability:
 - Variants diagnostics payload now includes overlap-resolved totals/examples and session-attribution coverage (`?variant=` coverage against product-entry sessions) to highlight default-option attribution gaps.
 
 2026-02-12 (latest)
+- Footer eye (last-sale toggle): banner now shows immediately with cached/placeholder content, then refreshes when fetch completes; manual trigger now plays sale sound; MP3 loads from /assets/cash-register.mp3 with CDN fallback.
 - Countries -> Country + Product no longer hard-caps to top 3 products per country in backend output; table row selector can now surface larger datasets (bounded by a global safety cap).
 - Google Ads page refresh path now runs backend sync (`POST /api/ads/refresh`) on force refresh, with a guarded yesterday auto-sync when summary first returns empty.
 - Google Ads GCLID backfill now queries ClickView **per-day** (required by the Google Ads API) to avoid refresh failures/misleading “endpoint not found” errors; Ads error modal diagnostics JSON is readable even in dark theme.
