@@ -2199,7 +2199,7 @@ async function getCountryStats(start, end, options = {}) {
 }
 
 /**
- * Best GEO Products: top revenue products per country (cap 3 per country).
+ * Best GEO Products: top revenue products by country + product.
  *
  * Attribution:
  * - Country comes from Shopify truth orders (shipping/billing country parsed from orders_shopify.raw_json).
@@ -2210,6 +2210,7 @@ async function getCountryStats(start, end, options = {}) {
  *   conversion (pct), converted (orders), total (sessions), revenue (GBP)
  */
 async function getBestGeoProducts(start, end, options = {}) {
+  const MAX_BEST_GEO_ROWS = 200;
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
   const db = getDb();
@@ -2414,7 +2415,7 @@ async function getBestGeoProducts(start, end, options = {}) {
     byCountryProduct.set(key, curRow);
   }
 
-  // Pick top 3 products per country by revenue.
+  // Group products by country and keep a stable sort within each country.
   const byCountryList = new Map(); // CC -> rows[]
   for (const v of byCountryProduct.values()) {
     const list = byCountryList.get(v.country_code) || [];
@@ -2423,7 +2424,7 @@ async function getBestGeoProducts(start, end, options = {}) {
   }
   for (const [cc, list] of byCountryList.entries()) {
     list.sort((a, b) => (b.revenueGbp - a.revenueGbp) || (b.orderIds.size - a.orderIds.size));
-    byCountryList.set(cc, list.slice(0, 3));
+    byCountryList.set(cc, list);
   }
 
   // Fetch product meta (handle + thumb) for the selected products.
@@ -2495,7 +2496,7 @@ async function getBestGeoProducts(start, end, options = {}) {
   }
   // Keep stable ordering: highest revenue first.
   out.sort((a, b) => (b.revenue - a.revenue) || (b.converted - a.converted) || (b.total - a.total));
-  return out;
+  return out.slice(0, MAX_BEST_GEO_ROWS);
 }
 
 async function getSessionCountsFromSessionsTable(start, end, options = {}) {

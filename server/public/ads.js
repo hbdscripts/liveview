@@ -1148,6 +1148,7 @@
   /* ── refresh / init ──────────────────────────────────────── */
 
   var inFlight = null;
+  var autoSyncedEmptyRange = Object.create(null);
 
   function applyRefreshingUi(refreshing, isForce) {
     _isRefreshing = !!refreshing;
@@ -1173,6 +1174,21 @@
       }
     } catch (_) {}
     return 'today';
+  }
+
+  function fetchSummary(rangeKey, cacheBust) {
+    var bust = cacheBust ? ('&_=' + Date.now()) : '';
+    return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + bust);
+  }
+
+  function refreshAdsBackend(rangeKey) {
+    return fetchJson('/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'googleads' }),
+    });
   }
 
   function refresh(options) {
@@ -1211,8 +1227,37 @@
     var p = fetchJson('/api/ads/status')
       .then(function(status) {
         if (showPageLoader) setLoadingStep(root, 'Importing campaigns');
-        return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + (isForce ? ('&_=' + Date.now()) : ''))
-          .then(function(summary) { return { status: status, summary: summary }; });
+        if (isForce) {
+          return refreshAdsBackend(rangeKey)
+            .then(function(refreshResult) {
+              _lastRefreshResult = refreshResult || { ok: false, error: 'refresh_failed' };
+              return fetchSummary(rangeKey, true).then(function(summary) {
+                return { status: status, summary: summary };
+              });
+            });
+        }
+        return fetchSummary(rangeKey, false)
+          .then(function(summary) {
+            var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+            var shouldAutoSyncYesterday = (
+              rangeKey === 'yesterday' &&
+              campaigns.length === 0 &&
+              !autoSyncedEmptyRange[rangeKey]
+            );
+            if (!shouldAutoSyncYesterday) return { status: status, summary: summary };
+            autoSyncedEmptyRange[rangeKey] = Date.now();
+            if (showPageLoader) setLoadingStep(root, 'Syncing yesterday spend');
+            return refreshAdsBackend(rangeKey)
+              .then(function(refreshResult) {
+                _lastRefreshResult = refreshResult || { ok: false, error: 'refresh_failed' };
+                return fetchSummary(rangeKey, true).then(function(summaryAfterSync) {
+                  return { status: status, summary: summaryAfterSync || summary };
+                });
+              })
+              .catch(function() {
+                return { status: status, summary: summary };
+              });
+          });
       })
       .then(function (arr) {
       var status = arr && arr.status ? arr.status : null;

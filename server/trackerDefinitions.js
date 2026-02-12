@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 15;
+const DEFINITIONS_VERSION = 16;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -366,10 +366,28 @@ const TRACKER_TABLE_DEFINITIONS = [
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {
-    id: 'diagnostics_modal',
-    page: 'Diagnostics',
-    name: 'Diagnostics modal (comparison + technical details + definitions)',
-    ui: { elementIds: ['config-modal'] },
+    id: 'settings_charts_panel',
+    page: 'Settings',
+    name: 'Charts settings panel',
+    ui: { elementIds: ['settings-charts-root', 'settings-charts-save-btn', 'settings-charts-reset-btn'] },
+    endpoint: { method: 'GET/POST', path: '/api/settings', params: ['chartsUiConfig (POST body)'] },
+    sources: [
+      { kind: 'db', tables: ['settings'], note: 'charts_ui_config_v1 persisted in settings table' },
+      { kind: 'ui', note: 'Client applies chart mode/colors/enabled via app.js + localStorage cache key kexo:charts-ui-config:v1' },
+    ],
+    columns: [],
+    math: [
+      { name: 'Scope', value: 'Global/shared (not per-user)' },
+      { name: 'Apply behavior', value: 'Saved config is used for chart mode/colors/visibility; disabled charts are hidden server-side via /theme-vars.css' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['settings'], shopifyToken: false },
+  },
+  {
+    id: 'settings_diagnostics_panel',
+    page: 'Settings',
+    name: 'Diagnostics panel (sales/traffic/pixel/google-ads/system/definitions)',
+    ui: { elementIds: ['diagnostics-content', 'config-refresh-btn', 'config-reconcile-btn'] },
     endpoint: { method: 'GET', path: '/api/config-status', params: ['shop=... (optional)'] },
     sources: [
       { kind: 'db', tables: ['settings', 'shop_sessions', 'sessions', 'purchase_events', 'purchases', 'orders_shopify'], note: 'Health + drift + reporting config' },
@@ -377,6 +395,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     columns: [],
     math: [
+      { name: 'Refresh action', value: 'Refresh button re-fetches diagnostics payload only (no writes).' },
+      { name: 'Reconcile action', value: 'Reconcile button POSTs /api/reconcile-sales?range=7d to force truth sync, then refreshes diagnostics.' },
       { name: 'Shopify Sessions (today)', value: 'ShopifyQL: FROM sessions SHOW sessions DURING today' },
       { name: 'Kexo Sessions (today)', value: 'sessions started today (human sessions if cf_known_bot tagging exists)' },
       { name: 'Evidence sessions (today)', value: "purchase_events: COUNT(DISTINCT session_id) where event_type IN ('checkout_completed','checkout_started') (debug only; can be < truth)" },

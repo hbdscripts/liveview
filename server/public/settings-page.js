@@ -828,6 +828,9 @@
         .then(function (r) {
           if (r && r.ok) {
             chartsUiConfigCache = r.chartsUiConfig || cfg;
+            try {
+              localStorage.setItem('kexo:charts-ui-config:v1', JSON.stringify(chartsUiConfigCache));
+            } catch (_) {}
             setMsg('Saved.', true);
             try {
               if (window && typeof window.dispatchEvent === 'function') {

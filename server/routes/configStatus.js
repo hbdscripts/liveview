@@ -1,5 +1,5 @@
 /**
- * GET /api/config-status – diagnostics-only payload for the dashboard settings modal.
+ * GET /api/config-status – diagnostics-only payload for Settings -> Diagnostics.
  *
  * Optional ?shop=xxx.myshopify.com to fetch Shopify-backed diagnostics; otherwise falls back to ALLOWED_SHOP_DOMAIN / SHOP_DOMAIN.
  */
@@ -155,6 +155,56 @@ async function configStatus(req, res, next) {
     const raw = await store.getSetting('pixel_session_mode');
     const s = raw == null ? '' : String(raw).trim().toLowerCase();
     if (s === 'shared_ttl' || s === 'shared' || s === 'sharedttl') pixelSessionMode = 'shared_ttl';
+  } catch (_) {}
+  const DEFAULT_CHART_KEYS = [
+    'dash-chart-revenue',
+    'dash-chart-orders',
+    'dash-chart-conv',
+    'dash-chart-sessions',
+    'dash-chart-adspend',
+    'live-online-chart',
+    'sales-overview-chart',
+    'date-overview-chart',
+    'ads-overview-chart',
+    'channels-chart',
+    'type-chart',
+    'products-chart',
+    'countries-map-chart',
+  ];
+  let chartsUiSummary = {
+    total: DEFAULT_CHART_KEYS.length,
+    disabledKeys: [],
+    mapMode: 'map-animated',
+    source: 'default',
+  };
+  try {
+    const raw = await store.getSetting('charts_ui_config_v1');
+    const parsed = safeJsonParse(raw);
+    const charts = parsed && parsed.v === 1 && Array.isArray(parsed.charts) ? parsed.charts : [];
+    const disabled = charts
+      .filter((it) => it && it.enabled === false)
+      .map((it) => String(it.key || '').trim().toLowerCase())
+      .filter(Boolean);
+    const countries = charts.find((it) => it && String(it.key || '').trim().toLowerCase() === 'countries-map-chart') || null;
+    const mapMode = countries && countries.mode != null ? String(countries.mode).trim().toLowerCase() : null;
+    chartsUiSummary = {
+      total: charts.length || DEFAULT_CHART_KEYS.length,
+      disabledKeys: disabled,
+      mapMode: mapMode || 'map-animated',
+      source: charts.length ? 'persisted' : 'default',
+    };
+  } catch (_) {}
+  let kpiUiSummary = {
+    disabledDateRanges: [],
+  };
+  try {
+    const raw = await store.getSetting('kpi_ui_config_v1');
+    const parsed = safeJsonParse(raw);
+    const ranges = parsed && parsed.v === 1 && Array.isArray(parsed.dateRanges) ? parsed.dateRanges : [];
+    kpiUiSummary.disabledDateRanges = ranges
+      .filter((it) => it && it.enabled === false)
+      .map((it) => String(it.key || '').trim().toLowerCase())
+      .filter(Boolean);
   } catch (_) {}
 
   // --- Shopify token / scopes ---
@@ -551,6 +601,10 @@ async function configStatus(req, res, next) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
   res.json({
+    diagnostics: {
+      schemaVersion: 2,
+      generatedAt: now,
+    },
     now,
     timeZone,
     configDisplay,
@@ -573,6 +627,8 @@ async function configStatus(req, res, next) {
     reporting,
     settings: {
       pixelSessionMode,
+      chartsUiSummary,
+      kpiUiSummary,
     },
     ingest: {
       effectiveIngestUrl,

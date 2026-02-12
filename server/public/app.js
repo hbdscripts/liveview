@@ -704,6 +704,10 @@ const API = '';
       window.addEventListener('kexo:table-rows-changed', function() {
         run(document);
       });
+      window.addEventListener('kexo:icon-theme-changed', function() {
+        run(document);
+        setTimeout(function() { run(document); }, 80);
+      });
       setTimeout(function() { run(document); }, 900);
       setTimeout(function() { run(document); }, 2000);
     })();
@@ -5654,7 +5658,7 @@ const API = '';
         refreshProducts({ force: false });
       } else if (activeMainTab === 'variants') {
         try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
-      } else if (activeMainTab === 'ads') {
+      } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
         updateKpis();
@@ -6715,11 +6719,54 @@ const API = '';
       return 'sessions';
     }
 
+    function chartUiConfigSignature(cfg) {
+      try { return JSON.stringify(cfg || null); } catch (_) { return ''; }
+    }
+
     function applyChartsUiConfigV1(cfg) {
-      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.charts)) return;
+      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.charts)) return false;
+      var prevSig = chartUiConfigSignature(chartsUiConfigV1);
+      var nextSig = chartUiConfigSignature(cfg);
       chartsUiConfigV1 = cfg;
       try { window.__kexoChartsUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(CHARTS_UI_CFG_LS_KEY, cfg); } catch (_) {}
+      return prevSig !== nextSig;
+    }
+
+    var chartsUiReRenderTimer = null;
+    function scheduleChartsUiReRender() {
+      if (chartsUiReRenderTimer) {
+        try { clearTimeout(chartsUiReRenderTimer); } catch (_) {}
+      }
+      chartsUiReRenderTimer = setTimeout(function() {
+        chartsUiReRenderTimer = null;
+        try {
+          if (activeMainTab === 'dashboard') {
+            if (typeof refreshDashboard === 'function') refreshDashboard({ force: true });
+            return;
+          }
+          if (activeMainTab === 'stats') {
+            refreshStats({ force: true });
+            return;
+          }
+          if (activeMainTab === 'products') {
+            refreshProducts({ force: true });
+            return;
+          }
+          if (activeMainTab === 'channels' || activeMainTab === 'type') {
+            refreshTraffic({ force: true });
+            return;
+          }
+          if (activeMainTab === 'ads') {
+            if (window.__adsRefresh) window.__adsRefresh({ force: true });
+            return;
+          }
+          if (activeMainTab === 'spy' || activeMainTab === 'sales' || activeMainTab === 'date') {
+            fetchSessions();
+            return;
+          }
+        } catch (_) {}
+      }, 80);
     }
 
     function applyDateRangeUiConfigToSelect(sel) {
@@ -6941,7 +6988,10 @@ const API = '';
       var ttlMs = 5 * 60 * 1000;
       if (!force && uiSettingsCache && uiSettingsFetchedAt && (Date.now() - uiSettingsFetchedAt) < ttlMs) {
         if (options.apply && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
-        if (options.apply && uiSettingsCache.chartsUiConfig) applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
+        if (options.apply && uiSettingsCache.chartsUiConfig) {
+          var changedFromCache = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
+          if (changedFromCache) scheduleChartsUiReRender();
+        }
         return Promise.resolve(uiSettingsCache);
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
@@ -6952,7 +7002,10 @@ const API = '';
           uiSettingsCache = (data && data.ok) ? data : null;
           uiSettingsFetchedAt = Date.now();
           if (options.apply && uiSettingsCache && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
-          if (options.apply && uiSettingsCache && uiSettingsCache.chartsUiConfig) applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
+          if (options.apply && uiSettingsCache && uiSettingsCache.chartsUiConfig) {
+            var changedFromFetch = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
+            if (changedFromFetch) scheduleChartsUiReRender();
+          }
           return uiSettingsCache;
         })
         .catch(function() { return null; })
@@ -6970,7 +7023,10 @@ const API = '';
     try {
       window.addEventListener('kexo:chartsUiConfigUpdated', function(e) {
         var cfg = e && e.detail ? e.detail : null;
-        try { applyChartsUiConfigV1(cfg); } catch (_) {}
+        try {
+          var changed = applyChartsUiConfigV1(cfg);
+          if (changed) scheduleChartsUiReRender();
+        } catch (_) {}
       });
     } catch (_) {}
 
@@ -8889,24 +8945,43 @@ const API = '';
       return url;
     }
 
+    function setDiagnosticsActionMsg(text, ok) {
+      var el = document.getElementById('config-action-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+    }
+
     function reconcileSalesTruth(options = {}) {
       const btn = document.getElementById('config-reconcile-btn');
       if (btn) {
         btn.classList.add('spinning');
         btn.disabled = true;
       }
+      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)…', true);
       const p = fetch(getReconcileSalesUrl({ force: true }), {
         method: 'POST',
         credentials: 'same-origin',
         cache: 'no-store',
       })
-        .then(r => r.json())
-        .then(() => {
+        .then(function(r) { return r.json(); })
+        .then(function(payload) {
           try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
           try { fetchTrafficData({ force: true }); } catch (_) {}
+          var details = payload && payload.result ? payload.result : null;
+          var fetched = details && typeof details.fetched === 'number' ? details.fetched : null;
+          var inserted = details && typeof details.inserted === 'number' ? details.inserted : null;
+          var updated = details && typeof details.updated === 'number' ? details.updated : null;
+          var linked = details && typeof details.evidenceLinked === 'number' ? details.evidenceLinked : null;
+          var bits = [];
+          if (fetched != null) bits.push('fetched ' + String(fetched));
+          if (inserted != null) bits.push('inserted ' + String(inserted));
+          if (updated != null) bits.push('updated ' + String(updated));
+          if (linked != null) bits.push('linked ' + String(linked));
+          setDiagnosticsActionMsg(bits.length ? ('Reconcile done: ' + bits.join(', ')) : 'Reconcile done.', true);
         })
-        .catch(() => {
-          // Best-effort: diagnostics panel already handles refresh errors.
+        .catch(function(err) {
+          setDiagnosticsActionMsg('Reconcile failed: ' + (err && err.message ? String(err.message).slice(0, 120) : 'request_failed'), false);
         })
         .finally(() => {
           if (btn) {
@@ -9347,13 +9422,15 @@ const API = '';
 
           const aiCopyGeneratedAt = new Date().toISOString();
           let aiCopyText = '';
+          let aiPayloadData = null;
           try {
             const convertedSessionsSource = (evSessions != null)
               ? 'sales.evidence.today.checkoutCompletedSessions'
               : (truthCheckoutOrders != null ? 'sales.truth.today.checkoutOrderCount (fallback)' : (truthOrders != null ? 'sales.truth.today.orderCount (fallback)' : 'unknown'));
             const aiPayload = {
-              kind: 'kexo_diagnostics_v1',
+              kind: 'kexo_diagnostics_v2',
               generatedAt: aiCopyGeneratedAt,
+              diagnosticsSchemaVersion: (c && c.diagnostics && c.diagnostics.schemaVersion != null) ? c.diagnostics.schemaVersion : null,
               page: {
                 href: (typeof window !== 'undefined' && window.location) ? window.location.href : '',
               },
@@ -9422,10 +9499,13 @@ const API = '';
                 settings: {
                   pixelSessionMode,
                   sharedSessionFixEnabled,
+                  chartsUiSummary: (c && c.settings && c.settings.chartsUiSummary) ? c.settings.chartsUiSummary : null,
+                  kpiUiSummary: (c && c.settings && c.settings.kpiUiSummary) ? c.settings.kpiUiSummary : null,
                 },
               },
               rawConfigStatus: c,
             };
+            aiPayloadData = aiPayload;
             aiCopyText =
               'Kexo diagnostics (paste this for AI)\n' +
               'Generated: ' + aiCopyGeneratedAt + '\n' +
@@ -9561,6 +9641,19 @@ const API = '';
             rowKV('Returning revenue', truthReturningRevenue != null ? codeInline(formatRevenue(truthReturningRevenue)) : '\u2014')
           ));
           salesPanel += '</div>';
+          const lastReconcile = truth && truth.lastReconcile ? truth.lastReconcile : null;
+          const reconcileParts = [];
+          if (lastReconcile && typeof lastReconcile.fetched === 'number') reconcileParts.push('fetched ' + String(lastReconcile.fetched));
+          if (lastReconcile && typeof lastReconcile.inserted === 'number') reconcileParts.push('inserted ' + String(lastReconcile.inserted));
+          if (lastReconcile && typeof lastReconcile.updated === 'number') reconcileParts.push('updated ' + String(lastReconcile.updated));
+          if (lastReconcile && typeof lastReconcile.evidenceLinked === 'number') reconcileParts.push('linked ' + String(lastReconcile.evidenceLinked));
+          salesPanel += '<div class="dm-mt">' + card('Actions explained', (
+            rowKV('Refresh', 'Re-reads diagnostics only. No write operations.') +
+            rowKV('Reconcile', 'Runs Shopify truth sync for last 7 days, then refreshes diagnostics.') +
+            rowKV('Last reconcile', lastReconcile && typeof lastReconcile.ts === 'number'
+              ? (codeInline(formatTs(lastReconcile.ts)) + (reconcileParts.length ? (' · ' + codeInline(reconcileParts.join(', '))) : ''))
+              : '\u2014')
+          )) + '</div>';
 
           // AI + future-agent guidance: interpret truth vs evidence drift
           try {
@@ -9812,6 +9905,7 @@ const API = '';
           advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
           advancedDropdown +=   '<div class="dm-bar-actions">' +
                        '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
+                       '<button type="button" id="be-download-ai-json-btn" class="dm-copy-btn" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i><span>Download JSON</span></button>' +
                       '<a href="/auth/google?redirect=/dashboard/overview" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
                        '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
                        (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
@@ -10022,30 +10116,31 @@ const API = '';
           }
           try {
             const btn = document.getElementById('be-copy-ai-btn');
+            const downloadBtn = document.getElementById('be-download-ai-json-btn');
             const msg = document.getElementById('be-copy-ai-msg');
+            function setMsg(t, ok) {
+              if (!msg) return;
+              msg.textContent = t || '';
+              msg.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
+              msg.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
+            }
+            function fallbackCopy(t) {
+              const ta = document.createElement('textarea');
+              ta.value = t;
+              ta.setAttribute('readonly', 'readonly');
+              ta.style.position = 'fixed';
+              ta.style.top = '-9999px';
+              ta.style.left = '-9999px';
+              document.body.appendChild(ta);
+              ta.select();
+              ta.setSelectionRange(0, ta.value.length);
+              const ok = document.execCommand('copy');
+              document.body.removeChild(ta);
+              return ok;
+            }
             if (btn) {
               btn.onclick = function() {
                 const text = aiCopyText || '';
-                function setMsg(t, ok) {
-                  if (!msg) return;
-                  msg.textContent = t || '';
-                  msg.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
-                  msg.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
-                }
-                function fallbackCopy(t) {
-                  const ta = document.createElement('textarea');
-                  ta.value = t;
-                  ta.setAttribute('readonly', 'readonly');
-                  ta.style.position = 'fixed';
-                  ta.style.top = '-9999px';
-                  ta.style.left = '-9999px';
-                  document.body.appendChild(ta);
-                  ta.select();
-                  ta.setSelectionRange(0, ta.value.length);
-                  const ok = document.execCommand('copy');
-                  document.body.removeChild(ta);
-                  return ok;
-                }
                 try {
                   if (!text) {
                     setMsg('Nothing to copy', false);
@@ -10067,6 +10162,32 @@ const API = '';
                   }
                 } catch (err) {
                   setMsg('Copy failed: ' + (err && err.message ? String(err.message) : 'error'), false);
+                }
+              };
+            }
+            if (downloadBtn) {
+              downloadBtn.onclick = function() {
+                try {
+                  if (!aiPayloadData || typeof aiPayloadData !== 'object') {
+                    setMsg('No JSON payload to download', false);
+                    return;
+                  }
+                  var shopSafe = (shopify && shopify.shop) ? String(shopify.shop).replace(/[^a-z0-9.-]+/gi, '_') : 'shop';
+                  var stamp = aiCopyGeneratedAt.replace(/[:.]/g, '-');
+                  var filename = 'kexo-diagnostics-' + shopSafe + '-' + stamp + '.json';
+                  var json = JSON.stringify(aiPayloadData, null, 2);
+                  var blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+                  var url = URL.createObjectURL(blob);
+                  var a = document.createElement('a');
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  setMsg('Downloaded ' + filename, true);
+                } catch (err) {
+                  setMsg('Download failed: ' + (err && err.message ? String(err.message) : 'error'), false);
                 }
               };
             }
@@ -10200,6 +10321,9 @@ const API = '';
           if (typeof evidenceToday !== 'undefined' && typeof evidenceToday.lastOccurredAt === 'number') {
             setLastSaleAt(evidenceToday.lastOccurredAt);
           }
+          if (options && options.force) {
+            setDiagnosticsActionMsg('Diagnostics refreshed at ' + formatTs(Date.now()), true);
+          }
           return c;
         })
         .catch(() => {
@@ -10222,6 +10346,9 @@ const API = '';
               if (compareUpdatedEl) compareUpdatedEl.textContent = 'Update failed';
             }
           } catch (_) {}
+          if (options && options.force) {
+            setDiagnosticsActionMsg('Diagnostics refresh failed.', false);
+          }
         })
         .finally(function() {
           if (refreshBtn) refreshBtn.classList.remove('spinning');
@@ -10244,7 +10371,10 @@ const API = '';
       const openBtn = document.getElementById('config-open-btn');
       const refreshBtn = document.getElementById('config-refresh-btn');
       const reconcileBtn = document.getElementById('config-reconcile-btn');
-      if (refreshBtn) refreshBtn.addEventListener('click', function() { try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {} });
+      if (refreshBtn) refreshBtn.addEventListener('click', function() {
+        setDiagnosticsActionMsg('Refreshing diagnostics…', true);
+        try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
+      });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
       if (openBtn && openBtn.tagName === 'A') {
         try { openBtn.setAttribute('href', '/settings'); } catch (_) {}
@@ -11048,7 +11178,7 @@ const API = '';
       } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });
-      } else if (activeMainTab === 'ads') {
+      } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
         const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
