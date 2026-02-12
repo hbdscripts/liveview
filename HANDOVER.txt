@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (desktop header/nav light-mode refactor, Integrations route move, Trending Up/Down icon keys)
+Last updated: 2026-02-12 (header theme controls tab, online icon in theme icons, logo URL override placeholder)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -217,6 +217,12 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-12
+- Theme settings:
+  - Added a new Theme subtab: `Header` (in `server/public/theme-settings.js`) to configure desktop top strip/main menu background colors, header link color, Settings label visibility, Settings border visibility/color, Online badge border visibility/color, and logo URL override.
+  - Header Theme action now links directly to `/settings?tab=theme` from the desktop Settings dropdown.
+  - Direct file upload for logo replacement remains TODO; URL override is implemented now.
+- Icons:
+  - Added `online-status-indicator` as a configurable icon key in Theme -> Icons (`#kexo-online-icon` now has `data-icon-key="online-status-indicator"`).
 - Header/nav:
   - Desktop header is now two rows: a top strip with visitors (left), centered logo, and Settings dropdown (right), plus a separate light-mode centered nav row with `box-shadow: 2px 2px 2px #eee`.
   - Added top-level `Integrations` nav group before `Tools`; `Google Ads` now lives under Integrations.

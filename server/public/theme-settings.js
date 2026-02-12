@@ -138,6 +138,7 @@
     'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
     'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'online-status-indicator': 'fa-circle',
     'card-collapse-expanded': 'fa-chevron-down',
     'card-collapse-collapsed': 'fa-chevron-right',
   };
@@ -174,6 +175,7 @@
     'table-icon-clicks': { title: 'Table clicks icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
     'card-title-trending-up': { title: 'Table Trending Up', help: 'Dashboard table title icon.', styleKey: 'theme-icon-default' },
     'card-title-trending-down': { title: 'Table Trending Down', help: 'Dashboard table title icon.', styleKey: 'theme-icon-default' },
+    'online-status-indicator': { title: 'Online status indicator', help: 'Desktop top strip live visitor icon.', styleKey: 'theme-icon-default' },
     'card-collapse-expanded': { title: 'Card collapse expanded', help: 'Chevron shown when card content is open.', styleKey: 'theme-icon-default' },
     'card-collapse-collapsed': { title: 'Card collapse collapsed', help: 'Chevron shown when card content is collapsed.', styleKey: 'theme-icon-default' },
     'chart-type-area': { title: 'Chart type: Area', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
@@ -189,6 +191,15 @@
     'theme-base': 'slate',
     'theme-icon-size': '1em',
     'theme-icon-color': 'currentColor',
+    'theme-header-top-bg': '#ffffff',
+    'theme-header-main-bg': '#ffffff',
+    'theme-header-link-color': '#1f2937',
+    'theme-header-settings-label': 'show',
+    'theme-header-settings-border': 'show',
+    'theme-header-settings-border-color': '#e6e7e9',
+    'theme-header-online-border': 'show',
+    'theme-header-online-border-color': '#e6e7e9',
+    'theme-header-logo-url': '',
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -197,6 +208,19 @@
   var ICON_STYLE_KEYS = Object.keys(ICON_STYLE_DEFAULTS);
   var ICON_GLYPH_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
   var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
+  var HEADER_THEME_TEXT_KEYS = [
+    'theme-header-top-bg',
+    'theme-header-main-bg',
+    'theme-header-link-color',
+    'theme-header-settings-border-color',
+    'theme-header-online-border-color',
+    'theme-header-logo-url',
+  ];
+  var HEADER_THEME_TOGGLE_KEYS = [
+    'theme-header-settings-label',
+    'theme-header-settings-border',
+    'theme-header-online-border',
+  ];
 
   // Primary color map: name -> [hex, r, g, b]
   var PRIMARY_COLORS = {
@@ -325,6 +349,45 @@
     return fallback || 'currentColor';
   }
 
+  function normalizeHeaderColor(value, fallback) {
+    return normalizeIconColor(value, fallback || '#ffffff');
+  }
+
+  function normalizeHeaderToggle(value, fallback) {
+    var raw = sanitizeIconClassString(value).toLowerCase();
+    if (raw === 'show' || raw === 'on' || raw === 'true' || raw === '1') return 'show';
+    if (raw === 'hide' || raw === 'off' || raw === 'false' || raw === '0') return 'hide';
+    return fallback === 'hide' ? 'hide' : 'show';
+  }
+
+  function normalizeLogoUrl(value) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return '';
+    if (/^(https?:)?\/\//i.test(raw)) return raw;
+    if (raw[0] === '/') return raw;
+    return '';
+  }
+
+  function applyHeaderLogoOverride(url) {
+    var safe = normalizeLogoUrl(url);
+    var logos = document.querySelectorAll('.kexo-desktop-brand-link img, .kexo-mobile-logo-link img');
+    if (!logos || !logos.length) {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { applyHeaderLogoOverride(safe); }, { once: true });
+      }
+      return;
+    }
+    logos.forEach(function (img) {
+      if (!img) return;
+      var original = img.getAttribute('data-kexo-default-src');
+      if (!original) {
+        original = img.getAttribute('src') || '';
+        img.setAttribute('data-kexo-default-src', original);
+      }
+      img.setAttribute('src', safe || original);
+    });
+  }
+
   function glyphNameFromThemeKey(themeKey) {
     return String(themeKey || '').replace(/^theme-icon-glyph-/, '');
   }
@@ -416,6 +479,28 @@
       root.style.setProperty('--kexo-theme-icon-size', normalizeIconSize(value, DEFAULTS[key]));
     } else if (key === 'theme-icon-color') {
       root.style.setProperty('--kexo-theme-icon-color', normalizeIconColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-top-bg') {
+      root.style.setProperty('--kexo-header-top-bg', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-main-bg') {
+      root.style.setProperty('--kexo-header-main-bg', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-link-color') {
+      root.style.setProperty('--kexo-header-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-label') {
+      var labelMode = normalizeHeaderToggle(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-header-settings-label-display', labelMode === 'hide' ? 'none' : 'inline');
+      root.style.setProperty('--kexo-header-settings-icon-gap', labelMode === 'hide' ? '0' : '.35rem');
+    } else if (key === 'theme-header-settings-border') {
+      var settingsBorderMode = normalizeHeaderToggle(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-header-settings-border-width', settingsBorderMode === 'hide' ? '0px' : '1px');
+    } else if (key === 'theme-header-settings-border-color') {
+      root.style.setProperty('--kexo-header-settings-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-online-border') {
+      var onlineBorderMode = normalizeHeaderToggle(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-header-online-border-width', onlineBorderMode === 'hide' ? '0px' : '1px');
+    } else if (key === 'theme-header-online-border-color') {
+      root.style.setProperty('--kexo-header-online-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-logo-url') {
+      applyHeaderLogoOverride(value);
     } else if (ICON_STYLE_KEYS.indexOf(key) >= 0 || ICON_GLYPH_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
@@ -490,6 +575,19 @@
         else visualInput.value = normalizeIconColor(val, DEFAULTS[key]);
         return;
       }
+      if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {
+        var headerTextInput = form.querySelector('[name="' + key + '"]');
+        if (!headerTextInput) return;
+        if (key === 'theme-header-logo-url') headerTextInput.value = normalizeLogoUrl(val);
+        else headerTextInput.value = normalizeHeaderColor(val, DEFAULTS[key]);
+        return;
+      }
+      if (HEADER_THEME_TOGGLE_KEYS.indexOf(key) >= 0) {
+        var toggleVal = normalizeHeaderToggle(val, DEFAULTS[key]);
+        var toggleRadios = form.querySelectorAll('[name="' + key + '"]');
+        toggleRadios.forEach(function (r) { r.checked = (r.value === toggleVal); });
+        return;
+      }
       var radios = form.querySelectorAll('[name="' + key + '"]');
       radios.forEach(function (r) { r.checked = (r.value === val); });
     });
@@ -547,6 +645,40 @@
     '</div>';
   }
 
+  function headerInputCard(key, title, help, placeholder) {
+    var inputId = 'theme-input-' + key;
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i>' +
+            '<strong>' + title + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function headerToggleCard(key, title, help) {
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i>' +
+            '<strong>' + title + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="form-selectgroup">' +
+            radioCard(key, 'show', 'Show') +
+            radioCard(key, 'hide', 'Hide') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function radioCard(name, value, label) {
     var id = 'theme-opt-' + name + '-' + (value || 'default');
     return '<label class="form-selectgroup-item flex-fill">' +
@@ -579,9 +711,28 @@
       iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
       iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
     ].join('');
+    var headerColorGrid = [
+      headerInputCard('theme-header-top-bg', 'Top strip background', 'Background color for the strip where visitors/logo/settings sit.', DEFAULTS['theme-header-top-bg']),
+      headerInputCard('theme-header-main-bg', 'Main menu background', 'Background color for the desktop main menu row.', DEFAULTS['theme-header-main-bg']),
+      headerInputCard('theme-header-link-color', 'Header link color', 'Text color for desktop menu links and dropdown links.', DEFAULTS['theme-header-link-color']),
+      headerInputCard('theme-header-settings-border-color', 'Settings border color', 'Border color for the top-right Settings button.', DEFAULTS['theme-header-settings-border-color']),
+      headerInputCard('theme-header-online-border-color', 'Online badge border color', 'Border color for the visitors badge on the top strip.', DEFAULTS['theme-header-online-border-color'])
+    ].join('');
+    var headerToggleGrid = [
+      headerToggleCard('theme-header-settings-label', 'Settings text label', 'Show or hide the "Settings" text next to the icon button.'),
+      headerToggleCard('theme-header-settings-border', 'Settings button border', 'Show or hide the border around the Settings button.'),
+      headerToggleCard('theme-header-online-border', 'Online badge border', 'Show or hide the border around the visitors badge.')
+    ].join('');
+    var logoCard = headerInputCard(
+      'theme-header-logo-url',
+      'Logo URL override',
+      'Use an absolute URL or /path to replace desktop and mobile logos.',
+      '/assets/kexo/logo_light.webp'
+    );
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
+        '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="header" aria-selected="false">Header</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="color" aria-selected="false">Color</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="fonts" aria-selected="false">Fonts</button></li>' +
       '</ul>' +
@@ -600,6 +751,19 @@
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh">Refresh previews</button>' +
           '<span class="text-secondary small">Debounced preview updates after typing stops.</span>' +
         '</div>' +
+      '</div>' +
+
+      '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
+        '<div class="text-secondary mb-3">Configure desktop header strip/menu styling, settings button behavior, online badge border, and logo override.</div>' +
+        '<h4 class="mb-2">Colors</h4>' +
+        '<div class="row g-3">' + headerColorGrid + '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Visibility & borders</h4>' +
+        '<div class="row g-3">' + headerToggleGrid + '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Logo</h4>' +
+        '<div class="row g-3">' + logoCard + '</div>' +
+        '<div class="alert alert-secondary mt-3 mb-0 py-2">Upload logo file: TODO. Use URL override for now.</div>' +
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="color" hidden>' +
@@ -737,12 +901,17 @@
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
       if (name === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[name]);
       if (name === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[name]);
+      if (HEADER_THEME_TEXT_KEYS.indexOf(name) >= 0) {
+        if (name === 'theme-header-logo-url') val = normalizeLogoUrl(val);
+        else val = normalizeHeaderColor(val, DEFAULTS[name]);
+      }
+      if (HEADER_THEME_TOGGLE_KEYS.indexOf(name) >= 0) val = normalizeHeaderToggle(val, DEFAULTS[name]);
       setStored(name, val);
       applyTheme(name, val);
       refreshIconPreviews(formEl);
     });
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
@@ -751,6 +920,10 @@
         if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
         if (key === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[key]);
         if (key === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[key]);
+        if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {
+          if (key === 'theme-header-logo-url') val = normalizeLogoUrl(val);
+          else val = normalizeHeaderColor(val, DEFAULTS[key]);
+        }
         setStored(key, val);
         refreshIconPreviews(formEl);
         debouncedApply(key, val);

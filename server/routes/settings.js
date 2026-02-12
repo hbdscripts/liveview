@@ -307,6 +307,15 @@ const THEME_KEYS = [
   'theme_radius',
   'theme_font',
   'theme_base',
+  'theme_header_top_bg',
+  'theme_header_main_bg',
+  'theme_header_link_color',
+  'theme_header_settings_label',
+  'theme_header_settings_border',
+  'theme_header_settings_border_color',
+  'theme_header_online_border',
+  'theme_header_online_border_color',
+  'theme_header_logo_url',
   'theme_icon_default',
   'theme_icon_topnav',
   'theme_icon_dropdown',
@@ -437,6 +446,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_card_title_trending_up',
   'theme_icon_glyph_card_title_trending_down',
   'theme_icon_glyph_card_title_chart',
+  'theme_icon_glyph_online_status_indicator',
 ];
 
 async function getThemeDefaults(req, res) {

@@ -56,7 +56,7 @@
         <div class="kexo-desktop-top-strip-row">
           <div class="kexo-desktop-top-strip-left">
             <div class="kexo-nav-visitors kexo-nav-visitors-desktop" aria-live="polite" role="status" aria-label="Live visitors">
-              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" aria-hidden="true"></i>
+              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" data-icon-key="online-status-indicator" aria-hidden="true"></i>
               <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
               <span id="online-count" class="is-hidden">0</span>
               <span>visitors</span>
@@ -70,7 +70,7 @@
           <div class="kexo-desktop-top-strip-right">
             <div class="dropdown">
               <button type="button" class="kexo-top-strip-settings-btn dropdown-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
-                <i class="fa-jelly-filled fa-gear kexo-nav-svg me-1" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>Settings
+                <i class="fa-jelly-filled fa-gear kexo-nav-svg kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i><span class="kexo-settings-label">Settings</span>
               </button>
               <div class="dropdown-menu dropdown-menu-end" id="navbar-settings-menu">
                 <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
@@ -81,7 +81,7 @@
                   <i class="fa-jelly fa-volume-xmark me-2 sound-icon-off is-hidden" data-icon-key="nav-item-sound-off" aria-hidden="true"></i>
                   Sound
                 </button>
-                <a href="/settings" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
+                <a href="/settings?tab=theme" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
                   <i class="fa-jelly fa-palette me-2" data-icon-key="nav-item-theme" aria-hidden="true"></i>Theme
                 </a>
                 <a href="/settings" class="dropdown-item" id="config-open-btn" data-nav="settings" aria-label="Settings">

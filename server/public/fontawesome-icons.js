@@ -139,6 +139,7 @@
     'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
     'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'online-status-indicator': 'fa-circle',
     'card-collapse-expanded': 'fa-chevron-down',
     'card-collapse-collapsed': 'fa-chevron-right',
   };
