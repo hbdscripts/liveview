@@ -15,7 +15,7 @@ IMPORTANT (for future agents)
 ## What KEXO looks like today (UX)
 
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
-- Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with flag – product – sale value (10s auto-close; MP3 cha-ching).
+- Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with gradient, "New Sale: Product Name" + price (10s auto-close; MP3 cha-ching). Header + strip + nav + KPIs + date bar are sticky.
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 

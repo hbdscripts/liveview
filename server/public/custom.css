@@ -748,6 +748,14 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   gap: .5rem;
 }
 
+/* Sticky header: header + top strip + nav + KPIs + date bar */
+.kexo-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background: var(--tblr-body-bg, #f9fafb);
+}
+
 /* Sale banner: Tabler tblr-banner overlay on top strip */
 .tblr-banner.kexo-sale-banner {
   position: absolute;
@@ -756,8 +764,8 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   align-items: center;
   justify-content: center;
   padding: 0 3rem;
-  background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
-  color: var(--kexo-header-top-text-color, #1f2937);
+  background: linear-gradient(90deg, #43cea2, #185a9d);
+  color: #fff;
   z-index: 10;
   opacity: 0;
   visibility: hidden;
@@ -774,16 +782,33 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   display: flex;
 }
 .kexo-sale-banner .tblr-banner-text {
+  flex: 1;
+  padding: 8px 16px;
+  color: #fff;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem 1rem;
   text-align: center;
   font-size: .875rem;
   font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.3s ease;
 }
 .kexo-sale-banner .tblr-banner-text #sale-toast-amount {
   font-weight: 700;
-  color: var(--tblr-primary, #3eb3ab);
+  color: #fff;
+}
+.kexo-sale-banner .tblr-banner-text .kexo-sale-banner-product {
+  max-width: none;
+}
+@media (max-width: 1199px) {
+  .kexo-sale-banner .tblr-banner-text .kexo-sale-banner-product {
+    max-width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 .kexo-sale-banner .tblr-banner-close {
   position: absolute;
@@ -796,9 +821,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   padding: 0.25rem;
   border: none;
   background: none;
-  color: inherit;
+  color: #fff;
   cursor: pointer;
-  opacity: 0.7;
+  opacity: 0.9;
   transition: opacity 0.15s;
 }
 .kexo-sale-banner .tblr-banner-close:hover {
@@ -2019,11 +2044,7 @@ html[data-bs-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item):hover 
 }
 
 /* ── Sale banner dark-mode support ── */
-html[data-bs-theme="dark"] .kexo-sale-banner {
-  background: var(--tblr-bg-surface, #1e293b);
-  color: var(--tblr-body-color, #e2e8f0);
-}
-html[data-bs-theme="dark"] .kexo-sale-banner .tblr-banner-close { filter: invert(1); }
+html[data-bs-theme="dark"] .kexo-sale-banner .tblr-banner-close { color: #fff; }
 
 /* Sale-toast toggle eye icon states */
 #last-sale-toggle .fa-eye { display: inline; }
