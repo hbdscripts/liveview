@@ -287,6 +287,65 @@ a {
   outline-offset: -2px;
 }
 
+/* Smooth non-janky row updates (Live/Sales polling) */
+.grid-body .grid-row.kexo-row-insert {
+  animation: kexoRowInsert 0.32s ease-out both;
+}
+.grid-body .grid-row.kexo-row-update {
+  animation: kexoRowUpdate 0.42s ease-out both;
+}
+@keyframes kexoRowInsert {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes kexoRowUpdate {
+  0% { background: rgba(var(--tblr-primary-rgb), 0.10); }
+  100% { background: transparent; }
+}
+
+/* Live/Sales "Next update" UI (these pages don't load app.css) */
+body[data-page="live"] .next-update-block,
+body[data-page="sales"] .next-update-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--tblr-secondary, #626976);
+}
+body[data-page="live"] .next-update-timer,
+body[data-page="sales"] .next-update-timer {
+  --progress: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(#0d9488 calc(var(--progress) * 1turn), rgba(13, 148, 136, 0.2) 0);
+}
+
+/* Deploy drift: show a dot on refresh buttons */
+body.kexo-update-available #refresh-btn i,
+body.kexo-update-available .footer-refresh-btn i {
+  position: relative;
+}
+body.kexo-update-available #refresh-btn i::after,
+body.kexo-update-available .footer-refresh-btn i::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--kexo-accent-5, #ef4444);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+html[data-bs-theme="dark"] body.kexo-update-available #refresh-btn i::after,
+html[data-bs-theme="dark"] body.kexo-update-available .footer-refresh-btn i::after {
+  box-shadow: 0 0 0 2px rgba(26, 34, 52, 0.85);
+}
+
 /* Session side panel (live/sales/table) */
 .side-panel {
   position: fixed;

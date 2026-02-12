@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Layout accordion + converted-row color controls)
+Last updated: 2026-02-12 (Refresh policy: only Live/Sales auto-update)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -202,7 +202,7 @@ KPI data:
 
 Ops/reliability:
 - Static assets are versioned into HTML (query param `?v=`) to avoid Shopify embed caching mismatches.
-- `GET /api/version` returns `assetVersion` so clients can self-recover after long-idle tabs.
+- `GET /api/version` returns `assetVersion` so clients can detect deploy drift after long-idle tabs (UI prompts user to click Refresh; no forced reload).
 - `.md`/`/docs` paths are blocked in production (see `server/index.js`).
 
 ---
@@ -227,6 +227,11 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12 (latest)
+- Refresh behavior:
+  - Removed background polling/auto-refresh across the site (manual refresh only via browser reload or the in-theme Refresh buttons).
+  - `/dashboard/live` + `/dashboard/sales` now poll for updates every 10s with smooth, non-janky row insertion/updates.
+  - While paging/sorting, updates are queued and an **Updates available** button appears in the header actions.
+  - Sale banner + footer “Last sale” continue updating globally via SSE (`/api/stream`).
 - Settings -> Layout -> Tables UX refactor:
   - Replaced table-crammed layout editor with Tabler accordion sections (one accordion item per page, one control row per setting group).
   - Added per-table card controls with clearer fields for name, rows options/default, sticky bounds, grid toggle, and reorder actions.

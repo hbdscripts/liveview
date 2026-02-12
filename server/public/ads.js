@@ -1352,22 +1352,6 @@
 
   window.__adsRefresh = refresh;
   window.__adsInit = function () {
-    var AUTO_REFRESH_MS = 5 * 60 * 1000;
-    var hasTimer = false;
-    try { hasTimer = !!window.__adsAutoTimer; } catch (_) { hasTimer = false; }
-    if (!hasTimer) {
-      try {
-        window.__adsAutoTimer = setInterval(function () {
-          try {
-            if (document.visibilityState !== 'visible') return;
-            var panel = document.getElementById('tab-panel-ads');
-            if (panel && panel.classList && !panel.classList.contains('active')) return;
-            // Silent refresh: patch spend/profit/ROAS in-place (no table wipe).
-            refresh({ force: false });
-          } catch (_) {}
-        }, AUTO_REFRESH_MS);
-      } catch (_) {}
-    }
     return refresh({ force: false });
   };
 })();

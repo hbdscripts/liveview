@@ -436,6 +436,7 @@ const API = '';
     }
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
+    const LIVE_SALES_POLL_MS = 10 * 1000; // Only /dashboard/live + /dashboard/sales poll automatically
     const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // Live view: only show sessions seen in last 5 min
     const ARRIVED_WINDOW_MS = 60 * 60 * 1000; // Live view: only show sessions that arrived in last 60 min
     const STATS_REFRESH_MS = 5 * 60 * 1000; // Breakdown / Products / Traffic refresh (Today only)
@@ -448,6 +449,7 @@ const API = '';
     const KPI_EXTRAS_CACHE_LS_KEY = 'kexo-kpis-expanded-extra-cache-v1';
     const KPI_SPINNER_MIN_MS = 800;
     let kpisSpinnerShownOnce = false;
+    let updateAvailable = false;
     const SALE_MUTED_KEY = 'livevisitors-sale-muted';
     const TOP_TABLE_PAGE_SIZE = 10;
     const COUNTRY_PAGE_SIZE = 20;
@@ -477,6 +479,23 @@ const API = '';
       if (k === '14days') return '14d';
       if (k === '30days') return '30d';
       return k;
+    }
+
+    function setUpdateAvailable(next, opts) {
+      updateAvailable = !!next;
+      const reason = opts && opts.reason ? String(opts.reason) : '';
+      try { document.body.classList.toggle('kexo-update-available', updateAvailable); } catch (_) {}
+      try { document.documentElement.toggleAttribute('data-kexo-update-available', updateAvailable); } catch (_) {}
+      try {
+        const btn = document.getElementById('refresh-btn');
+        if (btn) btn.setAttribute('title', updateAvailable ? ('Update available. Click to reload.' + (reason ? (' ' + reason) : '')) : 'Refresh');
+      } catch (_) {}
+      try {
+        document.querySelectorAll('.footer-refresh-btn').forEach(function(btn) {
+          if (!btn) return;
+          btn.setAttribute('title', updateAvailable ? ('Update available. Click to reload.' + (reason ? (' ' + reason) : '')) : 'Refresh');
+        });
+      } catch (_) {}
     }
     function getStatsRange() {
       const raw = (dateRange === 'live' || dateRange === 'sales' || dateRange === '1h') ? 'today' : dateRange;
@@ -1242,6 +1261,10 @@ const API = '';
     let kpiCacheRange = '';
     let kpiCacheSource = '';
     let liveRefreshInFlight = null;
+    let liveSalesPollTimer = null;
+    let liveSalesPollInFlight = null;
+    let liveSalesPendingPayload = null;
+    let liveSalesPendingAt = 0;
     let statsRefreshInFlight = null;
     let trafficRefreshInFlight = null;
     let productsRefreshInFlight = null;
@@ -1471,23 +1494,54 @@ const API = '';
       if (!block) return;
       const labelEl = document.getElementById('next-update-label');
       const timerWrap = document.getElementById('next-update-timer-wrap');
-      const isLive = dateRange === 'live';
-      const show = activeMainTab === 'spy' && (isLive || dateRange === 'sales' || dateRange === 'today' || dateRange === '1h');
+      const isLive = PAGE === 'live';
+      const isSales = PAGE === 'sales';
+      const show = activeMainTab === 'spy' && (isLive || isSales);
       block.classList.toggle('is-hidden', !show);
       if (!show) return;
 
-      if (labelEl) labelEl.classList.toggle('is-hidden', isLive);
-      if (timerWrap) timerWrap.classList.toggle('is-hidden', isLive);
-      if (isLive) {
-        if (timerWrap) timerWrap.style.setProperty('--progress', '0');
-        return;
+      // "Updates available" CTA when polling is paused (sorting/paging).
+      const hasPending = !!liveSalesPendingPayload;
+      let pendingBtn = document.getElementById('live-sales-updates-btn');
+      if (!pendingBtn) {
+        try {
+          pendingBtn = document.createElement('button');
+          pendingBtn.type = 'button';
+          pendingBtn.id = 'live-sales-updates-btn';
+          pendingBtn.className = 'btn btn-sm btn-outline-primary is-hidden';
+          pendingBtn.textContent = 'Updates available';
+          block.appendChild(pendingBtn);
+        } catch (_) { pendingBtn = null; }
       }
+      if (pendingBtn && pendingBtn.getAttribute('data-bound') !== '1') {
+        try {
+          pendingBtn.setAttribute('data-bound', '1');
+          pendingBtn.addEventListener('click', function(e) {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            applyLiveSalesPending();
+          });
+        } catch (_) {}
+      }
+
+      if (hasPending && pendingBtn) {
+        try { pendingBtn.classList.remove('is-hidden'); } catch (_) {}
+        if (labelEl) labelEl.classList.add('is-hidden');
+        if (timerWrap) timerWrap.classList.add('is-hidden');
+        return;
+      } else if (pendingBtn) {
+        try { pendingBtn.classList.add('is-hidden'); } catch (_) {}
+      }
+
+      if (labelEl) labelEl.classList.remove('is-hidden');
+      if (timerWrap) timerWrap.classList.remove('is-hidden');
       if (!timerWrap) return;
 
-      const duration = RANGE_REFRESH_MS;
-      const target = (typeof nextRangeAt === 'number' && nextRangeAt > Date.now())
-        ? nextRangeAt
-        : (Date.now() + RANGE_REFRESH_MS);
+      const duration = LIVE_SALES_POLL_MS;
+      const target = (typeof nextLiveAt === 'number' && nextLiveAt > Date.now())
+        ? nextLiveAt
+        : (typeof nextRangeAt === 'number' && nextRangeAt > Date.now())
+          ? nextRangeAt
+          : (Date.now() + duration);
       const remaining = Math.max(0, target - Date.now());
       const progress = Math.min(1, 1 - remaining / duration);
       timerWrap.style.setProperty('--progress', String(progress));
@@ -2964,9 +3018,120 @@ const API = '';
       return list;
     }
 
+    function sessionRowSig(s) {
+      try {
+        if (!s) return '';
+        return [
+          s.session_id != null ? String(s.session_id) : '',
+          s.last_seen != null ? String(s.last_seen) : '',
+          s.started_at != null ? String(s.started_at) : '',
+          s.has_purchased ? '1' : '0',
+          s.order_total != null ? String(s.order_total) : '',
+          s.order_currency != null ? String(s.order_currency) : '',
+          s.cart_value != null ? String(s.cart_value) : '',
+          s.cart_currency != null ? String(s.cart_currency) : '',
+          s.cart_qty != null ? String(s.cart_qty) : '',
+          s.device != null ? String(s.device) : '',
+          s.country_code != null ? String(s.country_code) : '',
+          s.is_returning ? '1' : '0',
+          s.returning_count != null ? String(s.returning_count) : '',
+          s.last_product_handle != null ? String(s.last_product_handle) : '',
+          s.first_product_handle != null ? String(s.first_product_handle) : '',
+        ].join('|');
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function rowElFromHtml(html) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = String(html || '').trim();
+      return wrap.firstElementChild;
+    }
+
+    function patchSessionsTableBody(tbody, pageSessions) {
+      if (!tbody) return;
+      const list = Array.isArray(pageSessions) ? pageSessions : [];
+      if (!list.length) return;
+
+      // Map current DOM rows by session id.
+      const existing = new Map();
+      Array.from(tbody.querySelectorAll('.grid-row[data-session-id]')).forEach(function(row) {
+        const sid = row && row.getAttribute ? (row.getAttribute('data-session-id') || '') : '';
+        if (sid) existing.set(String(sid), row);
+      });
+      const hadRows = existing.size > 0;
+
+      const desired = [];
+      list.forEach(function(s) {
+        const sid = s && s.session_id != null ? String(s.session_id) : '';
+        if (!sid) return;
+        const sig = sessionRowSig(s);
+        const cur = existing.get(sid);
+        if (cur && cur.getAttribute('data-kexo-sig') === sig) {
+          existing.delete(sid);
+          desired.push(cur);
+          return;
+        }
+        const next = rowElFromHtml(renderRow(s));
+        if (!next) return;
+        try { next.setAttribute('data-kexo-sig', sig); } catch (_) {}
+        if (cur && cur.parentNode === tbody) {
+          try { cur.replaceWith(next); } catch (_) {}
+          if (hadRows) { try { next.classList.add('kexo-row-update'); } catch (_) {} }
+        } else {
+          if (hadRows) { try { next.classList.add('kexo-row-insert'); } catch (_) {} }
+        }
+        existing.delete(sid);
+        desired.push(next);
+      });
+
+      // Reorder/move nodes in-place.
+      let cursor = tbody.firstElementChild;
+      desired.forEach(function(row) {
+        if (!row) return;
+        if (row === cursor) {
+          cursor = cursor.nextElementSibling;
+          return;
+        }
+        try { tbody.insertBefore(row, cursor); } catch (_) {}
+      });
+
+      // Remove any rows that are no longer in the desired list.
+      existing.forEach(function(row) { try { row.remove(); } catch (_) {} });
+
+      // If an empty-state row is still present, remove it.
+      try {
+        Array.from(tbody.querySelectorAll('.grid-row:not([data-session-id])')).forEach(function(row) { row.remove(); });
+      } catch (_) {}
+
+      // Drop animation classes after a moment.
+      try {
+        desired.forEach(function(row) {
+          if (!row || !row.classList) return;
+          if (!row.classList.contains('kexo-row-insert') && !row.classList.contains('kexo-row-update')) return;
+          setTimeout(function() {
+            try { row.classList.remove('kexo-row-insert', 'kexo-row-update'); } catch (_) {}
+          }, 900);
+        });
+      } catch (_) {}
+    }
+
     function renderTable() {
       const tbody = document.getElementById('table-body');
       if (!tbody) return; // Sessions table not present (e.g. Settings page)
+      if (tbody.getAttribute('data-kexo-click-bound') !== '1') {
+        try {
+          tbody.setAttribute('data-kexo-click-bound', '1');
+          tbody.addEventListener('click', function(e) {
+            const target = e && e.target ? e.target : null;
+            const row = target && target.closest ? target.closest('.grid-row.clickable[data-session-id]') : null;
+            if (!row || !tbody.contains(row)) return;
+            selectedSessionId = row.getAttribute('data-session-id');
+            openSidePanel(selectedSessionId);
+          });
+        } catch (_) {}
+      }
       const isRangeMode = sessionsTotal != null;
       const totalPages = isRangeMode
         ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
@@ -2979,13 +3144,8 @@ const API = '';
         var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyMsg) + '</div></div>';
       } else {
-        tbody.innerHTML = pageSessions.map(renderRow).join('');
-        document.querySelectorAll('#table-body .grid-row.clickable').forEach(tr => {
-          tr.addEventListener('click', () => {
-            selectedSessionId = tr.dataset.sessionId;
-            openSidePanel(selectedSessionId);
-          });
-        });
+        // Avoid janky full rerenders: patch rows in-place so new rows animate cleanly.
+        patchSessionsTableBody(tbody, pageSessions);
       }
       var paginWrap = document.getElementById('table-pagination');
       if (paginWrap) {
@@ -11380,6 +11540,10 @@ const API = '';
         const btn = document.getElementById('refresh-btn');
         if (btn) {
           btn.addEventListener('click', function() {
+            if (updateAvailable) {
+              try { window.location.reload(); } catch (_) { try { window.location.href = window.location.href; } catch (_) {} }
+              return;
+            }
             btn.classList.add('refresh-spinning');
             setTimeout(function() { btn.classList.remove('refresh-spinning'); }, 600);
             try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
@@ -11419,6 +11583,127 @@ const API = '';
 
     // Load traffic source mapping + custom icons (best-effort).
     try { refreshTrafficSourceMeta({ force: false }); } catch (_) {}
+
+    function liveSalesAutoPollEnabled() {
+      return PAGE === 'live' || PAGE === 'sales';
+    }
+
+    function liveSalesCanAutoApply() {
+      if (!liveSalesAutoPollEnabled()) return false;
+      if (document.visibilityState !== 'visible') return false;
+      // Pause while interacting (sorting/paging). New data will be queued and applied on demand.
+      try { if (typeof currentPage === 'number' && currentPage !== 1) return false; } catch (_) {}
+      try {
+        const sb = sortBy != null ? String(sortBy) : '';
+        const sd = sortDir != null ? String(sortDir) : '';
+        const isDefaultSort = (sb === 'last_seen' && sd === 'desc');
+        if (sb && !isDefaultSort) return false;
+      } catch (_) {}
+      return true;
+    }
+
+    function liveSalesPollUrl() {
+      if (PAGE === 'live') {
+        return API + '/api/sessions?filter=active&_=' + Date.now();
+      }
+      // Sales page: always poll the "top page" so new rows are detected even if user is paging.
+      var limit = rowsPerPage;
+      var offset = 0;
+      return API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi('sales')) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
+    }
+
+    function setLiveSalesNextAt(ts) {
+      var n = typeof ts === 'number' && isFinite(ts) ? ts : (Date.now() + LIVE_SALES_POLL_MS);
+      if (PAGE === 'live') nextLiveAt = n;
+      else nextRangeAt = n;
+      updateNextUpdateUi();
+    }
+
+    function scheduleLiveSalesPoll(ms) {
+      if (!liveSalesAutoPollEnabled()) return;
+      if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
+      var delay = (typeof ms === 'number' && isFinite(ms) && ms >= 0) ? ms : LIVE_SALES_POLL_MS;
+      setLiveSalesNextAt(Date.now() + delay);
+      liveSalesPollTimer = setTimeout(function() { try { runLiveSalesPoll(); } catch (_) {} }, delay);
+    }
+
+    function applyLiveSalesPayload(data) {
+      if (!data) return;
+      if (PAGE === 'live') {
+        sessionsTotal = null;
+        var next = data.sessions || [];
+        var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+        var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
+        next = next.filter(function(s) {
+          return (s.last_seen != null && s.last_seen >= cutoff) &&
+            (s.started_at != null && s.started_at >= arrivedCutoff);
+        });
+        next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
+        sessions = next;
+        lastSessionsMode = 'live';
+        lastSessionsFetchedAt = Date.now();
+        lastUpdateTime = new Date();
+        updateServerTimeDisplay();
+        renderTable();
+        updateKpis();
+        try { refreshSessionPageCharts({ force: false }); } catch (_) {}
+        return;
+      }
+
+      // Sales (range mode)
+      sessions = data.sessions || [];
+      sessionsTotal = typeof data.total === 'number' ? data.total : sessions.length;
+      lastSessionsMode = 'range';
+      lastSessionsFetchedAt = Date.now();
+      lastUpdateTime = new Date();
+      updateServerTimeDisplay();
+      renderTable();
+      updateKpis();
+      try { refreshSessionPageCharts({ force: false }); } catch (_) {}
+    }
+
+    function applyLiveSalesPending() {
+      if (!liveSalesPendingPayload) return false;
+      const payload = liveSalesPendingPayload;
+      liveSalesPendingPayload = null;
+      liveSalesPendingAt = 0;
+      // Newest rows are at the top; jump to page 1 so the update is visible.
+      try { currentPage = 1; } catch (_) {}
+      try { applyLiveSalesPayload(payload); } catch (_) {}
+      try { updateNextUpdateUi(); } catch (_) {}
+      return true;
+    }
+
+    function runLiveSalesPoll() {
+      if (!liveSalesAutoPollEnabled()) return;
+      // Always reschedule first so we don't stop polling if something throws.
+      scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
+      if (document.visibilityState !== 'visible') return;
+      if (liveSalesPollInFlight) return;
+      var url = liveSalesPollUrl();
+      liveSalesPollInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          if (!data) return;
+          if (liveSalesPendingPayload || !liveSalesCanAutoApply()) {
+            liveSalesPendingPayload = data;
+            liveSalesPendingAt = Date.now();
+            try { updateNextUpdateUi(); } catch (_) {}
+            return;
+          }
+          liveSalesPendingPayload = null;
+          liveSalesPendingAt = 0;
+          applyLiveSalesPayload(data);
+        })
+        .catch(function() {})
+        .finally(function() { liveSalesPollInFlight = null; });
+    }
+
+    (function initLiveSalesPoller() {
+      if (!liveSalesAutoPollEnabled()) return;
+      // Defer the first poll slightly so initial page load fetch/render completes first.
+      scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
+    })();
 
     function onLiveAutoRefreshTick() {
       if (activeMainTab !== 'spy') return;
@@ -11462,32 +11747,9 @@ const API = '';
       refreshTraffic({ force: false });
     }
 
-    // Live: refresh every 60s. Today/Sales: refresh every 5 min. Products/Traffic: every 5 min (Today only).
-    _intervals.push(setInterval(onLiveAutoRefreshTick, LIVE_REFRESH_MS));
-    _intervals.push(setInterval(onRangeAutoRefreshTick, 60000)); // check every 60s whether to refresh Today/Sales (5 min interval)
-    _intervals.push(setInterval(onKpisAutoRefreshTick, KPI_REFRESH_MS));
-    _intervals.push(setInterval(onStatsAutoRefreshTick, STATS_REFRESH_MS));
-    _intervals.push(setInterval(onProductsAutoRefreshTick, STATS_REFRESH_MS));
-    _intervals.push(setInterval(onTrafficAutoRefreshTick, STATS_REFRESH_MS));
+    // Background polling is intentionally disabled across the site (manual refresh only),
+    // except for /dashboard/live and /dashboard/sales (which use a dedicated 10s poller).
     _intervals.push(setInterval(tickTimeOnSite, 30000));
-    // Online count: when not on Live, refresh every 60s so Online always shows real people online
-    _intervals.push(setInterval(function() {
-      if (document.visibilityState !== 'visible') return;
-      if (activeMainTab === 'spy' && dateRange === 'live') return;
-      fetchOnlineCount();
-    }, LIVE_REFRESH_MS));
-    // Prune stale sessions from Live list (e.g. tab left open, no SSE update) so they drop off after 5 min or if arrived too long ago
-    _intervals.push(setInterval(function() {
-      if (activeMainTab !== 'spy' || dateRange !== 'live') return;
-      var cutoff = Date.now() - ACTIVE_WINDOW_MS;
-      var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
-      var before = sessions.length;
-      sessions = sessions.filter(function(s) {
-        return s.last_seen != null && s.last_seen >= cutoff &&
-          s.started_at != null && s.started_at >= arrivedCutoff;
-      });
-      if (sessions.length !== before) { currentPage = 1; renderTable(); updateKpis(); }
-    }, 30000));
 
     // ── Tab resume + deploy drift guard ─────────────────────────────────────
     // In Safari/iOS (and some embed contexts) long-idle tabs can resume with a "white page"
@@ -11519,29 +11781,8 @@ const API = '';
     } catch (_) {}
 
     function onBecameVisible() {
+      updateServerTimeDisplay();
       updateNextUpdateUi();
-      try { updateKpis(); } catch (_) {}
-      if (activeMainTab !== 'dashboard' && activeMainTab !== 'tools') refreshKpis({ force: false });
-      if (activeMainTab === 'dashboard') {
-        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
-      } else if (activeMainTab === 'stats') {
-        const stale = !lastStatsFetchedAt || (Date.now() - lastStatsFetchedAt) > STATS_REFRESH_MS;
-        if (stale) refreshStats({ force: false });
-      } else if (activeMainTab === 'products') {
-        const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
-        if (staleProducts) refreshProducts({ force: false });
-      } else if (activeMainTab === 'variants') {
-        try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: false }); } catch (_) {}
-      } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
-        const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
-        if (staleTraffic) refreshTraffic({ force: false });
-      } else if (activeMainTab === 'ads' || PAGE === 'ads') {
-        try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
-      } else {
-        const sessionStaleMs = dateRange === 'live' ? LIVE_REFRESH_MS : (dateRange === 'today' || dateRange === 'sales' || dateRange === '1h' ? RANGE_REFRESH_MS : LIVE_REFRESH_MS);
-        const stale = !lastSessionsFetchedAt || (Date.now() - lastSessionsFetchedAt) > sessionStaleMs;
-        if (stale) fetchSessions();
-      }
     }
 
     document.addEventListener('visibilitychange', function() {
@@ -11555,10 +11796,10 @@ const API = '';
 
       fetchVersionSig()
         .then(function(sig) {
-          if (PAGE === 'settings') return onBecameVisible();
           if (_bootVersionSig && sig && sig !== _bootVersionSig) {
-            try { window.location.reload(); } catch (_) { try { window.location.href = window.location.href; } catch (_) {} }
-            return;
+            try { setUpdateAvailable(true, { reason: 'New deploy detected.' }); } catch (_) {}
+            try { _bootVersionSig = sig; } catch (_) {}
+            return onBecameVisible();
           }
           if (!_bootVersionSig && sig) _bootVersionSig = sig;
           onBecameVisible();
@@ -11580,93 +11821,53 @@ const API = '';
           setTimeout(function() { if (_eventSource === es) initEventSource(); }, 5000);
         }
       };
+
+      function maybePatchActiveSaleToastAmount(session) {
+        // If the toast is currently showing for this session, patch the amount when order_total arrives.
+        try {
+          const sid = session && session.session_id != null ? String(session.session_id) : '';
+          if (!sid || !saleToastActive || !saleToastSessionId || String(saleToastSessionId) !== sid) return;
+          const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
+          const productTitle = (session && session.last_product_handle) ? titleCaseFromHandle(String(session.last_product_handle)) : '';
+          const curTitle = document.getElementById('sale-toast-product') ? String(document.getElementById('sale-toast-product').textContent || '') : '';
+          let amountGbp = null;
+          if (session && session.order_total != null) {
+            const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
+            if (Number.isFinite(n)) amountGbp = n;
+          }
+          if (amountGbp != null && Number.isFinite(amountGbp)) {
+            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '—'), amountGbp });
+          }
+        } catch (_) {}
+      }
+
+      function maybeTriggerSaleToastFromSse(session) {
+        try {
+          if (!session || !session.has_purchased) return;
+          const purchasedAt = session.purchased_at != null ? toMs(session.purchased_at) : null;
+          if (purchasedAt == null) return;
+          const cur = lastSaleAt == null ? null : toMs(lastSaleAt);
+          // If we don't have a baseline yet, prime it without firing a toast.
+          if (cur == null) { setLastSaleAt(purchasedAt); return; }
+          if (purchasedAt <= cur) { setLastSaleAt(purchasedAt); return; }
+          setLastSaleAt(purchasedAt);
+          triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+        } catch (_) {}
+      }
+
       es.onmessage = function(e) {
-      try {
-        var msg = JSON.parse(e.data);
-        if (msg.type === 'session_update' && msg.session) {
-          const session = msg.session;
-          // Keep footer "Last sale" correct even when not on Live tab.
-          if (session && session.has_purchased && session.purchased_at != null) {
-            setLastSaleAt(session.purchased_at);
-          }
-          if (activeMainTab !== 'spy' || dateRange !== 'live') return;
-          const lastSeen = session.last_seen != null ? Number(session.last_seen) : 0;
-          const startedAt = session.started_at != null ? Number(session.started_at) : 0;
-          const withinActive = lastSeen >= Date.now() - ACTIVE_WINDOW_MS;
-          const withinArrived = startedAt >= Date.now() - ARRIVED_WINDOW_MS;
-          const idx = sessions.findIndex(s => s.session_id === session.session_id);
-          let becamePurchased = false;
-          let filledOrderTotal = false;
-          let needRender = false;
-          if (idx >= 0) {
-            if (!withinActive || !withinArrived) {
-              sessions.splice(idx, 1);
-              needRender = true;
-            } else {
-              const wasPurchased = !!sessions[idx].has_purchased;
-              const wasOrderTotal = sessions[idx].order_total != null;
-              sessions[idx] = { ...sessions[idx], ...session };
-              const nowPurchased = !!sessions[idx].has_purchased;
-              const nowOrderTotal = sessions[idx].order_total != null;
-              becamePurchased = (!wasPurchased && nowPurchased);
-              filledOrderTotal = (nowPurchased && !wasOrderTotal && nowOrderTotal);
-              sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-              if (becamePurchased || filledOrderTotal) needRender = true;
-              // Avoid a second "cha-ching" when order_total arrives after has_purchased.
-              // If the toast is currently showing for this session, just patch the amount.
-              if (filledOrderTotal) {
-                try {
-                  const sid = session && session.session_id != null ? String(session.session_id) : '';
-                  if (sid && saleToastActive && saleToastSessionId && String(saleToastSessionId) === sid) {
-                    const cc = session && session.country_code ? String(session.country_code).toUpperCase().slice(0, 2) : 'XX';
-                    const productTitle = (session && session.last_product_handle) ? titleCaseFromHandle(String(session.last_product_handle)) : '';
-                    const curTitle = document.getElementById('sale-toast-product') ? String(document.getElementById('sale-toast-product').textContent || '') : '';
-                    let amountGbp = null;
-                    if (session && session.order_total != null) {
-                      const n = typeof session.order_total === 'number' ? session.order_total : parseFloat(String(session.order_total));
-                      if (Number.isFinite(n)) amountGbp = n;
-                    }
-                    if (amountGbp != null && Number.isFinite(amountGbp)) {
-                      setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '—'), amountGbp });
-                    }
-                  }
-                } catch (_) {}
-              }
+        try {
+          var msg = JSON.parse(e.data);
+          if (msg.type === 'session_update' && msg.session) {
+            const session = msg.session;
+            // Keep footer "Last sale" correct and show the banner globally.
+            if (session && session.has_purchased && session.purchased_at != null) {
+              maybeTriggerSaleToastFromSse(session);
+              maybePatchActiveSaleToastAmount(session);
             }
-          } else if (withinActive && withinArrived) {
-            sessions.unshift(session);
-            sessions.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
-            // Don't play sound when adding a session that's already purchased (e.g. re-add after prune, or heartbeat from old sale)
-            becamePurchased = false;
-            needRender = true;
           }
-          if (needRender) {
-            if (becamePurchased) {
-              currentPage = 1;
-              triggerSaleToast({ origin: 'sse', session: session, playSound: true });
-              // Update footer immediately when a sale happens.
-              setLastSaleAt(session.purchased_at || session.last_seen || Date.now());
-              // Keep the converted-count baseline in sync so KPI/stats refreshes don't double-trigger audio.
-              try {
-                const day = ymdNowInTz();
-                if (convertedCountDayYmd == null) convertedCountDayYmd = day;
-                if (day && convertedCountDayYmd !== day) {
-                  convertedCountDayYmd = day;
-                  hasSeenConvertedCountToday = false;
-                  lastConvertedCountToday = 0;
-                }
-                if (hasSeenConvertedCountToday) lastConvertedCountToday = (Number(lastConvertedCountToday) || 0) + 1;
-              } catch (_) {}
-              try { refreshConfigStatus(); } catch (_) {}
-              // Pull updated KPIs so Sales/Orders can animate immediately.
-              try { refreshKpis({ force: true }); } catch (_) {}
-            }
-            renderTable();
-            updateKpis();
-          }
-        }
-      } catch (_) {}
-    };
+        } catch (_) {}
+      };
     }
     initEventSource();
 
@@ -11674,6 +11875,7 @@ const API = '';
     window.addEventListener('beforeunload', function() {
       _intervals.forEach(function(id) { clearInterval(id); });
       _intervals.length = 0;
+      if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       Object.keys(_fetchAbortControllers).forEach(function(k) {
         try { _fetchAbortControllers[k].abort(); } catch (_) {}
