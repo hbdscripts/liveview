@@ -17,6 +17,7 @@
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
   var chartsUiPanelRendered = false;
+  var insightsIgnoreModalBackdropEl = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -154,6 +155,7 @@
           name: 'Finishes',
           enabled: true,
           order: 1,
+          ignored: [],
           rules: [
             { id: 'solid_silver', label: 'Solid Silver', include: ['solid silver'], exclude: ['sterling silver', '925 silver', '925 sterling silver'] },
             { id: 'gold', label: 'Gold', include: ['18k gold', '18ct gold', '14ct gold', 'gold'], exclude: ['gold vermeil'] },
@@ -166,6 +168,7 @@
           name: 'Lengths',
           enabled: true,
           order: 2,
+          ignored: [],
           rules: makeLengthRules(),
         },
         {
@@ -173,6 +176,7 @@
           name: 'Styles',
           enabled: true,
           order: 3,
+          ignored: [],
           rules: [
             { id: 'style_1', label: 'Style 1', include: ['style 1'], exclude: [] },
             { id: 'style_2', label: 'Style 2', include: ['style 2'], exclude: [] },
@@ -215,6 +219,23 @@
     );
   }
 
+  function normalizeIgnoredTitle(raw) {
+    return String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 512);
+  }
+
+  function normalizeIgnoredList(rawList) {
+    var out = [];
+    var seen = {};
+    var arr = Array.isArray(rawList) ? rawList : [];
+    arr.forEach(function (item) {
+      var title = normalizeIgnoredTitle(item);
+      if (!title || seen[title]) return;
+      seen[title] = true;
+      out.push(title);
+    });
+    return out;
+  }
+
   function slugify(raw, fallback) {
     var s = raw == null ? '' : String(raw).trim().toLowerCase();
     s = s.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
@@ -237,6 +258,7 @@
       var enabled = table.enabled !== false;
       var orderRaw = parseInt(String(table.order), 10);
       var order = Number.isFinite(orderRaw) ? Math.max(0, orderRaw) : (idx + 1);
+      var ignored = normalizeIgnoredList(table.ignored);
       var rules = [];
       var seenRuleIds = {};
       (Array.isArray(table.rules) ? table.rules : []).forEach(function (rule, rIdx) {
@@ -250,7 +272,7 @@
         var exclude = normalizeTokenList(rule.exclude);
         rules.push({ id: ruleId, label: label, include: include, exclude: exclude });
       });
-      out.push({ id: id, name: name, enabled: enabled, order: order, rules: rules });
+      out.push({ id: id, name: name, enabled: enabled, order: order, ignored: ignored, rules: rules });
     });
     defaults.tables.forEach(function (table) {
       if (seenIds[table.id]) return;
@@ -910,11 +932,13 @@
       }
       tables.forEach(function (table) {
         if (!table) return;
+        var ignoredCount = Number(table.ignoredCount) || 0;
         var unmappedCount = Number(table.unmappedCount) || 0;
         var ambiguousCount = Number(table.ambiguousCount) || 0;
         if (unmappedCount <= 0 && ambiguousCount <= 0) return;
         html += '<div class="mb-2"><strong>' + escapeHtml(table.tableName || table.tableId || 'Table') + '</strong>: ' +
-          escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous</div>';
+          escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous' +
+          (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') + '</div>';
         var unmapped = Array.isArray(table.unmappedExamples) ? table.unmappedExamples.slice(0, 6) : [];
         var ambiguous = Array.isArray(table.ambiguousExamples) ? table.ambiguousExamples.slice(0, 6) : [];
         if (unmapped.length) {
@@ -942,6 +966,118 @@
       return;
     }
     container.innerHTML = '';
+  }
+
+  function persistInsightsVariantsConfig(payloadCfg, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    setInsightsVariantsMsg(opts.pendingText || 'Saving…', true);
+    renderInsightsVariantsErrors(null);
+    return saveSettings({ insightsVariantsConfig: payloadCfg })
+      .then(function (r) {
+        if (r && r.ok) {
+          insightsVariantsConfigCache = normalizeInsightsVariantsConfig(r.insightsVariantsConfig || payloadCfg);
+          insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
+          renderInsightsVariantsPanel(insightsVariantsDraft);
+          setInsightsVariantsMsg(opts.successText || 'Saved.', true);
+          if (typeof opts.onSuccess === 'function') opts.onSuccess(r);
+          return true;
+        }
+        renderInsightsVariantsErrors(r && r.details ? r.details : null);
+        var msg = (r && (r.message || r.error)) ? String(r.message || r.error) : 'Save failed';
+        setInsightsVariantsMsg(msg, false);
+        if (typeof opts.onFailure === 'function') opts.onFailure(r);
+        return false;
+      })
+      .catch(function () {
+        setInsightsVariantsMsg('Save failed', false);
+        if (typeof opts.onFailure === 'function') opts.onFailure(null);
+        return false;
+      });
+  }
+
+  function ensureInsightsIgnoreModalBackdrop() {
+    if (insightsIgnoreModalBackdropEl && insightsIgnoreModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    insightsIgnoreModalBackdropEl = el;
+  }
+
+  function closeInsightsIgnoreModal() {
+    var modal = document.getElementById('settings-insights-variants-ignore-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (insightsIgnoreModalBackdropEl && insightsIgnoreModalBackdropEl.parentNode) {
+      insightsIgnoreModalBackdropEl.parentNode.removeChild(insightsIgnoreModalBackdropEl);
+    }
+    insightsIgnoreModalBackdropEl = null;
+  }
+
+  function getInsightsIgnoredEntries() {
+    var cfg = insightsVariantsDraft && typeof insightsVariantsDraft === 'object'
+      ? insightsVariantsDraft
+      : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    var tables = Array.isArray(cfg.tables) ? cfg.tables : [];
+    var entries = [];
+    tables.forEach(function (table, tableIdx) {
+      if (!table) return;
+      var ignored = normalizeIgnoredList(table.ignored);
+      ignored.forEach(function (title, ignoreIdx) {
+        entries.push({
+          tableIdx: tableIdx,
+          ignoreIdx: ignoreIdx,
+          tableId: table.id || '',
+          tableName: table.name || table.id || 'Table',
+          title: title,
+        });
+      });
+    });
+    return entries;
+  }
+
+  function renderInsightsIgnoreModalBody() {
+    var body = document.getElementById('settings-insights-variants-ignore-body');
+    if (!body) return;
+    var msg = document.getElementById('settings-insights-variants-ignore-msg');
+    if (msg) {
+      msg.textContent = '';
+      msg.className = 'form-hint';
+    }
+    var entries = getInsightsIgnoredEntries();
+    if (!entries.length) {
+      body.innerHTML = '<div class="text-secondary">No ignored variant titles yet.</div>';
+      return;
+    }
+    var rows = entries.map(function (entry) {
+      return '' +
+        '<tr>' +
+          '<td>' + escapeHtml(entry.tableName) + '<div class="text-secondary small"><code>' + escapeHtml(entry.tableId) + '</code></div></td>' +
+          '<td>' + escapeHtml(entry.title) + '</td>' +
+          '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
+        '</tr>';
+    }).join('');
+    body.innerHTML = '' +
+      '<div class="table-responsive">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+          '<thead><tr><th>Table</th><th>Ignored variant title</th><th class="text-end">Actions</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
+  function openInsightsIgnoreModal() {
+    var modal = document.getElementById('settings-insights-variants-ignore-modal');
+    if (!modal) return;
+    syncInsightsVariantsDraftFromDom();
+    renderInsightsIgnoreModalBody();
+    ensureInsightsIgnoreModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
   function nextUniqueTableId(baseName, tables) {
@@ -1183,24 +1319,7 @@
     saveBtn.addEventListener('click', function () {
       syncInsightsVariantsDraftFromDom();
       var payloadCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
-      setInsightsVariantsMsg('Saving\u2026', true);
-      renderInsightsVariantsErrors(null);
-      saveSettings({ insightsVariantsConfig: payloadCfg })
-        .then(function (r) {
-          if (r && r.ok) {
-            insightsVariantsConfigCache = normalizeInsightsVariantsConfig(r.insightsVariantsConfig || payloadCfg);
-            insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
-            renderInsightsVariantsPanel(insightsVariantsDraft);
-            setInsightsVariantsMsg('Saved.', true);
-          } else {
-            renderInsightsVariantsErrors(r && r.details ? r.details : null);
-            var msg = (r && (r.message || r.error)) ? String(r.message || r.error) : 'Save failed';
-            setInsightsVariantsMsg(msg, false);
-          }
-        })
-        .catch(function () {
-          setInsightsVariantsMsg('Save failed', false);
-        });
+      persistInsightsVariantsConfig(payloadCfg);
     });
 
     resetBtn.addEventListener('click', function () {
@@ -1208,6 +1327,86 @@
       renderInsightsVariantsPanel(insightsVariantsDraft);
       setInsightsVariantsMsg('Defaults loaded. Press Save to apply.', true);
     });
+  }
+
+  function wireInsightsVariantsIgnoreModal() {
+    var openBtn = document.getElementById('settings-insights-variants-ignore-btn');
+    var modal = document.getElementById('settings-insights-variants-ignore-modal');
+    var saveBtn = document.getElementById('settings-insights-variants-ignore-save-btn');
+    var msgEl = document.getElementById('settings-insights-variants-ignore-msg');
+    if (!openBtn || !modal || !saveBtn) return;
+
+    if (openBtn.getAttribute('data-ignore-wired') !== '1') {
+      openBtn.setAttribute('data-ignore-wired', '1');
+      openBtn.addEventListener('click', function () {
+        openInsightsIgnoreModal();
+      });
+    }
+
+    if (modal.getAttribute('data-ignore-wired') !== '1') {
+      modal.setAttribute('data-ignore-wired', '1');
+      modal.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target === modal) {
+          closeInsightsIgnoreModal();
+          return;
+        }
+        var closeBtn = target.closest ? target.closest('[data-close-insights-ignore]') : null;
+        if (closeBtn) {
+          closeInsightsIgnoreModal();
+          return;
+        }
+        var removeBtn = target.closest ? target.closest('button[data-action="remove-ignore"][data-table-idx][data-ignore-idx]') : null;
+        if (!removeBtn) return;
+        var tIdx = parseInt(String(removeBtn.getAttribute('data-table-idx') || ''), 10);
+        var iIdx = parseInt(String(removeBtn.getAttribute('data-ignore-idx') || ''), 10);
+        var cfg = insightsVariantsDraft && typeof insightsVariantsDraft === 'object'
+          ? insightsVariantsDraft
+          : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+        var tables = Array.isArray(cfg.tables) ? cfg.tables : [];
+        if (!Number.isFinite(tIdx) || tIdx < 0 || tIdx >= tables.length) return;
+        var table = tables[tIdx];
+        if (!table || !Array.isArray(table.ignored)) return;
+        if (!Number.isFinite(iIdx) || iIdx < 0 || iIdx >= table.ignored.length) return;
+        table.ignored.splice(iIdx, 1);
+        insightsVariantsDraft = normalizeInsightsVariantsConfig(cfg);
+        renderInsightsVariantsPanel(insightsVariantsDraft);
+        renderInsightsIgnoreModalBody();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        closeInsightsIgnoreModal();
+      });
+    }
+
+    if (saveBtn.getAttribute('data-ignore-save-wired') !== '1') {
+      saveBtn.setAttribute('data-ignore-save-wired', '1');
+      saveBtn.addEventListener('click', function () {
+        syncInsightsVariantsDraftFromDom();
+        var payloadCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+        if (msgEl) {
+          msgEl.textContent = 'Saving...';
+          msgEl.className = 'form-hint text-primary';
+        }
+        persistInsightsVariantsConfig(payloadCfg, {
+          onSuccess: function () {
+            renderInsightsIgnoreModalBody();
+            if (msgEl) {
+              msgEl.textContent = 'Saved.';
+              msgEl.className = 'form-hint text-success';
+            }
+          },
+          onFailure: function () {
+            if (msgEl) {
+              msgEl.textContent = 'Save failed. Check Insights -> Variants errors.';
+              msgEl.className = 'form-hint text-danger';
+            }
+          },
+        });
+      });
+    }
   }
 
   function moveRow(row, dir) {
@@ -1456,6 +1655,7 @@
     wireInsightsVariantsEditor();
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();
+    wireInsightsVariantsIgnoreModal();
     wireChartsSaveReset();
   }
 

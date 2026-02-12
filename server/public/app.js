@@ -7423,6 +7423,7 @@ const API = '';
           } catch (_) {}
         }
         endReportBuildScope(scope);
+        try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
         hidePageProgress();
       }
 

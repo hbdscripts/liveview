@@ -431,9 +431,31 @@
               <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
                 <button type="button" class="btn btn-primary" id="settings-insights-variants-save-btn">Save</button>
                 <button type="button" class="btn btn-outline-secondary" id="settings-insights-variants-reset-btn">Reset to defaults</button>
+                <button type="button" class="btn btn-outline-dark" id="settings-insights-variants-ignore-btn">Ignore List</button>
                 <span id="settings-insights-variants-msg" class="form-hint"></span>
               </div>
               <div class="text-muted small mt-2">Save is blocked when any active table has unmapped or ambiguous variants. Error details show exactly what to fix.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal modal-blur fade" id="settings-insights-variants-ignore-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="modal-title">Ignored Variant Titles</h3>
+              <button type="button" class="btn-close" aria-label="Close" data-close-insights-ignore></button>
+            </div>
+            <div class="modal-body" id="settings-insights-variants-ignore-body">
+              <div class="text-secondary">Loading ignored titles…</div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+              <span id="settings-insights-variants-ignore-msg" class="form-hint"></span>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-secondary" data-close-insights-ignore>Close</button>
+                <button type="button" class="btn btn-primary" id="settings-insights-variants-ignore-save-btn">Save changes</button>
+              </div>
             </div>
           </div>
         </div>

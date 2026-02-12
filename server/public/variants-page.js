@@ -13,6 +13,7 @@
     tables: [],
     loading: false,
     loaded: false,
+    ignoreSaving: false,
   };
 
   function dismissGlobalPageLoader() {
@@ -83,11 +84,13 @@
 
     return '' +
       '<div class="stats-card card" id="' + escapeHtml(cardId) + '" data-table-class="dashboard" data-table-zone="variants-' + escapeHtml(safeId) + '" data-table-id="' + escapeHtml(tableId) + '">' +
-        '<div class="card-header d-flex align-items-center justify-content-between">' +
-          '<h3 class="card-title">' + escapeHtml(title) + '</h3>' +
-          (hasWarnings
-            ? '<button type="button" class="badge bg-warning-lt text-warning border-0 variants-issues-trigger" data-table-safe-id="' + escapeHtml(safeId) + '" title="' + escapeHtml(warningText) + '">' + escapeHtml(String(unmappedCount + ambiguousCount)) + ' mapping issues</button>'
-            : '') +
+        '<div class="card-header d-flex align-items-center flex-wrap gap-2">' +
+          '<div class="d-flex align-items-center flex-wrap gap-2 variants-card-heading">' +
+            '<h3 class="card-title mb-0">' + escapeHtml(title) + '</h3>' +
+            (hasWarnings
+              ? '<button type="button" class="badge bg-dark-lt border-0 variants-issues-trigger" data-table-safe-id="' + escapeHtml(safeId) + '" title="' + escapeHtml(warningText) + '">' + escapeHtml(String(unmappedCount + ambiguousCount)) + ' mapping issues</button>'
+              : '') +
+          '</div>' +
         '</div>' +
         '<div class="country-table-wrap" id="' + escapeHtml(wrapId) + '">' +
           '<div id="' + escapeHtml(tableId) + '" class="grid-table by-country-table best-variants-table" role="table" aria-label="' + escapeHtml(title) + '">' +
@@ -136,6 +139,25 @@
     return ((p / t) * 100).toFixed(1) + '%';
   }
 
+  function normalizeIgnoredTitle(raw) {
+    return String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 512);
+  }
+
+  function readJsonSafeResponse(response) {
+    return response.text().then(function (text) {
+      var json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      return { response: response, json: json, text: text || '' };
+    });
+  }
+
+  function setIssuesStatus(message, isError) {
+    var el = document.getElementById('variants-issues-status');
+    if (!el) return;
+    el.textContent = message || '';
+    el.className = isError ? 'small text-danger mb-2' : 'small text-secondary mb-2';
+  }
+
   var issuesModalBackdropEl = null;
   function closeIssuesModal() {
     var modal = document.getElementById('variants-issues-modal');
@@ -158,7 +180,7 @@
     issuesModalBackdropEl = el;
   }
 
-  function renderIssueRows(items, includeMatches) {
+  function renderIssueRows(items, includeMatches, tableId) {
     var list = Array.isArray(items) ? items : [];
     if (!list.length) return '<div class="text-secondary">No examples.</div>';
     var rows = list.map(function (item) {
@@ -181,6 +203,7 @@
           '<td class="text-end">' + escapeHtml(orders) + '</td>' +
           '<td class="text-end">' + revenue + '</td>' +
           (includeMatches ? '<td>' + escapeHtml(matches || '—') + '</td>' : '') +
+          '<td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 variants-ignore-link" data-ignore-table-id="' + escapeHtml(String(tableId || '')) + '" data-ignore-title="' + escapeHtml(title) + '">Ignore</button></td>' +
         '</tr>';
     }).join('');
     return '' +
@@ -193,6 +216,7 @@
               '<th class="text-end">Orders</th>' +
               '<th class="text-end">Rev</th>' +
               (includeMatches ? '<th>Matched rules</th>' : '') +
+              '<th class="text-end">Actions</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody>' + rows + '</tbody>' +
@@ -208,39 +232,44 @@
 
     var diag = tableState.diagnostics || {};
     var tableName = tableState.name || tableState.id || 'Variants';
+    var tableId = tableState.id || '';
     var unmapped = Array.isArray(diag.unmappedExamples) ? diag.unmappedExamples : [];
     var ambiguous = Array.isArray(diag.ambiguousExamples) ? diag.ambiguousExamples : [];
     var totals = diag && diag.totals ? diag.totals : {};
     var mappedTotals = totals && totals.mapped ? totals.mapped : {};
+    var ignoredTotals = totals && totals.ignored ? totals.ignored : {};
     var unmappedTotals = totals && totals.unmapped ? totals.unmapped : {};
     var ambiguousTotals = totals && totals.ambiguous ? totals.ambiguous : {};
-    var totalSessions = (Number(mappedTotals.sessions) || 0) + (Number(unmappedTotals.sessions) || 0) + (Number(ambiguousTotals.sessions) || 0);
-    var totalOrders = (Number(mappedTotals.orders) || 0) + (Number(unmappedTotals.orders) || 0) + (Number(ambiguousTotals.orders) || 0);
-    var totalRevenue = (Number(mappedTotals.revenue) || 0) + (Number(unmappedTotals.revenue) || 0) + (Number(ambiguousTotals.revenue) || 0);
+    var totalSessions = (Number(mappedTotals.sessions) || 0) + (Number(ignoredTotals.sessions) || 0) + (Number(unmappedTotals.sessions) || 0) + (Number(ambiguousTotals.sessions) || 0);
+    var totalOrders = (Number(mappedTotals.orders) || 0) + (Number(ignoredTotals.orders) || 0) + (Number(unmappedTotals.orders) || 0) + (Number(ambiguousTotals.orders) || 0);
+    var totalRevenue = (Number(mappedTotals.revenue) || 0) + (Number(ignoredTotals.revenue) || 0) + (Number(unmappedTotals.revenue) || 0) + (Number(ambiguousTotals.revenue) || 0);
     var mappedCr = (Number(mappedTotals.sessions) || 0) > 0
       ? ((Number(mappedTotals.orders) || 0) / Number(mappedTotals.sessions) * 100).toFixed(1) + '%'
       : '—';
     var exampleLimit = Number(diag.exampleLimit) || 0;
+    var ignoredCount = Number(diag.ignoredCount) || 0;
     var unmappedCount = Number(diag.unmappedCount) || 0;
     var ambiguousCount = Number(diag.ambiguousCount) || 0;
 
     titleEl.textContent = tableName + ' mapping issues';
     bodyEl.innerHTML = '' +
+      '<div id="variants-issues-status" class="small text-secondary mb-2"></div>' +
       '<div class="mb-3">' +
         '<div class="fw-semibold mb-1">Coverage snapshot for this table</div>' +
         '<div class="text-secondary small">High CR can happen when mapped coverage is low (orders/sessions outside mapped rules are excluded from rows).</div>' +
       '</div>' +
       '<div class="row g-2 mb-3">' +
-        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped sessions</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.sessions || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.sessions || 0, totalSessions)) + ')</span></div></div></div>' +
-        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped orders</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.orders || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.orders || 0, totalOrders)) + ')</span></div></div></div>' +
-        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped revenue</div><div class="fw-semibold">' + formatMoney(mappedTotals.revenue || 0) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.revenue || 0, totalRevenue)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Mapped sessions</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.sessions || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.sessions || 0, totalSessions)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Mapped orders</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.orders || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.orders || 0, totalOrders)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Mapped revenue</div><div class="fw-semibold">' + formatMoney(mappedTotals.revenue || 0) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.revenue || 0, totalRevenue)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Ignored sessions</div><div class="fw-semibold">' + escapeHtml(formatInt(ignoredTotals.sessions || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(ignoredTotals.sessions || 0, totalSessions)) + ')</span></div></div></div>' +
       '</div>' +
-      '<div class="mb-3"><span class="badge bg-primary-lt me-2">Current mapped CR: ' + escapeHtml(mappedCr) + '</span><span class="badge bg-warning-lt text-warning me-2">' + escapeHtml(String(unmappedCount)) + ' unmapped</span><span class="badge bg-warning-lt text-warning">' + escapeHtml(String(ambiguousCount)) + ' ambiguous</span></div>' +
+      '<div class="mb-3"><span class="badge bg-primary-lt me-2">Current mapped CR: ' + escapeHtml(mappedCr) + '</span><span class="badge bg-dark-lt me-2">' + escapeHtml(String(ignoredCount)) + ' ignored</span><span class="badge bg-warning-lt text-warning me-2">' + escapeHtml(String(unmappedCount)) + ' unmapped</span><span class="badge bg-warning-lt text-warning">' + escapeHtml(String(ambiguousCount)) + ' ambiguous</span></div>' +
       '<h4 class="mb-2">Unmapped variants</h4>' +
-      renderIssueRows(unmapped, false) +
+      renderIssueRows(unmapped, false, tableId) +
       (unmappedCount > unmapped.length && exampleLimit > 0 ? '<div class="text-muted small mt-2">Showing top ' + escapeHtml(String(unmapped.length)) + ' of ' + escapeHtml(String(unmappedCount)) + ' unmapped variants.</div>' : '') +
       '<h4 class="mb-2 mt-4">Ambiguous variants</h4>' +
-      renderIssueRows(ambiguous, true) +
+      renderIssueRows(ambiguous, true, tableId) +
       (ambiguousCount > ambiguous.length && exampleLimit > 0 ? '<div class="text-muted small mt-2">Showing top ' + escapeHtml(String(ambiguous.length)) + ' of ' + escapeHtml(String(ambiguousCount)) + ' ambiguous variants.</div>' : '');
 
     ensureIssuesModalBackdrop();
@@ -248,6 +277,7 @@
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
     try { document.body.classList.add('modal-open'); } catch (_) {}
+    setIssuesStatus('', false);
   }
 
   function cmpText(a, b, dir) {
@@ -415,10 +445,11 @@
           '<div class="card-header"><h3 class="card-title">Variants</h3></div>' +
           '<div class="card-body text-secondary">' +
             '<div>No enabled variant tables. Open Settings → Insights → Variants to configure tables.</div>' +
-            '<a class="btn btn-sm btn-primary mt-3" href="/settings?tab=insights">Configure variants</a>' +
+            '<a class="btn btn-sm btn-primary text-white mt-3" href="/settings?tab=insights">Configure variants</a>' +
           '</div>' +
         '</div>';
       dismissGlobalPageLoader();
+      try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
       return;
     }
 
@@ -451,6 +482,7 @@
       renderTableRows(t);
     });
     dismissGlobalPageLoader();
+    try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
   }
 
   function setLoadingUi(on) {
@@ -476,6 +508,56 @@
     }, timeout);
     var opts = Object.assign({}, options || {}, { signal: controller.signal });
     return fetch(url, opts).finally(function () { clearTimeout(timer); });
+  }
+
+  function persistIgnoreEntry(tableId, variantTitle) {
+    var tableKey = String(tableId || '').trim().toLowerCase();
+    var titleKey = normalizeIgnoredTitle(variantTitle);
+    if (!tableKey || !titleKey) return Promise.resolve(false);
+    if (state.ignoreSaving) return Promise.resolve(false);
+    state.ignoreSaving = true;
+    setIssuesStatus('Saving ignore entry...', false);
+
+    return fetchWithTimeout((API || '') + '/api/settings', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        insightsVariantsIgnore: {
+          tableId: tableKey,
+          variantTitle: variantTitle,
+        },
+      }),
+    }, 30000)
+      .then(readJsonSafeResponse)
+      .then(function (result) {
+        var response = result && result.response ? result.response : null;
+        var data = result ? result.json : null;
+        if (!response || !response.ok || !data || !data.ok) {
+          var msg = data && (data.message || data.error) ? String(data.message || data.error) : 'Ignore save failed';
+          throw new Error(msg);
+        }
+        return refreshVariants({ force: true }).then(function () {
+          var tableState = state.tables.find(function (t) {
+            return t && String(t.id || '').trim().toLowerCase() === tableKey;
+          });
+          if (!tableState) {
+            closeIssuesModal();
+            return true;
+          }
+          openIssuesModal(tableState);
+          setIssuesStatus('Ignored and refreshed.', false);
+          return true;
+        });
+      })
+      .catch(function (err) {
+        setIssuesStatus(err && err.message ? String(err.message) : 'Ignore save failed', true);
+        return false;
+      })
+      .finally(function () {
+        state.ignoreSaving = false;
+      });
   }
 
   function fetchShopFallback() {
@@ -550,6 +632,14 @@
       modal.setAttribute('data-variants-modal-bound', '1');
       modal.addEventListener('click', function (e) {
         if (!e || !e.target) return;
+        var ignoreBtn = e.target.closest ? e.target.closest('.variants-ignore-link[data-ignore-table-id][data-ignore-title]') : null;
+        if (ignoreBtn) {
+          e.preventDefault();
+          var tableId = ignoreBtn.getAttribute('data-ignore-table-id') || '';
+          var title = ignoreBtn.getAttribute('data-ignore-title') || '';
+          persistIgnoreEntry(tableId, title);
+          return;
+        }
         if (e.target === modal) closeIssuesModal();
         var closeBtn = e.target.closest ? e.target.closest('[data-close-variants-issues]') : null;
         if (closeBtn) closeIssuesModal();

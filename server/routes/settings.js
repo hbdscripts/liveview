@@ -11,6 +11,7 @@ const {
   defaultVariantsConfigV1,
   normalizeVariantsConfigV1,
   normalizeVariantsConfigForSave,
+  normalizeIgnoredTitle,
   validateConfigStructure,
   validateConfigAgainstVariants,
 } = require('../variantInsightsConfig');
@@ -500,6 +501,50 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save charts config' });
+    }
+  }
+
+  // Fast-path ignore add from Insights -> Variants mapping modal.
+  if (body.insightsVariantsIgnore && typeof body.insightsVariantsIgnore === 'object') {
+    try {
+      const tableId = String(body.insightsVariantsIgnore.tableId || '').trim().toLowerCase();
+      const normalizedTitle = normalizeIgnoredTitle(body.insightsVariantsIgnore.variantTitle);
+      if (!tableId || !normalizedTitle) {
+        return res.status(400).json({
+          ok: false,
+          error: 'insights_variants_ignore_invalid',
+          message: 'Both tableId and variantTitle are required to ignore a variant title.',
+        });
+      }
+
+      const existingRaw = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
+      const existingCfg = normalizeVariantsConfigV1(existingRaw);
+      const table = Array.isArray(existingCfg.tables)
+        ? existingCfg.tables.find((t) => t && String(t.id || '').trim().toLowerCase() === tableId)
+        : null;
+      if (!table) {
+        return res.status(404).json({
+          ok: false,
+          error: 'insights_variants_table_not_found',
+          message: `Table "${tableId}" was not found in variants settings.`,
+        });
+      }
+
+      const ignored = Array.isArray(table.ignored)
+        ? table.ignored.map((entry) => normalizeIgnoredTitle(entry)).filter(Boolean)
+        : [];
+      if (!ignored.includes(normalizedTitle)) ignored.push(normalizedTitle);
+      table.ignored = ignored;
+
+      const normalizedCfg = normalizeVariantsConfigForSave(existingCfg);
+      const json = JSON.stringify(normalizedCfg);
+      if (json.length > 120000) throw new Error('Variants config too large');
+      await store.setSetting(VARIANTS_CONFIG_KEY, json);
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: err && err.message ? String(err.message) : 'Failed to persist variants ignore rule',
+      });
     }
   }
 

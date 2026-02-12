@@ -62,6 +62,7 @@ function defaultVariantsConfigV1() {
         enabled: true,
         order: 1,
         rules: FINISH_RULES,
+        ignored: [],
       },
       {
         id: 'lengths',
@@ -69,6 +70,7 @@ function defaultVariantsConfigV1() {
         enabled: true,
         order: 2,
         rules: buildLengthRules(),
+        ignored: [],
       },
       {
         id: 'styles',
@@ -76,6 +78,7 @@ function defaultVariantsConfigV1() {
         enabled: true,
         order: 3,
         rules: STYLE_RULES,
+        ignored: [],
       },
     ],
   };
@@ -129,6 +132,25 @@ function normalizeTokenList(rawList) {
   return out;
 }
 
+function normalizeIgnoredTitle(raw) {
+  const s = raw == null ? '' : String(raw).trim().toLowerCase().replace(/\s+/g, ' ');
+  return s.slice(0, 512);
+}
+
+function normalizeIgnoredList(rawList) {
+  const out = [];
+  const seen = new Set();
+  if (!Array.isArray(rawList)) return out;
+  for (const item of rawList) {
+    const title = normalizeIgnoredTitle(item);
+    if (!title) continue;
+    if (seen.has(title)) continue;
+    seen.add(title);
+    out.push(title);
+  }
+  return out;
+}
+
 function normalizeRule(rawRule, index) {
   const obj = rawRule && typeof rawRule === 'object' ? rawRule : {};
   const label = normalizeLabel(obj.label, `Rule ${index + 1}`);
@@ -160,7 +182,8 @@ function normalizeTable(rawTable, index) {
   const orderRaw = Number(obj.order);
   const order = Number.isFinite(orderRaw) ? Math.max(0, Math.trunc(orderRaw)) : index + 1;
   const rules = normalizeRules(obj.rules);
-  return { id, name, enabled, order, rules };
+  const ignored = normalizeIgnoredList(obj.ignored);
+  return { id, name, enabled, order, rules, ignored };
 }
 
 function sortTablesByOrderThenName(a, b) {
@@ -335,8 +358,18 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
   for (const table of tables) {
     const unmapped = [];
     const ambiguous = [];
+    const ignored = [];
+    const ignoredSet = new Set(normalizeIgnoredList(table && table.ignored));
     for (const row of observed) {
       const title = row && row.variant_title != null ? String(row.variant_title) : '';
+      if (ignoredSet.has(normalizeIgnoredTitle(title))) {
+        ignored.push({
+          variant_title: title,
+          orders: row && row.orders != null ? Number(row.orders) || 0 : 0,
+          revenue: row && row.revenue != null ? Number(row.revenue) || 0 : 0,
+        });
+        continue;
+      }
       const classified = classifyTitleForTable(table, title);
       if (classified.kind === 'unmapped') {
         unmapped.push({
@@ -357,14 +390,17 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
       }
     }
 
+    ignored.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     unmapped.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     ambiguous.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
 
     const tableResult = {
       tableId: table.id,
       tableName: table.name,
+      ignoredCount: ignored.length,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
+      ignoredExamples: ignored.slice(0, maxExamples),
       unmappedExamples: unmapped.slice(0, maxExamples),
       ambiguousExamples: ambiguous.slice(0, maxExamples),
     };
@@ -383,6 +419,8 @@ module.exports = {
   defaultVariantsConfigV1,
   normalizeVariantsConfigV1,
   normalizeVariantsConfigForSave,
+  normalizeIgnoredTitle,
+  normalizeIgnoredList,
   classifyTitleForTable,
   configHash,
   validateConfigStructure,

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (dropdown inherit menu, menu hover tint)
+Last updated: 2026-02-12 (variants ignore flow + rows selector stability)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -220,6 +220,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Insights -> Variants mapping-issues badge now uses dark style, cleaner header spacing, and per-item **Ignore** actions in the modal.
+- Added persistent table-scoped ignored variant titles in `insights_variants_config_v1` (`table.ignored`), with save-time validation and runtime diagnostics excluding ignored titles from unmapped/ambiguous counts.
+- Settings -> Insights -> Variants now includes an **Ignore List** button + modal to review/remove ignored titles and save.
+- Row-per-page selector rebind now runs after report-build finish (`kexo:table-rows-changed`) and after Variants rerenders; Variants "Configure variants" buttons enforce white text.
 
 2026-02-12
 - Dropdown border removed; Settings moved from strip to nav; Settings dropdown aligns left with menu, opens below nav (not strip).

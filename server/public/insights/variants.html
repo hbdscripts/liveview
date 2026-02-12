@@ -29,9 +29,14 @@
       flex: 1 1 520px;
       min-width: 320px;
     }
+    #tab-panel-variants .variants-card-heading {
+      gap: 0.5rem;
+    }
     #tab-panel-variants .variants-issues-trigger {
       cursor: pointer;
       line-height: 1.2;
+      margin: 0;
+      align-self: center;
     }
   </style>
 </head>
@@ -72,7 +77,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close-variants-issues>Close</button>
-          <a href="/settings?tab=insights" class="btn btn-primary">Configure variants</a>
+          <a href="/settings?tab=insights" class="btn btn-primary text-white">Configure variants</a>
         </div>
       </div>
     </div>
