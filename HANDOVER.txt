@@ -255,6 +255,7 @@ Ops/reliability:
   - Date filter uses `orders_shopify.processed_at` when present (fallback to `created_at` when NULL). Added index on `(shop, processed_at)` for paid orders.
   - UI polish: country input shows an inline flag after ISO2 is recognized; results include a Sessions column (checkout-started sessions for that country+range; constant per row).
   - Flatpickr: tool date pickers are styled to match Tabler and hide adjacent-month days to avoid confusing month grids.
+  - Shipping price detail: table stores and displays both **Paid shipping** and **Set shipping** (presentment currency) via extra columns on `orders_shopify_shipping_options` (migration 042).
 - Migrations: startup/manual migration runners now include migration 039 (sessions index) and 040 (orders processed_at index).
 - Restored session details drawer behavior on `/dashboard/live`, `/dashboard/sales`, and `/dashboard/table` by adding active `.side-panel` styling in `server/public/custom.css` (these pages do not load `app.css`).
 - Refined the drawer with Tabler-aligned spacing, borders, section cards, and improved long URL wrapping so activity/source/network details remain readable.

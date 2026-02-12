@@ -197,7 +197,8 @@
           '<thead><tr>' +
             '<th>Country</th>' +
             '<th>Shipping label</th>' +
-            '<th>Shipping price</th>' +
+            '<th>Paid shipping</th>' +
+            '<th>Set shipping</th>' +
             '<th class="text-end">Sessions</th>' +
             '<th>CR%</th>' +
           '</tr></thead><tbody>';
@@ -206,12 +207,14 @@
       var r = rows[i] || {};
       var label = r.label != null ? String(r.label) : '';
       var cur = r.currency != null ? String(r.currency) : '';
-      var price = r.shipping_price != null ? Number(r.shipping_price) : null;
+      var paidPrice = r.shipping_price_paid != null ? Number(r.shipping_price_paid) : (r.shipping_price != null ? Number(r.shipping_price) : null);
+      var setPrice = r.shipping_price_set != null ? Number(r.shipping_price_set) : null;
       var pct = r.cr_pct;
       table += '<tr>' +
         '<td>' + esc(countryName) + '</td>' +
         '<td>' + esc(label || '—') + '</td>' +
-        '<td>' + esc(formatMoney(price, cur)) + '</td>' +
+        '<td>' + esc(formatMoney(paidPrice, cur)) + '</td>' +
+        '<td>' + esc(formatMoney(setPrice != null ? setPrice : paidPrice, cur)) + '</td>' +
         '<td class="text-end">' + esc(formatCount(checkoutStartedSessions)) + '</td>' +
         '<td>' + esc(fmtPct(pct)) + '</td>' +
       '</tr>';

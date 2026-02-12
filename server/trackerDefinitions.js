@@ -391,7 +391,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     columns: [
       { name: 'Country', value: 'orders_shopify_shipping_options.order_country_code (shipping/billing country from Shopify order payload)' },
       { name: 'Shipping label', value: 'orders_shopify_shipping_options.shipping_label (from Shopify shipping_lines[].title)' },
-      { name: 'Shipping price', value: 'orders_shopify_shipping_options.shipping_price (presentment amount; falls back to shipping line price / shop money as needed)' },
+      { name: 'Paid shipping', value: 'orders_shopify_shipping_options.shipping_price_paid (presentment amount; falls back to shipping_price)', formula: 'What was actually charged for shipping' },
+      { name: 'Set shipping', value: 'orders_shopify_shipping_options.shipping_price_set (presentment amount; falls back to paid)', formula: 'Listed/set shipping rate presented at checkout' },
       { name: 'Sessions', value: 'COUNT(sessions) WHERE checkout_started_at in range AND country_code matches (human-only; constant across rows)', formula: 'Checkout-started sessions for the selected country+range' },
       { name: 'CR%', value: 'orders / total_orders × 100', formula: 'Share of orders for that shipping label+price within the selected country+timeframe' },
     ],

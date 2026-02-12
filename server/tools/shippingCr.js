@@ -103,7 +103,8 @@ async function getShippingOptionsByCountry({
             SELECT
               COALESCE(NULLIF(TRIM(shipping_label), ''), 'Unknown') AS label,
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
-              COALESCE(shipping_price, 0) AS shipping_price,
+              COALESCE(shipping_price_paid, shipping_price, 0) AS shipping_price_paid,
+              COALESCE(shipping_price_set, shipping_price_paid, shipping_price, 0) AS shipping_price_set,
               COUNT(*) AS orders
             FROM orders_shopify_shipping_options
             WHERE shop = ?
@@ -117,7 +118,8 @@ async function getShippingOptionsByCountry({
               )
             GROUP BY COALESCE(NULLIF(TRIM(shipping_label), ''), 'Unknown'),
                      COALESCE(NULLIF(TRIM(currency), ''), 'GBP'),
-                     COALESCE(shipping_price, 0)
+                     COALESCE(shipping_price_paid, shipping_price, 0),
+                     COALESCE(shipping_price_set, shipping_price_paid, shipping_price, 0)
             ORDER BY orders DESC
           `,
           [safeShop, cc, startMs, endMs, startMs, endMs]
@@ -151,12 +153,15 @@ async function getShippingOptionsByCountry({
         .map((r) => {
           const label = safeStr(r && r.label != null ? r.label : 'Unknown', 220) || 'Unknown';
           const currency = normalizeCurrency(r && r.currency != null ? r.currency : null) || 'GBP';
-          const price = round2(r && r.shipping_price != null ? r.shipping_price : 0);
+          const pricePaid = round2(r && r.shipping_price_paid != null ? r.shipping_price_paid : 0);
+          const priceSet = round2(r && r.shipping_price_set != null ? r.shipping_price_set : pricePaid);
           const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
           return {
             label,
             currency,
-            shipping_price: price,
+            shipping_price: pricePaid, // backwards compatible for UI
+            shipping_price_paid: pricePaid,
+            shipping_price_set: priceSet,
             orders,
             cr_pct: pct(orders, totalOrders),
           };

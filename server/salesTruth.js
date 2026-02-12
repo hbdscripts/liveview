@@ -145,8 +145,51 @@ function shippingLabelFromOrder(order) {
   return 'Unknown';
 }
 
-function shippingPriceFromOrder(order) {
-  // Prefer presentment currency (matches order.currency in most setups)
+function sumLineMoney(lines, pickAmount) {
+  const arr = Array.isArray(lines) ? lines : [];
+  let sum = 0;
+  let found = false;
+  for (const l of arr) {
+    let n = null;
+    try { n = pickAmount(l); } catch (_) { n = null; }
+    const amt = numOrNull(n);
+    if (amt != null) {
+      sum += amt;
+      found = true;
+    }
+  }
+  return found ? sum : null;
+}
+
+function shippingPriceSetFromOrder(order) {
+  const lines = Array.isArray(order?.shipping_lines) ? order.shipping_lines : [];
+
+  // Prefer per-line listed price in presentment currency.
+  const fromLines = sumLineMoney(lines, (l) =>
+    numOrNull(l?.price) ??
+    numOrNull(l?.price_amount) ??
+    shopMoneyAmount(l?.price_set?.presentment_money) ??
+    shopMoneyAmount(l?.priceSet?.presentmentMoney) ??
+    shopMoneyAmount(l?.price_set) ?? // best-effort fallback
+    shopMoneyAmount(l?.priceSet) ??
+    null
+  );
+  if (fromLines != null) return fromLines;
+
+  // Fallback: order total (presentment) if line detail is missing.
+  const presentment =
+    order?.total_shipping_price_set?.presentment_money?.amount ??
+    order?.total_shipping_price_set?.presentmentMoney?.amount ??
+    null;
+  const presentmentAmt = numOrNull(presentment);
+  if (presentmentAmt != null) return presentmentAmt;
+
+  const shopAmt = shopMoneyAmount(order?.total_shipping_price_set);
+  return shopAmt != null ? shopAmt : 0;
+}
+
+function shippingPricePaidFromOrder(order) {
+  // Prefer order total shipping (presentment): matches what was actually charged.
   const presentment =
     order?.total_shipping_price_set?.presentment_money?.amount ??
     order?.total_shipping_price_set?.presentmentMoney?.amount ??
@@ -155,21 +198,24 @@ function shippingPriceFromOrder(order) {
   if (presentmentAmt != null) return presentmentAmt;
 
   const lines = Array.isArray(order?.shipping_lines) ? order.shipping_lines : [];
-  for (const l of lines) {
-    const n =
-      numOrNull(l?.price) ??
-      numOrNull(l?.price_amount) ??
-      shopMoneyAmount(l?.price_set?.presentment_money) ??
-      shopMoneyAmount(l?.priceSet?.presentmentMoney) ??
-      shopMoneyAmount(l?.price_set) ?? // best-effort fallback
-      shopMoneyAmount(l?.priceSet) ??
-      null;
-    if (n != null) return n;
-  }
+  const fromDiscountedLines = sumLineMoney(lines, (l) =>
+    numOrNull(l?.discounted_price) ??
+    numOrNull(l?.discounted_price_amount) ??
+    shopMoneyAmount(l?.discounted_price_set?.presentment_money) ??
+    shopMoneyAmount(l?.discountedPriceSet?.presentmentMoney) ??
+    shopMoneyAmount(l?.discounted_price_set) ??
+    shopMoneyAmount(l?.discountedPriceSet) ??
+    null
+  );
+  if (fromDiscountedLines != null) return fromDiscountedLines;
 
-  // Last resort: shop money amount (may be base currency)
-  const shopAmt = shopMoneyAmount(order?.total_shipping_price_set);
-  return shopAmt != null ? shopAmt : 0;
+  // If no discounted values exist, fall back to listed.
+  return shippingPriceSetFromOrder(order);
+}
+
+function shippingPriceFromOrder(order) {
+  // Legacy: keep `shipping_price` representing the paid/charged value.
+  return shippingPricePaidFromOrder(order);
 }
 
 async function upsertOrderShippingOption(shop, order, orderRow) {
@@ -190,16 +236,17 @@ async function upsertOrderShippingOption(shop, order, orderRow) {
   const currency = (orderRow.currency != null ? String(orderRow.currency).trim().toUpperCase() : '') || null;
 
   const label = shippingLabelFromOrder(order);
-  const shippingPrice = shippingPriceFromOrder(order);
+  const shippingPricePaid = shippingPricePaidFromOrder(order);
+  const shippingPriceSet = shippingPriceSetFromOrder(order);
   const countryCode = orderCountryCode(order);
 
   await db.run(
     `
       INSERT INTO orders_shopify_shipping_options
         (shop, order_id, order_created_at, order_processed_at, order_updated_at, order_financial_status, order_cancelled_at, order_test,
-         order_country_code, currency, shipping_label, shipping_price, synced_at)
+         order_country_code, currency, shipping_label, shipping_price, shipping_price_set, shipping_price_paid, synced_at)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (shop, order_id) DO UPDATE SET
         order_created_at = EXCLUDED.order_created_at,
         order_processed_at = EXCLUDED.order_processed_at,
@@ -211,6 +258,8 @@ async function upsertOrderShippingOption(shop, order, orderRow) {
         currency = EXCLUDED.currency,
         shipping_label = EXCLUDED.shipping_label,
         shipping_price = EXCLUDED.shipping_price,
+        shipping_price_set = EXCLUDED.shipping_price_set,
+        shipping_price_paid = EXCLUDED.shipping_price_paid,
         synced_at = EXCLUDED.synced_at
     `,
     [
@@ -225,7 +274,9 @@ async function upsertOrderShippingOption(shop, order, orderRow) {
       countryCode,
       currency,
       label,
-      shippingPrice,
+      shippingPricePaid,
+      shippingPriceSet,
+      shippingPricePaid,
       Math.trunc(syncedAt),
     ]
   );
