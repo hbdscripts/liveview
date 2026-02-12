@@ -12632,8 +12632,8 @@ const API = '';
                 '</div>' +
               '</div>' +
               '<div class="modal-footer d-flex align-items-center justify-content-end gap-2 p-4">' +
-                '<a class="btn btn-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product page</a>' +
-                '<a class="btn btn-primary" id="product-insights-open-admin" href="#" target="_blank" rel="noopener" style="display:none">Open in Shopify admin</a>' +
+                '<a class="btn btn-primary" id="product-insights-open-admin" href="#" target="_blank" rel="noopener" style="display:none">Edit on Shopify</a>' +
+                '<a class="btn btn-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">View on Website</a>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -13103,7 +13103,7 @@ const API = '';
           var href = isPage ? (currentPageUrl || '#') : (currentProductUrl || '#');
           openLink.href = href;
           openLink.style.display = href && href !== '#' ? 'inline-flex' : 'none';
-          openLink.textContent = isPage ? 'Open page' : 'Open product page';
+          openLink.textContent = isPage ? 'View page' : 'View on Website';
         }
         if (adminLink) {
           var adminHref = (!isPage && payload && payload.links && payload.links.adminProductUrl)
@@ -13111,6 +13111,7 @@ const API = '';
             : '';
           adminLink.href = adminHref || '#';
           adminLink.style.display = adminHref && adminHref !== '#' ? 'inline-flex' : 'none';
+          adminLink.textContent = 'Edit on Shopify';
         }
 
         // Images
@@ -13152,26 +13153,8 @@ const API = '';
         // Metrics table
         var mt = document.getElementById('product-insights-metrics-table');
         if (mt) {
-          function toNumber(v) {
-            var n = v != null ? Number(v) : NaN;
-            return Number.isFinite(n) ? n : null;
-          }
-          function row(label, value, ratio) {
-            var pct = toNumber(ratio);
-            var p = pct != null ? Math.max(4, Math.min(100, pct)) : null;
-            var meter = p != null
-              ? (
-                  '<div class="progressbg">' +
-                    '<div class="progress progress-3 progressbg-progress">' +
-                      '<div class="progress-bar bg-primary-lt" style="width:' + escapeHtml(String(p.toFixed(2))) + '%" role="progressbar" aria-valuenow="' + escapeHtml(String(p.toFixed(2))) + '" aria-valuemin="0" aria-valuemax="100">' +
-                        '<span class="visually-hidden">' + escapeHtml(String(p.toFixed(2))) + '%</span>' +
-                      '</div>' +
-                    '</div>' +
-                    '<div class="progressbg-text">' + escapeHtml(label) + '</div>' +
-                  '</div>'
-                )
-              : escapeHtml(label);
-            return '<tr><td>' + meter + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
+          function row(label, value) {
+            return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
             var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '—';
@@ -13181,25 +13164,15 @@ const API = '';
             var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
             var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
             var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '—';
-            var maxSessions = Math.max(1, toNumber(metrics && metrics.sessions) || 0, toNumber(metrics && metrics.pageViews) || 0, toNumber(metrics && metrics.purchasedSessions) || 0);
             mt.innerHTML =
-              row('Revenue', revenue2, null) +
-              row('Purchased sessions', purchasedSessions, maxSessions > 0 ? ((toNumber(metrics && metrics.purchasedSessions) || 0) / maxSessions) * 100 : null) +
-              row('Checkout started sessions', checkoutStartedSessions, maxSessions > 0 ? ((toNumber(metrics && metrics.checkoutStartedSessions) || 0) / maxSessions) * 100 : null) +
-              row('Sessions', sessions, maxSessions > 0 ? ((toNumber(metrics && metrics.sessions) || 0) / maxSessions) * 100 : null) +
-              row('Page views', pageViews, maxSessions > 0 ? ((toNumber(metrics && metrics.pageViews) || 0) / maxSessions) * 100 : null) +
-              row('Purchase rate', cr2, null) +
+              row('Revenue', revenue2) +
+              row('Purchased sessions', purchasedSessions) +
+              row('Checkout started sessions', checkoutStartedSessions) +
+              row('Sessions', sessions) +
+              row('Page views', pageViews) +
+              row('Purchase rate', cr2) +
               row('Revenue / Session', rps);
           } else {
-            var clicksN = toNumber(metrics && metrics.clicks) || 0;
-            var convN = toNumber(metrics && metrics.orders) || 0;
-            var viewsN = toNumber(metrics && metrics.views) || 0;
-            var atcN = toNumber(metrics && metrics.addToCart) || 0;
-            var csN = toNumber(metrics && metrics.checkoutStarted) || 0;
-            var inStockUnitsN = toNumber(details && details.inventoryUnits) || 0;
-            var inStockVariantsN = toNumber(details && details.inStockVariants) || 0;
-            var totalSalesN = toNumber(details && details.totalSalesLifetime) || 0;
-            var maxCount = Math.max(1, clicksN, convN, viewsN, atcN, csN, inStockUnitsN, inStockVariantsN, totalSalesN);
             var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
             var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
             var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
@@ -13217,22 +13190,22 @@ const API = '';
             var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '—';
             var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '—';
             mt.innerHTML =
-              row('Clicks', clicks, maxCount > 0 ? (clicksN / maxCount) * 100 : null) +
-              row('Conversions', conv, maxCount > 0 ? (convN / maxCount) * 100 : null) +
-              row('Conversion rate', cr, null) +
-              row('Revenue (selected range)', revenue, null) +
-              row('Units sold (selected range)', units, null) +
-              row('Views (pixel)', views, maxCount > 0 ? (viewsN / maxCount) * 100 : null) +
-              row('Add to cart', atc, maxCount > 0 ? (atcN / maxCount) * 100 : null) +
-              row('Checkout started', cs, maxCount > 0 ? (csN / maxCount) * 100 : null) +
-              row('View → Cart rate', atcRate, null) +
-              row('Revenue / Click', rpc, null) +
-              row('Revenue / View', rpv, null) +
-              row('In stock (units)', stockUnits, maxCount > 0 ? (inStockUnitsN / maxCount) * 100 : null) +
-              row('In-stock variants', stockVariants, maxCount > 0 ? (inStockVariantsN / maxCount) * 100 : null) +
-              row('Total sales (lifetime)', totalSales, maxCount > 0 ? (totalSalesN / maxCount) * 100 : null) +
-              row('Total revenue (lifetime)', totalRev, null) +
-              row('Cost of goods (lifetime)', cogs, null);
+              row('Clicks', clicks) +
+              row('Conversions', conv) +
+              row('Conversion rate', cr) +
+              row('Revenue (selected range)', revenue) +
+              row('Units sold (selected range)', units) +
+              row('Views (pixel)', views) +
+              row('Add to cart', atc) +
+              row('Checkout started', cs) +
+              row('View → Cart rate', atcRate) +
+              row('Revenue / Click', rpc) +
+              row('Revenue / View', rpv) +
+              row('In stock (units)', stockUnits) +
+              row('In-stock variants', stockVariants) +
+              row('Total sales (lifetime)', totalSales) +
+              row('Total revenue (lifetime)', totalRev) +
+              row('Cost of goods (lifetime)', cogs);
           }
         }
 

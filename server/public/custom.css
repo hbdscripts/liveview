@@ -587,6 +587,10 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 #product-insights-modal .kexo-product-insights-metrics td:last-child {
   font-variant-numeric: tabular-nums;
 }
+#product-insights-modal .kexo-product-insights-metrics tbody td {
+  height: 44px;
+  vertical-align: middle;
+}
 #product-insights-modal .kexo-product-insights-metrics thead th {
   font-size: 11px;
   letter-spacing: 0.03em;
@@ -596,32 +600,24 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 #product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
   padding-bottom: 1.1rem;
 }
-#product-insights-modal .kexo-product-insights-metrics .progressbg {
-  position: relative;
-}
-#product-insights-modal .kexo-product-insights-metrics .progressbg-progress {
-  position: absolute;
-  inset: 50% 0 auto 0;
-  transform: translateY(-50%);
-  height: 8px;
-  margin: 0;
-}
-#product-insights-modal .kexo-product-insights-metrics .progressbg-text {
-  position: relative;
-  z-index: 1;
-  display: inline-block;
-  background: var(--tblr-bg-surface, #fff);
-  padding: 0 6px 0 0;
-}
 
 #product-insights-modal .modal-footer .btn {
   font-weight: 500;
 }
 #product-insights-modal #product-insights-open-admin {
+  background: #95bf47;
+  border-color: #95bf47;
   color: #fff !important;
 }
 #product-insights-modal #product-insights-open-admin:hover,
 #product-insights-modal #product-insights-open-admin:focus-visible {
+  background: #86ad3f;
+  border-color: #86ad3f;
+  color: #fff !important;
+}
+#product-insights-modal #product-insights-open-store,
+#product-insights-modal #product-insights-open-store:hover,
+#product-insights-modal #product-insights-open-store:focus-visible {
   color: #fff !important;
 }
 
