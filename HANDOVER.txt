@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Sentry browser + route instrumentation)
+Last updated: 2026-02-12 (Compare CR tool uses Variants mappings)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -228,6 +228,12 @@ Ops/reliability:
 
 2026-02-12 (latest)
 - Sale notification rework: replaced top-right toast modal with **tblr-banner** overlay on the desktop top strip. Banner shows flag – product – sale value, center-aligned, with close button far right; auto-closes after 10s; MP3 cha-ching preserved. Markup moved to `header.html` so it appears on all pages (fixes no-show on settings/variants/compare-conversion-rate). Removed old toast from 10 page templates; removed `sale-toast-time` icon key.
+
+2026-02-12 (latest)
+- Tools → Compare Conversion Rate: integrated with Settings → Insights → Variants mappings via a **Drill into variant labels** mode.
+  - Loads available mapping tables and per-product label groups (Output labels) from the Variants config.
+  - Compare requests can now return before/after CR breakdown by **label group** (not just raw Shopify variants), using the same title-matching logic as Insights → Variants.
+  - If no mappings exist, the tool prompts the user to configure/suggest mappings first.
 
 2026-02-12 (latest)
 - Variants mappings now start **blank/custom-first** (no shipped default mapping tables/rules). Seed tables using Suggestions or build manually.

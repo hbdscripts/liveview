@@ -489,6 +489,13 @@
           renderVariants();
           updateUi();
           renderResults(null);
+          try {
+            if (state && state.target && state.target.type === 'product') {
+              var m = currentProductMode();
+              if (m === 'variants') loadVariants();
+              else if (m === 'mapped') loadMappedGroups();
+            }
+          } catch (_) {}
         } catch (_) {
           closeSuggest();
         }

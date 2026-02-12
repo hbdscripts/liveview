@@ -6,6 +6,7 @@ const {
   VARIANTS_CONFIG_KEY,
   normalizeVariantsConfigV1,
   classifyTitleForTable,
+  normalizeIgnoredTitle,
 } = require('../variantInsightsConfig');
 
 const GRAPHQL_API_VERSION = '2024-01';
@@ -310,7 +311,7 @@ async function getProductMappedVariantGroups({ shop, productId, tableId } = {}) 
     selected = best || enabledTables[0];
   }
 
-  const ignoredSet = new Set(Array.isArray(selected && selected.ignored) ? selected.ignored.map(normalizeLooseToken).filter(Boolean) : []);
+  const ignoredSet = new Set(Array.isArray(selected && selected.ignored) ? selected.ignored.map(normalizeIgnoredTitle).filter(Boolean) : []);
 
   const groupsByRuleId = new Map();
   let outOfScopeCount = 0;
@@ -325,7 +326,7 @@ async function getProductMappedVariantGroups({ shop, productId, tableId } = {}) 
     if (!vid) continue;
     const title = safeStr(v && v.title, 240) || vid;
 
-    if (ignoredSet.has(normalizeLooseToken(title))) {
+    if (ignoredSet.has(normalizeIgnoredTitle(title))) {
       ignoredCount += 1;
       if (ignoredExamples.length < 10) ignoredExamples.push({ variant_id: vid, title });
       continue;
@@ -872,71 +873,110 @@ async function compareConversionRate({
       if (targetType === 'product' && m === 'mapped') {
         const rawCfg = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
         const cfg = normalizeVariantsConfigV1(rawCfg);
-        const tables = Array.isArray(cfg && cfg.tables) ? cfg.tables.filter((t) => t && t.enabled) : [];
-        if (!tables.length) return { ok: false, error: 'no_variant_mappings', message: 'No variant mapping tables configured. Open Settings → Insights → Variants.' };
+        const tables = Array.isArray(cfg && cfg.tables)
+          ? cfg.tables.filter((t) => t && t.enabled && Array.isArray(t.rules) && t.rules.length)
+          : [];
+        if (!tables.length) {
+          variantsOut = [];
+          notice = (notice ? (notice + ' ') : '') + 'No variant label mappings configured. Open Settings → Insights → Variants to create or suggest mappings.';
+        } else {
 
-        const tableIdReq = safeStr(vm && vm.table_id, 120).trim().toLowerCase();
-        const table = tableIdReq
-          ? (tables.find((t) => String(t.id || '').trim().toLowerCase() === tableIdReq) || null)
-          : (tables[0] || null);
-        if (!table) return { ok: false, error: 'variant_mapping_table_not_found' };
-        const wanted = Array.isArray(vm && vm.group_ids) ? new Set(vm.group_ids.map((x) => safeStr(x, 120)).filter(Boolean)) : null;
+          const tableIdReq = safeStr(vm && vm.table_id, 120).trim().toLowerCase();
+          let table = tableIdReq
+            ? (tables.find((t) => String(t.id || '').trim().toLowerCase() === tableIdReq) || null)
+            : (tables[0] || null);
+          if (!table) {
+            variantsOut = [];
+            notice = (notice ? (notice + ' ') : '') + 'Variant label mapping table not found.';
+          } else {
+            if (tableIdReq && String(table.id || '').trim().toLowerCase() !== tableIdReq) {
+              notice = (notice ? (notice + ' ') : '') + 'Requested mapping table not found; using the first enabled table.';
+            }
 
-        const vars = await getProductVariants({ shop: safeShop, productId: productIds[0] });
-        if (!vars.ok) return { ok: false, error: vars.error || 'variants_fetch_failed' };
-        const allVariants = Array.isArray(vars.variants) ? vars.variants : [];
+            const wanted = Array.isArray(vm && vm.group_ids)
+              ? new Set(vm.group_ids.map((x) => safeStr(x, 120)).filter(Boolean))
+              : null;
 
-        const groupsByRuleId = new Map(); // rule_id -> { rule_id, label, variant_ids: [] }
-        const unmapped = [];
-        for (const v of allVariants) {
-          const vid = safeStr(v && v.variant_id, 64);
-          if (!vid) continue;
-          const title = safeStr(v && v.title, 240) || vid;
-          const classified = classifyTitleForTable(table, title);
-          if (classified && classified.kind === 'matched' && classified.rule) {
-            const rid = safeStr(classified.rule.id, 120) || '';
-            if (!rid) continue;
-            if (wanted && wanted.size && !wanted.has(rid)) continue;
-            const label = safeStr(classified.rule.label, 200) || rid;
-            const cur = groupsByRuleId.get(rid) || { rule_id: rid, label, variant_ids: [] };
-            cur.variant_ids.push(vid);
-            groupsByRuleId.set(rid, cur);
-          } else if (classified && classified.kind === 'unmapped') {
-            unmapped.push({ variant_id: vid, title });
+            const vars = await getProductVariants({ shop: safeShop, productId: productIds[0] });
+            if (!vars.ok) return { ok: false, error: vars.error || 'variants_fetch_failed' };
+            const allVariants = Array.isArray(vars.variants) ? vars.variants : [];
+
+            const ignoredSet = new Set(Array.isArray(table && table.ignored) ? table.ignored.map((t) => normalizeIgnoredTitle(t)).filter(Boolean) : []);
+
+            const groupsByRuleId = new Map(); // rule_id -> { rule_id, label, variant_ids: [] }
+            let unmappedCount = 0;
+            let outOfScopeCount = 0;
+            let ignoredCount = 0;
+            for (const v of allVariants) {
+              const vid = safeStr(v && v.variant_id, 64);
+              if (!vid) continue;
+              const title = safeStr(v && v.title, 240) || vid;
+              if (ignoredSet.has(normalizeIgnoredTitle(title))) {
+                ignoredCount += 1;
+                continue;
+              }
+              const classified = classifyTitleForTable(table, title);
+              if (classified && classified.kind === 'matched' && classified.rule) {
+                const rid = safeStr(classified.rule.id, 120) || '';
+                if (!rid) continue;
+                if (wanted && wanted.size && !wanted.has(rid)) continue;
+                const label = safeStr(classified.rule.label, 200) || rid;
+                const cur = groupsByRuleId.get(rid) || { rule_id: rid, label, variant_ids: [] };
+                cur.variant_ids.push(vid);
+                groupsByRuleId.set(rid, cur);
+              } else if (classified && classified.kind === 'unmapped') {
+                unmappedCount += 1;
+              } else if (classified && classified.kind === 'out_of_scope') {
+                outOfScopeCount += 1;
+              }
+            }
+
+            const groups = Array.from(groupsByRuleId.values()).sort((a, b) => String(a.label || a.rule_id).localeCompare(String(b.label || b.rule_id)));
+            const allVids = Array.from(new Set(groups.flatMap((g) => g.variant_ids || []))).filter(Boolean);
+            const variantIdSet = new Set(allVids);
+
+            if (!groups.length) {
+              variantsOut = [];
+              notice = (notice ? (notice + ' ') : '') + `No variants matched your "${table.name}" mappings.`;
+              if (unmappedCount > 0) {
+                notice += ` (${unmappedCount} unmapped variants)`;
+              }
+            } else {
+              notice = (notice ? (notice + ' ') : '') + `Variant labels: "${table.name}".`;
+              if (unmappedCount > 0) notice += ` ${unmappedCount} unmapped variants.`;
+              if (ignoredCount > 0) notice += ` ${ignoredCount} ignored.`;
+              if (outOfScopeCount > 0) notice += ` ${outOfScopeCount} out of scope.`;
+
+              const beforeSessionsByVid = await countVariantLandingSessions({ startMs: beforeStart, endMs: beforeEnd, handle: handles[0], variantIdSet });
+              const afterSessionsByVid = await countVariantLandingSessions({ startMs: afterStart, endMs: afterEnd, handle: handles[0], variantIdSet });
+              const beforeByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: beforeStart, endMs: beforeEnd, productId: productIds[0], variantIds: allVids });
+              const afterByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: afterStart, endMs: afterEnd, productId: productIds[0], variantIds: allVids });
+
+              variantsOut = groups.map((g) => {
+                let bSessions = 0;
+                let aSessions = 0;
+                let bOrders = 0;
+                let aOrders = 0;
+                for (const vid of (g.variant_ids || [])) {
+                  bSessions += beforeSessionsByVid && beforeSessionsByVid.has(vid) ? beforeSessionsByVid.get(vid) : 0;
+                  aSessions += afterSessionsByVid && afterSessionsByVid.has(vid) ? afterSessionsByVid.get(vid) : 0;
+                  bOrders += beforeByVid && beforeByVid.has(vid) ? beforeByVid.get(vid) : 0;
+                  aOrders += afterByVid && afterByVid.has(vid) ? afterByVid.get(vid) : 0;
+                }
+                const b = metricBlock({ sessions: bSessions, orders: bOrders });
+                const a = metricBlock({ sessions: aSessions, orders: aOrders });
+                return {
+                  variant_id: g.rule_id,
+                  variant_name: g.label,
+                  before: b,
+                  after: a,
+                  abs_change: (b.cr != null && a.cr != null) ? (a.cr - b.cr) : null,
+                  pct_change: pctChange(b.cr, a.cr),
+                };
+              });
+            }
           }
         }
-
-        const groups = Array.from(groupsByRuleId.values()).sort((a, b) => String(a.label || a.rule_id).localeCompare(String(b.label || b.rule_id)));
-        const allVids = Array.from(new Set(groups.flatMap((g) => g.variant_ids || []))).filter(Boolean);
-        const variantIdSet = new Set(allVids);
-
-        const beforeSessionsByVid = await countVariantLandingSessions({ startMs: beforeStart, endMs: beforeEnd, handle: handles[0], variantIdSet });
-        const afterSessionsByVid = await countVariantLandingSessions({ startMs: afterStart, endMs: afterEnd, handle: handles[0], variantIdSet });
-        const beforeByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: beforeStart, endMs: beforeEnd, productId: productIds[0], variantIds: allVids });
-        const afterByVid = await countOrdersByVariantIds({ shop: safeShop, startMs: afterStart, endMs: afterEnd, productId: productIds[0], variantIds: allVids });
-
-        variantsOut = groups.map((g) => {
-          let bSessions = 0;
-          let aSessions = 0;
-          let bOrders = 0;
-          let aOrders = 0;
-          for (const vid of (g.variant_ids || [])) {
-            bSessions += beforeSessionsByVid && beforeSessionsByVid.has(vid) ? beforeSessionsByVid.get(vid) : 0;
-            aSessions += afterSessionsByVid && afterSessionsByVid.has(vid) ? afterSessionsByVid.get(vid) : 0;
-            bOrders += beforeByVid && beforeByVid.has(vid) ? beforeByVid.get(vid) : 0;
-            aOrders += afterByVid && afterByVid.has(vid) ? afterByVid.get(vid) : 0;
-          }
-          const b = metricBlock({ sessions: bSessions, orders: bOrders });
-          const a = metricBlock({ sessions: aSessions, orders: aOrders });
-          return {
-            variant_id: g.rule_id,
-            variant_name: g.label,
-            before: b,
-            after: a,
-            abs_change: (b.cr != null && a.cr != null) ? (a.cr - b.cr) : null,
-            pct_change: pctChange(b.cr, a.cr),
-          };
-        });
       }
 
       const summary = {
