@@ -97,6 +97,27 @@
 
   var MIN_YMD = '2025-02-01';
 
+  function attachFlatpickr(el, onValue) {
+    if (!el) return null;
+    if (typeof flatpickr === 'undefined') return null;
+    try {
+      var fp = flatpickr(el, {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        clickOpens: true,
+        disableMobile: true,
+        minDate: MIN_YMD,
+        onChange: function (selectedDates, dateStr) {
+          try { if (typeof onValue === 'function') onValue(String(dateStr || '')); } catch (_) {}
+        },
+      });
+      el.addEventListener('click', function () { try { fp.open(); } catch (_) {} });
+      return fp;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function setNote(el, msg) {
     if (!el) return;
     el.textContent = msg || '';
@@ -516,6 +537,18 @@
   }, 180);
 
   if (eventDateEl) {
+    attachFlatpickr(eventDateEl, function (ymd) {
+      var next = String(ymd || '').trim();
+      if (next && /^\d{4}-\d{2}-\d{2}$/.test(next) && next < MIN_YMD) {
+        next = MIN_YMD;
+        try { eventDateEl.value = MIN_YMD; } catch (_) {}
+      }
+      state.event_date = next;
+      updateDateNote();
+      closeSuggest();
+      updateUi();
+      renderResults(null);
+    });
     eventDateEl.addEventListener('change', function () {
       var next = String(eventDateEl.value || '').trim();
       if (next && /^\d{4}-\d{2}-\d{2}$/.test(next) && next < MIN_YMD) {

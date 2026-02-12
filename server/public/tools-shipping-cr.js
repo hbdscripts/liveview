@@ -83,6 +83,8 @@
   var dateNote = qs('#date-note');
   var goBtn = qs('#go-btn');
   var goNote = qs('#go-note');
+  var backfillBtn = qs('#backfill-btn');
+  var backfillNote = qs('#backfill-note');
   var resultsEl = qs('#results');
 
   function updateCountryNote() {
@@ -104,10 +106,36 @@
     var cc = normalizeCountry(state.country_code);
     var ok = !!cc && isYmd(state.start_ymd) && isYmd(state.end_ymd) && state.start_ymd <= state.end_ymd;
     if (goBtn) goBtn.disabled = !ok;
+    if (backfillBtn) backfillBtn.disabled = !ok;
     if (!cc) setNote(goNote, 'Enter a 2-letter country code (e.g. AU).');
     else if (!state.start_ymd || !state.end_ymd) setNote(goNote, 'Select a start and end date.');
     else if (state.start_ymd > state.end_ymd) setNote(goNote, 'Fix the date range.');
     else setNote(goNote, '');
+  }
+
+  function attachFlatpickr(el, onValue) {
+    if (!el) return null;
+    if (typeof flatpickr === 'undefined') return null;
+    try {
+      var fp = flatpickr(el, {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        clickOpens: true,
+        disableMobile: true,
+        minDate: MIN_YMD,
+        onChange: function (selectedDates, dateStr) {
+          try { if (typeof onValue === 'function') onValue(dateStr); } catch (_) {}
+        },
+        onOpen: function () {
+          // Make sure click anywhere opens even if focus behavior differs.
+          try { el.focus(); } catch (_) {}
+        },
+      });
+      el.addEventListener('click', function () { try { fp.open(); } catch (_) {} });
+      return fp;
+    } catch (_) {
+      return null;
+    }
   }
 
   function renderResults(data) {
@@ -202,6 +230,82 @@
       });
   }
 
+  var backfillPollTimer = null;
+  function clearBackfillPoll() {
+    if (backfillPollTimer) {
+      clearInterval(backfillPollTimer);
+      backfillPollTimer = null;
+    }
+  }
+
+  function pollBackfill(jobId) {
+    if (!jobId) return;
+    clearBackfillPoll();
+    setNote(backfillNote, 'Backfill running…');
+    backfillPollTimer = setInterval(function () {
+      fetch('/api/tools/shipping-cr/backfill/status?job_id=' + encodeURIComponent(jobId), { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r && r.ok ? r.json().catch(function () { return null; }) : null; })
+        .then(function (data) {
+          var job = data && data.ok && data.job ? data.job : null;
+          if (!job) return;
+          var done = !!job.done;
+          var running = !!job.running;
+          var total = job.progress_total != null ? Number(job.progress_total) || 0 : 0;
+          var doneN = job.progress_done != null ? Number(job.progress_done) || 0 : 0;
+          var pct = total > 0 ? Math.min(100, Math.max(0, Math.round((doneN / total) * 100))) : 0;
+          if (job.error) {
+            setNote(backfillNote, 'Backfill failed: ' + String(job.error));
+            clearBackfillPoll();
+            updateUi();
+            return;
+          }
+          if (done && !running) {
+            setNote(backfillNote, 'Backfill complete. Re-running report…');
+            clearBackfillPoll();
+            try { doGo(); } catch (_) {}
+            return;
+          }
+          setNote(backfillNote, 'Backfill running… ' + String(doneN) + '/' + String(total) + ' chunks (' + String(pct) + '%)');
+        })
+        .catch(function () {});
+    }, 2000);
+  }
+
+  function startBackfill() {
+    var cc = normalizeCountry(state.country_code);
+    if (!cc || !isYmd(state.start_ymd) || !isYmd(state.end_ymd) || state.start_ymd > state.end_ymd) return;
+    if (backfillBtn) backfillBtn.disabled = true;
+    setNote(backfillNote, 'Starting backfill…');
+    var body = {
+      shop: state.shop || undefined,
+      start_ymd: state.start_ymd,
+      end_ymd: state.end_ymd,
+      step_days: 14,
+    };
+    fetch('/api/tools/shipping-cr/backfill/start', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return null; }) : null; })
+      .then(function (data) {
+        if (!data || !data.ok || !data.job_id) {
+          setNote(backfillNote, 'Failed to start backfill.');
+          updateUi();
+          return;
+        }
+        var jobId = String(data.job_id);
+        try { sessionStorage.setItem('kexo:shipping-cr:backfillJobId', jobId); } catch (_) {}
+        pollBackfill(jobId);
+      })
+      .catch(function () {
+        setNote(backfillNote, 'Failed to start backfill.');
+        updateUi();
+      });
+  }
+
   if (countryEl) {
     countryEl.addEventListener('input', function () {
       var next = String(countryEl.value || '');
@@ -221,19 +325,28 @@
     });
   }
 
-  function clampMinDate(el) {
-    if (!el) return;
-    var next = String(el.value || '').trim();
-    if (next && isYmd(next) && next < MIN_YMD) {
-      try { el.value = MIN_YMD; } catch (_) {}
-      next = MIN_YMD;
-    }
-    return next;
+  function clampMinDateStr(next) {
+    var v = String(next || '').trim();
+    if (v && isYmd(v) && v < MIN_YMD) return MIN_YMD;
+    return v;
   }
+
+  attachFlatpickr(startEl, function (ymd) {
+    state.start_ymd = clampMinDateStr(ymd) || '';
+    updateDateNote();
+    updateUi();
+    renderResults(null);
+  });
+  attachFlatpickr(endEl, function (ymd) {
+    state.end_ymd = clampMinDateStr(ymd) || '';
+    updateDateNote();
+    updateUi();
+    renderResults(null);
+  });
 
   if (startEl) {
     startEl.addEventListener('change', function () {
-      state.start_ymd = clampMinDate(startEl) || '';
+      state.start_ymd = clampMinDateStr(startEl.value) || '';
       updateDateNote();
       updateUi();
       renderResults(null);
@@ -242,7 +355,7 @@
 
   if (endEl) {
     endEl.addEventListener('change', function () {
-      state.end_ymd = clampMinDate(endEl) || '';
+      state.end_ymd = clampMinDateStr(endEl.value) || '';
       updateDateNote();
       updateUi();
       renderResults(null);
@@ -250,6 +363,12 @@
   }
 
   if (goBtn) goBtn.addEventListener('click', function () { doGo(); });
+  if (backfillBtn) backfillBtn.addEventListener('click', function () { startBackfill(); });
+
+  try {
+    var existingJob = sessionStorage.getItem('kexo:shipping-cr:backfillJobId');
+    if (existingJob) pollBackfill(String(existingJob));
+  } catch (_) {}
 
   updateCountryNote();
   updateDateNote();

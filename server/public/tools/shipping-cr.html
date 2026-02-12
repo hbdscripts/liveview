@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="/custom.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <link rel="stylesheet" href="/tools.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
   <title>Kexo · Shipping CR</title>
 </head>
 <body class="" data-page="shipping-cr">
@@ -49,14 +51,24 @@
                 <div class="tools-row">
                   <div class="tools-label form-label">Start date</div>
                   <div>
-                    <input class="form-control" type="date" id="start-date" name="start_ymd" min="2025-02-01" />
+                    <div class="input-icon">
+                      <span class="input-icon-addon">
+                        <i class="fa-light fa-calendar-days" aria-hidden="true"></i>
+                      </span>
+                      <input class="form-control" type="text" id="start-date" name="start_ymd" placeholder="YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                    </div>
                   </div>
                 </div>
 
                 <div class="tools-row">
                   <div class="tools-label form-label">End date</div>
                   <div>
-                    <input class="form-control" type="date" id="end-date" name="end_ymd" min="2025-02-01" />
+                    <div class="input-icon">
+                      <span class="input-icon-addon">
+                        <i class="fa-light fa-calendar-days" aria-hidden="true"></i>
+                      </span>
+                      <input class="form-control" type="text" id="end-date" name="end_ymd" placeholder="YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                    </div>
                     <div class="tools-note tools-note--tight" id="date-note"></div>
                   </div>
                 </div>
@@ -66,6 +78,14 @@
                   <div class="tools-actions">
                     <button class="btn btn-outline-primary btn-sm" type="button" id="go-btn" disabled>Go</button>
                     <div class="tools-note" id="go-note"></div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Backfill labels (optional)</div>
+                  <div class="tools-actions">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="backfill-btn" disabled>Backfill this range</button>
+                    <div class="tools-note" id="backfill-note"></div>
                   </div>
                 </div>
 
