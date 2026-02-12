@@ -268,6 +268,8 @@
     'theme-header-logo-url': '',
     'theme-strip-opacity-filter': '0',
     'theme-menu-opacity-filter': '0',
+    'theme-menu-hover-opacity': '8',
+    'theme-menu-hover-color': 'black',
     'theme-header-strip-border': 'show',
     'theme-header-strip-padding': '0 5px',
   };
@@ -296,9 +298,6 @@
     'theme-header-settings-text-color',
     'theme-header-settings-radius',
     'theme-header-settings-border-color',
-    'theme-header-settings-menu-link-color',
-    'theme-header-settings-menu-border-color',
-    'theme-header-settings-menu-radius',
     'theme-header-online-text-color',
     'theme-header-online-radius',
     'theme-header-online-border-color',
@@ -314,7 +313,8 @@
     'theme-header-online-border',
     'theme-header-strip-border',
   ];
-  var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter'];
+  var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter', 'theme-menu-hover-opacity'];
+  var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
 
   function hexToRgb(hex) {
     var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || '').trim());
@@ -647,7 +647,6 @@
         root.style.setProperty('--kexo-header-top-bg', derived);
         root.style.setProperty('--kexo-header-settings-bg', derived);
         root.style.setProperty('--kexo-header-settings-border-color', derived);
-        root.style.setProperty('--kexo-header-settings-menu-icon-color', derived);
         root.style.setProperty('--kexo-header-online-bg', derived);
         root.style.setProperty('--kexo-header-main-bg', derived);
         root.style.setProperty('--kexo-top-menu-bg', derived);
@@ -737,12 +736,14 @@
       root.style.setProperty('--kexo-header-settings-border-width', settingsBorderMode === 'hide' ? '0px' : '1px');
     } else if (key === 'theme-header-settings-border-color') {
       root.style.setProperty('--kexo-header-settings-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-settings-menu-link-color') {
-      root.style.setProperty('--kexo-header-settings-menu-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-settings-menu-border-color') {
-      root.style.setProperty('--kexo-header-settings-menu-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-settings-menu-radius') {
-      root.style.setProperty('--kexo-header-settings-menu-radius', normalizeHeaderRadius(value, DEFAULTS[key]));
+    } else if (key === 'theme-menu-hover-opacity' || key === 'theme-menu-hover-color') {
+      var hovOpVal = key === 'theme-menu-hover-opacity' ? value : (getStored('theme-menu-hover-opacity') || DEFAULTS['theme-menu-hover-opacity']);
+      var hovColVal = key === 'theme-menu-hover-color' ? value : (getStored('theme-menu-hover-color') || DEFAULTS['theme-menu-hover-color']);
+      var hovOp = normalizeOpacityFilter(hovOpVal, DEFAULTS['theme-menu-hover-opacity']);
+      var hovCol = (hovColVal || '').trim().toLowerCase() === 'white' ? 'white' : 'black';
+      var pct = Math.min(100, Math.max(0, parseFloat(hovOp) || 0)) / 100;
+      var r = hovCol === 'white' ? 255 : 0, g = hovCol === 'white' ? 255 : 0, b = hovCol === 'white' ? 255 : 0;
+      root.style.setProperty('--kexo-menu-hover-bg', 'rgba(' + r + ',' + g + ',' + b + ',' + pct.toFixed(2) + ')');
     } else if (key === 'theme-header-online-text-color') {
       root.style.setProperty('--kexo-header-online-text-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-online-radius') {
@@ -906,6 +907,12 @@
         toggleRadios.forEach(function (r) { r.checked = (r.value === toggleVal); });
         return;
       }
+      if (HEADER_THEME_RADIO_KEYS.indexOf(key) >= 0) {
+        var radioVal = (val || '').trim().toLowerCase() === 'white' ? 'white' : 'black';
+        var radioEls = form.querySelectorAll('[name="' + key + '"]');
+        radioEls.forEach(function (r) { r.checked = (r.value === radioVal); });
+        return;
+      }
       var radios = form.querySelectorAll('[name="' + key + '"]');
       radios.forEach(function (r) { r.checked = (r.value === val); });
     });
@@ -1007,6 +1014,20 @@
     '</div>';
   }
 
+  function headerSelectCardNoIcon(key, title, help, options, defaultValue) {
+    var opts = options || {};
+    var radios = Object.keys(opts).map(function (v) { return radioCard(key, v, opts[v] || v); }).join('');
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="mb-2"><strong>' + title + '</strong></div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="form-selectgroup">' + radios + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function accentHexInputCard(key, title, placeholder) {
     var inputId = 'theme-input-' + key;
     var def = ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)] || '#4b94e4';
@@ -1059,8 +1080,7 @@
     ].join('');
     var headerShapeGrid = [
       headerInputCardNoIcon('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
-      headerInputCardNoIcon('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius']),
-      headerInputCardNoIcon('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
+      headerInputCardNoIcon('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius'])
     ].join('');
     var headerToggleGrid = [
       headerToggleCardNoIcon('theme-header-main-border', 'Menu border-bottom', 'Show or hide the top menu bottom border.'),
@@ -1085,8 +1105,7 @@
       headerInputCardNoIcon('theme-header-main-link-color', 'Menu link color', 'Color for top-level desktop menu links.', DEFAULTS['theme-header-main-link-color']),
       headerInputCardNoIcon('theme-header-main-border-color', 'Menu border-bottom color', 'Color for the menu bottom border.', DEFAULTS['theme-header-main-border-color']),
       headerInputCardNoIcon('theme-header-main-shadow', 'Menu box-shadow', 'CSS box-shadow for top menu row (for example 2px 2px 2px #eee or none).', DEFAULTS['theme-header-main-shadow']),
-      headerInputCardNoIcon('theme-header-settings-menu-link-color', 'Settings dropdown link color', 'Text color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-link-color']),
-      headerInputCardNoIcon('theme-header-main-dropdown-link-color', 'Dropdown link color', 'Text color for top menu dropdown links.', DEFAULTS['theme-header-main-dropdown-link-color']),
+      headerInputCardNoIcon('theme-header-main-dropdown-link-color', 'Dropdown link color', 'Text color for menu and Settings dropdown links.', DEFAULTS['theme-header-main-dropdown-link-color']),
       headerInputCardNoIcon('theme-header-main-dropdown-icon-color', 'Dropdown icon color', 'Icon color for dropdown item icons.', DEFAULTS['theme-header-main-dropdown-icon-color']),
       headerInputCardNoIcon('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
       headerInputCardNoIcon('theme-header-strip-padding', 'Strip padding', 'CSS padding for the top strip (for example 0 5px).', DEFAULTS['theme-header-strip-padding']),
@@ -1094,6 +1113,10 @@
     var opacityGrid = [
       headerInputCardNoIcon('theme-strip-opacity-filter', 'Strip opacity filter', 'Darken strip by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
       headerInputCardNoIcon('theme-menu-opacity-filter', 'Menu opacity filter', 'Darken menu by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
+    ].join('');
+    var menuHoverGrid = [
+      headerInputCardNoIcon('theme-menu-hover-opacity', 'Menu hover opacity', 'Hover tint strength 0–100%. 0 = no overlay, 8 = subtle.', '8'),
+      headerSelectCardNoIcon('theme-menu-hover-color', 'Menu hover tint', 'Black = darken on hover, White = lighten on hover.', { black: 'Black', white: 'White' }, 'black'),
     ].join('');
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
@@ -1139,6 +1162,11 @@
           '<label class="form-label">Opacity filters</label>' +
           '<div class="text-secondary small mb-3">Darken strip or menu by %. 0 = no change.</div>' +
           '<div class="row g-3">' + opacityGrid + '</div>' +
+        '</div>' +
+        '<div class="mb-4">' +
+          '<label class="form-label">Menu hover tint</label>' +
+          '<div class="text-secondary small mb-3">Control the hover overlay on menu links and dropdown items. Black = darken, White = lighten. Opacity 0–100% sets strength.</div>' +
+          '<div class="row g-3">' + menuHoverGrid + '</div>' +
         '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Header & nav colors</label>' +
@@ -1284,6 +1312,7 @@
         else val = normalizeHeaderColor(val, DEFAULTS[name]);
       }
       if (HEADER_THEME_TOGGLE_KEYS.indexOf(name) >= 0) val = normalizeHeaderToggle(val, DEFAULTS[name]);
+      if (HEADER_THEME_RADIO_KEYS.indexOf(name) >= 0) val = (val === 'white' ? 'white' : 'black');
       if (name === 'theme-preference-mode') val = normalizePreferenceMode(val, DEFAULTS[name]);
       setStored(name, val);
       applyTheme(name, val);

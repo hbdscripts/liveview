@@ -20,6 +20,9 @@
   --kexo-accent-4-rgb: 139,92,246;
   --kexo-accent-5-rgb: 239,68,68;
 
+  /* Menu hover overlay (darken/lighten on hover) */
+  --kexo-menu-hover-bg: rgba(0,0,0,.08);
+
   --bg: var(--tblr-bg-surface, #f1f5f9);
   --card: #fff;
   --border: var(--tblr-border-color, #e6e7e9);

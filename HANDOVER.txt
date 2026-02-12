@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (theme 5-color refactor + Charts/Sources fixes)
+Last updated: 2026-02-12 (dropdown inherit menu, menu hover tint)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -110,7 +110,8 @@ Theme UI:
 - `server/public/theme-settings.js` renders the Theme panel inside Settings.
 - Header subtab contains non-color header controls only (visibility toggles, border on/off toggles, radius fields, logo override, strip padding, strip border-bottom toggle).
 - Color subtab has 5 editable hex inputs for accents 1–5; strip, settings dropdown, menu, and online badge colors are derived from accent 1.
-- Strip opacity filter and Menu opacity filter (0–100%) control darkening of strip/menu backgrounds.
+  - Strip opacity filter and Menu opacity filter (0–100%) control darkening of strip/menu backgrounds. Menu hover opacity (0–100%) and hover color (black/white) control the tint on menu link and dropdown item hover.
+  - Settings dropdown inherits menu: same background, opacity, border, and link colors as the main menu; no separate dropdown settings.
 - Early hydration in `server/public/partials/head-theme.html` loads 5 accent hex values from localStorage before paint.
 
 Header + nav theming:
@@ -221,6 +222,10 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12
+- Settings dropdown inherits menu: same background, opacity filter, border, link/icon colors. Removed theme_header_settings_menu_* keys.
+- Menu hover tint: theme_menu_hover_opacity (0–100%) + theme_menu_hover_color (black/white) control hover overlay on nav links and dropdown items.
+
+2026-02-12 (earlier)
 - Theme refactor: 3 accents → 5 editable hex inputs (accent 1–5); 8 former settings (strip/settings/menu/dropdown colors) derived from accent 1; added Strip/Menu opacity filters, strip padding, strip border-bottom toggle; removed icons from Header & Color section.
 - Charts tab: fixed layout, map type input width, color swatches, pie metric dropdown (mobile-friendly).
 - Sources tab: Tabler-style restyle with tiny images in grid.

@@ -593,11 +593,6 @@ const THEME_KEYS = [
   'theme_header_settings_radius',
   'theme_header_settings_border',
   'theme_header_settings_border_color',
-  'theme_header_settings_menu_bg',
-  'theme_header_settings_menu_link_color',
-  'theme_header_settings_menu_icon_color',
-  'theme_header_settings_menu_border_color',
-  'theme_header_settings_menu_radius',
   'theme_header_online_bg',
   'theme_header_online_text_color',
   'theme_header_online_radius',
@@ -606,6 +601,8 @@ const THEME_KEYS = [
   'theme_header_logo_url',
   'theme_strip_opacity_filter',
   'theme_menu_opacity_filter',
+  'theme_menu_hover_opacity',
+  'theme_menu_hover_color',
   'theme_header_strip_border',
   'theme_header_strip_padding',
   'theme_icon_default',
@@ -827,15 +824,14 @@ async function getThemeVarsCss(req, res) {
     theme_header_settings_radius: '.375rem',
     theme_header_settings_border: 'show',
     theme_header_settings_border_color: '#e6e7e9',
-    theme_header_settings_menu_link_color: '#1f2937',
-    theme_header_settings_menu_border_color: '#e6e7e9',
-    theme_header_settings_menu_radius: '.375rem',
     theme_header_online_text_color: '#1f2937',
     theme_header_online_radius: '.375rem',
     theme_header_online_border: 'show',
     theme_header_online_border_color: '#e6e7e9',
     theme_strip_opacity_filter: '0',
     theme_menu_opacity_filter: '0',
+    theme_menu_hover_opacity: '8',
+    theme_menu_hover_color: 'black',
     theme_header_strip_border: 'show',
     theme_header_strip_padding: '0 5px',
   };
@@ -867,9 +863,8 @@ async function getThemeVarsCss(req, res) {
     settingsRadius,
     settingsBorderMode,
     settingsBorderColor,
-    settingsMenuLink,
-    settingsMenuBorderColor,
-    settingsMenuRadius,
+    menuHoverOpacity,
+    menuHoverColor,
     onlineText,
     onlineRadius,
     onlineBorderMode,
@@ -892,9 +887,8 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_header_settings_radius', FALLBACKS.theme_header_settings_radius),
     getThemeKey('theme_header_settings_border', FALLBACKS.theme_header_settings_border),
     getThemeKey('theme_header_settings_border_color', FALLBACKS.theme_header_settings_border_color),
-    getThemeKey('theme_header_settings_menu_link_color', FALLBACKS.theme_header_settings_menu_link_color),
-    getThemeKey('theme_header_settings_menu_border_color', FALLBACKS.theme_header_settings_menu_border_color),
-    getThemeKey('theme_header_settings_menu_radius', FALLBACKS.theme_header_settings_menu_radius),
+    getThemeKey('theme_menu_hover_opacity', FALLBACKS.theme_menu_hover_opacity),
+    getThemeKey('theme_menu_hover_color', FALLBACKS.theme_menu_hover_color),
     getThemeKey('theme_header_online_text_color', FALLBACKS.theme_header_online_text_color),
     getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
     getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
@@ -955,11 +949,14 @@ async function getThemeVarsCss(req, res) {
     `--kexo-header-settings-label-display:${labelMode === 'hide' ? 'none' : 'inline'};`,
     `--kexo-header-settings-icon-gap:${labelMode === 'hide' ? '0' : '.35rem'};`,
 
-    `--kexo-header-settings-menu-bg:${accent1Hex};`,
-    `--kexo-header-settings-menu-link-color:${normalizeCssColor(settingsMenuLink, FALLBACKS.theme_header_settings_menu_link_color)};`,
-    `--kexo-header-settings-menu-icon-color:${accent1Hex};`,
-    `--kexo-header-settings-menu-border-color:${normalizeCssColor(settingsMenuBorderColor, FALLBACKS.theme_header_settings_menu_border_color)};`,
-    `--kexo-header-settings-menu-radius:${normalizeCssRadius(settingsMenuRadius, FALLBACKS.theme_header_settings_menu_radius)};`,
+    (() => {
+      const hovOp = Math.min(100, Math.max(0, parseFloat(menuHoverOpacity) || 0)) / 100;
+      const isWhite = String(menuHoverColor || '').trim().toLowerCase() === 'white';
+      const r = isWhite ? 255 : 0;
+      const g = isWhite ? 255 : 0;
+      const b = isWhite ? 255 : 0;
+      return `--kexo-menu-hover-bg:rgba(${r},${g},${b},${hovOp.toFixed(2)});`;
+    })(),
 
     `--kexo-header-online-bg:${accent1Hex};`,
     `--kexo-header-online-text-color:${normalizeCssColor(onlineText, FALLBACKS.theme_header_online_text_color)};`,
