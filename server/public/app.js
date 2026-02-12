@@ -11280,7 +11280,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : PAGE === 'compare-conversion-rate' ? 'tools' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr') ? 'tools' : PAGE;
           setTab(pageTab);
           return;
         }

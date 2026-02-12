@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 21;
+const DEFINITIONS_VERSION = 22;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -367,6 +367,38 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'tools_shipping_cr',
+    page: 'Tools',
+    name: 'Shipping CR tool',
+    ui: { elementIds: ['tool-shipping-cr'] },
+    endpoint: {
+      method: 'POST',
+      path: '/api/tools/shipping-cr/labels',
+      params: [
+        'country_code=ISO2 (e.g. AU)',
+        'start_ymd=YYYY-MM-DD',
+        'end_ymd=YYYY-MM-DD',
+        'shop=... (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify'], note: 'Paid, non-test, non-cancelled Shopify truth orders' },
+      { kind: 'db', tables: ['reconcile_state'], note: 'Best-effort truth refresh (salesTruth.ensureReconciled) before aggregation' },
+    ],
+    columns: [
+      { name: 'Country', value: 'Order country parsed from orders_shopify.raw_json (shipping_address.country_code fallback billing)' },
+      { name: 'Shipping label', value: 'orders_shopify.raw_json.shipping_lines[].title (first non-empty)' },
+      { name: 'Shipping price', value: 'orders_shopify.total_shipping (fallback to shipping_lines[].price)' },
+      { name: 'CR%', value: 'orders / total_orders × 100', formula: 'Share of orders for that shipping label+price within the selected country+timeframe' },
+    ],
+    math: [
+      { name: 'Important', value: 'This tool does NOT use sessions. CR% here is a share-of-orders metric (per shipping option), not Orders/Sessions.' },
+      { name: 'Date basis', value: 'Filters by orders_shopify.processed_at when present; falls back to created_at when processed_at is NULL. Bounds use admin timezone (getRangeBounds r:YYYY-MM-DD:YYYY-MM-DD).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify'], shopifyToken: false },
   },
   {
     id: 'settings_charts_panel',

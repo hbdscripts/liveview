@@ -398,6 +398,7 @@ integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrat
 
 const toolsPagesRouter = express.Router();
 toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
+toolsPagesRouter.get('/shipping-cr', (req, res) => sendPage(res, 'tools/shipping-cr.html'));
 
 // Base folder routes should canonicalize to leaf pages (avoid automatic /path -> /path/ redirects).
 app.get('/dashboard', redirectWithQuery(301, '/dashboard/overview'));
@@ -430,6 +431,7 @@ app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
 app.get('/type', redirectWithQuery(301, '/traffic/device'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
+app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to overview
@@ -504,6 +506,8 @@ const { up: up035 } = require('./migrations/035_growth_retention_indexes');
 const { up: up036 } = require('./migrations/036_tools_compare_cr_indexes');
 const { up: up037 } = require('./migrations/037_perf_composite_indexes_wal');
 const { up: up038 } = require('./migrations/038_perf_indexes_events_traffic');
+const { up: up039 } = require('./migrations/039_active_sessions_last_seen_started_at_index');
+const { up: up040 } = require('./migrations/040_orders_shopify_processed_at_paid_index');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -553,6 +557,8 @@ async function migrateAndStart() {
   await up036();
   await up037();
   await up038();
+  await up039();
+  await up040();
 
   try {
     const r = await runAdsMigrations();

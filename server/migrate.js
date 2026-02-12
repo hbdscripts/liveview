@@ -43,6 +43,8 @@ const { up: up035 } = require('./migrations/035_growth_retention_indexes');
 const { up: up036 } = require('./migrations/036_tools_compare_cr_indexes');
 const { up: up037 } = require('./migrations/037_perf_composite_indexes_wal');
 const { up: up038 } = require('./migrations/038_perf_indexes_events_traffic');
+const { up: up039 } = require('./migrations/039_active_sessions_last_seen_started_at_index');
+const { up: up040 } = require('./migrations/040_orders_shopify_processed_at_paid_index');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -86,6 +88,8 @@ async function main() {
   await up036();
   await up037();
   await up038();
+  await up039();
+  await up040();
 
   try {
     const r = await runAdsMigrations();

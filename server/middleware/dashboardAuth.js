@@ -72,6 +72,7 @@ function isProtectedPath(pathname) {
   if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
+      pathname.startsWith('/api/tools') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||
       pathname === '/api/insights-variants' || pathname.startsWith('/api/insights-variants-suggestions') ||
       // Ads tab API (new feature area)

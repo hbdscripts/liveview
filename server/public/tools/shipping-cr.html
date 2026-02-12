@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="/tools.css" />
+  <title>Kexo · Shipping CR</title>
+</head>
+<body class="" data-page="shipping-cr">
+    <!--#include partials/header.html-->
+    <!--#include partials/page-body-start.html-->
+          <div class="page-header mb-3">
+            <div class="row align-items-center">
+              <div class="col">
+                <div class="page-pretitle">Tools</div>
+                <h2 class="page-title">Shipping CR</h2>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tools-card" id="tool-shipping-cr">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Shipping CR</h3>
+                <div class="card-subtitle">Pick a country and date range, then see which shipping options customers chose (share of orders).</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tools-grid">
+                <div class="tools-row">
+                  <div class="tools-label form-label">Country (ISO2)</div>
+                  <div>
+                    <input class="form-control" type="text" id="country-code" name="country_code" placeholder="AU" maxlength="2" autocomplete="off" />
+                    <div class="tools-note tools-note--tight" id="country-note"></div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Start date</div>
+                  <div>
+                    <input class="form-control" type="date" id="start-date" name="start_ymd" min="2025-02-01" />
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">End date</div>
+                  <div>
+                    <input class="form-control" type="date" id="end-date" name="end_ymd" min="2025-02-01" />
+                    <div class="tools-note tools-note--tight" id="date-note"></div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Go</div>
+                  <div class="tools-actions">
+                    <button class="btn btn-outline-primary btn-sm" type="button" id="go-btn" disabled>Go</button>
+                    <div class="tools-note" id="go-note"></div>
+                  </div>
+                </div>
+
+                <div id="results" class="tools-results is-hidden"></div>
+              </div>
+            </div>
+          </div>
+    <!--#include partials/page-body-end.html-->
+      <!--#include partials/footer.html-->
+
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/tools-shipping-cr.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>
+

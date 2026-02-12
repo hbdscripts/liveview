@@ -2,6 +2,7 @@ const Sentry = require('@sentry/node');
 const express = require('express');
 const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
+const shippingCr = require('../tools/shippingCr');
 
 const router = express.Router();
 
@@ -82,6 +83,29 @@ router.post('/compare-cr/compare', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.compare-cr.compare' } });
     console.error('[tools.compare-cr.compare]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/shipping-cr/labels', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const shop = (req && req.body && req.body.shop != null) ? String(req.body.shop).trim().toLowerCase() : safeShopParam(req);
+    const countryCode = (req && req.body && req.body.country_code != null) ? String(req.body.country_code) : '';
+    const startYmd = (req && req.body && req.body.start_ymd != null) ? String(req.body.start_ymd) : '';
+    const endYmd = (req && req.body && req.body.end_ymd != null) ? String(req.body.end_ymd) : '';
+
+    const out = await shippingCr.getShippingOptionsByCountry({
+      shop,
+      countryCode,
+      startYmd,
+      endYmd,
+    });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.shipping-cr.labels' } });
+    console.error('[tools.shipping-cr.labels]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });

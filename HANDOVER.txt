@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Dashboard side-panel restored + Tabler polish)
+Last updated: 2026-02-12 (Add Shipping CR tool)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -60,6 +60,7 @@ Integrations:
 
 Tools:
 - `/tools/compare-conversion-rate` → `server/public/tools/compare-conversion-rate.html`
+- `/tools/shipping-cr` → `server/public/tools/shipping-cr.html`
 
 Settings:
 - `/settings` → `server/public/settings.html`
@@ -67,7 +68,7 @@ Settings:
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
 - `/date` → `/dashboard/table`
-- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/channels`, `/type`, `/compare-conversion-rate` → canonical folder routes
+- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/channels`, `/type`, `/compare-conversion-rate`, `/shipping-cr` → canonical folder routes
 
 Root `/`:
 - Shopify embedded app URL. `auth.handleAppUrl()` decides:
@@ -226,6 +227,10 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12 (latest)
+- Tools: added `/tools/shipping-cr` (Shipping CR) to report shipping option share-of-orders by country + date range.
+  - Groups by Shopify `shipping_lines[].title` and charged shipping price (so “Standard Tracked Delivery” can appear as both Free and Paid).
+  - Date filter uses `orders_shopify.processed_at` when present (fallback to `created_at` when NULL). Added index on `(shop, processed_at)` for paid orders.
+- Migrations: startup/manual migration runners now include migration 039 (sessions index) and 040 (orders processed_at index).
 - Restored session details drawer behavior on `/dashboard/live`, `/dashboard/sales`, and `/dashboard/table` by adding active `.side-panel` styling in `server/public/custom.css` (these pages do not load `app.css`).
 - Refined the drawer with Tabler-aligned spacing, borders, section cards, and improved long URL wrapping so activity/source/network details remain readable.
 - Added drawer backdrop + ESC close behavior in `server/public/app.js`, and stronger clickable-row hover affordance for session tables.
