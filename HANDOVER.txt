@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (KPI % deltas, KPI/date-range Settings, public-page dedupe + embed route)
+Last updated: 2026-02-12 (desktop header/nav light-mode refactor, Integrations route move, Trending Up/Down icon keys)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -22,7 +22,7 @@ Pages (canonical, Tabler layout):
 - `server/public/insights/products.html`
 - `server/public/traffic/channels.html`
 - `server/public/traffic/device.html`
-- `server/public/tools/ads.html`
+- `server/public/integrations/google-ads.html`
 - `server/public/tools/compare-conversion-rate.html`
 - `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs & Date Ranges, Diagnostics). KPIs & Date Ranges is now implemented (edits KPI labels/order/visibility for Dashboard + Header; edits date-range menu labels/availability).
 - `server/public/settings-page.js`: Settings tab switching + settings UI wiring (saves to `/api/settings`, including KPI/date-range config).
@@ -30,7 +30,7 @@ Pages (canonical, Tabler layout):
 
 Shared assets:
 - `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
-- `server/public/partials/header.html`: shared top header (mobile only on desktop), Tabler dark desktop navbar, then KPI strip below.
+- `server/public/partials/header.html`: shared top header with a desktop top strip (visitors left, centered logo, Settings dropdown right), light desktop nav row beneath it, then KPI strip below.
 - `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
 - `server/public/tabler-theme.css`: Tabler theme overrides + default primary teal (`#3eb3ab`).
 - `server/public/tools.css`: tools page styles extracted from inline HTML.
@@ -45,7 +45,8 @@ Legacy/backup:
 
 Server routing (Express):
 - Root `/` is the Shopify app URL: runs embedded OAuth/session handling and renders the embedded dashboard overview when appropriate; otherwise redirects to `/dashboard/overview` (logged-in) or `/app/login`.
-- Explicit canonical routes now serve per-page HTML: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/tools/ads`, `/tools/compare-conversion-rate`, `/settings`.
+- Explicit canonical routes now serve per-page HTML: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/integrations/google-ads`, `/tools/compare-conversion-rate`, `/settings`.
+- Legacy Google Ads routes (`/tools/ads`, `/ads`) redirect to `/integrations/google-ads` with query-string preservation.
 - Legacy flat routes now redirect to canonical routes with query-string preservation.
 - Mobile traffic: User-Agent detection redirects all mobile GET requests to `/mobile-unsupported` (logo + "Desktop only for now" copy).
 - See: `server/index.js`.
@@ -63,7 +64,7 @@ Auth protection:
 - Uses `document.body.dataset.page` to decide which page to bootstrap.
 - Highlights nav by setting `aria-current="page"`.
 - Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
-- KPI component lives below the dark nav and is a single condensed-strip DOM container across pages (expanded overlay removed).
+- KPI component lives below the desktop nav and is a single condensed-strip DOM container across pages (expanded overlay removed).
 - Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
 
 ---
@@ -84,10 +85,10 @@ Platform start/min date clamp:
 
 ## Tools page
 
-- Rebuilt as Tabler layout (`server/public/tools.html`).
+- Rebuilt as Tabler layout (`server/public/tools/compare-conversion-rate.html`).
 - All inline styles moved to `server/public/tools.css`.
 - Route is now `/tools/compare-conversion-rate` (legacy compare-route aliases redirect).
-- `tools.html` now uses `data-page="compare-conversion-rate"` and page title `Conversion Rate Compare`.
+- `compare-conversion-rate.html` uses `data-page="compare-conversion-rate"` and page title `Conversion Rate Compare`.
 - Back link points to `/dashboard/overview`.
 - `server/public/tools.js` uses class toggles instead of inline styles.
 
@@ -100,7 +101,7 @@ Date control (desktop page header, right side):
 - It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
 - Mobile: topbar date icon dropdown updates the same `select#global-date-select`.
 
-KPI component (below dark nav, every page):
+KPI component (below desktop nav, every page):
 - Markup lives directly in `server/public/partials/header.html` (pages do not include KPIs directly).
 - Condensed KPI strip is always visible; expanded KPI overlay/toggle were removed.
 - Condensed chips include value + delta + a small progress bar.
@@ -126,9 +127,9 @@ KPI caching (perf + UX):
 
 ---
 
-## Layout (header + dark navbar)
+## Layout (two-row header + light nav)
 
-- Shared wrapper uses a Tabler dark horizontal navbar, then a KPI strip below it, in `server/public/partials/header.html`. Mobile: top header with hamburger; desktop: header hidden, KPIs below dark nav.
+- Shared wrapper uses a desktop two-row header in `server/public/partials/header.html`: row 1 is a light top strip (visitors/logo/settings), row 2 is a light centered grouped nav (Dashboard/Insights/Traffic/Integrations/Tools), then KPI strip below.
 - Pages use `container-fluid` for a fluid content area.
 - Mobile: hamburger opens `#kexo-mobile-nav` overlay (backdrop click / Escape closes).
 
@@ -216,6 +217,14 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-12
+- Header/nav:
+  - Desktop header is now two rows: a top strip with visitors (left), centered logo, and Settings dropdown (right), plus a separate light-mode centered nav row with `box-shadow: 2px 2px 2px #eee`.
+  - Added top-level `Integrations` nav group before `Tools`; `Google Ads` now lives under Integrations.
+- Routing/auth:
+  - Added canonical route `/integrations/google-ads` (`server/public/integrations/google-ads.html`) and canonicalized `/integrations` -> `/integrations/google-ads`.
+  - Legacy `/tools/ads` and `/ads` now 301 redirect to `/integrations/google-ads`; mobile redirect and auth protected-page lists include the new integrations path.
+- Icon config:
+  - Split dashboard table title icon mapping for `Trending Up` and `Trending Down` into dedicated theme keys (`card-title-trending-up`, `card-title-trending-down`) with separate defaults and clearer labels in Theme → Icons.
 - KPIs:
   - Dashboard KPI cards now show % change badges (same compare semantics as condensed chips).
   - Condensed KPI progress bars now hide when compare is missing (no misleading 0%).

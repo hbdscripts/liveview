@@ -88,6 +88,8 @@ function isProtectedPath(pathname) {
     '/traffic',
     '/traffic/channels',
     '/traffic/device',
+    '/integrations',
+    '/integrations/google-ads',
     '/tools',
     '/tools/ads',
     '/tools/compare-conversion-rate',

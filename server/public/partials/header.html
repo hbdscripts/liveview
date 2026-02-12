@@ -42,7 +42,7 @@
           <a href="/insights/products" class="kexo-mobile-nav-item" data-nav="products">Products</a>
           <a href="/traffic/channels" class="kexo-mobile-nav-item" data-nav="channels">Channels</a>
           <a href="/traffic/device" class="kexo-mobile-nav-item" data-nav="type">Device &amp; Platform</a>
-          <a href="/tools/ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
+          <a href="/integrations/google-ads" class="kexo-mobile-nav-item" data-nav="ads">Google Ads</a>
           <a href="/tools/compare-conversion-rate" class="kexo-mobile-nav-item" data-nav="tools">Conversion Rate Compare</a>
           <div class="kexo-mobile-nav-divider"></div>
           <a href="/settings" class="kexo-mobile-nav-item kexo-mobile-nav-settings" id="kexo-mobile-nav-settings">Settings</a>
@@ -51,13 +51,57 @@
       </div>
     </header>
 
-    <nav class="navbar navbar-expand-md navbar-dark d-none d-lg-flex kexo-desktop-nav d-print-none" data-bs-theme="dark" aria-label="Desktop navigation">
-      <div class="container-xl kexo-desktop-nav-container">
-        <div class="row flex-row flex-nowrap flex-fill align-items-center kexo-desktop-nav-row">
-          <div class="col kexo-desktop-nav-left">
+    <div class="kexo-desktop-top-strip d-none d-lg-flex d-print-none" aria-label="Desktop top strip">
+      <div class="container-xl kexo-desktop-top-strip-container">
+        <div class="kexo-desktop-top-strip-row">
+          <div class="kexo-desktop-top-strip-left">
+            <div class="kexo-nav-visitors kexo-nav-visitors-desktop" aria-live="polite" role="status" aria-label="Live visitors">
+              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" aria-hidden="true"></i>
+              <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
+              <span id="online-count" class="is-hidden">0</span>
+              <span>visitors</span>
+            </div>
+          </div>
+          <div class="kexo-desktop-top-strip-center">
             <a class="kexo-desktop-brand-link" href="/dashboard/overview" aria-label="Kexo dashboard">
               <img src="/assets/kexo/logo_light.webp" alt="Kexo">
             </a>
+          </div>
+          <div class="kexo-desktop-top-strip-right">
+            <div class="dropdown">
+              <button type="button" class="kexo-top-strip-settings-btn dropdown-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
+                <i class="fa-jelly-filled fa-gear kexo-nav-svg me-1" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>Settings
+              </button>
+              <div class="dropdown-menu dropdown-menu-end" id="navbar-settings-menu">
+                <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
+                  <i class="fa-jelly fa-rotate-right me-2" data-icon-key="nav-item-refresh" aria-hidden="true"></i>Refresh
+                </button>
+                <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
+                  <i class="fa-jelly fa-volume-high me-2 sound-icon-on" data-icon-key="nav-item-sound-on" aria-hidden="true"></i>
+                  <i class="fa-jelly fa-volume-xmark me-2 sound-icon-off is-hidden" data-icon-key="nav-item-sound-off" aria-hidden="true"></i>
+                  Sound
+                </button>
+                <a href="/settings" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
+                  <i class="fa-jelly fa-palette me-2" data-icon-key="nav-item-theme" aria-hidden="true"></i>Theme
+                </a>
+                <a href="/settings" class="dropdown-item" id="config-open-btn" data-nav="settings" aria-label="Settings">
+                  <i class="fa-jelly fa-gear me-2" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
+                  <i class="fa-jelly fa-right-from-bracket me-2" data-icon-key="nav-item-signout" aria-hidden="true"></i>Sign out
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="navbar navbar-expand-md navbar-light d-none d-lg-flex kexo-desktop-nav d-print-none" data-bs-theme="light" aria-label="Desktop navigation">
+      <div class="container-xl kexo-desktop-nav-container">
+        <div class="row flex-row flex-nowrap flex-fill align-items-center kexo-desktop-nav-row">
+          <div class="col kexo-desktop-nav-left">
             <ul class="navbar-nav kexo-desktop-nav-list kexo-3color">
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-dashboard-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-dashboard-menu"><i class="fa-jelly-filled fa-table-cells-large kexo-nav-svg me-1" data-icon-key="nav-toggle-dashboard" aria-hidden="true"></i>Dashboard</a>
@@ -83,44 +127,20 @@
                 </div>
               </li>
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><i class="fa-jelly-filled fa-screwdriver-wrench kexo-nav-svg me-1" data-icon-key="nav-toggle-tools" aria-hidden="true"></i>Tools</a>
-                <div class="dropdown-menu" id="navbar-tools-menu">
-                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/tools/ads"><i class="fa-jelly fa-rectangle-ad kexo-nav-svg me-2" data-icon-key="nav-item-ads" aria-hidden="true"></i>Google Ads</a>
-                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools/compare-conversion-rate"><i class="fa-jelly fa-toolbox kexo-nav-svg me-2" data-icon-key="nav-item-tools" aria-hidden="true"></i>Conversion Rate Compare</a>
+                <a class="nav-link dropdown-toggle" href="#navbar-integrations-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-integrations-menu"><i class="fa-jelly-filled fa-puzzle-piece kexo-nav-svg me-1" data-icon-key="nav-toggle-integrations" aria-hidden="true"></i>Integrations</a>
+                <div class="dropdown-menu" id="navbar-integrations-menu">
+                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/integrations/google-ads"><i class="fa-jelly fa-rectangle-ad kexo-nav-svg me-2" data-icon-key="nav-item-ads" aria-hidden="true"></i>Google Ads</a>
                 </div>
               </li>
-              <li class="nav-item dropdown kexo-accent-3">
-                <a class="nav-link dropdown-toggle" href="#navbar-settings-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu"><i class="fa-jelly-filled fa-gear kexo-nav-svg me-1" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>Settings</a>
-                <div class="dropdown-menu" id="navbar-settings-menu">
-                  <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
-                    <i class="fa-jelly fa-rotate-right me-2" data-icon-key="nav-item-refresh" aria-hidden="true"></i>Refresh
-                  </button>
-                  <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
-                    <i class="fa-jelly fa-volume-high me-2 sound-icon-on" data-icon-key="nav-item-sound-on" aria-hidden="true"></i>
-                    <i class="fa-jelly fa-volume-xmark me-2 sound-icon-off is-hidden" data-icon-key="nav-item-sound-off" aria-hidden="true"></i>
-                    Sound
-                  </button>
-                  <a href="/settings" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
-                    <i class="fa-jelly fa-palette me-2" data-icon-key="nav-item-theme" aria-hidden="true"></i>Theme
-                  </a>
-                  <a href="/settings" class="dropdown-item" id="config-open-btn" data-nav="settings" aria-label="Settings">
-                    <i class="fa-jelly fa-gear me-2" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
-                  </a>
-                  <div class="dropdown-divider"></div>
-                  <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
-                    <i class="fa-jelly fa-right-from-bracket me-2" data-icon-key="nav-item-signout" aria-hidden="true"></i>Sign out
-                  </a>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><i class="fa-jelly-filled fa-screwdriver-wrench kexo-nav-svg me-1" data-icon-key="nav-toggle-tools" aria-hidden="true"></i>Tools</a>
+                <div class="dropdown-menu" id="navbar-tools-menu">
+                  <a class="dropdown-item" id="nav-tab-tools" data-nav="tools" href="/tools/compare-conversion-rate"><i class="fa-jelly fa-toolbox kexo-nav-svg me-2" data-icon-key="nav-item-tools" aria-hidden="true"></i>Conversion Rate Compare</a>
                 </div>
               </li>
             </ul>
           </div>
           <div class="col-auto kexo-desktop-nav-right">
-            <div class="kexo-nav-visitors kexo-nav-visitors-desktop" aria-live="polite" role="status" aria-label="Live visitors">
-              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" aria-hidden="true"></i>
-              <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
-              <span id="online-count" class="is-hidden">0</span>
-              <span>visitors</span>
-            </div>
             <ul class="navbar-nav kexo-desktop-nav-settings">
               <li class="nav-item d-none d-lg-flex align-items-center ms-2">
                 <div class="dropdown kexo-topbar-date">

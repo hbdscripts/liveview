@@ -93,6 +93,8 @@ const MOBILE_REDIRECT_PATHS = new Set([
   '/insights/products',
   '/traffic/channels',
   '/traffic/device',
+  '/integrations',
+  '/integrations/google-ads',
   '/tools/ads',
   '/tools/compare-conversion-rate',
   '/settings',
@@ -411,8 +413,10 @@ const trafficPagesRouter = express.Router();
 trafficPagesRouter.get('/channels', (req, res) => sendPage(res, 'traffic/channels.html'));
 trafficPagesRouter.get('/device', (req, res) => sendPage(res, 'traffic/device.html'));
 
+const integrationsPagesRouter = express.Router();
+integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrations/google-ads.html'));
+
 const toolsPagesRouter = express.Router();
-toolsPagesRouter.get('/ads', (req, res) => sendPage(res, 'tools/ads.html'));
 toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
 
 // Base folder routes should canonicalize to leaf pages (avoid automatic /path -> /path/ redirects).
@@ -420,13 +424,18 @@ app.get('/dashboard', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/dashboard/', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/traffic', redirectWithQuery(301, '/traffic/channels'));
 app.get('/traffic/', redirectWithQuery(301, '/traffic/channels'));
+app.get('/integrations', redirectWithQuery(301, '/integrations/google-ads'));
+app.get('/integrations/', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/tools', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/tools/', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 
 app.use('/dashboard', dashboardPagesRouter);
 app.use('/insights', insightsPagesRouter);
 app.use('/traffic', trafficPagesRouter);
+app.use('/integrations', integrationsPagesRouter);
 app.use('/tools', toolsPagesRouter);
+app.get('/tools/ads', redirectWithQuery(301, '/integrations/google-ads'));
+app.get('/tools/ads/', redirectWithQuery(301, '/integrations/google-ads'));
 
 // Legacy/flat dashboard URLs -> canonical folder routes.
 app.get('/app/dashboard', redirectWithQuery(301, '/dashboard/overview'));
@@ -438,7 +447,7 @@ app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
 app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
 app.get('/type', redirectWithQuery(301, '/traffic/device'));
-app.get('/ads', redirectWithQuery(301, '/tools/ads'));
+app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 

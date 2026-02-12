@@ -136,6 +136,8 @@
     'card-title-date': 'fa-jelly-filled fa-calendar-days',
     'card-title-dashboard': 'fa-jelly-filled fa-gauge-high',
     'card-title-traffic': 'fa-jelly-filled fa-route',
+    'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
+    'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
     'card-collapse-expanded': 'fa-chevron-down',
     'card-collapse-collapsed': 'fa-chevron-right',
@@ -193,6 +195,8 @@
     { key: 'card-title-date', test: /\bdate\b|calendar|timeline|period/i, fa: 'fa-jelly-filled fa-calendar-days' },
     { key: 'card-title-dashboard', test: /dashboard|overview|kpi/i, fa: 'fa-jelly-filled fa-gauge-high' },
     { key: 'card-title-traffic', test: /\btraffic\b|\blive\b/i, fa: 'fa-jelly-filled fa-route' },
+    { key: 'card-title-trending-up', test: /\btrending\s+up\b/i, fa: 'fa-jelly-filled fa-arrow-trend-up' },
+    { key: 'card-title-trending-down', test: /\btrending\s+down\b/i, fa: 'fa-jelly-filled fa-arrow-trend-down' },
     { key: 'card-title-chart', test: /\bchart\b|trend|sparkline/i, fa: 'fa-jelly-filled fa-chart-line' }
   ];
 
@@ -369,6 +373,7 @@
     if (el.closest('.dropdown-menu .dropdown-item')) return 'iconDropdown';
     if (el.closest('.list-group-item[data-settings-tab]')) return 'iconSettingsMenu';
     if (el.closest('.grid-row--header .th-label-short')) return 'iconTableHeading';
+    if (el.closest('.kexo-desktop-top-strip .kexo-top-strip-settings-btn')) return 'iconTopnav';
     if (el.closest('.kexo-desktop-nav .nav-link.dropdown-toggle')) return 'iconTopnav';
     if (el.closest('.kexo-desktop-nav .kexo-date-btn')) return 'iconTopnav';
     if (el.closest('.kexo-page-header-date-col .kexo-date-btn')) return 'iconTopnav';

@@ -10420,8 +10420,20 @@ const API = '';
             else trafficDropdownItem.classList.remove('active');
           }
 
+          // Integrations dropdown
+          var isIntegrationsChild = (tab === 'ads');
+          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations-menu"]');
+          var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
+          if (integrationsToggle) {
+            integrationsToggle.setAttribute('aria-current', isIntegrationsChild ? 'page' : 'false');
+          }
+          if (integrationsDropdownItem) {
+            if (isIntegrationsChild) integrationsDropdownItem.classList.add('active');
+            else integrationsDropdownItem.classList.remove('active');
+          }
+
           // Tools dropdown
-          var isToolsChild = (tab === 'ads' || tab === 'tools');
+          var isToolsChild = (tab === 'tools');
           var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
@@ -10475,7 +10487,7 @@ const API = '';
             ensureKpis();
             ensureAdsLoaded().then(function(ok) {
               if (!ok) return;
-              // IMPORTANT: if `/ads.js` is already present as a deferred script tag (e.g. on `/tools/ads` page),
+              // IMPORTANT: if `/ads.js` is already present as a deferred script tag (e.g. on `/integrations/google-ads` page),
               // the promise can resolve before the script executes (microtask checkpoint after this script),
               // leaving Ads blank until another event triggers a refresh. Defer one macrotask so Ads JS has run.
               setTimeout(function() {

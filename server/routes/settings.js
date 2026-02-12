@@ -434,6 +434,8 @@ const THEME_KEYS = [
   'theme_icon_glyph_card_title_date',
   'theme_icon_glyph_card_title_dashboard',
   'theme_icon_glyph_card_title_traffic',
+  'theme_icon_glyph_card_title_trending_up',
+  'theme_icon_glyph_card_title_trending_down',
   'theme_icon_glyph_card_title_chart',
 ];
 
