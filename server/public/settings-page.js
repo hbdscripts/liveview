@@ -174,16 +174,12 @@
           enabled: true,
           order: 3,
           rules: [
-            { id: 'cable', label: 'Cable', include: ['cable chain', 'cable'], exclude: [] },
-            { id: 'belcher', label: 'Belcher', include: ['belcher chain', 'belcher'], exclude: [] },
-            { id: 'curb', label: 'Curb', include: ['curb chain', 'curb'], exclude: [] },
-            { id: 'box', label: 'Box', include: ['box chain', 'box'], exclude: [] },
-            { id: 'figaro', label: 'Figaro', include: ['figaro chain', 'figaro'], exclude: [] },
-            { id: 'rope', label: 'Rope', include: ['rope chain', 'rope'], exclude: [] },
-            { id: 'snake', label: 'Snake', include: ['snake chain', 'snake'], exclude: [] },
-            { id: 'paperclip', label: 'Paperclip', include: ['paperclip chain', 'paperclip'], exclude: [] },
-            { id: 'satellite', label: 'Satellite', include: ['satellite chain', 'satellite'], exclude: [] },
-            { id: 'trace', label: 'Trace', include: ['trace chain', 'trace'], exclude: [] },
+            { id: 'style_1', label: 'Style 1', include: ['style 1'], exclude: [] },
+            { id: 'style_2', label: 'Style 2', include: ['style 2'], exclude: [] },
+            { id: 'style_3', label: 'Style 3', include: ['style 3'], exclude: [] },
+            { id: 'satellite', label: 'Satellite', include: ['satellite'], exclude: [] },
+            { id: 'belcher', label: 'Belcher', include: ['belcher'], exclude: [] },
+            { id: 'anchor', label: 'Anchor', include: ['anchor'], exclude: [] },
           ],
         },
       ],
@@ -1072,6 +1068,37 @@
     }
   }
 
+  function syncInsightsVariantsDraftFromDom() {
+    var root = document.getElementById('settings-insights-variants-root');
+    if (!root) return;
+    var draft = insightsVariantsDraft && typeof insightsVariantsDraft === 'object'
+      ? deepClone(insightsVariantsDraft)
+      : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    insightsVariantsDraft = draft;
+
+    root.querySelectorAll('.card[data-table-idx]').forEach(function (card) {
+      if (!card) return;
+      var tIdx = card.getAttribute('data-table-idx');
+      var nameEl = card.querySelector('input[data-field="table-name"][data-table-idx="' + String(tIdx) + '"]');
+      var enabledEl = card.querySelector('input[data-field="table-enabled"][data-table-idx="' + String(tIdx) + '"]');
+      if (nameEl) updateDraftValue(tIdx, null, 'table-name', nameEl.value, false);
+      if (enabledEl) updateDraftValue(tIdx, null, 'table-enabled', '', !!enabledEl.checked);
+
+      card.querySelectorAll('tr[data-rule-idx]').forEach(function (tr) {
+        if (!tr) return;
+        var rIdx = tr.getAttribute('data-rule-idx');
+        var labelEl = tr.querySelector('input[data-field="rule-label"]');
+        var includeEl = tr.querySelector('textarea[data-field="rule-include"]');
+        var excludeEl = tr.querySelector('textarea[data-field="rule-exclude"]');
+        if (labelEl) updateDraftValue(tIdx, rIdx, 'rule-label', labelEl.value, false);
+        if (includeEl) updateDraftValue(tIdx, rIdx, 'rule-include', includeEl.value, false);
+        if (excludeEl) updateDraftValue(tIdx, rIdx, 'rule-exclude', excludeEl.value, false);
+      });
+    });
+
+    insightsVariantsDraft = normalizeInsightsVariantsConfig(insightsVariantsDraft);
+  }
+
   function wireInsightsVariantsEditor() {
     var root = document.getElementById('settings-insights-variants-root');
     if (!root || root.getAttribute('data-insights-variants-wired') === '1') return;
@@ -1155,6 +1182,7 @@
     if (!saveBtn || !resetBtn) return;
 
     saveBtn.addEventListener('click', function () {
+      syncInsightsVariantsDraftFromDom();
       var payloadCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
       setInsightsVariantsMsg('Saving\u2026', true);
       renderInsightsVariantsErrors(null);

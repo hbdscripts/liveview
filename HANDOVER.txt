@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (insights variants loader fail-safe + configure button)
+Last updated: 2026-02-12 (styles defaults updated + variants save sync fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -231,3 +231,5 @@ Ops/reliability:
 - Added Insights → Variants page (`/insights/variants`) and API (`/api/insights-variants`) with configurable mapping tables, variant-specific sessions denominator (`?variant=<id>`), sortable/paginated tables (default 5 rows, options 5/10), and strict save validation in Settings → Insights → Variants that blocks unmapped/ambiguous configs with detailed diagnostics.
 - Fixed Countries → Country + Product denominator in `getBestGeoProducts()` so Sessions/CR% use country+product-handle sessions (product landing sessions in that country), not all sessions for the country.
 - Fixed Variants page first-load UX: disabled generic app loader path for `data-page="variants"` and added a script-level fail-safe that hides stale loader overlays; empty state now includes a **Configure variants** button linking to `Settings → Insights`.
+- Updated default Styles mappings to: Style 1, Style 2, Style 3, Satellite, Belcher, Anchor (removed prior chain defaults like cable/curb/figaro/rope/etc).
+- Fixed Settings → Insights → Variants save reliability by syncing all editor field values from DOM at save time (prevents stale draft data from being re-saved when users edit and immediately click Save).

@@ -44,16 +44,12 @@ function buildLengthRules() {
 }
 
 const STYLE_RULES = [
-  { id: 'cable', label: 'Cable', include: ['cable chain', 'cable'], exclude: [] },
-  { id: 'belcher', label: 'Belcher', include: ['belcher chain', 'belcher'], exclude: [] },
-  { id: 'curb', label: 'Curb', include: ['curb chain', 'curb'], exclude: [] },
-  { id: 'box', label: 'Box', include: ['box chain', 'box'], exclude: [] },
-  { id: 'figaro', label: 'Figaro', include: ['figaro chain', 'figaro'], exclude: [] },
-  { id: 'rope', label: 'Rope', include: ['rope chain', 'rope'], exclude: [] },
-  { id: 'snake', label: 'Snake', include: ['snake chain', 'snake'], exclude: [] },
-  { id: 'paperclip', label: 'Paperclip', include: ['paperclip chain', 'paperclip'], exclude: [] },
-  { id: 'satellite', label: 'Satellite', include: ['satellite chain', 'satellite'], exclude: [] },
-  { id: 'trace', label: 'Trace', include: ['trace chain', 'trace'], exclude: [] },
+  { id: 'style_1', label: 'Style 1', include: ['style 1'], exclude: [] },
+  { id: 'style_2', label: 'Style 2', include: ['style 2'], exclude: [] },
+  { id: 'style_3', label: 'Style 3', include: ['style 3'], exclude: [] },
+  { id: 'satellite', label: 'Satellite', include: ['satellite'], exclude: [] },
+  { id: 'belcher', label: 'Belcher', include: ['belcher'], exclude: [] },
+  { id: 'anchor', label: 'Anchor', include: ['anchor'], exclude: [] },
 ];
 
 function defaultVariantsConfigV1() {
