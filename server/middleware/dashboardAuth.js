@@ -73,7 +73,7 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||
-      pathname === '/api/insights-variants' ||
+      pathname === '/api/insights-variants' || pathname.startsWith('/api/insights-variants-suggestions') ||
       // Ads tab API (new feature area)
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||

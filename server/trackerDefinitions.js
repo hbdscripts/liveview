@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 18;
+const DEFINITIONS_VERSION = 19;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -313,8 +313,9 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Mapping model', value: 'Rule matching is alias include; overlap is auto-resolved by most-specific include token (ties use rule order).' },
-      { name: 'Validation', value: 'Settings save is blocked for unmapped in-scope titles. Table scope is inferred (e.g. length/style tables skip out-of-scope titles). Overlap-resolved counts are diagnostic context, not a blocking category.' },
+      { name: 'Validation', value: 'Settings save is allowed even with unmapped in-scope titles; the server returns coverage warnings to guide mapping/ignore. Table scope is inferred (e.g. length/style tables skip out-of-scope titles). Overlap-resolved counts are diagnostic context, not a blocking category.' },
       { name: 'Attribution caveat', value: 'Sessions depend on landing URLs with ?variant=<id>; default-option landings without variant param can under-attribute variant sessions.' },
+      { name: 'Seeding', value: 'Settings → Insights → Variants includes “Suggest mappings” which seeds editable custom tables from Shopify selectedOptions + recent observed variant activity (API: GET /api/insights-variants-suggestions, POST /api/insights-variants-suggestions/apply).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['settings', 'sessions', 'orders_shopify_line_items'], shopifyToken: false },

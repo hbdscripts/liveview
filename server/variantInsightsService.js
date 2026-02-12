@@ -577,6 +577,10 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
 module.exports = {
   RANGE_KEYS,
   extractVariantIdFromUrl,
+  // Internal helpers exposed for suggestion engine & diagnostics.
+  getVariantOrderRows,
+  getVariantSessionCounts,
+  fillTitlesForVariantIds,
   getObservedVariantsForValidation,
   buildVariantsInsightTables,
 };

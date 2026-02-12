@@ -35,7 +35,7 @@
     if (value == null) return '';
     var div = document.createElement('div');
     div.textContent = String(value);
-    return div.innerHTML;
+    return div.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function getShopFromQuery() {
@@ -380,6 +380,9 @@
       var mappedPct = row.inScopeSessions > 0
         ? ((row.mapped.sessions / row.inScopeSessions) * 100).toFixed(1) + '%'
         : '—';
+      var mappedPlusIgnoredPct = row.inScopeSessions > 0
+        ? (((row.mapped.sessions + row.ignored.sessions) / row.inScopeSessions) * 100).toFixed(1) + '%'
+        : '—';
       return '' +
         '<tr>' +
           '<td>' + escapeHtml(row.tableName) + '</td>' +
@@ -391,8 +394,63 @@
           '<td class="text-end">' + escapeHtml(formatInt(row.unmapped.sessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.resolved.sessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(mappedPct) + '</td>' +
+          '<td class="text-end">' + escapeHtml(mappedPlusIgnoredPct) + '</td>' +
         '</tr>';
     }).join('');
+
+    function renderTopUnmappedBySessions(diag) {
+      var d = diag && typeof diag === 'object' ? diag : {};
+      var list = Array.isArray(d.unmappedExamples) ? d.unmappedExamples.slice() : [];
+      if (!list.length) return '';
+      list.sort(function (a, b) {
+        var sa = Number(a && a.sessions) || 0;
+        var sb = Number(b && b.sessions) || 0;
+        if (sb !== sa) return sb - sa;
+        var oa = Number(a && a.orders) || 0;
+        var ob = Number(b && b.orders) || 0;
+        if (ob !== oa) return ob - oa;
+        return String(a && a.variant_title || '').localeCompare(String(b && b.variant_title || ''));
+      });
+      var top = list.slice(0, 12);
+      if (!top.length) return '';
+      var rows = top.map(function (it) {
+        var title = it && it.variant_title ? String(it.variant_title) : 'Unknown variant';
+        var vid = it && it.variant_id ? String(it.variant_id) : '';
+        var sessions = formatInt(it && it.sessions != null ? it.sessions : 0);
+        var orders = formatInt(it && it.orders != null ? it.orders : 0);
+        var revenue = formatMoney(it && it.revenue != null ? it.revenue : 0);
+        return '' +
+          '<tr>' +
+            '<td>' + escapeHtml(title) + (vid ? '<div class="text-secondary small"><code>' + escapeHtml(vid) + '</code></div>' : '') + '</td>' +
+            '<td class="text-end">' + escapeHtml(sessions) + '</td>' +
+            '<td class="text-end">' + escapeHtml(orders) + '</td>' +
+            '<td class="text-end">' + revenue + '</td>' +
+          '</tr>';
+      }).join('');
+      var tableName = d.tableName || d.tableId || 'Table';
+      var unmappedCount = Number(d.unmappedCount) || top.length;
+      return '' +
+        '<details class="mb-2">' +
+          '<summary class="fw-semibold">' + escapeHtml(tableName) + ' \u00b7 ' + escapeHtml(String(unmappedCount)) + ' unmapped</summary>' +
+          '<div class="table-responsive mt-2">' +
+            '<table class="table table-sm table-vcenter mb-0">' +
+              '<thead><tr><th>Variant</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">Rev</th></tr></thead>' +
+              '<tbody>' + rows + '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</details>';
+    }
+
+    var topUnmappedHtml = diagnostics
+      .map(function (d) { return renderTopUnmappedBySessions(d); })
+      .filter(Boolean)
+      .join('');
+    if (topUnmappedHtml) {
+      topUnmappedHtml = '' +
+        '<h4 class="mb-2 mt-4">Top Unmapped (by sessions)</h4>' +
+        '<div class="text-secondary small mb-2">These are the highest-session unmapped examples for each table in this range.</div>' +
+        topUnmappedHtml;
+    }
     return '' +
       attributionHtml +
       '<h4 class="mb-2">All Variant Totals</h4>' +
@@ -405,11 +463,12 @@
       '<h4 class="mb-2">Mapped Coverage (Sessions)</h4>' +
       '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">In Scope Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Out Of Scope</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th></tr></thead>' +
+          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">In Scope Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Out Of Scope</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th><th class="text-end">Mapped+Ignored %</th></tr></thead>' +
           '<tbody>' + coverageRows + '</tbody>' +
         '</table>' +
       '</div>' +
-      '<div class="text-secondary small mt-2">Mapped % uses in-scope sessions only. Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>';
+      '<div class="text-secondary small mt-2">Mapped % uses in-scope sessions only. Mapped+Ignored % can be useful when you intentionally ignore outliers. Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>' +
+      topUnmappedHtml;
   }
 
   function openAllStatsModal() {

@@ -20,6 +20,8 @@
   var chartsUiPanelRendered = false;
   var tablesUiPanelRendered = false;
   var insightsIgnoreModalBackdropEl = null;
+  var insightsSuggestModalBackdropEl = null;
+  var insightsSuggestPayload = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -109,7 +111,7 @@
     if (s == null) return '';
     var div = document.createElement('div');
     div.textContent = String(s);
-    return div.innerHTML;
+    return div.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function formatTs(ms) {
@@ -118,6 +120,16 @@
       return new Date(ms).toLocaleString();
     } catch (_) {
       return '\u2014';
+    }
+  }
+
+  function formatInt(v) {
+    try {
+      var n = Number(v);
+      if (!isFinite(n)) return '0';
+      return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    } catch (_) {
+      return '0';
     }
   }
 
@@ -161,50 +173,12 @@
   function defaultInsightsVariantsConfigV1() {
     return {
       v: 1,
-      tables: [
-        {
-          id: 'finishes',
-          name: 'Finishes',
-          enabled: true,
-          order: 1,
-          ignored: [],
-          rules: [
-            { id: 'solid_silver', label: 'Solid Silver', include: ['solid silver'], exclude: ['sterling silver', '925 silver', '925 sterling silver'] },
-            { id: 'gold', label: 'Gold', include: ['18k gold', '18ct gold', '14ct gold', 'gold'], exclude: ['gold vermeil'] },
-            { id: 'silver', label: 'Silver', include: ['925 sterling silver', 'sterling silver', '925 silver', 'silver'], exclude: ['solid silver'] },
-            { id: 'vermeil', label: 'Vermeil', include: ['gold vermeil', 'vermeil'], exclude: [] },
-          ],
-        },
-        {
-          id: 'lengths',
-          name: 'Lengths',
-          enabled: true,
-          order: 2,
-          ignored: [],
-          rules: makeLengthRules(),
-        },
-        {
-          id: 'styles',
-          name: 'Styles',
-          enabled: true,
-          order: 3,
-          ignored: [],
-          rules: [
-            { id: 'style_1', label: 'Style 1', include: ['style 1'], exclude: [] },
-            { id: 'style_2', label: 'Style 2', include: ['style 2'], exclude: [] },
-            { id: 'style_3', label: 'Style 3', include: ['style 3'], exclude: [] },
-            { id: 'satellite', label: 'Satellite', include: ['satellite'], exclude: [] },
-            { id: 'belcher', label: 'Belcher', include: ['belcher'], exclude: [] },
-            { id: 'anchor', label: 'Anchor', include: ['anchor'], exclude: [] },
-          ],
-        },
-      ],
+      tables: [],
     };
   }
 
   function isBuiltinInsightsTableId(id) {
-    var s = String(id || '').trim().toLowerCase();
-    return s === 'finishes' || s === 'lengths' || s === 'styles';
+    return false;
   }
 
   function normalizeTokenList(rawList) {
@@ -1327,8 +1301,9 @@
     }
     if (details.stage === 'coverage') {
       var tables = Array.isArray(details.tables) ? details.tables : [];
-      html += '<div class="alert alert-danger mb-3">';
-      html += '<div class="fw-semibold mb-2">Cannot save: unmapped variants found</div>';
+      html += '<div class="alert alert-warning mb-3">';
+      html += '<div class="fw-semibold mb-2">Saved with coverage warnings</div>';
+      html += '<div class="text-secondary small mb-2">You can save even when some enabled tables have unmapped in-scope variants. Until you map or ignore them, Insights → Variants may show inflated CR (because unmapped sessions/orders are excluded from the table rows).</div>';
       if (typeof details.observedCount === 'number') {
         html += '<div class="text-secondary small mb-2">Validated against ' + escapeHtml(String(details.observedCount)) + ' recent variant titles.</div>';
       }
@@ -1384,7 +1359,9 @@
           insightsVariantsConfigCache = normalizeInsightsVariantsConfig(r.insightsVariantsConfig || payloadCfg);
           insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
           renderInsightsVariantsPanel(insightsVariantsDraft);
-          setInsightsVariantsMsg(opts.successText || 'Saved.', true);
+          var warnings = r && r.insightsVariantsWarnings ? r.insightsVariantsWarnings : null;
+          if (warnings) renderInsightsVariantsErrors(warnings);
+          setInsightsVariantsMsg(opts.successText || (warnings ? 'Saved (warnings).' : 'Saved.'), true);
           if (typeof opts.onSuccess === 'function') opts.onSuccess(r);
           return true;
         }
@@ -1486,6 +1463,171 @@
     try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
+  function ensureInsightsSuggestModalBackdrop() {
+    if (insightsSuggestModalBackdropEl && insightsSuggestModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    insightsSuggestModalBackdropEl = el;
+  }
+
+  function closeInsightsSuggestModal() {
+    var modal = document.getElementById('settings-insights-variants-suggest-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (insightsSuggestModalBackdropEl && insightsSuggestModalBackdropEl.parentNode) {
+      insightsSuggestModalBackdropEl.parentNode.removeChild(insightsSuggestModalBackdropEl);
+    }
+    insightsSuggestModalBackdropEl = null;
+  }
+
+  function setInsightsSuggestMsg(text, ok) {
+    var msg = document.getElementById('settings-insights-variants-suggest-msg');
+    if (!msg) return;
+    msg.textContent = text || '';
+    msg.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  function fetchInsightsVariantsSuggestions(rangeKey) {
+    var range = rangeKey || '30d';
+    return fetch((API || '') + '/api/insights-variants-suggestions?range=' + encodeURIComponent(range), {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }).then(function (r) { return r.json(); });
+  }
+
+  function renderInsightsSuggestModalBody(payload) {
+    var body = document.getElementById('settings-insights-variants-suggest-body');
+    if (!body) return;
+    var p = payload && typeof payload === 'object' ? payload : {};
+    insightsSuggestPayload = p;
+    var list = Array.isArray(p.suggestions) ? p.suggestions : [];
+    if (!list.length) {
+      var note = p.notice ? String(p.notice) : '';
+      body.innerHTML = '' +
+        '<div class="text-secondary mb-2">No suggestions available right now.</div>' +
+        (note ? '<div class="text-muted small">Notice: <code>' + escapeHtml(note) + '</code></div>' : '');
+      return;
+    }
+
+    var cards = list.map(function (s, idx) {
+      var table = s && s.table ? s.table : {};
+      var option = s && s.option ? s.option : {};
+      var impact = s && s.impact ? s.impact : {};
+      var id = s && s.suggestionId ? String(s.suggestionId) : ('suggestion-' + String(idx + 1));
+      var preview = Array.isArray(option.previewValues) ? option.previewValues.filter(Boolean).slice(0, 8) : [];
+      var previewHtml = preview.length
+        ? ('<div class="text-muted small mt-1">Top values: ' + escapeHtml(preview.join(', ')) + '</div>')
+        : '';
+      return '' +
+        '<div class="card card-sm mb-2">' +
+          '<div class="card-body">' +
+            '<label class="form-check">' +
+              '<input class="form-check-input" type="checkbox" data-suggest-select value="' + escapeHtml(id) + '"' + (idx < 3 ? ' checked' : '') + '>' +
+              '<span class="form-check-label">' +
+                '<div class="fw-semibold">' + escapeHtml(table.name || table.id || 'Variant Table') + '</div>' +
+                '<div class="text-secondary small">From Shopify option <code>' + escapeHtml(option.name || '') + '</code> · ' +
+                  escapeHtml(String(option.distinctValues || 0)) + ' values · ' +
+                  escapeHtml(formatInt(impact.sessions || 0)) + ' sessions · ' +
+                  escapeHtml(formatInt(impact.orders || 0)) + ' orders</div>' +
+                previewHtml +
+              '</span>' +
+            '</label>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    body.innerHTML = '' +
+      '<div class="text-secondary small mb-2">Suggestions are built from Shopify variant option labels (selected options) + recent observed variant activity. Seeded tables are fully editable.</div>' +
+      cards;
+  }
+
+  function openInsightsSuggestModal() {
+    var modal = document.getElementById('settings-insights-variants-suggest-modal');
+    var body = document.getElementById('settings-insights-variants-suggest-body');
+    if (!modal || !body) return;
+    syncInsightsVariantsDraftFromDom();
+    setInsightsSuggestMsg('', true);
+    body.innerHTML = '<div class="text-secondary">Loading suggestions…</div>';
+    ensureInsightsSuggestModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+
+    fetchInsightsVariantsSuggestions('30d')
+      .then(function (r) {
+        renderInsightsSuggestModalBody(r || {});
+      })
+      .catch(function () {
+        body.innerHTML = '<div class="text-danger">Failed to load suggestions.</div>';
+        setInsightsSuggestMsg('Failed to load suggestions.', false);
+      });
+  }
+
+  function readSelectedSuggestIds() {
+    var modal = document.getElementById('settings-insights-variants-suggest-modal');
+    if (!modal) return [];
+    var ids = [];
+    modal.querySelectorAll('input[data-suggest-select]:checked').forEach(function (el) {
+      if (!el) return;
+      var v = el.value != null ? String(el.value) : '';
+      if (!v) return;
+      ids.push(v);
+    });
+    return ids;
+  }
+
+  function applySelectedSuggestions() {
+    syncInsightsVariantsDraftFromDom();
+    var baseCfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    var payload = insightsSuggestPayload && typeof insightsSuggestPayload === 'object' ? insightsSuggestPayload : {};
+    var suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+    var selectedIds = new Set(readSelectedSuggestIds().map(function (s) { return String(s || ''); }).filter(Boolean));
+    var selected = suggestions.filter(function (s) {
+      return s && s.suggestionId && selectedIds.has(String(s.suggestionId));
+    });
+    var seedTables = selected.map(function (s) { return s && s.table ? s.table : null; }).filter(Boolean);
+    if (!seedTables.length) {
+      setInsightsSuggestMsg('Select at least one suggestion to apply.', false);
+      return;
+    }
+
+    setInsightsSuggestMsg('Applying…', true);
+
+    fetch((API || '') + '/api/insights-variants-suggestions/apply', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        baseConfig: baseCfg,
+        seedTables: seedTables,
+        range: (payload && payload.range) ? String(payload.range) : '30d',
+        shop: (payload && payload.shop) ? String(payload.shop) : '',
+      }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r || !r.ok) {
+          setInsightsSuggestMsg((r && (r.message || r.error)) ? String(r.message || r.error) : 'Apply failed', false);
+          return;
+        }
+        insightsVariantsConfigCache = normalizeInsightsVariantsConfig(r.insightsVariantsConfig || baseCfg);
+        insightsVariantsDraft = deepClone(insightsVariantsConfigCache);
+        renderInsightsVariantsPanel(insightsVariantsDraft);
+        setInsightsVariantsMsg('Suggestions applied.', true);
+        if (r.warnings) renderInsightsVariantsErrors(r.warnings);
+        closeInsightsSuggestModal();
+      })
+      .catch(function () {
+        setInsightsSuggestMsg('Apply failed', false);
+      });
+  }
+
   function nextUniqueTableId(baseName, tables) {
     var base = slugify(baseName, 'custom-table');
     var taken = {};
@@ -1527,17 +1669,16 @@
 
     tables.forEach(function (table, tableIdx) {
       if (!table) return;
-      var isBuiltin = isBuiltinInsightsTableId(table.id);
       var rules = Array.isArray(table.rules) ? table.rules : [];
       html += '<div class="card card-sm mb-3" data-table-idx="' + String(tableIdx) + '">' +
         '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-grow-1">' +
             '<input type="text" class="form-control form-control-sm" style="max-width:280px" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
-            (isBuiltin ? '<span class="badge bg-primary-lt">Default</span>' : '<span class="badge bg-secondary-lt">Custom</span>') +
+            '<span class="badge bg-secondary-lt">Custom</span>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
-            (isBuiltin ? '' : '<button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>') +
+            '<button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
           '</div>' +
         '</div>' +
         '<div class="card-body">' +
@@ -1812,6 +1953,48 @@
     }
   }
 
+  function wireInsightsVariantsSuggestModal() {
+    var openBtn = document.getElementById('settings-insights-variants-suggest-btn');
+    var modal = document.getElementById('settings-insights-variants-suggest-modal');
+    var applyBtn = document.getElementById('settings-insights-variants-suggest-apply-btn');
+    if (!openBtn || !modal || !applyBtn) return;
+
+    if (openBtn.getAttribute('data-suggest-wired') !== '1') {
+      openBtn.setAttribute('data-suggest-wired', '1');
+      openBtn.addEventListener('click', function () {
+        openInsightsSuggestModal();
+      });
+    }
+
+    if (modal.getAttribute('data-suggest-wired') !== '1') {
+      modal.setAttribute('data-suggest-wired', '1');
+      modal.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target === modal) {
+          closeInsightsSuggestModal();
+          return;
+        }
+        var closeBtn = target.closest ? target.closest('[data-close-insights-suggest]') : null;
+        if (closeBtn) {
+          closeInsightsSuggestModal();
+        }
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        closeInsightsSuggestModal();
+      });
+    }
+
+    if (applyBtn.getAttribute('data-suggest-apply-wired') !== '1') {
+      applyBtn.setAttribute('data-suggest-apply-wired', '1');
+      applyBtn.addEventListener('click', function () {
+        applySelectedSuggestions();
+      });
+    }
+  }
+
   function moveRow(row, dir) {
     if (!row || !row.parentElement) return;
     var tbody = row.parentElement;
@@ -2060,6 +2243,7 @@
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();
+    wireInsightsVariantsSuggestModal();
     wireChartsSaveReset();
     wireLayoutTablesSaveReset();
   }

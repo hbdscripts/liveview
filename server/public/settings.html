@@ -437,10 +437,11 @@
               <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
                 <button type="button" class="btn btn-primary" id="settings-insights-variants-save-btn">Save</button>
                 <button type="button" class="btn btn-outline-secondary" id="settings-insights-variants-reset-btn">Reset to defaults</button>
+                <button type="button" class="btn btn-outline-primary" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
                 <button type="button" class="btn btn-outline-dark" id="settings-insights-variants-ignore-btn">Ignore List</button>
                 <span id="settings-insights-variants-msg" class="form-hint"></span>
               </div>
-              <div class="text-muted small mt-2">Save is blocked when any active table has unmapped in-scope variants. Overlap is auto-managed by specificity/order, and out-of-scope titles are skipped.</div>
+              <div class="text-muted small mt-2">Save is allowed even when enabled tables have unmapped in-scope variants. You\u2019ll see warnings to help improve coverage. Overlap is auto-managed by specificity/order, and out-of-scope titles are skipped.</div>
             </div>
           </div>
         </div>
@@ -461,6 +462,27 @@
               <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-secondary" data-close-insights-ignore>Close</button>
                 <button type="button" class="btn btn-primary" id="settings-insights-variants-ignore-save-btn">Save changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal modal-blur fade" id="settings-insights-variants-suggest-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="modal-title">Variant mapping suggestions</h3>
+              <button type="button" class="btn-close" aria-label="Close" data-close-insights-suggest></button>
+            </div>
+            <div class="modal-body" id="settings-insights-variants-suggest-body">
+              <div class="text-secondary">Loading suggestions…</div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+              <span id="settings-insights-variants-suggest-msg" class="form-hint"></span>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-secondary" data-close-insights-suggest>Close</button>
+                <button type="button" class="btn btn-primary" id="settings-insights-variants-suggest-apply-btn">Apply selected</button>
               </div>
             </div>
           </div>

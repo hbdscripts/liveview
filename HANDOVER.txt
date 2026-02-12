@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Layout → Tables settings + tables_ui_config_v1)
+Last updated: 2026-02-12 (Variants smart suggestions + non-blocking mapping save)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -221,6 +221,16 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Variants mappings now start **blank/custom-first** (no shipped default mapping tables/rules). Seed tables using Suggestions or build manually.
+- Settings → Insights → Variants: added **Suggest mappings** (Shopify selectedOptions + recent observed activity) with one-click seed into editable custom tables.
+- New API endpoints:
+  - `GET /api/insights-variants-suggestions` (build suggestions)
+  - `POST /api/insights-variants-suggestions/apply` (apply selected seed tables into config)
+- Variants settings save is no longer blocked by unmapped coverage; it saves and returns **coverage warnings** to guide mapping/ignore.
+- Fixed settings editor escaping so Output labels can safely include quotes/ranges (e.g. `7.5" - 9" inches`).
+- Insights → Variants: All Variant Stats now shows **Mapped+Ignored %** and a per-table **Top Unmapped (by sessions)** section.
 
 2026-02-12 (latest)
 - Added Settings → Layout → Tables: editable per-page table name/order/grid + rows-per-page options/default + optional sticky column min/max.

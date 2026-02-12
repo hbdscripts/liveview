@@ -821,6 +821,7 @@ async function postSettings(req, res) {
     return res.status(405).set('Allow', 'POST').end();
   }
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  let insightsVariantsWarnings = null;
 
   // Settings scope (global/shared only for now)
   if (Object.prototype.hasOwnProperty.call(body, 'settingsScopeMode')) {
@@ -997,16 +998,11 @@ async function postSettings(req, res) {
         });
         const coverageValidation = validateConfigAgainstVariants(normalized, observed, { maxExamples: 40 });
         if (!coverageValidation.ok) {
-          return res.status(400).json({
-            ok: false,
-            error: 'insights_variants_config_invalid',
-            message: 'Some variants are still unmapped. Update includes or ignore entries and try again.',
-            details: {
-              stage: 'coverage',
-              observedCount: Array.isArray(observed) ? observed.length : 0,
-              tables: coverageValidation.tables || [],
-            },
-          });
+          insightsVariantsWarnings = {
+            stage: 'coverage',
+            observedCount: Array.isArray(observed) ? observed.length : 0,
+            tables: coverageValidation.tables || [],
+          };
         }
       }
 
@@ -1022,7 +1018,9 @@ async function postSettings(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store');
-  res.json(await readSettingsPayload());
+  const payload = await readSettingsPayload();
+  if (insightsVariantsWarnings) payload.insightsVariantsWarnings = insightsVariantsWarnings;
+  res.json(payload);
 }
 
 // ── Theme defaults (shared across all logins) ──────────────────────────────

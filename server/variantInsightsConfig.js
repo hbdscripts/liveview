@@ -55,32 +55,7 @@ const STYLE_RULES = [
 function defaultVariantsConfigV1() {
   return {
     v: VARIANTS_CONFIG_VERSION,
-    tables: [
-      {
-        id: 'finishes',
-        name: 'Finishes',
-        enabled: true,
-        order: 1,
-        rules: FINISH_RULES,
-        ignored: [],
-      },
-      {
-        id: 'lengths',
-        name: 'Lengths',
-        enabled: true,
-        order: 2,
-        rules: buildLengthRules(),
-        ignored: [],
-      },
-      {
-        id: 'styles',
-        name: 'Styles',
-        enabled: true,
-        order: 3,
-        rules: STYLE_RULES,
-        ignored: [],
-      },
-    ],
+    tables: [],
   };
 }
 
@@ -211,14 +186,6 @@ function normalizeVariantsConfigV1(raw) {
     if (seen.has(table.id)) continue;
     seen.add(table.id);
     tables.push(table);
-  }
-
-  // Always keep default tables present; user can disable them.
-  for (let i = 0; i < defaults.tables.length; i += 1) {
-    const d = defaults.tables[i];
-    if (seen.has(d.id)) continue;
-    seen.add(d.id);
-    tables.push(d);
   }
 
   tables.sort(sortTablesByOrderThenName);
@@ -374,11 +341,8 @@ function validateConfigStructure(config) {
     errors: [],
   };
   const tables = Array.isArray(config && config.tables) ? config.tables : [];
-  if (!tables.length) {
-    out.ok = false;
-    out.errors.push({ code: 'no_tables', message: 'At least one table is required.' });
-    return out;
-  }
+  // Empty config is valid (allows fresh installs to start blank and seed via suggestions).
+  if (!tables.length) return out;
   for (const table of tables) {
     if (!table || !table.id) {
       out.ok = false;
@@ -388,15 +352,6 @@ function validateConfigStructure(config) {
     if (!table.name) {
       out.ok = false;
       out.errors.push({ code: 'table_missing_name', tableId: table.id, message: 'Table name is required.' });
-    }
-    if (table.enabled && (!Array.isArray(table.rules) || !table.rules.length)) {
-      out.ok = false;
-      out.errors.push({
-        code: 'table_rules_empty',
-        tableId: table.id,
-        tableName: table.name,
-        message: 'Enabled tables must include at least one mapping rule.',
-      });
     }
     const seenRuleIds = new Set();
     for (const rule of (Array.isArray(table.rules) ? table.rules : [])) {
