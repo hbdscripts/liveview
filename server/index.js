@@ -38,6 +38,7 @@ const shopifyFinishes = require('./routes/shopifyFinishes');
 const shopifyLengths = require('./routes/shopifyLengths');
 const shopifyChainStyles = require('./routes/shopifyChainStyles');
 const shopifyWorstVariants = require('./routes/shopifyWorstVariants');
+const insightsVariants = require('./routes/insightsVariants');
 const worstProducts = require('./routes/worstProducts');
 const productInsights = require('./routes/productInsights');
 const pageInsights = require('./routes/pageInsights');
@@ -89,6 +90,7 @@ const MOBILE_REDIRECT_PATHS = new Set([
   '/dashboard/table',
   '/insights/countries',
   '/insights/products',
+  '/insights/variants',
   '/traffic/channels',
   '/traffic/device',
   '/integrations',
@@ -103,6 +105,7 @@ const MOBILE_REDIRECT_PATHS = new Set([
   '/overview',
   '/countries',
   '/products',
+  '/variants',
   '/channels',
   '/type',
   '/ads',
@@ -170,6 +173,7 @@ app.get('/api/shopify-finishes', shopifyFinishes.getShopifyFinishes);
 app.get('/api/shopify-lengths', shopifyLengths.getShopifyLengths);
 app.get('/api/shopify-chain-styles', shopifyChainStyles.getShopifyChainStyles);
 app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVariants);
+app.get('/api/insights-variants', insightsVariants.getInsightsVariants);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/product-insights', productInsights.getProductInsights);
 app.get('/api/page-insights', pageInsights.getPageInsights);
@@ -412,6 +416,7 @@ dashboardPagesRouter.get('/table', (req, res) => sendPage(res, 'dashboard/table.
 const insightsPagesRouter = express.Router();
 insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
+insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
 
 const trafficPagesRouter = express.Router();
 trafficPagesRouter.get('/channels', (req, res) => sendPage(res, 'traffic/channels.html'));
@@ -449,6 +454,7 @@ app.get('/date', redirectWithQuery(301, '/dashboard/table'));
 app.get('/overview', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
+app.get('/variants', redirectWithQuery(301, '/insights/variants'));
 app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
 app.get('/type', redirectWithQuery(301, '/traffic/device'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));

@@ -8,6 +8,7 @@ const API = '';
       date: true,
       countries: true,
       products: true,
+      variants: true,
       channels: true,
       type: true,
       ads: true,
@@ -5762,6 +5763,8 @@ const API = '';
         refreshTraffic({ force: false });
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
+      } else if (activeMainTab === 'variants') {
+        try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
@@ -10595,13 +10598,14 @@ const API = '';
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads', 'tools'];
-        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', stats: 'Countries', products: 'Products', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', stats: 'Countries', products: 'Products', variants: 'Variants', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads', 'compare-conversion-rate': 'tools' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
         const tabProducts = document.getElementById('nav-tab-products');
+        const tabVariants = document.getElementById('nav-tab-variants');
         const tabAds = document.getElementById('nav-tab-ads');
         const tabSales = document.getElementById('nav-tab-sales');
         const tabDate = document.getElementById('nav-tab-date');
@@ -10735,6 +10739,7 @@ const API = '';
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', tab === 'stats' ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', tab === 'products' ? 'true' : 'false');
+          if (tabVariants) tabVariants.setAttribute('aria-selected', tab === 'variants' ? 'true' : 'false');
           if (tabAds) tabAds.setAttribute('aria-selected', tab === 'ads' ? 'true' : 'false');
           if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
           if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
@@ -10750,8 +10755,8 @@ const API = '';
             if (isDashboardChild) dashboardDropdownItem.classList.add('active');
             else dashboardDropdownItem.classList.remove('active');
           }
-          // Insights dropdown (Countries + Products)
-          var isInsightsChild = (tab === 'stats' || tab === 'products');
+          // Insights dropdown (Countries + Products + Variants)
+          var isInsightsChild = (tab === 'stats' || tab === 'products' || tab === 'variants');
           var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
           var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
           if (insightsToggle) {
@@ -10832,6 +10837,9 @@ const API = '';
             ensureKpis();
           } else if (tab === 'products') {
             refreshProducts({ force: false });
+            ensureKpis();
+          } else if (tab === 'variants') {
+            try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: false }); } catch (_) {}
             ensureKpis();
           } else if (tab === 'channels' || tab === 'type') {
             refreshTraffic({ force: false });
@@ -11001,6 +11009,7 @@ const API = '';
             if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
             else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
+            else if (activeMainTab === 'variants') { try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {} }
             else if (activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
             else fetchSessions();
@@ -11144,6 +11153,8 @@ const API = '';
       } else if (activeMainTab === 'products') {
         const staleProducts = !lastProductsFetchedAt || (Date.now() - lastProductsFetchedAt) > STATS_REFRESH_MS;
         if (staleProducts) refreshProducts({ force: false });
+      } else if (activeMainTab === 'variants') {
+        try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
         const staleTraffic = !lastTrafficFetchedAt || (Date.now() - lastTrafficFetchedAt) > STATS_REFRESH_MS;
         if (staleTraffic) refreshTraffic({ force: false });

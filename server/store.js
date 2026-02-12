@@ -2240,37 +2240,79 @@ async function getBestGeoProducts(start, end, options = {}) {
     return normalizeCountry(ship || bill);
   }
 
-  // Sessions by country (denominator). Keep human-only filtering in sessions.
+  function normalizeHandle(v) {
+    if (typeof v !== 'string') return '';
+    return v.trim().toLowerCase().slice(0, 128);
+  }
+
+  function handleFromPath(pathValue) {
+    if (typeof pathValue !== 'string') return '';
+    const m = pathValue.match(/^\/products\/([^/?#]+)/i);
+    return m ? normalizeHandle(m[1]) : '';
+  }
+
+  function handleFromUrl(urlValue) {
+    if (typeof urlValue !== 'string') return '';
+    const raw = urlValue.trim();
+    if (!raw) return '';
+    try {
+      const u = new URL(raw);
+      return handleFromPath(u.pathname || '');
+    } catch (_) {
+      return handleFromPath(raw);
+    }
+  }
+
+  function handleFromSessionRow(row) {
+    return (
+      handleFromPath(row && row.first_path) ||
+      normalizeHandle(row && row.first_product_handle) ||
+      handleFromUrl(row && row.entry_url) ||
+      ''
+    );
+  }
+
+  // Sessions used as denominator are now country + product handle specific.
   const filterAlias = filter.sql.replace(/sessions\./g, 's.');
-  const sessionsRows = config.dbUrl
+  const sessionLandingRows = config.dbUrl
     ? await db.all(
       `
-        SELECT s.country_code AS country_code, COUNT(*) AS clicks
+        SELECT
+          s.country_code AS country_code,
+          s.first_path AS first_path,
+          s.first_product_handle AS first_product_handle,
+          s.entry_url AS entry_url
         FROM sessions s
         WHERE s.started_at >= $1 AND s.started_at < $2
           AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
           ${filterAlias}
-        GROUP BY s.country_code
+          AND (
+            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+          )
       `,
       [start, end, ...filter.params]
     )
     : await db.all(
       `
-        SELECT s.country_code AS country_code, COUNT(*) AS clicks
+        SELECT
+          s.country_code AS country_code,
+          s.first_path AS first_path,
+          s.first_product_handle AS first_product_handle,
+          s.entry_url AS entry_url
         FROM sessions s
         WHERE s.started_at >= ? AND s.started_at < ?
           AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
           ${filterAlias}
-        GROUP BY s.country_code
+          AND (
+            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+          )
       `,
       [start, end, ...filter.params]
     );
-  const clicksByCountry = new Map();
-  for (const r of sessionsRows || []) {
-    const cc = normalizeCountry(r && r.country_code);
-    if (!cc) continue;
-    clicksByCountry.set(cc, r && r.clicks != null ? Number(r.clicks) || 0 : 0);
-  }
 
   // Truth orders -> country (shipping/billing).
   const orderRows = config.dbUrl
@@ -2404,16 +2446,39 @@ async function getBestGeoProducts(start, end, options = {}) {
     );
   }
 
+  const selectedCountryHandlePairs = new Set();
+  for (const [cc, list] of byCountryList.entries()) {
+    for (const v of list || []) {
+      const pid = v && v.product_id ? String(v.product_id) : '';
+      const meta = pid && metaByProduct.has(pid) ? metaByProduct.get(pid) : null;
+      const handle = meta && meta.handle ? normalizeHandle(String(meta.handle)) : '';
+      if (!handle) continue;
+      selectedCountryHandlePairs.add(`${cc}|${handle}`);
+    }
+  }
+
+  const clicksByCountryHandle = new Map();
+  for (const row of sessionLandingRows || []) {
+    const cc = normalizeCountry(row && row.country_code);
+    if (!cc || cc === 'XX') continue;
+    const handle = handleFromSessionRow(row);
+    if (!handle) continue;
+    const pairKey = `${cc}|${handle}`;
+    if (!selectedCountryHandlePairs.has(pairKey)) continue;
+    clicksByCountryHandle.set(pairKey, (clicksByCountryHandle.get(pairKey) || 0) + 1);
+  }
+
   const out = [];
   for (const [cc, list] of byCountryList.entries()) {
-    const clicks = clicksByCountry.get(cc) || 0;
     for (const v of list || []) {
       const pid = v.product_id;
       const meta = pid && metaByProduct.has(pid) ? metaByProduct.get(pid) : null;
       const handle = meta && meta.handle ? String(meta.handle).trim() : '';
+      const normalizedHandle = normalizeHandle(handle);
       const thumbUrl = meta && meta.thumb_url ? String(meta.thumb_url).trim() : '';
       const converted = v.orderIds ? v.orderIds.size : 0;
       const revenue = Math.round((Number(v.revenueGbp) || 0) * 100) / 100;
+      const clicks = normalizedHandle ? (clicksByCountryHandle.get(`${cc}|${normalizedHandle}`) || 0) : 0;
       const conversion = clicks > 0 ? Math.round((converted / clicks) * 1000) / 10 : null;
       out.push({
         country_code: cc,

@@ -73,6 +73,7 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||
+      pathname === '/api/insights-variants' ||
       // Ads tab API (new feature area)
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
@@ -85,6 +86,7 @@ function isProtectedPath(pathname) {
     '/dashboard/table',
     '/insights/countries',
     '/insights/products',
+    '/insights/variants',
     '/traffic',
     '/traffic/channels',
     '/traffic/device',
@@ -101,6 +103,7 @@ function isProtectedPath(pathname) {
     '/date',
     '/countries',
     '/products',
+    '/variants',
     '/channels',
     '/type',
     '/ads',

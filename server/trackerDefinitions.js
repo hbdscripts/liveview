@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 14;
-const LAST_UPDATED = '2026-02-07';
+const DEFINITIONS_VERSION = 15;
+const LAST_UPDATED = '2026-02-12';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -226,20 +226,20 @@ const TRACKER_TABLE_DEFINITIONS = [
     ui: { elementIds: ['best-geo-products-table'] },
     endpoint: { method: 'GET', path: '/api/stats', params: ['range=...'] },
     sources: [
-      { kind: 'db', tables: ['sessions'], note: 'Country sessions (started_at in range, human-only)' },
+      { kind: 'db', tables: ['sessions'], note: 'Country + product landing sessions (started_at in range, human-only; handle parsed from first_path/first_product_handle/entry_url)' },
       { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items'], note: 'Truth orders by order country (shipping/billing from orders_shopify.raw_json) + product revenue from line items' },
       { kind: 'shopify', note: 'Product meta (handle + thumb) via cached Products API' },
       { kind: 'fx', note: 'Revenue converted to GBP' },
     ],
     columns: [
       { name: 'Country', value: 'sessions.country_code' },
-      { name: 'CR', value: 'converted / total', formula: 'Product orders / country sessions' },
+      { name: 'CR', value: 'converted / total', formula: 'Product orders / (country + product landing sessions)' },
       { name: 'Orders', value: 'converted', formula: 'COUNT(DISTINCT order_id) containing the product (truth line items)' },
-      { name: 'Sessions', value: 'total', formula: 'COUNT(sessions) started_at in range for that country (human-only)' },
+      { name: 'Sessions', value: 'total', formula: 'COUNT(sessions) started_at in range for that country AND that product handle (human-only)' },
       { name: 'Rev', value: 'revenue (GBP)', formula: 'SUM(line_revenue) converted to GBP' },
     ],
     math: [
-      { name: 'Important', value: 'This is NOT “product landing conversion”. It’s orders containing the product per country session.' },
+      { name: 'Important', value: 'Denominator is now exact country+product sessions (not country-wide website sessions).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify', 'orders_shopify_line_items'], shopifyToken: true },
@@ -291,6 +291,32 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify_line_items'], shopifyToken: true },
+  },
+  {
+    id: 'insights_variants_tables',
+    page: 'Variants',
+    name: 'Variants insight tables (custom mappings)',
+    ui: { elementIds: ['variants-tables-row'] },
+    endpoint: { method: 'GET', path: '/api/insights-variants', params: ['shop=...', 'range=...'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Truth orders/revenue by variant_id + variant_title (paid line items, converted to GBP)' },
+      { kind: 'db', tables: ['sessions'], note: 'Variant-specific sessions from entry_url ?variant=<id> (human-only)' },
+      { kind: 'db', tables: ['settings'], note: 'Mappings from settings.insights_variants_config_v1 (table + rule aliases)' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Variant', value: 'rule label from mapping config' },
+      { name: 'Sessions', value: 'COUNT(sessions) where landing variant_id maps to this rule' },
+      { name: 'Orders', value: 'COUNT(DISTINCT order_id) for mapped variant_ids (truth line items)' },
+      { name: 'CR%', value: 'orders / sessions × 100' },
+      { name: 'Rev', value: 'SUM(line_revenue) for mapped variant_ids (GBP)' },
+    ],
+    math: [
+      { name: 'Mapping model', value: 'Rule matching is alias include + optional exclude; exactly one rule per variant title is expected.' },
+      { name: 'Validation', value: 'Settings save is blocked when enabled tables have unmapped or ambiguous recent variant titles.' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['settings', 'sessions', 'orders_shopify_line_items'], shopifyToken: false },
   },
   {
     id: 'traffic_channels',

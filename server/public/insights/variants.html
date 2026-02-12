@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <title>Kexo · Variants</title>
+  <style>
+    #tab-panel-variants .stats-row-wrap {
+      position: relative;
+    }
+    #tab-panel-variants .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: stretch;
+    }
+    #tab-panel-variants .stats-row > .stats-card {
+      flex: 1 1 520px;
+      min-width: 320px;
+    }
+  </style>
+</head>
+<body class="" data-page="variants">
+  <!--#include partials/header.html-->
+  <!--#include partials/page-body-start.html-->
+  <div class="page-header mb-3">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="page-pretitle">Insights</div>
+        <h2 class="page-title">Variants</h2>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-panel-variants" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-variants">
+    <div class="stats-row-wrap">
+      <div class="stats-row" id="variants-tables-row">
+        <div class="stats-card card" id="stats-variants-loading" data-no-card-collapse="1">
+          <div class="card-header">
+            <h3 class="card-title">Variants</h3>
+          </div>
+          <div class="card-body text-secondary" id="variants-loading-note">Loading variant tables…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--#include partials/page-body-end.html-->
+  <!--#include partials/footer.html-->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/variants-page.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>

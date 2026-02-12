@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (theme color-tab refactor + primary palette lock + charts settings render fix)
+Last updated: 2026-02-12 (insights variants page + strict mapping settings + country+product session denominator fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -45,6 +45,7 @@ Dashboard:
 Insights:
 - `/insights/countries` → `server/public/insights/countries.html`
 - `/insights/products` → `server/public/insights/products.html`
+- `/insights/variants` → `server/public/insights/variants.html`
 
 Traffic:
 - `/traffic/channels` → `server/public/traffic/channels.html`
@@ -62,7 +63,7 @@ Settings:
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
 - `/date` → `/dashboard/table`
-- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/channels`, `/type`, `/compare-conversion-rate` → canonical folder routes
+- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/channels`, `/type`, `/compare-conversion-rate` → canonical folder routes
 
 Root `/`:
 - Shopify embedded app URL. `auth.handleAppUrl()` decides:
@@ -87,12 +88,13 @@ Settings tabs:
 - Integrations: Pixel + Google Ads status/actions
 - Sources: UTM/source mapping
 - KPIs & Date Ranges: KPI order/labels/visibility + date-range labels/availability
+- Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Charts: per-chart enable/type/colors (see Charts section)
 - Diagnostics: config-status + reconcile utilities (Settings-first)
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
-- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`
+- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `insightsVariantsConfig`
 
 ---
 
@@ -177,6 +179,7 @@ KPI data:
 - `server/public/tabler-theme.css`: Tabler overrides
 - `server/public/settings-page.js`: Settings tab logic + saving to `/api/settings`
 - `server/public/theme-settings.js`: Theme UI
+- `server/public/variants-page.js`: Insights → Variants rendering/paging/sorting (driven by `/api/insights-variants`)
 - `server/public/ads.js`: Google Ads page logic
 - `server/public/tools.js`: Conversion Rate Compare tool logic
 
@@ -187,6 +190,8 @@ KPI data:
 - `server/index.js`: Express app, canonical page routes, auth middleware, static assets, startup migrations
 - `server/middleware/dashboardAuth.js`: Shopify embed + direct OAuth cookie protection
 - `server/store.js`: DB access + reporting queries + dedupe guardrails
+- `server/variantInsightsConfig.js`: canonical Variants table/rule defaults + matching/validation helpers
+- `server/variantInsightsService.js`: Variants data aggregation (truth orders + variant sessions) and validation sampling
 - `server/migrations/*.js`: schema/index migrations run on startup
 - Ingest: `POST /api/ingest` (strict JSON limit), writes events/sessions/purchases (append-only; no deletes)
 
@@ -223,3 +228,5 @@ Ops/reliability:
 - Refactored Theme settings: moved all desktop header/nav/dropdown/settings/online color controls from Header tab into Color tab; Header tab now keeps non-color controls.
 - Locked Theme primary palette to KEXO brand 3-color accents in both settings UI and `head-theme` early hydration.
 - Fixed Settings → Charts initial render timing so chart mode/pie selectors render with correct defaults/selections when tab is opened.
+- Added Insights → Variants page (`/insights/variants`) and API (`/api/insights-variants`) with configurable mapping tables, variant-specific sessions denominator (`?variant=<id>`), sortable/paginated tables (default 5 rows, options 5/10), and strict save validation in Settings → Insights → Variants that blocks unmapped/ambiguous configs with detailed diagnostics.
+- Fixed Countries → Country + Product denominator in `getBestGeoProducts()` so Sessions/CR% use country+product-handle sessions (product landing sessions in that country), not all sessions for the country.

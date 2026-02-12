@@ -5,6 +5,16 @@
  * Currently used to toggle pixel session strategy for debugging session count drift.
  */
 const store = require('../store');
+const salesTruth = require('../salesTruth');
+const {
+  VARIANTS_CONFIG_KEY,
+  defaultVariantsConfigV1,
+  normalizeVariantsConfigV1,
+  normalizeVariantsConfigForSave,
+  validateConfigStructure,
+  validateConfigAgainstVariants,
+} = require('../variantInsightsConfig');
+const { getObservedVariantsForValidation } = require('../variantInsightsService');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
@@ -353,6 +363,7 @@ async function readSettingsPayload() {
   let assetOverrides = {};
   let kpiUiConfig = defaultKpiUiConfigV1();
   let chartsUiConfig = defaultChartsUiConfigV1();
+  let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   try {
     pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
@@ -380,6 +391,10 @@ async function readSettingsPayload() {
     const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
     chartsUiConfig = normalizeChartsUiConfigV1(raw);
   } catch (_) {}
+  try {
+    const raw = await store.getSetting(VARIANTS_CONFIG_KEY);
+    insightsVariantsConfig = normalizeVariantsConfigV1(raw);
+  } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
@@ -390,6 +405,7 @@ async function readSettingsPayload() {
     reporting,
     kpiUiConfig,
     chartsUiConfig,
+    insightsVariantsConfig,
   };
 }
 
@@ -487,6 +503,62 @@ async function postSettings(req, res) {
     }
   }
 
+  // Variants insights config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'insightsVariantsConfig')) {
+    try {
+      const normalized = body.insightsVariantsConfig == null
+        ? defaultVariantsConfigV1()
+        : normalizeVariantsConfigForSave(body.insightsVariantsConfig);
+
+      const structureValidation = validateConfigStructure(normalized);
+      if (!structureValidation.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: 'insights_variants_config_invalid',
+          message: 'Variants settings are invalid. Fix the listed issues and try again.',
+          details: {
+            stage: 'structure',
+            errors: structureValidation.errors || [],
+          },
+        });
+      }
+
+      const shop = salesTruth.resolveShopForSales('');
+      if (shop && shop.endsWith('.myshopify.com')) {
+        const now = Date.now();
+        const lookbackMs = 365 * 24 * 60 * 60 * 1000;
+        const observed = await getObservedVariantsForValidation({
+          shop,
+          start: now - lookbackMs,
+          end: now,
+          maxRows: 5000,
+        });
+        const coverageValidation = validateConfigAgainstVariants(normalized, observed, { maxExamples: 40 });
+        if (!coverageValidation.ok) {
+          return res.status(400).json({
+            ok: false,
+            error: 'insights_variants_config_invalid',
+            message: 'Some variants are unmapped or ambiguous. Update aliases and try again.',
+            details: {
+              stage: 'coverage',
+              observedCount: Array.isArray(observed) ? observed.length : 0,
+              tables: coverageValidation.tables || [],
+            },
+          });
+        }
+      }
+
+      const json = JSON.stringify(normalized);
+      if (json.length > 120000) throw new Error('Variants config too large');
+      await store.setSetting(VARIANTS_CONFIG_KEY, json);
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: err && err.message ? String(err.message) : 'Failed to save variants config',
+      });
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-store');
   res.json(await readSettingsPayload());
 }
@@ -550,6 +622,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_nav_item_table',
   'theme_icon_glyph_nav_item_countries',
   'theme_icon_glyph_nav_item_products',
+  'theme_icon_glyph_nav_item_variants',
   'theme_icon_glyph_nav_item_channels',
   'theme_icon_glyph_nav_item_type',
   'theme_icon_glyph_nav_item_ads',
@@ -572,6 +645,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_settings_tab_integrations',
   'theme_icon_glyph_settings_tab_sources',
   'theme_icon_glyph_settings_tab_kpis',
+  'theme_icon_glyph_settings_tab_insights',
   'theme_icon_glyph_settings_tab_diagnostics',
   'theme_icon_glyph_settings_diagnostics_refresh',
   'theme_icon_glyph_settings_diagnostics_reconcile',
