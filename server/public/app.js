@@ -1716,8 +1716,7 @@ const API = '';
               var link = document.querySelector('link[rel="icon"]');
               if (link) link.href = '/assets/favicon.png';
               if (typeof saleAudio !== 'undefined' && saleAudio && typeof getCashRegisterMp3Url === 'function') {
-                saleAudio.src = getCashRegisterMp3Url();
-                try { saleAudio.load(); } catch (_) {}
+                setSaleAudioSrc(getCashRegisterMp3Url());
               }
             }
             if (shopForSalesFallback) {
@@ -1758,6 +1757,37 @@ const API = '';
     var CASH_REGISTER_MP3_CDN = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
     function getCashRegisterMp3Url() {
       return (typeof getAssetsBase === 'function' ? getAssetsBase() : (API || '') + '/assets') + '/cash-register.mp3';
+    }
+
+    function bindSaleAudioFallback() {
+      if (!saleAudio) return;
+      try {
+        var a = saleAudio;
+        if (a.__kexoSaleAudioOnError) {
+          try { a.removeEventListener('error', a.__kexoSaleAudioOnError); } catch (_) {}
+        }
+        a.__kexoSaleAudioOnError = function() {
+          try {
+            if (!a || !CASH_REGISTER_MP3_CDN) return;
+            var cur = String(a.currentSrc || a.src || '');
+            if (cur && cur.indexOf(CASH_REGISTER_MP3_CDN) >= 0) return;
+            a.src = CASH_REGISTER_MP3_CDN;
+            try { a.load(); } catch (_) {}
+          } catch (_) {}
+        };
+        a.addEventListener('error', a.__kexoSaleAudioOnError);
+      } catch (_) {}
+    }
+
+    function setSaleAudioSrc(nextUrl) {
+      if (!saleAudio) return;
+      var url = nextUrl != null ? String(nextUrl) : '';
+      if (!url) return;
+      bindSaleAudioFallback();
+      try {
+        saleAudio.src = url;
+        try { saleAudio.load(); } catch (_) {}
+      } catch (_) {}
     }
 
     function titleCaseFromHandle(handle) {
@@ -11009,17 +11039,10 @@ const API = '';
 
     (function initTopBar() {
       try { saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true'; } catch (_) { saleMuted = false; }
-      try { saleAudio = new Audio(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3'); } catch (_) { saleAudio = null; }
+      try { saleAudio = new Audio(); } catch (_) { saleAudio = null; }
       if (saleAudio) {
         try { saleAudio.preload = 'auto'; } catch (_) {}
-        try { saleAudio.load(); } catch (_) {}
-        saleAudio.addEventListener('error', function fallbackToCdn() {
-          saleAudio.removeEventListener('error', fallbackToCdn);
-          if (saleAudio && CASH_REGISTER_MP3_CDN) {
-            saleAudio.src = CASH_REGISTER_MP3_CDN;
-            try { saleAudio.load(); } catch (_) {}
-          }
-        }, { once: true });
+        try { setSaleAudioSrc(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3'); } catch (_) {}
         // Prime/unlock audio on the first user interaction so sale sounds can play later.
         (function primeOnFirstGesture() {
           function prime() { try { primeSaleAudio(); } catch (_) {} }
