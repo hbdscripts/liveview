@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Add Shipping CR tool)
+Last updated: 2026-02-12 (Layout accordion + converted-row color controls)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -95,7 +95,7 @@ Settings tabs:
 - KPIs & Date Ranges: KPI order/labels/visibility + date-range labels/availability
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Charts: per-chart enable/type/colors (see Charts section)
-- Layout: per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max)
+- Layout: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables
 - Diagnostics: config-status + reconcile utilities (Settings-first)
 
 Settings API:
@@ -225,6 +225,23 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Settings -> Layout -> Tables UX refactor:
+  - Replaced table-crammed layout editor with Tabler accordion sections (one accordion item per page, one control row per setting group).
+  - Added per-table card controls with clearer fields for name, rows options/default, sticky bounds, grid toggle, and reorder actions.
+- Added shared **Colors** controls in Settings -> Layout -> Tables for:
+  - Dashboard · Live View
+  - Dashboard · Table View
+  - Dashboard · Recent Sales
+  - Each row now has a far-right Colors button opening one shared modal that edits/saves the same values.
+- Extended `tables_ui_config_v1` with shared converted-row color fields:
+  - `iconColor`, `iconBackground`, `stickyBackground`, `convertedBackground`
+  - Normalized in `server/routes/settings.js` and persisted via existing `/api/settings` tables config path.
+- Runtime application + CSS updates:
+  - `server/public/app.js` now applies the shared colors to CSS vars (`--kexo-converted-icon-color`, `--kexo-converted-icon-bg`, `--kexo-sticky-cell-bg`, `--kexo-converted-cell-bg`) from `tablesUiConfig`.
+  - Updated converted-row styling in `server/public/custom.css` (+ parity updates in `server/public/app.css`) for icon block positioning, converted backgrounds, sticky background variable support, and converted-row hover consistency.
+  - Fixed darker adjacent hover tint on converted rows by overriding second-cell hover styling for converted rows.
 
 2026-02-12 (latest)
 - Tools: added `/tools/shipping-cr` (Shipping CR) to report shipping option share-of-orders by country + date range.

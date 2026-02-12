@@ -42,6 +42,12 @@ const API = '';
     });
     const tableRowsCache = {};
     const TABLES_UI_CFG_LS_KEY = 'kexo:tables-ui-config:v1';
+    const TABLES_CONVERTED_COLOR_DEFAULTS = Object.freeze({
+      iconColor: '#2f7d50',
+      iconBackground: '#f0f8f1',
+      stickyBackground: '#ffffff',
+      convertedBackground: '#f9fcfa',
+    });
     var tablesUiConfigV1 = null;
 
     // Hydrate table layout/pagination prefs from localStorage for first paint.
@@ -94,11 +100,44 @@ const API = '';
       try { return JSON.stringify(cfg || null); } catch (_) { return ''; }
     }
 
+    function normalizeTablesUiHexColor(value, fallback) {
+      var raw = value == null ? '' : String(value).trim();
+      if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
+      return fallback;
+    }
+
+    function getTablesUiConvertedRowColors(cfg) {
+      var defaults = TABLES_CONVERTED_COLOR_DEFAULTS;
+      var raw = (
+        cfg &&
+        cfg.shared &&
+        cfg.shared.convertedRowColors &&
+        typeof cfg.shared.convertedRowColors === 'object'
+      ) ? cfg.shared.convertedRowColors : {};
+      return {
+        iconColor: normalizeTablesUiHexColor(raw.iconColor, defaults.iconColor),
+        iconBackground: normalizeTablesUiHexColor(raw.iconBackground, defaults.iconBackground),
+        stickyBackground: normalizeTablesUiHexColor(raw.stickyBackground, defaults.stickyBackground),
+        convertedBackground: normalizeTablesUiHexColor(raw.convertedBackground, defaults.convertedBackground),
+      };
+    }
+
+    function applyTablesUiConvertedRowColors(cfg) {
+      var root = document && document.documentElement ? document.documentElement : null;
+      if (!root || !root.style || !root.style.setProperty) return;
+      var colors = getTablesUiConvertedRowColors(cfg);
+      root.style.setProperty('--kexo-converted-icon-color', colors.iconColor);
+      root.style.setProperty('--kexo-converted-icon-bg', colors.iconBackground);
+      root.style.setProperty('--kexo-sticky-cell-bg', colors.stickyBackground);
+      root.style.setProperty('--kexo-converted-cell-bg', colors.convertedBackground);
+    }
+
     function applyTablesUiConfigV1(cfg) {
       if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.pages)) return false;
       var prevSig = tablesUiConfigSignature(tablesUiConfigV1);
       var nextSig = tablesUiConfigSignature(cfg);
       tablesUiConfigV1 = cfg;
+      try { applyTablesUiConvertedRowColors(cfg); } catch (_) {}
       try { window.__kexoTablesUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(TABLES_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try {
@@ -106,6 +145,8 @@ const API = '';
       } catch (_) {}
       return prevSig !== nextSig;
     }
+
+    try { applyTablesUiConvertedRowColors(tablesUiConfigV1); } catch (_) {}
 
     function tableRowsConfigForTableId(tableId, classKey) {
       var cfg = tableClassConfig(classKey);

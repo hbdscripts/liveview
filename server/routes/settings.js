@@ -153,6 +153,14 @@ function defaultChartsUiConfigV1() {
 function defaultTablesUiConfigV1() {
   return {
     v: 1,
+    shared: {
+      convertedRowColors: {
+        iconColor: '#2f7d50',
+        iconBackground: '#f0f8f1',
+        stickyBackground: '#ffffff',
+        convertedBackground: '#f9fcfa',
+      },
+    },
     pages: [
       {
         key: 'dashboard',
@@ -531,6 +539,27 @@ function normalizeTablesUiConfigV1(raw) {
     if (!Number.isFinite(n)) return null;
     return Math.max(ABS_MIN, Math.min(ABS_MAX, n));
   }
+
+  const defColors = (
+    def &&
+    def.shared &&
+    def.shared.convertedRowColors &&
+    typeof def.shared.convertedRowColors === 'object'
+  ) ? def.shared.convertedRowColors : {};
+  const rawColors = (
+    obj &&
+    obj.shared &&
+    obj.shared.convertedRowColors &&
+    typeof obj.shared.convertedRowColors === 'object'
+  ) ? obj.shared.convertedRowColors : {};
+  out.shared = {
+    convertedRowColors: {
+      iconColor: normalizeCssColor(rawColors.iconColor, defColors.iconColor || '#2f7d50'),
+      iconBackground: normalizeCssColor(rawColors.iconBackground, defColors.iconBackground || '#f0f8f1'),
+      stickyBackground: normalizeCssColor(rawColors.stickyBackground, defColors.stickyBackground || '#ffffff'),
+      convertedBackground: normalizeCssColor(rawColors.convertedBackground, defColors.convertedBackground || '#f9fcfa'),
+    },
+  };
 
   if (Array.isArray(obj.pages)) {
     for (const rawPage of obj.pages) {

@@ -494,14 +494,29 @@ body.side-panel-open {
   }
 }
 .grid-row .grid-cell.converted-row {
+  position: relative;
+  padding-left: 40px !important;
   border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important;
-  background: linear-gradient(90deg, #d8ecdb 0%, #f3f9f4 100%) !important;
+  background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
+}
+.grid-row.converted .grid-cell {
+  background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
+  border-color: var(--kexo-converted-icon-bg, #f0f8f1) !important;
 }
 .grid-row .grid-cell.converted-row .converted-row-sale-icon {
-  color: #2f7d50;
-  margin-right: .45rem;
+  color: var(--kexo-converted-icon-color, #2f7d50);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: -webkit-fill-available;
+  background: var(--kexo-converted-icon-bg, #f0f8f1);
+  display: grid;
+  place-items: center;
+  vertical-align: middle;
+  align-content: center;
+  text-align: center;
   font-size: .85rem;
-  vertical-align: -0.05em;
 }
 
 .grid-cell.sortable {
@@ -594,7 +609,7 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
-  background: var(--tblr-bg-surface, #fff) !important;
+  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff)) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   box-shadow:
     6px 0 16px -4px rgba(15, 23, 42, 0.2);
@@ -623,6 +638,11 @@ body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row:hover .
 body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row:hover .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .table-responsive table tbody tr:hover td:nth-child(2) {
   background: var(--row-hover, rgba(var(--tblr-primary-rgb), .024)) !important;
+}
+body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2),
+body:not([data-page="settings"]) .table-responsive table tbody tr.converted:hover td:nth-child(2) {
+  background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell,

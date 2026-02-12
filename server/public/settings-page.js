@@ -30,6 +30,8 @@
   var insightsWarningsModalBackdropEl = null;
   var insightsMergeModalBackdropEl = null;
   var insightsMergeContext = null;
+  var layoutTablesColorsModalBackdropEl = null;
+  var tablesConvertedColorsDraft = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -652,9 +654,37 @@
     };
   }
 
+  function defaultConvertedRowColors() {
+    return {
+      iconColor: '#2f7d50',
+      iconBackground: '#f0f8f1',
+      stickyBackground: '#ffffff',
+      convertedBackground: '#f9fcfa',
+    };
+  }
+
+  function normalizeConvertedRowColors(raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    var def = defaultConvertedRowColors();
+    function normalizeHex(value, fallback) {
+      var s = value == null ? '' : String(value).trim();
+      if (/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
+      return fallback;
+    }
+    return {
+      iconColor: normalizeHex(src.iconColor, def.iconColor),
+      iconBackground: normalizeHex(src.iconBackground, def.iconBackground),
+      stickyBackground: normalizeHex(src.stickyBackground, def.stickyBackground),
+      convertedBackground: normalizeHex(src.convertedBackground, def.convertedBackground),
+    };
+  }
+
   function defaultTablesUiConfigV1() {
     return {
       v: 1,
+      shared: {
+        convertedRowColors: defaultConvertedRowColors(),
+      },
       pages: [
         {
           key: 'dashboard',
@@ -998,6 +1028,7 @@
     var root = document.getElementById('settings-layout-tables-root');
     if (!root) return;
     var c = cfg && typeof cfg === 'object' ? cfg : defaultTablesUiConfigV1();
+    tablesConvertedColorsDraft = normalizeConvertedRowColors(c && c.shared && c.shared.convertedRowColors);
     var pages = Array.isArray(c.pages) ? c.pages.slice() : [];
     pages.sort(function (a, b) {
       var al = a && a.label ? String(a.label).toLowerCase() : '';
@@ -1009,11 +1040,12 @@
 
     var html = '' +
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">' +
-        '<div class="text-muted small">Edit each table per page: name, rows-per-page options + default, sticky column bounds, and whether it lives in a grid.</div>' +
+        '<div class="text-muted small">Each section is grouped by page so table settings are easier to scan and edit one row at a time.</div>' +
         '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Coming later">Add table\u2026</button>' +
-      '</div>';
+      '</div>' +
+      '<div class="accordion settings-layout-accordion" id="settings-layout-tables-accordion">';
 
-    pages.forEach(function (page) {
+    pages.forEach(function (page, pageIdx) {
       if (!page || typeof page !== 'object') return;
       var pageKey = page.key != null ? String(page.key).trim().toLowerCase() : '';
       if (!pageKey) return;
@@ -1048,70 +1080,89 @@
         var defaultOptsHtml = (rowOptions.length ? rowOptions : [defaultRows]).map(function (n) {
           return '<option value="' + String(n) + '"' + (Number(n) === Number(defaultRows) ? ' selected' : '') + '>' + String(n) + '</option>';
         }).join('');
+        var hasSharedColorsBtn = tableId.toLowerCase() === 'sessions-table' && (pageKey === 'live' || pageKey === 'sales' || pageKey === 'date');
+        var colorsButtonHtml = hasSharedColorsBtn
+          ? '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="table-colors" data-colors-target-label="' + escapeHtml(label) + '"><i class="fa-solid fa-palette me-1" aria-hidden="true"></i>Colors</button>'
+          : '';
 
         rowsHtml += '' +
-          '<tr data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
-            '<td style="min-width:200px">' +
-              '<input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '">' +
-              '<div class="text-muted small mt-1">' +
-                '<code>' + escapeHtml(tableId) + '</code>' +
-                (tableClass ? ' \u00b7 class <code>' + escapeHtml(tableClass) + '</code>' : '') +
-                (zone ? ' \u00b7 zone <code>' + escapeHtml(zone) + '</code>' : '') +
+          '<div class="card card-sm mb-3 settings-layout-table-card" data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
+            '<div class="card-header d-flex align-items-start justify-content-between flex-wrap gap-2">' +
+              '<div>' +
+                '<h4 class="card-title mb-1">' + escapeHtml(name) + '</h4>' +
+                '<div class="text-muted small">' +
+                  '<code>' + escapeHtml(tableId) + '</code>' +
+                  (tableClass ? ' \u00b7 class <code>' + escapeHtml(tableClass) + '</code>' : '') +
+                  (zone ? ' \u00b7 zone <code>' + escapeHtml(zone) + '</code>' : '') +
+                '</div>' +
               '</div>' +
-            '</td>' +
-            '<td style="min-width:260px">' +
-              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-                '<span class="text-muted small">Default</span>' +
-                '<select class="form-select form-select-sm" style="max-width:110px" data-field="rows-default">' + defaultOptsHtml + '</select>' +
-                '<span class="text-muted small ms-1">Options</span>' +
-                '<input type="text" class="form-control form-control-sm" style="max-width:190px" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5,10,15,20,25">' +
+              '<div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">' +
+                colorsButtonHtml +
+                '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+                  '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+                  '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+                '</div>' +
               '</div>' +
-            '</td>' +
-            '<td style="min-width:190px">' +
-              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-                '<input type="number" class="form-control form-control-sm" style="max-width:96px" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '">' +
-                '<span class="text-muted small">\u2192</span>' +
-                '<input type="number" class="form-control form-control-sm" style="max-width:96px" data-field="sticky-max" placeholder="auto" value="' + (stickyMax == null ? '' : escapeHtml(String(stickyMax))) + '">' +
-                '<span class="text-muted small">px</span>' +
+            '</div>' +
+            '<div class="card-body">' +
+              '<div class="row g-3">' +
+                '<div class="col-12">' +
+                  '<label class="form-label mb-1">Display name</label>' +
+                  '<input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label mb-1">Rows options</label>' +
+                  '<input type="text" class="form-control form-control-sm" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5, 10, 15, 20">' +
+                  '<div class="text-muted small mt-1">Comma-separated values.</div>' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label mb-1">Default rows</label>' +
+                  '<select class="form-select form-select-sm" data-field="rows-default">' + defaultOptsHtml + '</select>' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label mb-1">Sticky min width (px)</label>' +
+                  '<input type="number" class="form-control form-control-sm" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '">' +
+                '</div>' +
+                '<div class="col-12 col-md-6">' +
+                  '<label class="form-label mb-1">Sticky max width (px)</label>' +
+                  '<input type="number" class="form-control form-control-sm" data-field="sticky-max" placeholder="auto" value="' + (stickyMax == null ? '' : escapeHtml(String(stickyMax))) + '">' +
+                '</div>' +
+                '<div class="col-12">' +
+                  '<label class="form-check form-switch m-0">' +
+                    '<input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '>' +
+                    '<span class="form-check-label small ms-2">Keep in grid layout</span>' +
+                  '</label>' +
+                  '<div class="text-muted small mt-1">Disable to force full-width layout.</div>' +
+                '</div>' +
               '</div>' +
-              '<div class="text-muted small mt-1">Leave blank for auto sizing.</div>' +
-            '</td>' +
-            '<td style="min-width:120px">' +
-              '<label class="form-check form-switch m-0">' +
-                '<input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '>' +
-                '<span class="form-check-label small ms-2">Grid</span>' +
-              '</label>' +
-            '</td>' +
-            '<td class="text-end w-1">' +
-              '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-                '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-                '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
-              '</div>' +
-            '</td>' +
-          '</tr>';
+            '</div>' +
+          '</div>';
       });
 
+      var collapseId = 'settings-layout-page-' + pageKey.replace(/[^a-z0-9_-]/g, '-');
+      var headingId = collapseId + '-heading';
+      var isOpen = pageIdx === 0;
       html += '' +
-        '<div class="card card-sm mb-3" data-layout-page="' + escapeHtml(pageKey) + '">' +
-          '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
-            '<h4 class="card-title mb-0">' + escapeHtml(label) + '</h4>' +
-            '<div class="text-muted small"><code>' + escapeHtml(pageKey) + '</code></div>' +
-          '</div>' +
-          '<div class="table-responsive">' +
-            '<table class="table table-sm table-vcenter mb-0">' +
-              '<thead><tr>' +
-                '<th>Table</th>' +
-                '<th>Rows</th>' +
-                '<th>Sticky column</th>' +
-                '<th>Layout</th>' +
-                '<th class="text-end w-1">Order</th>' +
-              '</tr></thead>' +
-              '<tbody data-layout-page-key="' + escapeHtml(pageKey) + '">' + (rowsHtml || '<tr><td colspan="5" class="text-secondary small">No tables found.</td></tr>') + '</tbody>' +
-            '</table>' +
+        '<div class="accordion-item" data-layout-page="' + escapeHtml(pageKey) + '">' +
+          '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+            '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
+              '<span class="d-flex align-items-center justify-content-between w-100 gap-2">' +
+                '<span>' + escapeHtml(label) + '</span>' +
+                '<span class="text-muted small"><code>' + escapeHtml(pageKey) + '</code></span>' +
+              '</span>' +
+            '</button>' +
+          '</h2>' +
+          '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#settings-layout-tables-accordion">' +
+            '<div class="accordion-body">' +
+              '<div data-layout-page-block="1" data-layout-page-key="' + escapeHtml(pageKey) + '">' +
+                (rowsHtml || '<div class="text-secondary small">No tables found.</div>') +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>';
     });
 
+    html += '</div>';
     root.innerHTML = html;
     wireReorderButtons(root);
 
@@ -1122,7 +1173,7 @@
         var target = e && e.target ? e.target : null;
         if (!target) return;
         if (target.matches && target.matches('input[data-field="rows-options"]')) {
-          var row = target.closest ? target.closest('tr[data-layout-table-id]') : null;
+          var row = target.closest ? target.closest('[data-layout-table-id]') : null;
           if (row) updateDefaultRowsSelectForRow(row);
         }
       });
@@ -1130,7 +1181,7 @@
         var target = e && e.target ? e.target : null;
         if (!target) return;
         if (target.matches && target.matches('input[data-field="rows-options"]')) {
-          var row = target.closest ? target.closest('tr[data-layout-table-id]') : null;
+          var row = target.closest ? target.closest('[data-layout-table-id]') : null;
           if (row) updateDefaultRowsSelectForRow(row);
         }
       });
@@ -1139,15 +1190,21 @@
 
   function buildTablesUiConfigFromDom() {
     var root = document.getElementById('settings-layout-tables-root');
-    var out = { v: 1, pages: [] };
+    var out = {
+      v: 1,
+      shared: {
+        convertedRowColors: normalizeConvertedRowColors(tablesConvertedColorsDraft),
+      },
+      pages: [],
+    };
     if (!root) return out;
 
-    var pageBodies = Array.prototype.slice.call(root.querySelectorAll('tbody[data-layout-page-key]'));
+    var pageBodies = Array.prototype.slice.call(root.querySelectorAll('[data-layout-page-block="1"][data-layout-page-key]'));
     pageBodies.forEach(function (tbody) {
       var pageKey = (tbody.getAttribute('data-layout-page-key') || '').trim().toLowerCase();
       if (!pageKey) return;
       var page = { key: pageKey, tables: [] };
-      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-layout-table-id]'));
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('[data-layout-table-id]'));
       rows.forEach(function (tr, idx) {
         var tableId = (tr.getAttribute('data-layout-table-id') || '').trim();
         if (!tableId) return;
@@ -1192,27 +1249,130 @@
     return out;
   }
 
+  function setLayoutTablesMsg(text, ok) {
+    var msgEl = document.getElementById('settings-layout-tables-msg');
+    if (!msgEl) return;
+    msgEl.textContent = text || '';
+    msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  function ensureLayoutTablesColorsBackdrop() {
+    if (layoutTablesColorsModalBackdropEl && document.body.contains(layoutTablesColorsModalBackdropEl)) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    layoutTablesColorsModalBackdropEl = el;
+  }
+
+  function removeLayoutTablesColorsBackdrop() {
+    if (!layoutTablesColorsModalBackdropEl) return;
+    try { layoutTablesColorsModalBackdropEl.remove(); } catch (_) {}
+    layoutTablesColorsModalBackdropEl = null;
+  }
+
+  function closeLayoutTablesColorsModal() {
+    var modal = document.getElementById('settings-layout-colors-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    removeLayoutTablesColorsBackdrop();
+  }
+
+  function openLayoutTablesColorsModal(sourceLabel) {
+    var modal = document.getElementById('settings-layout-colors-modal');
+    if (!modal) return;
+    var colors = normalizeConvertedRowColors(tablesConvertedColorsDraft);
+    tablesConvertedColorsDraft = colors;
+
+    var sourceEl = document.getElementById('settings-layout-colors-source');
+    if (sourceEl) sourceEl.textContent = sourceLabel ? String(sourceLabel) : 'Dashboard sessions tables';
+
+    var iconColor = modal.querySelector('input[data-layout-color="iconColor"]');
+    var iconBg = modal.querySelector('input[data-layout-color="iconBackground"]');
+    var stickyBg = modal.querySelector('input[data-layout-color="stickyBackground"]');
+    var convertedBg = modal.querySelector('input[data-layout-color="convertedBackground"]');
+    if (iconColor) iconColor.value = colors.iconColor;
+    if (iconBg) iconBg.value = colors.iconBackground;
+    if (stickyBg) stickyBg.value = colors.stickyBackground;
+    if (convertedBg) convertedBg.value = colors.convertedBackground;
+
+    var msgEl = document.getElementById('settings-layout-colors-msg');
+    if (msgEl) msgEl.textContent = '';
+
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+    ensureLayoutTablesColorsBackdrop();
+  }
+
+  function wireLayoutTablesColorsModal() {
+    var root = document.getElementById('settings-layout-tables-root');
+    var modal = document.getElementById('settings-layout-colors-modal');
+    var saveBtn = document.getElementById('settings-layout-colors-save-btn');
+    if (!root || !modal || !saveBtn) return;
+
+    if (root.getAttribute('data-layout-colors-wired') !== '1') {
+      root.setAttribute('data-layout-colors-wired', '1');
+      root.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        var btn = target && target.closest ? target.closest('button[data-action="table-colors"]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        openLayoutTablesColorsModal(btn.getAttribute('data-colors-target-label') || '');
+      });
+    }
+
+    if (modal.getAttribute('data-layout-colors-modal-wired') === '1') return;
+    modal.setAttribute('data-layout-colors-modal-wired', '1');
+
+    modal.addEventListener('click', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target) return;
+      if (target === modal) {
+        closeLayoutTablesColorsModal();
+        return;
+      }
+      if (target.closest && target.closest('[data-close-layout-colors]')) {
+        closeLayoutTablesColorsModal();
+      }
+    });
+
+    saveBtn.addEventListener('click', function () {
+      var next = normalizeConvertedRowColors({
+        iconColor: (modal.querySelector('input[data-layout-color="iconColor"]') || {}).value,
+        iconBackground: (modal.querySelector('input[data-layout-color="iconBackground"]') || {}).value,
+        stickyBackground: (modal.querySelector('input[data-layout-color="stickyBackground"]') || {}).value,
+        convertedBackground: (modal.querySelector('input[data-layout-color="convertedBackground"]') || {}).value,
+      });
+      tablesConvertedColorsDraft = next;
+      setLayoutTablesMsg('Colors updated. Click Save to persist.', true);
+      closeLayoutTablesColorsModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (!e || e.key !== 'Escape') return;
+      if (!modal.classList.contains('show')) return;
+      closeLayoutTablesColorsModal();
+    });
+  }
+
   function wireLayoutTablesSaveReset() {
     var saveBtn = document.getElementById('settings-layout-tables-save-btn');
     var resetBtn = document.getElementById('settings-layout-tables-reset-btn');
-    var msgEl = document.getElementById('settings-layout-tables-msg');
     if (!saveBtn || !resetBtn) return;
-
-    function setMsg(t, ok) {
-      if (!msgEl) return;
-      msgEl.textContent = t || '';
-      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
-    }
 
     saveBtn.addEventListener('click', function () {
       var cfg = buildTablesUiConfigFromDom();
-      setMsg('Saving\u2026', true);
+      setLayoutTablesMsg('Saving\u2026', true);
       saveSettings({ tablesUiConfig: cfg })
         .then(function (r) {
           if (r && r.ok) {
             tablesUiConfigCache = r.tablesUiConfig || cfg;
             try { localStorage.setItem('kexo:tables-ui-config:v1', JSON.stringify(tablesUiConfigCache)); } catch (_) {}
-            setMsg('Saved.', true);
+            setLayoutTablesMsg('Saved.', true);
             try {
               if (window && typeof window.dispatchEvent === 'function') {
                 window.dispatchEvent(new CustomEvent('kexo:tablesUiConfigUpdated', { detail: tablesUiConfigCache }));
@@ -1220,15 +1380,15 @@
             } catch (_) {}
             renderLayoutTablesUiPanel(tablesUiConfigCache);
           } else {
-            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+            setLayoutTablesMsg((r && r.error) ? String(r.error) : 'Save failed', false);
           }
         })
-        .catch(function () { setMsg('Save failed', false); });
+        .catch(function () { setLayoutTablesMsg('Save failed', false); });
     });
 
     resetBtn.addEventListener('click', function () {
       renderLayoutTablesUiPanel(defaultTablesUiConfigV1());
-      setMsg('Defaults loaded. Press Save to apply.', true);
+      setLayoutTablesMsg('Defaults loaded. Press Save to apply.', true);
     });
   }
 
@@ -2460,7 +2620,7 @@
       if (!btn) return;
       var action = btn.getAttribute('data-action') || '';
       if (action !== 'up' && action !== 'down') return;
-      var row = btn.closest('tr[data-kpi-key], tr[data-range-key], tr[data-layout-table-id]');
+      var row = btn.closest('tr[data-kpi-key], tr[data-range-key], [data-layout-table-id]');
       if (!row) return;
       e.preventDefault();
       moveRow(row, action);
@@ -2690,6 +2850,7 @@
     wireInsightsVariantsMergeModal();
     wireInsightsVariantsWarningsModal();
     wireChartsSaveReset();
+    wireLayoutTablesColorsModal();
     wireLayoutTablesSaveReset();
   }
 

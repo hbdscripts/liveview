@@ -396,10 +396,31 @@
     .grid-row.returning { background: var(--returning-bg); }
     .grid-row.converted { background: var(--converted-hover); }
     .grid-row.converted:hover { background: var(--converted-hover); }
-    .grid-row.converted .grid-cell { font-weight: 500; }
+    .grid-row.converted .grid-cell { font-weight: 500; background: var(--kexo-converted-cell-bg, #f9fcfa) !important; border-color: var(--kexo-converted-icon-bg, #f0f8f1) !important; }
     .grid-row.converted .grid-cell:first-child { box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
-    .grid-row .grid-cell.converted-row { border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important; background: linear-gradient(90deg, #d8ecdb 0%, #f3f9f4 100%) !important; }
-    .grid-row .grid-cell.converted-row .converted-row-sale-icon { color: #2f7d50; margin-right: .45rem; font-size: .85rem; vertical-align: -0.05em; }
+    .grid-row .grid-cell.converted-row {
+      position: relative;
+      padding-left: 40px !important;
+      border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important;
+      background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
+    }
+    .grid-row .grid-cell.converted-row .converted-row-sale-icon {
+      color: var(--kexo-converted-icon-color, #2f7d50);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 30px;
+      height: -webkit-fill-available;
+      background: var(--kexo-converted-icon-bg, #f0f8f1);
+      display: grid;
+      place-items: center;
+      vertical-align: middle;
+      align-content: center;
+      text-align: center;
+      font-size: .85rem;
+    }
+    .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child { background: var(--kexo-sticky-cell-bg, #fff) !important; }
+    .table-scroll-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2) { background: var(--kexo-converted-cell-bg, #f9fcfa) !important; }
 
     /* Column alignment: keep first column left, rest centered */
     .grid-table .grid-cell:not(:first-child) { text-align: center; }
