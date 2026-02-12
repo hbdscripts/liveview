@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (styles defaults updated + variants save sync fix)
+Last updated: 2026-02-12 (variants mapping issues modal + CR coverage diagnostics + dedicated icon keys)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -233,3 +233,5 @@ Ops/reliability:
 - Fixed Variants page first-load UX: disabled generic app loader path for `data-page="variants"` and added a script-level fail-safe that hides stale loader overlays; empty state now includes a **Configure variants** button linking to `Settings → Insights`.
 - Updated default Styles mappings to: Style 1, Style 2, Style 3, Satellite, Belcher, Anchor (removed prior chain defaults like cable/curb/figaro/rope/etc).
 - Fixed Settings → Insights → Variants save reliability by syncing all editor field values from DOM at save time (prevents stale draft data from being re-saved when users edit and immediately click Save).
+- Variants mapping-issue badge is now clickable and opens a modal with unmapped/ambiguous variant examples plus mapped coverage summary (sessions/orders/revenue) to help diagnose unusually high CR%.
+- Added dedicated icon keys for Insights → Variants table headers (`table-icon-variants-*`) so each column icon is individually configurable in Settings → Theme → Icons.

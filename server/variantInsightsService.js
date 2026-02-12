@@ -9,6 +9,7 @@ const {
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', '14d', '30d', 'month'];
 const BOT_FILTER_SQL = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
+const DIAGNOSTIC_EXAMPLE_LIMIT = 120;
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -331,6 +332,9 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     const rowMap = new Map();
     const unmapped = [];
     const ambiguous = [];
+    const mappedTotals = { sessions: 0, orders: 0, revenue: 0 };
+    const unmappedTotals = { sessions: 0, orders: 0, revenue: 0 };
+    const ambiguousTotals = { sessions: 0, orders: 0, revenue: 0 };
     for (const variant of byVariant.values()) {
       const title = variant && variant.variant_title ? String(variant.variant_title) : '';
       const classified = classifyTitleForTable(table, title);
@@ -349,6 +353,9 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
         current.orders += variant && variant.orders != null ? Number(variant.orders) || 0 : 0;
         current.revenue += variant && variant.revenue != null ? Number(variant.revenue) || 0 : 0;
         rowMap.set(key, current);
+        mappedTotals.sessions += variant && variant.sessions != null ? Number(variant.sessions) || 0 : 0;
+        mappedTotals.orders += variant && variant.orders != null ? Number(variant.orders) || 0 : 0;
+        mappedTotals.revenue += variant && variant.revenue != null ? Number(variant.revenue) || 0 : 0;
       } else if (classified.kind === 'unmapped') {
         unmapped.push({
           variant_id: variant.variant_id,
@@ -357,6 +364,9 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
           orders: variant.orders || 0,
           revenue: Math.round((Number(variant.revenue) || 0) * 100) / 100,
         });
+        unmappedTotals.sessions += variant.sessions || 0;
+        unmappedTotals.orders += variant.orders || 0;
+        unmappedTotals.revenue += variant.revenue || 0;
       } else if (classified.kind === 'ambiguous') {
         ambiguous.push({
           variant_id: variant.variant_id,
@@ -366,6 +376,9 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
           revenue: Math.round((Number(variant.revenue) || 0) * 100) / 100,
           matches: classified.matches.map((m) => ({ id: m.id, label: m.label })),
         });
+        ambiguousTotals.sessions += variant.sessions || 0;
+        ambiguousTotals.orders += variant.orders || 0;
+        ambiguousTotals.revenue += variant.revenue || 0;
       }
     }
 
@@ -394,8 +407,26 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
       tableName: table.name,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
-      unmappedExamples: unmapped.slice(0, 20),
-      ambiguousExamples: ambiguous.slice(0, 20),
+      exampleLimit: DIAGNOSTIC_EXAMPLE_LIMIT,
+      totals: {
+        mapped: {
+          sessions: Math.round(mappedTotals.sessions),
+          orders: Math.round(mappedTotals.orders),
+          revenue: Math.round((mappedTotals.revenue || 0) * 100) / 100,
+        },
+        unmapped: {
+          sessions: Math.round(unmappedTotals.sessions),
+          orders: Math.round(unmappedTotals.orders),
+          revenue: Math.round((unmappedTotals.revenue || 0) * 100) / 100,
+        },
+        ambiguous: {
+          sessions: Math.round(ambiguousTotals.sessions),
+          orders: Math.round(ambiguousTotals.orders),
+          revenue: Math.round((ambiguousTotals.revenue || 0) * 100) / 100,
+        },
+      },
+      unmappedExamples: unmapped.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
+      ambiguousExamples: ambiguous.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
     });
 
     outTables.push({

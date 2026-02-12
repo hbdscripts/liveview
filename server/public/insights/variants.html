@@ -29,6 +29,10 @@
       flex: 1 1 520px;
       min-width: 320px;
     }
+    #tab-panel-variants .variants-issues-trigger {
+      cursor: pointer;
+      line-height: 1.2;
+    }
   </style>
 </head>
 <body class="" data-page="variants">
@@ -51,6 +55,24 @@
             <h3 class="card-title">Variants</h3>
           </div>
           <div class="card-body text-secondary" id="variants-loading-note">Loading variant tables…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal modal-blur fade" id="variants-issues-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="variants-issues-title">Mapping issues</h3>
+          <button type="button" class="btn-close" aria-label="Close" data-close-variants-issues></button>
+        </div>
+        <div class="modal-body" id="variants-issues-body">
+          <div class="text-secondary">Loading issue details…</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-variants-issues>Close</button>
+          <a href="/settings?tab=insights" class="btn btn-primary">Configure variants</a>
         </div>
       </div>
     </div>

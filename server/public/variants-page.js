@@ -85,17 +85,19 @@
       '<div class="stats-card card" id="' + escapeHtml(cardId) + '" data-table-class="dashboard" data-table-zone="variants-' + escapeHtml(safeId) + '" data-table-id="' + escapeHtml(tableId) + '">' +
         '<div class="card-header d-flex align-items-center justify-content-between">' +
           '<h3 class="card-title">' + escapeHtml(title) + '</h3>' +
-          (hasWarnings ? '<span class="badge bg-warning-lt text-warning" title="' + escapeHtml(warningText) + '">' + escapeHtml(String(unmappedCount + ambiguousCount)) + ' mapping issues</span>' : '') +
+          (hasWarnings
+            ? '<button type="button" class="badge bg-warning-lt text-warning border-0 variants-issues-trigger" data-table-safe-id="' + escapeHtml(safeId) + '" title="' + escapeHtml(warningText) + '">' + escapeHtml(String(unmappedCount + ambiguousCount)) + ' mapping issues</button>'
+            : '') +
         '</div>' +
         '<div class="country-table-wrap" id="' + escapeHtml(wrapId) + '">' +
           '<div id="' + escapeHtml(tableId) + '" class="grid-table by-country-table best-variants-table" role="table" aria-label="' + escapeHtml(title) + '">' +
             '<div class="grid-header kexo-grid-header" role="rowgroup">' +
               '<div class="grid-row grid-row--header" role="row">' +
-                '<div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Variant"><span class="th-label-long">Variant</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-hand-pointer" data-icon-key="table-icon-clicks" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-cr" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>' +
+                '<div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Variant"><span class="th-label-long">Variant</span><span class="th-label-short"><i class="fa-jelly-filled fa-shapes" data-icon-key="table-icon-variants-variant" aria-hidden="true"></i></span></div>' +
+                '<div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-variants-sessions" aria-hidden="true"></i></span></div>' +
+                '<div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-variants-orders" aria-hidden="true"></i></span></div>' +
+                '<div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-variants-cr" aria-hidden="true"></i></span></div>' +
+                '<div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-variants-revenue" aria-hidden="true"></i></span></div>' +
               '</div>' +
             '</div>' +
             '<div id="' + escapeHtml(bodyId) + '" class="grid-body" role="rowgroup">' +
@@ -125,6 +127,127 @@
     var n = Number(value);
     if (!Number.isFinite(n)) return '—';
     return '&pound;' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function formatCoveragePct(part, total) {
+    var p = Number(part);
+    var t = Number(total);
+    if (!Number.isFinite(p) || !Number.isFinite(t) || t <= 0) return '—';
+    return ((p / t) * 100).toFixed(1) + '%';
+  }
+
+  var issuesModalBackdropEl = null;
+  function closeIssuesModal() {
+    var modal = document.getElementById('variants-issues-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (issuesModalBackdropEl && issuesModalBackdropEl.parentNode) {
+      issuesModalBackdropEl.parentNode.removeChild(issuesModalBackdropEl);
+    }
+    issuesModalBackdropEl = null;
+  }
+
+  function ensureIssuesModalBackdrop() {
+    if (issuesModalBackdropEl && issuesModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    issuesModalBackdropEl = el;
+  }
+
+  function renderIssueRows(items, includeMatches) {
+    var list = Array.isArray(items) ? items : [];
+    if (!list.length) return '<div class="text-secondary">No examples.</div>';
+    var rows = list.map(function (item) {
+      var title = item && item.variant_title ? String(item.variant_title) : 'Unknown variant';
+      var sessions = item && item.sessions != null ? formatInt(item.sessions) : '0';
+      var orders = item && item.orders != null ? formatInt(item.orders) : '0';
+      var revenue = item && item.revenue != null ? formatMoney(item.revenue) : '£0';
+      var matches = '';
+      if (includeMatches) {
+        var rawMatches = Array.isArray(item && item.matches) ? item.matches : [];
+        matches = rawMatches.map(function (m) {
+          if (!m) return '';
+          return m.label || m.id || '';
+        }).filter(Boolean).join(', ');
+      }
+      return '' +
+        '<tr>' +
+          '<td>' + escapeHtml(title) + '</td>' +
+          '<td class="text-end">' + escapeHtml(sessions) + '</td>' +
+          '<td class="text-end">' + escapeHtml(orders) + '</td>' +
+          '<td class="text-end">' + revenue + '</td>' +
+          (includeMatches ? '<td>' + escapeHtml(matches || '—') + '</td>' : '') +
+        '</tr>';
+    }).join('');
+    return '' +
+      '<div class="table-responsive">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+          '<thead>' +
+            '<tr>' +
+              '<th>Variant title</th>' +
+              '<th class="text-end">Sessions</th>' +
+              '<th class="text-end">Orders</th>' +
+              '<th class="text-end">Rev</th>' +
+              (includeMatches ? '<th>Matched rules</th>' : '') +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
+  function openIssuesModal(tableState) {
+    var modal = document.getElementById('variants-issues-modal');
+    var titleEl = document.getElementById('variants-issues-title');
+    var bodyEl = document.getElementById('variants-issues-body');
+    if (!modal || !titleEl || !bodyEl || !tableState) return;
+
+    var diag = tableState.diagnostics || {};
+    var tableName = tableState.name || tableState.id || 'Variants';
+    var unmapped = Array.isArray(diag.unmappedExamples) ? diag.unmappedExamples : [];
+    var ambiguous = Array.isArray(diag.ambiguousExamples) ? diag.ambiguousExamples : [];
+    var totals = diag && diag.totals ? diag.totals : {};
+    var mappedTotals = totals && totals.mapped ? totals.mapped : {};
+    var unmappedTotals = totals && totals.unmapped ? totals.unmapped : {};
+    var ambiguousTotals = totals && totals.ambiguous ? totals.ambiguous : {};
+    var totalSessions = (Number(mappedTotals.sessions) || 0) + (Number(unmappedTotals.sessions) || 0) + (Number(ambiguousTotals.sessions) || 0);
+    var totalOrders = (Number(mappedTotals.orders) || 0) + (Number(unmappedTotals.orders) || 0) + (Number(ambiguousTotals.orders) || 0);
+    var totalRevenue = (Number(mappedTotals.revenue) || 0) + (Number(unmappedTotals.revenue) || 0) + (Number(ambiguousTotals.revenue) || 0);
+    var mappedCr = (Number(mappedTotals.sessions) || 0) > 0
+      ? ((Number(mappedTotals.orders) || 0) / Number(mappedTotals.sessions) * 100).toFixed(1) + '%'
+      : '—';
+    var exampleLimit = Number(diag.exampleLimit) || 0;
+    var unmappedCount = Number(diag.unmappedCount) || 0;
+    var ambiguousCount = Number(diag.ambiguousCount) || 0;
+
+    titleEl.textContent = tableName + ' mapping issues';
+    bodyEl.innerHTML = '' +
+      '<div class="mb-3">' +
+        '<div class="fw-semibold mb-1">Coverage snapshot for this table</div>' +
+        '<div class="text-secondary small">High CR can happen when mapped coverage is low (orders/sessions outside mapped rules are excluded from rows).</div>' +
+      '</div>' +
+      '<div class="row g-2 mb-3">' +
+        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped sessions</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.sessions || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.sessions || 0, totalSessions)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped orders</div><div class="fw-semibold">' + escapeHtml(formatInt(mappedTotals.orders || 0)) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.orders || 0, totalOrders)) + ')</span></div></div></div>' +
+        '<div class="col-12 col-md-4"><div class="border rounded p-2"><div class="text-muted small">Mapped revenue</div><div class="fw-semibold">' + formatMoney(mappedTotals.revenue || 0) + ' <span class="text-muted small">(' + escapeHtml(formatCoveragePct(mappedTotals.revenue || 0, totalRevenue)) + ')</span></div></div></div>' +
+      '</div>' +
+      '<div class="mb-3"><span class="badge bg-primary-lt me-2">Current mapped CR: ' + escapeHtml(mappedCr) + '</span><span class="badge bg-warning-lt text-warning me-2">' + escapeHtml(String(unmappedCount)) + ' unmapped</span><span class="badge bg-warning-lt text-warning">' + escapeHtml(String(ambiguousCount)) + ' ambiguous</span></div>' +
+      '<h4 class="mb-2">Unmapped variants</h4>' +
+      renderIssueRows(unmapped, false) +
+      (unmappedCount > unmapped.length && exampleLimit > 0 ? '<div class="text-muted small mt-2">Showing top ' + escapeHtml(String(unmapped.length)) + ' of ' + escapeHtml(String(unmappedCount)) + ' unmapped variants.</div>' : '') +
+      '<h4 class="mb-2 mt-4">Ambiguous variants</h4>' +
+      renderIssueRows(ambiguous, true) +
+      (ambiguousCount > ambiguous.length && exampleLimit > 0 ? '<div class="text-muted small mt-2">Showing top ' + escapeHtml(String(ambiguous.length)) + ' of ' + escapeHtml(String(ambiguousCount)) + ' ambiguous variants.</div>' : '');
+
+    ensureIssuesModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
   function cmpText(a, b, dir) {
@@ -284,6 +407,7 @@
   function renderAllTables(payload) {
     var root = document.getElementById('variants-tables-row');
     if (!root) return;
+    closeIssuesModal();
     var tables = payload && Array.isArray(payload.tables) ? payload.tables : [];
     if (!tables.length) {
       root.innerHTML = '' +
@@ -407,6 +531,36 @@
   }
 
   function bindGlobalListeners() {
+    var root = document.getElementById('variants-tables-row');
+    if (root && root.getAttribute('data-variants-issues-bound') !== '1') {
+      root.setAttribute('data-variants-issues-bound', '1');
+      root.addEventListener('click', function (e) {
+        var btn = e && e.target && e.target.closest ? e.target.closest('.variants-issues-trigger[data-table-safe-id]') : null;
+        if (!btn) return;
+        var safeId = btn.getAttribute('data-table-safe-id') || '';
+        if (!safeId) return;
+        var tableState = state.tables.find(function (t) { return t && t.safeId === safeId; });
+        if (!tableState) return;
+        openIssuesModal(tableState);
+      });
+    }
+
+    var modal = document.getElementById('variants-issues-modal');
+    if (modal && modal.getAttribute('data-variants-modal-bound') !== '1') {
+      modal.setAttribute('data-variants-modal-bound', '1');
+      modal.addEventListener('click', function (e) {
+        if (!e || !e.target) return;
+        if (e.target === modal) closeIssuesModal();
+        var closeBtn = e.target.closest ? e.target.closest('[data-close-variants-issues]') : null;
+        if (closeBtn) closeIssuesModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        closeIssuesModal();
+      });
+    }
+
     var dateSelect = document.getElementById('global-date-select');
     if (dateSelect && dateSelect.getAttribute('data-variants-bound') !== '1') {
       dateSelect.setAttribute('data-variants-bound', '1');
