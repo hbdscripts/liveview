@@ -929,19 +929,21 @@
     if (details.stage === 'coverage') {
       var tables = Array.isArray(details.tables) ? details.tables : [];
       html += '<div class="alert alert-danger mb-3">';
-      html += '<div class="fw-semibold mb-2">Cannot save: unmapped or ambiguous variants found</div>';
+      html += '<div class="fw-semibold mb-2">Cannot save: unmapped variants found</div>';
       if (typeof details.observedCount === 'number') {
         html += '<div class="text-secondary small mb-2">Validated against ' + escapeHtml(String(details.observedCount)) + ' recent variant titles.</div>';
       }
       tables.forEach(function (table) {
         if (!table) return;
         var ignoredCount = Number(table.ignoredCount) || 0;
+        var resolvedCount = Number(table.resolvedCount) || 0;
         var unmappedCount = Number(table.unmappedCount) || 0;
         var ambiguousCount = Number(table.ambiguousCount) || 0;
         if (unmappedCount <= 0 && ambiguousCount <= 0) return;
         html += '<div class="mb-2"><strong>' + escapeHtml(table.tableName || table.tableId || 'Table') + '</strong>: ' +
           escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous' +
-          (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') + '</div>';
+          (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') +
+          (resolvedCount > 0 ? ' (' + escapeHtml(String(resolvedCount)) + ' overlap-resolved)' : '') + '</div>';
         var unmapped = Array.isArray(table.unmappedExamples) ? table.unmappedExamples.slice(0, 6) : [];
         var ambiguous = Array.isArray(table.ambiguousExamples) ? table.ambiguousExamples.slice(0, 6) : [];
         if (unmapped.length) {
@@ -1118,7 +1120,7 @@
     var html = '' +
       '<div id="settings-insights-variants-errors"></div>' +
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-        '<div class="text-muted small">Define table rows by aliases. Includes are required; excludes are optional.</div>' +
+        '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties).</div>' +
         '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
       '</div>';
 
@@ -1141,17 +1143,16 @@
           '<div class="text-muted small mb-2">Key: <code>' + escapeHtml(table.id || '') + '</code></div>' +
           '<div class="table-responsive">' +
             '<table class="table table-sm table-vcenter mb-0">' +
-              '<thead><tr><th style="min-width:160px">Output</th><th style="min-width:220px">Include aliases</th><th style="min-width:220px">Exclude aliases</th><th class="text-end w-1">Actions</th></tr></thead>' +
+              '<thead><tr><th style="min-width:160px">Output</th><th style="min-width:220px">Include aliases</th><th class="text-end w-1">Actions</th></tr></thead>' +
               '<tbody>';
 
       if (!rules.length) {
-        html += '<tr><td colspan="4" class="text-secondary small">No rules yet.</td></tr>';
+        html += '<tr><td colspan="3" class="text-secondary small">No rules yet.</td></tr>';
       } else {
         rules.forEach(function (rule, ruleIdx) {
           html += '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
             '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
             '<td><textarea class="form-control form-control-sm" rows="2" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
-            '<td><textarea class="form-control form-control-sm" rows="2" data-field="rule-exclude" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.exclude || []).join('\n')) + '</textarea></td>' +
             '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button></td>' +
           '</tr>';
         });
@@ -1227,10 +1228,8 @@
         var rIdx = tr.getAttribute('data-rule-idx');
         var labelEl = tr.querySelector('input[data-field="rule-label"]');
         var includeEl = tr.querySelector('textarea[data-field="rule-include"]');
-        var excludeEl = tr.querySelector('textarea[data-field="rule-exclude"]');
         if (labelEl) updateDraftValue(tIdx, rIdx, 'rule-label', labelEl.value, false);
         if (includeEl) updateDraftValue(tIdx, rIdx, 'rule-include', includeEl.value, false);
-        if (excludeEl) updateDraftValue(tIdx, rIdx, 'rule-exclude', excludeEl.value, false);
       });
     });
 

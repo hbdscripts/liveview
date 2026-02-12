@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 16;
+const DEFINITIONS_VERSION = 17;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -296,7 +296,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     id: 'insights_variants_tables',
     page: 'Variants',
     name: 'Variants insight tables (custom mappings)',
-    ui: { elementIds: ['variants-tables-row'] },
+    ui: { elementIds: ['variants-tables-row', 'variants-all-stats-btn', 'variants-all-stats-modal'] },
     endpoint: { method: 'GET', path: '/api/insights-variants', params: ['shop=...', 'range=...'] },
     sources: [
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Truth orders/revenue by variant_id + variant_title (paid line items, converted to GBP)' },
@@ -312,8 +312,9 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Rev', value: 'SUM(line_revenue) for mapped variant_ids (GBP)' },
     ],
     math: [
-      { name: 'Mapping model', value: 'Rule matching is alias include + optional exclude; exactly one rule per variant title is expected.' },
-      { name: 'Validation', value: 'Settings save is blocked when enabled tables have unmapped or ambiguous recent variant titles.' },
+      { name: 'Mapping model', value: 'Rule matching is alias include; overlap is auto-resolved by most-specific include token (ties use rule order).' },
+      { name: 'Validation', value: 'Settings save is blocked for unmapped titles (ignores excluded). Overlap-resolved counts are diagnostic context, not a blocking category.' },
+      { name: 'Attribution caveat', value: 'Sessions depend on landing URLs with ?variant=<id>; default-option landings without variant param can under-attribute variant sessions.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['settings', 'sessions', 'orders_shopify_line_items'], shopifyToken: false },

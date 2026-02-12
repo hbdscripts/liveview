@@ -268,20 +268,48 @@ function ruleMatchesTitle(rule, preparedTitle) {
   return true;
 }
 
+function ruleSpecificityForTitle(rule, preparedTitle) {
+  if (!rule || !Array.isArray(rule.include) || !rule.include.length) return 0;
+  let best = 0;
+  for (const incRaw of rule.include) {
+    const inc = normalizeToken(incRaw);
+    if (!inc) continue;
+    if (!tokenMatches(preparedTitle, inc)) continue;
+    const score = inc.replace(/\s+/g, '').length;
+    if (score > best) best = score;
+  }
+  return best;
+}
+
 function classifyTitleForTable(table, variantTitle) {
   const prepared = normalizeTitle(variantTitle);
   const rules = Array.isArray(table && table.rules) ? table.rules : [];
   const matches = [];
-  for (const rule of rules) {
-    if (ruleMatchesTitle(rule, prepared)) matches.push(rule);
-  }
-  if (matches.length === 1) {
-    return { kind: 'matched', rule: matches[0] };
+  for (let i = 0; i < rules.length; i += 1) {
+    const rule = rules[i];
+    if (!ruleMatchesTitle(rule, prepared)) continue;
+    matches.push({
+      rule,
+      index: i,
+      specificity: ruleSpecificityForTitle(rule, prepared),
+    });
   }
   if (matches.length === 0) {
     return { kind: 'unmapped', matches: [] };
   }
-  return { kind: 'ambiguous', matches };
+  matches.sort((a, b) => {
+    const spec = (Number(b.specificity) || 0) - (Number(a.specificity) || 0);
+    if (spec !== 0) return spec;
+    return (Number(a.index) || 0) - (Number(b.index) || 0);
+  });
+  const winner = matches[0];
+  return {
+    kind: 'matched',
+    rule: winner.rule,
+    resolved: matches.length > 1,
+    specificity: winner.specificity || 0,
+    matches: matches.map((entry) => entry.rule),
+  };
 }
 
 function configHash(config) {
@@ -357,6 +385,7 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
 
   for (const table of tables) {
     const unmapped = [];
+    const resolved = [];
     const ambiguous = [];
     const ignored = [];
     const ignoredSet = new Set(normalizeIgnoredList(table && table.ignored));
@@ -377,6 +406,16 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
           orders: row && row.orders != null ? Number(row.orders) || 0 : 0,
           revenue: row && row.revenue != null ? Number(row.revenue) || 0 : 0,
         });
+      } else if (classified.kind === 'matched' && classified.resolved) {
+        resolved.push({
+          variant_title: title,
+          orders: row && row.orders != null ? Number(row.orders) || 0 : 0,
+          revenue: row && row.revenue != null ? Number(row.revenue) || 0 : 0,
+          chosen: classified.rule && classified.rule.label ? String(classified.rule.label) : '',
+          matches: Array.isArray(classified.matches)
+            ? classified.matches.map((r) => ({ id: r.id, label: r.label }))
+            : [],
+        });
       } else if (classified.kind === 'ambiguous') {
         ambiguous.push({
           variant_title: title,
@@ -391,6 +430,7 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
     }
 
     ignored.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
+    resolved.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     unmapped.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     ambiguous.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
 
@@ -398,14 +438,16 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
       tableId: table.id,
       tableName: table.name,
       ignoredCount: ignored.length,
+      resolvedCount: resolved.length,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
       ignoredExamples: ignored.slice(0, maxExamples),
+      resolvedExamples: resolved.slice(0, maxExamples),
       unmappedExamples: unmapped.slice(0, maxExamples),
       ambiguousExamples: ambiguous.slice(0, maxExamples),
     };
     result.tables.push(tableResult);
-    if (tableResult.unmappedCount > 0 || tableResult.ambiguousCount > 0) {
+    if (tableResult.unmappedCount > 0) {
       result.ok = false;
     }
   }

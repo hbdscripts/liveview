@@ -59,13 +59,14 @@ async function getInsightsVariants(req, res) {
           configVersion: variantsConfig && variantsConfig.v ? variantsConfig.v : 1,
           tables: payload && Array.isArray(payload.tables) ? payload.tables : [],
           diagnostics: payload && Array.isArray(payload.diagnostics) ? payload.diagnostics : [],
+          attribution: payload && payload.attribution ? payload.attribution : null,
         };
       }
     );
 
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('Vary', 'Cookie');
-    return res.json(cached && cached.ok ? cached.data : { ok: true, range, tables: [], diagnostics: [] });
+    return res.json(cached && cached.ok ? cached.data : { ok: true, range, tables: [], diagnostics: [], attribution: null });
   } catch (err) {
     console.error('[insights-variants]', err);
     return res.status(500).json({ error: 'Failed to fetch variants insights' });

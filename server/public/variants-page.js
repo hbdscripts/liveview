@@ -14,6 +14,7 @@
     loading: false,
     loaded: false,
     ignoreSaving: false,
+    lastPayload: null,
   };
 
   function dismissGlobalPageLoader() {
@@ -158,6 +159,39 @@
     el.className = isError ? 'small text-danger mb-2' : 'small text-secondary mb-2';
   }
 
+  function bucketTotals(diag, bucketName) {
+    var totals = diag && diag.totals ? diag.totals : {};
+    var bucket = totals && totals[bucketName] ? totals[bucketName] : {};
+    return {
+      sessions: Number(bucket.sessions) || 0,
+      orders: Number(bucket.orders) || 0,
+      revenue: Number(bucket.revenue) || 0,
+    };
+  }
+
+  function summarizeTableDiagnostic(diag) {
+    var mapped = bucketTotals(diag, 'mapped');
+    var resolved = bucketTotals(diag, 'resolved');
+    var ignored = bucketTotals(diag, 'ignored');
+    var unmapped = bucketTotals(diag, 'unmapped');
+    var ambiguous = bucketTotals(diag, 'ambiguous');
+    var totalSessions = mapped.sessions + ignored.sessions + unmapped.sessions + ambiguous.sessions;
+    var totalOrders = mapped.orders + ignored.orders + unmapped.orders + ambiguous.orders;
+    var totalRevenue = mapped.revenue + ignored.revenue + unmapped.revenue + ambiguous.revenue;
+    return {
+      tableId: diag && diag.tableId ? String(diag.tableId) : '',
+      tableName: diag && diag.tableName ? String(diag.tableName) : (diag && diag.tableId ? String(diag.tableId) : 'Table'),
+      mapped: mapped,
+      resolved: resolved,
+      ignored: ignored,
+      unmapped: unmapped,
+      ambiguous: ambiguous,
+      totalSessions: totalSessions,
+      totalOrders: totalOrders,
+      totalRevenue: totalRevenue,
+    };
+  }
+
   var issuesModalBackdropEl = null;
   function closeIssuesModal() {
     var modal = document.getElementById('variants-issues-modal');
@@ -229,6 +263,7 @@
     var titleEl = document.getElementById('variants-issues-title');
     var bodyEl = document.getElementById('variants-issues-body');
     if (!modal || !titleEl || !bodyEl || !tableState) return;
+    closeAllStatsModal();
 
     var diag = tableState.diagnostics || {};
     var tableName = tableState.name || tableState.id || 'Variants';
@@ -278,6 +313,106 @@
     modal.setAttribute('aria-hidden', 'false');
     try { document.body.classList.add('modal-open'); } catch (_) {}
     setIssuesStatus('', false);
+  }
+
+  var allStatsModalBackdropEl = null;
+  function closeAllStatsModal() {
+    var modal = document.getElementById('variants-all-stats-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (allStatsModalBackdropEl && allStatsModalBackdropEl.parentNode) {
+      allStatsModalBackdropEl.parentNode.removeChild(allStatsModalBackdropEl);
+    }
+    allStatsModalBackdropEl = null;
+  }
+
+  function ensureAllStatsModalBackdrop() {
+    if (allStatsModalBackdropEl && allStatsModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    allStatsModalBackdropEl = el;
+  }
+
+  function buildAllStatsModalHtml(payload) {
+    var data = payload && typeof payload === 'object' ? payload : {};
+    var diagnostics = Array.isArray(data.diagnostics) ? data.diagnostics : [];
+    if (!diagnostics.length) return '<div class="text-secondary">No diagnostics available for this range yet.</div>';
+    var summaries = diagnostics.map(function (diag) { return summarizeTableDiagnostic(diag); });
+    var attribution = data && data.attribution ? data.attribution : null;
+    var attributionHtml = '';
+    if (attribution) {
+      var productEntrySessions = Number(attribution.productEntrySessions) || 0;
+      var variantParamValidSessions = Number(attribution.variantParamSessionsValid) || 0;
+      var coveragePct = attribution.variantParamCoveragePct != null
+        ? String(Number(attribution.variantParamCoveragePct).toFixed(1)) + '%'
+        : '—';
+      attributionHtml = '' +
+        '<div class="mb-3 p-2 border rounded">' +
+          '<div class="fw-semibold mb-1">Session attribution coverage</div>' +
+          '<div class="text-secondary small mb-2">Default option traffic often lacks ?variant=. This can undercount mapped sessions for default length/style.</div>' +
+          '<div class="d-flex flex-wrap gap-2">' +
+            '<span class="badge bg-dark-lt">Product entry sessions: ' + escapeHtml(formatInt(productEntrySessions)) + '</span>' +
+            '<span class="badge bg-dark-lt">Valid ?variant sessions: ' + escapeHtml(formatInt(variantParamValidSessions)) + '</span>' +
+            '<span class="badge bg-dark-lt">Coverage: ' + escapeHtml(coveragePct) + '</span>' +
+          '</div>' +
+        '</div>';
+    }
+
+    var totalsRows = summaries.map(function (row) {
+      return '' +
+        '<tr>' +
+          '<td>' + escapeHtml(row.tableName) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.totalSessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.totalOrders)) + '</td>' +
+          '<td class="text-end">' + formatMoney(row.totalRevenue) + '</td>' +
+        '</tr>';
+    }).join('');
+    var coverageRows = summaries.map(function (row) {
+      return '' +
+        '<tr>' +
+          '<td>' + escapeHtml(row.tableName) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.totalSessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.mapped.sessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.ignored.sessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.unmapped.sessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.resolved.sessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatCoveragePct(row.mapped.sessions, row.totalSessions)) + '</td>' +
+        '</tr>';
+    }).join('');
+    return '' +
+      attributionHtml +
+      '<h4 class="mb-2">All Variant Totals</h4>' +
+      '<div class="table-responsive mb-3">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+          '<thead><tr><th>Table</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">Rev</th></tr></thead>' +
+          '<tbody>' + totalsRows + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<h4 class="mb-2">Mapped Coverage (Sessions)</h4>' +
+      '<div class="table-responsive">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th></tr></thead>' +
+          '<tbody>' + coverageRows + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="text-secondary small mt-2">Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>';
+  }
+
+  function openAllStatsModal() {
+    var modal = document.getElementById('variants-all-stats-modal');
+    var body = document.getElementById('variants-all-stats-body');
+    if (!modal || !body) return;
+    closeIssuesModal();
+    body.innerHTML = buildAllStatsModalHtml(state.lastPayload || {});
+    ensureAllStatsModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
   function cmpText(a, b, dir) {
@@ -438,6 +573,7 @@
     var root = document.getElementById('variants-tables-row');
     if (!root) return;
     closeIssuesModal();
+    state.lastPayload = payload && typeof payload === 'object' ? payload : { tables: [], diagnostics: [], attribution: null };
     var tables = payload && Array.isArray(payload.tables) ? payload.tables : [];
     if (!tables.length) {
       root.innerHTML = '' +
@@ -648,6 +784,33 @@
         if (!e || e.key !== 'Escape') return;
         if (!modal.classList.contains('show')) return;
         closeIssuesModal();
+      });
+    }
+
+    var allStatsBtn = document.getElementById('variants-all-stats-btn');
+    if (allStatsBtn && allStatsBtn.getAttribute('data-variants-bound') !== '1') {
+      allStatsBtn.setAttribute('data-variants-bound', '1');
+      allStatsBtn.addEventListener('click', function () {
+        openAllStatsModal();
+      });
+    }
+
+    var allStatsModal = document.getElementById('variants-all-stats-modal');
+    if (allStatsModal && allStatsModal.getAttribute('data-variants-modal-bound') !== '1') {
+      allStatsModal.setAttribute('data-variants-modal-bound', '1');
+      allStatsModal.addEventListener('click', function (e) {
+        if (!e || !e.target) return;
+        if (e.target === allStatsModal) {
+          closeAllStatsModal();
+          return;
+        }
+        var closeBtn = e.target.closest ? e.target.closest('[data-close-variants-all-stats]') : null;
+        if (closeBtn) closeAllStatsModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!allStatsModal.classList.contains('show')) return;
+        closeAllStatsModal();
       });
     }
 

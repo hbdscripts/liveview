@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (charts/ads/diagnostics reliability pass)
+Last updated: 2026-02-12 (variants auto-overlap + all-variant stats modal)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -220,6 +220,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Variants mapping now auto-resolves overlap by specificity/order (most specific include wins; ties use rule order), reducing reliance on manual exclude maintenance.
+- Variants settings save-blocking now targets unmapped titles; overlap-resolved cases are reported as diagnostics context rather than a hard-block category.
+- Settings -> Insights -> Variants editor copy now explains auto-managed overlap and no longer presents `Exclude aliases` as required manual mapping input.
+- Insights -> Variants now has header actions for **Variant Settings** and **All Variant Stats**, plus a new All Variant Stats modal with table-level totals and mapped-coverage-by-sessions diagnostics.
+- Variants diagnostics payload now includes overlap-resolved totals/examples and session-attribution coverage (`?variant=` coverage against product-entry sessions) to highlight default-option attribution gaps.
 
 2026-02-12 (latest)
 - Countries -> Country + Product no longer hard-caps to top 3 products per country in backend output; table row selector can now surface larger datasets (bounded by a global safety cap).

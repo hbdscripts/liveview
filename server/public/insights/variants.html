@@ -49,6 +49,12 @@
         <div class="page-pretitle">Insights</div>
         <h2 class="page-title">Variants</h2>
       </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <a class="btn btn-outline-secondary" href="/settings?tab=insights">Variant Settings</a>
+          <button type="button" class="btn btn-primary" id="variants-all-stats-btn">All Variant Stats</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -78,6 +84,24 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close-variants-issues>Close</button>
           <a href="/settings?tab=insights" class="btn btn-primary text-white">Configure variants</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal modal-blur fade" id="variants-all-stats-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="variants-all-stats-title">All Variant Stats</h3>
+          <button type="button" class="btn-close" aria-label="Close" data-close-variants-all-stats></button>
+        </div>
+        <div class="modal-body" id="variants-all-stats-body">
+          <div class="text-secondary">Loading stats…</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-variants-all-stats>Close</button>
+          <a href="/settings?tab=insights" class="btn btn-primary text-white">Variant Settings</a>
         </div>
       </div>
     </div>

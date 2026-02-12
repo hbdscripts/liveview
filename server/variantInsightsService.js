@@ -18,6 +18,12 @@ function clampInt(v, fallback, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+function toCount(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+}
+
 function extractVariantIdFromUrl(url) {
   const raw = typeof url === 'string' ? url.trim() : '';
   if (!raw) return null;
@@ -90,6 +96,30 @@ async function getObservedVariantsForValidation({ shop, start, end, maxRows = 20
     `,
     [safeShop, start, end]
   );
+}
+
+async function getSessionAttributionSummary({ start, end } = {}) {
+  const db = getDb();
+  const query = `
+    SELECT
+      COUNT(1) AS total_sessions,
+      SUM(CASE WHEN s.entry_url IS NOT NULL AND TRIM(s.entry_url) != '' THEN 1 ELSE 0 END) AS with_entry_url_sessions,
+      SUM(CASE WHEN s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%' THEN 1 ELSE 0 END) AS product_entry_sessions,
+      SUM(CASE WHEN s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%variant=%' THEN 1 ELSE 0 END) AS variant_param_sessions
+    FROM sessions s
+    WHERE s.started_at >= ${config.dbUrl ? '$1' : '?'}
+      AND s.started_at < ${config.dbUrl ? '$2' : '?'}
+      ${BOT_FILTER_SQL}
+  `;
+  const row = config.dbUrl
+    ? await db.get(query, [start, end])
+    : await db.get(query, [start, end]);
+  return {
+    totalSessions: toCount(row && row.total_sessions),
+    withEntryUrlSessions: toCount(row && row.with_entry_url_sessions),
+    productEntrySessions: toCount(row && row.product_entry_sessions),
+    variantParamSessions: toCount(row && row.variant_param_sessions),
+  };
 }
 
 async function getVariantOrderRows({ shop, start, end } = {}) {
@@ -267,10 +297,11 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     : { v: 1, tables: [] };
   const tables = Array.isArray(configObj.tables) ? configObj.tables.filter((t) => t && t.enabled) : [];
   if (!safeShop || !safeShop.endsWith('.myshopify.com') || !tables.length) {
-    return { tables: [], diagnostics: [] };
+    return { tables: [], diagnostics: [], attribution: null };
   }
 
   const orderRows = await getVariantOrderRows({ shop: safeShop, start, end });
+  const attributionBase = await getSessionAttributionSummary({ start, end });
   const sessionsByVariant = await getVariantSessionCounts({ start, end });
   const ratesToGbp = await fx.getRatesToGbp();
 
@@ -332,6 +363,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
   for (const table of tables) {
     const rowMap = new Map();
     const ignored = [];
+    const resolved = [];
     const unmapped = [];
     const ambiguous = [];
     const ignoredSet = new Set(
@@ -340,6 +372,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
         .filter(Boolean)
     );
     const mappedTotals = { sessions: 0, orders: 0, revenue: 0 };
+    const resolvedTotals = { sessions: 0, orders: 0, revenue: 0 };
     const ignoredTotals = { sessions: 0, orders: 0, revenue: 0 };
     const unmappedTotals = { sessions: 0, orders: 0, revenue: 0 };
     const ambiguousTotals = { sessions: 0, orders: 0, revenue: 0 };
@@ -377,6 +410,22 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
         mappedTotals.sessions += variant && variant.sessions != null ? Number(variant.sessions) || 0 : 0;
         mappedTotals.orders += variant && variant.orders != null ? Number(variant.orders) || 0 : 0;
         mappedTotals.revenue += variant && variant.revenue != null ? Number(variant.revenue) || 0 : 0;
+        if (classified.resolved) {
+          resolved.push({
+            variant_id: variant.variant_id,
+            variant_title: title || `Variant ${variant.variant_id}`,
+            sessions: variant.sessions || 0,
+            orders: variant.orders || 0,
+            revenue: Math.round((Number(variant.revenue) || 0) * 100) / 100,
+            chosen: rule && rule.label ? String(rule.label) : '',
+            matches: Array.isArray(classified.matches)
+              ? classified.matches.map((m) => ({ id: m.id, label: m.label }))
+              : [],
+          });
+          resolvedTotals.sessions += variant.sessions || 0;
+          resolvedTotals.orders += variant.orders || 0;
+          resolvedTotals.revenue += variant.revenue || 0;
+        }
       } else if (classified.kind === 'unmapped') {
         unmapped.push({
           variant_id: variant.variant_id,
@@ -420,6 +469,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     }
     sortRowsByRevenue(rows);
 
+    resolved.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     ignored.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     unmapped.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     ambiguous.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
@@ -427,6 +477,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     diagnostics.push({
       tableId: table.id,
       tableName: table.name,
+      resolvedCount: resolved.length,
       ignoredCount: ignored.length,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
@@ -436,6 +487,11 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
           sessions: Math.round(mappedTotals.sessions),
           orders: Math.round(mappedTotals.orders),
           revenue: Math.round((mappedTotals.revenue || 0) * 100) / 100,
+        },
+        resolved: {
+          sessions: Math.round(resolvedTotals.sessions),
+          orders: Math.round(resolvedTotals.orders),
+          revenue: Math.round((resolvedTotals.revenue || 0) * 100) / 100,
         },
         ignored: {
           sessions: Math.round(ignoredTotals.sessions),
@@ -453,6 +509,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
           revenue: Math.round((ambiguousTotals.revenue || 0) * 100) / 100,
         },
       },
+      resolvedExamples: resolved.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       ignoredExamples: ignored.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       unmappedExamples: unmapped.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       ambiguousExamples: ambiguous.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
@@ -477,7 +534,21 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     return 0;
   });
 
-  return { tables: outTables, diagnostics };
+  let validVariantParamSessions = 0;
+  for (const count of sessionsByVariant.values()) validVariantParamSessions += toCount(count);
+  const productEntrySessions = toCount(attributionBase && attributionBase.productEntrySessions);
+  const attribution = {
+    totalSessions: toCount(attributionBase && attributionBase.totalSessions),
+    withEntryUrlSessions: toCount(attributionBase && attributionBase.withEntryUrlSessions),
+    productEntrySessions,
+    variantParamSessions: toCount(attributionBase && attributionBase.variantParamSessions),
+    variantParamSessionsValid: validVariantParamSessions,
+    variantParamCoveragePct: productEntrySessions > 0
+      ? Math.round((validVariantParamSessions / productEntrySessions) * 1000) / 10
+      : null,
+  };
+
+  return { tables: outTables, diagnostics, attribution };
 }
 
 module.exports = {

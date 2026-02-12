@@ -583,7 +583,7 @@ async function postSettings(req, res) {
           return res.status(400).json({
             ok: false,
             error: 'insights_variants_config_invalid',
-            message: 'Some variants are unmapped or ambiguous. Update aliases and try again.',
+            message: 'Some variants are still unmapped. Update includes or ignore entries and try again.',
             details: {
               stage: 'coverage',
               observedCount: Array.isArray(observed) ? observed.length : 0,
