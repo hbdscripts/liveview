@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (settings scope locked global + server-injected header theme vars + Settings KPI hidden)
+Last updated: 2026-02-12 (Charts settings tab + charts_ui_config_v1 + server-injected chart hide CSS)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -24,8 +24,8 @@ Pages (canonical, Tabler layout):
 - `server/public/traffic/device.html`
 - `server/public/integrations/google-ads.html`
 - `server/public/tools/compare-conversion-rate.html`
-- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs & Date Ranges, Diagnostics). KPIs & Date Ranges is now implemented (edits KPI labels/order/visibility for Dashboard + Header; edits date-range menu labels/availability).
-- `server/public/settings-page.js`: Settings tab switching + settings UI wiring (saves to `/api/settings`, including KPI/date-range config).
+- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs & Date Ranges, Charts, Diagnostics). KPIs & Date Ranges is implemented (edits KPI labels/order/visibility for Dashboard + Header; edits date-range menu labels/availability). Charts tab is implemented (chart types/colors/visibility).
+- `server/public/settings-page.js`: Settings tab switching + settings UI wiring (saves to `/api/settings`, including KPI/date-range config + charts config).
 - `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
 
 Shared assets:
@@ -217,6 +217,11 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-12
+- Charts settings (global):
+  - Added Settings → Charts tab to configure chart visibility, chart type (filtered per-chart), and chart colors.
+  - Stored in DB setting key `charts_ui_config_v1` (served via `GET /api/settings` as `chartsUiConfig`, saved via `POST /api/settings`).
+  - Chart cards now carry `data-kexo-chart-key="<chartKey>"` and `GET /theme-vars.css` injects `display:none!important` rules for disabled charts to prevent first-paint flicker.
+  - Map: Countries chart now supports `map-animated` vs `map-flat` modes and uses configurable accent color (prevents “black main country” complaints by allowing a fill override).
 - Icons (Theme -> Icons) rework:
   - Removed editable `Style rules` controls; icon overrides now use full Font Awesome class specs only (for example `fa-light fa-bars`).
   - Settings-page-only icons are now intentionally locked (non-editable) and forced to fixed `fa-solid` classes: `settings-tab-*` and `settings-diagnostics-*`.

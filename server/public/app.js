@@ -4162,6 +4162,12 @@ const API = '';
         setTimeout(function() { renderProductsChart(data); }, 200);
         return;
       }
+      var chartKey = 'products-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (productsChartInstance) { try { productsChartInstance.destroy(); } catch (_) {} productsChartInstance = null; }
+        el.innerHTML = '';
+        return;
+      }
 
       if (productsChartInstance) {
         productsChartInstance.destroy();
@@ -4209,9 +4215,49 @@ const API = '';
       if (!plotEl) return;
       const categories = chartRows.map(function(row) { return row.titleShort; });
 
+      var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      var palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
+
+      if (mode === 'pie') {
+        productsChartInstance = new ApexCharts(plotEl, {
+          chart: {
+            type: 'pie',
+            height: Math.max(300, chartHeight),
+            fontFamily: 'Inter, sans-serif',
+            toolbar: { show: false },
+          },
+          series: chartRows.map(function (row) { return row.revenue; }),
+          labels: categories,
+          colors: palette,
+          dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+          tooltip: {
+            custom: function(ctx) {
+              var idx = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+              var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
+              if (!row) return '';
+              var thumb = row.thumb
+                ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+                : '';
+              return '<div style="padding:8px 10px;min-width:170px;">' +
+                '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
+                  '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+                '</div>' +
+                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '—') + '</strong></div>' +
+              '</div>';
+            }
+          },
+          legend: { position: 'bottom', fontSize: '12px' },
+        });
+        productsChartInstance.render();
+        return;
+      }
+
+      var chartType = normalizeChartType(mode, 'line');
       productsChartInstance = new ApexCharts(plotEl, {
         chart: {
-          type: 'line',
+          type: chartType,
           height: chartHeight,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
@@ -4220,14 +4266,28 @@ const API = '';
           name: 'Revenue',
           data: chartRows.map(function (row) { return row.revenue; })
         }],
-        colors: ['#3eb3ab'],
-        stroke: { width: 3, curve: 'smooth' },
-        markers: { size: 4, hover: { size: 6 } },
-        fill: {
-          type: 'gradient',
-          gradient: { opacityFrom: 0.38, opacityTo: 0.08, stops: [0, 100] }
-        },
-        dataLabels: { enabled: false },
+        colors: palette,
+        stroke: { width: chartType === 'bar' ? 0 : 3, curve: 'smooth' },
+        markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
+        fill: chartType === 'bar'
+          ? { type: 'solid', opacity: 1 }
+          : { type: 'gradient', gradient: { opacityFrom: 0.38, opacityTo: 0.08, stops: [0, 100] } },
+        plotOptions: chartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
+        dataLabels: (showEndLabels && chartType === 'line') ? {
+          enabled: true,
+          formatter: function(val, ctx) {
+            try {
+              var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+              var w = ctx && ctx.w ? ctx.w : null;
+              var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+              if (dp !== last) return '';
+            } catch (_) { return ''; }
+            return formatRevenue(Number(val)) || '—';
+          },
+          style: { fontSize: '10px' },
+          background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+          offsetY: -3,
+        } : { enabled: false },
         xaxis: {
           categories: categories,
           labels: {
@@ -5006,6 +5066,16 @@ const API = '';
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
+      var chartKey = 'countries-map-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (countriesMapChartInstance) {
+          try { countriesMapChartInstance.destroy(); } catch (_) {}
+          countriesMapChartInstance = null;
+        }
+        clearCountriesFlowOverlay(el);
+        el.innerHTML = '';
+        return;
+      }
 
       if (countriesMapChartInstance) {
         try { countriesMapChartInstance.destroy(); } catch (_) {}
@@ -5038,8 +5108,32 @@ const API = '';
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        const primaryRgb = '62,179,171';
-        const primaryHex = '#3eb3ab';
+        const rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+        const isAnimated = rawMode !== 'map-flat';
+        const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
+        const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
+
+        function rgbFromColor(c) {
+          const s = String(c || '').trim();
+          let m = /^#([0-9a-f]{6})$/i.exec(s);
+          if (m) {
+            const hex = m[1];
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            return { r, g, b, rgb: r + ',' + g + ',' + b };
+          }
+          m = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})/i.exec(s);
+          if (m) {
+            const r = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+            const g = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+            const b = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+            return { r, g, b, rgb: r + ',' + g + ',' + b };
+          }
+          return { r: 62, g: 179, b: 171, rgb: '62,179,171' };
+        }
+        const rgb = rgbFromColor(accent);
+        const primaryRgb = rgb.rgb;
 
         countriesMapChartInstance = new jsVectorMap({
           selector: '#countries-map-chart',
@@ -5086,9 +5180,11 @@ const API = '';
           }
         });
 
-        setTimeout(function () {
-          try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
-        }, 140);
+        if (isAnimated) {
+          setTimeout(function () {
+            try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
+          }, 140);
+        }
       } catch (err) {
         console.error('[countries-map] map render error:', err);
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Map rendering failed</div>';
@@ -6672,6 +6768,67 @@ const API = '';
     var uiSettingsFetchedAt = 0;
     var uiSettingsInFlight = null;
     var kpiUiConfigV1 = null;
+    var chartsUiConfigV1 = null;
+    var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
+
+    // Hydrate chart prefs from localStorage so first paint uses the last saved config.
+    try {
+      var cachedCharts = safeReadLocalStorageJson(CHARTS_UI_CFG_LS_KEY);
+      if (cachedCharts && cachedCharts.v === 1 && Array.isArray(cachedCharts.charts)) {
+        chartsUiConfigV1 = cachedCharts;
+        try { window.__kexoChartsUiConfigV1 = cachedCharts; } catch (_) {}
+      }
+    } catch (_) {}
+
+    function getChartsUiItem(key) {
+      var cfg = chartsUiConfigV1;
+      if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.charts)) return null;
+      var k = String(key == null ? '' : key).trim().toLowerCase();
+      if (!k) return null;
+      for (var i = 0; i < cfg.charts.length; i++) {
+        var it = cfg.charts[i];
+        if (!it || typeof it !== 'object') continue;
+        var ik = it.key != null ? String(it.key).trim().toLowerCase() : '';
+        if (ik && ik === k) return it;
+      }
+      return null;
+    }
+
+    function isChartEnabledByUiConfig(key, fallbackEnabled) {
+      var it = getChartsUiItem(key);
+      if (it && it.enabled === false) return false;
+      return fallbackEnabled !== false;
+    }
+
+    function chartModeFromUiConfig(key, fallbackMode) {
+      var it = getChartsUiItem(key);
+      var m = it && it.mode != null ? String(it.mode).trim().toLowerCase() : '';
+      if (m) return m;
+      return String(fallbackMode || '').trim().toLowerCase() || '';
+    }
+
+    function chartColorsFromUiConfig(key, fallbackColors) {
+      var it = getChartsUiItem(key);
+      var arr = it && Array.isArray(it.colors) ? it.colors.filter(Boolean).map(function(c) { return String(c).trim(); }).filter(Boolean) : [];
+      if (arr.length) return arr;
+      return Array.isArray(fallbackColors) ? fallbackColors : [];
+    }
+
+    function chartPieMetricFromUiConfig(key, fallbackMetric) {
+      var it = getChartsUiItem(key);
+      var raw = it && it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : '';
+      if (raw === 'sessions' || raw === 'orders' || raw === 'revenue') return raw;
+      var fb = String(fallbackMetric || 'sessions').trim().toLowerCase();
+      if (fb === 'sessions' || fb === 'orders' || fb === 'revenue') return fb;
+      return 'sessions';
+    }
+
+    function applyChartsUiConfigV1(cfg) {
+      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.charts)) return;
+      chartsUiConfigV1 = cfg;
+      try { window.__kexoChartsUiConfigV1 = cfg; } catch (_) {}
+      try { safeWriteLocalStorageJson(CHARTS_UI_CFG_LS_KEY, cfg); } catch (_) {}
+    }
 
     function applyDateRangeUiConfigToSelect(sel) {
       if (!sel) return;
@@ -6892,6 +7049,7 @@ const API = '';
       var ttlMs = 5 * 60 * 1000;
       if (!force && uiSettingsCache && uiSettingsFetchedAt && (Date.now() - uiSettingsFetchedAt) < ttlMs) {
         if (options.apply && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
+        if (options.apply && uiSettingsCache.chartsUiConfig) applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
         return Promise.resolve(uiSettingsCache);
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
@@ -6902,6 +7060,7 @@ const API = '';
           uiSettingsCache = (data && data.ok) ? data : null;
           uiSettingsFetchedAt = Date.now();
           if (options.apply && uiSettingsCache && uiSettingsCache.kpiUiConfig) applyKpiUiConfigV1(uiSettingsCache.kpiUiConfig);
+          if (options.apply && uiSettingsCache && uiSettingsCache.chartsUiConfig) applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
           return uiSettingsCache;
         })
         .catch(function() { return null; })
@@ -6913,6 +7072,13 @@ const API = '';
       window.addEventListener('kexo:kpiUiConfigUpdated', function(e) {
         var cfg = e && e.detail ? e.detail : null;
         try { applyKpiUiConfigV1(cfg); } catch (_) {}
+      });
+    } catch (_) {}
+
+    try {
+      window.addEventListener('kexo:chartsUiConfigUpdated', function(e) {
+        var cfg = e && e.detail ? e.detail : null;
+        try { applyChartsUiConfigV1(cfg); } catch (_) {}
       });
     } catch (_) {}
 
@@ -7841,6 +8007,12 @@ const API = '';
         setTimeout(function() { renderChannelsChart(data); }, 200);
         return;
       }
+      var chartKey = 'channels-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
+        el.innerHTML = '';
+        return;
+      }
       if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
       if (data) channelsChartData = data;
       var d = channelsChartData;
@@ -7875,15 +8047,68 @@ const API = '';
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
         return;
       }
+
+      var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      var palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab']);
+
+      if (mode === 'pie') {
+        var metric = chartPieMetricFromUiConfig(chartKey, 'sessions');
+        var seriesArr = metric === 'revenue' ? revenues : (metric === 'orders' ? orders : sessions);
+        var yFmt = function(v) {
+          if (metric === 'revenue') return formatRevenue(Number(v)) || '—';
+          return Number(v || 0).toLocaleString();
+        };
+        el.innerHTML = '';
+        try {
+          channelsChartInstance = new ApexCharts(el, {
+            chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+            series: seriesArr,
+            labels: categories,
+            colors: palette,
+            legend: { position: 'bottom', fontSize: '12px' },
+            dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+            tooltip: { y: { formatter: yFmt } },
+          });
+          channelsChartInstance.render();
+        } catch (err) {
+          console.error('[channels] chart render error:', err);
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        }
+        return;
+      }
+
+      var chartType = normalizeChartType(mode, 'line');
       el.innerHTML = '';
       try {
         channelsChartInstance = new ApexCharts(el, {
-          chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+          chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
           series: series,
-          colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
-          stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
-          markers: { size: 3, hover: { size: 5 } },
-          dataLabels: { enabled: false },
+          colors: palette,
+          stroke: chartType === 'bar' ? { width: 0 } : { width: [3, 2.4, 2.4], curve: 'smooth' },
+          fill: chartType === 'area'
+            ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.22, opacityTo: 0.06, stops: [0, 100] } }
+            : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+          plotOptions: chartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
+          markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+          dataLabels: (showEndLabels && chartType === 'line') ? {
+            enabled: true,
+            formatter: function(val, ctx) {
+              try {
+                var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                var w = ctx && ctx.w ? ctx.w : null;
+                var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                if (dp !== last) return '';
+              } catch (_) { return ''; }
+              var idx = ctx && ctx.seriesIndex != null ? Number(ctx.seriesIndex) : 0;
+              if (idx === 2) return formatRevenue(Number(val)) || '—';
+              return Number(val || 0).toLocaleString();
+            },
+            style: { fontSize: '10px' },
+            background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+            offsetY: -3,
+          } : { enabled: false },
           xaxis: {
             categories: categories,
             labels: { style: { fontSize: '11px' }, rotate: -20, hideOverlappingLabels: false }
@@ -7949,6 +8174,12 @@ const API = '';
         setTimeout(function() { renderTypeChart(data); }, 200);
         return;
       }
+      var chartKey = 'type-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
+        el.innerHTML = '';
+        return;
+      }
       if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
       var rows = data && data.types && Array.isArray(data.types.rows) ? data.types.rows.slice() : [];
       rows = rows.filter(function(r) {
@@ -7980,15 +8211,68 @@ const API = '';
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
         return;
       }
+
+      var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      var palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab']);
+
+      if (mode === 'pie') {
+        var metric = chartPieMetricFromUiConfig(chartKey, 'sessions');
+        var seriesArr = metric === 'revenue' ? revenues : (metric === 'orders' ? orders : sessions);
+        var yFmt = function(v) {
+          if (metric === 'revenue') return formatRevenue(Number(v)) || '—';
+          return Number(v || 0).toLocaleString();
+        };
+        el.innerHTML = '';
+        try {
+          typeChartInstance = new ApexCharts(el, {
+            chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+            series: seriesArr,
+            labels: labels,
+            colors: palette,
+            legend: { position: 'bottom', fontSize: '12px' },
+            dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+            tooltip: { y: { formatter: yFmt } },
+          });
+          typeChartInstance.render();
+        } catch (err) {
+          console.error('[type] chart render error:', err);
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        }
+        return;
+      }
+
+      var chartType = normalizeChartType(mode, 'line');
       el.innerHTML = '';
       try {
         typeChartInstance = new ApexCharts(el, {
-          chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+          chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
           series: series,
-          colors: ['#4b94e4', '#f59e34', '#3eb3ab'],
-          stroke: { width: [3, 2.4, 2.4], curve: 'smooth' },
-          markers: { size: 3, hover: { size: 5 } },
-          dataLabels: { enabled: false },
+          colors: palette,
+          stroke: chartType === 'bar' ? { width: 0 } : { width: [3, 2.4, 2.4], curve: 'smooth' },
+          fill: chartType === 'area'
+            ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.22, opacityTo: 0.06, stops: [0, 100] } }
+            : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+          plotOptions: chartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
+          markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+          dataLabels: (showEndLabels && chartType === 'line') ? {
+            enabled: true,
+            formatter: function(val, ctx) {
+              try {
+                var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                var w = ctx && ctx.w ? ctx.w : null;
+                var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                if (dp !== last) return '';
+              } catch (_) { return ''; }
+              var idx = ctx && ctx.seriesIndex != null ? Number(ctx.seriesIndex) : 0;
+              if (idx === 2) return formatRevenue(Number(val)) || '—';
+              return Number(val || 0).toLocaleString();
+            },
+            style: { fontSize: '10px' },
+            background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+            offsetY: -3,
+          } : { enabled: false },
           xaxis: {
             categories: labels,
             labels: { style: { fontSize: '11px' }, rotate: -12, hideOverlappingLabels: false }
@@ -8160,6 +8444,12 @@ const API = '';
         setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
         return;
       }
+      var chartKey = 'live-online-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
+        el.innerHTML = '';
+        return;
+      }
       var allPoints = payload && Array.isArray(payload.points) ? payload.points.slice() : [];
       var viewport = 0;
       try {
@@ -8183,9 +8473,15 @@ const API = '';
         return Number.isFinite(n) ? n : 0;
       });
       el.innerHTML = '';
-      liveOnlineChart = new ApexCharts(el, {
+      var rawMode = chartModeFromUiConfig(chartKey, 'bar') || 'bar';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      chartType = normalizeChartType(chartType, 'bar');
+      var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
+
+      var apexOpts = {
         chart: {
-          type: 'bar',
+          type: chartType,
           height: 220,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
@@ -8203,17 +8499,44 @@ const API = '';
           tickAmount: 5,
           labels: { style: { fontSize: '11px' } },
         },
-        stroke: { show: false },
-        dataLabels: { enabled: false },
-        fill: { type: 'solid', opacity: 1 },
-        plotOptions: { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } },
-        markers: { size: 0 },
-        colors: ['#16a34a'],
+        colors: palette,
         tooltip: {
           y: { formatter: function(v) { return Number(v || 0).toLocaleString() + ' online'; } },
         },
         grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-      });
+      };
+
+      if (chartType === 'bar') {
+        apexOpts.stroke = { show: false };
+        apexOpts.dataLabels = { enabled: false };
+        apexOpts.fill = { type: 'solid', opacity: 1 };
+        apexOpts.plotOptions = { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } };
+        apexOpts.markers = { size: 0 };
+      } else {
+        apexOpts.stroke = { curve: 'smooth', width: 3 };
+        apexOpts.fill = chartType === 'area'
+          ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
+          : { type: 'solid', opacity: 0 };
+        apexOpts.plotOptions = {};
+        apexOpts.markers = { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } };
+        apexOpts.dataLabels = (showEndLabels && chartType === 'line') ? {
+          enabled: true,
+          formatter: function(val, ctx) {
+            try {
+              var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+              var w = ctx && ctx.w ? ctx.w : null;
+              var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+              if (dp !== last) return '';
+            } catch (_) { return ''; }
+            return Number(val || 0).toLocaleString();
+          },
+          style: { fontSize: '10px' },
+          background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+          offsetY: -3,
+        } : { enabled: false };
+      }
+
+      liveOnlineChart = new ApexCharts(el, apexOpts);
       liveOnlineChart.render();
     }
 
@@ -8245,6 +8568,12 @@ const API = '';
       if (!el) return;
       if (typeof ApexCharts === 'undefined') {
         setTimeout(function() { renderSessionsOverviewChart(payload, rangeKey); }, 180);
+        return;
+      }
+      var chartKey = PAGE === 'sales' ? 'sales-overview-chart' : 'date-overview-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (rangeOverviewChart) { try { rangeOverviewChart.destroy(); } catch (_) {} rangeOverviewChart = null; }
+        el.innerHTML = '';
         return;
       }
       var rows = payload && Array.isArray(payload.series) ? payload.series.slice() : [];
@@ -8283,11 +8612,12 @@ const API = '';
           tooltipFormatter: function(v) { return Number(v || 0).toLocaleString(); },
         };
       }
-
-      var overviewScope = PAGE === 'sales' ? 'sales-overview' : 'date-overview';
-      var overviewType = ensureChartTypeControls('sessions-overview-chart', overviewScope, 'area', function () {
-        renderSessionsOverviewChart(payload, rangeKey);
-      });
+      // Apply chart mode + palette overrides from global Charts settings.
+      var rawMode = chartModeFromUiConfig(chartKey, 'area') || 'area';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var overviewType = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      overviewType = normalizeChartType(overviewType, 'area');
+      chartCfg.colors = chartColorsFromUiConfig(chartKey, chartCfg.colors);
       el.innerHTML = '';
       rangeOverviewChart = new ApexCharts(el, {
         chart: {
@@ -8305,7 +8635,21 @@ const API = '';
           : { type: 'solid', opacity: overviewType === 'line' ? 0 : 1 },
         plotOptions: overviewType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
         markers: { size: overviewType === 'line' ? 3 : 0, hover: { size: 5 } },
-        dataLabels: { enabled: false },
+        dataLabels: (showEndLabels && overviewType === 'line') ? {
+          enabled: true,
+          formatter: function(val, ctx) {
+            try {
+              var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+              var w = ctx && ctx.w ? ctx.w : null;
+              var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+              if (dp !== last) return '';
+            } catch (_) { return ''; }
+            try { return chartCfg.tooltipFormatter(val); } catch (_) { return String(val); }
+          },
+          style: { fontSize: '10px' },
+          background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+          offsetY: -3,
+        } : { enabled: false },
         xaxis: { categories: labels, labels: { style: { fontSize: '11px' } } },
         yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: chartCfg.yFormatter } },
         tooltip: { y: { formatter: chartCfg.tooltipFormatter } },
@@ -11060,12 +11404,32 @@ const API = '';
 
         var chartScope = (opts && opts.chartScope) ? String(opts.chartScope) : ('dashboard-' + chartId);
         var defaultType = (opts && opts.chartType) || 'area';
-        var chartType = ensureChartTypeControls(chartId, chartScope, defaultType, function(nextType) {
-          var cfg = dashChartConfigs[chartId];
-          if (!cfg) return;
-          var nextOpts = Object.assign({}, cfg.opts || {}, { chartType: nextType, chartScope: chartScope });
-          makeChart(chartId, cfg.labels || [], cfg.datasets || [], nextOpts);
-        });
+        var rawMode = chartModeFromUiConfig(chartId, defaultType) || defaultType;
+        var showEndLabels = rawMode === 'multi-line-labels';
+        var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+        chartType = normalizeChartType(chartType, normalizeChartType(defaultType, 'area'));
+
+        if (!isChartEnabledByUiConfig(chartId, true)) {
+          // Chart hidden by settings: keep DOM empty and avoid rendering work.
+          try { if (dashCharts[chartId]) dashCharts[chartId].destroy(); } catch (_) {}
+          dashCharts[chartId] = null;
+          el.innerHTML = '';
+          return null;
+        }
+
+        // Apply per-chart palette overrides (maps to series order).
+        try {
+          var uiColors = chartColorsFromUiConfig(chartId, []);
+          if (uiColors && uiColors.length && Array.isArray(datasets)) {
+            datasets = datasets.map(function(ds, idx) {
+              if (!ds || typeof ds !== 'object') return ds;
+              var next = Object.assign({}, ds);
+              var c = uiColors[idx];
+              if (c) next.borderColor = c;
+              return next;
+            });
+          }
+        } catch (_) {}
 
         dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: Object.assign({}, opts || {}, { chartType: chartType, chartScope: chartScope }) };
 
@@ -11148,7 +11512,21 @@ const API = '';
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
             tooltip: { y: { formatter: yFmt } },
             legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px' },
-            dataLabels: { enabled: false },
+            dataLabels: (showEndLabels && chartType === 'line') ? {
+              enabled: true,
+              formatter: function(val, ctx) {
+                try {
+                  var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                  var w = ctx && ctx.w ? ctx.w : null;
+                  var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                  if (dp !== last) return '';
+                } catch (_) { return ''; }
+                try { return yFmt(val); } catch (_) { return String(val); }
+              },
+              style: { fontSize: '10px' },
+              background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+              offsetY: -3,
+            } : { enabled: false },
             markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };

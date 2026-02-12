@@ -9,6 +9,7 @@ const store = require('../store');
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
+const CHARTS_UI_CONFIG_V1_KEY = 'charts_ui_config_v1'; // JSON object (chart type/colors/visibility)
 const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
 
 const KPI_UI_KEYS = [
@@ -28,6 +29,39 @@ const KPI_UI_KEYS = [
 const KPI_UI_KEY_SET = new Set(KPI_UI_KEYS);
 const DATE_RANGE_UI_KEYS = ['today', 'yesterday', '7days', '14days', '30days', 'custom'];
 const DATE_RANGE_UI_KEY_SET = new Set(DATE_RANGE_UI_KEYS);
+
+const CHART_UI_KEYS = [
+  'dash-chart-revenue',
+  'dash-chart-orders',
+  'dash-chart-conv',
+  'dash-chart-sessions',
+  'dash-chart-adspend',
+  'live-online-chart',
+  'sales-overview-chart',
+  'date-overview-chart',
+  'ads-overview-chart',
+  'channels-chart',
+  'type-chart',
+  'products-chart',
+  'countries-map-chart',
+];
+const CHART_UI_KEY_SET = new Set(CHART_UI_KEYS);
+
+const CHART_ALLOWED_MODES = Object.freeze({
+  'dash-chart-revenue': ['area', 'line', 'bar', 'multi-line-labels'],
+  'dash-chart-orders': ['area', 'line', 'bar', 'multi-line-labels'],
+  'dash-chart-conv': ['area', 'line', 'bar', 'multi-line-labels'],
+  'dash-chart-sessions': ['area', 'line', 'bar', 'multi-line-labels'],
+  'dash-chart-adspend': ['area', 'line', 'bar', 'multi-line-labels'],
+  'live-online-chart': ['bar', 'line', 'area', 'multi-line-labels'],
+  'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
+  'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
+  'ads-overview-chart': ['combo', 'line', 'area', 'multi-line-labels'],
+  'channels-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
+  'type-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
+  'products-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
+  'countries-map-chart': ['map-animated', 'map-flat'],
+});
 
 function defaultKpiUiConfigV1() {
   return {
@@ -83,6 +117,27 @@ function defaultKpiUiConfigV1() {
   };
 }
 
+function defaultChartsUiConfigV1() {
+  return {
+    v: 1,
+    charts: [
+      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
+      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
+      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'] },
+      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'] },
+      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'] },
+      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'bar', colors: ['#16a34a'] },
+      { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'] },
+      { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'] },
+      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'combo', colors: ['#3eb3ab', '#ef4444', '#4b94e4'] },
+      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
+      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
+      { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
+      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-animated', colors: ['#3eb3ab'] },
+    ],
+  };
+}
+
 function safeJsonParseObject(raw) {
   try {
     if (!raw) return null;
@@ -103,6 +158,91 @@ function normalizeText(v, fallback) {
 function normalizeBool(v, fallback) {
   if (typeof v === 'boolean') return v;
   return !!fallback;
+}
+
+function normalizeChartModeForKey(key, value, fallback) {
+  const k = String(key || '').trim().toLowerCase();
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  const allowed = CHART_ALLOWED_MODES[k] || null;
+  if (allowed && allowed.includes(raw)) return raw;
+  const fb = fallback == null ? '' : String(fallback).trim().toLowerCase();
+  if (allowed && allowed.includes(fb)) return fb;
+  // Extremely defensive: pick first allowed or a safe fallback.
+  if (allowed && allowed.length) return allowed[0];
+  return 'line';
+}
+
+function normalizeColorList(rawList, defaults) {
+  const out = [];
+  const max = 6;
+  const list = Array.isArray(rawList) ? rawList : (typeof rawList === 'string' ? rawList.split(',') : []);
+  for (const item of list) {
+    if (out.length >= max) break;
+    const c = normalizeCssColor(item, '');
+    if (!c) continue;
+    out.push(c);
+  }
+  const def = Array.isArray(defaults) ? defaults : [];
+  if (!out.length) return def.slice(0, max);
+  // Fill missing slots from defaults so series colors remain stable.
+  for (let i = out.length; i < def.length && i < max; i++) {
+    const c = normalizeCssColor(def[i], '');
+    if (c) out[i] = c;
+  }
+  return out.slice(0, max);
+}
+
+function normalizePieMetric(v, fallback) {
+  const raw = v == null ? '' : String(v).trim().toLowerCase();
+  if (raw === 'sessions' || raw === 'orders' || raw === 'revenue') return raw;
+  const fb = fallback == null ? '' : String(fallback).trim().toLowerCase();
+  if (fb === 'sessions' || fb === 'orders' || fb === 'revenue') return fb;
+  return 'sessions';
+}
+
+function normalizeChartsList(rawList, defaults) {
+  const byKey = {};
+  for (const d of defaults) byKey[d.key] = d;
+  const out = [];
+  const seen = new Set();
+  if (Array.isArray(rawList)) {
+    for (const item of rawList) {
+      if (!item || typeof item !== 'object') continue;
+      const key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+      if (!CHART_UI_KEY_SET.has(key)) continue;
+      if (seen.has(key)) continue;
+      const def = byKey[key] || { key, label: key, enabled: true, mode: 'line', colors: [] };
+      const mode = normalizeChartModeForKey(key, item.mode, def.mode);
+      const normalized = {
+        key,
+        label: normalizeText(item.label, def.label),
+        enabled: normalizeBool(item.enabled, def.enabled),
+        mode,
+        colors: normalizeColorList(item.colors, def.colors),
+      };
+      // Optional: pie metric (only meaningful for pie-capable charts)
+      if ((CHART_ALLOWED_MODES[key] || []).includes('pie')) {
+        normalized.pieMetric = normalizePieMetric(item.pieMetric, def.pieMetric || 'sessions');
+      }
+      out.push(normalized);
+      seen.add(key);
+    }
+  }
+  for (const d of defaults) {
+    if (seen.has(d.key)) continue;
+    out.push({ ...d });
+  }
+  return out;
+}
+
+function normalizeChartsUiConfigV1(raw) {
+  const def = defaultChartsUiConfigV1();
+  const obj = safeJsonParseObject(raw);
+  if (!obj || obj.v !== 1) return def;
+  return {
+    v: 1,
+    charts: normalizeChartsList(obj.charts, def.charts),
+  };
 }
 
 function normalizeKpiList(rawList, defaults) {
@@ -212,6 +352,7 @@ async function readSettingsPayload() {
   let pixelSessionMode = 'legacy';
   let assetOverrides = {};
   let kpiUiConfig = defaultKpiUiConfigV1();
+  let chartsUiConfig = defaultChartsUiConfigV1();
   let settingsScopeMode = 'global';
   try {
     pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
@@ -235,6 +376,10 @@ async function readSettingsPayload() {
     const raw = await store.getSetting(KPI_UI_CONFIG_V1_KEY);
     kpiUiConfig = normalizeKpiUiConfigV1(raw);
   } catch (_) {}
+  try {
+    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    chartsUiConfig = normalizeChartsUiConfigV1(raw);
+  } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
@@ -244,6 +389,7 @@ async function readSettingsPayload() {
     assetOverrides,
     reporting,
     kpiUiConfig,
+    chartsUiConfig,
   };
 }
 
@@ -322,6 +468,22 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save KPI UI config' });
+    }
+  }
+
+  // Charts UI config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'chartsUiConfig')) {
+    try {
+      if (body.chartsUiConfig == null) {
+        await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, '');
+      } else {
+        const normalized = normalizeChartsUiConfigV1(body.chartsUiConfig);
+        const json = JSON.stringify(normalized);
+        if (json.length > 80000) throw new Error('Charts UI config too large');
+        await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save charts config' });
     }
   }
 
@@ -700,8 +862,45 @@ async function getThemeVarsCss(req, res) {
     '',
   ].join('\n');
 
+  // Chart visibility (hide disabled chart cards before paint).
+  let chartsCss = '';
+  try {
+    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const cfg = normalizeChartsUiConfigV1(raw);
+    const disabled = (cfg && cfg.v === 1 && Array.isArray(cfg.charts)) ? cfg.charts.filter((c) => c && c.enabled === false) : [];
+    const rules = [];
+    disabled.forEach((c) => {
+      const key = c && c.key != null ? String(c.key).trim().toLowerCase() : '';
+      if (!key) return;
+      // NOTE: HTML uses data-kexo-chart-key="<key>" on the wrapper we want to hide.
+      rules.push(`[data-kexo-chart-key="${key}"]{display:none!important;}`);
+    });
+
+    // Dashboard overview: when one of a pair is disabled, expand the remaining chart to full width.
+    function enabled(key) {
+      const k = String(key || '').trim().toLowerCase();
+      const it = (cfg && Array.isArray(cfg.charts)) ? cfg.charts.find((x) => x && String(x.key || '').trim().toLowerCase() === k) : null;
+      return !(it && it.enabled === false);
+    }
+    function maybeFullWidth(a, b) {
+      const aOn = enabled(a);
+      const bOn = enabled(b);
+      if (aOn && !bOn) {
+        rules.push(`[data-kexo-chart-key="${String(a).trim().toLowerCase()}"]{flex:0 0 auto!important;width:100%!important;max-width:100%!important;}`);
+      } else if (bOn && !aOn) {
+        rules.push(`[data-kexo-chart-key="${String(b).trim().toLowerCase()}"]{flex:0 0 auto!important;width:100%!important;max-width:100%!important;}`);
+      }
+    }
+    maybeFullWidth('dash-chart-revenue', 'dash-chart-orders');
+    maybeFullWidth('dash-chart-conv', 'dash-chart-sessions');
+
+    if (rules.length) {
+      chartsCss = ['/* KEXO: server-injected chart visibility */', ...rules, ''].join('\n');
+    }
+  } catch (_) {}
+
   res.setHeader('Cache-Control', 'no-store');
-  res.type('text/css').send(css);
+  res.type('text/css').send(css + (chartsCss ? ('\n' + chartsCss) : ''));
 }
 
 module.exports = {

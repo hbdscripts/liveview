@@ -13,6 +13,7 @@
   } catch (_) {}
 
   var kpiUiConfigCache = null;
+  var chartsUiConfigCache = null;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -22,6 +23,7 @@
     integrations: 'settings-panel-integrations',
     sources: 'settings-panel-sources',
     kpis: 'settings-panel-kpis',
+    charts: 'settings-panel-charts',
     diagnostics: 'settings-panel-diagnostics',
   };
 
@@ -303,6 +305,7 @@
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
         kpiUiConfigCache = data.kpiUiConfig || null;
+        chartsUiConfigCache = data.chartsUiConfig || null;
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
         var scopeUser = document.getElementById('settings-scope-user');
@@ -326,6 +329,7 @@
         });
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
+        try { renderChartsUiPanel(chartsUiConfigCache); } catch (_) {}
       })
       .catch(function () {});
   }
@@ -430,6 +434,222 @@
         { key: 'custom', label: 'Custom\u2026', enabled: true },
       ],
     };
+  }
+
+  function defaultChartsUiConfigV1() {
+    return {
+      v: 1,
+      charts: [
+        { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
+        { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
+        { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'] },
+        { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'] },
+        { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'] },
+        { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'bar', colors: ['#16a34a'] },
+        { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'] },
+        { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'] },
+        { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'combo', colors: ['#3eb3ab', '#ef4444', '#4b94e4'] },
+        { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
+        { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
+        { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
+        { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-animated', colors: ['#3eb3ab'] },
+      ],
+    };
+  }
+
+  var CHART_MODE_LABEL = {
+    'map-animated': 'Map (animated)',
+    'map-flat': 'Map (flat)',
+    area: 'Area',
+    line: 'Line',
+    bar: 'Bar',
+    pie: 'Pie',
+    combo: 'Multiple (combo)',
+    'multi-line-labels': 'Multiple line + labels',
+  };
+
+  var CHART_META = {
+    'dash-chart-revenue': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'] },
+    'dash-chart-orders': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Orders'] },
+    'dash-chart-conv': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Kexo', 'Shopify (if available)'] },
+    'dash-chart-sessions': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions'] },
+    'dash-chart-adspend': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue', 'Ad spend'] },
+    'live-online-chart': { modes: ['bar', 'line', 'area', 'multi-line-labels'], series: ['Online now'] },
+    'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'] },
+    'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'] },
+    'ads-overview-chart': { modes: ['combo', 'line', 'area', 'multi-line-labels'], series: ['Sales', 'Spend', 'ROAS'] },
+    'channels-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true },
+    'type-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true },
+    'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'] },
+    'countries-map-chart': { modes: ['map-animated', 'map-flat'], series: ['Accent'] },
+  };
+
+  function chartMeta(key) {
+    var k = String(key || '').trim().toLowerCase();
+    return CHART_META[k] || { modes: ['line', 'area'], series: [] };
+  }
+
+  function selectOptionsHtml(modes, selected) {
+    var sel = String(selected || '').trim().toLowerCase();
+    var opts = Array.isArray(modes) ? modes : [];
+    return opts.map(function (m) {
+      var val = String(m || '').trim().toLowerCase();
+      if (!val) return '';
+      var label = CHART_MODE_LABEL[val] || val;
+      return '<option value="' + escapeHtml(val) + '"' + (val === sel ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+    }).join('');
+  }
+
+  function renderChartsUiPanel(cfg) {
+    var root = document.getElementById('settings-charts-root');
+    if (!root) return;
+    var c = cfg && typeof cfg === 'object' ? cfg : defaultChartsUiConfigV1();
+    var list = c && Array.isArray(c.charts) ? c.charts : [];
+
+    var html = '<div class="table-responsive">' +
+      '<table class="table table-sm table-vcenter mb-0">' +
+      '<thead><tr>' +
+      '<th class="w-1">On</th>' +
+      '<th>Chart</th>' +
+      '<th class="w-1">Type</th>' +
+      '<th>Colors</th>' +
+      '<th class="w-1">Pie metric</th>' +
+      '</tr></thead><tbody>';
+
+    list.forEach(function (it) {
+      if (!it || typeof it !== 'object') return;
+      var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
+      if (!key) return;
+      var label = it.label != null ? String(it.label) : key;
+      var enabled = it.enabled !== false;
+      var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
+      var colors = Array.isArray(it.colors) ? it.colors : [];
+      var meta = chartMeta(key);
+      var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
+      var series = meta && Array.isArray(meta.series) ? meta.series : [];
+      var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
+      var showPieMetric = !!(meta && meta.pieMetric);
+
+      var colorHtml = '<div class="d-flex flex-wrap gap-2">';
+      var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
+      for (var i = 0; i < count; i++) {
+        var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+        var val = colors[i] ? String(colors[i]) : '#3eb3ab';
+        if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
+        colorHtml += '<input type="color" class="form-control form-control-color" data-field="color" data-idx="' + i + '"' +
+          ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' +
+          '';
+      }
+      colorHtml += '</div>';
+
+      var pieMetricHtml = '&mdash;';
+      if (showPieMetric) {
+        pieMetricHtml =
+          '<select class="form-select form-select-sm" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
+            '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
+            '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
+            '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
+          '</select>';
+      }
+
+      html += '<tr data-chart-key="' + escapeHtml(key) + '">' +
+        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+        '<td>' +
+          '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
+          '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
+        '</td>' +
+        '<td>' +
+          '<select class="form-select form-select-sm" data-field="mode">' +
+            selectOptionsHtml(modes, mode) +
+          '</select>' +
+        '</td>' +
+        '<td>' + colorHtml + '</td>' +
+        '<td>' + pieMetricHtml + '</td>' +
+      '</tr>';
+    });
+
+    html += '</tbody></table></div>' +
+      '<div class="text-muted small mt-2">Options are filtered per chart to avoid incompatible types. For pie charts on Channels/Device, the selected metric is used.</div>';
+
+    root.innerHTML = html;
+
+    // Enable/disable pie-metric selector dynamically when mode changes.
+    root.querySelectorAll('select[data-field="mode"]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var tr = sel.closest('tr[data-chart-key]');
+        if (!tr) return;
+        var metricSel = tr.querySelector('select[data-field="pieMetric"]');
+        if (!metricSel) return;
+        metricSel.disabled = String(sel.value || '').trim().toLowerCase() !== 'pie';
+      });
+    });
+  }
+
+  function buildChartsUiConfigFromDom() {
+    var root = document.getElementById('settings-charts-root');
+    if (!root) return defaultChartsUiConfigV1();
+    var out = { v: 1, charts: [] };
+    root.querySelectorAll('tr[data-chart-key]').forEach(function (tr) {
+      var key = (tr.getAttribute('data-chart-key') || '').trim().toLowerCase();
+      if (!key) return;
+      var enabledEl = tr.querySelector('input[data-field="enabled"]');
+      var labelEl = tr.querySelector('input[data-field="label"]');
+      var modeEl = tr.querySelector('select[data-field="mode"]');
+      var metricEl = tr.querySelector('select[data-field="pieMetric"]');
+      var colors = [];
+      tr.querySelectorAll('input[data-field="color"][data-idx]').forEach(function (inp) {
+        var idx = parseInt(inp.getAttribute('data-idx') || '0', 10);
+        if (!Number.isFinite(idx) || idx < 0) idx = 0;
+        colors[idx] = (inp && inp.value) ? String(inp.value).trim() : '';
+      });
+      out.charts.push({
+        key: key,
+        enabled: !!(enabledEl && enabledEl.checked),
+        label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
+        mode: modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : 'line',
+        colors: colors.filter(function (c) { return !!c; }),
+        pieMetric: metricEl && metricEl.value != null ? String(metricEl.value).trim().toLowerCase() : undefined,
+      });
+    });
+    return out;
+  }
+
+  function wireChartsSaveReset() {
+    var saveBtn = document.getElementById('settings-charts-save-btn');
+    var resetBtn = document.getElementById('settings-charts-reset-btn');
+    var msgEl = document.getElementById('settings-charts-msg');
+    if (!saveBtn || !resetBtn) return;
+
+    function setMsg(t, ok) {
+      if (!msgEl) return;
+      msgEl.textContent = t || '';
+      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+    }
+
+    saveBtn.addEventListener('click', function () {
+      var cfg = buildChartsUiConfigFromDom();
+      setMsg('Saving\u2026', true);
+      saveSettings({ chartsUiConfig: cfg })
+        .then(function (r) {
+          if (r && r.ok) {
+            chartsUiConfigCache = r.chartsUiConfig || cfg;
+            setMsg('Saved.', true);
+            try {
+              if (window && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('kexo:chartsUiConfigUpdated', { detail: chartsUiConfigCache }));
+              }
+            } catch (_) {}
+          } else {
+            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+          }
+        })
+        .catch(function () { setMsg('Save failed', false); });
+    });
+
+    resetBtn.addEventListener('click', function () {
+      renderChartsUiPanel(defaultChartsUiConfigV1());
+      setMsg('Defaults loaded. Press Save to apply.', true);
+    });
   }
 
   function wireKpisLayoutSubTabs() {
@@ -697,6 +917,7 @@
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
     wireKpisSaveReset();
+    wireChartsSaveReset();
   }
 
   if (document.readyState === 'loading') {

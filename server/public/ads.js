@@ -210,6 +210,41 @@
   var modalChart = null;
   var chartJsLoading = null;
 
+  function getChartsUiItem(key) {
+    var cfg = null;
+    try { cfg = window.__kexoChartsUiConfigV1 || null; } catch (_) { cfg = null; }
+    if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.charts)) return null;
+    var k = String(key == null ? '' : key).trim().toLowerCase();
+    if (!k) return null;
+    for (var i = 0; i < cfg.charts.length; i++) {
+      var it = cfg.charts[i];
+      if (!it || typeof it !== 'object') continue;
+      var ik = it.key != null ? String(it.key).trim().toLowerCase() : '';
+      if (ik && ik === k) return it;
+    }
+    return null;
+  }
+
+  function isChartEnabledByUiConfig(key, fallbackEnabled) {
+    var it = getChartsUiItem(key);
+    if (it && it.enabled === false) return false;
+    return fallbackEnabled !== false;
+  }
+
+  function chartModeFromUiConfig(key, fallbackMode) {
+    var it = getChartsUiItem(key);
+    var m = it && it.mode != null ? String(it.mode).trim().toLowerCase() : '';
+    if (m) return m;
+    return String(fallbackMode || '').trim().toLowerCase() || '';
+  }
+
+  function chartColorsFromUiConfig(key, fallbackColors) {
+    var it = getChartsUiItem(key);
+    var arr = it && Array.isArray(it.colors) ? it.colors.filter(Boolean).map(function(c) { return String(c).trim(); }).filter(Boolean) : [];
+    if (arr.length) return arr;
+    return Array.isArray(fallbackColors) ? fallbackColors : [];
+  }
+
   function shortCampaignLabel(value, maxLen) {
     var raw = value == null ? '' : String(value).trim();
     var cap = Math.max(10, Number(maxLen) || 24);
@@ -235,6 +270,11 @@
     if (!el) return;
     if (typeof ApexCharts === 'undefined') {
       setTimeout(function () { renderAdsOverviewChart(summary); }, 180);
+      return;
+    }
+    var chartKey = 'ads-overview-chart';
+    if (!isChartEnabledByUiConfig(chartKey, true)) {
+      clearAdsOverviewChart('Chart disabled in Settings');
       return;
     }
     var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns.slice() : [];
@@ -270,6 +310,37 @@
     el.innerHTML = '';
 
     try {
+      var rawMode = chartModeFromUiConfig(chartKey, 'combo') || 'combo';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      var palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab', '#ef4444', '#4b94e4']);
+
+      var seriesCfg;
+      var fillCfg;
+      if (mode === 'line') {
+        seriesCfg = [
+          { name: 'Sales', type: 'line', data: salesSeries },
+          { name: 'Spend', type: 'line', data: spendSeries },
+          { name: 'ROAS', type: 'line', data: roasSeries },
+        ];
+        fillCfg = { type: 'solid', opacity: 0 };
+      } else if (mode === 'area') {
+        seriesCfg = [
+          { name: 'Sales', type: 'area', data: salesSeries },
+          { name: 'Spend', type: 'area', data: spendSeries },
+          { name: 'ROAS', type: 'area', data: roasSeries },
+        ];
+        fillCfg = { type: ['gradient', 'gradient', 'gradient'], gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } };
+      } else {
+        // Default: combo (Sales/Spend as area, ROAS as line)
+        seriesCfg = [
+          { name: 'Sales', type: 'area', data: salesSeries },
+          { name: 'Spend', type: 'area', data: spendSeries },
+          { name: 'ROAS', type: 'line', data: roasSeries },
+        ];
+        fillCfg = { type: ['gradient', 'gradient', 'solid'], gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } };
+      }
+
       adsOverviewChart = new ApexCharts(el, {
         chart: {
           type: 'line',
@@ -277,19 +348,27 @@
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
         },
-        series: [
-          { name: 'Sales', type: 'area', data: salesSeries },
-          { name: 'Spend', type: 'area', data: spendSeries },
-          { name: 'ROAS', type: 'line', data: roasSeries },
-        ],
-        colors: ['#3eb3ab', '#ef4444', '#4b94e4'],
+        series: seriesCfg,
+        colors: palette,
         stroke: { width: [2.6, 2.4, 3], curve: 'smooth' },
-        fill: {
-          type: ['gradient', 'gradient', 'solid'],
-          gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] }
-        },
+        fill: fillCfg,
         markers: { size: 3, hover: { size: 5 } },
-        dataLabels: { enabled: false },
+        dataLabels: showEndLabels ? {
+          enabled: true,
+          formatter: function(val, ctx) {
+            try {
+              var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+              var w = ctx && ctx.w ? ctx.w : null;
+              var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+              if (dp !== last) return '';
+            } catch (_) { return ''; }
+            var idx = ctx && ctx.seriesIndex != null ? Number(ctx.seriesIndex) : 0;
+            return idx === 2 ? fmtRoas(val) : fmtMoney(val, currency);
+          },
+          style: { fontSize: '10px' },
+          background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+          offsetY: -3,
+        } : { enabled: false },
         xaxis: {
           categories: categories,
           labels: {
