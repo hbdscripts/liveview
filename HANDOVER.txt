@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (product-name modal links + Product Insights upgrades)
+Last updated: 2026-02-12 (Product Insights polish + sessions landing links)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -224,6 +224,8 @@ Ops/reliability:
 2026-02-12 (latest)
 - Product names across dashboard + insights tables are now clickable links that open the large Product Insights modal; removed product image thumbnails from those tables (modal is now the primary way to view product imagery).
 - Product Insights modal now defaults to the **global** date range, shows KPI-style Clicks / Conversions / Conversion Rate, and includes a Top Countries section (when available) plus footer buttons for the storefront page + Shopify admin product page.
+- Sessions tables (`/dashboard/live`, `/dashboard/sales`, `/dashboard/table`) now show a single product link in the Landing column that opens Product Insights (no entry/exit dual view, and no landing/product thumbnails in the table).
+- Product Insights UI polish: full-width main image + horizontal thumbnail strip with arrows; Revenue + Demand charts moved to the left and collapsed by default (expand via standard card chevron).
 - API updates:
   - `/api/product-insights`: supports `14d` + `30d`, returns `topCountries` and `links.adminProductUrl`.
   - `/api/dashboard-series`: includes `handle` in `topProducts` and trending items so the frontend can open Product Insights from Dashboard tables.

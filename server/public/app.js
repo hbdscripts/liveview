@@ -545,6 +545,13 @@ const API = '';
       function restoreCollapsed(card, button, storageKey) {
         var raw = null;
         try { raw = sessionStorage.getItem(storageKey); } catch (_) { raw = null; }
+        if (raw == null) {
+          // Keep any default collapsed state already present in the DOM (useful for
+          // dynamically-inserted cards like modals).
+          var already = !!(card && card.classList && card.classList.contains('kexo-card-collapsed'));
+          setCollapsed(card, button, already, false, storageKey);
+          return;
+        }
         setCollapsed(card, button, raw === '1', false, storageKey);
       }
 
@@ -1493,164 +1500,59 @@ const API = '';
 
     function landingPageCell(s) {
       function trimStr(v) { return v != null ? String(v).trim() : ''; }
-      function normalizeToPathDual(pathVal, handleVal) {
-        var path = trimStr(pathVal);
-        var handle = trimStr(handleVal);
-        if (!path && !handle) return '';
-        if (!path && handle) path = '/products/' + handle.replace(/^\/+/, '');
-        if (path && !path.startsWith('/')) path = '/' + path;
-        try {
-          if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/';
-        } catch (_) {}
-        path = path.split('#')[0].split('?')[0];
-        path = path.replace(/\/+$/, '');
-        if (path === '') path = '/';
-        return path;
+      function normalizeHandle(v) {
+        var h = trimStr(v);
+        if (!h) return '';
+        h = h.replace(/^\/+/, '').split('#')[0].split('?')[0].trim().toLowerCase();
+        if (!h) return '';
+        return h.slice(0, 128);
       }
-      function collapseKeyDual(path) {
-        if (!path) return '';
-        if (path.indexOf('/checkouts') === 0) return '/checkouts';
-        if (path === '/cart') return '/cart';
-        if (path === '/orders' || path.indexOf('/orders/') === 0) return '/orders';
-        return path;
+      function handleFromPath(v) {
+        var raw = trimStr(v);
+        if (!raw) return '';
+        try { if (/^https?:\/\//i.test(raw)) raw = new URL(raw).pathname || ''; } catch (_) {}
+        var m = raw.match(/\/products\/([^/?#]+)/i);
+        return m && m[1] ? normalizeHandle(m[1]) : '';
       }
 
-      var entryPathDual = normalizeToPathDual(s && s.first_path, s && s.first_product_handle);
-      var exitPathDual = normalizeToPathDual(s && s.last_path, s && s.last_product_handle);
-      var entryKeyDual = collapseKeyDual(entryPathDual);
-      var exitKeyDual = collapseKeyDual(exitPathDual);
-
-      // When we have BOTH entry + exit, show them both (otherwise keep the current single-thumb layout).
-      if (entryPathDual && exitPathDual && entryKeyDual && exitKeyDual && entryKeyDual !== exitKeyDual) {
-        var mainBaseDual = getMainBaseUrl();
-        var isPurchasedDual = !!(s && s.has_purchased);
-
-        function metaForDual(path) {
-          var pathNorm = path ? path.replace(/\/+$/, '') : '';
-          var isCheckout = path && path.indexOf('/checkouts') === 0;
-          var isHomeOrOrders = path === '/' || path === '/orders' || pathNorm === '/orders' || (path && path.startsWith('/orders/'));
-          var isCart = path === '/cart' || pathNorm === '/cart';
-          var fullUrl = mainBaseDual && path ? mainBaseDual + path : '';
-          var labelText = '\u2014';
-          var thumbSrc = '';
-          if (isHomeOrOrders) {
-            labelText = path === '/' ? 'Home' : 'Viewed Order';
-            thumbSrc = HICON_URL;
-          } else if (isCart) {
-            labelText = 'Cart';
-            thumbSrc = HICON_URL;
-          } else if (isCheckout) {
-            labelText = 'Cart';
-            // Prefer a product thumb when possible (even if the session didn't purchase).
-            var ph = '';
-            try {
-              ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
-                   (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
-            } catch (_) { ph = ''; }
-            if (ph && mainBaseDual) {
-              thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBaseDual + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
-            } else {
-              thumbSrc = HICON_URL;
-            }
-          } else if (path) {
-            labelText = friendlyLabelFromPath(path) || path;
-            if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100';
-          }
-          return { fullUrl, labelText, thumbSrc };
-        }
-
-        var entryMeta = metaForDual(entryPathDual);
-        var exitMeta = metaForDual(exitPathDual);
-
-        var entryImg = entryMeta.thumbSrc
-          ? '<img class="landing-thumb" src="' + entryMeta.thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">'
-          : '';
-        var exitImg = exitMeta.thumbSrc
-          ? '<img class="landing-thumb landing-thumb-exit" src="' + exitMeta.thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">'
-          : '';
-        var thumbsInner = entryImg + exitImg;
-        var overlay = isPurchasedDual
-          ? '<span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span>'
-          : '';
-        var hasBoth = entryImg && exitImg;
-        var wrapClass = hasBoth ? 'thumb-wrap thumb-stack' : 'thumb-wrap';
-        var thumbs = thumbsInner ? ('<span class="' + wrapClass + '">' + thumbsInner + overlay + '</span>') : '';
-
-        function dirArrowSvg(kind) {
-          var isExit = kind === 'exit';
-          var cls = 'landing-dir-icon ' + (isExit ? 'landing-dir-icon-exit' : 'landing-dir-icon-entry');
-          var key = isExit ? 'live-landing-exit' : 'live-landing-entry';
-          return '<i class="fa-light fa-circle-check ' + cls + '" data-icon-key="' + key + '" aria-hidden="true"></i>';
-        }
-
-        function line(kind, meta) {
-          var isExit = kind === 'exit';
-          var prefix = isExit ? 'Exit' : 'Entry';
-          var label = meta && meta.labelText ? String(meta.labelText) : '\u2014';
-          var inner = dirArrowSvg(kind) +
-            '<span class="landing-line-text"><span class="sr-only">' + prefix + ': </span>' + escapeHtml(label) + '</span>';
-          if (meta && meta.fullUrl) {
-            return '<a class="landing-line js-landing-insights-link" data-landing-kind="' + escapeHtml(kind) + '" href="' + escapeHtml(meta.fullUrl) + '" target="_blank" rel="noopener">' + inner + '</a>';
-          }
-          return '<span class="landing-line">' + inner + '</span>';
-        }
-
-        var lines = '<div class="landing-lines">' + line('entry', entryMeta) + line('exit', exitMeta) + '</div>';
-        return '<div class="last-action-cell dual">' + thumbs + ' ' + lines + '</div>';
+      // Prefer the explicit product_handle fields; fall back to parsing /products/<handle> from paths.
+      var handle = normalizeHandle(s && s.first_product_handle) ||
+                   normalizeHandle(s && s.last_product_handle) ||
+                   handleFromPath(s && s.first_path) ||
+                   handleFromPath(s && s.last_path);
+      var mainBase = getMainBaseUrl();
+      var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+      if (handle && productUrl) {
+        var title = '';
+        try { title = friendlyLabelFromPath('/products/' + handle) || handle; } catch (_) { title = handle; }
+        title = String(title || '').trim() || handle;
+        return '<div class="last-action-cell">' +
+          '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+            ' data-product-handle="' + escapeHtml(handle) + '"' +
+            ' data-product-title="' + escapeHtml(title) + '"' +
+          '>' + escapeHtml(title) + '</a>' +
+        '</div>';
       }
 
-      var hasFirst = (s.first_path != null && s.first_path !== '') || (s.first_product_handle != null && s.first_product_handle !== '');
-      var path = (s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s.last_path != null ? s.last_path : ''))).trim();
-      var productHandle = s.first_product_handle != null && s.first_product_handle !== '' ? s.first_product_handle : (hasFirst ? null : (s.last_product_handle != null ? s.last_product_handle : null));
-      var isFromLast = !hasFirst && (path || productHandle);
+      // Fallback: show a friendly landing label with no external link and no thumbnail.
+      var hasFirst = (s && s.first_path != null && s.first_path !== '') || (s && s.first_product_handle != null && s.first_product_handle !== '');
+      var path = '';
+      try { path = (s && s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s && s.last_path != null ? s.last_path : ''))).trim(); } catch (_) { path = ''; }
       if (path && !path.startsWith('/')) path = '/' + path;
-      if (!path && productHandle) path = '/products/' + (productHandle || '');
+      try { if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/'; } catch (_) {}
+      path = (path || '').split('#')[0].split('?')[0];
+      path = path.replace(/\/+$/, '');
+      if (path === '') path = '/';
       var pathNorm = path ? path.replace(/\/+$/, '') : '';
       var isCheckout = path && path.indexOf('/checkouts') === 0;
       var isHomeOrOrders = path === '/' || path === '/orders' || pathNorm === '/orders' || (path && path.startsWith('/orders/'));
       var isCart = path === '/cart' || pathNorm === '/cart';
-      var mainBase = getMainBaseUrl();
-      var fullUrl = mainBase && path ? mainBase + path : '';
       var label = '\u2014';
-      var thumbSrc = '';
-      var isPurchased = !!(s && s.has_purchased);
-      // Keep the Landing Page thumbnail stable even after purchase; do not swap to a "sale" icon.
-      if (isHomeOrOrders) {
-        label = path === '/' ? 'Home' : 'Viewed Order';
-        thumbSrc = HICON_URL;
-      } else if (isCart) {
-        label = 'Cart';
-        thumbSrc = HICON_URL;
-      } else if (isCheckout) {
-        label = 'Cart';
-        // Prefer a product thumb when possible (even if the session didn't purchase).
-        var ph = '';
-        try {
-          ph = (s && s.last_product_handle != null ? String(s.last_product_handle).trim() : '') ||
-               (s && s.first_product_handle != null ? String(s.first_product_handle).trim() : '');
-        } catch (_) { ph = ''; }
-        if (ph && mainBase) {
-          thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(mainBase + '/products/' + ph.replace(/^\/+/, '')) + '&width=100';
-        } else {
-          thumbSrc = HICON_URL;
-        }
-      } else if (path) {
-        // Display friendly name: /collections/bracelets -> Bracelets, /products/<handle> -> title-cased (link unchanged).
-        label = escapeHtml(friendlyLabelFromPath(path) || path);
-        if (fullUrl) thumbSrc = (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100';
-      }
-      if (isFromLast && label !== '\u2014') label += ' <span class="landing-fallback-hint">(last)</span>';
-      if (thumbSrc || fullUrl) {
-        var img = '';
-        if (thumbSrc) {
-          img = isPurchased
-            ? '<span class="thumb-wrap"><img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.parentNode && this.parentNode.classList && this.parentNode.classList.add(\'is-hidden\')"><span class="thumb-overlay" aria-hidden="true">' + BOUGHT_OVERLAY_SVG + '</span></span>'
-            : '<img class="landing-thumb" src="' + thumbSrc + '" alt="" onerror="this.classList.add(\'is-hidden\')">';
-        }
-        var link = fullUrl ? '<a href="' + escapeHtml(fullUrl) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
-        return '<div class="last-action-cell">' + img + ' ' + link + '</div>';
-      }
-      return label === '\u2014' ? label : escapeHtml(path || '');
+      if (isHomeOrOrders) label = path === '/' ? 'Home' : 'Viewed Order';
+      else if (isCart || isCheckout) label = 'Cart';
+      else if (path) label = friendlyLabelFromPath(path) || path;
+      label = String(label || '').trim() || '\u2014';
+      return '<div class="last-action-cell">' + escapeHtml(label) + '</div>';
     }
 
     function formatMoney(amount, currencyCode) {
@@ -12146,6 +12048,7 @@ const API = '';
       var currentPageUrl = null;
       var currentLandingKind = null; // entry | exit (when opened from sessions table)
       var currentRangeKey = 'today'; // modal-local range; default Today regardless of page range
+      var lastPayload = null;
       var charts = { revenue: null, activity: null };
       var apexLoading = false;
       var apexWaiters = [];
@@ -12242,25 +12145,37 @@ const API = '';
                     '<div class="col-12 col-lg-5">' +
                       '<div class="card">' +
                         '<div class="card-body">' +
-                          '<div class="d-flex gap-3 align-items-start">' +
+                          '<div class="kexo-product-gallery">' +
                             '<div class="product-insights-main-img-wrap">' +
-                              '<img id="product-insights-main-img" class="img-fluid rounded border" alt="" style="width:140px;height:140px;object-fit:cover;background:var(--tblr-bg-surface)">' +
+                              '<img id="product-insights-main-img" class="img-fluid" alt="">' +
                             '</div>' +
-                            '<div class="flex-fill min-w-0">' +
+                            '<div class="product-insights-thumbs-bar" aria-label="Product images">' +
+                              '<button type="button" class="btn btn-icon btn-ghost-secondary product-insights-thumb-arrow" id="product-insights-thumbs-left" aria-label="Scroll thumbnails left" style="display:none">' +
+                                '<i class="fa-light fa-chevron-left" aria-hidden="true"></i>' +
+                              '</button>' +
+                              '<div class="product-insights-thumbs-strip" id="product-insights-thumbs"></div>' +
+                              '<button type="button" class="btn btn-icon btn-ghost-secondary product-insights-thumb-arrow" id="product-insights-thumbs-right" aria-label="Scroll thumbnails right" style="display:none">' +
+                                '<i class="fa-light fa-chevron-right" aria-hidden="true"></i>' +
+                              '</button>' +
+                            '</div>' +
+                            '<div class="mt-3">' +
                               '<div class="fw-semibold text-truncate" id="product-insights-title-inline">—</div>' +
                               '<div class="text-muted small text-truncate" id="product-insights-type">—</div>' +
-                              '<div class="mt-2 d-flex flex-wrap gap-2" id="product-insights-thumbs"></div>' +
                             '</div>' +
                           '</div>' +
                         '</div>' +
                       '</div>' +
-                      '<div class="card mt-3">' +
+                      '<div class="card mt-3 kexo-card-collapsed" data-collapse-id="product-insights-revenue">' +
                         '<div class="card-header"><h3 class="card-title">Revenue</h3></div>' +
-                        '<div class="card-body"><div id="product-insights-chart-revenue" style="min-height:240px"></div></div>' +
+                        '<div class="card-body"><div id="product-insights-chart-revenue" class="dash-chart-wrap" style="min-height:240px"></div></div>' +
+                      '</div>' +
+                      '<div class="card mt-3 kexo-card-collapsed" data-collapse-id="product-insights-demand">' +
+                        '<div class="card-header"><h3 class="card-title">Demand signals</h3></div>' +
+                        '<div class="card-body"><div id="product-insights-chart-activity" class="dash-chart-wrap" style="min-height:240px"></div></div>' +
                       '</div>' +
                     '</div>' +
                     '<div class="col-12 col-lg-7">' +
-                      '<div class="card">' +
+                      '<div class="card" data-no-card-collapse="1">' +
                         '<div class="card-header"><h3 class="card-title">Performance</h3></div>' +
                         '<div class="card-body">' +
                           '<div class="row g-2" id="product-insights-kpi-row">' +
@@ -12279,20 +12194,16 @@ const API = '';
                           '</div>' +
                         '</div>' +
                         '<div class="table-responsive">' +
-                          '<table class="table table-vcenter card-table table-sm">' +
+                          '<table class="table table-vcenter card-table table-sm table-borderless kexo-product-insights-metrics">' +
                             '<tbody id="product-insights-metrics-table"></tbody>' +
                           '</table>' +
                         '</div>' +
                       '</div>' +
-                      '<div class="card mt-3" id="product-insights-top-countries-card" style="display:none">' +
+                      '<div class="card mt-3" data-no-card-collapse="1" id="product-insights-top-countries-card" style="display:none">' +
                         '<div class="card-header"><h3 class="card-title">Top countries</h3></div>' +
                         '<div class="card-body">' +
                           '<div id="product-insights-top-countries" class="d-grid gap-2"></div>' +
                         '</div>' +
-                      '</div>' +
-                      '<div class="card mt-3">' +
-                        '<div class="card-header"><h3 class="card-title">Demand signals</h3></div>' +
-                        '<div class="card-body"><div id="product-insights-chart-activity" style="min-height:240px"></div></div>' +
                       '</div>' +
                     '</div>' +
                   '</div>' +
@@ -12325,6 +12236,39 @@ const API = '';
             load();
           });
         }
+
+        var thumbsLeft = document.getElementById('product-insights-thumbs-left');
+        if (thumbsLeft) {
+          thumbsLeft.addEventListener('click', function(e) {
+            e.preventDefault();
+            scrollThumbStrip(-1);
+          });
+        }
+        var thumbsRight = document.getElementById('product-insights-thumbs-right');
+        if (thumbsRight) {
+          thumbsRight.addEventListener('click', function(e) {
+            e.preventDefault();
+            scrollThumbStrip(1);
+          });
+        }
+        var thumbsStrip = document.getElementById('product-insights-thumbs');
+        if (thumbsStrip) {
+          thumbsStrip.addEventListener('scroll', function() {
+            syncThumbStripArrows();
+          }, { passive: true });
+        }
+        try {
+          window.addEventListener('resize', function() { syncThumbStripArrows(); });
+        } catch (_) {}
+
+        // When collapsed chart cards are expanded, render charts at the right size.
+        modalEl.addEventListener('click', function(e) {
+          var btn = e && e.target && e.target.closest ? e.target.closest('.kexo-card-collapse-toggle') : null;
+          if (!btn) return;
+          setTimeout(function() {
+            try { if (lastPayload) renderCharts(lastPayload); } catch (_) {}
+          }, 160);
+        });
 
         return modalEl;
       }
@@ -12398,54 +12342,74 @@ const API = '';
         var atc = points.map(function(p) { return (p && p.addToCart) ? Number(p.addToCart) : 0; });
 
         ensureApexCharts(function() {
-          destroyCharts();
           var revEl = document.getElementById('product-insights-chart-revenue');
           var actEl = document.getElementById('product-insights-chart-activity');
-          if (!revEl || !actEl || typeof ApexCharts === 'undefined') return;
+          if ((!revEl && !actEl) || typeof ApexCharts === 'undefined') return;
+
+          function isVisible(el) {
+            if (!el) return false;
+            if ((el.clientWidth || 0) < 30) return false;
+            if (!el.offsetParent) return false;
+            return true;
+          }
+
+          var canRev = isVisible(revEl);
+          var canAct = isVisible(actEl);
+          if (!canRev && !canAct) {
+            // Charts are inside collapsed cards (hidden). We'll re-render when expanded.
+            destroyCharts();
+            return;
+          }
+
+          destroyCharts();
 
           // Revenue chart (GBP + Orders)
-          charts.revenue = new ApexCharts(revEl, {
-            chart: { type: 'area', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-            series: [
-              { name: 'Revenue (GBP)', data: rev },
-              { name: 'Orders', data: ord },
-            ],
-            colors: ['#0d9488', '#3b82f6'],
-            stroke: { width: 2, curve: 'smooth' },
-            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.16, opacityTo: 0.04, stops: [0, 100] } },
-            dataLabels: { enabled: false },
-            xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
-            yaxis: [
-              { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtMoneyGbp(v).replace('.00', ''); } } },
-              { opposite: true, labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } } },
-            ],
-            tooltip: { y: { formatter: function(v, o) { return o && o.seriesIndex === 0 ? fmtMoneyGbp(v) : fmtNum(v); } } },
-            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
-            legend: { position: 'top', fontSize: '11px' },
-          });
-          revEl.innerHTML = '';
-          charts.revenue.render();
+          if (canRev) {
+            charts.revenue = new ApexCharts(revEl, {
+              chart: { type: 'area', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+              series: [
+                { name: 'Revenue', data: rev },
+                { name: 'Conversions', data: ord },
+              ],
+              colors: ['#0d9488', '#3b82f6'],
+              stroke: { width: 2, curve: 'smooth' },
+              fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.16, opacityTo: 0.04, stops: [0, 100] } },
+              dataLabels: { enabled: false },
+              xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
+              yaxis: [
+                { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtMoneyGbp(v).replace('.00', ''); } } },
+                { opposite: true, labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } } },
+              ],
+              tooltip: { y: { formatter: function(v, o) { return o && o.seriesIndex === 0 ? fmtMoneyGbp(v) : fmtNum(v); } } },
+              grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
+              legend: { position: 'top', fontSize: '11px' },
+            });
+            revEl.innerHTML = '';
+            charts.revenue.render();
+          }
 
           // Activity chart (Clicks / Views / Add to cart)
-          charts.activity = new ApexCharts(actEl, {
-            chart: { type: 'line', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-            series: [
-              { name: 'Clicks (landings)', data: clicks },
-              { name: 'Views', data: views },
-              { name: 'Add to cart', data: atc },
-            ],
-            colors: ['#6366f1', '#f59e0b', '#ef4444'],
-            stroke: { width: 2, curve: 'smooth' },
-            markers: { size: 2, hover: { size: 5 } },
-            dataLabels: { enabled: false },
-            xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
-            yaxis: { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } }, min: 0 },
-            tooltip: { y: { formatter: function(v) { return fmtNum(v); } } },
-            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
-            legend: { position: 'top', fontSize: '11px' },
-          });
-          actEl.innerHTML = '';
-          charts.activity.render();
+          if (canAct) {
+            charts.activity = new ApexCharts(actEl, {
+              chart: { type: 'line', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+              series: [
+                { name: 'Clicks', data: clicks },
+                { name: 'Views (pixel)', data: views },
+                { name: 'Add to cart', data: atc },
+              ],
+              colors: ['#6366f1', '#f59e0b', '#ef4444'],
+              stroke: { width: 2, curve: 'smooth' },
+              markers: { size: 2, hover: { size: 5 } },
+              dataLabels: { enabled: false },
+              xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
+              yaxis: { labels: { style: { fontSize: '11px' }, formatter: function(v) { return fmtNum(v); } }, min: 0 },
+              tooltip: { y: { formatter: function(v) { return fmtNum(v); } } },
+              grid: { borderColor: '#f1f1f1', strokeDashArray: 3 },
+              legend: { position: 'top', fontSize: '11px' },
+            });
+            actEl.innerHTML = '';
+            charts.activity.render();
+          }
         });
       }
 
@@ -12504,7 +12468,36 @@ const API = '';
         try { sel.value = k; } catch (_) {}
       }
 
+      function syncThumbStripArrows() {
+        ensureDom();
+        var strip = document.getElementById('product-insights-thumbs');
+        var leftBtn = document.getElementById('product-insights-thumbs-left');
+        var rightBtn = document.getElementById('product-insights-thumbs-right');
+        if (!strip || !leftBtn || !rightBtn) return;
+        var max = Math.max(0, (strip.scrollWidth || 0) - (strip.clientWidth || 0));
+        var hasOverflow = max > 6;
+        leftBtn.style.display = hasOverflow ? 'inline-flex' : 'none';
+        rightBtn.style.display = hasOverflow ? 'inline-flex' : 'none';
+        leftBtn.disabled = !hasOverflow || (strip.scrollLeft || 0) <= 1;
+        rightBtn.disabled = !hasOverflow || (strip.scrollLeft || 0) >= (max - 1);
+      }
+
+      function scrollThumbStrip(dir) {
+        ensureDom();
+        var strip = document.getElementById('product-insights-thumbs');
+        if (!strip) return;
+        var step = Math.max(120, Math.round((strip.clientWidth || 0) * 0.85));
+        if (!step) step = 160;
+        try {
+          strip.scrollBy({ left: (dir < 0 ? -step : step), behavior: 'smooth' });
+        } catch (_) {
+          strip.scrollLeft = (strip.scrollLeft || 0) + (dir < 0 ? -step : step);
+        }
+        setTimeout(function() { syncThumbStripArrows(); }, 140);
+      }
+
       function render(payload) {
+        lastPayload = payload || null;
         var status = document.getElementById('product-insights-status');
         var body = document.getElementById('product-insights-body');
         if (status) status.style.display = 'none';
@@ -12581,14 +12574,16 @@ const API = '';
           else mainImg.style.opacity = '1';
         }
         if (thumbsEl) {
-          thumbsEl.innerHTML = isPage ? '' : (images || []).slice(0, 10).map(function(img, i) {
+          thumbsEl.innerHTML = isPage ? '' : (images || []).slice(0, 20).map(function(img, i) {
             var u = img && img.url ? String(img.url) : '';
             var t = img && img.thumb ? String(img.thumb) : u;
             if (!u) return '';
-            return '<a href="#" class="product-insights-thumb btn btn-ghost-secondary btn-sm p-0' + (i === 0 ? ' active' : '') + '" data-img="' + escapeHtml(u) + '" aria-label="Image ' + (i + 1) + '">' +
-              '<img src="' + escapeHtml(t) + '" alt="" style="width:46px;height:46px;object-fit:cover;border-radius:6px">' +
-            '</a>';
+            return '<button type="button" class="product-insights-thumb' + (i === 0 ? ' active' : '') + '" data-img="' + escapeHtml(u) + '" aria-label="Image ' + (i + 1) + '">' +
+              '<img src="' + escapeHtml(t) + '" alt="" loading="lazy">' +
+            '</button>';
           }).join('');
+          try { thumbsEl.scrollLeft = 0; } catch (_) {}
+          syncThumbStripArrows();
 
           thumbsEl.querySelectorAll('[data-img]').forEach(function(a) {
             a.addEventListener('click', function(e) {
@@ -12606,7 +12601,7 @@ const API = '';
         var mt = document.getElementById('product-insights-metrics-table');
         if (mt) {
           function row(label, value) {
-            return '<tr><td class="text-muted" style="width:44%">' + escapeHtml(label) + '</td><td class="text-end fw-semibold">' + escapeHtml(value) + '</td></tr>';
+            return '<tr><td class="text-muted">' + escapeHtml(label) + '</td><td class="text-end fw-semibold">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
             var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '—';
@@ -12617,38 +12612,28 @@ const API = '';
             var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
             var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '—';
             mt.innerHTML =
-              row('Revenue (GBP) (local)', revenue2) +
+              row('Revenue', revenue2) +
               row('Purchased sessions', purchasedSessions) +
               row('Checkout started sessions', checkoutStartedSessions) +
-              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
               row('Sessions', sessions) +
               row('Page views', pageViews) +
-              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-              row('Purchase rate (Purchased / Sessions)', cr2) +
+              row('Purchase rate', cr2) +
               row('Revenue / Session', rps);
           } else {
             var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
-            var orders = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
             var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
-            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
             var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
             var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
             var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
-            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
             var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
             var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
             var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
             mt.innerHTML =
-              row('Revenue (GBP)', revenue) +
-              row('Conversions', orders) +
+              row('Revenue', revenue) +
               row('Units sold', units) +
-              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-              row('Clicks (landings)', clicks) +
-              row('Product views', views) +
+              row('Views (pixel)', views) +
               row('Add to cart', atc) +
               row('Checkout started', cs) +
-              '<tr><td colspan="2"><div class="hr my-2"></div></td></tr>' +
-              row('Conversion rate (Conversions / Clicks)', cr) +
               row('View → Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv);
@@ -12775,22 +12760,6 @@ const API = '';
           title: a.getAttribute('data-product-title') || '',
           productUrl: a.getAttribute('href') || '',
         });
-      });
-
-      // Delegate clicks from Entry/Exit links in the sessions table.
-      document.addEventListener('click', function(e) {
-        var a = e && e.target && e.target.closest ? e.target.closest('a.js-landing-insights-link') : null;
-        if (!a) return;
-        if (isModifiedClick(e)) return;
-        var href = a.getAttribute('href') || '';
-        var kind = (a.getAttribute('data-landing-kind') || 'entry').toLowerCase();
-        var h = parseHandleFromHref(href);
-        e.preventDefault();
-        if (h) {
-          openProduct(h, { productUrl: href, landingKind: kind });
-          return;
-        }
-        openPage(href, { landingKind: kind });
       });
 
       // Expose for debugging / future use
