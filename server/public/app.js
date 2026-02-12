@@ -8,7 +8,6 @@ const API = '';
       date: true,
       countries: true,
       products: true,
-      variants: true,
       channels: true,
       type: true,
       ads: true,

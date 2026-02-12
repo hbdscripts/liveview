@@ -15,6 +15,20 @@
     loaded: false,
   };
 
+  function dismissGlobalPageLoader() {
+    try {
+      var overlay = document.getElementById('page-body-loader');
+      if (overlay) overlay.classList.add('is-hidden');
+    } catch (_) {}
+    try {
+      var pageBody = document.querySelector('.page-body');
+      if (pageBody) {
+        pageBody.classList.remove('report-building');
+        pageBody.style.minHeight = '';
+      }
+    } catch (_) {}
+  }
+
   function escapeHtml(value) {
     if (value == null) return '';
     var div = document.createElement('div');
@@ -275,8 +289,12 @@
       root.innerHTML = '' +
         '<div class="stats-card card" data-no-card-collapse="1">' +
           '<div class="card-header"><h3 class="card-title">Variants</h3></div>' +
-          '<div class="card-body text-secondary">No enabled variant tables. Open Settings → Insights → Variants to configure tables.</div>' +
+          '<div class="card-body text-secondary">' +
+            '<div>No enabled variant tables. Open Settings → Insights → Variants to configure tables.</div>' +
+            '<a class="btn btn-sm btn-primary mt-3" href="/settings?tab=insights">Configure variants</a>' +
+          '</div>' +
         '</div>';
+      dismissGlobalPageLoader();
       return;
     }
 
@@ -308,12 +326,32 @@
       bindTableInteractions(t);
       renderTableRows(t);
     });
+    dismissGlobalPageLoader();
   }
 
   function setLoadingUi(on) {
     var note = document.getElementById('variants-loading-note');
     if (!note) return;
-    note.textContent = on ? 'Loading variant tables…' : note.textContent;
+    note.textContent = on ? 'Loading variant tables…' : 'Ready';
+  }
+
+  function fetchWithTimeout(url, options, timeoutMs) {
+    var ms = Number(timeoutMs);
+    var timeout = Number.isFinite(ms) && ms > 0 ? Math.trunc(ms) : 25000;
+    if (typeof AbortController === 'undefined') {
+      return Promise.race([
+        fetch(url, options || {}),
+        new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error('Request timed out')); }, timeout);
+        }),
+      ]);
+    }
+    var controller = new AbortController();
+    var timer = setTimeout(function () {
+      try { controller.abort(); } catch (_) {}
+    }, timeout);
+    var opts = Object.assign({}, options || {}, { signal: controller.signal });
+    return fetch(url, opts).finally(function () { clearTimeout(timer); });
   }
 
   function fetchShopFallback() {
@@ -350,7 +388,7 @@
         var url = (API || '') + '/api/insights-variants?shop=' + encodeURIComponent(state.shop) +
           '&range=' + encodeURIComponent(getRangeKey());
         if (force) url += '&_=' + Date.now();
-        return fetch(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' })
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (data) {
             renderAllTables(data || { tables: [] });
@@ -364,6 +402,7 @@
       })
       .finally(function () {
         state.loading = false;
+        dismissGlobalPageLoader();
       });
   }
 
@@ -398,6 +437,7 @@
 
   function init() {
     try { window.__refreshVariantsInsights = refreshVariants; } catch (_) {}
+    dismissGlobalPageLoader();
     bindGlobalListeners();
     refreshVariants({ force: false });
   }
