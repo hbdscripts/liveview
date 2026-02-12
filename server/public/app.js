@@ -12443,6 +12443,7 @@ const API = '';
       var currentLandingKind = null; // entry | exit (when opened from sessions table)
       var currentRangeKey = 'today'; // modal-local range; default Today regardless of page range
       var lastPayload = null;
+      var backdropEl = null;
       var charts = { revenue: null, activity: null };
       var apexLoading = false;
       var apexWaiters = [];
@@ -12508,18 +12509,16 @@ const API = '';
         if (modalEl) return modalEl;
 
         var wrap = document.createElement('div');
-        wrap.className = 'modal modal-blur';
+        wrap.className = 'modal modal-blur fade';
         wrap.id = 'product-insights-modal';
         wrap.tabIndex = -1;
+        wrap.setAttribute('aria-hidden', 'true');
         wrap.style.display = 'none';
         wrap.innerHTML =
           '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog">' +
             '<div class="modal-content">' +
-              '<div class="modal-header">' +
-                '<div class="d-flex flex-column">' +
-                  '<h5 class="modal-title" id="product-insights-title">Product</h5>' +
-                  '<div class="text-muted small" id="product-insights-subtitle">Today</div>' +
-                '</div>' +
+              '<div class="modal-header p-4">' +
+                '<h5 class="modal-title" id="product-insights-title">Product</h5>' +
                 '<div class="ms-auto d-flex align-items-center gap-2">' +
                   '<select class="form-select form-select-sm" id="product-insights-range" aria-label="Date range">' +
                     '<option value="today" selected>Today</option>' +
@@ -12552,10 +12551,6 @@ const API = '';
                                 '<i class="fa-light fa-chevron-right" aria-hidden="true"></i>' +
                               '</button>' +
                             '</div>' +
-                            '<div class="mt-3">' +
-                              '<div class="fw-semibold text-truncate" id="product-insights-title-inline">—</div>' +
-                              '<div class="text-muted small text-truncate" id="product-insights-type">—</div>' +
-                            '</div>' +
                           '</div>' +
                         '</div>' +
                       '</div>' +
@@ -12570,25 +12565,15 @@ const API = '';
                     '</div>' +
                     '<div class="col-12 col-lg-7" id="product-insights-col-right">' +
                       '<div class="card" data-no-card-collapse="1">' +
-                        '<div class="card-header"><h3 class="card-title">Performance</h3></div>' +
-                        '<div class="card-body">' +
-                          '<div class="row g-2" id="product-insights-kpi-row">' +
-                            '<div class="col-4">' +
-                              '<div class="text-muted small">Clicks</div>' +
-                              '<div class="h3 m-0" id="product-insights-kpi-clicks">—</div>' +
-                            '</div>' +
-                            '<div class="col-4">' +
-                              '<div class="text-muted small">Conversions</div>' +
-                              '<div class="h3 m-0" id="product-insights-kpi-conversions">—</div>' +
-                            '</div>' +
-                            '<div class="col-4">' +
-                              '<div class="text-muted small">Conversion rate</div>' +
-                              '<div class="h3 m-0" id="product-insights-kpi-cr">—</div>' +
-                            '</div>' +
-                          '</div>' +
-                        '</div>' +
+                        '<div class="card-header"><h3 class="card-title" id="product-insights-details-title">Product details</h3></div>' +
                         '<div class="table-responsive">' +
-                          '<table class="table table-vcenter card-table table-sm table-borderless kexo-product-insights-metrics">' +
+                          '<table class="table table-vcenter card-table table-sm kexo-product-insights-metrics">' +
+                            '<thead>' +
+                              '<tr>' +
+                                '<th>Metric</th>' +
+                                '<th class="text-end">Value</th>' +
+                              '</tr>' +
+                            '</thead>' +
                             '<tbody id="product-insights-metrics-table"></tbody>' +
                           '</table>' +
                         '</div>' +
@@ -12603,8 +12588,8 @@ const API = '';
                   '</div>' +
                 '</div>' +
               '</div>' +
-              '<div class="modal-footer d-flex align-items-center justify-content-end gap-2">' +
-                '<a class="btn btn-ghost-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product page</a>' +
+              '<div class="modal-footer d-flex align-items-center justify-content-end gap-2 p-4">' +
+                '<a class="btn btn-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">Open product page</a>' +
                 '<a class="btn btn-primary" id="product-insights-open-admin" href="#" target="_blank" rel="noopener" style="display:none">Open in Shopify admin</a>' +
               '</div>' +
             '</div>' +
@@ -12668,10 +12653,27 @@ const API = '';
         return modalEl;
       }
 
+      function ensureBackdrop() {
+        if (backdropEl && backdropEl.parentNode) return;
+        var el = document.createElement('div');
+        el.className = 'modal-backdrop fade show product-insights-backdrop';
+        document.body.appendChild(el);
+        backdropEl = el;
+      }
+
+      function removeBackdrop() {
+        if (backdropEl && backdropEl.parentNode) {
+          backdropEl.parentNode.removeChild(backdropEl);
+        }
+        backdropEl = null;
+      }
+
       function show() {
         ensureDom();
+        ensureBackdrop();
         modalEl.style.display = 'block';
         modalEl.classList.add('show');
+        modalEl.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
       }
 
@@ -12679,7 +12681,9 @@ const API = '';
         if (!modalEl) return;
         modalEl.style.display = 'none';
         modalEl.classList.remove('show');
+        modalEl.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
+        removeBackdrop();
         destroyCharts();
         currentMode = 'product';
         currentHandle = null;
@@ -13030,22 +13034,17 @@ const API = '';
         if (body) body.style.display = 'block';
 
         var titleEl = document.getElementById('product-insights-title');
-        var titleInline = document.getElementById('product-insights-title-inline');
-        var typeEl = document.getElementById('product-insights-type');
-        var subtitleEl = document.getElementById('product-insights-subtitle');
+        var detailsTitleEl = document.getElementById('product-insights-details-title');
         var openLink = document.getElementById('product-insights-open-store');
         var adminLink = document.getElementById('product-insights-open-admin');
         var mainImg = document.getElementById('product-insights-main-img');
         var thumbsEl = document.getElementById('product-insights-thumbs');
-        var kpiRow = document.getElementById('product-insights-kpi-row');
-        var kpiClicksEl = document.getElementById('product-insights-kpi-clicks');
-        var kpiConvEl = document.getElementById('product-insights-kpi-conversions');
-        var kpiCrEl = document.getElementById('product-insights-kpi-cr');
         var topCountriesCard = document.getElementById('product-insights-top-countries-card');
         var topCountriesEl = document.getElementById('product-insights-top-countries');
 
         var prod = payload && payload.product ? payload.product : null;
         var metrics = payload && payload.metrics ? payload.metrics : {};
+        var details = payload && payload.details ? payload.details : {};
         var isPage = payload && payload.kind === 'page';
         var page = payload && payload.page ? payload.page : null;
 
@@ -13053,23 +13052,9 @@ const API = '';
           ? (page && page.path ? (friendlyLabelFromPath(page.path) || page.path) : (currentPageUrl || 'Page'))
           : ((prod && prod.title) ? String(prod.title) : (currentTitle || currentHandle || 'Product'));
         if (titleEl) titleEl.textContent = title;
-        if (titleInline) titleInline.textContent = title;
-        if (typeEl) {
-          if (isPage) {
-            var lk = (page && page.landingKind) ? String(page.landingKind) : (currentLandingKind || '');
-            typeEl.textContent = lk ? ((lk === 'exit' ? 'Exit page' : 'Entry page') + ' • ' + (page && page.path ? String(page.path) : '')) : (page && page.path ? String(page.path) : '—');
-          } else {
-            typeEl.textContent = (prod && prod.productType) ? String(prod.productType) : '—';
-          }
-        }
-
-        if (subtitleEl) {
-          var rk = (payload && payload.rangeKey) ? String(payload.rangeKey) : currentRangeKey;
-          var lk2 = isPage ? (page && page.landingKind ? String(page.landingKind) : (currentLandingKind || '')) : (currentLandingKind || '');
-          var prefix = lk2 ? (lk2 === 'exit' ? 'Exit' : 'Entry') + ' · ' : '';
-          syncRangeSelect(rk);
-          subtitleEl.textContent = prefix + (rangeLabelForKey(rk) || rk);
-        }
+        if (detailsTitleEl) detailsTitleEl.textContent = isPage ? 'Page details' : 'Product details';
+        var rk = (payload && payload.rangeKey) ? String(payload.rangeKey) : currentRangeKey;
+        syncRangeSelect(rk);
 
         if (openLink) {
           var href = isPage ? (currentPageUrl || '#') : (currentProductUrl || '#');
@@ -13124,8 +13109,26 @@ const API = '';
         // Metrics table
         var mt = document.getElementById('product-insights-metrics-table');
         if (mt) {
-          function row(label, value) {
-            return '<tr><td class="text-muted">' + escapeHtml(label) + '</td><td class="text-end fw-semibold">' + escapeHtml(value) + '</td></tr>';
+          function toNumber(v) {
+            var n = v != null ? Number(v) : NaN;
+            return Number.isFinite(n) ? n : null;
+          }
+          function row(label, value, ratio) {
+            var pct = toNumber(ratio);
+            var p = pct != null ? Math.max(4, Math.min(100, pct)) : null;
+            var meter = p != null
+              ? (
+                  '<div class="progressbg">' +
+                    '<div class="progress progress-3 progressbg-progress">' +
+                      '<div class="progress-bar bg-primary-lt" style="width:' + escapeHtml(String(p.toFixed(2))) + '%" role="progressbar" aria-valuenow="' + escapeHtml(String(p.toFixed(2))) + '" aria-valuemin="0" aria-valuemax="100">' +
+                        '<span class="visually-hidden">' + escapeHtml(String(p.toFixed(2))) + '%</span>' +
+                      '</div>' +
+                    '</div>' +
+                    '<div class="progressbg-text">' + escapeHtml(label) + '</div>' +
+                  '</div>'
+                )
+              : escapeHtml(label);
+            return '<tr><td>' + meter + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
             var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '—';
@@ -13135,41 +13138,59 @@ const API = '';
             var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
             var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
             var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '—';
+            var maxSessions = Math.max(1, toNumber(metrics && metrics.sessions) || 0, toNumber(metrics && metrics.pageViews) || 0, toNumber(metrics && metrics.purchasedSessions) || 0);
             mt.innerHTML =
-              row('Revenue', revenue2) +
-              row('Purchased sessions', purchasedSessions) +
-              row('Checkout started sessions', checkoutStartedSessions) +
-              row('Sessions', sessions) +
-              row('Page views', pageViews) +
-              row('Purchase rate', cr2) +
+              row('Revenue', revenue2, null) +
+              row('Purchased sessions', purchasedSessions, maxSessions > 0 ? ((toNumber(metrics && metrics.purchasedSessions) || 0) / maxSessions) * 100 : null) +
+              row('Checkout started sessions', checkoutStartedSessions, maxSessions > 0 ? ((toNumber(metrics && metrics.checkoutStartedSessions) || 0) / maxSessions) * 100 : null) +
+              row('Sessions', sessions, maxSessions > 0 ? ((toNumber(metrics && metrics.sessions) || 0) / maxSessions) * 100 : null) +
+              row('Page views', pageViews, maxSessions > 0 ? ((toNumber(metrics && metrics.pageViews) || 0) / maxSessions) * 100 : null) +
+              row('Purchase rate', cr2, null) +
               row('Revenue / Session', rps);
           } else {
+            var clicksN = toNumber(metrics && metrics.clicks) || 0;
+            var convN = toNumber(metrics && metrics.orders) || 0;
+            var viewsN = toNumber(metrics && metrics.views) || 0;
+            var atcN = toNumber(metrics && metrics.addToCart) || 0;
+            var csN = toNumber(metrics && metrics.checkoutStarted) || 0;
+            var inStockUnitsN = toNumber(details && details.inventoryUnits) || 0;
+            var inStockVariantsN = toNumber(details && details.inStockVariants) || 0;
+            var totalSalesN = toNumber(details && details.totalSalesLifetime) || 0;
+            var maxCount = Math.max(1, clicksN, convN, viewsN, atcN, csN, inStockUnitsN, inStockVariantsN, totalSalesN);
             var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
             var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
             var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
             var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
             var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
             var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
+            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
+            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
+            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
             var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
             var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
+            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '—';
+            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '—';
+            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '—';
+            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '—';
+            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '—';
             mt.innerHTML =
-              row('Revenue', revenue) +
-              row('Units sold', units) +
-              row('Views (pixel)', views) +
-              row('Add to cart', atc) +
-              row('Checkout started', cs) +
-              row('View → Cart rate', atcRate) +
-              row('Revenue / Click', rpc) +
-              row('Revenue / View', rpv);
+              row('Clicks', clicks, maxCount > 0 ? (clicksN / maxCount) * 100 : null) +
+              row('Conversions', conv, maxCount > 0 ? (convN / maxCount) * 100 : null) +
+              row('Conversion rate', cr, null) +
+              row('Revenue (selected range)', revenue, null) +
+              row('Units sold (selected range)', units, null) +
+              row('Views (pixel)', views, maxCount > 0 ? (viewsN / maxCount) * 100 : null) +
+              row('Add to cart', atc, maxCount > 0 ? (atcN / maxCount) * 100 : null) +
+              row('Checkout started', cs, maxCount > 0 ? (csN / maxCount) * 100 : null) +
+              row('View → Cart rate', atcRate, null) +
+              row('Revenue / Click', rpc, null) +
+              row('Revenue / View', rpv, null) +
+              row('In stock (units)', stockUnits, maxCount > 0 ? (inStockUnitsN / maxCount) * 100 : null) +
+              row('In-stock variants', stockVariants, maxCount > 0 ? (inStockVariantsN / maxCount) * 100 : null) +
+              row('Total sales (lifetime)', totalSales, maxCount > 0 ? (totalSalesN / maxCount) * 100 : null) +
+              row('Total revenue (lifetime)', totalRev, null) +
+              row('Cost of goods (lifetime)', cogs, null);
           }
-        }
-
-        // KPI row + top countries (product mode only)
-        if (kpiRow) kpiRow.style.display = isPage ? 'none' : '';
-        if (!isPage) {
-          if (kpiClicksEl) kpiClicksEl.textContent = (metrics && metrics.clicks != null) ? fmtNum(Number(metrics.clicks) || 0) : '—';
-          if (kpiConvEl) kpiConvEl.textContent = (metrics && metrics.orders != null) ? fmtNum(Number(metrics.orders) || 0) : '—';
-          if (kpiCrEl) kpiCrEl.textContent = (metrics && metrics.cr != null) ? fmtPct(Number(metrics.cr)) : '—';
         }
 
         if (topCountriesCard && topCountriesEl) {

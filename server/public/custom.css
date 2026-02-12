@@ -501,8 +501,16 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 
 
 /* Product Insights modal */
-#product-insights-modal.show {
-  background: rgba(0, 0, 0, 0.78);
+#product-insights-modal .modal-header {
+  padding: 1.25rem;
+}
+#product-insights-modal .modal-footer {
+  padding: 1rem 1.25rem;
+  background: var(--tblr-bg-surface-secondary, #f3f4f6);
+  border-top: 1px solid var(--tblr-border-color);
+}
+.modal-backdrop.product-insights-backdrop.show {
+  opacity: 0.72;
 }
 #product-insights-modal .kexo-product-gallery {
   display: flex;
@@ -581,8 +589,31 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 #product-insights-modal .kexo-product-insights-metrics td:last-child {
   font-variant-numeric: tabular-nums;
 }
+#product-insights-modal .kexo-product-insights-metrics thead th {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary);
+}
 #product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
   padding-bottom: 1.1rem;
+}
+#product-insights-modal .kexo-product-insights-metrics .progressbg {
+  position: relative;
+}
+#product-insights-modal .kexo-product-insights-metrics .progressbg-progress {
+  position: absolute;
+  inset: 50% 0 auto 0;
+  transform: translateY(-50%);
+  height: 8px;
+  margin: 0;
+}
+#product-insights-modal .kexo-product-insights-metrics .progressbg-text {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  background: var(--tblr-bg-surface, #fff);
+  padding: 0 6px 0 0;
 }
 
 #product-insights-modal .modal-footer .btn {
@@ -594,12 +625,6 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 #product-insights-modal #product-insights-open-admin:hover,
 #product-insights-modal #product-insights-open-admin:focus-visible {
   color: #fff !important;
-}
-#product-insights-modal #product-insights-open-store:hover,
-#product-insights-modal #product-insights-open-store:focus-visible {
-  color: #fff !important;
-  background: var(--tblr-primary);
-  border-color: var(--tblr-primary);
 }
 
 /* Product-name links (open Product Insights modal) */

@@ -11,10 +11,120 @@ const { getDb } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
+const reportCache = require('../reportCache');
 
 const API_VERSION = '2025-01';
 
 const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', '14d', '30d', 'month'];
+const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const variantCostCache = new Map();
+
+function sleep(ms) {
+  const n = Number(ms) || 0;
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
+}
+
+function chunkArray(arr, size) {
+  const out = [];
+  const n = Math.max(1, Number(size) || 1);
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+function parseLegacyVariantId(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/\/(\d+)(?:\D.*)?$/);
+  return m && m[1] ? m[1] : '';
+}
+
+async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 5 } = {}) {
+  const url = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds = retryAfter ? parseInt(String(retryAfter), 10) : NaN;
+    const waitMs = Number.isFinite(waitSeconds) && waitSeconds > 0 ? waitSeconds * 1000 : 1000;
+    await sleep(Math.min(waitMs, 10000));
+  }
+}
+
+async function fetchVariantUnitCosts(shop, accessToken, variantIds) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !accessToken || !Array.isArray(variantIds) || !variantIds.length) return new Map();
+  const normalizedIds = Array.from(new Set(variantIds.map(parseLegacyVariantId).filter(Boolean)));
+  const result = new Map();
+  const missing = [];
+  const now = Date.now();
+
+  for (const vid of normalizedIds) {
+    const key = `${safeShop}:${vid}`;
+    const cached = variantCostCache.get(key);
+    if (cached && cached.expiresAt > now && Number.isFinite(cached.amount)) {
+      result.set(vid, { amount: Number(cached.amount), currency: cached.currency || 'GBP' });
+    } else {
+      missing.push(vid);
+    }
+  }
+  if (!missing.length) return result;
+
+  const chunks = chunkArray(missing, 75);
+  const query = `
+    query VariantUnitCosts($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on ProductVariant {
+          id
+          legacyResourceId
+          inventoryItem {
+            unitCost {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  for (const part of chunks) {
+    const gqlIds = part.map((id) => `gid://shopify/ProductVariant/${id}`);
+    try {
+      const res = await shopifyGraphqlWithRetry(safeShop, accessToken, query, { ids: gqlIds }, { maxRetries: 6 });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json || !json.data || !Array.isArray(json.data.nodes)) continue;
+      for (const n of json.data.nodes) {
+        if (!n || typeof n !== 'object') continue;
+        const vid = parseLegacyVariantId(n.legacyResourceId || n.id);
+        if (!vid) continue;
+        const unitCost = n.inventoryItem && n.inventoryItem.unitCost ? n.inventoryItem.unitCost : null;
+        const amount = unitCost && unitCost.amount != null ? Number(unitCost.amount) : NaN;
+        const currency = unitCost && unitCost.currencyCode ? String(unitCost.currencyCode).toUpperCase() : 'GBP';
+        if (!Number.isFinite(amount)) continue;
+        result.set(vid, { amount, currency });
+        variantCostCache.set(`${safeShop}:${vid}`, {
+          amount,
+          currency,
+          expiresAt: Date.now() + VARIANT_COST_CACHE_TTL_MS,
+        });
+      }
+    } catch (_) {}
+  }
+
+  return result;
+}
 
 function safeJsonParse(str) {
   if (!str || typeof str !== 'string') return null;
@@ -102,8 +212,17 @@ async function fetchShopifyProductByHandle(shop, token, handle) {
         title
         handle
         productType
+        totalInventory
         featuredImage { url altText }
         images(first: 20) { nodes { url altText } }
+        variants(first: 100) {
+          nodes {
+            id
+            legacyResourceId
+            inventoryQuantity
+            availableForSale
+          }
+        }
       }
     }
   `;
@@ -137,12 +256,120 @@ async function fetchShopifyProductByHandle(shop, token, handle) {
     images.push({ url: u, alt: (n.altText || '') });
     seen.add(u);
   }
+  const variantNodes = prod.variants && Array.isArray(prod.variants.nodes) ? prod.variants.nodes : [];
+  let inStockVariants = 0;
+  for (const n of variantNodes) {
+    if (!n || typeof n !== 'object') continue;
+    const q = n.inventoryQuantity != null ? Number(n.inventoryQuantity) : NaN;
+    const available = !!n.availableForSale;
+    if (available || (Number.isFinite(q) && q > 0)) inStockVariants += 1;
+  }
+  const totalInventory = prod.totalInventory != null ? Number(prod.totalInventory) : NaN;
   return {
     productId: numericId || null,
     title: title || null,
     handle: prod.handle ? String(prod.handle).trim().toLowerCase() : handle,
     productType: prod.productType ? String(prod.productType).trim() : null,
+    inventoryUnits: Number.isFinite(totalInventory) ? Math.trunc(totalInventory) : null,
+    inStockVariants: inStockVariants > 0 ? inStockVariants : (variantNodes.length ? 0 : null),
     images,
+  };
+}
+
+async function computeLifetimeProductDetails({ db, shop, productId, accessToken }) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const pid = productId != null ? String(productId).trim() : '';
+  if (!db || !safeShop || !pid) {
+    return {
+      totalSalesLifetime: null,
+      totalRevenueLifetimeGbp: null,
+      costOfGoodsLifetimeGbp: null,
+    };
+  }
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  let totalSalesLifetime = 0;
+  let totalRevenueLifetimeGbp = 0;
+
+  try {
+    const rows = await db.all(
+      `
+        SELECT
+          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+          COUNT(DISTINCT order_id) AS orders,
+          COALESCE(SUM(line_revenue), 0) AS revenue
+        FROM orders_shopify_line_items
+        WHERE shop = ?
+          AND (order_test IS NULL OR order_test = 0)
+          AND order_cancelled_at IS NULL
+          AND order_financial_status = 'paid'
+          AND product_id IS NOT NULL AND TRIM(product_id) = ?
+        GROUP BY COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+      `,
+      [safeShop, pid]
+    );
+    for (const r of rows || []) {
+      const cur = fx.normalizeCurrency(r && r.currency != null ? String(r.currency) : '') || 'GBP';
+      const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
+      const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
+      totalRevenueLifetimeGbp += (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+      const o = r && r.orders != null ? Number(r.orders) : 0;
+      totalSalesLifetime += Number.isFinite(o) ? Math.trunc(o) : 0;
+    }
+    totalRevenueLifetimeGbp = Math.round(totalRevenueLifetimeGbp * 100) / 100;
+  } catch (_) {
+    totalSalesLifetime = null;
+    totalRevenueLifetimeGbp = null;
+  }
+
+  let costOfGoodsLifetimeGbp = null;
+  if (accessToken) {
+    try {
+      const qtyRows = await db.all(
+        `
+          SELECT
+            TRIM(COALESCE(variant_id, '')) AS variant_id,
+            COALESCE(SUM(quantity), 0) AS qty
+          FROM orders_shopify_line_items
+          WHERE shop = ?
+            AND (order_test IS NULL OR order_test = 0)
+            AND order_cancelled_at IS NULL
+            AND order_financial_status = 'paid'
+            AND product_id IS NOT NULL AND TRIM(product_id) = ?
+            AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+          GROUP BY TRIM(COALESCE(variant_id, ''))
+        `,
+        [safeShop, pid]
+      );
+      const variantIds = Array.from(new Set((qtyRows || []).map((r) => parseLegacyVariantId(r && r.variant_id)).filter(Boolean)));
+      if (variantIds.length) {
+        const unitCostMap = await fetchVariantUnitCosts(safeShop, accessToken, variantIds);
+        let sum = 0;
+        let matchedQty = 0;
+        for (const row of qtyRows || []) {
+          const vid = parseLegacyVariantId(row && row.variant_id);
+          const qty = row && row.qty != null ? Number(row.qty) : NaN;
+          if (!vid || !Number.isFinite(qty) || qty <= 0) continue;
+          const cost = unitCostMap.get(vid);
+          if (!cost || !Number.isFinite(Number(cost.amount))) continue;
+          const raw = Number(cost.amount) * qty;
+          const currency = fx.normalizeCurrency(cost.currency) || 'GBP';
+          const gbp = fx.convertToGbp(raw, currency, ratesToGbp);
+          if (!Number.isFinite(gbp)) continue;
+          sum += gbp;
+          matchedQty += qty;
+        }
+        costOfGoodsLifetimeGbp = matchedQty > 0 ? (Math.round(sum * 100) / 100) : null;
+      }
+    } catch (_) {
+      costOfGoodsLifetimeGbp = null;
+    }
+  }
+
+  return {
+    totalSalesLifetime: totalSalesLifetime != null ? totalSalesLifetime : null,
+    totalRevenueLifetimeGbp: totalRevenueLifetimeGbp != null ? totalRevenueLifetimeGbp : null,
+    costOfGoodsLifetimeGbp,
   };
 }
 
@@ -169,6 +396,38 @@ async function getProductInsights(req, res) {
   let product = null;
   try { product = await fetchShopifyProductByHandle(shop, token, handle); } catch (_) { product = null; }
   const productId = product && product.productId ? String(product.productId) : null;
+  let details = {
+    inventoryUnits: product && product.inventoryUnits != null ? Number(product.inventoryUnits) : null,
+    inStockVariants: product && product.inStockVariants != null ? Number(product.inStockVariants) : null,
+    totalSalesLifetime: null,
+    totalRevenueLifetimeGbp: null,
+    costOfGoodsLifetimeGbp: null,
+  };
+  if (shop && productId) {
+    try {
+      const cache = await reportCache.getOrComputeJson(
+        {
+          shop,
+          endpoint: 'product-insights-details-lifetime',
+          rangeKey: 'lifetime',
+          rangeStartTs: 0,
+          rangeEndTs: 0,
+          params: { productId, handle, v: 1 },
+          ttlMs: 6 * 60 * 60 * 1000,
+        },
+        async () => computeLifetimeProductDetails({ db, shop, productId, accessToken: token })
+      );
+      const fromCache = cache && cache.ok && cache.data ? cache.data : null;
+      if (fromCache && typeof fromCache === 'object') {
+        details = {
+          ...details,
+          totalSalesLifetime: fromCache.totalSalesLifetime != null ? Number(fromCache.totalSalesLifetime) : null,
+          totalRevenueLifetimeGbp: fromCache.totalRevenueLifetimeGbp != null ? Number(fromCache.totalRevenueLifetimeGbp) : null,
+          costOfGoodsLifetimeGbp: fromCache.costOfGoodsLifetimeGbp != null ? Number(fromCache.costOfGoodsLifetimeGbp) : null,
+        };
+      }
+    } catch (_) {}
+  }
 
   // Sales (Shopify truth line items)
   const ratesToGbp = await fx.getRatesToGbp();
@@ -486,6 +745,7 @@ async function getProductInsights(req, res) {
       adminProductUrl: (shop && productId) ? (`https://${shop}/admin/products/${encodeURIComponent(String(productId))}`) : null,
     },
     product,
+    details,
     topCountries,
     metrics: {
       revenueGbp,
