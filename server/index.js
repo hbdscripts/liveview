@@ -72,12 +72,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parser (for ingest JSON)
-app.use(express.json({ limit: config.maxEventPayloadBytes }));
-app.use(express.urlencoded({ extended: true }));
-
 // CORS: ingest allows * (pixel sandbox Origin: null)
 app.use('/api/ingest', cors({ origin: true, credentials: false }));
+// Ingest JSON parsing must stay strict (public endpoint).
+app.use('/api/ingest', express.json({ limit: config.maxEventPayloadBytes }));
 
 app.use('/api/ingest', ingestRouter);
 
@@ -126,6 +124,10 @@ app.use((req, res, next) => {
 
 // Protect dashboard + admin API: only from Shopify admin (Referer/Origin) or Google OAuth cookie (direct visits)
 app.use(dashboardAuth.middleware);
+
+// Body parser for authenticated admin API (Theme defaults can include many keys).
+app.use(express.json({ limit: 262144 }));
+app.use(express.urlencoded({ extended: true, limit: 262144 }));
 
 // Admin API
 app.get('/api/stream', streamRouter);

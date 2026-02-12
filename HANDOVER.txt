@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (header strip custom classes + full top-menu controls in Theme, global/user mode)
+Last updated: 2026-02-12 (theme defaults persistence: patch saves + auth-only JSON limit)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -217,6 +217,17 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-12
+- Theme save reliability:
+  - `/api/theme-defaults` POST now uses **patch semantics**: only provided keys are updated (prevents accidental wipes on partial payloads and allows small per-key saves).
+  - Theme UI now auto-saves **per-key** in `global` mode (debounced) using patch payloads; `theme-preference-mode` is always persisted when changed.
+  - Body parsing: `/api/ingest` keeps strict JSON limit (`MAX_EVENT_PAYLOAD_BYTES`), while authenticated admin API routes parse JSON up to `256KB` (mounted after `dashboardAuth.middleware`) so Theme saves can be larger without weakening ingest protection.
+  - Theme save button in `server/public/theme-settings.js` now reflects real network result (`Saving...`, `Saved!`, or `Save failed`) instead of always showing success.
+- Theme settings:
+  - Updated `Header` subtab to surface `Theme scope` (`global` vs `user-selected`) directly inside the Header panel so the global override mode is visible where header edits are made.
+  - Added strip Settings dropdown controls in Theme -> Header: background, link color, icon color, border color, and border radius (wired through runtime apply + `/api/theme-defaults` persistence keys).
+  - Header radius normalization now applies to all `theme-header-*-radius` keys (including new dropdown radius control).
+- Header/nav:
+  - Increased `.kexo-desktop-top-strip-row` min-height to `2.8rem` in `server/public/custom.css`.
 - Theme settings:
   - Added a new Theme subtab: `Header` (in `server/public/theme-settings.js`) to configure desktop top strip/main menu background colors, header link color, Settings label visibility, Settings border visibility/color, Online badge border visibility/color, and logo URL override.
   - Expanded Header controls so strip Settings/Online have dedicated editable background, text/icon color, border-radius, border show/hide, and border color options.

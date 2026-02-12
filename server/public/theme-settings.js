@@ -209,6 +209,11 @@
     'theme-header-settings-radius': '.375rem',
     'theme-header-settings-border': 'show',
     'theme-header-settings-border-color': '#e6e7e9',
+    'theme-header-settings-menu-bg': '#ffffff',
+    'theme-header-settings-menu-link-color': '#1f2937',
+    'theme-header-settings-menu-icon-color': '#1f2937',
+    'theme-header-settings-menu-border-color': '#e6e7e9',
+    'theme-header-settings-menu-radius': '.375rem',
     'theme-header-online-bg': '#f8fafc',
     'theme-header-online-text-color': '#1f2937',
     'theme-header-online-radius': '.375rem',
@@ -237,6 +242,11 @@
     'theme-header-settings-text-color',
     'theme-header-settings-radius',
     'theme-header-settings-border-color',
+    'theme-header-settings-menu-bg',
+    'theme-header-settings-menu-link-color',
+    'theme-header-settings-menu-icon-color',
+    'theme-header-settings-menu-border-color',
+    'theme-header-settings-menu-radius',
     'theme-header-online-bg',
     'theme-header-online-text-color',
     'theme-header-online-radius',
@@ -579,6 +589,16 @@
       root.style.setProperty('--kexo-header-settings-border-width', settingsBorderMode === 'hide' ? '0px' : '1px');
     } else if (key === 'theme-header-settings-border-color') {
       root.style.setProperty('--kexo-header-settings-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-menu-bg') {
+      root.style.setProperty('--kexo-header-settings-menu-bg', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-menu-link-color') {
+      root.style.setProperty('--kexo-header-settings-menu-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-menu-icon-color') {
+      root.style.setProperty('--kexo-header-settings-menu-icon-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-menu-border-color') {
+      root.style.setProperty('--kexo-header-settings-menu-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
+    } else if (key === 'theme-header-settings-menu-radius') {
+      root.style.setProperty('--kexo-header-settings-menu-radius', normalizeHeaderRadius(value, DEFAULTS[key]));
     } else if (key === 'theme-header-online-bg') {
       root.style.setProperty('--kexo-header-online-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-online-text-color') {
@@ -622,10 +642,16 @@
         KEYS.forEach(function (key) {
           if (key === 'theme-preference-mode') return;
           var dbKey = key.replace(/-/g, '_');
-          var serverVal = data[dbKey] || data[key] || DEFAULTS[key];
+          var rawDbVal = data[dbKey];
+          var rawKeyVal = data[key];
+          var hasDbVal = rawDbVal != null && String(rawDbVal).trim() !== '';
+          var hasKeyVal = rawKeyVal != null && String(rawKeyVal).trim() !== '';
+          var serverVal = hasDbVal
+            ? String(rawDbVal).trim()
+            : (hasKeyVal ? String(rawKeyVal).trim() : DEFAULTS[key]);
           if (useGlobal) {
             setStored(key, serverVal);
-            applyTheme(key, serverVal);
+            applyTheme(key, serverVal || DEFAULTS[key]);
             return;
           }
           var localVal = getStored(key);
@@ -641,20 +667,40 @@
       .catch(function () {});
   }
 
-  function saveToServer() {
+  function buildFullThemePayload() {
     var payload = {};
     KEYS.forEach(function (key) {
       var dbKey = key.replace(/-/g, '_');
       payload[dbKey] = getStored(key) || DEFAULTS[key];
     });
+    return payload;
+  }
+
+  function saveToServer(payloadOverride, opts) {
+    var payload = payloadOverride && typeof payloadOverride === 'object'
+      ? payloadOverride
+      : buildFullThemePayload();
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
-    fetch(base + '/api/theme-defaults', {
+    var fetchOpts = {
       method: 'POST',
       credentials: 'same-origin',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    }).catch(function () {});
+    };
+    if (opts && opts.keepalive) fetchOpts.keepalive = true;
+    return fetch(base + '/api/theme-defaults', fetchOpts).then(function (r) {
+      return r.text().then(function (text) {
+        var json = null;
+        try { json = text ? JSON.parse(text) : null; } catch (_) {}
+        if (!r.ok || (json && json.ok === false)) {
+          var msg = (json && json.error) ? String(json.error) : ('Theme save failed (' + r.status + ')');
+          throw new Error(msg);
+        }
+        return json || { ok: true };
+      });
+    });
   }
 
   function syncUI() {
@@ -683,7 +729,7 @@
         var headerTextInput = form.querySelector('[name="' + key + '"]');
         if (!headerTextInput) return;
         if (key === 'theme-header-logo-url') headerTextInput.value = normalizeLogoUrl(val);
-        else if (key === 'theme-header-settings-radius' || key === 'theme-header-online-radius') headerTextInput.value = normalizeHeaderRadius(val, DEFAULTS[key]);
+        else if (/theme-header-.*-radius$/.test(key)) headerTextInput.value = normalizeHeaderRadius(val, DEFAULTS[key]);
         else if (key === 'theme-header-main-shadow') headerTextInput.value = normalizeHeaderShadow(val, DEFAULTS[key]);
         else headerTextInput.value = normalizeHeaderColor(val, DEFAULTS[key]);
         return;
@@ -827,6 +873,13 @@
       headerInputCard('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
       headerInputCard('theme-header-settings-border-color', 'Settings button border color', 'Border color for the strip Settings button.', DEFAULTS['theme-header-settings-border-color'])
     ].join('');
+    var headerSettingsMenuGrid = [
+      headerInputCard('theme-header-settings-menu-bg', 'Settings dropdown background', 'Background color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-bg']),
+      headerInputCard('theme-header-settings-menu-link-color', 'Settings dropdown link color', 'Text color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-link-color']),
+      headerInputCard('theme-header-settings-menu-icon-color', 'Settings dropdown icon color', 'Icon color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-icon-color']),
+      headerInputCard('theme-header-settings-menu-border-color', 'Settings dropdown border color', 'Border color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-border-color']),
+      headerInputCard('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
+    ].join('');
     var headerOnlineGrid = [
       headerInputCard('theme-header-online-bg', 'Online badge background', 'Background color for the visitors badge.', DEFAULTS['theme-header-online-bg']),
       headerInputCard('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
@@ -854,10 +907,10 @@
       'Use an absolute URL or /path to replace desktop and mobile logos.',
       '/assets/kexo/logo_light.webp'
     );
-    var preferenceModePanel =
-      '<div class="card card-sm mt-3">' +
+    var preferenceModeCard =
+      '<div class="card card-sm mb-3">' +
         '<div class="card-body">' +
-          '<h4 class="mb-2">Preference mode</h4>' +
+          '<h4 class="mb-2">Theme scope</h4>' +
           '<div class="form-selectgroup">' +
             radioCard('theme-preference-mode', 'global', 'Global (shared)') +
             radioCard('theme-preference-mode', 'user', 'User-selected') +
@@ -894,11 +947,15 @@
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
         '<div class="text-secondary mb-3">Configure strip controls and top menu appearance. All controls apply live.</div>' +
+        preferenceModeCard +
         '<h4 class="mb-2">Strip</h4>' +
         '<div class="row g-3">' + headerStripGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Strip Settings button</h4>' +
         '<div class="row g-3">' + headerSettingsGrid + '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Strip Settings dropdown</h4>' +
+        '<div class="row g-3">' + headerSettingsMenuGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Strip Online badge</h4>' +
         '<div class="row g-3">' + headerOnlineGrid + '</div>' +
@@ -965,7 +1022,6 @@
           '</div>' +
         '</div>' +
       '</div>' +
-      preferenceModePanel +
     '</form>' +
     '<div class="d-flex gap-2 mt-3">' +
       '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
@@ -1034,7 +1090,8 @@
   function bindThemeForm(formEl) {
     if (!formEl) return;
     var debounceTimers = {};
-    var globalSaveTimer = null;
+    var globalSaveTimers = {};
+    var globalSaveAllTimer = null;
 
     function debouncedApply(name, value) {
       if (debounceTimers[name]) clearTimeout(debounceTimers[name]);
@@ -1043,11 +1100,28 @@
       }, 350);
     }
 
-    function queueGlobalSave() {
+    function queueGlobalSaveKey(key) {
+      if (!key) return;
+      var mode = getPreferenceMode();
+      // Theme scope is a shared setting; persist it even when switching to `user`.
+      var isScopeKey = key === 'theme-preference-mode';
+      if (mode !== 'global' && !isScopeKey) return;
+
+      if (globalSaveTimers[key]) clearTimeout(globalSaveTimers[key]);
+      globalSaveTimers[key] = setTimeout(function () {
+        var dbKey = key.replace(/-/g, '_');
+        var payload = {};
+        var raw = getStored(key);
+        payload[dbKey] = (raw != null && String(raw).trim() !== '') ? String(raw) : (DEFAULTS[key] || '');
+        saveToServer(payload, { keepalive: true }).catch(function () {});
+      }, 700);
+    }
+
+    function queueGlobalSaveAll() {
       if (getPreferenceMode() !== 'global') return;
-      if (globalSaveTimer) clearTimeout(globalSaveTimer);
-      globalSaveTimer = setTimeout(function () {
-        saveToServer();
+      if (globalSaveAllTimer) clearTimeout(globalSaveAllTimer);
+      globalSaveAllTimer = setTimeout(function () {
+        saveToServer().catch(function () {});
       }, 700);
     }
 
@@ -1061,7 +1135,7 @@
       if (name === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[name]);
       if (HEADER_THEME_TEXT_KEYS.indexOf(name) >= 0) {
         if (name === 'theme-header-logo-url') val = normalizeLogoUrl(val);
-        else if (name === 'theme-header-settings-radius' || name === 'theme-header-online-radius') val = normalizeHeaderRadius(val, DEFAULTS[name]);
+        else if (/theme-header-.*-radius$/.test(name)) val = normalizeHeaderRadius(val, DEFAULTS[name]);
         else if (name === 'theme-header-main-shadow') val = normalizeHeaderShadow(val, DEFAULTS[name]);
         else val = normalizeHeaderColor(val, DEFAULTS[name]);
       }
@@ -1070,7 +1144,7 @@
       setStored(name, val);
       applyTheme(name, val);
       refreshIconPreviews(formEl);
-      queueGlobalSave();
+      queueGlobalSaveKey(name);
     });
 
     ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).forEach(function (key) {
@@ -1084,14 +1158,14 @@
         if (key === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[key]);
         if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {
           if (key === 'theme-header-logo-url') val = normalizeLogoUrl(val);
-          else if (key === 'theme-header-settings-radius' || key === 'theme-header-online-radius') val = normalizeHeaderRadius(val, DEFAULTS[key]);
+          else if (/theme-header-.*-radius$/.test(key)) val = normalizeHeaderRadius(val, DEFAULTS[key]);
           else if (key === 'theme-header-main-shadow') val = normalizeHeaderShadow(val, DEFAULTS[key]);
           else val = normalizeHeaderColor(val, DEFAULTS[key]);
         }
         setStored(key, val);
         refreshIconPreviews(formEl);
         debouncedApply(key, val);
-        queueGlobalSave();
+        queueGlobalSaveKey(key);
       });
     });
 
@@ -1105,23 +1179,39 @@
     var saveBtn = root.querySelector('#theme-save-defaults');
     var resetBtn = root.querySelector('#theme-reset');
     if (saveBtn) saveBtn.addEventListener('click', function () {
-      saveToServer();
       var btn = this;
-      btn.textContent = 'Saved!';
-      btn.classList.replace('btn-primary', 'btn-success');
-      setTimeout(function () {
-        btn.textContent = 'Save as default';
-        btn.classList.replace('btn-success', 'btn-primary');
-      }, 1500);
+      if (btn.disabled) return;
+      var originalText = 'Save as default';
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      saveToServer().then(function () {
+        btn.textContent = 'Saved!';
+        btn.classList.replace('btn-primary', 'btn-success');
+        setTimeout(function () {
+          btn.textContent = originalText;
+          btn.classList.replace('btn-success', 'btn-primary');
+          btn.disabled = false;
+        }, 1500);
+      }).catch(function () {
+        btn.textContent = 'Save failed';
+        btn.classList.replace('btn-primary', 'btn-danger');
+        setTimeout(function () {
+          btn.textContent = originalText;
+          btn.classList.replace('btn-danger', 'btn-primary');
+          btn.disabled = false;
+        }, 2200);
+      });
     });
     if (resetBtn) resetBtn.addEventListener('click', function () {
+      var modeBeforeReset = getPreferenceMode();
       KEYS.forEach(function (key) {
+        if (key === 'theme-preference-mode') return;
         removeStored(key);
         applyTheme(key, DEFAULTS[key]);
       });
       syncUI();
       triggerIconThemeRefresh();
-      queueGlobalSave();
+      if (modeBeforeReset === 'global') queueGlobalSaveAll();
     });
 
     wireThemeSubTabs(root);

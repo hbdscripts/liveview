@@ -325,6 +325,11 @@ const THEME_KEYS = [
   'theme_header_settings_radius',
   'theme_header_settings_border',
   'theme_header_settings_border_color',
+  'theme_header_settings_menu_bg',
+  'theme_header_settings_menu_link_color',
+  'theme_header_settings_menu_icon_color',
+  'theme_header_settings_menu_border_color',
+  'theme_header_settings_menu_radius',
   'theme_header_online_bg',
   'theme_header_online_text_color',
   'theme_header_online_radius',
@@ -476,7 +481,10 @@ async function getThemeDefaults(req, res) {
 async function postThemeDefaults(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   try {
-    for (const key of THEME_KEYS) {
+    // Patch semantics: only update provided keys (prevents large payload requirements
+    // and avoids wiping other keys when partial payloads are sent).
+    for (const key of Object.keys(body)) {
+      if (!THEME_KEYS.includes(key)) continue;
       const val = body[key] != null ? String(body[key]).trim() : '';
       await store.setSetting('theme_' + key, val);
     }
