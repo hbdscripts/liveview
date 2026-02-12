@@ -680,14 +680,14 @@
     var c = cfg && typeof cfg === 'object' ? cfg : defaultChartsUiConfigV1();
     var list = c && Array.isArray(c.charts) ? c.charts : [];
 
-    var html = '<div class="table-responsive">' +
-      '<table class="table table-sm table-vcenter mb-0">' +
+    var html = '<div class="table-responsive overflow-x-auto">' +
+      '<table class="table table-sm table-vcenter mb-0 charts-settings-table">' +
       '<thead><tr>' +
-      '<th class="w-1">On</th>' +
-      '<th>Chart</th>' +
-      '<th class="w-1">Type</th>' +
-      '<th>Colors</th>' +
-      '<th class="w-1">Pie metric</th>' +
+      '<th class="charts-col-on">On</th>' +
+      '<th class="charts-col-chart">Chart</th>' +
+      '<th class="charts-col-type">Type</th>' +
+      '<th class="charts-col-colors">Colors</th>' +
+      '<th class="charts-col-pie">Pie metric</th>' +
       '</tr></thead><tbody>';
 
     list.forEach(function (it) {
@@ -704,22 +704,21 @@
       var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
       var showPieMetric = !!(meta && meta.pieMetric);
 
-      var colorHtml = '<div class="d-flex flex-wrap gap-2">';
+      var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
       var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
       for (var i = 0; i < count; i++) {
         var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
         var val = colors[i] ? String(colors[i]) : '#3eb3ab';
         if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
-        colorHtml += '<input type="color" class="form-control form-control-color" data-field="color" data-idx="' + i + '"' +
-          ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' +
-          '';
+        colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
+          ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
       }
       colorHtml += '</div>';
 
       var pieMetricHtml = '&mdash;';
       if (showPieMetric) {
         pieMetricHtml =
-          '<select class="form-select form-select-sm" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
+          '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
             '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
             '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
             '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
@@ -727,18 +726,18 @@
       }
 
       html += '<tr data-chart-key="' + escapeHtml(key) + '">' +
-        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
-        '<td>' +
+        '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+        '<td class="charts-col-chart">' +
           '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
           '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
         '</td>' +
-        '<td>' +
-          '<select class="form-select form-select-sm" data-field="mode">' +
+        '<td class="charts-col-type">' +
+          '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
             selectOptionsHtml(modes, mode) +
           '</select>' +
         '</td>' +
-        '<td>' + colorHtml + '</td>' +
-        '<td>' + pieMetricHtml + '</td>' +
+        '<td class="charts-col-colors">' + colorHtml + '</td>' +
+        '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
       '</tr>';
     });
 

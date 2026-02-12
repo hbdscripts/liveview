@@ -18,12 +18,21 @@
   <style>
     .settings-panel { display: none; }
     .settings-panel.active { display: block; }
+    .list-group.list-group-transparent .list-group-item.active:hover { text-decoration: none !important; }
     .settings-integrations-panel { display: none; }
     .settings-integrations-panel.active { display: block; }
     .settings-kpis-layout-panel { display: none; }
     .settings-kpis-layout-panel.active { display: block; }
     .settings-insights-layout-panel { display: none; }
     .settings-insights-layout-panel.active { display: block; }
+    .charts-settings-table { min-width: 520px; }
+    .charts-col-type .charts-type-select { min-width: 140px; }
+    .charts-col-pie .charts-pie-select { min-width: 110px; }
+    .charts-color-row .charts-color-swatch { width: 28px; height: 28px; padding: 2px; border: 1px solid var(--tblr-border-color, #e6e7e9); border-radius: var(--tblr-border-radius, .375rem); margin: 0; }
+    @media (max-width: 768px) {
+      .charts-settings-table { min-width: 400px; }
+      .charts-col-chart .form-control { min-width: 120px; }
+    }
   </style>
 </head>
 <body class="" data-page="settings">

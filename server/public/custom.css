@@ -105,6 +105,14 @@ i[class*="fa-"] {
 .kexo-accent-1 { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
 .kexo-accent-2 { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
 .kexo-accent-3 { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+.kexo-accent-4 { --kexo-accent: var(--kexo-accent-4, #8b5cf6); }
+.kexo-accent-5 { --kexo-accent: var(--kexo-accent-5, #ef4444); }
+
+.kexo-5color > :nth-child(5n + 1) { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
+.kexo-5color > :nth-child(5n + 2) { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
+.kexo-5color > :nth-child(5n + 3) { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+.kexo-5color > :nth-child(5n + 4) { --kexo-accent: var(--kexo-accent-4, #8b5cf6); }
+.kexo-5color > :nth-child(5n + 5) { --kexo-accent: var(--kexo-accent-5, #ef4444); }
 
 /* Contain horizontal table overflow inside the card, not the viewport */
 .table-scroll-wrap {
@@ -1479,9 +1487,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-top-strip {
   width: 100%;
   min-height: 2.5rem;
-  background: var(--kexo-header-top-bg, #fff);
+  background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
   color: var(--kexo-header-top-text-color, #1f2937);
   box-shadow: 2px 2px 2px #eee;
+  border-bottom: var(--kexo-header-strip-border-width, 0) solid var(--kexo-top-menu-border-color, #e6e7e9);
 }
 .kexo-desktop-top-strip-container {
   width: 100%;
@@ -1495,6 +1504,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   align-items: center;
   gap: .75rem;
   min-height: 2.8rem;
+  padding: var(--kexo-header-strip-padding, 0 5px);
 }
 .kexo-desktop-top-strip-left,
 .kexo-desktop-top-strip-center,
@@ -1590,7 +1600,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 
 .kexo-desktop-nav {
-  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
+  background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
   min-height: 2.5rem;
   width: 100%;
   padding: 0;
@@ -1784,6 +1794,90 @@ body[data-page="dashboard"] #kexo-kpis {
 /* ── Settings page: hide top KPI bar ── */
 body[data-page="settings"] #kexo-kpis {
   display: none !important;
+}
+
+/* ── Settings Sources tab: Tabler theme, tiny images in grid ── */
+#settings-traffic-source-mapping-root .tsm-jump-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+#settings-traffic-source-mapping-root .tsm-jump-btn {
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--tblr-border-radius, .375rem);
+}
+#settings-traffic-source-mapping-root .tsm-jump-btn:hover {
+  background: var(--tblr-bg-surface-secondary, rgba(0,0,0,.04));
+}
+#settings-traffic-source-mapping-root .tsm-jump-btn img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+  border: none;
+  background: transparent;
+}
+#settings-traffic-source-mapping-root .tsm-actions .tsm-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8125rem;
+  border-radius: var(--tblr-border-radius, .375rem);
+}
+#settings-traffic-source-mapping-root .tsm-actions .tsm-btn.primary {
+  background: var(--tblr-primary);
+  color: #fff;
+  border-color: var(--tblr-primary);
+}
+#settings-traffic-source-mapping-root .tsm-actions .tsm-btn:not(.primary) {
+  background: var(--tblr-bg-surface, #fff);
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  color: var(--tblr-body-color, #1e293b);
+}
+#settings-traffic-source-mapping-root .tsm-table-scroll {
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-radius: var(--tblr-border-radius, .75rem);
+  background: var(--tblr-bg-surface, #fff);
+}
+#settings-traffic-source-mapping-root .tsm-table .grid-cell {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+}
+#settings-traffic-source-mapping-root .tsm-input {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-radius: var(--tblr-border-radius, .375rem);
+  background: var(--tblr-bg-surface, #fff);
+  font-size: 0.8125rem;
+}
+#settings-traffic-source-mapping-root .tsm-icon-preview {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+#settings-traffic-source-mapping-root .tsm-mapped-pill {
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  background: var(--tblr-bg-surface-secondary, rgba(0,0,0,.02));
+  border-radius: var(--tblr-border-radius, .375rem);
+}
+#settings-traffic-source-mapping-root .diag-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tblr-body-color, #1e293b);
+  margin-bottom: 0.5rem;
+}
+#settings-traffic-source-mapping-root .diag-note {
+  font-size: 0.8125rem;
+  color: var(--tblr-secondary, #626976);
 }
 
 /* ── Dashboard page: match other pages' content gutters ── */

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (variants mapping issues modal + CR coverage diagnostics + dedicated icon keys)
+Last updated: 2026-02-12 (theme 5-color refactor + Charts/Sources fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -23,12 +23,14 @@ Mobile:
 - Mobile topbar (hamburger + centered logo + date dropdown) + full-screen nav overlay (`#kexo-mobile-nav`).
 - Mobile UA GET requests for dashboard/settings/tools/etc are redirected to `/mobile-unsupported` (see `server/index.js`).
 
-KEXO “3-color” accents:
-- The desktop nav uses a rotating 3-color accent for the active underline and related styling via `.kexo-3color`:
+KEXO “5-color” accents:
+- The desktop nav uses a rotating 5-color accent for the active underline and related styling via `.kexo-5color`:
   - Accent 1: `#4b94e4` (blue)
   - Accent 2: `#3eb3ab` (teal)
   - Accent 3: `#f59e34` (orange)
-  - See: `server/public/custom.css` (`.kexo-3color`, `--kexo-accent-*`)
+  - Accent 4: `#8b5cf6` (purple)
+  - Accent 5: `#ef4444` (red)
+  - See: `server/public/custom.css` (`.kexo-5color`, `--kexo-accent-*`)
 
 ---
 
@@ -106,13 +108,10 @@ Theme persistence:
 
 Theme UI:
 - `server/public/theme-settings.js` renders the Theme panel inside Settings.
-- Header subtab now contains non-color header controls only (visibility toggles, border on/off toggles, radius fields, logo override).
-- Color subtab now owns all desktop strip/nav/dropdown/settings/online-badge color fields.
-- Primary color choices are restricted to KEXO 3 accents only:
-  - Accent 1: `#4b94e4` (blue)
-  - Accent 2: `#3eb3ab` (teal)
-  - Accent 3: `#f59e34` (orange)
-- Early hydration in `server/public/partials/head-theme.html` applies only those 3 primary options before paint.
+- Header subtab contains non-color header controls only (visibility toggles, border on/off toggles, radius fields, logo override, strip padding, strip border-bottom toggle).
+- Color subtab has 5 editable hex inputs for accents 1–5; strip, settings dropdown, menu, and online badge colors are derived from accent 1.
+- Strip opacity filter and Menu opacity filter (0–100%) control darkening of strip/menu backgrounds.
+- Early hydration in `server/public/partials/head-theme.html` loads 5 accent hex values from localStorage before paint.
 
 Header + nav theming:
 - Desktop top strip + main nav are styled via CSS vars in `server/public/custom.css`, overridden by `/theme-vars.css`.
@@ -175,7 +174,7 @@ KPI data:
 - `server/public/partials/head-theme.html`: early theme hydration + loads `/theme-vars.css` + Font Awesome + `fontawesome-icons.js`
 - `server/public/partials/header.html`: desktop strip + desktop nav + KPI strip + mobile nav
 - `server/public/app.js`: shared bootstrapping + report loader + charts/tables + Settings hydration
-- `server/public/custom.css`: KEXO UI styling + header/nav theme vars + layout + KEXO 3-color logic
+- `server/public/custom.css`: KEXO UI styling + header/nav theme vars + layout + KEXO 5-color logic
 - `server/public/tabler-theme.css`: Tabler overrides
 - `server/public/settings-page.js`: Settings tab logic + saving to `/api/settings`
 - `server/public/theme-settings.js`: Theme UI
@@ -222,11 +221,17 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12
+- Theme refactor: 3 accents → 5 editable hex inputs (accent 1–5); 8 former settings (strip/settings/menu/dropdown colors) derived from accent 1; added Strip/Menu opacity filters, strip padding, strip border-bottom toggle; removed icons from Header & Color section.
+- Charts tab: fixed layout, map type input width, color swatches, pie metric dropdown (mobile-friendly).
+- Sources tab: Tabler-style restyle with tiny images in grid.
+- Fixed underline on hover for active settings menu items.
+
+2026-02-12 (earlier)
 - Handover audit pass: updated to current UI + routes + Settings capabilities.
 - Icons are customizable via `data-icon-key` + Font Awesome runtime adapter (`server/public/fontawesome-icons.js`).
 - Added global Charts settings (`charts_ui_config_v1`) + server-injected hide CSS via `/theme-vars.css`.
 - Refactored Theme settings: moved all desktop header/nav/dropdown/settings/online color controls from Header tab into Color tab; Header tab now keeps non-color controls.
-- Locked Theme primary palette to KEXO brand 3-color accents in both settings UI and `head-theme` early hydration.
+- Locked Theme primary palette to KEXO brand 5-color accents in both settings UI and `head-theme` early hydration.
 - Fixed Settings → Charts initial render timing so chart mode/pie selectors render with correct defaults/selections when tab is opened.
 - Added Insights → Variants page (`/insights/variants`) and API (`/api/insights-variants`) with configurable mapping tables, variant-specific sessions denominator (`?variant=<id>`), sortable/paginated tables (default 5 rows, options 5/10), and strict save validation in Settings → Insights → Variants that blocks unmapped/ambiguous configs with detailed diagnostics.
 - Fixed Countries → Country + Product denominator in `getBestGeoProducts()` so Sessions/CR% use country+product-handle sessions (product landing sessions in that country), not all sessions for the country.

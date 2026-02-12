@@ -567,7 +567,11 @@ async function postSettings(req, res) {
 // Must match the keys used by `server/public/theme-settings.js` (hyphens converted to underscores).
 const THEME_KEYS = [
   'theme',
-  'theme_primary',
+  'theme_accent_1',
+  'theme_accent_2',
+  'theme_accent_3',
+  'theme_accent_4',
+  'theme_accent_5',
   'theme_radius',
   'theme_font',
   'theme_base',
@@ -600,6 +604,10 @@ const THEME_KEYS = [
   'theme_header_online_border',
   'theme_header_online_border_color',
   'theme_header_logo_url',
+  'theme_strip_opacity_filter',
+  'theme_menu_opacity_filter',
+  'theme_header_strip_border',
+  'theme_header_strip_padding',
   'theme_icon_default',
   'theme_icon_topnav',
   'theme_icon_dropdown',
@@ -806,133 +814,154 @@ function normalizeCssToggle(value, fallback) {
 
 async function getThemeVarsCss(req, res) {
   const FALLBACKS = {
-    theme_header_top_bg: '#ffffff',
+    theme_accent_1: '#4b94e4',
     theme_header_top_text_color: '#1f2937',
-    theme_header_main_bg: '#ffffff',
     theme_header_main_link_color: '#1f2937',
-    theme_header_main_dropdown_bg: '#ffffff',
     theme_header_main_dropdown_link_color: '#1f2937',
     theme_header_main_dropdown_icon_color: '#1f2937',
     theme_header_main_border: 'show',
     theme_header_main_border_color: '#e6e7e9',
     theme_header_main_shadow: '2px 2px 2px #eee',
     theme_header_settings_label: 'show',
-    theme_header_settings_bg: '#ffffff',
     theme_header_settings_text_color: '#1f2937',
     theme_header_settings_radius: '.375rem',
     theme_header_settings_border: 'show',
     theme_header_settings_border_color: '#e6e7e9',
-    theme_header_settings_menu_bg: '#ffffff',
     theme_header_settings_menu_link_color: '#1f2937',
-    theme_header_settings_menu_icon_color: '#1f2937',
     theme_header_settings_menu_border_color: '#e6e7e9',
     theme_header_settings_menu_radius: '.375rem',
-    theme_header_online_bg: '#f8fafc',
     theme_header_online_text_color: '#1f2937',
     theme_header_online_radius: '.375rem',
     theme_header_online_border: 'show',
     theme_header_online_border_color: '#e6e7e9',
+    theme_strip_opacity_filter: '0',
+    theme_menu_opacity_filter: '0',
+    theme_header_strip_border: 'show',
+    theme_header_strip_padding: '0 5px',
   };
 
   function getThemeKey(key, fallback) {
-    // Theme defaults are stored under `theme_${key}` (see /api/theme-defaults).
     return store.getSetting('theme_' + key).then((v) => {
       const raw = v == null ? '' : String(v).trim();
       return raw ? raw : fallback;
     }).catch(() => fallback);
   }
 
+  const legacyPrimary = await getThemeKey('theme_primary', '');
+  const accent1Raw = await getThemeKey('theme_accent_1', FALLBACKS.theme_accent_1);
+  const accent1 = accent1Raw && /^#?[0-9a-f]{6}$/i.test(accent1Raw.trim())
+    ? (accent1Raw.trim().charAt(0) === '#' ? accent1Raw.trim() : '#' + accent1Raw.trim())
+    : (legacyPrimary && { blue: '#4b94e4', teal: '#3eb3ab', orange: '#f59e34', green: '#3eb3ab' }[legacyPrimary.trim().toLowerCase()]) || FALLBACKS.theme_accent_1;
+
   const [
-    topBg,
+    _skip,
     topText,
-    mainBg,
     mainLink,
-    ddBg,
     ddLink,
     ddIcon,
     mainBorderMode,
     mainBorderColor,
     mainShadow,
     settingsLabelMode,
-    settingsBg,
     settingsText,
     settingsRadius,
     settingsBorderMode,
     settingsBorderColor,
-    settingsMenuBg,
     settingsMenuLink,
-    settingsMenuIcon,
     settingsMenuBorderColor,
     settingsMenuRadius,
-    onlineBg,
     onlineText,
     onlineRadius,
     onlineBorderMode,
     onlineBorderColor,
+    stripOpacity,
+    menuOpacity,
+    stripBorderMode,
+    stripPadding,
   ] = await Promise.all([
-    getThemeKey('theme_header_top_bg', FALLBACKS.theme_header_top_bg),
+    Promise.resolve(accent1),
     getThemeKey('theme_header_top_text_color', FALLBACKS.theme_header_top_text_color),
-    getThemeKey('theme_header_main_bg', FALLBACKS.theme_header_main_bg),
     getThemeKey('theme_header_main_link_color', FALLBACKS.theme_header_main_link_color),
-    getThemeKey('theme_header_main_dropdown_bg', FALLBACKS.theme_header_main_dropdown_bg),
     getThemeKey('theme_header_main_dropdown_link_color', FALLBACKS.theme_header_main_dropdown_link_color),
     getThemeKey('theme_header_main_dropdown_icon_color', FALLBACKS.theme_header_main_dropdown_icon_color),
     getThemeKey('theme_header_main_border', FALLBACKS.theme_header_main_border),
     getThemeKey('theme_header_main_border_color', FALLBACKS.theme_header_main_border_color),
     getThemeKey('theme_header_main_shadow', FALLBACKS.theme_header_main_shadow),
     getThemeKey('theme_header_settings_label', FALLBACKS.theme_header_settings_label),
-    getThemeKey('theme_header_settings_bg', FALLBACKS.theme_header_settings_bg),
     getThemeKey('theme_header_settings_text_color', FALLBACKS.theme_header_settings_text_color),
     getThemeKey('theme_header_settings_radius', FALLBACKS.theme_header_settings_radius),
     getThemeKey('theme_header_settings_border', FALLBACKS.theme_header_settings_border),
     getThemeKey('theme_header_settings_border_color', FALLBACKS.theme_header_settings_border_color),
-    getThemeKey('theme_header_settings_menu_bg', FALLBACKS.theme_header_settings_menu_bg),
     getThemeKey('theme_header_settings_menu_link_color', FALLBACKS.theme_header_settings_menu_link_color),
-    getThemeKey('theme_header_settings_menu_icon_color', FALLBACKS.theme_header_settings_menu_icon_color),
     getThemeKey('theme_header_settings_menu_border_color', FALLBACKS.theme_header_settings_menu_border_color),
     getThemeKey('theme_header_settings_menu_radius', FALLBACKS.theme_header_settings_menu_radius),
-    getThemeKey('theme_header_online_bg', FALLBACKS.theme_header_online_bg),
     getThemeKey('theme_header_online_text_color', FALLBACKS.theme_header_online_text_color),
     getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
     getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
     getThemeKey('theme_header_online_border_color', FALLBACKS.theme_header_online_border_color),
+    getThemeKey('theme_strip_opacity_filter', FALLBACKS.theme_strip_opacity_filter),
+    getThemeKey('theme_menu_opacity_filter', FALLBACKS.theme_menu_opacity_filter),
+    getThemeKey('theme_header_strip_border', FALLBACKS.theme_header_strip_border),
+    getThemeKey('theme_header_strip_padding', FALLBACKS.theme_header_strip_padding),
   ]);
 
+  const accent1Hex = normalizeCssColor(accent1, FALLBACKS.theme_accent_1);
+  void _skip;
   const mainBorder = normalizeCssToggle(mainBorderMode, 'show');
   const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
   const onlineBorder = normalizeCssToggle(onlineBorderMode, 'show');
+  const stripBorder = normalizeCssToggle(stripBorderMode, 'show');
   const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
+
+  const stripOpacityVal = Math.min(100, Math.max(0, parseFloat(stripOpacity) || 0)) / 100;
+  const menuOpacityVal = Math.min(100, Math.max(0, parseFloat(menuOpacity) || 0)) / 100;
+
+  const [a2, a3, a4, a5] = await Promise.all([
+    getThemeKey('theme_accent_2', '#3eb3ab'),
+    getThemeKey('theme_accent_3', '#f59e34'),
+    getThemeKey('theme_accent_4', '#8b5cf6'),
+    getThemeKey('theme_accent_5', '#ef4444'),
+  ]);
 
   const css = [
     '/* KEXO: server-injected theme variables (header + top menu) */',
     ':root{',
-    `--kexo-header-top-bg:${normalizeCssColor(topBg, FALLBACKS.theme_header_top_bg)};`,
+    `--kexo-accent-1:${accent1Hex};`,
+    `--kexo-accent-2:${normalizeCssColor(a2, '#3eb3ab')};`,
+    `--kexo-accent-3:${normalizeCssColor(a3, '#f59e34')};`,
+    `--kexo-accent-4:${normalizeCssColor(a4, '#8b5cf6')};`,
+    `--kexo-accent-5:${normalizeCssColor(a5, '#ef4444')};`,
+    `--kexo-strip-opacity-filter:${stripOpacityVal.toFixed(2)};`,
+    `--kexo-menu-opacity-filter:${menuOpacityVal.toFixed(2)};`,
+    `--kexo-header-strip-border-width:${stripBorder === 'hide' ? '0px' : '1px'};`,
+    `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
+    `--kexo-header-top-bg:${accent1Hex};`,
     `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,
-    `--kexo-header-main-bg:${normalizeCssColor(mainBg, FALLBACKS.theme_header_main_bg)};`,
-    `--kexo-top-menu-bg:${normalizeCssColor(mainBg, FALLBACKS.theme_header_main_bg)};`,
+    `--kexo-header-main-bg:${accent1Hex};`,
+    `--kexo-top-menu-bg:${accent1Hex};`,
     `--kexo-top-menu-link-color:${normalizeCssColor(mainLink, FALLBACKS.theme_header_main_link_color)};`,
-    `--kexo-top-menu-dropdown-bg:${normalizeCssColor(ddBg, FALLBACKS.theme_header_main_dropdown_bg)};`,
+    `--kexo-top-menu-dropdown-bg:${accent1Hex};`,
     `--kexo-top-menu-dropdown-link-color:${normalizeCssColor(ddLink, FALLBACKS.theme_header_main_dropdown_link_color)};`,
     `--kexo-top-menu-dropdown-icon-color:${normalizeCssColor(ddIcon, FALLBACKS.theme_header_main_dropdown_icon_color)};`,
     `--kexo-top-menu-border-width:${mainBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-top-menu-border-color:${normalizeCssColor(mainBorderColor, FALLBACKS.theme_header_main_border_color)};`,
+    `--kexo-top-menu-border-color:${accent1Hex};`,
     `--kexo-top-menu-shadow:${normalizeCssShadow(mainShadow, FALLBACKS.theme_header_main_shadow)};`,
 
-    `--kexo-header-settings-bg:${normalizeCssColor(settingsBg, FALLBACKS.theme_header_settings_bg)};`,
+    `--kexo-header-settings-bg:${accent1Hex};`,
     `--kexo-header-settings-text-color:${normalizeCssColor(settingsText, FALLBACKS.theme_header_settings_text_color)};`,
     `--kexo-header-settings-radius:${normalizeCssRadius(settingsRadius, FALLBACKS.theme_header_settings_radius)};`,
     `--kexo-header-settings-border-width:${settingsBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-header-settings-border-color:${normalizeCssColor(settingsBorderColor, FALLBACKS.theme_header_settings_border_color)};`,
+    `--kexo-header-settings-border-color:${accent1Hex};`,
     `--kexo-header-settings-label-display:${labelMode === 'hide' ? 'none' : 'inline'};`,
     `--kexo-header-settings-icon-gap:${labelMode === 'hide' ? '0' : '.35rem'};`,
 
-    `--kexo-header-settings-menu-bg:${normalizeCssColor(settingsMenuBg, FALLBACKS.theme_header_settings_menu_bg)};`,
+    `--kexo-header-settings-menu-bg:${accent1Hex};`,
     `--kexo-header-settings-menu-link-color:${normalizeCssColor(settingsMenuLink, FALLBACKS.theme_header_settings_menu_link_color)};`,
-    `--kexo-header-settings-menu-icon-color:${normalizeCssColor(settingsMenuIcon, FALLBACKS.theme_header_settings_menu_icon_color)};`,
+    `--kexo-header-settings-menu-icon-color:${accent1Hex};`,
     `--kexo-header-settings-menu-border-color:${normalizeCssColor(settingsMenuBorderColor, FALLBACKS.theme_header_settings_menu_border_color)};`,
     `--kexo-header-settings-menu-radius:${normalizeCssRadius(settingsMenuRadius, FALLBACKS.theme_header_settings_menu_radius)};`,
 
-    `--kexo-header-online-bg:${normalizeCssColor(onlineBg, FALLBACKS.theme_header_online_bg)};`,
+    `--kexo-header-online-bg:${accent1Hex};`,
     `--kexo-header-online-text-color:${normalizeCssColor(onlineText, FALLBACKS.theme_header_online_text_color)};`,
     `--kexo-header-online-radius:${normalizeCssRadius(onlineRadius, FALLBACKS.theme_header_online_radius)};`,
     `--kexo-header-online-border-width:${onlineBorder === 'hide' ? '0px' : '1px'};`,

@@ -224,9 +224,14 @@
     ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
   });
 
+  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
   var DEFAULTS = {
     theme: 'light',
-    'theme-primary': 'teal',
+    'theme-accent-1': ACCENT_DEFAULTS[0],
+    'theme-accent-2': ACCENT_DEFAULTS[1],
+    'theme-accent-3': ACCENT_DEFAULTS[2],
+    'theme-accent-4': ACCENT_DEFAULTS[3],
+    'theme-accent-5': ACCENT_DEFAULTS[4],
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
@@ -261,6 +266,10 @@
     'theme-header-online-border': 'show',
     'theme-header-online-border-color': '#e6e7e9',
     'theme-header-logo-url': '',
+    'theme-strip-opacity-filter': '0',
+    'theme-menu-opacity-filter': '0',
+    'theme-header-strip-border': 'show',
+    'theme-header-strip-padding': '0 5px',
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -278,51 +287,76 @@
     return true;
   });
   var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
+  var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5'];
   var HEADER_THEME_TEXT_KEYS = [
-    'theme-header-top-bg',
     'theme-header-top-text-color',
-    'theme-header-main-bg',
     'theme-header-main-link-color',
-    'theme-header-main-dropdown-bg',
-    'theme-header-main-dropdown-link-color',
-    'theme-header-main-dropdown-icon-color',
     'theme-header-main-border-color',
     'theme-header-main-shadow',
-    'theme-header-settings-bg',
     'theme-header-settings-text-color',
     'theme-header-settings-radius',
     'theme-header-settings-border-color',
-    'theme-header-settings-menu-bg',
     'theme-header-settings-menu-link-color',
-    'theme-header-settings-menu-icon-color',
     'theme-header-settings-menu-border-color',
     'theme-header-settings-menu-radius',
-    'theme-header-online-bg',
     'theme-header-online-text-color',
     'theme-header-online-radius',
     'theme-header-online-border-color',
+    'theme-header-main-dropdown-link-color',
+    'theme-header-main-dropdown-icon-color',
     'theme-header-logo-url',
+    'theme-header-strip-padding',
   ];
   var HEADER_THEME_TOGGLE_KEYS = [
     'theme-header-main-border',
     'theme-header-settings-label',
     'theme-header-settings-border',
     'theme-header-online-border',
+    'theme-header-strip-border',
   ];
+  var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter'];
 
-  // Primary color map: name -> [hex, r, g, b]
-  var PRIMARY_COLORS = {
-    blue: ['#4b94e4', '75,148,228'],
-    teal: ['#3eb3ab', '62,179,171'],
-    orange: ['#f59e34', '245,158,52'],
-  };
+  function hexToRgb(hex) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || '').trim());
+    if (!m) return null;
+    var h = m[1];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16);
+    var g = parseInt(h.slice(2, 4), 16);
+    var b = parseInt(h.slice(4, 6), 16);
+    if (!Number.isFinite(r + g + b)) return null;
+    return r + ',' + g + ',' + b;
+  }
 
-  function normalizePrimaryChoice(value) {
-    var raw = String(value == null ? '' : value).trim().toLowerCase();
-    if (PRIMARY_COLORS[raw]) return raw;
-    // Backward compatibility with older default naming.
-    if (raw === 'green') return 'teal';
-    return DEFAULTS['theme-primary'];
+  function normalizeAccentHex(value, fallback) {
+    var raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback || ACCENT_DEFAULTS[0];
+    if (raw.charAt(0) !== '#') raw = '#' + raw;
+    if (!/^#([0-9a-f]{6})$/i.test(raw)) {
+      var short = raw.match(/^#([0-9a-f]{3})$/i);
+      if (short) {
+        var s = short[1];
+        raw = '#' + s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+      } else return fallback || ACCENT_DEFAULTS[0];
+    }
+    return raw;
+  }
+
+  function normalizeOpacityFilter(value, fallback) {
+    var raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback || '0';
+    var n = parseFloat(raw);
+    if (!Number.isFinite(n) || n < 0) return fallback || '0';
+    if (n > 100) return '100';
+    return String(Math.round(n));
+  }
+
+  function normalizeStripPadding(value, fallback) {
+    var raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback || '0 5px';
+    if (raw.length > 80) return fallback || '0 5px';
+    if (/[;{}]/.test(raw)) return fallback || '0 5px';
+    return raw;
   }
 
   // Border radius scale -> CSS value
@@ -600,16 +634,37 @@
       root.classList.remove('theme-dark-early');
     } else if (key === 'theme-preference-mode') {
       root.setAttribute('data-kexo-theme-preference-mode', normalizePreferenceMode(value, DEFAULTS[key]));
-    } else if (key === 'theme-primary') {
-      var primaryKey = normalizePrimaryChoice(value);
-      var color = PRIMARY_COLORS[primaryKey];
-      if (color) {
-        root.style.setProperty('--tblr-primary', color[0]);
-        root.style.setProperty('--tblr-primary-rgb', color[1]);
-      } else {
-        root.style.removeProperty('--tblr-primary');
-        root.style.removeProperty('--tblr-primary-rgb');
+    } else if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
+      var idx = ACCENT_HEX_KEYS.indexOf(key);
+      var hex = normalizeAccentHex(value, ACCENT_DEFAULTS[idx]);
+      var rgb = hexToRgb(hex);
+      root.style.setProperty('--kexo-accent-' + (idx + 1), hex);
+      if (rgb) root.style.setProperty('--kexo-accent-' + (idx + 1) + '-rgb', rgb);
+      if (idx === 0) {
+        root.style.setProperty('--tblr-primary', hex);
+        if (rgb) root.style.setProperty('--tblr-primary-rgb', rgb);
+        var derived = hex;
+        root.style.setProperty('--kexo-header-top-bg', derived);
+        root.style.setProperty('--kexo-header-settings-bg', derived);
+        root.style.setProperty('--kexo-header-settings-border-color', derived);
+        root.style.setProperty('--kexo-header-settings-menu-icon-color', derived);
+        root.style.setProperty('--kexo-header-online-bg', derived);
+        root.style.setProperty('--kexo-header-main-bg', derived);
+        root.style.setProperty('--kexo-top-menu-bg', derived);
+        root.style.setProperty('--kexo-top-menu-border-color', derived);
+        root.style.setProperty('--kexo-top-menu-dropdown-bg', derived);
       }
+    } else if (key === 'theme-strip-opacity-filter') {
+      var pct = normalizeOpacityFilter(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-strip-opacity-filter', (parseFloat(pct) / 100).toFixed(2));
+    } else if (key === 'theme-menu-opacity-filter') {
+      var pct = normalizeOpacityFilter(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-menu-opacity-filter', (parseFloat(pct) / 100).toFixed(2));
+    } else if (key === 'theme-header-strip-border') {
+      var stripBorderMode = normalizeHeaderToggle(value, DEFAULTS[key]);
+      root.style.setProperty('--kexo-header-strip-border-width', stripBorderMode === 'hide' ? '0px' : '1px');
+    } else if (key === 'theme-header-strip-padding') {
+      root.style.setProperty('--kexo-header-strip-padding', normalizeStripPadding(value, DEFAULTS[key]));
     } else if (key === 'theme-radius') {
       var r = RADIUS_MAP[value];
       if (r != null) {
@@ -649,13 +704,8 @@
       root.style.setProperty('--kexo-theme-icon-size', normalizeIconSize(value, DEFAULTS[key]));
     } else if (key === 'theme-icon-color') {
       root.style.setProperty('--kexo-theme-icon-color', normalizeIconColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-top-bg') {
-      root.style.setProperty('--kexo-header-top-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-top-text-color') {
       root.style.setProperty('--kexo-header-top-text-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-main-bg') {
-      root.style.setProperty('--kexo-header-main-bg', normalizeHeaderColor(value, DEFAULTS[key]));
-      root.style.setProperty('--kexo-top-menu-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-link-color') {
       // Legacy shared header text key kept for backwards compatibility.
       var legacyHeader = normalizeHeaderColor(value, DEFAULTS[key]);
@@ -663,8 +713,6 @@
       root.style.setProperty('--kexo-top-menu-link-color', legacyHeader);
     } else if (key === 'theme-header-main-link-color') {
       root.style.setProperty('--kexo-top-menu-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-main-dropdown-bg') {
-      root.style.setProperty('--kexo-top-menu-dropdown-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-main-dropdown-link-color') {
       root.style.setProperty('--kexo-top-menu-dropdown-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-main-dropdown-icon-color') {
@@ -680,8 +728,6 @@
       var labelMode = normalizeHeaderToggle(value, DEFAULTS[key]);
       root.style.setProperty('--kexo-header-settings-label-display', labelMode === 'hide' ? 'none' : 'inline');
       root.style.setProperty('--kexo-header-settings-icon-gap', labelMode === 'hide' ? '0' : '.35rem');
-    } else if (key === 'theme-header-settings-bg') {
-      root.style.setProperty('--kexo-header-settings-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-settings-text-color') {
       root.style.setProperty('--kexo-header-settings-text-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-settings-radius') {
@@ -691,18 +737,12 @@
       root.style.setProperty('--kexo-header-settings-border-width', settingsBorderMode === 'hide' ? '0px' : '1px');
     } else if (key === 'theme-header-settings-border-color') {
       root.style.setProperty('--kexo-header-settings-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-settings-menu-bg') {
-      root.style.setProperty('--kexo-header-settings-menu-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-settings-menu-link-color') {
       root.style.setProperty('--kexo-header-settings-menu-link-color', normalizeHeaderColor(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-settings-menu-icon-color') {
-      root.style.setProperty('--kexo-header-settings-menu-icon-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-settings-menu-border-color') {
       root.style.setProperty('--kexo-header-settings-menu-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-settings-menu-radius') {
       root.style.setProperty('--kexo-header-settings-menu-radius', normalizeHeaderRadius(value, DEFAULTS[key]));
-    } else if (key === 'theme-header-online-bg') {
-      root.style.setProperty('--kexo-header-online-bg', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-online-text-color') {
       root.style.setProperty('--kexo-header-online-text-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-online-radius') {
@@ -742,10 +782,16 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.ok) return;
-        // Settings scope is GLOBAL only for now (user-selected is disabled).
         var mode = 'global';
         setStored('theme-preference-mode', mode);
         applyTheme('theme-preference-mode', mode);
+        var legacyPrimary = data.theme_primary || getStored('theme-primary');
+        if (legacyPrimary && ACCENT_HEX_KEYS.indexOf('theme-accent-1') >= 0) {
+          var legacyMap = { blue: '#4b94e4', teal: '#3eb3ab', orange: '#f59e34', green: '#3eb3ab' };
+          var migrated = legacyMap[String(legacyPrimary).trim().toLowerCase()] || ACCENT_DEFAULTS[0];
+          setStored('theme-accent-1', migrated);
+          applyTheme('theme-accent-1', migrated);
+        }
         KEYS.forEach(function (key) {
           if (key === 'theme-preference-mode') return;
           var dbKey = key.replace(/-/g, '_');
@@ -756,7 +802,9 @@
           var serverVal = hasDbVal
             ? String(rawDbVal).trim()
             : (hasKeyVal ? String(rawKeyVal).trim() : DEFAULTS[key]);
-          if (key === 'theme-primary') serverVal = normalizePrimaryChoice(serverVal);
+          if (ACCENT_HEX_KEYS.indexOf(key) >= 0) serverVal = normalizeAccentHex(serverVal, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
+          if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) serverVal = normalizeOpacityFilter(serverVal, DEFAULTS[key]);
+          if (key === 'theme-header-strip-padding') serverVal = normalizeStripPadding(serverVal, DEFAULTS[key]);
           setStored(key, serverVal);
           applyTheme(key, serverVal || DEFAULTS[key]);
         });
@@ -806,10 +854,12 @@
     if (!form) return;
     KEYS.forEach(function (key) {
       var val = getStored(key) || DEFAULTS[key];
-      if (key === 'theme-primary') {
-        val = normalizePrimaryChoice(val);
+      if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
+        val = normalizeAccentHex(val, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
         setStored(key, val);
       }
+      if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
+      if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
       if (ICON_STYLE_KEYS.indexOf(key) >= 0) {
         var styleInput = form.querySelector('[name="' + key + '"]');
         if (styleInput) styleInput.value = normalizeIconStyle(val, DEFAULTS[key]);
@@ -827,10 +877,24 @@
         else visualInput.value = normalizeIconColor(val, DEFAULTS[key]);
         return;
       }
+      if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
+        var hex = normalizeAccentHex(val, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
+        var accentInput = form.querySelector('.theme-accent-hex[name="' + key + '"]');
+        var swatch = form.querySelector('.theme-accent-swatch[data-accent-sync="' + key + '"]');
+        if (accentInput) accentInput.value = hex;
+        if (swatch) swatch.value = hex;
+        return;
+      }
+      if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) {
+        var opacityInput = form.querySelector('[name="' + key + '"]');
+        if (opacityInput) opacityInput.value = normalizeOpacityFilter(val, DEFAULTS[key]);
+        return;
+      }
       if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {
         var headerTextInput = form.querySelector('[name="' + key + '"]');
         if (!headerTextInput) return;
         if (key === 'theme-header-logo-url') headerTextInput.value = normalizeLogoUrl(val);
+        else if (key === 'theme-header-strip-padding') headerTextInput.value = normalizeStripPadding(val, DEFAULTS[key]);
         else if (/theme-header-.*-radius$/.test(key)) headerTextInput.value = normalizeHeaderRadius(val, DEFAULTS[key]);
         else if (key === 'theme-header-main-shadow') headerTextInput.value = normalizeHeaderShadow(val, DEFAULTS[key]);
         else headerTextInput.value = normalizeHeaderColor(val, DEFAULTS[key]);
@@ -915,6 +979,50 @@
     '</div>';
   }
 
+  function headerInputCardNoIcon(key, title, help, placeholder) {
+    var inputId = 'theme-input-' + key;
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="mb-2"><strong>' + title + '</strong></div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function headerToggleCardNoIcon(key, title, help) {
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="mb-2"><strong>' + title + '</strong></div>' +
+          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="form-selectgroup">' +
+            radioCard(key, 'show', 'Show') +
+            radioCard(key, 'hide', 'Hide') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function accentHexInputCard(key, title, placeholder) {
+    var inputId = 'theme-input-' + key;
+    var def = ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)] || '#4b94e4';
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="mb-2"><strong>' + title + '</strong></div>' +
+          '<div class="d-flex align-items-center gap-2">' +
+            '<input type="color" class="form-control form-control-color theme-accent-swatch" data-accent-sync="' + key + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick color" />' +
+            '<input type="text" class="form-control theme-accent-hex" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" maxlength="7" />' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function headerToggleCard(key, title, help) {
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
@@ -943,21 +1051,6 @@
     '</label>';
   }
 
-  function colorCard(name, value, label) {
-    var color = PRIMARY_COLORS[value];
-    var swatch = color ? '<span class="avatar avatar-xs rounded-circle me-2" style="background:' + color[0] + '"></span>' : '';
-    var id = 'theme-opt-' + name + '-' + (value || 'default');
-    return '<div class="col-4">' +
-      '<label class="form-selectgroup-item flex-fill">' +
-        '<input type="radio" name="' + name + '" value="' + value + '" class="form-selectgroup-input" id="' + id + '">' +
-        '<div class="form-selectgroup-label d-flex align-items-center p-2">' +
-          swatch +
-          '<span class="form-selectgroup-label-content" style="font-size:.8125rem">' + label + '</span>' +
-        '</div>' +
-      '</label>' +
-    '</div>';
-  }
-
   function getThemeFormHtml() {
     var glyphGrid = ICON_GLYPH_KEYS.map(function (k) { return glyphInputCard(k); }).join('');
     var visualGrid = [
@@ -965,51 +1058,43 @@
       iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
     ].join('');
     var headerShapeGrid = [
-      headerInputCard('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
-      headerInputCard('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius']),
-      headerInputCard('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
-    ].join('');
-    var colorStripGrid = [
-      headerInputCard('theme-header-top-bg', 'Strip background', 'Background color for the top strip row.', DEFAULTS['theme-header-top-bg']),
-      headerInputCard('theme-header-top-text-color', 'Strip text color', 'Text color used by strip controls unless overridden.', DEFAULTS['theme-header-top-text-color'])
-    ].join('');
-    var colorSettingsButtonGrid = [
-      headerInputCard('theme-header-settings-bg', 'Settings button background', 'Background color for the strip Settings button.', DEFAULTS['theme-header-settings-bg']),
-      headerInputCard('theme-header-settings-text-color', 'Settings button text/icon color', 'Text and icon color for the strip Settings button.', DEFAULTS['theme-header-settings-text-color']),
-      headerInputCard('theme-header-settings-border-color', 'Settings button border color', 'Border color for the strip Settings button.', DEFAULTS['theme-header-settings-border-color'])
-    ].join('');
-    var colorSettingsMenuGrid = [
-      headerInputCard('theme-header-settings-menu-bg', 'Settings dropdown background', 'Background color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-bg']),
-      headerInputCard('theme-header-settings-menu-link-color', 'Settings dropdown link color', 'Text color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-link-color']),
-      headerInputCard('theme-header-settings-menu-icon-color', 'Settings dropdown icon color', 'Icon color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-icon-color']),
-      headerInputCard('theme-header-settings-menu-border-color', 'Settings dropdown border color', 'Border color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-border-color'])
-    ].join('');
-    var colorOnlineBadgeGrid = [
-      headerInputCard('theme-header-online-bg', 'Online badge background', 'Background color for the visitors badge.', DEFAULTS['theme-header-online-bg']),
-      headerInputCard('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
-      headerInputCard('theme-header-online-border-color', 'Online badge border color', 'Border color for the visitors badge.', DEFAULTS['theme-header-online-border-color'])
-    ].join('');
-    var colorTopMenuGrid = [
-      headerInputCard('theme-header-main-bg', 'Menu background', 'Background color for the desktop top menu row.', DEFAULTS['theme-header-main-bg']),
-      headerInputCard('theme-header-main-link-color', 'Menu link color', 'Color for top-level desktop menu links.', DEFAULTS['theme-header-main-link-color']),
-      headerInputCard('theme-header-main-border-color', 'Menu border-bottom color', 'Color for the menu bottom border.', DEFAULTS['theme-header-main-border-color']),
-      headerInputCard('theme-header-main-shadow', 'Menu box-shadow', 'CSS box-shadow for top menu row (for example 2px 2px 2px #eee or none).', DEFAULTS['theme-header-main-shadow']),
-      headerInputCard('theme-header-main-dropdown-bg', 'Dropdown background', 'Background color for top menu dropdown panels.', DEFAULTS['theme-header-main-dropdown-bg']),
-      headerInputCard('theme-header-main-dropdown-link-color', 'Dropdown link color', 'Text color for dropdown links.', DEFAULTS['theme-header-main-dropdown-link-color']),
-      headerInputCard('theme-header-main-dropdown-icon-color', 'Dropdown icon color', 'Icon color for dropdown item icons.', DEFAULTS['theme-header-main-dropdown-icon-color'])
+      headerInputCardNoIcon('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
+      headerInputCardNoIcon('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius']),
+      headerInputCardNoIcon('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
     ].join('');
     var headerToggleGrid = [
-      headerToggleCard('theme-header-main-border', 'Menu border-bottom', 'Show or hide the top menu bottom border.'),
-      headerToggleCard('theme-header-settings-label', 'Settings text label', 'Show or hide the "Settings" text next to the icon button.'),
-      headerToggleCard('theme-header-settings-border', 'Settings button border', 'Show or hide the border around the Settings button.'),
-      headerToggleCard('theme-header-online-border', 'Online badge border', 'Show or hide the border around the visitors badge.')
+      headerToggleCardNoIcon('theme-header-main-border', 'Menu border-bottom', 'Show or hide the top menu bottom border.'),
+      headerToggleCardNoIcon('theme-header-settings-label', 'Settings text label', 'Show or hide the "Settings" text next to the icon button.'),
+      headerToggleCardNoIcon('theme-header-settings-border', 'Settings button border', 'Show or hide the border around the Settings button.'),
+      headerToggleCardNoIcon('theme-header-online-border', 'Online badge border', 'Show or hide the border around the visitors badge.')
     ].join('');
-    var logoCard = headerInputCard(
+    var logoCard = headerInputCardNoIcon(
       'theme-header-logo-url',
       'Logo URL override',
       'Use an absolute URL or /path to replace desktop and mobile logos.',
       '/assets/kexo/logo_light.webp'
     );
+    var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
+      accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
+      accentHexInputCard('theme-accent-3', 'Accent 3', DEFAULTS['theme-accent-3']) +
+      accentHexInputCard('theme-accent-4', 'Accent 4', DEFAULTS['theme-accent-4']) +
+      accentHexInputCard('theme-accent-5', 'Accent 5', DEFAULTS['theme-accent-5']);
+    var colorRemainingGrid = [
+      headerInputCardNoIcon('theme-header-top-text-color', 'Strip text color', 'Text color for strip controls.', DEFAULTS['theme-header-top-text-color']),
+      headerInputCardNoIcon('theme-header-settings-text-color', 'Settings button text/icon color', 'Text and icon color for the strip Settings button.', DEFAULTS['theme-header-settings-text-color']),
+      headerInputCardNoIcon('theme-header-main-link-color', 'Menu link color', 'Color for top-level desktop menu links.', DEFAULTS['theme-header-main-link-color']),
+      headerInputCardNoIcon('theme-header-main-border-color', 'Menu border-bottom color', 'Color for the menu bottom border.', DEFAULTS['theme-header-main-border-color']),
+      headerInputCardNoIcon('theme-header-main-shadow', 'Menu box-shadow', 'CSS box-shadow for top menu row (for example 2px 2px 2px #eee or none).', DEFAULTS['theme-header-main-shadow']),
+      headerInputCardNoIcon('theme-header-settings-menu-link-color', 'Settings dropdown link color', 'Text color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-link-color']),
+      headerInputCardNoIcon('theme-header-main-dropdown-link-color', 'Dropdown link color', 'Text color for top menu dropdown links.', DEFAULTS['theme-header-main-dropdown-link-color']),
+      headerInputCardNoIcon('theme-header-main-dropdown-icon-color', 'Dropdown icon color', 'Icon color for dropdown item icons.', DEFAULTS['theme-header-main-dropdown-icon-color']),
+      headerInputCardNoIcon('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
+      headerInputCardNoIcon('theme-header-strip-padding', 'Strip padding', 'CSS padding for the top strip (for example 0 5px).', DEFAULTS['theme-header-strip-padding']),
+    ].join('');
+    var opacityGrid = [
+      headerInputCardNoIcon('theme-strip-opacity-filter', 'Strip opacity filter', 'Darken strip by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
+      headerInputCardNoIcon('theme-menu-opacity-filter', 'Menu opacity filter', 'Darken menu by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
+    ].join('');
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -1046,30 +1131,24 @@
 
       '<div class="theme-subpanel" data-theme-subpanel="color" hidden>' +
         '<div class="mb-4">' +
-          '<label class="form-label">Primary color</label>' +
-          '<div class="row g-2">' +
-            colorCard('theme-primary', 'blue', 'Accent 1 (Blue)') +
-            colorCard('theme-primary', 'teal', 'Accent 2 (Teal)') +
-            colorCard('theme-primary', 'orange', 'Accent 3 (Orange)') +
-          '</div>' +
+          '<label class="form-label">Theme accents (5 colors)</label>' +
+          '<div class="text-secondary small mb-3">Accent 1 drives strip, menu, settings, and dropdown backgrounds. Accents 1–5 rotate for nav active underline.</div>' +
+          '<div class="row g-3">' + accentGrid + '</div>' +
+        '</div>' +
+        '<div class="mb-4">' +
+          '<label class="form-label">Opacity filters</label>' +
+          '<div class="text-secondary small mb-3">Darken strip or menu by %. 0 = no change.</div>' +
+          '<div class="row g-3">' + opacityGrid + '</div>' +
         '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Header & nav colors</label>' +
-          '<div class="text-secondary small mb-3">These values control the desktop strip, main menu row, dropdowns, Settings dropdown, and Online badge.</div>' +
-          '<h4 class="mb-2">Desktop strip</h4>' +
-          '<div class="row g-3">' + colorStripGrid + '</div>' +
-          '<hr class="my-3" />' +
-          '<h4 class="mb-2">Strip Settings button</h4>' +
-          '<div class="row g-3">' + colorSettingsButtonGrid + '</div>' +
-          '<hr class="my-3" />' +
-          '<h4 class="mb-2">Strip Settings dropdown</h4>' +
-          '<div class="row g-3">' + colorSettingsMenuGrid + '</div>' +
-          '<hr class="my-3" />' +
-          '<h4 class="mb-2">Strip Online badge</h4>' +
-          '<div class="row g-3">' + colorOnlineBadgeGrid + '</div>' +
-          '<hr class="my-3" />' +
-          '<h4 class="mb-2">Desktop main menu row</h4>' +
-          '<div class="row g-3">' + colorTopMenuGrid + '</div>' +
+          '<div class="row g-3">' + colorRemainingGrid + '</div>' +
+        '</div>' +
+        '<div class="mb-4">' +
+          '<label class="form-label">Strip border & padding</label>' +
+          '<div class="row g-3">' +
+            headerToggleCardNoIcon('theme-header-strip-border', 'Strip border-bottom', 'Show or hide the bottom border on the top strip.') +
+          '</div>' +
         '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Theme base</label>' +
@@ -1196,6 +1275,8 @@
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
       if (name === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[name]);
       if (name === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[name]);
+      if (ACCENT_OPACITY_KEYS.indexOf(name) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[name]);
+      if (name === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[name]);
       if (HEADER_THEME_TEXT_KEYS.indexOf(name) >= 0) {
         if (name === 'theme-header-logo-url') val = normalizeLogoUrl(val);
         else if (/theme-header-.*-radius$/.test(name)) val = normalizeHeaderRadius(val, DEFAULTS[name]);
@@ -1210,7 +1291,36 @@
       queueGlobalSaveKey(name);
     });
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).forEach(function (key) {
+    function wireAccentHexInputs() {
+      ACCENT_HEX_KEYS.forEach(function (key) {
+        var hexInput = formEl.querySelector('.theme-accent-hex[name="' + key + '"]');
+        var swatch = formEl.querySelector('.theme-accent-swatch[data-accent-sync="' + key + '"]');
+        if (!hexInput) return;
+        function syncFromHex() {
+          var val = normalizeAccentHex(hexInput.value, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
+          setStored(key, val);
+          debouncedApply(key, val);
+          queueGlobalSaveKey(key);
+          if (swatch) swatch.value = val;
+        }
+        function syncFromSwatch() {
+          if (swatch && swatch.value) {
+            hexInput.value = swatch.value;
+            setStored(key, swatch.value);
+            debouncedApply(key, swatch.value);
+            queueGlobalSaveKey(key);
+          }
+        }
+        hexInput.addEventListener('input', syncFromHex);
+        hexInput.addEventListener('change', syncFromHex);
+        if (swatch) {
+          swatch.addEventListener('input', syncFromSwatch);
+          swatch.addEventListener('change', syncFromSwatch);
+        }
+      });
+    }
+
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
@@ -1219,6 +1329,8 @@
         if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
         if (key === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[key]);
         if (key === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[key]);
+        if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
+        if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
         if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {
           if (key === 'theme-header-logo-url') val = normalizeLogoUrl(val);
           else if (/theme-header-.*-radius$/.test(key)) val = normalizeHeaderRadius(val, DEFAULTS[key]);
@@ -1231,6 +1343,8 @@
         queueGlobalSaveKey(key);
       });
     });
+
+    wireAccentHexInputs();
 
     var root = formEl.parentElement || document;
     var refreshBtn = root.querySelector('#theme-icons-refresh');
