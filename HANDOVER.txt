@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (variants scope-aware validation + coverage)
+Last updated: 2026-02-12 (Layout → Tables settings + tables_ui_config_v1)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -92,11 +92,12 @@ Settings tabs:
 - KPIs & Date Ranges: KPI order/labels/visibility + date-range labels/availability
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Charts: per-chart enable/type/colors (see Charts section)
+- Layout: per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max)
 - Diagnostics: config-status + reconcile utilities (Settings-first)
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
-- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `insightsVariantsConfig`
+- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`
 
 ---
 
@@ -222,6 +223,12 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12 (latest)
+- Added Settings → Layout → Tables: editable per-page table name/order/grid + rows-per-page options/default + optional sticky column min/max.
+- New settings key: `tables_ui_config_v1` (cached client-side in localStorage as `kexo:tables-ui-config:v1`).
+- Runtime apply in `server/public/app.js`:
+  - table row selectors use config overrides for options/defaults
+  - sticky column resize bounds can be overridden per table
+  - table order/grid/title are applied via DOM transforms (titles are opt-in via `data-kexo-table-title="1"`)
 - Variants validation/mapping is now scope-aware by table intent: length/style/finish tables skip out-of-scope titles before unmapped checks, reducing false save blockers on mixed catalogs.
 - Variants diagnostics now include `outOfScope` totals/examples; All Variant Stats modal shows Total vs In Scope sessions, Out Of Scope sessions, and computes Mapped % from in-scope sessions.
 - Settings -> Insights -> Variants messaging now clarifies that save blocking applies to unmapped in-scope titles and that out-of-scope titles are skipped.

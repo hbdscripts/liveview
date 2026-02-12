@@ -21,6 +21,7 @@ const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
 const CHARTS_UI_CONFIG_V1_KEY = 'charts_ui_config_v1'; // JSON object (chart type/colors/visibility)
+const TABLES_UI_CONFIG_V1_KEY = 'tables_ui_config_v1'; // JSON object (table rows + layout + sticky column sizing)
 const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
 
 const KPI_UI_KEYS = [
@@ -149,6 +150,268 @@ function defaultChartsUiConfigV1() {
   };
 }
 
+function defaultTablesUiConfigV1() {
+  return {
+    v: 1,
+    pages: [
+      {
+        key: 'dashboard',
+        label: 'Dashboard · Overview',
+        tables: [
+          {
+            id: 'dash-top-products',
+            name: 'Top Products',
+            tableClass: 'dashboard',
+            zone: 'dashboard-top-products',
+            order: 1,
+            inGrid: true,
+            rows: { default: 5, options: [5, 10] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'dash-top-countries',
+            name: 'Top Countries',
+            tableClass: 'dashboard',
+            zone: 'dashboard-top-countries',
+            order: 2,
+            inGrid: true,
+            rows: { default: 5, options: [5, 10] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'dash-trending-up',
+            name: 'Trending Up',
+            tableClass: 'dashboard',
+            zone: 'dashboard-trending-up',
+            order: 3,
+            inGrid: true,
+            rows: { default: 5, options: [5, 10] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'dash-trending-down',
+            name: 'Trending Down',
+            tableClass: 'dashboard',
+            zone: 'dashboard-trending-down',
+            order: 4,
+            inGrid: true,
+            rows: { default: 5, options: [5, 10] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'live',
+        label: 'Dashboard · Live View',
+        tables: [
+          {
+            id: 'sessions-table',
+            name: 'Sessions',
+            tableClass: 'live',
+            zone: 'live-sessions',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'sales',
+        label: 'Dashboard · Recent Sales',
+        tables: [
+          {
+            id: 'sessions-table',
+            name: 'Sessions',
+            tableClass: 'live',
+            zone: 'sales-sessions',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'date',
+        label: 'Dashboard · Table View',
+        tables: [
+          {
+            id: 'sessions-table',
+            name: 'Sessions',
+            tableClass: 'live',
+            zone: 'date-sessions',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'countries',
+        label: 'Insights · Countries',
+        tables: [
+          {
+            id: 'country-table',
+            name: 'Country',
+            tableClass: 'live',
+            zone: 'countries-main',
+            order: 1,
+            inGrid: true,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'best-geo-products-table',
+            name: 'Country + Product',
+            tableClass: 'live',
+            zone: 'countries-products',
+            order: 2,
+            inGrid: true,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'products',
+        label: 'Insights · Products',
+        tables: [
+          {
+            id: 'best-sellers-table',
+            name: 'Best Sellers',
+            tableClass: 'product',
+            zone: 'products-best-sellers',
+            order: 1,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'best-variants-table',
+            name: 'Variant',
+            tableClass: 'product',
+            zone: 'products-best-variants',
+            order: 2,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-necklaces-table',
+            name: 'Necklaces',
+            tableClass: 'product',
+            zone: 'products-type-necklaces',
+            order: 3,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-bracelets-table',
+            name: 'Bracelets',
+            tableClass: 'product',
+            zone: 'products-type-bracelets',
+            order: 4,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-earrings-table',
+            name: 'Earrings',
+            tableClass: 'product',
+            zone: 'products-type-earrings',
+            order: 5,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-sets-table',
+            name: 'Jewelry Sets',
+            tableClass: 'product',
+            zone: 'products-type-sets',
+            order: 6,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-charms-table',
+            name: 'Charms',
+            tableClass: 'product',
+            zone: 'products-type-charms',
+            order: 7,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'type-extras-table',
+            name: 'Extras',
+            tableClass: 'product',
+            zone: 'products-type-extras',
+            order: 8,
+            inGrid: true,
+            rows: { default: 10, options: [10, 15, 20] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'channels',
+        label: 'Traffic · Channels',
+        tables: [
+          {
+            id: 'traffic-sources-table',
+            name: 'Channels',
+            tableClass: 'live',
+            zone: 'channels-main',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'type',
+        label: 'Traffic · Device & Platform',
+        tables: [
+          {
+            id: 'traffic-types-table',
+            name: 'Device & Platform',
+            tableClass: 'live',
+            zone: 'type-main',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'ads',
+        label: 'Integrations · Google Ads',
+        tables: [
+          {
+            id: 'ads-root',
+            name: 'Google Ads',
+            tableClass: 'live',
+            zone: 'ads-main',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function safeJsonParseObject(raw) {
   try {
     if (!raw) return null;
@@ -209,6 +472,138 @@ function normalizePieMetric(v, fallback) {
   const fb = fallback == null ? '' : String(fallback).trim().toLowerCase();
   if (fb === 'sessions' || fb === 'orders' || fb === 'revenue') return fb;
   return 'sessions';
+}
+
+function normalizeTablesUiConfigV1(raw) {
+  const def = defaultTablesUiConfigV1();
+  const obj = safeJsonParseObject(raw);
+  if (!obj || obj.v !== 1) return def;
+
+  const out = JSON.parse(JSON.stringify(def));
+  const pageByKey = {};
+  for (const p of out.pages) {
+    if (!p || typeof p !== 'object') continue;
+    const key = p.key != null ? String(p.key).trim().toLowerCase() : '';
+    if (!key) continue;
+    pageByKey[key] = p;
+    const tableById = {};
+    for (const t of (Array.isArray(p.tables) ? p.tables : [])) {
+      if (!t || typeof t !== 'object') continue;
+      const id = t.id != null ? String(t.id).trim().toLowerCase() : '';
+      if (!id) continue;
+      tableById[id] = t;
+    }
+    p._tableById = tableById; // internal
+  }
+
+  const ABS_MIN = 72;
+  const ABS_MAX = 420;
+
+  function normalizeRowOptions(rawList, defaults) {
+    const defList = Array.isArray(defaults) ? defaults : [];
+    const list = Array.isArray(rawList) ? rawList : (typeof rawList === 'string' ? rawList.split(',') : []);
+    const outList = [];
+    const seen = new Set();
+    for (const item of list) {
+      const n = Math.trunc(Number(item));
+      if (!Number.isFinite(n) || n <= 0 || n > 200) continue;
+      if (seen.has(n)) continue;
+      seen.add(n);
+      outList.push(n);
+      if (outList.length >= 12) break;
+    }
+    outList.sort((a, b) => a - b);
+    return outList.length ? outList : defList.slice(0, 12);
+  }
+
+  function pickDefaultRows(rawDefault, options, fallback) {
+    const opts = Array.isArray(options) ? options : [];
+    const n = Math.trunc(Number(rawDefault));
+    if (Number.isFinite(n) && opts.includes(n)) return n;
+    const fb = Math.trunc(Number(fallback));
+    if (Number.isFinite(fb) && opts.includes(fb)) return fb;
+    return opts.length ? opts[0] : (Number.isFinite(fb) ? fb : 20);
+  }
+
+  function normalizeStickyWidth(rawValue) {
+    if (rawValue == null || rawValue === '') return null;
+    const n = Math.trunc(Number(rawValue));
+    if (!Number.isFinite(n)) return null;
+    return Math.max(ABS_MIN, Math.min(ABS_MAX, n));
+  }
+
+  if (Array.isArray(obj.pages)) {
+    for (const rawPage of obj.pages) {
+      if (!rawPage || typeof rawPage !== 'object') continue;
+      const key = rawPage.key != null ? String(rawPage.key).trim().toLowerCase() : '';
+      if (!key) continue;
+      const page = pageByKey[key];
+      if (!page) continue;
+      const tableById = page._tableById || {};
+      const rawTables = Array.isArray(rawPage.tables) ? rawPage.tables : [];
+      for (const rawTable of rawTables) {
+        if (!rawTable || typeof rawTable !== 'object') continue;
+        const id = rawTable.id != null ? String(rawTable.id).trim().toLowerCase() : '';
+        if (!id) continue;
+        const table = tableById[id];
+        if (!table) continue;
+
+        table.name = normalizeText(rawTable.name, table.name || id);
+        table.inGrid = normalizeBool(rawTable.inGrid, table.inGrid);
+
+        const defaultRowOptions = table.rows && Array.isArray(table.rows.options) ? table.rows.options : [20];
+        const nextOptions = normalizeRowOptions(rawTable.rows && rawTable.rows.options, defaultRowOptions);
+        const nextDefault = pickDefaultRows(rawTable.rows && rawTable.rows.default, nextOptions, table.rows && table.rows.default);
+        table.rows = { default: nextDefault, options: nextOptions };
+
+        const minWidth = normalizeStickyWidth(rawTable.sticky && rawTable.sticky.minWidth);
+        const maxWidth = normalizeStickyWidth(rawTable.sticky && rawTable.sticky.maxWidth);
+        let min = minWidth;
+        let max = maxWidth;
+        if (min != null && max != null && max < min) {
+          const tmp = max;
+          max = min;
+          min = tmp;
+        }
+        table.sticky = { minWidth: min, maxWidth: max };
+
+        const orderRaw = Math.trunc(Number(rawTable.order));
+        table.order = Number.isFinite(orderRaw) && orderRaw > 0 ? orderRaw : table.order;
+      }
+    }
+  }
+
+  // Clean up internal indices + re-sequence orders per page.
+  for (const p of out.pages) {
+    if (!p || typeof p !== 'object') continue;
+    const tables = Array.isArray(p.tables) ? p.tables : [];
+    delete p._tableById;
+    tables.sort((a, b) => {
+      const ao = Number(a && a.order) || 0;
+      const bo = Number(b && b.order) || 0;
+      if (ao !== bo) return ao - bo;
+      const an = a && a.name ? String(a.name).toLowerCase() : '';
+      const bn = b && b.name ? String(b.name).toLowerCase() : '';
+      if (an < bn) return -1;
+      if (an > bn) return 1;
+      return 0;
+    });
+    for (let i = 0; i < tables.length; i++) {
+      if (!tables[i] || typeof tables[i] !== 'object') continue;
+      tables[i].order = i + 1;
+    }
+  }
+
+  // Stable page ordering (by label)
+  out.pages.sort((a, b) => {
+    const al = a && a.label ? String(a.label).toLowerCase() : '';
+    const bl = b && b.label ? String(b.label).toLowerCase() : '';
+    if (al < bl) return -1;
+    if (al > bl) return 1;
+    return 0;
+  });
+
+  return out;
 }
 
 function normalizeChartsList(rawList, defaults) {
@@ -364,6 +759,7 @@ async function readSettingsPayload() {
   let assetOverrides = {};
   let kpiUiConfig = defaultKpiUiConfigV1();
   let chartsUiConfig = defaultChartsUiConfigV1();
+  let tablesUiConfig = defaultTablesUiConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   try {
@@ -393,6 +789,10 @@ async function readSettingsPayload() {
     chartsUiConfig = normalizeChartsUiConfigV1(raw);
   } catch (_) {}
   try {
+    const raw = await store.getSetting(TABLES_UI_CONFIG_V1_KEY);
+    tablesUiConfig = normalizeTablesUiConfigV1(raw);
+  } catch (_) {}
+  try {
     const raw = await store.getSetting(VARIANTS_CONFIG_KEY);
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
@@ -406,6 +806,7 @@ async function readSettingsPayload() {
     reporting,
     kpiUiConfig,
     chartsUiConfig,
+    tablesUiConfig,
     insightsVariantsConfig,
   };
 }
@@ -501,6 +902,22 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save charts config' });
+    }
+  }
+
+  // Tables UI config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'tablesUiConfig')) {
+    try {
+      if (body.tablesUiConfig == null) {
+        await store.setSetting(TABLES_UI_CONFIG_V1_KEY, '');
+      } else {
+        const normalized = normalizeTablesUiConfigV1(body.tablesUiConfig);
+        const json = JSON.stringify(normalized);
+        if (json.length > 120000) throw new Error('Tables UI config too large');
+        await store.setSetting(TABLES_UI_CONFIG_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save tables config' });
     }
   }
 

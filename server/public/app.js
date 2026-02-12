@@ -39,6 +39,114 @@ const API = '';
       'ads-root': 'live',
     });
     const tableRowsCache = {};
+    const TABLES_UI_CFG_LS_KEY = 'kexo:tables-ui-config:v1';
+    var tablesUiConfigV1 = null;
+
+    // Hydrate table layout/pagination prefs from localStorage for first paint.
+    try {
+      var cachedTables = safeReadLocalStorageJson(TABLES_UI_CFG_LS_KEY);
+      if (cachedTables && cachedTables.v === 1 && Array.isArray(cachedTables.pages)) {
+        tablesUiConfigV1 = cachedTables;
+        try { window.__kexoTablesUiConfigV1 = cachedTables; } catch (_) {}
+      }
+    } catch (_) {}
+
+    function normalizeUiPageKey(key) {
+      var k = String(key == null ? '' : key).trim().toLowerCase();
+      return k || '';
+    }
+
+    function normalizeUiTableId(id) {
+      return String(id == null ? '' : id).trim().toLowerCase();
+    }
+
+    function getTablesUiPageCfg(pageKey) {
+      var cfg = tablesUiConfigV1;
+      if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.pages)) return null;
+      var pk = normalizeUiPageKey(pageKey || PAGE);
+      if (!pk) return null;
+      for (var i = 0; i < cfg.pages.length; i++) {
+        var p = cfg.pages[i];
+        if (!p || typeof p !== 'object') continue;
+        var k = p.key != null ? normalizeUiPageKey(p.key) : '';
+        if (k && k === pk) return p;
+      }
+      return null;
+    }
+
+    function getTablesUiTableCfg(tableId, pageKey) {
+      var p = getTablesUiPageCfg(pageKey || PAGE);
+      if (!p || !Array.isArray(p.tables)) return null;
+      var id = normalizeUiTableId(tableId);
+      if (!id) return null;
+      for (var i = 0; i < p.tables.length; i++) {
+        var t = p.tables[i];
+        if (!t || typeof t !== 'object') continue;
+        var tid = t.id != null ? normalizeUiTableId(t.id) : '';
+        if (tid && tid === id) return t;
+      }
+      return null;
+    }
+
+    function tablesUiConfigSignature(cfg) {
+      try { return JSON.stringify(cfg || null); } catch (_) { return ''; }
+    }
+
+    function applyTablesUiConfigV1(cfg) {
+      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.pages)) return false;
+      var prevSig = tablesUiConfigSignature(tablesUiConfigV1);
+      var nextSig = tablesUiConfigSignature(cfg);
+      tablesUiConfigV1 = cfg;
+      try { window.__kexoTablesUiConfigV1 = cfg; } catch (_) {}
+      try { safeWriteLocalStorageJson(TABLES_UI_CFG_LS_KEY, cfg); } catch (_) {}
+      try {
+        Object.keys(tableRowsCache).forEach(function (k) { delete tableRowsCache[k]; });
+      } catch (_) {}
+      return prevSig !== nextSig;
+    }
+
+    function tableRowsConfigForTableId(tableId, classKey) {
+      var cfg = tableClassConfig(classKey);
+      var defaultRows = cfg && typeof cfg.defaultRows === 'number' ? cfg.defaultRows : 20;
+      var rowOptions = Array.isArray(cfg && cfg.rowOptions) ? cfg.rowOptions.slice() : [defaultRows];
+
+      var ui = getTablesUiTableCfg(tableId, PAGE);
+      if (ui && ui.rows && typeof ui.rows === 'object') {
+        var opts = Array.isArray(ui.rows.options) ? ui.rows.options : null;
+        if (opts && opts.length) {
+          var seen = {};
+          var normalized = [];
+          opts.forEach(function (n) {
+            var x = Math.round(Number(n));
+            if (!Number.isFinite(x) || x <= 0 || x > 200) return;
+            if (seen[x]) return;
+            seen[x] = true;
+            normalized.push(x);
+          });
+          normalized.sort(function (a, b) { return a - b; });
+          if (normalized.length) rowOptions = normalized.slice(0, 12);
+        }
+        var dr = ui.rows.default;
+        if (typeof dr === 'number' && Number.isFinite(dr)) defaultRows = Math.round(dr);
+      }
+
+      if (!rowOptions.length) rowOptions = [defaultRows];
+      if (rowOptions.indexOf(defaultRows) < 0) {
+        // Pick nearest allowed option for robustness.
+        var nearest = rowOptions[0];
+        var nearestDiff = Math.abs(nearest - defaultRows);
+        for (var i = 1; i < rowOptions.length; i++) {
+          var d = Math.abs(rowOptions[i] - defaultRows);
+          if (d < nearestDiff) {
+            nearest = rowOptions[i];
+            nearestDiff = d;
+          }
+        }
+        defaultRows = nearest;
+      }
+
+      return { defaultRows: defaultRows, rowOptions: rowOptions };
+    }
 
     function syncPageBodyLoaderOffset(scope) {
       try {
@@ -73,9 +181,9 @@ const API = '';
       return TABLE_CLASS_CONFIG[normalizeTableClass(classKey)] || TABLE_CLASS_CONFIG.live;
     }
 
-    function clampTableRows(value, classKey) {
-      var cfg = tableClassConfig(classKey);
-      var opts = Array.isArray(cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
+    function clampTableRows(value, tableId, classKey) {
+      var cfg = tableRowsConfigForTableId(tableId, classKey);
+      var opts = Array.isArray(cfg && cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
       var n = Number(value);
       if (!Number.isFinite(n)) return cfg.defaultRows;
       n = Math.round(n);
@@ -110,6 +218,112 @@ const API = '';
       return tableEl.closest('.card');
     }
 
+    function applyTablesUiLayoutForPage() {
+      try {
+        if (String(PAGE || '').toLowerCase() === 'settings') return;
+        var pageCfg = getTablesUiPageCfg(PAGE);
+        if (!pageCfg || !Array.isArray(pageCfg.tables)) return;
+
+        // Titles (opt-in via data attr to avoid clobbering dynamic headers).
+        pageCfg.tables.forEach(function (t) {
+          if (!t || typeof t !== 'object') return;
+          var tableId = t.id != null ? String(t.id).trim() : '';
+          if (!tableId) return;
+          var name = t.name != null ? String(t.name).trim() : '';
+          if (!name) return;
+          var card = findTableCardById(tableId);
+          if (!card || !card.querySelector) return;
+          var titleEl = card.querySelector('[data-kexo-table-title="1"]');
+          if (!titleEl) return;
+          titleEl.textContent = name;
+        });
+
+        function isBootstrapCol(el) {
+          if (!el || !el.classList) return false;
+          for (var i = 0; i < el.classList.length; i++) {
+            var c = el.classList[i];
+            if (c === 'col' || String(c).indexOf('col-') === 0) return true;
+          }
+          return false;
+        }
+
+        function setColWrapperFullWidth(colEl, full) {
+          if (!colEl) return;
+          var orig = colEl.getAttribute('data-kexo-orig-col-class');
+          if (!orig) {
+            try { colEl.setAttribute('data-kexo-orig-col-class', colEl.className || ''); } catch (_) {}
+            orig = colEl.className || '';
+          }
+          if (!full) {
+            colEl.className = orig;
+            return;
+          }
+          var keep = [];
+          String(orig || '').split(/\s+/g).filter(Boolean).forEach(function (cls) {
+            if (cls === 'col' || String(cls).indexOf('col-') === 0) return;
+            keep.push(cls);
+          });
+          keep.push('col-12');
+          colEl.className = keep.join(' ');
+        }
+
+        // Per group (row/stats-row): order + grid/full width
+        var groups = new Map();
+        pageCfg.tables.forEach(function (t) {
+          if (!t || typeof t !== 'object') return;
+          var tableId = t.id != null ? String(t.id).trim() : '';
+          if (!tableId) return;
+          var card = findTableCardById(tableId);
+          if (!card || !card.closest) return;
+
+          var group = card.closest('.stats-row, .row');
+          if (!group) return;
+
+          var unit = card;
+          try {
+            if (group.classList && group.classList.contains('row') && card.parentElement && isBootstrapCol(card.parentElement) && card.parentElement.parentElement === group) {
+              unit = card.parentElement;
+            }
+          } catch (_) {}
+
+          var inGrid = !(t.inGrid === false);
+          if (unit !== card) {
+            // Bootstrap column wrapper
+            setColWrapperFullWidth(unit, !inGrid);
+          } else {
+            // Flex/grid card
+            card.classList.toggle('kexo-layout-full', !inGrid);
+          }
+
+          var list = groups.get(group) || [];
+          list.push({ order: Number(t.order) || 0, unit: unit });
+          groups.set(group, list);
+        });
+
+        groups.forEach(function (list, group) {
+          if (!group || !Array.isArray(list) || list.length < 2) return;
+          list.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+          list.forEach(function (it) {
+            if (!it || !it.unit || !it.unit.parentElement) return;
+            try { group.appendChild(it.unit); } catch (_) {}
+          });
+        });
+      } catch (_) {}
+    }
+
+    (function primeTablesUiLayout() {
+      try {
+        if (!tablesUiConfigV1) return;
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() {
+            try { scheduleTablesUiApply(); } catch (_) {}
+          });
+        } else {
+          scheduleTablesUiApply();
+        }
+      } catch (_) {}
+    })();
+
     function getTableClassByTableId(tableId, fallbackClassKey) {
       var id = String(tableId == null ? '' : tableId).trim();
       var card = findTableCardById(id);
@@ -127,10 +341,10 @@ const API = '';
       if (!id) return tableClassConfig(fallbackClassKey || 'live').defaultRows;
       if (Object.prototype.hasOwnProperty.call(tableRowsCache, id)) return tableRowsCache[id];
       var classKey = getTableClassByTableId(id, fallbackClassKey);
-      var cfg = tableClassConfig(classKey);
+      var cfg = tableRowsConfigForTableId(id, classKey);
       var raw = null;
       try { raw = localStorage.getItem(tableRowsStorageKey(id)); } catch (_) { raw = null; }
-      var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), classKey);
+      var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), id, classKey);
       tableRowsCache[id] = value;
       return value;
     }
@@ -139,7 +353,7 @@ const API = '';
       var id = String(tableId == null ? '' : tableId).trim();
       if (!id) return null;
       var classKey = getTableClassByTableId(id, fallbackClassKey);
-      var next = clampTableRows(rows, classKey);
+      var next = clampTableRows(rows, id, classKey);
       tableRowsCache[id] = next;
       try { localStorage.setItem(tableRowsStorageKey(id), String(next)); } catch (_) {}
       try {
@@ -639,7 +853,7 @@ const API = '';
         var tableId = (card.dataset && card.dataset.tableId) ? String(card.dataset.tableId).trim() : inferTableIdFromCard(card);
         if (!tableId) return;
         var classKey = normalizeTableClass(card.dataset && card.dataset.tableClass ? card.dataset.tableClass : 'live');
-        var cfg = tableClassConfig(classKey);
+        var cfg = tableRowsConfigForTableId(tableId, classKey);
         var selectedRows = getTableRowsPerPage(tableId, classKey);
         var header = getDirectHeader(card);
         if (!header) return;
@@ -667,11 +881,11 @@ const API = '';
 
         var selectEl = control.querySelector('.kexo-table-rows-select');
         if (!selectEl) return;
-        var options = Array.isArray(cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
+        var options = Array.isArray(cfg && cfg.rowOptions) ? cfg.rowOptions : [cfg.defaultRows];
         selectEl.innerHTML = options.map(function(opt) {
           return '<option value="' + String(opt) + '">' + String(opt) + '</option>';
         }).join('');
-        selectEl.value = String(clampTableRows(selectedRows, classKey));
+        selectEl.value = String(clampTableRows(selectedRows, tableId, classKey));
         if (selectEl.getAttribute('data-rows-bound') !== '1') {
           selectEl.setAttribute('data-rows-bound', '1');
           selectEl.addEventListener('change', function() {
@@ -702,6 +916,9 @@ const API = '';
       });
       observer.observe(document.documentElement, { childList: true, subtree: true });
       window.addEventListener('kexo:table-rows-changed', function() {
+        run(document);
+      });
+      window.addEventListener('kexo:tablesUiConfigApplied', function() {
         run(document);
       });
       window.addEventListener('kexo:icon-theme-changed', function() {
@@ -775,6 +992,16 @@ const API = '';
         if (classKey !== 'live' && gridCount === 1) max = Math.min(max, 250);
         if (classKey !== 'live' && gridCount === 2) max = Math.min(max, 150);
         if (gridCount >= 3) min = Math.max(min, 100);
+
+        // Optional per-table overrides from Settings → Layout → Tables.
+        try {
+          var tableId = getWrapTableId(wrap);
+          var ui = getTablesUiTableCfg(tableId, page);
+          if (ui && ui.sticky && typeof ui.sticky === 'object') {
+            if (typeof ui.sticky.minWidth === 'number' && Number.isFinite(ui.sticky.minWidth)) min = ui.sticky.minWidth;
+            if (typeof ui.sticky.maxWidth === 'number' && Number.isFinite(ui.sticky.maxWidth)) max = ui.sticky.maxWidth;
+          }
+        } catch (_) {}
 
         var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
         if (Number.isFinite(wrapW) && wrapW > 0) {
@@ -940,6 +1167,9 @@ const API = '';
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
       try { window.__kexoRunStickyColumnResize = run; } catch (_) {}
+      try {
+        window.addEventListener('kexo:tablesUiConfigApplied', function() { run(); });
+      } catch (_) {}
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -6769,6 +6999,22 @@ const API = '';
       }, 80);
     }
 
+    var tablesUiApplyTimer = null;
+    function scheduleTablesUiApply() {
+      if (tablesUiApplyTimer) {
+        try { clearTimeout(tablesUiApplyTimer); } catch (_) {}
+      }
+      tablesUiApplyTimer = setTimeout(function() {
+        tablesUiApplyTimer = null;
+        try { applyTablesUiLayoutForPage(); } catch (_) {}
+        try {
+          window.dispatchEvent(new CustomEvent('kexo:tablesUiConfigApplied', {
+            detail: { v: 1 }
+          }));
+        } catch (_) {}
+      }, 80);
+    }
+
     function applyDateRangeUiConfigToSelect(sel) {
       if (!sel) return;
       var cfg = kpiUiConfigV1;
@@ -6992,6 +7238,10 @@ const API = '';
           var changedFromCache = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
           if (changedFromCache) scheduleChartsUiReRender();
         }
+        if (options.apply && uiSettingsCache.tablesUiConfig) {
+          try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
+          try { scheduleTablesUiApply(); } catch (_) {}
+        }
         return Promise.resolve(uiSettingsCache);
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
@@ -7005,6 +7255,10 @@ const API = '';
           if (options.apply && uiSettingsCache && uiSettingsCache.chartsUiConfig) {
             var changedFromFetch = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
             if (changedFromFetch) scheduleChartsUiReRender();
+          }
+          if (options.apply && uiSettingsCache && uiSettingsCache.tablesUiConfig) {
+            try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
+            try { scheduleTablesUiApply(); } catch (_) {}
           }
           return uiSettingsCache;
         })
@@ -7026,6 +7280,16 @@ const API = '';
         try {
           var changed = applyChartsUiConfigV1(cfg);
           if (changed) scheduleChartsUiReRender();
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    try {
+      window.addEventListener('kexo:tablesUiConfigUpdated', function(e) {
+        var cfg = e && e.detail ? e.detail : null;
+        try {
+          applyTablesUiConfigV1(cfg);
+          scheduleTablesUiApply();
         } catch (_) {}
       });
     } catch (_) {}

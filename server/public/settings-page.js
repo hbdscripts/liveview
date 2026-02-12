@@ -14,9 +14,11 @@
 
   var kpiUiConfigCache = null;
   var chartsUiConfigCache = null;
+  var tablesUiConfigCache = null;
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
   var chartsUiPanelRendered = false;
+  var tablesUiPanelRendered = false;
   var insightsIgnoreModalBackdropEl = null;
 
   var TAB_MAP = {
@@ -29,6 +31,7 @@
     kpis: 'settings-panel-kpis',
     insights: 'settings-panel-insights',
     charts: 'settings-panel-charts',
+    layout: 'settings-panel-layout',
     diagnostics: 'settings-panel-diagnostics',
   };
 
@@ -64,6 +67,12 @@
     chartsUiPanelRendered = true;
   }
 
+  function renderTablesWhenVisible() {
+    if (tablesUiPanelRendered) return;
+    renderLayoutTablesUiPanel(tablesUiConfigCache || defaultTablesUiConfigV1());
+    tablesUiPanelRendered = true;
+  }
+
   function activateTab(key) {
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
       var isActive = el.getAttribute('data-settings-tab') === key;
@@ -83,6 +92,9 @@
     }
     if (key === 'charts') {
       try { renderChartsWhenVisible(); } catch (_) {}
+    }
+    if (key === 'layout') {
+      try { renderTablesWhenVisible(); } catch (_) {}
     }
     if (key === 'insights') {
       try {
@@ -496,6 +508,7 @@
         var overrides = data.assetOverrides || {};
         kpiUiConfigCache = data.kpiUiConfig || null;
         chartsUiConfigCache = data.chartsUiConfig || null;
+        tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
@@ -525,6 +538,9 @@
         } catch (_) {}
         try {
           if (getActiveSettingsTab() === 'charts') renderChartsWhenVisible();
+        } catch (_) {}
+        try {
+          if (getActiveSettingsTab() === 'layout') renderTablesWhenVisible();
         } catch (_) {}
       })
       .catch(function () {});
@@ -649,6 +665,88 @@
         { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
         { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
         { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-animated', colors: ['#3eb3ab'] },
+      ],
+    };
+  }
+
+  function defaultTablesUiConfigV1() {
+    return {
+      v: 1,
+      pages: [
+        {
+          key: 'dashboard',
+          label: 'Dashboard · Overview',
+          tables: [
+            { id: 'dash-top-products', name: 'Top Products', tableClass: 'dashboard', zone: 'dashboard-top-products', order: 1, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-top-countries', name: 'Top Countries', tableClass: 'dashboard', zone: 'dashboard-top-countries', order: 2, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-trending-up', name: 'Trending Up', tableClass: 'dashboard', zone: 'dashboard-trending-up', order: 3, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-trending-down', name: 'Trending Down', tableClass: 'dashboard', zone: 'dashboard-trending-down', order: 4, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'live',
+          label: 'Dashboard · Live View',
+          tables: [
+            { id: 'sessions-table', name: 'Sessions', tableClass: 'live', zone: 'live-sessions', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'sales',
+          label: 'Dashboard · Recent Sales',
+          tables: [
+            { id: 'sessions-table', name: 'Sessions', tableClass: 'live', zone: 'sales-sessions', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'date',
+          label: 'Dashboard · Table View',
+          tables: [
+            { id: 'sessions-table', name: 'Sessions', tableClass: 'live', zone: 'date-sessions', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'countries',
+          label: 'Insights · Countries',
+          tables: [
+            { id: 'country-table', name: 'Country', tableClass: 'live', zone: 'countries-main', order: 1, inGrid: true, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'best-geo-products-table', name: 'Country + Product', tableClass: 'live', zone: 'countries-products', order: 2, inGrid: true, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'products',
+          label: 'Insights · Products',
+          tables: [
+            { id: 'best-sellers-table', name: 'Best Sellers', tableClass: 'product', zone: 'products-best-sellers', order: 1, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'best-variants-table', name: 'Variant', tableClass: 'product', zone: 'products-best-variants', order: 2, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-necklaces-table', name: 'Necklaces', tableClass: 'product', zone: 'products-type-necklaces', order: 3, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-bracelets-table', name: 'Bracelets', tableClass: 'product', zone: 'products-type-bracelets', order: 4, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-earrings-table', name: 'Earrings', tableClass: 'product', zone: 'products-type-earrings', order: 5, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-sets-table', name: 'Jewelry Sets', tableClass: 'product', zone: 'products-type-sets', order: 6, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-charms-table', name: 'Charms', tableClass: 'product', zone: 'products-type-charms', order: 7, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-extras-table', name: 'Extras', tableClass: 'product', zone: 'products-type-extras', order: 8, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'channels',
+          label: 'Traffic · Channels',
+          tables: [
+            { id: 'traffic-sources-table', name: 'Channels', tableClass: 'live', zone: 'channels-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'type',
+          label: 'Traffic · Device & Platform',
+          tables: [
+            { id: 'traffic-types-table', name: 'Device & Platform', tableClass: 'live', zone: 'type-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
+          key: 'ads',
+          label: 'Integrations · Google Ads',
+          tables: [
+            { id: 'ads-root', name: 'Google Ads', tableClass: 'live', zone: 'ads-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
       ],
     };
   }
@@ -846,6 +944,307 @@
 
     resetBtn.addEventListener('click', function () {
       renderChartsUiPanel(defaultChartsUiConfigV1());
+      setMsg('Defaults loaded. Press Save to apply.', true);
+    });
+  }
+
+  function wireLayoutSubTabs() {
+    var tabs = document.querySelectorAll('[data-settings-layout-tab]');
+    if (!tabs.length) return;
+    function activate(key) {
+      tabs.forEach(function (tab) {
+        var active = tab.getAttribute('data-settings-layout-tab') === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      ['tables'].forEach(function (k) {
+        var panel = document.getElementById('settings-layout-panel-' + k);
+        if (panel) panel.classList.toggle('active', k === key);
+      });
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-settings-layout-tab') || 'tables');
+      });
+    });
+    activate('tables');
+  }
+
+  function parseRowOptionsText(raw) {
+    var text = raw == null ? '' : String(raw);
+    var parts = text.split(/[^0-9]+/g);
+    var out = [];
+    var seen = {};
+    parts.forEach(function (p) {
+      if (!p) return;
+      var n = parseInt(p, 10);
+      if (!Number.isFinite(n) || n <= 0 || n > 200) return;
+      if (seen[n]) return;
+      seen[n] = true;
+      out.push(n);
+    });
+    out.sort(function (a, b) { return a - b; });
+    return out.slice(0, 12);
+  }
+
+  function formatRowOptionsText(list) {
+    return (Array.isArray(list) ? list : []).map(function (n) { return String(n); }).join(', ');
+  }
+
+  function updateDefaultRowsSelectForRow(row) {
+    if (!row || !row.querySelector) return;
+    var optionsInput = row.querySelector('input[data-field="rows-options"]');
+    var defaultSel = row.querySelector('select[data-field="rows-default"]');
+    if (!optionsInput || !defaultSel) return;
+
+    var options = parseRowOptionsText(optionsInput.value);
+    if (!options.length) {
+      options = parseRowOptionsText(optionsInput.getAttribute('data-default-options') || '');
+    }
+    if (!options.length) options = [20];
+
+    var cur = parseInt(String(defaultSel.value || ''), 10);
+    if (!Number.isFinite(cur) || options.indexOf(cur) < 0) cur = options[0];
+
+    defaultSel.innerHTML = options.map(function (n) {
+      return '<option value="' + String(n) + '"' + (n === cur ? ' selected' : '') + '>' + String(n) + '</option>';
+    }).join('');
+  }
+
+  function renderLayoutTablesUiPanel(cfg) {
+    var root = document.getElementById('settings-layout-tables-root');
+    if (!root) return;
+    var c = cfg && typeof cfg === 'object' ? cfg : defaultTablesUiConfigV1();
+    var pages = Array.isArray(c.pages) ? c.pages.slice() : [];
+    pages.sort(function (a, b) {
+      var al = a && a.label ? String(a.label).toLowerCase() : '';
+      var bl = b && b.label ? String(b.label).toLowerCase() : '';
+      if (al < bl) return -1;
+      if (al > bl) return 1;
+      return 0;
+    });
+
+    var html = '' +
+      '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">' +
+        '<div class="text-muted small">Edit each table per page: name, rows-per-page options + default, sticky column bounds, and whether it lives in a grid.</div>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Coming later">Add table\u2026</button>' +
+      '</div>';
+
+    pages.forEach(function (page) {
+      if (!page || typeof page !== 'object') return;
+      var pageKey = page.key != null ? String(page.key).trim().toLowerCase() : '';
+      if (!pageKey) return;
+      var label = page.label != null ? String(page.label) : pageKey;
+      var tables = Array.isArray(page.tables) ? page.tables.slice() : [];
+      tables.sort(function (a, b) {
+        var ao = Number(a && a.order) || 0;
+        var bo = Number(b && b.order) || 0;
+        if (ao !== bo) return ao - bo;
+        var an = a && a.name ? String(a.name).toLowerCase() : '';
+        var bn = b && b.name ? String(b.name).toLowerCase() : '';
+        if (an < bn) return -1;
+        if (an > bn) return 1;
+        return 0;
+      });
+
+      var rowsHtml = '';
+      tables.forEach(function (t) {
+        if (!t || typeof t !== 'object') return;
+        var tableId = t.id != null ? String(t.id).trim() : '';
+        if (!tableId) return;
+        var name = t.name != null ? String(t.name) : tableId;
+        var tableClass = t.tableClass != null ? String(t.tableClass) : '';
+        var zone = t.zone != null ? String(t.zone) : '';
+        var inGrid = t.inGrid !== false;
+        var rowOptions = t.rows && Array.isArray(t.rows.options) ? t.rows.options : [];
+        var defaultRows = t.rows && typeof t.rows.default === 'number' ? t.rows.default : (rowOptions[0] || 20);
+        if (rowOptions.indexOf(defaultRows) < 0 && rowOptions.length) defaultRows = rowOptions[0];
+        var stickyMin = t.sticky && typeof t.sticky.minWidth === 'number' ? t.sticky.minWidth : null;
+        var stickyMax = t.sticky && typeof t.sticky.maxWidth === 'number' ? t.sticky.maxWidth : null;
+
+        var defaultOptsHtml = (rowOptions.length ? rowOptions : [defaultRows]).map(function (n) {
+          return '<option value="' + String(n) + '"' + (Number(n) === Number(defaultRows) ? ' selected' : '') + '>' + String(n) + '</option>';
+        }).join('');
+
+        rowsHtml += '' +
+          '<tr data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
+            '<td style="min-width:260px">' +
+              '<input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '">' +
+              '<div class="text-muted small mt-1">' +
+                '<code>' + escapeHtml(tableId) + '</code>' +
+                (tableClass ? ' \u00b7 class <code>' + escapeHtml(tableClass) + '</code>' : '') +
+                (zone ? ' \u00b7 zone <code>' + escapeHtml(zone) + '</code>' : '') +
+              '</div>' +
+            '</td>' +
+            '<td style="min-width:320px">' +
+              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                '<span class="text-muted small">Default</span>' +
+                '<select class="form-select form-select-sm" style="max-width:110px" data-field="rows-default">' + defaultOptsHtml + '</select>' +
+                '<span class="text-muted small ms-1">Options</span>' +
+                '<input type="text" class="form-control form-control-sm" style="max-width:190px" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5,10,15,20,25">' +
+              '</div>' +
+            '</td>' +
+            '<td style="min-width:240px">' +
+              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                '<input type="number" class="form-control form-control-sm" style="max-width:96px" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '">' +
+                '<span class="text-muted small">\u2192</span>' +
+                '<input type="number" class="form-control form-control-sm" style="max-width:96px" data-field="sticky-max" placeholder="auto" value="' + (stickyMax == null ? '' : escapeHtml(String(stickyMax))) + '">' +
+                '<span class="text-muted small">px</span>' +
+              '</div>' +
+              '<div class="text-muted small mt-1">Leave blank for auto sizing.</div>' +
+            '</td>' +
+            '<td style="min-width:140px">' +
+              '<label class="form-check form-switch m-0">' +
+                '<input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '>' +
+                '<span class="form-check-label small ms-2">Grid</span>' +
+              '</label>' +
+            '</td>' +
+            '<td class="text-end w-1">' +
+              '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+                '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+                '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+      });
+
+      html += '' +
+        '<div class="card card-sm mb-3" data-layout-page="' + escapeHtml(pageKey) + '">' +
+          '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+            '<h4 class="card-title mb-0">' + escapeHtml(label) + '</h4>' +
+            '<div class="text-muted small"><code>' + escapeHtml(pageKey) + '</code></div>' +
+          '</div>' +
+          '<div class="table-responsive">' +
+            '<table class="table table-sm table-vcenter mb-0">' +
+              '<thead><tr>' +
+                '<th>Table</th>' +
+                '<th>Rows</th>' +
+                '<th>Sticky column</th>' +
+                '<th>Layout</th>' +
+                '<th class="text-end w-1">Order</th>' +
+              '</tr></thead>' +
+              '<tbody data-layout-page-key="' + escapeHtml(pageKey) + '">' + (rowsHtml || '<tr><td colspan="5" class="text-secondary small">No tables found.</td></tr>') + '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>';
+    });
+
+    root.innerHTML = html;
+    wireReorderButtons(root);
+
+    // Keep default selector valid when options change.
+    if (root.getAttribute('data-layout-wired') !== '1') {
+      root.setAttribute('data-layout-wired', '1');
+      root.addEventListener('input', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target.matches && target.matches('input[data-field="rows-options"]')) {
+          var row = target.closest ? target.closest('tr[data-layout-table-id]') : null;
+          if (row) updateDefaultRowsSelectForRow(row);
+        }
+      });
+      root.addEventListener('change', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target) return;
+        if (target.matches && target.matches('input[data-field="rows-options"]')) {
+          var row = target.closest ? target.closest('tr[data-layout-table-id]') : null;
+          if (row) updateDefaultRowsSelectForRow(row);
+        }
+      });
+    }
+  }
+
+  function buildTablesUiConfigFromDom() {
+    var root = document.getElementById('settings-layout-tables-root');
+    var out = { v: 1, pages: [] };
+    if (!root) return out;
+
+    var pageBodies = Array.prototype.slice.call(root.querySelectorAll('tbody[data-layout-page-key]'));
+    pageBodies.forEach(function (tbody) {
+      var pageKey = (tbody.getAttribute('data-layout-page-key') || '').trim().toLowerCase();
+      if (!pageKey) return;
+      var page = { key: pageKey, tables: [] };
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-layout-table-id]'));
+      rows.forEach(function (tr, idx) {
+        var tableId = (tr.getAttribute('data-layout-table-id') || '').trim();
+        if (!tableId) return;
+        var nameEl = tr.querySelector('input[data-field="name"]');
+        var inGridEl = tr.querySelector('input[data-field="inGrid"]');
+        var optionsEl = tr.querySelector('input[data-field="rows-options"]');
+        var defaultEl = tr.querySelector('select[data-field="rows-default"]');
+        var stickyMinEl = tr.querySelector('input[data-field="sticky-min"]');
+        var stickyMaxEl = tr.querySelector('input[data-field="sticky-max"]');
+
+        var options = parseRowOptionsText(optionsEl ? optionsEl.value : '');
+        if (!options.length && optionsEl) options = parseRowOptionsText(optionsEl.getAttribute('data-default-options') || '');
+
+        var defaultRows = parseInt(String(defaultEl && defaultEl.value != null ? defaultEl.value : ''), 10);
+        if (!Number.isFinite(defaultRows) && options.length) defaultRows = options[0];
+
+        function parseSticky(inp) {
+          if (!inp) return null;
+          var raw = String(inp.value || '').trim();
+          if (!raw) return null;
+          var n = parseInt(raw, 10);
+          return Number.isFinite(n) ? n : null;
+        }
+
+        page.tables.push({
+          id: tableId,
+          name: nameEl && nameEl.value != null ? String(nameEl.value).trim() : tableId,
+          order: idx + 1,
+          inGrid: !!(inGridEl && inGridEl.checked),
+          rows: {
+            default: Number.isFinite(defaultRows) ? defaultRows : undefined,
+            options: options,
+          },
+          sticky: {
+            minWidth: parseSticky(stickyMinEl),
+            maxWidth: parseSticky(stickyMaxEl),
+          },
+        });
+      });
+      out.pages.push(page);
+    });
+    return out;
+  }
+
+  function wireLayoutTablesSaveReset() {
+    var saveBtn = document.getElementById('settings-layout-tables-save-btn');
+    var resetBtn = document.getElementById('settings-layout-tables-reset-btn');
+    var msgEl = document.getElementById('settings-layout-tables-msg');
+    if (!saveBtn || !resetBtn) return;
+
+    function setMsg(t, ok) {
+      if (!msgEl) return;
+      msgEl.textContent = t || '';
+      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+    }
+
+    saveBtn.addEventListener('click', function () {
+      var cfg = buildTablesUiConfigFromDom();
+      setMsg('Saving\u2026', true);
+      saveSettings({ tablesUiConfig: cfg })
+        .then(function (r) {
+          if (r && r.ok) {
+            tablesUiConfigCache = r.tablesUiConfig || cfg;
+            try { localStorage.setItem('kexo:tables-ui-config:v1', JSON.stringify(tablesUiConfigCache)); } catch (_) {}
+            setMsg('Saved.', true);
+            try {
+              if (window && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('kexo:tablesUiConfigUpdated', { detail: tablesUiConfigCache }));
+              }
+            } catch (_) {}
+            renderLayoutTablesUiPanel(tablesUiConfigCache);
+          } else {
+            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+          }
+        })
+        .catch(function () { setMsg('Save failed', false); });
+    });
+
+    resetBtn.addEventListener('click', function () {
+      renderLayoutTablesUiPanel(defaultTablesUiConfigV1());
       setMsg('Defaults loaded. Press Save to apply.', true);
     });
   }
@@ -1435,7 +1834,7 @@
       if (!btn) return;
       var action = btn.getAttribute('data-action') || '';
       if (action !== 'up' && action !== 'down') return;
-      var row = btn.closest('tr[data-kpi-key], tr[data-range-key]');
+      var row = btn.closest('tr[data-kpi-key], tr[data-range-key], tr[data-layout-table-id]');
       if (!row) return;
       e.preventDefault();
       moveRow(row, action);
@@ -1656,11 +2055,13 @@
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
+    wireLayoutSubTabs();
     wireInsightsVariantsEditor();
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();
     wireChartsSaveReset();
+    wireLayoutTablesSaveReset();
   }
 
   if (document.readyState === 'loading') {

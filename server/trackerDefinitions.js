@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 17;
+const DEFINITIONS_VERSION = 18;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -380,6 +380,24 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [
       { name: 'Scope', value: 'Global/shared (not per-user)' },
       { name: 'Apply behavior', value: 'Saved config is used for chart mode/colors/visibility; disabled charts are hidden server-side via /theme-vars.css' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['settings'], shopifyToken: false },
+  },
+  {
+    id: 'settings_layout_tables_panel',
+    page: 'Settings',
+    name: 'Layout settings panel (tables)',
+    ui: { elementIds: ['settings-layout-tables-root', 'settings-layout-tables-save-btn', 'settings-layout-tables-reset-btn'] },
+    endpoint: { method: 'GET/POST', path: '/api/settings', params: ['tablesUiConfig (POST body)'] },
+    sources: [
+      { kind: 'db', tables: ['settings'], note: 'tables_ui_config_v1 persisted in settings table' },
+      { kind: 'ui', note: 'Client applies table rows/options + sticky sizing + order/grid via app.js + localStorage cache key kexo:tables-ui-config:v1' },
+    ],
+    columns: [],
+    math: [
+      { name: 'Scope', value: 'Global/shared (not per-user)' },
+      { name: 'Apply behavior', value: 'Config overrides table rows-per-page options/default and (optionally) sticky column min/max. Table title/order/grid are applied via DOM transforms (opt-in titles via data-kexo-table-title).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['settings'], shopifyToken: false },

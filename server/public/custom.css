@@ -130,6 +130,12 @@ i[class*="fa-"] {
   position: relative;
 }
 
+/* Settings → Layout → Tables: force full-width cards inside flex grids */
+.kexo-layout-full {
+  flex: 1 1 100% !important;
+  max-width: 100% !important;
+}
+
 /* Sessions table: fixed layout so header and body columns stay aligned when scrolling */
 #sessions-table.grid-table {
   table-layout: fixed;
