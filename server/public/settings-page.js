@@ -14,6 +14,7 @@
 
   var kpiUiConfigCache = null;
   var chartsUiConfigCache = null;
+  var chartsUiPanelRendered = false;
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -47,6 +48,18 @@
     try { history.replaceState(null, '', url); } catch (_) {}
   }
 
+  function getActiveSettingsTab() {
+    var active = document.querySelector('.settings-panel.active');
+    if (!active || !active.id) return '';
+    return String(active.id).replace('settings-panel-', '');
+  }
+
+  function renderChartsWhenVisible() {
+    if (chartsUiPanelRendered) return;
+    renderChartsUiPanel(chartsUiConfigCache || defaultChartsUiConfigV1());
+    chartsUiPanelRendered = true;
+  }
+
   function activateTab(key) {
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
       var isActive = el.getAttribute('data-settings-tab') === key;
@@ -63,6 +76,9 @@
     }
     if (key === 'sources') {
       try { if (typeof window.initTrafficSourceMapping === 'function') window.initTrafficSourceMapping({ rootId: 'settings-traffic-source-mapping-root' }); } catch (_) {}
+    }
+    if (key === 'charts') {
+      try { renderChartsWhenVisible(); } catch (_) {}
     }
   }
 
@@ -329,7 +345,9 @@
         });
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
-        try { renderChartsUiPanel(chartsUiConfigCache); } catch (_) {}
+        try {
+          if (getActiveSettingsTab() === 'charts') renderChartsWhenVisible();
+        } catch (_) {}
       })
       .catch(function () {});
   }

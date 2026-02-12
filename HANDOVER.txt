@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (handover audit + current UI + global Settings: Theme/Icons/KPIs/Charts)
+Last updated: 2026-02-12 (theme color-tab refactor + primary palette lock + charts settings render fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -104,6 +104,13 @@ Theme persistence:
 
 Theme UI:
 - `server/public/theme-settings.js` renders the Theme panel inside Settings.
+- Header subtab now contains non-color header controls only (visibility toggles, border on/off toggles, radius fields, logo override).
+- Color subtab now owns all desktop strip/nav/dropdown/settings/online-badge color fields.
+- Primary color choices are restricted to KEXO 3 accents only:
+  - Accent 1: `#4b94e4` (blue)
+  - Accent 2: `#3eb3ab` (teal)
+  - Accent 3: `#f59e34` (orange)
+- Early hydration in `server/public/partials/head-theme.html` applies only those 3 primary options before paint.
 
 Header + nav theming:
 - Desktop top strip + main nav are styled via CSS vars in `server/public/custom.css`, overridden by `/theme-vars.css`.
@@ -128,6 +135,7 @@ Charts are centrally configurable in Settings → Charts:
 - DB key: `charts_ui_config_v1`
 - Served by: `GET /api/settings` as `chartsUiConfig`
 - Saved by: `POST /api/settings` (`chartsUiConfig` payload)
+- Settings-side charts table rendering is lazy-on-tab-open (render when Charts tab is active) to avoid hidden-panel select/input rendering glitches.
 
 Runtime apply:
 - `server/public/app.js`: dashboard/insights/traffic charts + map behavior
@@ -212,3 +220,6 @@ Ops/reliability:
 - Handover audit pass: updated to current UI + routes + Settings capabilities.
 - Icons are customizable via `data-icon-key` + Font Awesome runtime adapter (`server/public/fontawesome-icons.js`).
 - Added global Charts settings (`charts_ui_config_v1`) + server-injected hide CSS via `/theme-vars.css`.
+- Refactored Theme settings: moved all desktop header/nav/dropdown/settings/online color controls from Header tab into Color tab; Header tab now keeps non-color controls.
+- Locked Theme primary palette to KEXO brand 3-color accents in both settings UI and `head-theme` early hydration.
+- Fixed Settings → Charts initial render timing so chart mode/pie selectors render with correct defaults/selections when tab is opened.

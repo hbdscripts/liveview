@@ -213,7 +213,7 @@
 
   var DEFAULTS = {
     theme: 'light',
-    'theme-primary': 'green',
+    'theme-primary': 'teal',
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
@@ -299,19 +299,18 @@
 
   // Primary color map: name -> [hex, r, g, b]
   var PRIMARY_COLORS = {
-    blue: ['#206bc4', '32,107,196'],
-    azure: ['#4299e1', '66,153,225'],
-    indigo: ['#4263eb', '66,99,235'],
-    purple: ['#ae3ec9', '174,62,201'],
-    pink: ['#d6336c', '214,51,108'],
-    red: ['#d63939', '214,57,57'],
-    orange: ['#f76707', '247,103,7'],
-    yellow: ['#f59f00', '245,159,0'],
-    lime: ['#74b816', '116,184,22'],
-    green: ['#3eb3ab', '62,179,171'],
-    teal: ['#0ca678', '12,166,120'],
-    cyan: ['#17a2b8', '23,162,184'],
+    blue: ['#4b94e4', '75,148,228'],
+    teal: ['#3eb3ab', '62,179,171'],
+    orange: ['#f59e34', '245,158,52'],
   };
+
+  function normalizePrimaryChoice(value) {
+    var raw = String(value == null ? '' : value).trim().toLowerCase();
+    if (PRIMARY_COLORS[raw]) return raw;
+    // Backward compatibility with older default naming.
+    if (raw === 'green') return 'teal';
+    return DEFAULTS['theme-primary'];
+  }
 
   // Border radius scale -> CSS value
   var RADIUS_MAP = {
@@ -589,7 +588,8 @@
     } else if (key === 'theme-preference-mode') {
       root.setAttribute('data-kexo-theme-preference-mode', normalizePreferenceMode(value, DEFAULTS[key]));
     } else if (key === 'theme-primary') {
-      var color = PRIMARY_COLORS[value];
+      var primaryKey = normalizePrimaryChoice(value);
+      var color = PRIMARY_COLORS[primaryKey];
       if (color) {
         root.style.setProperty('--tblr-primary', color[0]);
         root.style.setProperty('--tblr-primary-rgb', color[1]);
@@ -743,6 +743,7 @@
           var serverVal = hasDbVal
             ? String(rawDbVal).trim()
             : (hasKeyVal ? String(rawKeyVal).trim() : DEFAULTS[key]);
+          if (key === 'theme-primary') serverVal = normalizePrimaryChoice(serverVal);
           setStored(key, serverVal);
           applyTheme(key, serverVal || DEFAULTS[key]);
         });
@@ -792,6 +793,10 @@
     if (!form) return;
     KEYS.forEach(function (key) {
       var val = getStored(key) || DEFAULTS[key];
+      if (key === 'theme-primary') {
+        val = normalizePrimaryChoice(val);
+        setStored(key, val);
+      }
       if (ICON_STYLE_KEYS.indexOf(key) >= 0) {
         var styleInput = form.querySelector('[name="' + key + '"]');
         if (styleInput) styleInput.value = normalizeIconStyle(val, DEFAULTS[key]);
@@ -946,30 +951,32 @@
       iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
       iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
     ].join('');
-    var headerStripGrid = [
+    var headerShapeGrid = [
+      headerInputCard('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
+      headerInputCard('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius']),
+      headerInputCard('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
+    ].join('');
+    var colorStripGrid = [
       headerInputCard('theme-header-top-bg', 'Strip background', 'Background color for the top strip row.', DEFAULTS['theme-header-top-bg']),
       headerInputCard('theme-header-top-text-color', 'Strip text color', 'Text color used by strip controls unless overridden.', DEFAULTS['theme-header-top-text-color'])
     ].join('');
-    var headerSettingsGrid = [
+    var colorSettingsButtonGrid = [
       headerInputCard('theme-header-settings-bg', 'Settings button background', 'Background color for the strip Settings button.', DEFAULTS['theme-header-settings-bg']),
       headerInputCard('theme-header-settings-text-color', 'Settings button text/icon color', 'Text and icon color for the strip Settings button.', DEFAULTS['theme-header-settings-text-color']),
-      headerInputCard('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
       headerInputCard('theme-header-settings-border-color', 'Settings button border color', 'Border color for the strip Settings button.', DEFAULTS['theme-header-settings-border-color'])
     ].join('');
-    var headerSettingsMenuGrid = [
+    var colorSettingsMenuGrid = [
       headerInputCard('theme-header-settings-menu-bg', 'Settings dropdown background', 'Background color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-bg']),
       headerInputCard('theme-header-settings-menu-link-color', 'Settings dropdown link color', 'Text color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-link-color']),
       headerInputCard('theme-header-settings-menu-icon-color', 'Settings dropdown icon color', 'Icon color for links inside the strip Settings dropdown.', DEFAULTS['theme-header-settings-menu-icon-color']),
-      headerInputCard('theme-header-settings-menu-border-color', 'Settings dropdown border color', 'Border color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-border-color']),
-      headerInputCard('theme-header-settings-menu-radius', 'Settings dropdown radius', 'Border radius for the strip Settings dropdown panel (for example .375rem or 6px).', DEFAULTS['theme-header-settings-menu-radius'])
+      headerInputCard('theme-header-settings-menu-border-color', 'Settings dropdown border color', 'Border color for the strip Settings dropdown panel.', DEFAULTS['theme-header-settings-menu-border-color'])
     ].join('');
-    var headerOnlineGrid = [
+    var colorOnlineBadgeGrid = [
       headerInputCard('theme-header-online-bg', 'Online badge background', 'Background color for the visitors badge.', DEFAULTS['theme-header-online-bg']),
       headerInputCard('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
-      headerInputCard('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius']),
       headerInputCard('theme-header-online-border-color', 'Online badge border color', 'Border color for the visitors badge.', DEFAULTS['theme-header-online-border-color'])
     ].join('');
-    var topMenuGrid = [
+    var colorTopMenuGrid = [
       headerInputCard('theme-header-main-bg', 'Menu background', 'Background color for the desktop top menu row.', DEFAULTS['theme-header-main-bg']),
       headerInputCard('theme-header-main-link-color', 'Menu link color', 'Color for top-level desktop menu links.', DEFAULTS['theme-header-main-link-color']),
       headerInputCard('theme-header-main-border-color', 'Menu border-bottom color', 'Color for the menu bottom border.', DEFAULTS['theme-header-main-border-color']),
@@ -1012,21 +1019,9 @@
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
-        '<div class="text-secondary mb-3">Configure strip controls and top menu appearance. All controls apply live.</div>' +
-        '<h4 class="mb-2">Strip</h4>' +
-        '<div class="row g-3">' + headerStripGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Strip Settings button</h4>' +
-        '<div class="row g-3">' + headerSettingsGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Strip Settings dropdown</h4>' +
-        '<div class="row g-3">' + headerSettingsMenuGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Strip Online badge</h4>' +
-        '<div class="row g-3">' + headerOnlineGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Top menu</h4>' +
-        '<div class="row g-3">' + topMenuGrid + '</div>' +
+        '<div class="text-secondary mb-3">Configure header visibility and shape controls. Header/nav colors are configured in the Color tab.</div>' +
+        '<h4 class="mb-2">Shape</h4>' +
+        '<div class="row g-3">' + headerShapeGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Visibility & borders</h4>' +
         '<div class="row g-3">' + headerToggleGrid + '</div>' +
@@ -1040,19 +1035,28 @@
         '<div class="mb-4">' +
           '<label class="form-label">Primary color</label>' +
           '<div class="row g-2">' +
-            colorCard('theme-primary', 'blue', 'Blue') +
-            colorCard('theme-primary', 'azure', 'Azure') +
-            colorCard('theme-primary', 'indigo', 'Indigo') +
-            colorCard('theme-primary', 'purple', 'Purple') +
-            colorCard('theme-primary', 'pink', 'Pink') +
-            colorCard('theme-primary', 'red', 'Red') +
-            colorCard('theme-primary', 'orange', 'Orange') +
-            colorCard('theme-primary', 'yellow', 'Yellow') +
-            colorCard('theme-primary', 'lime', 'Lime') +
-            colorCard('theme-primary', 'green', 'Green') +
-            colorCard('theme-primary', 'teal', 'Teal') +
-            colorCard('theme-primary', 'cyan', 'Cyan') +
+            colorCard('theme-primary', 'blue', 'Accent 1 (Blue)') +
+            colorCard('theme-primary', 'teal', 'Accent 2 (Teal)') +
+            colorCard('theme-primary', 'orange', 'Accent 3 (Orange)') +
           '</div>' +
+        '</div>' +
+        '<div class="mb-4">' +
+          '<label class="form-label">Header & nav colors</label>' +
+          '<div class="text-secondary small mb-3">These values control the desktop strip, main menu row, dropdowns, Settings dropdown, and Online badge.</div>' +
+          '<h4 class="mb-2">Desktop strip</h4>' +
+          '<div class="row g-3">' + colorStripGrid + '</div>' +
+          '<hr class="my-3" />' +
+          '<h4 class="mb-2">Strip Settings button</h4>' +
+          '<div class="row g-3">' + colorSettingsButtonGrid + '</div>' +
+          '<hr class="my-3" />' +
+          '<h4 class="mb-2">Strip Settings dropdown</h4>' +
+          '<div class="row g-3">' + colorSettingsMenuGrid + '</div>' +
+          '<hr class="my-3" />' +
+          '<h4 class="mb-2">Strip Online badge</h4>' +
+          '<div class="row g-3">' + colorOnlineBadgeGrid + '</div>' +
+          '<hr class="my-3" />' +
+          '<h4 class="mb-2">Desktop main menu row</h4>' +
+          '<div class="row g-3">' + colorTopMenuGrid + '</div>' +
         '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Theme base</label>' +
