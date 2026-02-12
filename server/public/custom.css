@@ -1566,8 +1566,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-top-strip-settings-menu {
   /* Inherit menu: same background + opacity as menu bar */
   background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
-  border: var(--kexo-top-menu-border-width, 1px) solid var(--kexo-top-menu-border-color, var(--tblr-border-color, #e6e7e9)) !important;
+  border: none !important;
   border-radius: 0 0 .375rem .375rem;
+}
+/* Settings dropdown: align left edge with menu (container-xl content start), opens below nav not strip */
+.kexo-settings-dropdown-align-start.dropdown-menu {
+  position: fixed !important;
+  top: 6.5rem !important; /* below strip + nav */
+  left: max(1rem, calc((100vw - min(1320px, 100vw)) / 2 + 1rem)) !important;
+  right: auto !important;
+  transform: none !important;
 }
 .kexo-top-strip-settings-item {
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
@@ -1720,10 +1728,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 0 0 .375rem .375rem;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   min-width: 13rem;
+  border: none !important;
   --tblr-dropdown-bg: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)));
   --tblr-dropdown-link-color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937));
   background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
-  border-color: var(--kexo-top-menu-border-color, var(--tblr-border-color, #e6e7e9)) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 .kexo-desktop-nav-list .dropdown-item,

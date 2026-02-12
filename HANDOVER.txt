@@ -15,7 +15,8 @@ IMPORTANT (for future agents)
 ## What KEXO looks like today (UX)
 
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
-- Top strip: live visitor count (left), centered logo, Settings dropdown (right).
+- Top strip: live visitor count (left), centered logo.
+- Main nav row: grouped dropdown menus + date range selector + Settings dropdown (right); Settings dropdown opens below nav, aligns left with menu.
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 
@@ -222,6 +223,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12
+- Dropdown border removed; Settings moved from strip to nav; Settings dropdown aligns left with menu, opens below nav (not strip).
 - Settings dropdown inherits menu: same background, opacity filter, border, link/icon colors. Removed theme_header_settings_menu_* keys.
 - Menu hover tint: theme_menu_hover_opacity (0–100%) + theme_menu_hover_color (black/white) control hover overlay on nav links and dropdown items.
 
