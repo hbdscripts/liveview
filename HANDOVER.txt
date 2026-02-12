@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Variants reset + faster suggestions + merge)
+Last updated: 2026-02-12 (Dashboard side-panel restored + Tabler polish)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -224,6 +224,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Restored session details drawer behavior on `/dashboard/live`, `/dashboard/sales`, and `/dashboard/table` by adding active `.side-panel` styling in `server/public/custom.css` (these pages do not load `app.css`).
+- Refined the drawer with Tabler-aligned spacing, borders, section cards, and improved long URL wrapping so activity/source/network details remain readable.
+- Added drawer backdrop + ESC close behavior in `server/public/app.js`, and stronger clickable-row hover affordance for session tables.
 
 2026-02-12 (latest)
 - Converted sale row styling/icons:

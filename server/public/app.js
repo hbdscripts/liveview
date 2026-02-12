@@ -9129,9 +9129,38 @@ const API = '';
       return blocks.map(function (b) { return '<div class="side-panel-cf-block"><div class="side-panel-cf-subtitle">' + escapeHtml(b[0]) + '</div>' + b[1] + '</div>'; }).join('');
     }
 
+    function ensureSidePanelBackdrop() {
+      var panel = document.getElementById('side-panel');
+      if (!panel) return null;
+      var backdrop = document.getElementById('side-panel-backdrop');
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'side-panel-backdrop';
+        backdrop.className = 'side-panel-backdrop is-hidden';
+        document.body.appendChild(backdrop);
+      }
+      if (!backdrop.dataset.bound) {
+        backdrop.addEventListener('click', function () { closeSidePanel(); });
+        backdrop.dataset.bound = '1';
+      }
+      return backdrop;
+    }
+
+    function closeSidePanel() {
+      var panel = document.getElementById('side-panel');
+      if (panel) panel.classList.add('is-hidden');
+      var backdrop = document.getElementById('side-panel-backdrop');
+      if (backdrop) backdrop.classList.add('is-hidden');
+      document.body.classList.remove('side-panel-open');
+    }
+
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
+      if (!panel) return;
+      const backdrop = ensureSidePanelBackdrop();
       panel.classList.remove('is-hidden');
+      if (backdrop) backdrop.classList.remove('is-hidden');
+      document.body.classList.add('side-panel-open');
       document.getElementById('side-events').innerHTML = '<li class="muted">Loading\u2026</li>';
       document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Loading\u2026</span></div>';
       const sideSourceEl = document.getElementById('side-source');
@@ -9179,12 +9208,12 @@ const API = '';
     }
 
     const sideCloseBtn = document.getElementById('side-close');
-    if (sideCloseBtn) {
-      sideCloseBtn.addEventListener('click', () => {
-        const panel = document.getElementById('side-panel');
-        if (panel) panel.classList.add('is-hidden');
-      });
-    }
+    if (sideCloseBtn) sideCloseBtn.addEventListener('click', closeSidePanel);
+    document.addEventListener('keydown', function (e) {
+      if (!e || e.key !== 'Escape') return;
+      var panel = document.getElementById('side-panel');
+      if (panel && !panel.classList.contains('is-hidden')) closeSidePanel();
+    });
 
     // Session table pagination (live/sales/date) — delegated
     (function initSessionTablePagination() {
