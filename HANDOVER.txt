@@ -15,8 +15,7 @@ IMPORTANT (for future agents)
 ## What KEXO looks like today (UX)
 
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
-- Top strip: live visitor count (left), centered logo.
-- Main nav row: grouped dropdown menus + date range selector + Settings dropdown (right); Settings dropdown opens below nav, aligns left with menu.
+- Top strip: live visitor count (left), centered logo, Settings dropdown (right).
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 
