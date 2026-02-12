@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (theme defaults persistence: patch saves + auth-only JSON limit)
+Last updated: 2026-02-12 (icons: full-class config, locked Settings icons, reload stability)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -217,6 +217,15 @@ Edge (optional):
 ## Changelog (summary)
 
 2026-02-12
+- Icons (Theme -> Icons) rework:
+  - Removed editable `Style rules` controls; icon overrides now use full Font Awesome class specs only (for example `fa-light fa-bars`).
+  - Settings-page-only icons are now intentionally locked (non-editable) and forced to fixed `fa-solid` classes: `settings-tab-*` and `settings-diagnostics-*`.
+  - Added dedicated overview KPI delta icon keys (`dash-kpi-delta-up`, `dash-kpi-delta-down`, `dash-kpi-delta-flat`) and wired runtime direction switching in `server/public/app.js` + initial markup in `server/public/dashboard/overview.html`.
+  - Expanded icon help descriptions in `server/public/theme-settings.js` to identify where each icon appears (page/path-aware guidance), including separate Live landing entry/exit descriptions.
+  - Runtime icon application in `server/public/fontawesome-icons.js` is now key-driven (per `data-icon-key`) with locked-key override stripping, and waits for icon/font readiness before first hydrate to reduce reload-time icon flicker/disappearance.
+  - `server/public/partials/head-theme.html` now loads `/fontawesome-icons.js` without `defer`.
+- Theme defaults API allowlist:
+  - Added `theme_icon_glyph_dash_kpi_delta_up`, `theme_icon_glyph_dash_kpi_delta_down`, and `theme_icon_glyph_dash_kpi_delta_flat` in `server/routes/settings.js` for persistence.
 - Theme save reliability:
   - `/api/theme-defaults` POST now uses **patch semantics**: only provided keys are updated (prevents accidental wipes on partial payloads and allows small per-key saves).
   - Theme UI now auto-saves **per-key** in `global` mode (debounced) using patch payloads; `theme-preference-mode` is always persisted when changed.

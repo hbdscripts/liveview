@@ -2,19 +2,19 @@
   'use strict';
 
   var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid', 'fa-brands'];
-  var ICON_STYLE_DEFAULTS = {
-    'theme-icon-default': 'fa-jelly',
-    'theme-icon-topnav': 'fa-jelly-filled',
-    'theme-icon-dropdown': 'fa-jelly',
-    'theme-icon-settings-menu': 'fa-jelly-filled',
-    'theme-icon-table-heading': 'fa-jelly-filled',
-  };
-  var ICON_STYLE_META = {
-    'theme-icon-default': { title: 'Global default', help: 'All icon contexts not matched below.', icon: 'fa-circle-info' },
-    'theme-icon-topnav': { title: 'Top nav toggles', help: 'Top nav menu titles.', icon: 'fa-table-cells-large' },
-    'theme-icon-dropdown': { title: 'Dropdown menu items', help: 'All dropdown item icons.', icon: 'fa-list' },
-    'theme-icon-settings-menu': { title: 'Settings left menu', help: 'Settings page sidebar icon style.', icon: 'fa-sliders' },
-    'theme-icon-table-heading': { title: 'Table heading icons', help: 'Compact sortable table heading icons.', icon: 'fa-percent' },
+  var ICON_STYLE_DEFAULTS = {};
+  var ICON_STYLE_META = {};
+  var LOCKED_SETTINGS_ICON_KEYS = {
+    'settings-tab-general': true,
+    'settings-tab-theme': true,
+    'settings-tab-assets': true,
+    'settings-tab-data-reporting': true,
+    'settings-tab-integrations': true,
+    'settings-tab-sources': true,
+    'settings-tab-kpis': true,
+    'settings-tab-diagnostics': true,
+    'settings-diagnostics-refresh': true,
+    'settings-diagnostics-reconcile': true,
   };
   var ICON_GLYPH_DEFAULTS = {
     'mobile-menu': 'fa-bars',
@@ -138,50 +138,78 @@
     'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
     'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'dash-kpi-delta-up': 'fa-arrow-trend-up',
+    'dash-kpi-delta-down': 'fa-arrow-trend-down',
+    'dash-kpi-delta-flat': 'fa-minus',
     'online-status-indicator': 'fa-circle',
     'card-collapse-expanded': 'fa-chevron-down',
     'card-collapse-collapsed': 'fa-chevron-right',
   };
   var ICON_GLYPH_META = {
-    'mobile-menu': { title: 'Mobile menu button', help: 'Top-left mobile menu icon.', styleKey: 'theme-icon-default' },
-    'mobile-date': { title: 'Mobile date button', help: 'Top-right mobile date icon.', styleKey: 'theme-icon-default' },
-    'topnav-date-chevron': { title: 'Desktop date chevron', help: 'Chevron in desktop date selector.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-dashboard': { title: 'Dashboard toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-breakdown': { title: 'Breakdown toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-traffic': { title: 'Traffic toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-integrations': { title: 'Integrations toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-tools': { title: 'Tools toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-toggle-settings': { title: 'Settings toggle', help: 'Desktop nav top-level icon.', styleKey: 'theme-icon-topnav' },
-    'nav-item-overview': { title: 'Overview menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-live': { title: 'Live view menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-sales': { title: 'Recent sales menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-table': { title: 'Table view menu item', help: 'Dashboard dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-countries': { title: 'Countries menu item', help: 'Breakdown dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-products': { title: 'Products menu item', help: 'Breakdown dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-channels': { title: 'Channels menu item', help: 'Traffic dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-type': { title: 'Type menu item', help: 'Traffic dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-ads': { title: 'Google Ads menu item', help: 'Integrations dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-tools': { title: 'Tools menu item', help: 'Tools dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-settings': { title: 'Settings menu item', help: 'Settings dropdown icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-refresh': { title: 'Refresh action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-sound-on': { title: 'Sound on action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-sound-off': { title: 'Sound off action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-theme': { title: 'Theme action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
-    'nav-item-signout': { title: 'Sign out action', help: 'Settings dropdown action icon.', styleKey: 'theme-icon-dropdown' },
-    'table-icon-cr': { title: 'Table CR icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
-    'table-icon-orders': { title: 'Table orders icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
-    'table-icon-sessions': { title: 'Table sessions icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
-    'table-icon-revenue': { title: 'Table revenue icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
-    'table-icon-clicks': { title: 'Table clicks icon', help: 'Table heading short icon.', styleKey: 'theme-icon-table-heading' },
-    'card-title-trending-up': { title: 'Table Trending Up', help: 'Dashboard table title icon.', styleKey: 'theme-icon-default' },
-    'card-title-trending-down': { title: 'Table Trending Down', help: 'Dashboard table title icon.', styleKey: 'theme-icon-default' },
-    'online-status-indicator': { title: 'Online status indicator', help: 'Desktop top strip live visitor icon.', styleKey: 'theme-icon-default' },
-    'card-collapse-expanded': { title: 'Card collapse expanded', help: 'Chevron shown when card content is open.', styleKey: 'theme-icon-default' },
-    'card-collapse-collapsed': { title: 'Card collapse collapsed', help: 'Chevron shown when card content is collapsed.', styleKey: 'theme-icon-default' },
-    'chart-type-area': { title: 'Chart type: Area', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
-    'chart-type-bar': { title: 'Chart type: Bar', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
-    'chart-type-line': { title: 'Chart type: Line', help: 'Chart type switch button icon.', styleKey: 'theme-icon-default' },
+    'live-landing-entry': { title: 'Live Table Entry Icon', help: 'Landing direction entry icon. Shows in the Live table on /dashboard/live.' },
+    'live-landing-exit': { title: 'Live Table Exit Icon', help: 'Landing direction exit icon. Shows in the Live table on /dashboard/live.' },
+    'dash-kpi-delta-up': { title: 'Overview KPI Delta Up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
+    'dash-kpi-delta-down': { title: 'Overview KPI Delta Down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
+    'dash-kpi-delta-flat': { title: 'Overview KPI Delta Flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
   };
+
+  function isLockedSettingsIconKey(name) {
+    return !!LOCKED_SETTINGS_ICON_KEYS[String(name || '').trim()];
+  }
+
+  function defaultIconStyleForKey(name) {
+    var key = String(name || '').trim().toLowerCase();
+    if (!key) return 'fa-light';
+    if (isLockedSettingsIconKey(key)) return 'fa-solid';
+    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
+    if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
+    if (key.indexOf('table-short-') === 0) return 'fa-solid';
+    if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
+    if (key.indexOf('footer-') === 0) return 'fa-jelly';
+    if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
+    if (key.indexOf('kpi-compare-') === 0 || key === 'sale-toast-time') return 'fa-light';
+    if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
+    if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0) return 'fa-light';
+    if (key.indexOf('diag-') === 0 || key.indexOf('ads-') === 0) return 'fa-light';
+    if (key.indexOf('pagination-') === 0 || key.indexOf('card-collapse-') === 0) return 'fa-light';
+    if (key.indexOf('dash-kpi-delta-') === 0) return 'fa-jelly';
+    if (key.indexOf('chart-type-') === 0) return 'fa-light';
+    return 'fa-light';
+  }
+
+  function withDefaultIconStyle(name, spec) {
+    var fallbackStyle = defaultIconStyleForKey(name);
+    var raw = sanitizeIconClassString(spec).toLowerCase();
+    if (!raw) return fallbackStyle + ' fa-circle';
+    var tokens = raw.split(/\s+/).filter(Boolean);
+    var style = '';
+    var glyph = '';
+    tokens.forEach(function (t) {
+      if (t === 'fa') return;
+      if ((t === 'fas' || t === 'far' || t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad') && !style) {
+        if (t === 'fas') style = 'fa-solid';
+        else if (t === 'far') style = 'fa-regular';
+        else if (t === 'fal') style = 'fa-light';
+        else if (t === 'fab') style = 'fa-brands';
+        else if (t === 'fat') style = 'fa-thin';
+        else if (t === 'fad') style = 'fa-duotone';
+        return;
+      }
+      if (isIconStyleToken(t) && !style) {
+        style = t;
+        return;
+      }
+      if (t.indexOf('fa-') === 0 && !isIconStyleToken(t) && !glyph) glyph = t;
+    });
+    if (!style) style = fallbackStyle;
+    if (!glyph) glyph = 'fa-circle';
+    return style + ' ' + glyph;
+  }
+
+  Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) {
+    ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
+  });
 
   var DEFAULTS = {
     theme: 'light',
@@ -224,9 +252,18 @@
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
 
-  var KEYS = Object.keys(DEFAULTS).filter(function (k) { return k !== 'theme'; });
   var ICON_STYLE_KEYS = Object.keys(ICON_STYLE_DEFAULTS);
-  var ICON_GLYPH_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
+  var ICON_GLYPH_ALL_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
+  var LOCKED_GLYPH_THEME_KEYS = Object.keys(LOCKED_SETTINGS_ICON_KEYS).map(function (k) { return 'theme-icon-glyph-' + k; });
+  var ICON_GLYPH_KEYS = ICON_GLYPH_ALL_KEYS.filter(function (k) {
+    return LOCKED_GLYPH_THEME_KEYS.indexOf(k) < 0;
+  });
+  var KEYS = Object.keys(DEFAULTS).filter(function (k) {
+    if (k === 'theme') return false;
+    if (ICON_STYLE_KEYS.indexOf(k) >= 0) return false;
+    if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
+    return true;
+  });
   var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
   var HEADER_THEME_TEXT_KEYS = [
     'theme-header-top-bg',
@@ -344,8 +381,31 @@
 
   function parseIconGlyphInput(value, fallback) {
     var raw = sanitizeIconClassString(value).toLowerCase();
-    var safeFallback = fallback || 'fa-circle';
-    if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var fallbackRaw = sanitizeIconClassString(fallback).toLowerCase();
+    var fallbackStyle = 'fa-light';
+    var fallbackGlyph = 'fa-circle';
+    if (fallbackRaw) {
+      fallbackRaw.split(/\s+/).filter(Boolean).forEach(function (t) {
+        if (t === 'fa') return;
+        if (t === 'fas') t = 'fa-solid';
+        else if (t === 'far') t = 'fa-regular';
+        else if (t === 'fal') t = 'fa-light';
+        else if (t === 'fab') t = 'fa-brands';
+        else if (t === 'fat') t = 'fa-thin';
+        else if (t === 'fad') t = 'fa-duotone';
+        if (isIconStyleToken(t) && !fallbackStyle) {
+          fallbackStyle = t;
+          return;
+        }
+        if (isIconStyleToken(t)) {
+          fallbackStyle = t;
+          return;
+        }
+        if (t.indexOf('fa-') === 0 && !isIconStyleToken(t)) fallbackGlyph = t;
+      });
+    }
+    var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
+    if (!raw) return { mode: 'full', value: safeFallback, full: safeFallback };
     var tokens = raw.split(/\s+/).filter(Boolean);
     var faTokens = tokens.filter(function (t) {
       return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
@@ -356,13 +416,18 @@
     if (styleOrSubset) {
       var full = tokens.slice();
       var hasGlyph = full.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
-      if (!hasGlyph) full.push(safeFallback);
-      return { mode: 'full', value: full.join(' '), full: full.join(' ') };
+      var hasStyle = full.some(isIconStyleToken);
+      if (!hasStyle) full.unshift(fallbackStyle || 'fa-light');
+      if (!hasGlyph) full.push(fallbackGlyph || 'fa-circle');
+      return { mode: 'full', value: sanitizeIconClassString(full.join(' ')), full: sanitizeIconClassString(full.join(' ')) };
     }
     var m = raw.match(/fa-[a-z0-9-]+/);
-    if (m && m[0]) return { mode: 'glyph', value: m[0], glyph: m[0] };
-    if (/^[a-z0-9-]+$/.test(raw)) return { mode: 'glyph', value: 'fa-' + raw, glyph: 'fa-' + raw };
-    return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var glyph = null;
+    if (m && m[0] && !isIconStyleToken(m[0])) glyph = m[0];
+    else if (/^[a-z0-9-]+$/.test(raw)) glyph = 'fa-' + raw;
+    if (!glyph) glyph = fallbackGlyph || 'fa-circle';
+    var fullValue = (fallbackStyle || 'fa-light') + ' ' + glyph;
+    return { mode: 'full', value: fullValue, full: fullValue };
   }
 
   function normalizeIconGlyph(value, fallback) {
@@ -464,14 +529,37 @@
     return s.replace(/\b\w/g, function (m) { return m.toUpperCase(); });
   }
 
-  function defaultStyleKeyForGlyph(name) {
+  function defaultIconHelpFor(name) {
     var key = String(name || '').trim().toLowerCase();
-    if (!key) return 'theme-icon-default';
-    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'theme-icon-topnav';
-    if (key.indexOf('nav-item-') === 0) return 'theme-icon-dropdown';
-    if (key.indexOf('settings-tab-') === 0) return 'theme-icon-settings-menu';
-    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'theme-icon-table-heading';
-    return 'theme-icon-default';
+    if (!key) return 'Icon shown in the app UI.';
+    if (key === 'mobile-menu') return 'Mobile menu button. Shows in the header on all pages on mobile.';
+    if (key === 'mobile-date') return 'Mobile date button. Shows in the header on all pages on mobile.';
+    if (key === 'topnav-date-chevron') return 'Desktop date selector chevron. Shows in the header date control on all pages.';
+    if (key.indexOf('nav-toggle-') === 0) return 'Desktop top-nav section icon. Shows in the main header menu on all pages.';
+    if (key.indexOf('nav-item-') === 0) return 'Desktop dropdown menu icon. Shows inside top-nav dropdown menus on all pages.';
+    if (key.indexOf('table-icon-') === 0) return 'Compact table metric icon. Shows in sortable table headers on /traffic/channels and /traffic/device.';
+    if (key.indexOf('table-short-') === 0) return 'Compact table column icon. Shows in sortable table headers on /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /traffic/channels, and /traffic/device.';
+    if (key.indexOf('footer-') === 0) return 'Footer quick-action icon. Shows in the bottom action bar on all pages.';
+    if (key.indexOf('side-panel-') === 0) return 'Session details side panel icon. Shows on /dashboard/live, /dashboard/sales, and /dashboard/table.';
+    if (key.indexOf('kpi-compare-') === 0) return 'KPI compare modal icon. Shows on /dashboard/overview, /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /traffic/channels, /traffic/device, /integrations/google-ads, and /tools/ads.';
+    if (key === 'sale-toast-time') return 'Sale toast time icon. Shows in the sale notification toast across dashboard, insights, traffic, integrations, and tools pages.';
+    if (key === 'live-landing-entry') return 'Live table entry icon. Shows in the Landing direction column on /dashboard/live.';
+    if (key === 'live-landing-exit') return 'Live table exit icon. Shows in the Landing direction column on /dashboard/live.';
+    if (key === 'live-bought-overlay') return 'Live table bought overlay icon. Shows in bought-state overlays on /dashboard/live.';
+    if (key.indexOf('breakdown-') === 0) return 'Breakdown item icon. Shows in breakdown cards/tables on insights pages.';
+    if (key.indexOf('type-device-') === 0) return 'Device type icon. Shows in the Device table on /traffic/device.';
+    if (key.indexOf('type-platform-') === 0) return 'Platform icon. Shows in the Device table on /traffic/device.';
+    if (key === 'diag-copy') return 'Diagnostics copy icon. Shows in the diagnostics panel on /settings.';
+    if (key.indexOf('diag-tab-') === 0) return 'Diagnostics tab icon. Shows in diagnostics tabs on /settings.';
+    if (key.indexOf('ads-status-') === 0 || key === 'ads-actions-refresh') return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
+    if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
+    if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, traffic, integrations, tools, and settings pages.';
+    if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';
+    if (key.indexOf('card-collapse-') === 0) return 'Card collapse chevron icon. Shows on collapsible cards in dashboard and insights pages.';
+    if (key.indexOf('dash-kpi-delta-') === 0) return 'Overview KPI delta icon. Shows in KPI cards on /dashboard/overview.';
+    if (key.indexOf('settings-tab-') === 0 || key.indexOf('settings-diagnostics-') === 0) return 'Settings page icon. Locked to a fixed fa-solid class and not editable.';
+    if (key.indexOf('chart-type-') === 0) return 'Chart type switch icon used when chart type controls are enabled.';
+    return 'Icon shown in the app UI for key "' + key + '".';
   }
 
   function glyphMetaFor(name) {
@@ -479,8 +567,7 @@
     if (custom) return custom;
     return {
       title: titleizeIconKey(name),
-      help: 'Glyph class or full class override.',
-      styleKey: defaultStyleKeyForGlyph(name),
+      help: defaultIconHelpFor(name),
     };
   }
 
@@ -612,7 +699,7 @@
       root.style.setProperty('--kexo-header-online-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-logo-url') {
       applyHeaderLogoOverride(value);
-    } else if (ICON_STYLE_KEYS.indexOf(key) >= 0 || ICON_GLYPH_KEYS.indexOf(key) >= 0) {
+    } else if (ICON_GLYPH_ALL_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
   }
@@ -623,6 +710,12 @@
       var val = getStored(key);
       if (val !== null) applyTheme(key, val);
       else applyTheme(key, DEFAULTS[key]);
+    });
+  }
+
+  function clearLockedIconOverrides() {
+    LOCKED_GLYPH_THEME_KEYS.forEach(function (themeKey) {
+      removeStored(themeKey);
     });
   }
 
@@ -771,7 +864,7 @@
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
-            '<i class="fa-jelly ' + ICON_GLYPH_DEFAULTS[name] + ' me-2" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></i>' +
+            '<i class="' + ICON_GLYPH_DEFAULTS[name] + ' me-2" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></i>' +
             '<strong>' + meta.title + '</strong>' +
           '</div>' +
           '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
@@ -857,7 +950,6 @@
   }
 
   function getThemeFormHtml() {
-    var styleGrid = ICON_STYLE_KEYS.map(function (k) { return styleInputCard(k); }).join('');
     var glyphGrid = ICON_GLYPH_KEYS.map(function (k) { return glyphInputCard(k); }).join('');
     var visualGrid = [
       iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
@@ -930,10 +1022,7 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Control icon style classes and specific icon glyphs with live preview. Enter a single glyph (for example <code>fa-gear</code>) or a full class override (for example <code>fa-etch fa-solid fa-address-card</code>). Desktop shows a 3-column grid; mobile stacks to one per line.</div>' +
-        '<h4 class="mb-2">Style rules</h4>' +
-        '<div class="row g-3">' + styleGrid + '</div>' +
-        '<hr class="my-3" />' +
+        '<div class="text-secondary mb-3">Set icon classes with full Font Awesome specs only (for example <code>fa-light fa-bars</code> or <code>fa-solid fa-circle-check</code>). Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-solid</code> classes and are intentionally excluded from this list.</div>' +
         '<h4 class="mb-2">Global icon visuals</h4>' +
         '<div class="row g-3">' + visualGrid + '</div>' +
         '<hr class="my-3" />' +
@@ -1052,38 +1141,19 @@
     activate('icons');
   }
 
-  function setPreviewIconClass(previewEl, styleCls, glyphCls) {
+  function setPreviewIconClass(previewEl, glyphCls) {
     if (!previewEl) return;
-    var parsed = parseIconGlyphInput(glyphCls, 'fa-circle');
-    previewEl.className = parsed.mode === 'full'
-      ? parsed.value
-      : (normalizeIconStyle(styleCls, 'fa-jelly') + ' ' + parsed.value);
-  }
-
-  function styleForGlyphPreview(formEl, glyphThemeKey) {
-    var glyphName = glyphNameFromThemeKey(glyphThemeKey);
-    var meta = glyphMetaFor(glyphName);
-    var styleKey = meta.styleKey || 'theme-icon-default';
-    var styleInput = formEl ? formEl.querySelector('[name="' + styleKey + '"]') : null;
-    var styleVal = styleInput && styleInput.value ? styleInput.value : (getStored(styleKey) || DEFAULTS[styleKey] || 'fa-jelly');
-    return normalizeIconStyle(styleVal, DEFAULTS[styleKey] || 'fa-jelly');
+    var parsed = parseIconGlyphInput(glyphCls, 'fa-light fa-circle');
+    previewEl.className = parsed.value;
   }
 
   function refreshIconPreviews(formEl) {
     if (!formEl) return;
-    ICON_STYLE_KEYS.forEach(function (key) {
-      var input = formEl.querySelector('[name="' + key + '"]');
-      var preview = formEl.querySelector('[data-theme-icon-preview="' + key + '"]');
-      var styleVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
-      var glyphVal = (ICON_STYLE_META[key] && ICON_STYLE_META[key].icon) ? ICON_STYLE_META[key].icon : 'fa-circle-info';
-      setPreviewIconClass(preview, styleVal, glyphVal);
-    });
     ICON_GLYPH_KEYS.forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       var preview = formEl.querySelector('[data-theme-icon-preview-glyph="' + key + '"]');
       var glyphVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
-      var styleVal = styleForGlyphPreview(formEl, key);
-      setPreviewIconClass(preview, styleVal, glyphVal);
+      setPreviewIconClass(preview, glyphVal);
     });
   }
 
@@ -1278,6 +1348,7 @@
   try { window.openThemePanel = openThemePanel; } catch (_) {}
 
   // Init
+  clearLockedIconOverrides();
   restoreAll();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

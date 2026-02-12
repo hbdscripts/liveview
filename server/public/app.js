@@ -6498,10 +6498,19 @@ const API = '';
 
         var icon = wrap.querySelector ? wrap.querySelector('i') : null;
         if (icon) {
+          var iconKey = 'dash-kpi-delta-up';
+          if (dir === 'down') iconKey = 'dash-kpi-delta-down';
+          else if (dir === 'flat') iconKey = 'dash-kpi-delta-flat';
+          icon.setAttribute('data-icon-key', iconKey);
           icon.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
           if (dir === 'down') icon.classList.add('fa-arrow-trend-down');
           else if (dir === 'flat') icon.classList.add('fa-minus');
           else icon.classList.add('fa-arrow-trend-up');
+          try {
+            if (window.KexoIconTheme && typeof window.KexoIconTheme.applyElement === 'function') {
+              window.KexoIconTheme.applyElement(icon);
+            }
+          } catch (_) {}
         }
       }
 

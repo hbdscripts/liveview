@@ -11,11 +11,19 @@
     'fa-sharp-regular', 'fa-sharp-solid', 'fa-sharp-thin', 'fa-sharp-duotone'
   ];
   var ICON_THEME_DEFAULTS = {
-    iconDefault: 'fa-jelly',
-    iconTopnav: 'fa-jelly-filled',
-    iconDropdown: 'fa-jelly',
-    iconSettingsMenu: 'fa-jelly-filled',
-    iconTableHeading: 'fa-jelly-filled',
+    iconDefault: 'fa-light',
+  };
+  var LOCKED_SETTINGS_ICON_KEYS = {
+    'settings-tab-general': true,
+    'settings-tab-theme': true,
+    'settings-tab-assets': true,
+    'settings-tab-data-reporting': true,
+    'settings-tab-integrations': true,
+    'settings-tab-sources': true,
+    'settings-tab-kpis': true,
+    'settings-tab-diagnostics': true,
+    'settings-diagnostics-refresh': true,
+    'settings-diagnostics-reconcile': true,
   };
   var ICON_GLYPH_DEFAULTS = {
     'mobile-menu': 'fa-bars',
@@ -139,10 +147,71 @@
     'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
     'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'dash-kpi-delta-up': 'fa-arrow-trend-up',
+    'dash-kpi-delta-down': 'fa-arrow-trend-down',
+    'dash-kpi-delta-flat': 'fa-minus',
     'online-status-indicator': 'fa-circle',
     'card-collapse-expanded': 'fa-chevron-down',
     'card-collapse-collapsed': 'fa-chevron-right',
   };
+
+  function isLockedSettingsIconKey(name) {
+    return !!LOCKED_SETTINGS_ICON_KEYS[String(name || '').trim()];
+  }
+
+  function defaultIconStyleForKey(name) {
+    var key = String(name || '').trim().toLowerCase();
+    if (!key) return 'fa-light';
+    if (isLockedSettingsIconKey(key)) return 'fa-solid';
+    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
+    if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
+    if (key.indexOf('table-short-') === 0) return 'fa-solid';
+    if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
+    if (key.indexOf('footer-') === 0) return 'fa-jelly';
+    if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
+    if (key.indexOf('kpi-compare-') === 0 || key === 'sale-toast-time') return 'fa-light';
+    if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
+    if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0) return 'fa-light';
+    if (key.indexOf('diag-') === 0 || key.indexOf('ads-') === 0) return 'fa-light';
+    if (key.indexOf('pagination-') === 0 || key.indexOf('card-collapse-') === 0) return 'fa-light';
+    if (key.indexOf('dash-kpi-delta-') === 0) return 'fa-jelly';
+    if (key.indexOf('chart-type-') === 0) return 'fa-light';
+    return 'fa-light';
+  }
+
+  function withDefaultIconStyle(name, spec) {
+    var fallbackStyle = defaultIconStyleForKey(name);
+    var raw = String(spec == null ? '' : spec).trim().toLowerCase();
+    if (!raw) return fallbackStyle + ' fa-circle';
+    var tokens = raw.split(/\s+/).filter(Boolean);
+    var style = '';
+    var glyph = '';
+    tokens.forEach(function (t) {
+      if (t === 'fa') return;
+      if ((t === 'fas' || t === 'far' || t === 'fal' || t === 'fab' || t === 'fat' || t === 'fad') && !style) {
+        if (t === 'fas') style = 'fa-solid';
+        else if (t === 'far') style = 'fa-regular';
+        else if (t === 'fal') style = 'fa-light';
+        else if (t === 'fab') style = 'fa-brands';
+        else if (t === 'fat') style = 'fa-thin';
+        else if (t === 'fad') style = 'fa-duotone';
+        return;
+      }
+      if (ICON_STYLE_CLASSES.indexOf(t) >= 0 && !style) {
+        style = t;
+        return;
+      }
+      if (t.indexOf('fa-') === 0 && ICON_STYLE_CLASSES.indexOf(t) < 0 && !glyph) glyph = t;
+    });
+    if (!style) style = fallbackStyle;
+    if (!glyph) glyph = 'fa-circle';
+    return style + ' ' + glyph;
+  }
+
+  Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) {
+    ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
+  });
 
   var TI_TO_FA = {
     'settings': 'fa-jelly fa-gear',
@@ -319,8 +388,27 @@
 
   function parseIconGlyphInput(value, fallback) {
     var raw = sanitizeIconClassString(value).toLowerCase();
-    var safeFallback = fallback || 'fa-circle';
-    if (!raw) return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var fallbackRaw = sanitizeIconClassString(fallback).toLowerCase();
+    var fallbackStyle = 'fa-light';
+    var fallbackGlyph = 'fa-circle';
+    if (fallbackRaw) {
+      fallbackRaw.split(/\s+/).filter(Boolean).forEach(function (t) {
+        if (t === 'fa') return;
+        if (t === 'fas') t = 'fa-solid';
+        else if (t === 'far') t = 'fa-regular';
+        else if (t === 'fal') t = 'fa-light';
+        else if (t === 'fab') t = 'fa-brands';
+        else if (t === 'fat') t = 'fa-thin';
+        else if (t === 'fad') t = 'fa-duotone';
+        if (isIconStyleToken(t)) {
+          fallbackStyle = t;
+          return;
+        }
+        if (t.indexOf('fa-') === 0 && !isIconStyleToken(t)) fallbackGlyph = t;
+      });
+    }
+    var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
+    if (!raw) return { mode: 'full', value: safeFallback, full: safeFallback };
     var tokens = raw.split(/\s+/).filter(Boolean);
     var faTokens = tokens.filter(function (t) {
       return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
@@ -330,32 +418,28 @@
     if (hasExplicitStyle || faTokens.length >= 2) {
       var fullTokens = tokens.slice();
       var hasGlyph = fullTokens.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
-      if (!hasGlyph) fullTokens.push(safeFallback);
-      return { mode: 'full', value: fullTokens.join(' '), full: fullTokens.join(' ') };
+      var hasStyle = fullTokens.some(isIconStyleToken);
+      if (!hasStyle) fullTokens.unshift(fallbackStyle || 'fa-light');
+      if (!hasGlyph) fullTokens.push(fallbackGlyph || 'fa-circle');
+      return { mode: 'full', value: sanitizeIconClassString(fullTokens.join(' ')), full: sanitizeIconClassString(fullTokens.join(' ')) };
     }
     var m = raw.match(/fa-[a-z0-9-]+/);
-    if (m && m[0]) return { mode: 'glyph', value: m[0], glyph: m[0] };
-    if (/^[a-z0-9-]+$/.test(raw)) return { mode: 'glyph', value: 'fa-' + raw, glyph: 'fa-' + raw };
-    return { mode: 'glyph', value: safeFallback, glyph: safeFallback };
+    var glyph = null;
+    if (m && m[0] && !isIconStyleToken(m[0])) glyph = m[0];
+    else if (/^[a-z0-9-]+$/.test(raw)) glyph = 'fa-' + raw;
+    if (!glyph) glyph = fallbackGlyph || 'fa-circle';
+    var fullValue = (fallbackStyle || 'fa-light') + ' ' + glyph;
+    return { mode: 'full', value: fullValue, full: fullValue };
   }
 
   function normalizeIconGlyph(value, fallback) {
     return parseIconGlyphInput(value, fallback).value;
   }
 
-  function readIconTheme() {
-    function read(lsKey, fallback) {
-      var v = null;
-      try { v = localStorage.getItem(lsKey); } catch (_) { v = null; }
-      return normalizeIconStyle(v, fallback);
-    }
-    return {
-      iconDefault: read('tabler-theme-icon-default', ICON_THEME_DEFAULTS.iconDefault),
-      iconTopnav: read('tabler-theme-icon-topnav', ICON_THEME_DEFAULTS.iconTopnav),
-      iconDropdown: read('tabler-theme-icon-dropdown', ICON_THEME_DEFAULTS.iconDropdown),
-      iconSettingsMenu: read('tabler-theme-icon-settings-menu', ICON_THEME_DEFAULTS.iconSettingsMenu),
-      iconTableHeading: read('tabler-theme-icon-table-heading', ICON_THEME_DEFAULTS.iconTableHeading),
-    };
+  function clearLockedIconOverrides() {
+    Object.keys(LOCKED_SETTINGS_ICON_KEYS).forEach(function (key) {
+      try { localStorage.removeItem('tabler-theme-icon-glyph-' + key); } catch (_) {}
+    });
   }
 
   function readIconGlyphTheme() {
@@ -363,22 +447,14 @@
     Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (key) {
       var lsKey = 'tabler-theme-icon-glyph-' + key;
       var raw = null;
-      try { raw = localStorage.getItem(lsKey); } catch (_) { raw = null; }
+      if (isLockedSettingsIconKey(key)) {
+        raw = null;
+      } else {
+        try { raw = localStorage.getItem(lsKey); } catch (_) { raw = null; }
+      }
       out[key] = parseIconGlyphInput(raw, ICON_GLYPH_DEFAULTS[key]);
     });
     return out;
-  }
-
-  function resolveIconContext(el) {
-    if (!el || !(el instanceof Element)) return 'iconDefault';
-    if (el.closest('.dropdown-menu .dropdown-item')) return 'iconDropdown';
-    if (el.closest('.list-group-item[data-settings-tab]')) return 'iconSettingsMenu';
-    if (el.closest('.grid-row--header .th-label-short')) return 'iconTableHeading';
-    if (el.closest('.kexo-desktop-top-strip .kexo-top-strip-settings-toggle')) return 'iconTopnav';
-    if (el.closest('.kexo-desktop-nav .nav-link.dropdown-toggle')) return 'iconTopnav';
-    if (el.closest('.kexo-desktop-nav .kexo-date-btn')) return 'iconTopnav';
-    if (el.closest('.kexo-page-header-date-col .kexo-date-btn')) return 'iconTopnav';
-    return 'iconDefault';
   }
 
   function iconHasFaGlyph(el) {
@@ -391,36 +467,19 @@
     return hasFa;
   }
 
-  function currentGlyphClass(el) {
-    if (!el || !el.classList) return null;
-    var glyph = null;
+  function currentIconSpec(el) {
+    if (!el || !el.classList) return ICON_THEME_DEFAULTS.iconDefault + ' fa-circle';
+    var style = ICON_THEME_DEFAULTS.iconDefault;
+    var glyph = 'fa-circle';
     Array.prototype.forEach.call(el.classList, function (cls) {
       if (cls === 'fa-fw') return;
-      if (ICON_STYLE_CLASSES.indexOf(cls) >= 0) return;
-      if (cls.indexOf('fa-') === 0) glyph = cls;
+      if (isIconStyleToken(cls)) {
+        style = normalizeIconStyle(cls, ICON_THEME_DEFAULTS.iconDefault);
+        return;
+      }
+      if (cls.indexOf('fa-') === 0 && !isIconStyleToken(cls)) glyph = cls;
     });
-    return glyph;
-  }
-
-  var ICON_KEYS_FORCE_SOLID_FALLBACK = {
-    'settings-tab-general': true,
-    'settings-tab-theme': true,
-    'settings-tab-assets': true,
-    'settings-tab-data-reporting': true,
-    'settings-tab-integrations': true,
-    'settings-tab-sources': true,
-    'settings-tab-kpis': true,
-    'settings-tab-diagnostics': true,
-  };
-
-  function resolveCompatibleStyle(style, glyph, iconKey) {
-    var normalized = normalizeIconStyle(style, ICON_THEME_DEFAULTS.iconDefault);
-    if (!normalized || normalized === 'fa-brands') return normalized || ICON_THEME_DEFAULTS.iconDefault;
-    if (normalized === 'fa-jelly' || normalized === 'fa-jelly-filled') {
-      if (iconKey && ICON_KEYS_FORCE_SOLID_FALLBACK[iconKey]) return 'fa-solid';
-      if (glyph === 'fa-chart-column' || glyph === 'fa-map-location-dot' || glyph === 'fa-gauge-high' || glyph === 'fa-chart-line') return 'fa-solid';
-    }
-    return normalized;
+    return style + ' ' + glyph;
   }
 
   function faAliasToStyle(token) {
@@ -433,7 +492,7 @@
     return token;
   }
 
-  function applyFullOverrideClasses(el, fullSpec, fallbackGlyph) {
+  function applyFullOverrideClasses(el, fullSpec, fallbackSpec) {
     if (!el || !el.classList) return;
     var keep = [];
     var hadFaFw = el.classList.contains('fa-fw');
@@ -452,49 +511,34 @@
       }
       if (t.indexOf('fa-') === 0) faTokens.push(t);
     });
-    if (!faTokens.length) faTokens.push(ICON_THEME_DEFAULTS.iconDefault, fallbackGlyph || 'fa-circle');
+    var fallbackParsed = parseIconGlyphInput('', fallbackSpec || (ICON_THEME_DEFAULTS.iconDefault + ' fa-circle'));
+    var fallbackStyle = ICON_THEME_DEFAULTS.iconDefault;
+    var fallbackGlyph = 'fa-circle';
+    sanitizeIconClassString(fallbackParsed.value).toLowerCase().split(/\s+/).filter(Boolean).forEach(function (t) {
+      if (isIconStyleToken(t)) {
+        fallbackStyle = normalizeIconStyle(t, ICON_THEME_DEFAULTS.iconDefault);
+        return;
+      }
+      if (t.indexOf('fa-') === 0 && !isIconStyleToken(t)) fallbackGlyph = t;
+    });
+    if (!faTokens.length) faTokens.push(fallbackStyle, fallbackGlyph);
     var hasStyle = faTokens.some(function (t) { return isIconStyleToken(t); });
-    if (!hasStyle) faTokens.unshift(ICON_THEME_DEFAULTS.iconDefault);
+    if (!hasStyle) faTokens.unshift(fallbackStyle);
     var hasGlyph = faTokens.some(function (t) { return t.indexOf('fa-') === 0 && !isIconStyleToken(t); });
     if (!hasGlyph) faTokens.push(fallbackGlyph || 'fa-circle');
     el.className = keep.concat(faTokens).join(' ').trim();
     if (hadFaFw) el.classList.add('fa-fw');
   }
 
-  function applyIconClasses(el, style, glyph) {
-    if (!el || !el.classList) return;
-    var keep = [];
-    var hadFaFw = el.classList.contains('fa-fw');
-    Array.prototype.forEach.call(el.classList, function (cls) {
-      if (cls.indexOf('fa-') === 0) return;
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
-      keep.push(cls);
-    });
-    el.className = keep.join(' ').trim();
-    el.classList.add(resolveCompatibleStyle(style || ICON_THEME_DEFAULTS.iconDefault, glyph || 'fa-circle', el.getAttribute ? (el.getAttribute('data-icon-key') || '') : ''));
-    el.classList.add(glyph || 'fa-circle');
-    if (hadFaFw) el.classList.add('fa-fw');
-  }
-
-  function applyIconStyle(el, settings, glyphSettings) {
+  function applyIconStyle(el, glyphSettings) {
     if (!el || !iconHasFaGlyph(el)) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview')) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview-glyph')) return;
-    if (el.classList.contains('fa-brands') || el.classList.contains('fab')) return;
-    var ctx = resolveIconContext(el);
-    var style = settings && settings[ctx] ? settings[ctx] : ICON_THEME_DEFAULTS.iconDefault;
     var iconKey = el.getAttribute ? (el.getAttribute('data-icon-key') || '') : '';
-    var glyph = currentGlyphClass(el);
-    if (!glyph) glyph = 'fa-circle';
-    if (iconKey) {
-      var parsed = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : parseIconGlyphInput(null, ICON_GLYPH_DEFAULTS[iconKey] || glyph);
-      if (parsed && parsed.mode === 'full') {
-        applyFullOverrideClasses(el, parsed.value, ICON_GLYPH_DEFAULTS[iconKey] || glyph || 'fa-circle');
-        return;
-      }
-      glyph = parsed && parsed.value ? parsed.value : (ICON_GLYPH_DEFAULTS[iconKey] || glyph);
-    }
-    applyIconClasses(el, style, normalizeIconGlyph(glyph, 'fa-circle'));
+    if (!iconKey) return;
+    var fallbackSpec = ICON_GLYPH_DEFAULTS[iconKey] || currentIconSpec(el);
+    var parsed = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : parseIconGlyphInput(null, fallbackSpec);
+    applyFullOverrideClasses(el, parsed && parsed.value ? parsed.value : fallbackSpec, fallbackSpec);
   }
 
   function replaceTiIcons(root) {
@@ -569,10 +613,22 @@
   }
 
   function applyIconTheme(root) {
-    var settings = readIconTheme();
     var glyphSettings = readIconGlyphTheme();
     var icons = (root || document).querySelectorAll('i');
-    icons.forEach(function (el) { applyIconStyle(el, settings, glyphSettings); });
+    icons.forEach(function (el) { applyIconStyle(el, glyphSettings); });
+  }
+
+  function applyIconToElement(el) {
+    if (!el || !(el instanceof Element)) return;
+    var glyphSettings = readIconGlyphTheme();
+    applyIconStyle(el, glyphSettings);
+  }
+
+  function waitForIconAssetsReady() {
+    if (!document.fonts || !document.fonts.ready || typeof document.fonts.ready.then !== 'function') {
+      return Promise.resolve();
+    }
+    return document.fonts.ready.then(function () {}).catch(function () {});
   }
 
   function run(root) {
@@ -580,12 +636,6 @@
     replaceSharedSvgIcons(root);
     ensureCardTitleIcons(root);
     applyIconTheme(root);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { run(document); });
-  } else {
-    run(document);
   }
 
   var observer = new MutationObserver(function (muts) {
@@ -596,12 +646,26 @@
       });
     });
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  var didBoot = false;
+  function bootWhenReady() {
+    if (didBoot) return;
+    didBoot = true;
+    clearLockedIconOverrides();
+    waitForIconAssetsReady().then(function () {
+      run(document);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootWhenReady);
+  } else {
+    bootWhenReady();
+  }
 
   try {
     window.KexoIconTheme = {
       refresh: function () { run(document); },
-      getSettings: readIconTheme,
+      applyElement: applyIconToElement,
     };
     window.addEventListener('kexo:icon-theme-changed', function () { run(document); });
   } catch (_) {}
