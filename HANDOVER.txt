@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (header theme controls tab, online icon in theme icons, logo URL override placeholder)
+Last updated: 2026-02-12 (theme global vs user mode, header controls tab, online icon editable)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -221,6 +221,9 @@ Edge (optional):
   - Added a new Theme subtab: `Header` (in `server/public/theme-settings.js`) to configure desktop top strip/main menu background colors, header link color, Settings label visibility, Settings border visibility/color, Online badge border visibility/color, and logo URL override.
   - Header Theme action now links directly to `/settings?tab=theme` from the desktop Settings dropdown.
   - Direct file upload for logo replacement remains TODO; URL override is implemented now.
+  - Added `theme-preference-mode` with two modes:
+    - `global` (shared): everyone gets server defaults and edits auto-save as shared defaults.
+    - `user` (per-browser): each browser can keep local selections; shared defaults are used as starter values.
 - Icons:
   - Added `online-status-indicator` as a configurable icon key in Theme -> Icons (`#kexo-online-icon` now has `data-icon-key="online-status-indicator"`).
 - Header/nav:

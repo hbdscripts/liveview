@@ -307,6 +307,7 @@ const THEME_KEYS = [
   'theme_radius',
   'theme_font',
   'theme_base',
+  'theme_preference_mode',
   'theme_header_top_bg',
   'theme_header_main_bg',
   'theme_header_link_color',

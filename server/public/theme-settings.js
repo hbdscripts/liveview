@@ -189,6 +189,7 @@
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
+    'theme-preference-mode': 'global',
     'theme-icon-size': '1em',
     'theme-icon-color': 'currentColor',
     'theme-header-top-bg': '#ffffff',
@@ -368,6 +369,17 @@
     return '';
   }
 
+  function normalizePreferenceMode(value, fallback) {
+    var raw = sanitizeIconClassString(value).toLowerCase();
+    if (raw === 'global') return 'global';
+    if (raw === 'user' || raw === 'user-selected' || raw === 'personal') return 'user';
+    return fallback === 'user' ? 'user' : 'global';
+  }
+
+  function getPreferenceMode() {
+    return normalizePreferenceMode(getStored('theme-preference-mode'), DEFAULTS['theme-preference-mode']);
+  }
+
   function applyHeaderLogoOverride(url) {
     var safe = normalizeLogoUrl(url);
     var logos = document.querySelectorAll('.kexo-desktop-brand-link img, .kexo-mobile-logo-link img');
@@ -431,6 +443,8 @@
       document.body.classList.toggle('theme-dark', value === 'dark');
       root.setAttribute('data-bs-theme', value || 'light');
       root.classList.remove('theme-dark-early');
+    } else if (key === 'theme-preference-mode') {
+      root.setAttribute('data-kexo-theme-preference-mode', normalizePreferenceMode(value, DEFAULTS[key]));
     } else if (key === 'theme-primary') {
       var color = PRIMARY_COLORS[value];
       if (color) {
@@ -515,22 +529,35 @@
     });
   }
 
-  // Fetch server defaults for first-time visitors (no localStorage yet)
+  // Fetch server defaults and apply according to preference mode.
   function fetchDefaults() {
-    var hasAny = KEYS.some(function (k) { return getStored(k) !== null; });
-    if (hasAny) return;
-
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
     fetch(base + '/api/theme-defaults', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.ok) return;
+        var serverModeRaw = data.theme_preference_mode || data['theme-preference-mode'] || '';
+        var mode = normalizePreferenceMode(serverModeRaw || getStored('theme-preference-mode') || DEFAULTS['theme-preference-mode'], DEFAULTS['theme-preference-mode']);
+        setStored('theme-preference-mode', mode);
+        applyTheme('theme-preference-mode', mode);
+        var useGlobal = mode === 'global';
         KEYS.forEach(function (key) {
+          if (key === 'theme-preference-mode') return;
           var dbKey = key.replace(/-/g, '_');
-          var val = data[dbKey] || data[key];
-          if (val) setStored(key, val);
-          applyTheme(key, val || DEFAULTS[key]);
+          var serverVal = data[dbKey] || data[key] || DEFAULTS[key];
+          if (useGlobal) {
+            setStored(key, serverVal);
+            applyTheme(key, serverVal);
+            return;
+          }
+          var localVal = getStored(key);
+          if (localVal === null) {
+            setStored(key, serverVal);
+            applyTheme(key, serverVal);
+            return;
+          }
+          applyTheme(key, localVal || DEFAULTS[key]);
         });
         syncUI();
       })
@@ -729,6 +756,20 @@
       'Use an absolute URL or /path to replace desktop and mobile logos.',
       '/assets/kexo/logo_light.webp'
     );
+    var preferenceModePanel =
+      '<div class="card card-sm mt-3">' +
+        '<div class="card-body">' +
+          '<h4 class="mb-2">Preference mode</h4>' +
+          '<div class="form-selectgroup">' +
+            radioCard('theme-preference-mode', 'global', 'Global (shared)') +
+            radioCard('theme-preference-mode', 'user', 'User-selected') +
+          '</div>' +
+          '<div class="text-secondary small mt-2">' +
+            'Global mode applies one shared theme to everyone and auto-saves changes for all users. ' +
+            'User-selected mode lets each browser keep its own local theme; use Save as default to set the starting preset.' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -817,6 +858,7 @@
           '</div>' +
         '</div>' +
       '</div>' +
+      preferenceModePanel +
     '</form>' +
     '<div class="d-flex gap-2 mt-3">' +
       '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
@@ -885,12 +927,21 @@
   function bindThemeForm(formEl) {
     if (!formEl) return;
     var debounceTimers = {};
+    var globalSaveTimer = null;
 
     function debouncedApply(name, value) {
       if (debounceTimers[name]) clearTimeout(debounceTimers[name]);
       debounceTimers[name] = setTimeout(function () {
         applyTheme(name, value);
       }, 350);
+    }
+
+    function queueGlobalSave() {
+      if (getPreferenceMode() !== 'global') return;
+      if (globalSaveTimer) clearTimeout(globalSaveTimer);
+      globalSaveTimer = setTimeout(function () {
+        saveToServer();
+      }, 700);
     }
 
     formEl.addEventListener('change', function (e) {
@@ -906,9 +957,11 @@
         else val = normalizeHeaderColor(val, DEFAULTS[name]);
       }
       if (HEADER_THEME_TOGGLE_KEYS.indexOf(name) >= 0) val = normalizeHeaderToggle(val, DEFAULTS[name]);
+      if (name === 'theme-preference-mode') val = normalizePreferenceMode(val, DEFAULTS[name]);
       setStored(name, val);
       applyTheme(name, val);
       refreshIconPreviews(formEl);
+      queueGlobalSave();
     });
 
     ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).forEach(function (key) {
@@ -927,6 +980,7 @@
         setStored(key, val);
         refreshIconPreviews(formEl);
         debouncedApply(key, val);
+        queueGlobalSave();
       });
     });
 
@@ -956,6 +1010,7 @@
       });
       syncUI();
       triggerIconThemeRefresh();
+      queueGlobalSave();
     });
 
     wireThemeSubTabs(root);
