@@ -1007,24 +1007,26 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .dash-kpi-compare-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  align-items: flex-start;
+  gap: 0;
   white-space: nowrap;
   min-width: 0;
+  margin-top: 5px;
 }
 .dash-kpi-compare-item.text-end {
   align-items: flex-end;
 }
 
 .dash-kpi-delta {
-  font-size: .72rem;
-  font-weight: 600;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
   gap: .25rem;
-  white-space: nowrap;
+  vertical-align: middle;
   color: var(--tblr-secondary, #626976);
+  position: relative;
+  top: -5px;
+  left: 5px;
+  margin: 0 !important;
 }
 .dash-kpi-delta i {
   font-size: .85em;
