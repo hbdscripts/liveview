@@ -364,6 +364,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     const rowMap = new Map();
     const ignored = [];
     const resolved = [];
+    const outOfScope = [];
     const unmapped = [];
     const ambiguous = [];
     const ignoredSet = new Set(
@@ -374,6 +375,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     const mappedTotals = { sessions: 0, orders: 0, revenue: 0 };
     const resolvedTotals = { sessions: 0, orders: 0, revenue: 0 };
     const ignoredTotals = { sessions: 0, orders: 0, revenue: 0 };
+    const outOfScopeTotals = { sessions: 0, orders: 0, revenue: 0 };
     const unmappedTotals = { sessions: 0, orders: 0, revenue: 0 };
     const ambiguousTotals = { sessions: 0, orders: 0, revenue: 0 };
     for (const variant of byVariant.values()) {
@@ -392,6 +394,19 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
         continue;
       }
       const classified = classifyTitleForTable(table, title);
+      if (classified.kind === 'out_of_scope') {
+        outOfScope.push({
+          variant_id: variant.variant_id,
+          variant_title: title || `Variant ${variant.variant_id}`,
+          sessions: variant.sessions || 0,
+          orders: variant.orders || 0,
+          revenue: Math.round((Number(variant.revenue) || 0) * 100) / 100,
+        });
+        outOfScopeTotals.sessions += variant.sessions || 0;
+        outOfScopeTotals.orders += variant.orders || 0;
+        outOfScopeTotals.revenue += variant.revenue || 0;
+        continue;
+      }
       if (classified.kind === 'matched') {
         const rule = classified.rule;
         const key = rule.id;
@@ -469,6 +484,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
     }
     sortRowsByRevenue(rows);
 
+    outOfScope.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     resolved.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     ignored.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
     unmapped.sort((a, b) => (b.orders - a.orders) || (b.sessions - a.sessions) || (b.revenue - a.revenue));
@@ -479,6 +495,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
       tableName: table.name,
       resolvedCount: resolved.length,
       ignoredCount: ignored.length,
+      outOfScopeCount: outOfScope.length,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
       exampleLimit: DIAGNOSTIC_EXAMPLE_LIMIT,
@@ -498,6 +515,11 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
           orders: Math.round(ignoredTotals.orders),
           revenue: Math.round((ignoredTotals.revenue || 0) * 100) / 100,
         },
+        outOfScope: {
+          sessions: Math.round(outOfScopeTotals.sessions),
+          orders: Math.round(outOfScopeTotals.orders),
+          revenue: Math.round((outOfScopeTotals.revenue || 0) * 100) / 100,
+        },
         unmapped: {
           sessions: Math.round(unmappedTotals.sessions),
           orders: Math.round(unmappedTotals.orders),
@@ -511,6 +533,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
       },
       resolvedExamples: resolved.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       ignoredExamples: ignored.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
+      outOfScopeExamples: outOfScope.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       unmappedExamples: unmapped.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
       ambiguousExamples: ambiguous.slice(0, DIAGNOSTIC_EXAMPLE_LIMIT),
     });

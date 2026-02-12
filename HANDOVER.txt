@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (variants auto-overlap + all-variant stats modal)
+Last updated: 2026-02-12 (variants scope-aware validation + coverage)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -220,6 +220,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-12 (latest)
+- Variants validation/mapping is now scope-aware by table intent: length/style/finish tables skip out-of-scope titles before unmapped checks, reducing false save blockers on mixed catalogs.
+- Variants diagnostics now include `outOfScope` totals/examples; All Variant Stats modal shows Total vs In Scope sessions, Out Of Scope sessions, and computes Mapped % from in-scope sessions.
+- Settings -> Insights -> Variants messaging now clarifies that save blocking applies to unmapped in-scope titles and that out-of-scope titles are skipped.
 
 2026-02-12 (latest)
 - Variants mapping now auto-resolves overlap by specificity/order (most specific include wins; ties use rule order), reducing reliance on manual exclude maintenance.

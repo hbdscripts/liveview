@@ -936,12 +936,14 @@
       tables.forEach(function (table) {
         if (!table) return;
         var ignoredCount = Number(table.ignoredCount) || 0;
+        var outOfScopeCount = Number(table.outOfScopeCount) || 0;
         var resolvedCount = Number(table.resolvedCount) || 0;
         var unmappedCount = Number(table.unmappedCount) || 0;
         var ambiguousCount = Number(table.ambiguousCount) || 0;
         if (unmappedCount <= 0 && ambiguousCount <= 0) return;
         html += '<div class="mb-2"><strong>' + escapeHtml(table.tableName || table.tableId || 'Table') + '</strong>: ' +
           escapeHtml(String(unmappedCount)) + ' unmapped, ' + escapeHtml(String(ambiguousCount)) + ' ambiguous' +
+          (outOfScopeCount > 0 ? ' (' + escapeHtml(String(outOfScopeCount)) + ' out-of-scope)' : '') +
           (ignoredCount > 0 ? ' (' + escapeHtml(String(ignoredCount)) + ' ignored)' : '') +
           (resolvedCount > 0 ? ' (' + escapeHtml(String(resolvedCount)) + ' overlap-resolved)' : '') + '</div>';
         var unmapped = Array.isArray(table.unmappedExamples) ? table.unmappedExamples.slice(0, 6) : [];
@@ -1120,7 +1122,7 @@
     var html = '' +
       '<div id="settings-insights-variants-errors"></div>' +
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-        '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties).</div>' +
+        '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped.</div>' +
         '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
       '</div>';
 

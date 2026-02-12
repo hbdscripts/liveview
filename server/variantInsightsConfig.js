@@ -281,8 +281,59 @@ function ruleSpecificityForTitle(rule, preparedTitle) {
   return best;
 }
 
+function tableKind(table) {
+  const id = table && table.id ? String(table.id).toLowerCase() : '';
+  const name = table && table.name ? String(table.name).toLowerCase() : '';
+  const key = `${id} ${name}`;
+  if (key.includes('length')) return 'length';
+  if (key.includes('style')) return 'style';
+  if (key.includes('finish') || key.includes('metal')) return 'finish';
+  return 'generic';
+}
+
+function tableHasAnyRuleTokenMatch(table, preparedTitle) {
+  const rules = Array.isArray(table && table.rules) ? table.rules : [];
+  for (const rule of rules) {
+    const include = Array.isArray(rule && rule.include) ? rule.include : [];
+    for (const tokenRaw of include) {
+      if (tokenMatches(preparedTitle, tokenRaw)) return true;
+    }
+  }
+  return false;
+}
+
+function isTitleInScopeForTable(table, preparedTitle) {
+  const kind = tableKind(table);
+  if (kind === 'generic') return true;
+  const raw = preparedTitle && preparedTitle.raw ? String(preparedTitle.raw) : '';
+  const normalized = preparedTitle && preparedTitle.normalized ? String(preparedTitle.normalized) : ' ';
+  const hasRuleToken = tableHasAnyRuleTokenMatch(table, preparedTitle);
+  if (hasRuleToken) return true;
+
+  if (kind === 'length') {
+    if (/\b\d{1,2}(?:\.\d+)?\s*(?:"|inches?|inch|in|cm|mm)\b/i.test(raw)) return true;
+    if (/\b\d{1,2}(?:\.\d+)?\s*-\s*\d{1,2}(?:\.\d+)?\s*(?:"|inches?|inch|in|cm|mm)\b/i.test(raw)) return true;
+    return false;
+  }
+
+  if (kind === 'style') {
+    if (normalized.includes(' style ')) return true;
+    return false;
+  }
+
+  if (kind === 'finish') {
+    if (/\b(gold|silver|vermeil|sterling|solid)\b/i.test(raw)) return true;
+    return false;
+  }
+
+  return true;
+}
+
 function classifyTitleForTable(table, variantTitle) {
   const prepared = normalizeTitle(variantTitle);
+  if (!isTitleInScopeForTable(table, prepared)) {
+    return { kind: 'out_of_scope', matches: [] };
+  }
   const rules = Array.isArray(table && table.rules) ? table.rules : [];
   const matches = [];
   for (let i = 0; i < rules.length; i += 1) {
@@ -388,6 +439,7 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
     const resolved = [];
     const ambiguous = [];
     const ignored = [];
+    const outOfScope = [];
     const ignoredSet = new Set(normalizeIgnoredList(table && table.ignored));
     for (const row of observed) {
       const title = row && row.variant_title != null ? String(row.variant_title) : '';
@@ -400,6 +452,13 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
         continue;
       }
       const classified = classifyTitleForTable(table, title);
+      if (classified.kind === 'out_of_scope') {
+        outOfScope.push({
+          variant_title: title,
+          orders: row && row.orders != null ? Number(row.orders) || 0 : 0,
+          revenue: row && row.revenue != null ? Number(row.revenue) || 0 : 0,
+        });
+      } else
       if (classified.kind === 'unmapped') {
         unmapped.push({
           variant_title: title,
@@ -430,6 +489,7 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
     }
 
     ignored.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
+    outOfScope.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     resolved.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     unmapped.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
     ambiguous.sort((a, b) => (b.orders - a.orders) || (b.revenue - a.revenue));
@@ -438,10 +498,12 @@ function validateConfigAgainstVariants(config, observedVariants, options = {}) {
       tableId: table.id,
       tableName: table.name,
       ignoredCount: ignored.length,
+      outOfScopeCount: outOfScope.length,
       resolvedCount: resolved.length,
       unmappedCount: unmapped.length,
       ambiguousCount: ambiguous.length,
       ignoredExamples: ignored.slice(0, maxExamples),
+      outOfScopeExamples: outOfScope.slice(0, maxExamples),
       resolvedExamples: resolved.slice(0, maxExamples),
       unmappedExamples: unmapped.slice(0, maxExamples),
       ambiguousExamples: ambiguous.slice(0, maxExamples),

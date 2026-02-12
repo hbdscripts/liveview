@@ -173,19 +173,23 @@
     var mapped = bucketTotals(diag, 'mapped');
     var resolved = bucketTotals(diag, 'resolved');
     var ignored = bucketTotals(diag, 'ignored');
+    var outOfScope = bucketTotals(diag, 'outOfScope');
     var unmapped = bucketTotals(diag, 'unmapped');
     var ambiguous = bucketTotals(diag, 'ambiguous');
-    var totalSessions = mapped.sessions + ignored.sessions + unmapped.sessions + ambiguous.sessions;
-    var totalOrders = mapped.orders + ignored.orders + unmapped.orders + ambiguous.orders;
-    var totalRevenue = mapped.revenue + ignored.revenue + unmapped.revenue + ambiguous.revenue;
+    var totalSessions = mapped.sessions + ignored.sessions + outOfScope.sessions + unmapped.sessions + ambiguous.sessions;
+    var totalOrders = mapped.orders + ignored.orders + outOfScope.orders + unmapped.orders + ambiguous.orders;
+    var totalRevenue = mapped.revenue + ignored.revenue + outOfScope.revenue + unmapped.revenue + ambiguous.revenue;
+    var inScopeSessions = Math.max(0, totalSessions - outOfScope.sessions);
     return {
       tableId: diag && diag.tableId ? String(diag.tableId) : '',
       tableName: diag && diag.tableName ? String(diag.tableName) : (diag && diag.tableId ? String(diag.tableId) : 'Table'),
       mapped: mapped,
       resolved: resolved,
       ignored: ignored,
+      outOfScope: outOfScope,
       unmapped: unmapped,
       ambiguous: ambiguous,
+      inScopeSessions: inScopeSessions,
       totalSessions: totalSessions,
       totalOrders: totalOrders,
       totalRevenue: totalRevenue,
@@ -273,11 +277,12 @@
     var totals = diag && diag.totals ? diag.totals : {};
     var mappedTotals = totals && totals.mapped ? totals.mapped : {};
     var ignoredTotals = totals && totals.ignored ? totals.ignored : {};
+    var outOfScopeTotals = totals && totals.outOfScope ? totals.outOfScope : {};
     var unmappedTotals = totals && totals.unmapped ? totals.unmapped : {};
     var ambiguousTotals = totals && totals.ambiguous ? totals.ambiguous : {};
-    var totalSessions = (Number(mappedTotals.sessions) || 0) + (Number(ignoredTotals.sessions) || 0) + (Number(unmappedTotals.sessions) || 0) + (Number(ambiguousTotals.sessions) || 0);
-    var totalOrders = (Number(mappedTotals.orders) || 0) + (Number(ignoredTotals.orders) || 0) + (Number(unmappedTotals.orders) || 0) + (Number(ambiguousTotals.orders) || 0);
-    var totalRevenue = (Number(mappedTotals.revenue) || 0) + (Number(ignoredTotals.revenue) || 0) + (Number(unmappedTotals.revenue) || 0) + (Number(ambiguousTotals.revenue) || 0);
+    var totalSessions = (Number(mappedTotals.sessions) || 0) + (Number(ignoredTotals.sessions) || 0) + (Number(outOfScopeTotals.sessions) || 0) + (Number(unmappedTotals.sessions) || 0) + (Number(ambiguousTotals.sessions) || 0);
+    var totalOrders = (Number(mappedTotals.orders) || 0) + (Number(ignoredTotals.orders) || 0) + (Number(outOfScopeTotals.orders) || 0) + (Number(unmappedTotals.orders) || 0) + (Number(ambiguousTotals.orders) || 0);
+    var totalRevenue = (Number(mappedTotals.revenue) || 0) + (Number(ignoredTotals.revenue) || 0) + (Number(outOfScopeTotals.revenue) || 0) + (Number(unmappedTotals.revenue) || 0) + (Number(ambiguousTotals.revenue) || 0);
     var mappedCr = (Number(mappedTotals.sessions) || 0) > 0
       ? ((Number(mappedTotals.orders) || 0) / Number(mappedTotals.sessions) * 100).toFixed(1) + '%'
       : '—';
@@ -372,15 +377,20 @@
         '</tr>';
     }).join('');
     var coverageRows = summaries.map(function (row) {
+      var mappedPct = row.inScopeSessions > 0
+        ? ((row.mapped.sessions / row.inScopeSessions) * 100).toFixed(1) + '%'
+        : '—';
       return '' +
         '<tr>' +
           '<td>' + escapeHtml(row.tableName) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.totalSessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.inScopeSessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.mapped.sessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.ignored.sessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(formatInt(row.outOfScope.sessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.unmapped.sessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.resolved.sessions)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(formatCoveragePct(row.mapped.sessions, row.totalSessions)) + '</td>' +
+          '<td class="text-end">' + escapeHtml(mappedPct) + '</td>' +
         '</tr>';
     }).join('');
     return '' +
@@ -395,11 +405,11 @@
       '<h4 class="mb-2">Mapped Coverage (Sessions)</h4>' +
       '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th></tr></thead>' +
+          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">In Scope Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Out Of Scope</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th></tr></thead>' +
           '<tbody>' + coverageRows + '</tbody>' +
         '</table>' +
       '</div>' +
-      '<div class="text-secondary small mt-2">Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>';
+      '<div class="text-secondary small mt-2">Mapped % uses in-scope sessions only. Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>';
   }
 
   function openAllStatsModal() {

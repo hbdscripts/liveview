@@ -313,7 +313,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     math: [
       { name: 'Mapping model', value: 'Rule matching is alias include; overlap is auto-resolved by most-specific include token (ties use rule order).' },
-      { name: 'Validation', value: 'Settings save is blocked for unmapped titles (ignores excluded). Overlap-resolved counts are diagnostic context, not a blocking category.' },
+      { name: 'Validation', value: 'Settings save is blocked for unmapped in-scope titles. Table scope is inferred (e.g. length/style tables skip out-of-scope titles). Overlap-resolved counts are diagnostic context, not a blocking category.' },
       { name: 'Attribution caveat', value: 'Sessions depend on landing URLs with ?variant=<id>; default-option landings without variant param can under-attribute variant sessions.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
