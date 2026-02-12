@@ -1777,6 +1777,11 @@ body[data-page="dashboard"] #kexo-kpis {
   display: none !important;
 }
 
+/* ── Settings page: hide top KPI bar ── */
+body[data-page="settings"] #kexo-kpis {
+  display: none !important;
+}
+
 /* ── Dashboard page: match other pages' content gutters ── */
 body[data-page="dashboard"] .page-body > .container-fluid {
   padding-left: 1rem;

@@ -9,6 +9,7 @@ const store = require('../store');
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
+const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
 
 const KPI_UI_KEYS = [
   'orders',
@@ -200,12 +201,30 @@ function normalizePixelSessionMode(v) {
   return 'legacy';
 }
 
+function normalizeSettingsScopeMode(v) {
+  const s = v == null ? '' : String(v).trim().toLowerCase();
+  // We intentionally lock scope to shared/global until user-selected settings are implemented.
+  if (s === 'global' || s === 'shared') return 'global';
+  return 'global';
+}
+
 async function readSettingsPayload() {
   let pixelSessionMode = 'legacy';
   let assetOverrides = {};
   let kpiUiConfig = defaultKpiUiConfigV1();
+  let settingsScopeMode = 'global';
   try {
     pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
+  } catch (_) {}
+  try {
+    const rawScope = await store.getSetting(SETTINGS_SCOPE_MODE_KEY);
+    const normalizedScope = normalizeSettingsScopeMode(rawScope);
+    settingsScopeMode = normalizedScope;
+    // Persist the default once so the DB reflects the current project policy.
+    const rawNorm = rawScope == null ? '' : String(rawScope).trim().toLowerCase();
+    if (!rawNorm || rawNorm !== normalizedScope) {
+      await store.setSetting(SETTINGS_SCOPE_MODE_KEY, normalizedScope);
+    }
   } catch (_) {}
   try {
     const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
@@ -219,6 +238,7 @@ async function readSettingsPayload() {
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
+    settingsScopeMode,
     pixelSessionMode,
     sharedSessionTtlMinutes: 30,
     assetOverrides,
@@ -237,6 +257,16 @@ async function postSettings(req, res) {
     return res.status(405).set('Allow', 'POST').end();
   }
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+
+  // Settings scope (global/shared only for now)
+  if (Object.prototype.hasOwnProperty.call(body, 'settingsScopeMode')) {
+    try {
+      const normalized = normalizeSettingsScopeMode(body.settingsScopeMode);
+      await store.setSetting(SETTINGS_SCOPE_MODE_KEY, normalized);
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save setting scope' });
+    }
+  }
 
   // Pixel session mode
   try {
@@ -498,6 +528,182 @@ async function postThemeDefaults(req, res) {
   res.json({ ok: true });
 }
 
+function normalizeCssColor(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (!raw) return fallback;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return raw;
+  if (/^(rgb|hsl)a?\(/i.test(raw)) return raw;
+  if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
+  if (/^[a-z-]+$/i.test(raw)) return raw;
+  return fallback;
+}
+
+function normalizeCssRadius(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (!raw) return fallback;
+  if (raw === '0') return '0';
+  if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(raw)) return raw;
+  if (/^\d+(\.\d+)?$/.test(raw)) return raw + 'px';
+  return fallback;
+}
+
+function normalizeCssShadow(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (!raw) return fallback;
+  if (raw.toLowerCase() === 'none') return 'none';
+  if (raw.length > 120) return fallback;
+  if (/[;\r\n{}]/.test(raw)) return fallback;
+  return raw;
+}
+
+function normalizeCssToggle(value, fallback) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (raw === 'hide' || raw === 'off' || raw === 'false' || raw === '0') return 'hide';
+  if (raw === 'show' || raw === 'on' || raw === 'true' || raw === '1') return 'show';
+  return fallback === 'hide' ? 'hide' : 'show';
+}
+
+async function getThemeVarsCss(req, res) {
+  const FALLBACKS = {
+    theme_header_top_bg: '#ffffff',
+    theme_header_top_text_color: '#1f2937',
+    theme_header_main_bg: '#ffffff',
+    theme_header_main_link_color: '#1f2937',
+    theme_header_main_dropdown_bg: '#ffffff',
+    theme_header_main_dropdown_link_color: '#1f2937',
+    theme_header_main_dropdown_icon_color: '#1f2937',
+    theme_header_main_border: 'show',
+    theme_header_main_border_color: '#e6e7e9',
+    theme_header_main_shadow: '2px 2px 2px #eee',
+    theme_header_settings_label: 'show',
+    theme_header_settings_bg: '#ffffff',
+    theme_header_settings_text_color: '#1f2937',
+    theme_header_settings_radius: '.375rem',
+    theme_header_settings_border: 'show',
+    theme_header_settings_border_color: '#e6e7e9',
+    theme_header_settings_menu_bg: '#ffffff',
+    theme_header_settings_menu_link_color: '#1f2937',
+    theme_header_settings_menu_icon_color: '#1f2937',
+    theme_header_settings_menu_border_color: '#e6e7e9',
+    theme_header_settings_menu_radius: '.375rem',
+    theme_header_online_bg: '#f8fafc',
+    theme_header_online_text_color: '#1f2937',
+    theme_header_online_radius: '.375rem',
+    theme_header_online_border: 'show',
+    theme_header_online_border_color: '#e6e7e9',
+  };
+
+  function getThemeKey(key, fallback) {
+    // Theme defaults are stored under `theme_${key}` (see /api/theme-defaults).
+    return store.getSetting('theme_' + key).then((v) => {
+      const raw = v == null ? '' : String(v).trim();
+      return raw ? raw : fallback;
+    }).catch(() => fallback);
+  }
+
+  const [
+    topBg,
+    topText,
+    mainBg,
+    mainLink,
+    ddBg,
+    ddLink,
+    ddIcon,
+    mainBorderMode,
+    mainBorderColor,
+    mainShadow,
+    settingsLabelMode,
+    settingsBg,
+    settingsText,
+    settingsRadius,
+    settingsBorderMode,
+    settingsBorderColor,
+    settingsMenuBg,
+    settingsMenuLink,
+    settingsMenuIcon,
+    settingsMenuBorderColor,
+    settingsMenuRadius,
+    onlineBg,
+    onlineText,
+    onlineRadius,
+    onlineBorderMode,
+    onlineBorderColor,
+  ] = await Promise.all([
+    getThemeKey('theme_header_top_bg', FALLBACKS.theme_header_top_bg),
+    getThemeKey('theme_header_top_text_color', FALLBACKS.theme_header_top_text_color),
+    getThemeKey('theme_header_main_bg', FALLBACKS.theme_header_main_bg),
+    getThemeKey('theme_header_main_link_color', FALLBACKS.theme_header_main_link_color),
+    getThemeKey('theme_header_main_dropdown_bg', FALLBACKS.theme_header_main_dropdown_bg),
+    getThemeKey('theme_header_main_dropdown_link_color', FALLBACKS.theme_header_main_dropdown_link_color),
+    getThemeKey('theme_header_main_dropdown_icon_color', FALLBACKS.theme_header_main_dropdown_icon_color),
+    getThemeKey('theme_header_main_border', FALLBACKS.theme_header_main_border),
+    getThemeKey('theme_header_main_border_color', FALLBACKS.theme_header_main_border_color),
+    getThemeKey('theme_header_main_shadow', FALLBACKS.theme_header_main_shadow),
+    getThemeKey('theme_header_settings_label', FALLBACKS.theme_header_settings_label),
+    getThemeKey('theme_header_settings_bg', FALLBACKS.theme_header_settings_bg),
+    getThemeKey('theme_header_settings_text_color', FALLBACKS.theme_header_settings_text_color),
+    getThemeKey('theme_header_settings_radius', FALLBACKS.theme_header_settings_radius),
+    getThemeKey('theme_header_settings_border', FALLBACKS.theme_header_settings_border),
+    getThemeKey('theme_header_settings_border_color', FALLBACKS.theme_header_settings_border_color),
+    getThemeKey('theme_header_settings_menu_bg', FALLBACKS.theme_header_settings_menu_bg),
+    getThemeKey('theme_header_settings_menu_link_color', FALLBACKS.theme_header_settings_menu_link_color),
+    getThemeKey('theme_header_settings_menu_icon_color', FALLBACKS.theme_header_settings_menu_icon_color),
+    getThemeKey('theme_header_settings_menu_border_color', FALLBACKS.theme_header_settings_menu_border_color),
+    getThemeKey('theme_header_settings_menu_radius', FALLBACKS.theme_header_settings_menu_radius),
+    getThemeKey('theme_header_online_bg', FALLBACKS.theme_header_online_bg),
+    getThemeKey('theme_header_online_text_color', FALLBACKS.theme_header_online_text_color),
+    getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
+    getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
+    getThemeKey('theme_header_online_border_color', FALLBACKS.theme_header_online_border_color),
+  ]);
+
+  const mainBorder = normalizeCssToggle(mainBorderMode, 'show');
+  const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
+  const onlineBorder = normalizeCssToggle(onlineBorderMode, 'show');
+  const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
+
+  const css = [
+    '/* KEXO: server-injected theme variables (header + top menu) */',
+    ':root{',
+    `--kexo-header-top-bg:${normalizeCssColor(topBg, FALLBACKS.theme_header_top_bg)};`,
+    `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,
+    `--kexo-header-main-bg:${normalizeCssColor(mainBg, FALLBACKS.theme_header_main_bg)};`,
+    `--kexo-top-menu-bg:${normalizeCssColor(mainBg, FALLBACKS.theme_header_main_bg)};`,
+    `--kexo-top-menu-link-color:${normalizeCssColor(mainLink, FALLBACKS.theme_header_main_link_color)};`,
+    `--kexo-top-menu-dropdown-bg:${normalizeCssColor(ddBg, FALLBACKS.theme_header_main_dropdown_bg)};`,
+    `--kexo-top-menu-dropdown-link-color:${normalizeCssColor(ddLink, FALLBACKS.theme_header_main_dropdown_link_color)};`,
+    `--kexo-top-menu-dropdown-icon-color:${normalizeCssColor(ddIcon, FALLBACKS.theme_header_main_dropdown_icon_color)};`,
+    `--kexo-top-menu-border-width:${mainBorder === 'hide' ? '0px' : '1px'};`,
+    `--kexo-top-menu-border-color:${normalizeCssColor(mainBorderColor, FALLBACKS.theme_header_main_border_color)};`,
+    `--kexo-top-menu-shadow:${normalizeCssShadow(mainShadow, FALLBACKS.theme_header_main_shadow)};`,
+
+    `--kexo-header-settings-bg:${normalizeCssColor(settingsBg, FALLBACKS.theme_header_settings_bg)};`,
+    `--kexo-header-settings-text-color:${normalizeCssColor(settingsText, FALLBACKS.theme_header_settings_text_color)};`,
+    `--kexo-header-settings-radius:${normalizeCssRadius(settingsRadius, FALLBACKS.theme_header_settings_radius)};`,
+    `--kexo-header-settings-border-width:${settingsBorder === 'hide' ? '0px' : '1px'};`,
+    `--kexo-header-settings-border-color:${normalizeCssColor(settingsBorderColor, FALLBACKS.theme_header_settings_border_color)};`,
+    `--kexo-header-settings-label-display:${labelMode === 'hide' ? 'none' : 'inline'};`,
+    `--kexo-header-settings-icon-gap:${labelMode === 'hide' ? '0' : '.35rem'};`,
+
+    `--kexo-header-settings-menu-bg:${normalizeCssColor(settingsMenuBg, FALLBACKS.theme_header_settings_menu_bg)};`,
+    `--kexo-header-settings-menu-link-color:${normalizeCssColor(settingsMenuLink, FALLBACKS.theme_header_settings_menu_link_color)};`,
+    `--kexo-header-settings-menu-icon-color:${normalizeCssColor(settingsMenuIcon, FALLBACKS.theme_header_settings_menu_icon_color)};`,
+    `--kexo-header-settings-menu-border-color:${normalizeCssColor(settingsMenuBorderColor, FALLBACKS.theme_header_settings_menu_border_color)};`,
+    `--kexo-header-settings-menu-radius:${normalizeCssRadius(settingsMenuRadius, FALLBACKS.theme_header_settings_menu_radius)};`,
+
+    `--kexo-header-online-bg:${normalizeCssColor(onlineBg, FALLBACKS.theme_header_online_bg)};`,
+    `--kexo-header-online-text-color:${normalizeCssColor(onlineText, FALLBACKS.theme_header_online_text_color)};`,
+    `--kexo-header-online-radius:${normalizeCssRadius(onlineRadius, FALLBACKS.theme_header_online_radius)};`,
+    `--kexo-header-online-border-width:${onlineBorder === 'hide' ? '0px' : '1px'};`,
+    `--kexo-header-online-border-color:${normalizeCssColor(onlineBorderColor, FALLBACKS.theme_header_online_border_color)};`,
+    '}',
+    '',
+  ].join('\n');
+
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('text/css').send(css);
+}
+
 module.exports = {
   getSettings,
   postSettings,
@@ -505,5 +711,6 @@ module.exports = {
   PIXEL_SESSION_MODE_KEY,
   getThemeDefaults,
   postThemeDefaults,
+  getThemeVarsCss,
 };
 

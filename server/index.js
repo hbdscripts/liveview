@@ -139,6 +139,8 @@ app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
+// Server-injected theme variables (prevents first-paint header flash).
+app.get('/theme-vars.css', settings.getThemeVarsCss);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);

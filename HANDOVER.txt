@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (icons: full-class config, locked Settings icons, reload stability)
+Last updated: 2026-02-12 (settings scope locked global + server-injected header theme vars + Settings KPI hidden)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
 
@@ -228,11 +228,18 @@ Edge (optional):
   - Added `theme_icon_glyph_dash_kpi_delta_up`, `theme_icon_glyph_dash_kpi_delta_down`, and `theme_icon_glyph_dash_kpi_delta_flat` in `server/routes/settings.js` for persistence.
 - Theme save reliability:
   - `/api/theme-defaults` POST now uses **patch semantics**: only provided keys are updated (prevents accidental wipes on partial payloads and allows small per-key saves).
-  - Theme UI now auto-saves **per-key** in `global` mode (debounced) using patch payloads; `theme-preference-mode` is always persisted when changed.
+  - Theme UI now auto-saves **per-key** in `global` mode (debounced) using patch payloads.
   - Body parsing: `/api/ingest` keeps strict JSON limit (`MAX_EVENT_PAYLOAD_BYTES`), while authenticated admin API routes parse JSON up to `256KB` (mounted after `dashboardAuth.middleware`) so Theme saves can be larger without weakening ingest protection.
   - Theme save button in `server/public/theme-settings.js` now reflects real network result (`Saving...`, `Saved!`, or `Save failed`) instead of always showing success.
+- Settings scope (global only):
+  - Added Settings → General “Settings scope” panel. Scope is locked to **Global (shared)**; **User-selected is disabled** until later in the project.
+  - Persisted `settings_scope_mode` via `GET/POST /api/settings` (forced to `global` for now).
+- Header first-paint (no flash):
+  - Added `GET /theme-vars.css` which serves server-stored header/theme CSS variables and is loaded from `server/public/partials/head-theme.html` to prevent the white header flash (even in incognito/new browsers).
+- Settings page:
+  - Header KPI strip is hidden on `/settings` (dashboard already hides it). Both critical head CSS and `custom.css` include the Settings hide rule so it does not flash on first paint.
 - Theme settings:
-  - Updated `Header` subtab to surface `Theme scope` (`global` vs `user-selected`) directly inside the Header panel so the global override mode is visible where header edits are made.
+  - Theme scope controls were removed from Theme UI; Theme is locked to global/shared behavior until user-selected settings are implemented.
   - Added strip Settings dropdown controls in Theme -> Header: background, link color, icon color, border color, and border radius (wired through runtime apply + `/api/theme-defaults` persistence keys).
   - Header radius normalization now applies to all `theme-header-*-radius` keys (including new dropdown radius control).
 - Header/nav:
@@ -243,9 +250,7 @@ Edge (optional):
   - Expanded top menu controls for: link color, dropdown background color, dropdown link color, dropdown icon color, plus menu background/border-bottom/box-shadow.
   - Header Theme action now links directly to `/settings?tab=theme` from the desktop Settings dropdown.
   - Direct file upload for logo replacement remains TODO; URL override is implemented now.
-  - Added `theme-preference-mode` with two modes:
-    - `global` (shared): everyone gets server defaults and edits auto-save as shared defaults.
-    - `user` (per-browser): each browser can keep local selections; shared defaults are used as starter values.
+  - Theme “user-selected” mode is not enabled yet; all Theme changes are treated as global/shared.
 - Icons:
   - Added `online-status-indicator` as a configurable icon key in Theme -> Icons (`#kexo-online-icon` now has `data-icon-key="online-status-indicator"`).
 - Header/nav:

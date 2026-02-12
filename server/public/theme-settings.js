@@ -496,7 +496,9 @@
   }
 
   function getPreferenceMode() {
-    return normalizePreferenceMode(getStored('theme-preference-mode'), DEFAULTS['theme-preference-mode']);
+    // Settings scope is currently GLOBAL (shared) only.
+    // User-selected settings are intentionally disabled until a later project phase.
+    return 'global';
   }
 
   function applyHeaderLogoOverride(url) {
@@ -719,7 +721,7 @@
     });
   }
 
-  // Fetch server defaults and apply according to preference mode.
+  // Fetch server defaults and apply globally (shared).
   function fetchDefaults() {
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
@@ -727,11 +729,10 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.ok) return;
-        var serverModeRaw = data.theme_preference_mode || data['theme-preference-mode'] || '';
-        var mode = normalizePreferenceMode(serverModeRaw || getStored('theme-preference-mode') || DEFAULTS['theme-preference-mode'], DEFAULTS['theme-preference-mode']);
+        // Settings scope is GLOBAL only for now (user-selected is disabled).
+        var mode = 'global';
         setStored('theme-preference-mode', mode);
         applyTheme('theme-preference-mode', mode);
-        var useGlobal = mode === 'global';
         KEYS.forEach(function (key) {
           if (key === 'theme-preference-mode') return;
           var dbKey = key.replace(/-/g, '_');
@@ -742,18 +743,8 @@
           var serverVal = hasDbVal
             ? String(rawDbVal).trim()
             : (hasKeyVal ? String(rawKeyVal).trim() : DEFAULTS[key]);
-          if (useGlobal) {
-            setStored(key, serverVal);
-            applyTheme(key, serverVal || DEFAULTS[key]);
-            return;
-          }
-          var localVal = getStored(key);
-          if (localVal === null) {
-            setStored(key, serverVal);
-            applyTheme(key, serverVal);
-            return;
-          }
-          applyTheme(key, localVal || DEFAULTS[key]);
+          setStored(key, serverVal);
+          applyTheme(key, serverVal || DEFAULTS[key]);
         });
         syncUI();
       })
@@ -999,20 +990,6 @@
       'Use an absolute URL or /path to replace desktop and mobile logos.',
       '/assets/kexo/logo_light.webp'
     );
-    var preferenceModeCard =
-      '<div class="card card-sm mb-3">' +
-        '<div class="card-body">' +
-          '<h4 class="mb-2">Theme scope</h4>' +
-          '<div class="form-selectgroup">' +
-            radioCard('theme-preference-mode', 'global', 'Global (shared)') +
-            radioCard('theme-preference-mode', 'user', 'User-selected') +
-          '</div>' +
-          '<div class="text-secondary small mt-2">' +
-            'Global mode applies one shared theme to everyone and auto-saves changes for all users. ' +
-            'User-selected mode lets each browser keep its own local theme; use Save as default to set the starting preset.' +
-          '</div>' +
-        '</div>' +
-      '</div>';
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -1036,7 +1013,6 @@
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
         '<div class="text-secondary mb-3">Configure strip controls and top menu appearance. All controls apply live.</div>' +
-        preferenceModeCard +
         '<h4 class="mb-2">Strip</h4>' +
         '<div class="row g-3">' + headerStripGrid + '</div>' +
         '<hr class="my-3" />' +

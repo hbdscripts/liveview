@@ -115,6 +115,29 @@
             </div>
           </div>
         </div>
+        <div class="card mt-3">
+          <div class="card-header">
+            <h3 class="card-title">Settings scope</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-secondary mb-3">All Settings currently apply globally to all users. Per-user settings are coming later.</p>
+            <div class="form-selectgroup" role="group" aria-label="Settings scope">
+              <label class="form-selectgroup-item flex-fill">
+                <input type="radio" name="settings-scope-mode" value="global" class="form-selectgroup-input" id="settings-scope-global" checked>
+                <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
+                  <span class="form-selectgroup-label-content">Global (shared)</span>
+                </div>
+              </label>
+              <label class="form-selectgroup-item flex-fill">
+                <input type="radio" name="settings-scope-mode" value="user" class="form-selectgroup-input" id="settings-scope-user" disabled>
+                <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
+                  <span class="form-selectgroup-label-content">User-selected</span>
+                </div>
+              </label>
+            </div>
+            <div class="text-secondary small mt-2">User-selected scope is disabled for now.</div>
+          </div>
+        </div>
       </div>
 
       <div id="settings-panel-theme" class="settings-panel">

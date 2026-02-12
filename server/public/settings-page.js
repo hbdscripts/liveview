@@ -303,6 +303,11 @@
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
         kpiUiConfigCache = data.kpiUiConfig || null;
+        var scopeMode = (data.settingsScopeMode || 'global');
+        var scopeGlobal = document.getElementById('settings-scope-global');
+        var scopeUser = document.getElementById('settings-scope-user');
+        if (scopeGlobal) scopeGlobal.checked = String(scopeMode).toLowerCase() !== 'user';
+        if (scopeUser) scopeUser.checked = String(scopeMode).toLowerCase() === 'user';
 
         var ordSel = document.getElementById('settings-orders-source');
         if (ordSel) ordSel.value = reporting.ordersSource || 'orders_shopify';
