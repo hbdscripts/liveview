@@ -667,10 +667,9 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
-  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff)) !important;
+  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
-  box-shadow:
-    6px 0 16px -4px rgba(15, 23, 42, 0.2);
+  box-shadow: 6px 0 16px -4px rgba(15, 23, 42, 0.2);
   transition: width 0.08s ease-out;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child,
@@ -685,12 +684,6 @@ body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cel
 body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
 }
-body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .table-responsive table tbody td:nth-child(2) {
-  background: var(--tblr-bg-surface, #fff) !important;
-}
-
 /* Hover should still highlight the adjacent (2nd) column. */
 body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row:hover .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row:hover .grid-cell:nth-child(2),
@@ -1976,6 +1969,13 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-top-strip-online-icon {
   margin-right: .1rem;
 }
+.kexo-top-strip-online-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  padding: 1px 0 0 1px;
+  opacity: 0.8;
+  letter-spacing: 0.3px;
+}
 
 .kexo-desktop-nav {
   background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
@@ -2129,6 +2129,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 #kexo-online-icon.kexo-online-icon--online {
   color: var(--tblr-success, #22c55e) !important;
+  font-size: 8px;
+  margin: 1px 2px 0 0;
 }
 #kexo-online-icon.kexo-online-icon--offline {
   color: rgba(148, 163, 184, .95) !important;
