@@ -227,6 +227,9 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-12 (latest)
+- Settings → Layout accordion: chevron moved to left, single chevron (rotates 180° when expanded), accordion-button font-size 16px, chevron fa-regular 14px #444.
+
+2026-02-12 (latest)
 - Refresh behavior:
   - Removed background polling/auto-refresh across the site (manual refresh only via browser reload or the in-theme Refresh buttons).
   - `/dashboard/live` + `/dashboard/sales` now poll for updates every 10s with smooth, non-janky row insertion/updates.

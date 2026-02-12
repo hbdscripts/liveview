@@ -31,7 +31,20 @@
     .charts-col-type .charts-type-select { min-width: 140px; }
     .charts-col-pie .charts-pie-select { min-width: 110px; }
     .charts-color-row .charts-color-swatch { width: 28px; height: 28px; padding: 2px; border: 1px solid var(--tblr-border-color, #e6e7e9); border-radius: var(--tblr-border-radius, .375rem); margin: 0; }
+    .settings-layout-accordion .accordion-button { font-size: 16px; }
     .settings-layout-accordion .accordion-button code { font-size: .72rem; }
+    .settings-layout-accordion .kexo-settings-accordion-chevron {
+      font-size: 14px;
+      color: #444;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      margin-right: 0.35rem;
+      transition: transform 0.2s ease;
+    }
+    .settings-layout-accordion .accordion-button:not(.collapsed) .kexo-settings-accordion-chevron {
+      transform: rotate(180deg);
+    }
     .settings-layout-table-card .card-header { background: var(--tblr-bg-surface-secondary, #f6f8fb); }
     .settings-layout-table-card .card-title { font-size: .95rem; }
     .settings-layout-color-preview {

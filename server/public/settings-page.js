@@ -1147,12 +1147,11 @@
           '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
             '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
               '<span class="d-flex align-items-center w-100 gap-2">' +
+                '<span class="kexo-settings-accordion-chevron" aria-hidden="true">' +
+                  '<i class="fa-regular fa-chevron-down" aria-hidden="true"></i>' +
+                '</span>' +
                 '<span class="me-auto">' + escapeHtml(label) + '</span>' +
                 '<span class="text-muted small"><code>' + escapeHtml(pageKey) + '</code></span>' +
-                '<span class="kexo-settings-accordion-chevron" aria-hidden="true">' +
-                  '<i class="fa-solid fa-chevron-up kexo-settings-accordion-chevron-up" aria-hidden="true"></i>' +
-                  '<i class="fa-solid fa-chevron-down kexo-settings-accordion-chevron-down" aria-hidden="true"></i>' +
-                '</span>' +
               '</span>' +
             '</button>' +
           '</h2>' +
