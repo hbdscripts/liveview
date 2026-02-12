@@ -11177,6 +11177,7 @@ const API = '';
 
       fetchVersionSig()
         .then(function(sig) {
+          if (PAGE === 'settings') return onBecameVisible();
           if (_bootVersionSig && sig && sig !== _bootVersionSig) {
             try { window.location.reload(); } catch (_) { try { window.location.href = window.location.href; } catch (_) {} }
             return;
