@@ -1,655 +1,214 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Charts settings tab + charts_ui_config_v1 + server-injected chart hide CSS)
+Last updated: 2026-02-12 (handover audit + current UI + global Settings: Theme/Icons/KPIs/Charts)
 
-This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend uses Tabler UI and is split into multiple HTML pages (instead of a single monolithic `live-visitors.html`).
+This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
 IMPORTANT (for future agents)
-- Keep this file accurate. If you change core paths (routes, auth, dashboard UX, deploy), update this file in the SAME commit.
+- Read this file before making changes (Cursor rules enforce this).
+- Keep this file accurate. If you change core paths (routes/auth/dashboard UX/deploy), update this file in the SAME commit.
 - This repo avoids new markdown docs; this handover is intentionally `HANDOVER.txt`.
 - UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
 - Diagnostics guardrail: when adding/moving/removing dashboard sections, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate.
 
 ---
 
-## Current UI structure (Tabler)
+## What KEXO looks like today (UX)
 
-Pages (canonical, Tabler layout):
-- `server/public/dashboard/overview.html`
-- `server/public/dashboard/live.html`
-- `server/public/dashboard/sales.html`
-- `server/public/dashboard/table.html`
-- `server/public/insights/countries.html`
-- `server/public/insights/products.html`
-- `server/public/traffic/channels.html`
-- `server/public/traffic/device.html`
-- `server/public/integrations/google-ads.html`
-- `server/public/tools/compare-conversion-rate.html`
-- `server/public/settings.html`: Settings page (General, Theme, Assets, Data & Reporting, Integrations, Sources, KPIs & Date Ranges, Charts, Diagnostics). KPIs & Date Ranges is implemented (edits KPI labels/order/visibility for Dashboard + Header; edits date-range menu labels/availability). Charts tab is implemented (chart types/colors/visibility).
-- `server/public/settings-page.js`: Settings tab switching + settings UI wiring (saves to `/api/settings`, including KPI/date-range config + charts config).
-- `server/public/mobile-unsupported.html`: mobile redirect target (logo + "Desktop only" copy).
+Desktop chrome (shared header across pages via `server/public/partials/header.html`):
+- Top strip: live visitor count (left), centered logo, Settings dropdown (right).
+- Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
+- KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
 
-Shared assets:
-- `server/public/app.js`: shared JS bundle with per-page bootstrapping via `data-page` on `<body>`.
-- `server/public/partials/header.html`: shared top header with a desktop top strip (visitors left, centered logo, Settings dropdown right), light desktop nav row beneath it, then KPI strip below.
-- `server/public/partials/footer.html`: Shared footer + closes `.page-wrapper`/`.page`.
-- `server/public/tabler-theme.css`: Tabler theme overrides + default primary teal (`#3eb3ab`).
-- `server/public/tools.css`: tools page styles extracted from inline HTML.
-- `server/public/diagnostics-modal.css`: diagnostics styling used by Settings diagnostics panel and shared compare modal shell styles.
+Mobile:
+- Mobile topbar (hamburger + centered logo + date dropdown) + full-screen nav overlay (`#kexo-mobile-nav`).
+- Mobile UA GET requests for dashboard/settings/tools/etc are redirected to `/mobile-unsupported` (see `server/index.js`).
 
-Legacy/backup:
-- `server/backups/public-pages/*.html`: legacy root public pages moved out of `server/public/` during dedupe (kept for reference; not served).
+KEXO “3-color” accents:
+- The desktop nav uses a rotating 3-color accent for the active underline and related styling via `.kexo-3color`:
+  - Accent 1: `#4b94e4` (blue)
+  - Accent 2: `#3eb3ab` (teal)
+  - Accent 3: `#f59e34` (orange)
+  - See: `server/public/custom.css` (`.kexo-3color`, `--kexo-accent-*`)
 
 ---
 
-## Routing + auth
+## Canonical pages + routes (folder URLs)
 
-Server routing (Express):
-- Root `/` is the Shopify app URL: runs embedded OAuth/session handling and renders the embedded dashboard overview when appropriate; otherwise redirects to `/dashboard/overview` (logged-in) or `/app/login`.
-- Explicit canonical routes now serve per-page HTML: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/integrations/google-ads`, `/tools/compare-conversion-rate`, `/settings`.
-- Legacy Google Ads routes (`/tools/ads`, `/ads`) redirect to `/integrations/google-ads` with query-string preservation.
-- Legacy flat routes now redirect to canonical routes with query-string preservation.
-- Mobile traffic: User-Agent detection redirects all mobile GET requests to `/mobile-unsupported` (logo + "Desktop only for now" copy).
-- See: `server/index.js`.
+Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
-Auth protection:
-- `server/middleware/dashboardAuth.js` protects per-page routes + API routes.
-- Embedded Shopify app support: signed query requests and signed referers now work for ALL dashboard pages (not just `/`), so API calls don't 401 when navigating in an iframe.
-- Login flow redirects to `/dashboard/overview` after OAuth (`server/routes/login.js`).
+Dashboard:
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`)
+- `/dashboard/live` → `server/public/dashboard/live.html`
+- `/dashboard/sales` → `server/public/dashboard/sales.html`
+- `/dashboard/table` → `server/public/dashboard/table.html`
 
----
+Insights:
+- `/insights/countries` → `server/public/insights/countries.html`
+- `/insights/products` → `server/public/insights/products.html`
 
-## Per-page bootstrapping behavior
+Traffic:
+- `/traffic/channels` → `server/public/traffic/channels.html`
+- `/traffic/device` → `server/public/traffic/device.html`
 
-`server/public/app.js`:
-- Uses `document.body.dataset.page` to decide which page to bootstrap.
-- Highlights nav by setting `aria-current="page"`.
-- Ads page includes `/ads.js` directly (and `app.js` still has a lazy-load fallback for safety).
-- KPI component lives below the desktop nav and is a single condensed-strip DOM container across pages (expanded overlay removed).
-- Embedded Shopify app support: internal nav links preserve Shopify signed query params (`shop`, `hmac`, `timestamp`, etc.) so auth does not break between pages.
+Integrations:
+- `/integrations/google-ads` → `server/public/integrations/google-ads.html`
 
----
+Tools:
+- `/tools/compare-conversion-rate` → `server/public/tools/compare-conversion-rate.html`
 
-## Dashboard (homepage) data wiring
+Settings:
+- `/settings` → `server/public/settings.html`
 
-`server/public/dashboard.html`:
-- Homepage chart container IDs and table IDs are aligned to what `server/public/app.js` expects, so charts/tables render instead of showing empty state.
+Legacy redirects (kept, query preserved):
+- `/tools/ads` and `/ads` → `/integrations/google-ads`
+- `/date` → `/dashboard/table`
+- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/channels`, `/type`, `/compare-conversion-rate` → canonical folder routes
 
-Date range normalization (frontend + backend):
-- UI uses `7days/14days/30days`; APIs use `7d/14d/30d`. `server/public/app.js` normalizes keys before calling APIs.
-- Backend now allows `14d/30d` where needed (routes + store).
-
-Platform start/min date clamp:
-- MIN_YMD + PLATFORM_START values were corrected back to 2025-02-01 so historical ranges aren't incorrectly clamped into the future.
+Root `/`:
+- Shopify embedded app URL. `auth.handleAppUrl()` decides:
+  - render embedded dashboard overview, or
+  - redirect to `/dashboard/overview` when logged in, else `/app/login`
 
 ---
 
-## Tools page
+## Settings (GLOBAL) — what’s configurable today
 
-- Rebuilt as Tabler layout (`server/public/tools/compare-conversion-rate.html`).
-- All inline styles moved to `server/public/tools.css`.
-- Route is now `/tools/compare-conversion-rate` (legacy compare-route aliases redirect).
-- `compare-conversion-rate.html` uses `data-page="compare-conversion-rate"` and page title `Conversion Rate Compare`.
-- Back link points to `/dashboard/overview`.
-- `server/public/tools.js` uses class toggles instead of inline styles.
+Settings scope is intentionally GLOBAL/shared (user-specific settings are disabled for now).
 
----
+Settings UI:
+- `server/public/settings.html`: Settings page layout + tab shells
+- `server/public/settings-page.js`: tab switching, saving, and Settings panel wiring
 
-## KPI system (global, every page)
+Settings tabs:
+- General: current config display + Settings scope (locked global)
+- Theme: theme editor (colors/fonts/icons/header)
+- Assets: override logo/image URLs
+- Data & Reporting: reporting source toggles (orders/sessions) + pixel session mode
+- Integrations: Pixel + Google Ads status/actions
+- Sources: UTM/source mapping
+- KPIs & Date Ranges: KPI order/labels/visibility + date-range labels/availability
+- Charts: per-chart enable/type/colors (see Charts section)
+- Diagnostics: config-status + reconcile utilities (Settings-first)
 
-Date control (desktop page header, right side):
-- UI markup remains in `server/public/partials/header.html`, but `server/public/app.js` now mounts the desktop date dropdown into the current `.page-header .row` right slot (`.kexo-page-header-date-col`) to keep it inline with page title/subtitle.
-- It drives the hidden `select#global-date-select` so existing date/KPI logic in `server/public/app.js` keeps working.
-- Mobile: topbar date icon dropdown updates the same `select#global-date-select`.
-
-KPI component (below desktop nav, every page):
-- Markup lives directly in `server/public/partials/header.html` (pages do not include KPIs directly).
-- Condensed KPI strip is always visible; expanded KPI overlay/toggle were removed.
-- Condensed chips include value + delta + a small progress bar.
-- KPI parity: condensed header strip now carries the same 12 KPI labels as dashboard cards: Orders, Revenue, Conversion Rate, ADS ROAS, Sessions, Returning, AOV, COGS, Bounce Rate, Fulfilled, Returns, Items ordered.
-- KPI + date range UI config (Settings):
-  - Stored in DB key `kpi_ui_config_v1` (served via `GET /api/settings` as `kpiUiConfig`).
-  - Applied client-side by `server/public/app.js` to:
-    - Header KPI chip order/labels/visibility + global display options (delta/progress/sparkline).
-    - Dashboard KPI card order/labels/visibility + delta badge toggle.
-    - Date range menu labels/availability (Today + Custom always enabled; Yesterday still subject to availability rules).
-- Extra KPIs (Items ordered / Orders fulfilled / Returns value):
-  - API: `GET /api/kpis-expanded-extra` (see `server/routes/kpisExpandedExtra.js`)
-  - Computed from Shopify Orders API (not KEXO tables): items ordered = line-item qty (orders created in range), orders fulfilled = distinct orders with fulfillments created in range, returns = refund transaction value (shown as negative in UI).
-  - Warmed in the background so condensed chips render without blanks.
-- COGS:
-  - Also served by `GET /api/kpis-expanded-extra` and calculated from Shopify variant inventory `unitCost` (GraphQL) multiplied by paid, non-cancelled line-item quantities in range, converted to GBP.
-  - If unit costs are unavailable (scope/data gap), COGS fails open to `—` instead of showing a misleading zero.
-
-KPI caching (perf + UX):
-- `/api/kpis` is cached (server-side) for 2 minutes and also painted from `localStorage` on navigation to avoid empty KPI boxes.
-- Slow KPI fields (bounce + returning customers) are cached longer server-side; expanded extras are cached 10 minutes.
-- When the sale toast closes, KPI caches are invalidated and KPIs are force-refreshed.
+Settings API:
+- `GET/POST /api/settings` in `server/routes/settings.js`
+- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`
 
 ---
 
-## Layout (two-row header + light nav)
+## Theme + Icons (GLOBAL)
 
-- Shared wrapper uses a desktop two-row header in `server/public/partials/header.html`: row 1 is a light top strip (visitors/logo/settings), row 2 is a light centered grouped nav (Dashboard/Insights/Traffic/Integrations/Tools), then KPI strip below.
-- Pages use `container-fluid` for a fluid content area.
-- Mobile: hamburger opens `#kexo-mobile-nav` overlay (backdrop click / Escape closes).
+Theme persistence:
+- `GET/POST /api/theme-defaults` (POST uses patch semantics: only provided keys update).
+- First-paint CSS variables are injected via `GET /theme-vars.css` and loaded in head (see `server/public/partials/head-theme.html`) to prevent header flash (and to hide disabled charts before paint).
 
----
+Theme UI:
+- `server/public/theme-settings.js` renders the Theme panel inside Settings.
 
-## Diagnostics location
+Header + nav theming:
+- Desktop top strip + main nav are styled via CSS vars in `server/public/custom.css`, overridden by `/theme-vars.css`.
+- Examples:
+  - `--kexo-header-top-bg`, `--kexo-header-top-text-color`
+  - `--kexo-top-menu-bg` / `--kexo-header-main-bg`
+  - `--kexo-top-menu-border-color`, `--kexo-top-menu-shadow`
+  - Settings dropdown + Online badge have dedicated vars (bg/text/border/radius/menu colors)
 
-- The old `#config-modal` diagnostics modal is removed from main pages (`dashboard/live/sales/products/channels/countries/type/date/ads`).
-- Diagnostics is now Settings-first (`/settings`, Diagnostics tab using `#diagnostics-content`).
-- `server/public/app.js` no longer opens a diagnostics modal; header/footer settings actions route to `/settings`.
-- KPI compare modal (`#kpi-compare-modal`) remains on pages and continues to use shared modal shell styles.
-
----
-
-## Scripts
-
-- `scripts/split-pages.js`: Node script used to split `live-visitors.html` into per-page Tabler templates.
-
----
-
-## Deployment
-
-- GitHub Actions workflows are manual (`workflow_dispatch`); pushes to `main` alone do not auto-run workflows.
-- Railway may auto-deploy from GitHub depending on service config.
+Icons:
+- Font Awesome kit is loaded globally in `partials/head-theme.html`.
+- Runtime adapter: `server/public/fontawesome-icons.js`
+  - Converts Tabler icon placeholders / inline nav SVGs to Font Awesome.
+  - Icons are keyed via `data-icon-key="..."` across the app.
+  - Settings-only icon keys (`settings-tab-*`, `settings-diagnostics-*`) are locked for stability.
 
 ---
 
-## Pending follow-ups (if requested)
+## Charts (GLOBAL)
 
-- Full Tabler restyle of the Diagnostics modal.
-- UI polish pass across new pages (align cards, spacing, cards in countries/products/channels/type).
-## High-level architecture
+Charts are centrally configurable in Settings → Charts:
+- DB key: `charts_ui_config_v1`
+- Served by: `GET /api/settings` as `chartsUiConfig`
+- Saved by: `POST /api/settings` (`chartsUiConfig` payload)
 
-Backend:
-- `server/index.js`: Express app, routes, startup migrations, SSE wiring.
-- DB: SQLite by default (local) or Postgres when `DB_URL` is set (production recommended).
-- Migrations: `server/migrations/*.js`.
+Runtime apply:
+- `server/public/app.js`: dashboard/insights/traffic charts + map behavior
+- `server/public/ads.js`: Google Ads overview chart
 
-Frontend:
-- `server/public/*`: multiple HTML pages (Tabler UI).
-- Shared JS: `server/public/app.js`.
+Chart hiding (no flicker):
+- Chart wrappers/cards in HTML carry `data-kexo-chart-key="<chartKey>"`.
+- `GET /theme-vars.css` injects `display:none!important` for disabled charts so they disappear before first paint.
+- Dashboard paired charts expand to full width when their partner is disabled (CSS injected server-side).
 
-Shopify:
-- Pixel extension: `extensions/live-visitors-pixel/`.
-- Shopify Admin APIs for sales/sessions/best-sellers endpoints.
-
-Edge (optional):
-- Cloudflare Worker: `workers/ingest-enrich.js`.
-
----
-
-## Data flow (end-to-end)
-
-1) Storefront events
-- Shopify Web Pixel sends events to `POST /api/ingest` (requires `INGEST_SECRET`).
-
-2) Ingest processing
-- `server/routes/ingest.js` parses requests, derives fields, writes events + sessions.
-
-3) Storage
-- `server/store.js` is the central store logic (sessions + stats queries).
-
-4) Dashboard queries
-- Live/SSE: `GET /api/stream`.
-- Reports: `GET /api/kpis`, `/api/stats`, `/api/traffic`, `/api/worst-products`, `/api/shopify-best-sellers`.
-- Live online trend: `GET /api/sessions/online-series?minutes=60&stepMinutes=5` (5-minute buckets; chart shows 60 minutes, or 30 minutes on smaller viewports).
+Libraries:
+- ApexCharts for most charts
+- jsVectorMap for the Countries map (supports `map-animated` vs `map-flat` and a configurable accent color)
+- Chart.js is used only inside the Google Ads campaign modal (lazy-loaded)
 
 ---
 
-## Deployment + ops notes
+## KPI system (GLOBAL)
 
-- GitHub Actions workflows are manual (`workflow_dispatch`); trigger them explicitly when needed.
+KPI/date-range UI config:
+- DB key: `kpi_ui_config_v1` (in `GET /api/settings` as `kpiUiConfig`)
+- Applied by: `server/public/app.js` to:
+  - condensed KPI strip order/labels/visibility + display options
+  - dashboard KPI card order/labels/visibility
+  - date range menu labels/availability
+
+KPI data:
+- `GET /api/kpis` (server cached; also localStorage warm-paint to avoid empty chips on navigation)
+- `GET /api/kpis-expanded-extra` for Shopify-derived extras (COGS, returns, items ordered, etc.)
+
+---
+
+## Key frontend files (high-signal)
+
+- `server/public/partials/head-theme.html`: early theme hydration + loads `/theme-vars.css` + Font Awesome + `fontawesome-icons.js`
+- `server/public/partials/header.html`: desktop strip + desktop nav + KPI strip + mobile nav
+- `server/public/app.js`: shared bootstrapping + report loader + charts/tables + Settings hydration
+- `server/public/custom.css`: KEXO UI styling + header/nav theme vars + layout + KEXO 3-color logic
+- `server/public/tabler-theme.css`: Tabler overrides
+- `server/public/settings-page.js`: Settings tab logic + saving to `/api/settings`
+- `server/public/theme-settings.js`: Theme UI
+- `server/public/ads.js`: Google Ads page logic
+- `server/public/tools.js`: Conversion Rate Compare tool logic
+
+---
+
+## Backend architecture highlights
+
+- `server/index.js`: Express app, canonical page routes, auth middleware, static assets, startup migrations
+- `server/middleware/dashboardAuth.js`: Shopify embed + direct OAuth cookie protection
+- `server/store.js`: DB access + reporting queries + dedupe guardrails
+- `server/migrations/*.js`: schema/index migrations run on startup
+- Ingest: `POST /api/ingest` (strict JSON limit), writes events/sessions/purchases (append-only; no deletes)
+
+Ops/reliability:
+- Static assets are versioned into HTML (query param `?v=`) to avoid Shopify embed caching mismatches.
+- `GET /api/version` returns `assetVersion` so clients can self-recover after long-idle tabs.
+- `.md`/`/docs` paths are blocked in production (see `server/index.js`).
+
+---
+
+## Deployment notes
+
+- GitHub Actions are manual (`workflow_dispatch`).
+- Railway hosts production; deploys may auto-run from GitHub depending on Railway config.
 - `npm start` runs `scripts/prune-runtime-files.js` (removes non-runtime files from the runtime image).
-- SQLite is ephemeral on Railway; use Postgres (`DB_URL`) for persistence.
+- SQLite is ephemeral on Railway; production should use Postgres via `DB_URL`.
 
 ---
 
 ## Guardrails
 
-- Do not delete rows from `purchases`, `purchase_events`, `orders_shopify`, or `sessions` to fix data drift.
-- When changing dashboard sections, update `server/trackerDefinitions.js`.
+- Never delete/truncate core data tables (`purchases`, `purchase_events`, `orders_shopify`, `sessions`) to “fix numbers”.
+- Handle over-reporting via dedupe in stats queries (see `server/store.js` helpers).
+- When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
 
 ---
 
-## Changelog (summary)
+## Changelog (high-signal)
 
 2026-02-12
-- Charts settings (global):
-  - Added Settings → Charts tab to configure chart visibility, chart type (filtered per-chart), and chart colors.
-  - Stored in DB setting key `charts_ui_config_v1` (served via `GET /api/settings` as `chartsUiConfig`, saved via `POST /api/settings`).
-  - Chart cards now carry `data-kexo-chart-key="<chartKey>"` and `GET /theme-vars.css` injects `display:none!important` rules for disabled charts to prevent first-paint flicker.
-  - Map: Countries chart now supports `map-animated` vs `map-flat` modes and uses configurable accent color (prevents “black main country” complaints by allowing a fill override).
-- Icons (Theme -> Icons) rework:
-  - Removed editable `Style rules` controls; icon overrides now use full Font Awesome class specs only (for example `fa-light fa-bars`).
-  - Settings-page-only icons are now intentionally locked (non-editable) and forced to fixed `fa-solid` classes: `settings-tab-*` and `settings-diagnostics-*`.
-  - Added dedicated overview KPI delta icon keys (`dash-kpi-delta-up`, `dash-kpi-delta-down`, `dash-kpi-delta-flat`) and wired runtime direction switching in `server/public/app.js` + initial markup in `server/public/dashboard/overview.html`.
-  - Expanded icon help descriptions in `server/public/theme-settings.js` to identify where each icon appears (page/path-aware guidance), including separate Live landing entry/exit descriptions.
-  - Runtime icon application in `server/public/fontawesome-icons.js` is now key-driven (per `data-icon-key`) with locked-key override stripping, and waits for icon/font readiness before first hydrate to reduce reload-time icon flicker/disappearance.
-  - `server/public/partials/head-theme.html` now loads `/fontawesome-icons.js` without `defer`.
-- Theme defaults API allowlist:
-  - Added `theme_icon_glyph_dash_kpi_delta_up`, `theme_icon_glyph_dash_kpi_delta_down`, and `theme_icon_glyph_dash_kpi_delta_flat` in `server/routes/settings.js` for persistence.
-- Theme save reliability:
-  - `/api/theme-defaults` POST now uses **patch semantics**: only provided keys are updated (prevents accidental wipes on partial payloads and allows small per-key saves).
-  - Theme UI now auto-saves **per-key** in `global` mode (debounced) using patch payloads.
-  - Body parsing: `/api/ingest` keeps strict JSON limit (`MAX_EVENT_PAYLOAD_BYTES`), while authenticated admin API routes parse JSON up to `256KB` (mounted after `dashboardAuth.middleware`) so Theme saves can be larger without weakening ingest protection.
-  - Theme save button in `server/public/theme-settings.js` now reflects real network result (`Saving...`, `Saved!`, or `Save failed`) instead of always showing success.
-- Settings scope (global only):
-  - Added Settings → General “Settings scope” panel. Scope is locked to **Global (shared)**; **User-selected is disabled** until later in the project.
-  - Persisted `settings_scope_mode` via `GET/POST /api/settings` (forced to `global` for now).
-- Header first-paint (no flash):
-  - Added `GET /theme-vars.css` which serves server-stored header/theme CSS variables and is loaded from `server/public/partials/head-theme.html` to prevent the white header flash (even in incognito/new browsers).
-- Settings page:
-  - Header KPI strip is hidden on `/settings` (dashboard already hides it). Both critical head CSS and `custom.css` include the Settings hide rule so it does not flash on first paint.
-- Theme settings:
-  - Theme scope controls were removed from Theme UI; Theme is locked to global/shared behavior until user-selected settings are implemented.
-  - Added strip Settings dropdown controls in Theme -> Header: background, link color, icon color, border color, and border radius (wired through runtime apply + `/api/theme-defaults` persistence keys).
-  - Header radius normalization now applies to all `theme-header-*-radius` keys (including new dropdown radius control).
-- Header/nav:
-  - Increased `.kexo-desktop-top-strip-row` min-height to `2.8rem` in `server/public/custom.css`.
-- Theme settings:
-  - Added a new Theme subtab: `Header` (in `server/public/theme-settings.js`) to configure desktop top strip/main menu background colors, header link color, Settings label visibility, Settings border visibility/color, Online badge border visibility/color, and logo URL override.
-  - Expanded Header controls so strip Settings/Online have dedicated editable background, text/icon color, border-radius, border show/hide, and border color options.
-  - Expanded top menu controls for: link color, dropdown background color, dropdown link color, dropdown icon color, plus menu background/border-bottom/box-shadow.
-  - Header Theme action now links directly to `/settings?tab=theme` from the desktop Settings dropdown.
-  - Direct file upload for logo replacement remains TODO; URL override is implemented now.
-  - Theme “user-selected” mode is not enabled yet; all Theme changes are treated as global/shared.
-- Icons:
-  - Added `online-status-indicator` as a configurable icon key in Theme -> Icons (`#kexo-online-icon` now has `data-icon-key="online-status-indicator"`).
-- Header/nav:
-  - Desktop header is now two rows: a top strip with visitors (left), centered logo, and Settings dropdown (right), plus a separate light-mode centered nav row with `box-shadow: 2px 2px 2px #eee`.
-  - Added top-level `Integrations` nav group before `Tools`; `Google Ads` now lives under Integrations.
-- Routing/auth:
-  - Added canonical route `/integrations/google-ads` (`server/public/integrations/google-ads.html`) and canonicalized `/integrations` -> `/integrations/google-ads`.
-  - Legacy `/tools/ads` and `/ads` now 301 redirect to `/integrations/google-ads`; mobile redirect and auth protected-page lists include the new integrations path.
-- Icon config:
-  - Split dashboard table title icon mapping for `Trending Up` and `Trending Down` into dedicated theme keys (`card-title-trending-up`, `card-title-trending-down`) with separate defaults and clearer labels in Theme → Icons.
-- KPIs:
-  - Dashboard KPI cards now show % change badges (same compare semantics as condensed chips).
-  - Condensed KPI progress bars now hide when compare is missing (no misleading 0%).
-- Settings:
-  - Implemented Settings → KPIs & Date Ranges editor; saves/loads `kpi_ui_config_v1` via `/api/settings` and applies at runtime.
-- Dashboard-series:
-  - Fixed hourly `adSpend` allocation so Today/hour-bucket ROAS sparklines are correct.
-- Public pages:
-  - Canonical folder pages now contain full HTML; legacy root pages moved to `server/backups/public-pages/`.
-  - Embedded app `/` now serves the canonical overview page (`dashboard/overview.html`).
-
-2026-02-11
-- Loader text simplification:
-  - Page-body loader now shows a single non-bold status line above the progress bar (step text), with the bold title line hidden in `server/public/custom.css`.
-  - Updated shared loader markup/defaults in `server/public/partials/page-body-start.html` and `server/public/app.js` so the visible line starts at `Preparing application` and transitions via existing step updates.
-- Loader center stabilization:
-  - `server/public/custom.css` now uses `display:none` gating (instead of `visibility:hidden`) for non-loader page-body children while loading, preventing mid-load center drift from hidden-content height changes.
-  - `server/public/app.js` now computes and applies `--kexo-loader-page-top` on `.page-body` before/when loading starts; page-body min-height uses `calc(100vh - topOffset)` so the loader stays centered in the viewport region under nav and above footer.
-- Loader scope correction:
-  - Moved `.page-body` positioning + `.page-body.report-building` content-hide rules into `server/public/custom.css` (the stylesheet loaded by canonical pages), ensuring the loader overlay is truly bounded to page-body and does not cover header/top menu.
-- Loader overlay fill refinement:
-  - `server/public/custom.css` now applies a full-size page-body loader overlay (`width/height: 100%`) with `background: var(--tblr-body-bg)` so content cannot bleed through during loading.
-  - Overlay scope remains bounded to `.page-body`, so it fills under top navigation and above footer (not over global chrome).
-- Loader UX refinement (post-unification):
-  - Shared page-body loader (`#page-body-loader`) no longer renders the Kexo logo; it now shows only status text + Tabler indeterminate progress.
-  - Loader remains scoped to `.page-body` so header/top menu/footer stay outside the loading surface.
-  - During loading, page-body content is hidden via `visibility` (not `display:none`) to preserve layout height and avoid footer/nav jump.
-- Single page-body loader unification (all canonical routes):
-  - Added one shared Tabler-style loader in `server/public/partials/page-body-start.html` (`#page-body-loader`) that anchors to `.page-body` with dynamic title/step text.
-  - `server/public/app.js` report-build lifecycle now resolves to the shared page-body loader/scope (instead of per-page overlay IDs), and dashboard fetches now use the same loader lifecycle (`key: 'dashboard'`) so Overview no longer loads without a loader.
-  - Disabled top thin progress-bar visuals during report loads to keep a strict one-loader-at-a-time contract.
-  - Removed page-specific loader overlays from `live/sales/date/countries/products/channels/type/ads` so duplicate loaders cannot appear.
-  - `server/public/ads.js` now uses the shared page-body loader (and no longer renders a second in-card loading surface on first load), fixing duplicate loading UI on `/tools/ads`.
-- Live visitors navbar consistency:
-  - `server/public/app.js` now triggers `updateKpis()` immediately on tab/page navigation, date-range changes, and when the tab becomes visible again.
-  - This prevents the top-right visitors count from staying blank on dashboard/tools/insights/traffic pages while waiting for the 60s background poll.
-
-2026-02-11
-- Canonical folder-style page routing + redirects:
-  - Added canonical routes: `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`, `/insights/countries`, `/insights/products`, `/traffic/channels`, `/traffic/device`, `/tools/ads`, `/tools/compare-conversion-rate`.
-  - Added legacy redirects with query-string preservation for old flat route aliases.
-  - Root authenticated redirect now targets `/dashboard/overview`; `/app/dashboard` now redirects to `/dashboard/overview`.
-- Navbar IA refresh:
-  - Desktop top-level labels are now `Dashboard`, `Insights`, `Traffic`, `Tools`, `Settings`.
-  - `Google Ads` moved under `Tools`; `Type` renamed to `Device & Platform`; compare tool label renamed to `Conversion Rate Compare`.
-  - Live visitors status (`#kexo-online-icon`, `#online-count-spinner`, `#online-count`) moved out of Tools dropdown and into the far-right desktop navbar as a non-clickable status element (`aria-live="polite"`).
-
-2026-02-11
-- KPI chip CSS + sparkline + dashboard card layout:
-  - Condensed KPI chips (non-dashboard): updated `#kexo-kpis .kexo-kpi-chip` with gap 5px and explicit flex/min/max-width vars in `head-theme.html` and `custom.css`.
-  - Condensed sparklines: line-only (no fill), 2px stroke, stronger visibility (CSS opacity + `top: -5px`); `renderCondensedSparklines` in `app.js` + `.kexo-kpi-chip-sparkline` in `custom.css`.
-    - Fix: keep ApexCharts fill opacity at `1` on line charts to avoid transparent strokes (was rendering `rgba(...,0)`).
-    - Follow-up: condensed chip sparkline width/right now respond to auto-fit chip width (shrinks/tucks right on tight chips) via `updateCondensedKpiOverflow()` setting `--kexo-kpi-spark-*`.
-  - Dashboard KPI cards: compare values (Yesterday / 7 Day) now stack label above value per row; `.dash-kpi-compare-item` flex-direction column; `.text-end` aligns right.
-  - Dashboard cards: min-height 160px; sparkline wrap spans 100% width (left: 0, right: 0) under all content.
-
-2026-02-11
-- Table standardization (site-wide):
-  - Added table metadata on table cards (`data-table-class`, `data-table-zone`, `data-table-id`) across dashboard/live/sales/date/countries/products/channels/type/ads to target table behavior by class/zone instead of page URL.
-  - Sticky first-column sizing in `server/public/app.js` is now grid-aware: 1-table groups cap at `250px`, 2-table groups cap at `150px`, and 3+-table groups enforce a `100px` minimum.
-  - Sticky resize affordance in `server/public/custom.css` now uses a `<->` SVG marker (no vertical border indicator), and sticky edge shadows are stronger for clear sticky perception.
-  - Added per-table row controls in card headers near the collapse chevron with class presets:
-    - dashboard: `5` default, options `5/10`
-    - product: `10` default, options `10/15/20`
-    - live: `20` default, options `20/30/40/50` (also mapped to countries/channels/type/ads)
-  - Added pagination where it was missing for Channels, Type, Ads, and dashboard table cards (`dash-top-products`, `dash-top-countries`, `dash-trending-up`, `dash-trending-down`).
-  - Added active pagination style override for `.active > .page-link, .page-link.active` in `server/public/custom.css`.
-  - Follow-up polish: removed the visible `Rows` text label from card-header controls, tightened the rows selector to a compact ~35px field with no chevron background image, and increased live-class sticky first-column drag max-width to `400px`.
-
-2026-02-11
-- Main nav + tools/settings UX:
-  - `server/public/partials/header.html`: moved the Settings dropdown into the desktop main nav (next to Tools) using the same Refresh/Sound/Theme/Settings/Sign out actions.
-  - Tools dropdown now contains `Google Ads` (`/tools/ads`) and `Conversion Rate Compare` (`/tools/compare-conversion-rate`).
-  - Live visitors status row (`#kexo-online-icon`, `#online-count`, `#online-count-spinner`) now sits at the far-right desktop navbar as a non-clickable status element (not inside Tools dropdown).
-  - Legacy compare-route aliases now redirect to `/tools/compare-conversion-rate`.
-- Live page online updates:
-  - `server/public/live.html` heading changed to `Online Now: <count>` (`#live-online-now-count`).
-  - `server/public/app.js` now renders the live online chart as vertical bars from `/api/sessions/online-series?minutes=60&stepMinutes=5`.
-  - Responsive behavior trims the live chart to the last 30 minutes (6 bars) on narrow viewports; standard view uses 60 minutes (12 bars).
-  - Frontend live active cutoff aligned to 5 minutes (`ACTIVE_WINDOW_MS = 5 * 60 * 1000`).
-  - `server/routes/sessions.js` + `server/store.js` now support `stepMinutes` bucket sizing for online series.
-- Session table sale-row marker:
-  - `server/public/app.js` adds `.converted-row` to the first grid cell for purchased rows on `/dashboard/live`, `/dashboard/table`, and `/dashboard/sales`.
-  - Added `.converted-row { border-left: 3px solid color-mix(...) !important; }` styling in `server/public/custom.css` (and mirrored in `server/public/app.css`).
-- KPI visuals refresh (dashboard + condensed strip):
-  - `server/public/app.js` now renders KPI sparklines as line-only (no under-fill); dashboard compare mode draws previous period first as dashed grey so it sits behind the current line.
-  - `server/public/custom.css` narrows sparkline containers (dashboard cards now `80%` width; condensed chips now width-clamped from `--kexo-kpi-width`) and increases sparkline opacity for clearer visibility.
-- KPI trend icon removal:
-  - Removed trend icon markup from condensed KPI deltas in `server/public/partials/header.html` and removed icon-specific delta rendering branches in `server/public/app.js`.
-  - Removed `kpi-trend-up/down/flat` glyph keys from `server/public/theme-settings.js`, `server/public/fontawesome-icons.js`, and `/api/theme-defaults` allowlist in `server/routes/settings.js`.
-- Loader gating + staged reveal consistency:
-  - `startReportBuild` in `server/public/app.js` now scopes loading to the tab container (`.main-tab-panel`), temporarily hoists overlays into that scope during load, locks panel min-height, and only reveals content when `finish()` runs.
-  - `server/public/app.css` keeps `report-building` states hiding all non-loader siblings, so loaders are the only visible content while a report flow is building.
-  - Legacy inline products overlay polling in `server/public/products.html` was removed so loader visibility is controlled by shared report-build lifecycle only.
-- Loader visual simplification:
-  - `server/public/custom.css` report loaders no longer render card-style border/background/shadow chrome; spinner + dynamic title/step remain centered.
-- Ads page strict loader behavior:
-  - Added panel-level ads loader overlay in `server/public/ads.html` and wired `server/public/ads.js` to show staged steps (`Connecting`, `Importing`, `Loading`, `Analyzing`, `Building`) while page content is gated.
-- Collapse reliability + scope:
-  - Card collapse targeting in `server/public/app.js` now includes both table and chart cards, uses stable per-card keys with index suffixes to prevent sessionStorage collisions (fixes wrong-card collapse/vanish behavior), and keeps persisted state per page.
-- Theme icon integration for collapse controls:
-  - Added `card-collapse-expanded` / `card-collapse-collapsed` glyph keys in `server/public/theme-settings.js`, `server/public/fontawesome-icons.js`, and backend allowlist `server/routes/settings.js`.
-  - Collapse buttons now render `<i data-icon-key="...">` glyphs so Settings -> Theme -> Icons overrides apply at runtime.
-- Dashboard collapse layout whitespace fixes:
-  - `server/public/custom.css` now forces collapsed dashboard cards back to `height: auto` so mixed collapsed/expanded grid states no longer inherit equal-height blank space artifacts.
-- Dashboard KPI previous-period sparkline overlay:
-  - Dashboard cards now fetch and cache an explicit previous-period `dashboard-series` payload (derived from `/api/kpis` compare range) and use that real history as the dashed grey overlay line.
-  - This avoids hidden/overlapped dashed lines when only scalar compare values are available and keeps the compare sparkline distinct from the primary trend.
-- Condensed KPI sparkline sizing (non-dashboard strip):
-  - Increased condensed KPI sparkline render height to `30px` in `server/public/app.js`.
-  - Updated condensed sparkline container position/size to `top: 0` and `height: 30px` in `server/public/custom.css`.
-- Dashboard KPI sparkline styling:
-  - Homepage KPI card sparklines now render as trend lines (not forced two-point straight segments) using range history, with a dashed grey previous-period overlay line for visual comparison.
-  - Sparkline source selection now prefers historical series aligned to the current KPI value, and only falls back to two-point compare/current when history is unavailable.
-- Icon coverage + override hardening:
-  - Full class overrides now accept broader Font Awesome style/subset tokens (`fa-regular`, `fa-thin`, `fa-duotone`, `fa-sharp*`, `fat`, `fad`) in `server/public/fontawesome-icons.js`, `server/public/theme-settings.js`, and KPI trend icon parsing in `server/public/app.js`.
-  - Added missing short-header icon keys across Live/Sales/Date/Countries/Channels/Type/Products (including consent debug headers) and wired persistence keys in `server/routes/settings.js`.
-  - Card title auto-icons are now keyed (`card-title-*`) so they are overrideable from Theme -> Icons instead of being rule-only.
-- Theme icon controls:
-  - Added global icon visual defaults (`theme-icon-size`, `theme-icon-color`) with live runtime apply, server persistence, and startup restore.
-- KPI cache correctness:
-  - KPI cache now tracks range/source (`kpis` vs `stats` fallback) to prevent stale cross-range reuse that made multiple KPIs appear identical after range switches.
-- Desktop date control placement:
-  - Desktop date dropdown is moved at runtime into the page header right slot and keeps topnav icon context styling after relocation.
-- Navbar/dropdown polish:
-  - Applied requested `.me-1`/`.me-2` spacing, dropdown typography (weight 400, tighter vertical padding), and subtle theme-safe dropdown hover background in `server/public/custom.css`.
-- Global report/table loaders:
-  - `server/public/app.js` now auto-upgrades loader overlays to a shared centered loader card (`report-build-spinner` + title + live step text) via `startReportBuild`, with page-aware defaults and a future-page contract using `data-loader-key`/`data-step-id`.
-  - Traffic loader target mismatch fixed: `refreshTraffic()` now resolves `channels/type` overlay IDs correctly instead of relying on non-existent `traffic-loading-overlay`.
-  - Session table refresh now uses shared staged loader messaging (`Preparing live sessions` / `Preparing sessions table` + active step updates).
-  - Diagnostics + KPI compare loading states now update step copy while waiting/building.
-- Ads loader stages:
-  - `server/public/ads.js` loading flow now uses staged progress text for actual phases: Connecting to Google → Importing campaigns → Loading campaign data → Analyzing spend → Building profit table.
-- Table collapse UX (session-persisted):
-  - `server/public/app.js` auto-initializes collapse toggles on cards that contain table content (`.table-scroll-wrap`, `.country-table-wrap`, `.table-responsive`, grid/table elements).
-  - Right-side chevron in card headers toggles collapse and persists per page/card in `sessionStorage` (`kexo:table-collapse:v1:<page>:<cardId>`).
-  - Shared collapse styles live in `server/public/custom.css` (`.kexo-card-collapse-toggle`, `.kexo-card-collapsed`).
-- Dashboard KPI sparkline consistency:
-  - Dashboard KPI background sparklines now lock to a straight/jagged stroke curve in `renderSparkline` so resize/reflow redraws do not revert to the smoother curve unexpectedly.
-- Dashboard KPI cards:
-  - KPI card sparklines now use the same current-vs-compare values shown in-card (previous-period compare), so sparkline direction/tone matches the compare row.
-  - Flat-zero guard: when current and compare are both zero, sparklines stay flat/neutral (no synthetic slope bump).
-  - Returns and delta formatting now suppress negative zero (`£0` / `£0.00` / `0%` instead of `-£0`/`-£0.00`/`-0.0%`).
-- Sticky first-column resizing (dashboard + table/grid wrappers):
-  - Reworked width bounds to responsive screen/container clamps with persisted width, shared min/max CSS vars, and aligned header/body sticky widths.
-  - Added resize interaction suppression for sortable headers so pointer-up after drag does not trigger sort/re-order clicks.
-  - Kept separator + stronger fixed-edge shadow and aligned adjacent second-column background treatment.
-  - Persisted sticky width per-table (prevents cross-table width conflicts on dashboard grids) and centered dashboard table header/body alignment.
-  - Dashboard 3-column tables: set fixed widths for value columns so `w-1` doesn’t collapse them and make the first column look oversized.
-- Countries map styling:
-  - Switched region/flow emphasis to `--tblr-primary`/`--tblr-primary-rgb` shades; removed non-primary dominant highlight tones.
-- Channels + Type charts:
-  - Removed unsupported Apex series axis fields, normalized data arrays to finite numeric series, and added defensive render guards + Promise error handling to prevent `undefined.push` Apex runtime crashes.
-  - Stabilized y-axis wiring by providing one y-axis config per series (hide Orders axis) so `/traffic/channels` + `/traffic/device` render reliably.
-- Products page chart:
-  - Switched the `/insights/products` overview chart to a line chart (instead of horizontal bars) while keeping the rich product tooltip content.
-- Dashboard overview charts:
-  - Added y-axis headroom + NaN/undefined sanitization in chart rendering to prevent clipped lines and “blank” sessions charts.
-- Google Ads overview chart:
-  - Removed fragile y-axis index wiring and added guards + render error fallbacks so the chart loads reliably.
-- Google Ads table:
-  - Restored totals-row alignment by using the same sticky-width wrapper rules for the footer totals row as the main table.
-- Channels/Type tables:
-  - Fixed hover highlight for the Sessions column (2nd column) so it matches the rest of the row.
-
-2026-02-11
-- Dashboard KPI sparkline behavior + styling:
-  - Dashboard card sparkline tone now prefers previous-period compare values (neutral fallback when compare is missing) so cards no longer misread as downtrend from local point slope.
-  - Sparkline stroke/fill styling was strengthened (dashboard + condensed chips) for higher visual contrast.
-- Sticky first-column UX (all non-Settings tables):
-  - Sticky first column now supports resize by dragging a visible right-edge handle (`100px` min to `200px` max, default `120px`), with persisted width and resize cursor.
-  - Sticky header/body shadows were strengthened and first-column header background was aligned with shared table-header styling.
-- Countries page updates:
-  - Restored `jsVectorMap` world map rendering in `server/public/app.js` and removed the interim countries Apex chart replacement.
-  - Map now uses KEXO palette fills (no black dominant highlight) and overlays animated conversion flow lines from GB to top converting countries.
-  - Best/Geo card is now `Country + Product` in UI copy (`server/public/countries.html`), and first-column cell rendering now shows both country and product text.
-- Breakdown chart direction updates:
-  - Channels and Type overview charts are now fixed multi-line charts (Sessions, Orders, Revenue) with dual-axis formatting.
-  - Products overview chart is now a line chart for revenue across top products (tooltip still includes thumb + title; thumbs are normalized to include `width=100` when missing).
-  - Ads overview chart was redesigned from grouped bars to a mixed Sales/Spend/ROAS view for clearer campaign comparison.
-- Chart-type switchers:
-  - Theme-wide chart type switcher UI is now disabled in runtime rendering paths (fallback chart types remain).
-- Icon system V2 hardening:
-  - Added exhaustive `data-icon-key` coverage across Settings tabs, footer controls, side panels, KPI compare modal actions, live landing ticks, diagnostics/tab icons, pagination arrows, and dynamic icon render paths in `server/public/app.js` + `server/public/ads.js`.
-  - Theme Icons now supports both glyph input and full class override input (for example `fa-etch fa-solid fa-address-card`) with runtime priority of full override > glyph override + context style > context/default glyph.
-  - Expanded persisted theme icon keys in `server/routes/settings.js` for all newly covered icon surfaces (settings tabs, KPI trend states, live ticks, diagnostics icons, footer/actions, chart-type icons).
-  - `server/public/fontawesome-icons.js` now includes compatibility fallback logic to avoid blank settings-tab icons in Jelly mode (auto-fallback to solid for problematic settings-tab glyphs).
-- Chart controls everywhere:
-  - Added Area/Bar/Line chart-type switch controls with localStorage persistence on all chart pages/surfaces: dashboard cards, live online trend, sales/date overview charts, ads overview, channels, products, countries, type, and tools compare chart.
-  - Chart-type control buttons include icon keys (`chart-type-area`, `chart-type-bar`, `chart-type-line`) so they are fully theme-configurable.
-- Table + chart standardization:
-  - Added a dedicated live trend API route `GET /api/sessions/online-series?minutes=10` (server: `server/routes/sessions.js`, `server/store.js`, mounted in `server/index.js`) with short private cache headers.
-  - Added a new full-width Live chart card above the sessions table in `server/public/live.html` (`#live-online-chart`) and wired it to the new endpoint in `server/public/app.js`.
-  - Added overview chart cards above the table on `server/public/sales.html` and `server/public/date.html` (`#sessions-overview-chart`), using the existing range-aware dashboard series endpoint.
-  - Added Ads overview chart card (`#ads-overview-chart`) in `server/public/ads.html` and render logic in `server/public/ads.js` (top campaigns, Spend vs Sales).
-  - Added Tools comparison chart rendering in `server/public/tools.js` (`#tools-compare-chart`) for before/after Sessions, Orders, and CR during conversion-rate comparisons.
-  - Kept sticky-first-column behavior active on mobile (except Settings) by removing the old mobile card-table transform in `server/public/custom.css`; horizontal swipe/scroll now remains available on all table pages.
-  - `server/public/fontawesome-icons.js` now auto-injects contextual Font Awesome icons into `.card-header .card-title` across pages (including Settings), while preserving explicit existing title icons.
-- Dashboard KPI compare model/UI:
-  - Compare labels now use previous-period wording (e.g. Yesterday, Previous 7 days), and the secondary compare slot is shown only for `today`/`yesterday`.
-  - Dashboard KPI cards now use consistent primary compare values/labels from the API compare payload.
-- Theme + icon system:
-  - Restored Jelly icons with policy routing: global default `jelly`; top nav toggles + table heading icons + Settings left menu use `jelly-filled`; all dropdown menu items (including Settings dropdown) use `jelly`.
-  - Added persisted theme icon settings keys to `/api/theme-defaults` (`theme_icon_default`, `theme_icon_topnav`, `theme_icon_dropdown`, `theme_icon_settings_menu`, `theme_icon_table_heading`).
-  - `server/public/theme-settings.js` now renders Theme sub-tabs with Tabler underline tabs (`Icons`, `Color`, `Fonts`), includes icon-style input boxes with live preview, debounced apply, and persisted Save.
-  - `server/public/fontawesome-icons.js` now enforces icon context mapping at runtime and supports refresh via `kexo:icon-theme-changed`.
-  - Theme `Icons` tab now uses a responsive grid (`3` columns on desktop, one-per-line on mobile) for both style rules and per-icon glyph inputs.
-  - Added persisted per-icon glyph overrides (`theme_icon_glyph_*`) for mobile controls, top-nav toggles, dropdown items, and compact table heading icons.
-  - Header/table icon nodes now include `data-icon-key` hooks so glyph overrides apply immediately via runtime refresh.
-- KPI parity + logic cleanup:
-  - Dashboard now exposes all 12 KPI cards (adds COGS, Fulfilled, Returns, Items ordered) and uses label parity with condensed chips.
-  - Condensed strip now includes ADS ROAS and COGS chips (12 total).
-  - KPI sparkline direction semantics fixed for "lower is better" metrics (Bounce Rate + Returns, plus COGS as an expense).
-  - Dashboard sparkline styling now matches condensed chip sparkline gradient treatment for consistent rendering.
-  - `/api/kpis-expanded-extra` now includes COGS sourced from Shopify variant unit costs.
-- Legacy cleanup:
-  - Removed obsolete backup files from `server/public`: `live-visitors.html`, `sales-backup.html`, `date-sparklines-template.txt`.
-- Font Awesome icon pass (display fix):
-  - Removed Jelly classes (`fa-jelly` / `fa-regular`) from active UI pages and shared scripts.
-  - Icon convention is now: top menu + top KPI trend icons use `fa-solid`; the rest of the theme uses `fa-light`.
-  - Footer eye toggle + other shared controls were updated to `fa-light` classes.
-  - Runtime icon adapter (`server/public/fontawesome-icons.js`) now maps to solid/light classes instead of Jelly.
-- Settings/nav cleanup:
-  - Header dropdown item previously used for Diagnostics now shows **Settings** and routes to `/settings` (no diagnostics query URL).
-  - Theme action now routes to `/settings`.
-  - Footer settings shortcut (`footer-diagnostics-btn`) now routes via header Settings link to `/settings`.
-- Diagnostics consolidation:
-  - Removed Diagnostics Sources tab from `refreshConfigStatus` output; Sources mapping now lives only in Settings Sources tab.
-  - Retired `initConfigModal` open/close behavior in `app.js`; kept diagnostics refresh/reconcile handlers for Settings diagnostics panel.
-  - Removed legacy diagnostics modal markup (`#config-modal` / `#config-status`) from main pages: `dashboard.html`, `live.html`, `sales.html`, `products.html`, `channels.html`, `countries.html`, `type.html`, `date.html`, `ads.html`.
-- Settings Integrations UX:
-  - Integrations panel now uses Tabler `nav-underline` inner tabs (`Shopify`, `Google Ads`) with richer status details.
-  - Added Settings Google Ads action buttons (`status/summary/refresh`) + output panel in `settings-page.js`.
-- Font Awesome migration baseline:
-  - Added Font Awesome kit load globally via `partials/head-theme.html`.
-  - Added `server/public/fontawesome-icons.js` runtime adapter that converts Tabler icon classes and shared nav SVG icon slots to Font Awesome equivalents.
-- Dashboard charts (Revenue/Orders/Sessions/Conversion) now default to Area, with chart-type switcher ordering aligned (Area first, Bar second).
-- Orders KPI sparkline on the dashboard card was restored to Area to match the other KPI sparkline cards.
-- KPI sparkline colors now use trend tone (green/red) based on positive/negative movement, with condensed strip colors using day-before compare values when available.
-- Dashboard series Top Products now has a safe fallback to aggregate from `orders_shopify.raw_json.line_items` when truth line-item sync is delayed, including in the bounds-based route path.
-- Dashboard KPI card background sparklines now color by same-time previous-period compare (from `/api/kpis` compare values) instead of last-point slope, so Today vs Yesterday-at-this-time is reflected in card tone.
-- Dashboard now re-renders from cache after KPI refresh so compare-driven sparkline tones update as soon as KPI compare data arrives.
-- Layout fix: `.page-wrapper` and `.page` are forced to full-width/top-flow alignment so inner pages render directly under header/KPIs instead of centering in the viewport.
-
-2026-02-10
-- Settings: added Sources tab for traffic source mapping (UTM → source + icon); `initTrafficSourceMapping` exposed on window.
-- app.js: config-status fetch now checks `r.ok`; non-2xx throws so errors surface in Diagnostics.
-- Diagnostics on Settings: success path now writes to `#diagnostics-content` (was only `#config-status`); added styles for Settings diagnostics panel.
-- Modal flash fix: when config-open-btn is a link to /settings, skip opening modal and let navigation happen.
-
-2026-02-08
-- Tabler UI rollout and split-page architecture (per-page HTML routes).
-- Sticky navbar overlap layout and shared theme config (`tabler-theme.css`).
-- Tools page rebuilt + styles moved to `tools.css`.
-
-2026-02-09
-- Fix “no data” on homepage: range-key normalization, correct min/platform-start clamps, and dashboard chart/table ID wiring.
-- Auth hardening for embedded Shopify app: signed-query + signed-referer allowed across dashboard pages, and signed params propagated across internal links.
-- UI: migrated to Tabler `layout-fluid-vertical` (dark sidebar) and removed prior sticky/top-nav + KEXO gradient theming.
-- Products overview (`/insights/products`): show an immediate loader, fix pagination controls (disable state + client-side paging), and add reliable card spacing so tables don’t touch.
-- Navbar polish: top-nav link separators now adapt to dark mode, and top-nav items have no border radius (square edges).
-- Mobile: sidebar toggler + Settings dropdown remain; date control is in the sidebar.
-- Removed per-page `<h2 class="page-title" id="page-title">…</h2>` headers; current page is indicated by the nav.
-- Nav dropdowns: when a child page is active, the dropdown toggle label becomes that child (e.g. “Live”), and the group label is shown inside the dropdown.
-- Nav highlight: active top-level item is bold and dropdown caret spacing is increased for readability.
-- DB perf: added targeted indexes for traffic + bounce counting; dashboard-series now batches sessions/bounce aggregation to avoid per-day query loops.
-- Date control: sidebar date dropdown is visible on all pages (including Tools).
-- KPI UX/perf: add 2-minute caching + localStorage warm-paint; reduce duplicate conversion/session work; invalidate KPI caches after the sale toast hides.
-- KPI extras: Items ordered / Orders fulfilled / Returns now map directly to Shopify truth (Orders API) so the expanded KPI set matches Shopify (returns renders as negative currency).
-- Header actions: desktop topbar now shows a single Settings button with a Tabler dropdown for Refresh/Sound/Theme/Diagnostics/Sign out (mobile still uses the settings dropdown).
-- Condensed KPIs: delta chips now render consistently (including “new” when the baseline is 0) and only show arrows when movement is meaningful.
-- Dashboard-series: include per-day returning-customer counts so the “Returning” sparkline can render (with a one-time forced refresh if an older cached payload is detected).
-- Dashboard KPI correctness + consistency:
-  - Returning Customers now uses returning-order rate (truth returning orders / total orders) instead of revenue share.
-  - GBP formatting standardized (thousands separators) across KPI + dashboard secondary stats.
-- Nav + theming:
-  - Traffic dropdown now links to `/traffic/channels` and `/traffic/device` only (combined `/traffic` page removed).
-  - Header/footer logo reverted to a single image (no dark-mode swap).
-- Reliability/cleanup:
-  - `ads.html` now includes `/ads.js` directly (still compatible with lazy-load logic).
-  - Ads table totals are rendered in the `card-footer` (pinned) with a console sanity-check against campaign sums.
-  - Ads table UX: campaigns table uses standard `.card > .country-table-wrap` structure; connection + refresh + errors live in `#ads-actions` just below the table (icons right, Tabler SVG), errors open a Tabler modal, loading is centered, and non-forced refreshes patch spend/profit/ROAS (+ Conv) in-place instead of wiping the table.
-  - Ads table mobile: campaign column is sticky while horizontally scrolling so names remain readable.
-  - Ads spend sync: server runs Google Ads spend sync in the background every 5 minutes (recent window), and the Ads UI refreshes by patching spend/profit/ROAS in-place (no “Syncing…” table wipe).
-  - Ads boot: `app.js` waits for `/ads.js` to actually load/execute (when the script tag already exists) and defers init by one macrotask so `/tools/ads` doesn’t render blank on slow networks.
-  - Ads campaign modal: chart now lazy-loads Chart.js so clicking a campaign row always renders the spend vs sales graph.
-  - Ads attribution coverage: `gclid_campaign_cache` now stores mappings for `gclid` + iOS click IDs (`gbraid`/`wbraid`), and order attribution can use session `entry_url` click IDs as a fallback when `bs_campaign_id` wasn’t present.
-  - Ads attribution model: when a purchase session has no campaign id, we also attribute via **visitor last Google Ads click** (30-day window) using prior sessions for the same `visitor_id` (matches “last click” behavior and prevents undercount on returning/direct purchases).
-  - Ads profit now uses Shopify truth orders attributed into Ads DB (`ads_orders_attributed`) so Ads revenue/profit can be served from Ads DB only (attribution from `orders_shopify.raw_json.landing_site` + evidence/session fallback). Google conversion value is not used for Sales/profit.
-  - Ingest: do not overwrite pixel-provided `entry_url` with the request `Referer` header (which is often origin-only on cross-origin fetch). Preserves tracking params like `bs_campaign_id`/`gclid` for Ads attribution + gclid backfill.
-  - Fix `/api/dashboard-series` 500 on Postgres: reorder params for conditional-aggregate queries so BIGINT columns don’t receive `shop` string params (affects Units Sold + session/bounce aggregation).
-  - Grid-table headers use shared `kexo-grid-header` styling so headers match across pages.
-  - Dashboard overview charts + top tables now respect the header date range (dashboard-series supports `range=` keys).
-  - Shared Product Insights modal: clicking product thumbnails opens a Tabler modal with image gallery, Today-by-default range selector, KPI table, and charts powered by `/api/product-insights`.
-  - Sessions table entry/exit links open the same modal, loading either product insights (for `/products/...`) or page insights (for non-product URLs) via `/api/page-insights`.
-  - Removed dead breakdown auto-refresh timer and stale KPI comment in `app.js`.
-  - De-duplicated grid-table CSS (kept definitions in `custom.css`).
-  - Legacy `live-visitors.html` no longer references missing `/nav.css`.
-  - Server-side include resolver: cache disabled in dev + missing include no longer crashes responses.
-  - Dashboard series: secondary stats now use server `summary` fields (desktop/mobile + new/returning), and endpoint reconciles truth cache to avoid drift vs `/api/kpis`.
-- Theme: global `<a>` link color now inherits surrounding text color (no default blue links).
-- Theme: removed KEXO gradient vars; Theme Settings controls mode/scheme/font/base/radius; default primary is `#3eb3ab`.
-- KPIs: condensed strip + expanded grid toggle live under the page header; expanded extras are warmed in the background.
-
-2026-02-10
-- Desktop layout update: removed the left sidebar on desktop and added a Tabler horizontal navigation bar directly under the KPI strip (mobile menu behavior unchanged).
-- Desktop nav follow-up: horizontal nav is now grouped dropdowns (Dashboard/Breakdown/Traffic/Integrations/Tools) in Tabler style.
-- Dashboard KPI cards: background sparkline overlays are now pinned to the bottom strip of each card (instead of filling from the top).
-- Header/layout follow-up: removed sidebar markup entirely, switched desktop to a full-width dark Tabler-style top menu, moved logo to the first menu item.
-- Layout: KPIs now load below the dark nav bar (not above). Desktop header is hidden; KPIs sit in a light strip under the nav.
-- Header compact: KPI strip min-height 3.25rem (was 4.5rem), nav links tighter padding, dark nav 2.5rem.
-- Mobile redirect: client-side viewport fallback in head-theme (redirect if width < 768px) so emulating mobile by resize works.
-- KPI bar: margin-bottom 20px, box-shadow 2px 2px 2px #eee, background #fff.
-- Layout: remove left gap site-wide (body margin: 0; page wrapper padding-left: 0).
-- KPI strip: single line (flex-wrap: nowrap), 100% width, horizontal scroll if overflow; nav container full width.
-- Desktop nav alignment: force menu/logo/settings onto one row (no wrap) so Settings no longer drops beneath the menu.
-- KPI strip compact pass: reduced bar height, reduced chip spacing/font sizing, and reduced bottom gap so it no longer appears oversized.
-- Dashboard: removed the entire "Vs previous period" KPI card section from `server/public/dashboard.html`.
-- Layout/gutter fix: removed page-level left/right container padding on desktop (`.page-body > .container-fluid`, footer, KPI bar container, desktop nav container) to eliminate the persistent left gap.
-- KPI responsiveness: `kexo-kpis-condensed-row` now has `padding: 12px 5px`, and the small-screen rule no longer hides `.kexo-kpis-navbar` so KPIs remain visible and horizontally overflow as needed.
-- Nav sizing follow-up: desktop logo is now 24px high; mobile topbar height now matches desktop nav height (2.5rem), with smaller mobile icons and a smaller mobile logo.
-- Gutter balance follow-up: nav and KPI *background bars* remain full-bleed (no left outer gap), while content gutters were restored (`.75rem`) for page content, first nav item spacing, and KPI inner content.
-- KPI sizing stability: condensed KPI overflow logic no longer hides/shows chips based on page width; chip width is now stable and horizontal overflow handles narrow widths, preventing KPI bar size shifts between pages.
-- Desktop nav brand update: centered logo slot removed; brand logo now uses `/assets/logo2.png` as a plain left-aligned brand link before menu items (not a menu item, no active/bottom-border state).
-- KPI load UX: added critical inline KPI strip CSS in `partials/head-theme.html` so the first paint matches final compact sizing (prevents large-then-shrink flash during page load).
-- Desktop gutter follow-up: removed global `html { scrollbar-gutter: stable; }` from `tabler-theme.css` because it reserved scrollbar space and caused a persistent apparent left/right gap on desktop widths.
-- Header UX follow-up: moved desktop date range dropdown from hidden date-bar staging area into desktop top nav right next to `Settings` (same IDs/logic, `global-date-select` remains canonical).
-- KPI strip UX follow-up: horizontal overflow remains enabled, but visible scrollbars are now hidden for condensed KPI chips (Firefox, WebKit, legacy Edge) in both critical head CSS and `custom.css`.
-- Header dropdown polish: top corners are now square and only bottom corners are rounded for header dropdown menus (desktop nav/settings and mobile topbar dropdown).
-- Layout follow-up: removed desktop left/right container padding from top nav, KPI bar, page body, and footer containers so the edge gap does not reappear mid-load.
-- Header order/style follow-up: desktop date dropdown now appears after `Settings` in the top-right nav, and the date button border radius is `3px` (was pill-shaped).
-- KPI sparkline follow-up: condensed top-bar KPI chips now render a smaller sparkline in the top-right corner (after label area), while dashboard KPI card sparklines stay 100% width at the bottom strip.
-- Dashboard KPI cards now show previous-period values in-card (Revenue/Orders/Conversion) instead of hardcoded Today/Avg or Target rows, with labels driven by selected date range.
-- KPI sparkline reliability: when selected range returns only one data point (e.g. Today/Yesterday), dashboard and top condensed KPI chips now fall back to 7-day series for visible background trend charts.
-- Header: pin Settings dropdown to the far-right of the top bar.
-- Ops: version local CSS/JS URLs in rendered HTML so deploys don’t mix “new HTML + cached old JS/CSS” (fixes unstyled / stale KPI strip in embeds).
-- Reliability: `/api/version` now exposes `assetVersion` and `app.js` hard-reloads after long-idle resume if a deploy happened while the tab was hidden (mitigates “white page” / stale asset drift).
-- UI: fix mojibake placeholders (em dash / £) across split pages by using HTML entities.
-- Ads UI polish: move totals into the card footer, move connection/refresh/errors into an actions bar below the table (Tabler SVG), add Conv (orders) column, and make campaign column sticky on mobile horizontal scroll.
-- Ads actions/status follow-up: force `#ads-actions` to sit after `#ads-footer` (below totals), and switch Ads action icons to Tabler filled SVGs with explicit connected/disconnected status icons.
-- Sidebar: restore grouped nav parents (Dashboard/Breakdown/Traffic/Integrations) and move Settings actions into a bottom-pinned sidebar Settings dropup.
-- KPIs: render from a single navbar-owned container (included from `partials/header.html`) and open the expanded grid as an overlay (no vertical layout shift); condensed chips now show delta + mini progress bars.
-- Mobile topbar: hamburger left (opens sidebar drawer), logo perfectly centered, date icon right (Tabler dropdown bound to `#global-date-select`).
-- KPI pager: show prev/next only on overflow, use smooth scrollBy clicks, auto-recompute via ResizeObserver/MutationObserver, and teardown listeners on unload.
-- KPIs (follow-up): remove expanded/toggle path entirely (small chips only in header), inline KPI markup in `partials/header.html` (no nested include dependency), and move desktop date box to topbar far-right.
-- Dashboard: add a dedicated "Vs previous period" KPI strip under the main KPI cards with trend deltas/icons and progress bars driven by `/api/kpis` compare values.
-- UI audit + fixes: Online badge moved from Live/card header to sidebar under logo (green circle when active, grey when none); primary color `#3eb3ab`; active nav items white; Theme Settings button fixed (inject offcanvas on load + data-bs-toggle); mobile padding/typography polish.
-- KPI sparklines: background graph effect on all dashboard cards (Conv, AOV, Bounce, Ad Spend) and condensed header chips; `renderCondensedSparklines(chartSeries)` called from dashboard when data loaded, `fetchCondensedSeries()` wired into `refreshKpis` for other pages.
-- Mobile: sidebar is overlay-only (position fixed, off-screen when closed); no persistent strip — single top bar (hamburger + logo + date); backdrop tap-to-close wired in `initSidebarBackdropClose`.
-- Countries: removed pie chart; map spans full width above both tables; map fill color #136363 (was blue).
-- Header grid: logo row and KPI bar same height (--kexo-top-row-height: 4.5rem), border-bottom aligned; removed border-top from online badge, logo gets it; page gap: 0 so KPI bar touches sidebar on all pages.
-- Mobile: hamburger replaced with Tabler ti-menu-2 icon; hamburger and date icon styled white on dark bar; hamburger opens flat mobile nav (kexo-mobile-nav) instead of sidebar; nav has Overview, Live View, etc. + Sign out.
-- Theme: color mode picker removed (light only); border-radius setting now applies to --radius and --tblr-border-radius (+ card, sessions, overlays); Settings dropdown items full width on hover; head-theme always forces light.
-- Layout: scrollbar-gutter stable on html to prevent KPI/content shift when modal/dropdown opens; uniform page-body partials (page-body-start, page-body-end) across all dashboard pages.
-- Footer: on desktop hide all icons, logo, diagnostics; show only centered last-sale eye; reduce padding and remove white bar.
-- Mobile header: logo uses footer.png (80x29); hamburger and date icons white, no background or border; topbar row min-height 60px, no border.
-- Mobile tables: grid-tables use card layout on small screens (max-width 576px); no overflow-x; header hidden; each row is a card with data-label from header synced via MutationObserver; applies to country, traffic, products, sessions tables.
-- Sidebar online badge: split into 2-column grid (left: website name + SVG globe icon; right: online count); real border; website name ellipsis when overflow; navbar brand img height 36px; shop display from /api/store-base-url (shopDisplayDomain).
-- Layout: page-wrapper margin-left 0, page padding 0, KPI strip padding-left 0 so KPIs/content touch sidebar.
-- Sidebar: .navbar-vertical > .container-fluid padding-right 0 so menu/KPIs touch (Bootstrap default ~15px caused gap).
-- Badge: SHOP_DISPLAY_DOMAIN for custom domain (e.g. hbdjewellery.com); font 12px; border top/bottom only (dark); no left/right; background #1d2e40.
-- Dashboard KPI cards: sparklines as background graphs (position absolute, opacity 0.18); allow 1 data point for Today range.
-- Settings dropdown: full-width hover on list items (menu padding 0, items span edge-to-edge).
-- Countries map: high-traffic fill uses primary teal (#3eb3ab) instead of dark #136363 (was appearing black).
-- Sidebar badge: fallback to hbdjewellery.com when shopDisplayDomain is empty or derived from Shopify handle (e.g. 943925-c1.com).
-- Desktop nav: rebuilt with Tabler `collapse navbar-collapse` + inner `.navbar` structure (`#navbar-menu`), centered grouped menu items, logo as first item, and settings kept in right-side nav column.
-- Header KPI strip: chips now fill available topbar width more cleanly via smarter `gap` + `min-width`/`flex` behavior (better distribution before overflow hiding kicks in).
-- Accessibility + semantics: desktop dropdown toggles now include `aria-haspopup="menu"` + `aria-controls`; desktop/mobile date buttons now provide explicit controls wiring; dashboard progress bars now maintain `aria-valuenow`/bounds/labels as values update.
-- Routing fix: diagnostics Google Ads reconnect + re-login links now redirect to `/dashboard/overview` (not legacy `/app/live-visitors`).
-- SSE reliability: removed per-client heartbeat interval and switched to a shared timer with cleanup on `close`/`error`/`aborted`.
-- Backend perf: batched `upsertTrafficSourceTokens` writes, parallelized Shopify sessions day-snapshot loading + missing-day fetches, and parallelized product meta lookups in dashboard-series.
-- DB perf: added migration `039_active_sessions_last_seen_started_at_index.js` for active-session query support (`sessions(last_seen, started_at)`).
-- Desktop nav styling follow-up: top navbar now uses `#1c2f42`, removes nav/dropdown borders, removes hover backgrounds, keeps text white, and shows active state on the outer `li.nav-item` indicator instead of link background.
-- Desktop nav accents: top-level menu icons rotate KEXO 3-color accents (blue/teal/orange) and the active underline uses the matching accent via `::after`.
-- KPI strip fit follow-up: condensed chips now use JS width calculation against available strip width; trailing chips are hidden from the end when space runs out.
-- KPI strip fit: condensed header KPI chips auto-fit to available width (fill the row) and overflow chips are hidden (no horizontal scrolling).
-- Nav behavior cleanup: removed legacy JS that force-opened active dropdown menus (`.show` state) so grouped menus stay closed until clicked.
-- Dead layout cleanup: removed obsolete sidebar-era CSS/JS (`navbar-vertical`, `kexo-sidebar-*`, `kexo-online-badge`, `#sidebar-menu` handling) no longer used by current Tabler horizontal layout.
-- Theme parity follow-up: desktop nav markup now uses Tabler dark navbar semantics (`data-bs-theme="dark"`) and `aria-haspopup="true"` on dropdown toggles.
-- KPI fit follow-up: condensed chips now use 15px fixed inter-chip gap with dynamic width/min-width calculation; trailing chips hide from the end when viewport shrinks.
-- Nav active-state follow-up: JS no longer applies `.active` to dropdown toggle links; active state stays on outer `li.nav-item` to match Tabler behavior.
-- Legacy naming cleanup: renamed `initSidebarDateMenu` helpers to `initHeaderDateMenu` variants in `server/public/app.js`.
-- Mobile redirect: all mobile User-Agent traffic to dashboard/login paths now redirects to `/mobile-unsupported` with centered logo and "Desktop only for now" copy.
-- KPIs yesterday: for non-today ranges, Shopify reconcile runs in background (not awaited) so `/api/kpis` returns quickly and avoids client timeout; yesterday vs day-before comparison now shows correctly.
-- Settings page: new `/settings` route and full implementation; General (configDisplay from config-status), Theme (form from theme-settings.js), Assets (override URLs), Data & Reporting (orders/sessions source, pixel session mode), Integrations (Pixel/Google Ads status), Diagnostics (refreshConfigStatus into #diagnostics-content); header Theme/Diagnostics link to /settings; Settings in Tools nav dropdown.
-- Fix renderTable on Settings page: early return when #table-body is absent so fetchSessions→renderTable no longer throws innerHTML on null.
-- Settings diagnostics: when target is #diagnostics-content, fetch traffic data so Channels/Device pickers load; fix error handler to use diagnostics-content.
+- Handover audit pass: updated to current UI + routes + Settings capabilities.
+- Icons are customizable via `data-icon-key` + Font Awesome runtime adapter (`server/public/fontawesome-icons.js`).
+- Added global Charts settings (`charts_ui_config_v1`) + server-injected hide CSS via `/theme-vars.css`.

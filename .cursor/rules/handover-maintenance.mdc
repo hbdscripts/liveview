@@ -9,6 +9,7 @@ This repo uses `HANDOVER.txt` as the canonical “current state” handover for 
 
 ## Requirement
 
+- At the start of **every new task/conversation**, you MUST read `HANDOVER.txt` before making changes or proposing an implementation plan.
 - If you change any **core path**, you MUST update `HANDOVER.txt` in the same commit.
 
 ## What counts as a “core path”
