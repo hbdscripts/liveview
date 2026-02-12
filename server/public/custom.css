@@ -1480,6 +1480,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: 100%;
   min-height: 2.5rem;
   background: var(--kexo-header-top-bg, #fff);
+  color: var(--kexo-header-top-text-color, #1f2937);
   box-shadow: 2px 2px 2px #eee;
 }
 .kexo-desktop-top-strip-container {
@@ -1528,56 +1529,73 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: block;
   height: 20px;
 }
-.kexo-top-strip-settings-btn {
+.kexo-top-strip-settings-toggle {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
   border: var(--kexo-header-settings-border-width, 1px) solid var(--kexo-header-settings-border-color, var(--tblr-border-color, #e6e7e9));
-  background: var(--kexo-header-top-bg, #fff);
-  border-radius: var(--tblr-border-radius, .375rem);
+  background: var(--kexo-header-settings-bg, var(--kexo-header-top-bg, #fff));
+  border-radius: var(--kexo-header-settings-radius, var(--tblr-border-radius, .375rem));
   padding: .28rem .6rem;
   font-size: .8125rem;
   font-weight: 500;
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937));
 }
-.kexo-top-strip-settings-btn:hover {
-  background: var(--tblr-bg-surface-secondary, #f8fafc);
+.kexo-top-strip-settings-toggle:hover,
+.kexo-top-strip-settings-toggle:focus {
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937));
+  background: var(--kexo-header-settings-bg, var(--kexo-header-top-bg, #fff));
 }
-.kexo-top-strip-settings-btn .kexo-settings-label {
+.kexo-top-strip-settings-toggle .kexo-settings-label {
   display: var(--kexo-header-settings-label-display, inline);
 }
-.kexo-top-strip-settings-btn .kexo-settings-icon {
+.kexo-top-strip-settings-toggle .kexo-settings-icon {
   margin-right: var(--kexo-header-settings-icon-gap, .35rem);
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937));
 }
-.kexo-desktop-top-strip .dropdown-item {
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+.kexo-top-strip-settings-menu {
+  background: var(--kexo-header-settings-menu-bg, #fff);
+  border: 1px solid var(--kexo-header-settings-menu-border-color, var(--tblr-border-color, #e6e7e9));
+  border-radius: var(--kexo-header-settings-menu-radius, .375rem);
 }
-.kexo-desktop-top-strip .kexo-nav-visitors-desktop {
+.kexo-top-strip-settings-item {
+  color: var(--kexo-header-settings-menu-link-color, #1f2937);
+}
+.kexo-top-strip-settings-item:hover,
+.kexo-top-strip-settings-item:focus {
+  color: var(--kexo-header-settings-menu-link-color, #1f2937);
+}
+.kexo-top-strip-settings-item-icon {
+  margin-right: .5rem;
+  color: var(--kexo-header-settings-menu-icon-color, #1f2937);
+}
+.kexo-top-strip-online {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
   padding: .25rem .55rem;
   font-size: .8125rem;
   line-height: 1;
-  border-radius: .375rem;
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
-  background: var(--tblr-bg-surface-secondary, #f8fafc);
+  border-radius: var(--kexo-header-online-radius, .375rem);
+  color: var(--kexo-header-online-text-color, var(--kexo-header-top-text-color, #1f2937));
+  background: var(--kexo-header-online-bg, var(--tblr-bg-surface-secondary, #f8fafc));
   border: var(--kexo-header-online-border-width, 1px) solid var(--kexo-header-online-border-color, var(--tblr-border-color, #e6e7e9));
   cursor: default;
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
 }
-.kexo-desktop-top-strip .kexo-nav-visitors-desktop i {
-  margin-right: .1rem !important;
+.kexo-top-strip-online-icon {
+  margin-right: .1rem;
 }
 
 .kexo-desktop-nav {
-  background: var(--kexo-header-main-bg, #fff);
+  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff));
   min-height: 2.5rem;
   width: 100%;
   padding: 0;
-  box-shadow: 2px 2px 2px #eee;
+  border-bottom: var(--kexo-top-menu-border-width, 1px) solid var(--kexo-top-menu-border-color, #e6e7e9);
+  box-shadow: var(--kexo-top-menu-shadow, 2px 2px 2px #eee);
 }
 .kexo-desktop-nav .row {
   width: 100%;
@@ -1628,7 +1646,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
   border-radius: 0;
   padding: .5rem .75rem;
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+  color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937));
 }
 .kexo-desktop-nav-list .nav-link:hover,
 .kexo-desktop-nav-list .nav-link:focus,
@@ -1636,7 +1654,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav-list .nav-item.active > .nav-link,
 .kexo-desktop-nav-settings .nav-link:hover,
 .kexo-desktop-nav-settings .nav-link:focus {
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+  color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937));
 }
 .kexo-desktop-nav-list .nav-link.dropdown-toggle::after,
 .kexo-desktop-nav-settings .nav-link.dropdown-toggle::after {
@@ -1690,6 +1708,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 0 0 .375rem .375rem;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   min-width: 13rem;
+  background: var(--kexo-top-menu-dropdown-bg, #fff);
 }
 .kexo-desktop-nav-list .dropdown-item,
 .kexo-desktop-nav-settings .dropdown-item {
@@ -1697,13 +1716,17 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 400;
   padding-top: .4rem;
   padding-bottom: .4rem;
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+  color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937));
 }
 .kexo-desktop-nav-list .dropdown-item:hover,
 .kexo-desktop-nav-list .dropdown-item:focus,
 .kexo-desktop-nav-settings .dropdown-item:hover,
 .kexo-desktop-nav-settings .dropdown-item:focus {
-  color: var(--kexo-header-link-color, var(--tblr-body-color, #1f2937));
+  color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg,
+.kexo-desktop-nav-settings .dropdown-item .kexo-nav-svg {
+  color: var(--kexo-top-menu-dropdown-icon-color, var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)));
 }
 #kexo-online-icon.kexo-online-icon--online {
   color: var(--tblr-success, #22c55e) !important;

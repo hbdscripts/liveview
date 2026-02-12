@@ -55,11 +55,11 @@
       <div class="container-xl kexo-desktop-top-strip-container">
         <div class="kexo-desktop-top-strip-row">
           <div class="kexo-desktop-top-strip-left">
-            <div class="kexo-nav-visitors kexo-nav-visitors-desktop" aria-live="polite" role="status" aria-label="Live visitors">
-              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline me-2" data-icon-key="online-status-indicator" aria-hidden="true"></i>
+            <div class="kexo-top-strip-online" aria-live="polite" role="status" aria-label="Live visitors">
+              <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline kexo-top-strip-online-icon" data-icon-key="online-status-indicator" aria-hidden="true"></i>
               <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
               <span id="online-count" class="is-hidden">0</span>
-              <span>visitors</span>
+              <span class="kexo-top-strip-online-label">visitors</span>
             </div>
           </div>
           <div class="kexo-desktop-top-strip-center">
@@ -69,27 +69,27 @@
           </div>
           <div class="kexo-desktop-top-strip-right">
             <div class="dropdown">
-              <button type="button" class="kexo-top-strip-settings-btn dropdown-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
-                <i class="fa-jelly-filled fa-gear kexo-nav-svg kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i><span class="kexo-settings-label">Settings</span>
+              <button type="button" class="kexo-top-strip-settings-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
+                <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i><span class="kexo-settings-label">Settings</span>
               </button>
-              <div class="dropdown-menu dropdown-menu-end" id="navbar-settings-menu">
-                <button type="button" class="dropdown-item" id="refresh-btn" aria-label="Refresh">
-                  <i class="fa-jelly fa-rotate-right me-2" data-icon-key="nav-item-refresh" aria-hidden="true"></i>Refresh
+              <div class="dropdown-menu dropdown-menu-end kexo-top-strip-settings-menu" id="navbar-settings-menu">
+                <button type="button" class="dropdown-item kexo-top-strip-settings-item" id="refresh-btn" aria-label="Refresh">
+                  <i class="fa-jelly fa-rotate-right kexo-top-strip-settings-item-icon" data-icon-key="nav-item-refresh" aria-hidden="true"></i>Refresh
                 </button>
-                <button type="button" class="dropdown-item" id="audio-mute-btn" aria-label="Sound">
-                  <i class="fa-jelly fa-volume-high me-2 sound-icon-on" data-icon-key="nav-item-sound-on" aria-hidden="true"></i>
-                  <i class="fa-jelly fa-volume-xmark me-2 sound-icon-off is-hidden" data-icon-key="nav-item-sound-off" aria-hidden="true"></i>
+                <button type="button" class="dropdown-item kexo-top-strip-settings-item" id="audio-mute-btn" aria-label="Sound">
+                  <i class="fa-jelly fa-volume-high kexo-top-strip-settings-item-icon sound-icon-on" data-icon-key="nav-item-sound-on" aria-hidden="true"></i>
+                  <i class="fa-jelly fa-volume-xmark kexo-top-strip-settings-item-icon sound-icon-off is-hidden" data-icon-key="nav-item-sound-off" aria-hidden="true"></i>
                   Sound
                 </button>
-                <a href="/settings?tab=theme" class="dropdown-item" id="theme-settings-btn" aria-label="Theme">
-                  <i class="fa-jelly fa-palette me-2" data-icon-key="nav-item-theme" aria-hidden="true"></i>Theme
+                <a href="/settings?tab=theme" class="dropdown-item kexo-top-strip-settings-item" id="theme-settings-btn" aria-label="Theme">
+                  <i class="fa-jelly fa-palette kexo-top-strip-settings-item-icon" data-icon-key="nav-item-theme" aria-hidden="true"></i>Theme
                 </a>
-                <a href="/settings" class="dropdown-item" id="config-open-btn" data-nav="settings" aria-label="Settings">
-                  <i class="fa-jelly fa-gear me-2" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
+                <a href="/settings" class="dropdown-item kexo-top-strip-settings-item" id="config-open-btn" data-nav="settings" aria-label="Settings">
+                  <i class="fa-jelly fa-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="/app/logout" class="dropdown-item" id="logout-btn" aria-label="Sign out">
-                  <i class="fa-jelly fa-right-from-bracket me-2" data-icon-key="nav-item-signout" aria-hidden="true"></i>Sign out
+                <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item" id="logout-btn" aria-label="Sign out">
+                  <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-signout" aria-hidden="true"></i>Sign out
                 </a>
               </div>
             </div>

@@ -374,7 +374,7 @@
     if (el.closest('.dropdown-menu .dropdown-item')) return 'iconDropdown';
     if (el.closest('.list-group-item[data-settings-tab]')) return 'iconSettingsMenu';
     if (el.closest('.grid-row--header .th-label-short')) return 'iconTableHeading';
-    if (el.closest('.kexo-desktop-top-strip .kexo-top-strip-settings-btn')) return 'iconTopnav';
+    if (el.closest('.kexo-desktop-top-strip .kexo-top-strip-settings-toggle')) return 'iconTopnav';
     if (el.closest('.kexo-desktop-nav .nav-link.dropdown-toggle')) return 'iconTopnav';
     if (el.closest('.kexo-desktop-nav .kexo-date-btn')) return 'iconTopnav';
     if (el.closest('.kexo-page-header-date-col .kexo-date-btn')) return 'iconTopnav';
