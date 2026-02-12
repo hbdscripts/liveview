@@ -15,6 +15,7 @@ const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
 const CUSTOMER_FACTS_NULL_RECHECK_TTL_MS = 6 * 60 * 60 * 1000;
 let lastPreReconcileBackupAt = 0;
 let _lineItemsTableOk = null; // null unknown, true exists, false missing
+let _shippingOptionsTableOk = null; // null unknown, true exists, false missing
 
 function truthy(v) {
   return v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
@@ -96,6 +97,140 @@ async function lineItemsTableOk() {
     _lineItemsTableOk = false;
     return false;
   }
+}
+
+async function shippingOptionsTableOk() {
+  if (_shippingOptionsTableOk === true) return true;
+  if (_shippingOptionsTableOk === false) return false;
+  try {
+    await getDb().get('SELECT 1 FROM orders_shopify_shipping_options LIMIT 1');
+    _shippingOptionsTableOk = true;
+    return true;
+  } catch (_) {
+    _shippingOptionsTableOk = false;
+    return false;
+  }
+}
+
+function normalizeCountryCode(v) {
+  const c = v != null ? String(v).trim().toUpperCase().slice(0, 2) : '';
+  if (!c) return 'XX';
+  if (c === 'UK') return 'GB';
+  if (!/^[A-Z]{2}$/.test(c)) return 'XX';
+  return c;
+}
+
+function orderCountryCode(order) {
+  const ship =
+    order?.shipping_address?.country_code ??
+    order?.shipping_address?.countryCode ??
+    order?.shippingAddress?.countryCode ??
+    order?.shippingAddress?.country_code ??
+    null;
+  const bill =
+    order?.billing_address?.country_code ??
+    order?.billing_address?.countryCode ??
+    order?.billingAddress?.countryCode ??
+    order?.billingAddress?.country_code ??
+    null;
+  return normalizeCountryCode(ship || bill);
+}
+
+function shippingLabelFromOrder(order) {
+  const lines = Array.isArray(order?.shipping_lines) ? order.shipping_lines : [];
+  for (const l of lines) {
+    const title = l && l.title != null ? String(l.title).trim() : '';
+    if (title) return title;
+  }
+  return 'Unknown';
+}
+
+function shippingPriceFromOrder(order) {
+  // Prefer presentment currency (matches order.currency in most setups)
+  const presentment =
+    order?.total_shipping_price_set?.presentment_money?.amount ??
+    order?.total_shipping_price_set?.presentmentMoney?.amount ??
+    null;
+  const presentmentAmt = numOrNull(presentment);
+  if (presentmentAmt != null) return presentmentAmt;
+
+  const lines = Array.isArray(order?.shipping_lines) ? order.shipping_lines : [];
+  for (const l of lines) {
+    const n =
+      numOrNull(l?.price) ??
+      numOrNull(l?.price_amount) ??
+      shopMoneyAmount(l?.price_set?.presentment_money) ??
+      shopMoneyAmount(l?.priceSet?.presentmentMoney) ??
+      shopMoneyAmount(l?.price_set) ?? // best-effort fallback
+      shopMoneyAmount(l?.priceSet) ??
+      null;
+    if (n != null) return n;
+  }
+
+  // Last resort: shop money amount (may be base currency)
+  const shopAmt = shopMoneyAmount(order?.total_shipping_price_set);
+  return shopAmt != null ? shopAmt : 0;
+}
+
+async function upsertOrderShippingOption(shop, order, orderRow) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop || !orderRow || !orderRow.order_id) return { ok: false, reason: 'missing_shop_or_order' };
+  if (!(await shippingOptionsTableOk())) return { ok: false, reason: 'no_table' };
+
+  const db = getDb();
+  const orderId = String(orderRow.order_id);
+  const orderCreatedAt = orderRow.created_at != null ? Number(orderRow.created_at) : null;
+  if (orderCreatedAt == null || !Number.isFinite(orderCreatedAt)) return { ok: false, reason: 'missing_created_at' };
+  const orderProcessedAt = orderRow.processed_at != null ? Number(orderRow.processed_at) : null;
+  const orderUpdatedAt = orderRow.updated_at != null ? Number(orderRow.updated_at) : null;
+  const orderFinancialStatus = orderRow.financial_status != null ? String(orderRow.financial_status).trim().toLowerCase() : null;
+  const orderCancelledAt = orderRow.cancelled_at != null ? Number(orderRow.cancelled_at) : null;
+  const orderTest = orderRow.test != null ? Number(orderRow.test) : null;
+  const syncedAt = orderRow.synced_at != null ? Number(orderRow.synced_at) : Date.now();
+  const currency = (orderRow.currency != null ? String(orderRow.currency).trim().toUpperCase() : '') || null;
+
+  const label = shippingLabelFromOrder(order);
+  const shippingPrice = shippingPriceFromOrder(order);
+  const countryCode = orderCountryCode(order);
+
+  await db.run(
+    `
+      INSERT INTO orders_shopify_shipping_options
+        (shop, order_id, order_created_at, order_processed_at, order_updated_at, order_financial_status, order_cancelled_at, order_test,
+         order_country_code, currency, shipping_label, shipping_price, synced_at)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (shop, order_id) DO UPDATE SET
+        order_created_at = EXCLUDED.order_created_at,
+        order_processed_at = EXCLUDED.order_processed_at,
+        order_updated_at = EXCLUDED.order_updated_at,
+        order_financial_status = EXCLUDED.order_financial_status,
+        order_cancelled_at = EXCLUDED.order_cancelled_at,
+        order_test = EXCLUDED.order_test,
+        order_country_code = EXCLUDED.order_country_code,
+        currency = EXCLUDED.currency,
+        shipping_label = EXCLUDED.shipping_label,
+        shipping_price = EXCLUDED.shipping_price,
+        synced_at = EXCLUDED.synced_at
+    `,
+    [
+      safeShop,
+      orderId,
+      Math.trunc(orderCreatedAt),
+      Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : null,
+      Number.isFinite(orderUpdatedAt) ? Math.trunc(orderUpdatedAt) : null,
+      orderFinancialStatus,
+      Number.isFinite(orderCancelledAt) ? Math.trunc(orderCancelledAt) : null,
+      orderTest,
+      countryCode,
+      currency,
+      label,
+      shippingPrice,
+      Math.trunc(syncedAt),
+    ]
+  );
+
+  return { ok: true };
 }
 
 async function upsertOrderLineItems(shop, order, orderRow) {
@@ -389,6 +524,7 @@ function ordersApiUrl(shop, createdMinIso, createdMaxIso) {
     'total_tax',
     'total_discounts',
     'total_shipping_price_set',
+    'shipping_lines',
     'landing_site',
     'referring_site',
     'client_details',
@@ -438,6 +574,7 @@ function priorPaidOrderForCustomerBeforeApiUrl(shop, customerId, beforeIso) {
     'total_tax',
     'total_discounts',
     'total_shipping_price_set',
+    'shipping_lines',
     'landing_site',
     'referring_site',
     'client_details',
@@ -764,6 +901,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   let updated = 0;
   let evidenceLinked = 0;
   let lineItemsRows = 0;
+  let shippingOptionsRows = 0;
   let shopifyOrderCount = 0;
   const shopifyRevenueByCurrency = new Map(); // currency -> number
   const customerIdsInRange = new Set(); // customer_id strings present in fetched orders
@@ -804,6 +942,12 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
           if (li && li.ok && li.rows) lineItemsRows += Number(li.rows) || 0;
         } catch (_) {
           // Fail-open: line-items facts are an optimization; do not block reconciliation.
+        }
+        try {
+          const so = await upsertOrderShippingOption(safeShop, order, row);
+          if (so && so.ok) shippingOptionsRows += 1;
+        } catch (_) {
+          // Fail-open: shipping option facts are an optimization; do not block reconciliation.
         }
         evidenceLinked += await backfillEvidenceLinksForOrder(safeShop, row.order_id, row.checkout_token);
       }
@@ -865,6 +1009,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       updated,
       evidenceLinked,
       lineItemsRows,
+      shippingOptionsRows,
       customerFacts: factsResult,
       shopify: {
         orderCount: shopifyOrderCount,
@@ -890,6 +1035,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       inserted,
       updated,
       fetched,
+      shippingOptionsRows,
       shopify: {
         orderCount: shopifyOrderCount,
         revenueGbp: shopifyRevenueGbp,

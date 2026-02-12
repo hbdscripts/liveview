@@ -246,6 +246,7 @@ Ops/reliability:
 2026-02-12 (latest)
 - Tools: added `/tools/shipping-cr` (Shipping CR) to report shipping option share-of-orders by country + date range.
   - Groups by Shopify `shipping_lines[].title` and charged shipping price (so “Standard Tracked Delivery” can appear as both Free and Paid).
+  - Uses a dedicated fact table `orders_shopify_shipping_options` populated during Shopify truth reconcile (fast queries; avoids parsing orders JSON at request-time).
   - Date filter uses `orders_shopify.processed_at` when present (fallback to `created_at` when NULL). Added index on `(shop, processed_at)` for paid orders.
 - Migrations: startup/manual migration runners now include migration 039 (sessions index) and 040 (orders processed_at index).
 - Restored session details drawer behavior on `/dashboard/live`, `/dashboard/sales`, and `/dashboard/table` by adding active `.side-panel` styling in `server/public/custom.css` (these pages do not load `app.css`).

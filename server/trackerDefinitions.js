@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 22;
+const DEFINITIONS_VERSION = 23;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -384,13 +384,13 @@ const TRACKER_TABLE_DEFINITIONS = [
       ],
     },
     sources: [
-      { kind: 'db', tables: ['orders_shopify'], note: 'Paid, non-test, non-cancelled Shopify truth orders' },
-      { kind: 'db', tables: ['reconcile_state'], note: 'Best-effort truth refresh (salesTruth.ensureReconciled) before aggregation' },
+      { kind: 'db', tables: ['orders_shopify_shipping_options'], note: 'Per-order shipping option facts (derived from Shopify truth orders; no request-time JSON parsing)' },
+      { kind: 'db', tables: ['orders_shopify', 'reconcile_state'], note: 'Truth cache populated by salesTruth reconciliation; shipping options upsert runs during reconcile' },
     ],
     columns: [
-      { name: 'Country', value: 'Order country parsed from orders_shopify.raw_json (shipping_address.country_code fallback billing)' },
-      { name: 'Shipping label', value: 'orders_shopify.raw_json.shipping_lines[].title (first non-empty)' },
-      { name: 'Shipping price', value: 'orders_shopify.total_shipping (fallback to shipping_lines[].price)' },
+      { name: 'Country', value: 'orders_shopify_shipping_options.order_country_code (shipping/billing country from Shopify order payload)' },
+      { name: 'Shipping label', value: 'orders_shopify_shipping_options.shipping_label (from Shopify shipping_lines[].title)' },
+      { name: 'Shipping price', value: 'orders_shopify_shipping_options.shipping_price (presentment amount; falls back to shipping line price / shop money as needed)' },
       { name: 'CR%', value: 'orders / total_orders × 100', formula: 'Share of orders for that shipping label+price within the selected country+timeframe' },
     ],
     math: [
@@ -398,7 +398,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Date basis', value: 'Filters by orders_shopify.processed_at when present; falls back to created_at when processed_at is NULL. Bounds use admin timezone (getRangeBounds r:YYYY-MM-DD:YYYY-MM-DD).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
-    requires: { dbTables: ['orders_shopify'], shopifyToken: false },
+    requires: { dbTables: ['orders_shopify_shipping_options'], shopifyToken: false },
   },
   {
     id: 'settings_charts_panel',

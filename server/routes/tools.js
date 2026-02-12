@@ -1,10 +1,94 @@
 const Sentry = require('@sentry/node');
 const express = require('express');
+const store = require('../store');
 const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
 const shippingCr = require('../tools/shippingCr');
 
 const router = express.Router();
+
+// In-memory backfill jobs (best-effort). Intended for one-off historical catch-up.
+const shippingCrBackfillJobs = new Map(); // jobId -> job
+
+function safeYmd(v) {
+  const s = v != null ? String(v).trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  return s;
+}
+
+function clampInt(v, fallback, min, max) {
+  const n = parseInt(String(v), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function ymdAddDays(ymd, deltaDays) {
+  const s = safeYmd(ymd);
+  if (!s) return '';
+  const d = new Date(s + 'T00:00:00.000Z');
+  if (!Number.isFinite(d.getTime())) return '';
+  d.setUTCDate(d.getUTCDate() + (Number(deltaDays) || 0));
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function randomId() {
+  return Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+}
+
+async function runShippingCrBackfillJob(job) {
+  if (!job || job.running) return;
+  job.running = true;
+  job.started_at = Date.now();
+  job.error = null;
+  job.done = false;
+
+  const tz = store.resolveAdminTimeZone();
+
+  try {
+    let curStart = job.start_ymd;
+    let chunkIndex = 0;
+    while (curStart && curStart <= job.end_ymd) {
+      const chunkEnd = (() => {
+        const candidate = ymdAddDays(curStart, job.step_days - 1);
+        if (!candidate) return job.end_ymd;
+        return candidate <= job.end_ymd ? candidate : job.end_ymd;
+      })();
+
+      const rangeKey = `r:${curStart}:${chunkEnd}`;
+      const bounds = store.getRangeBounds(rangeKey, Date.now(), tz);
+      const startMs = bounds && Number.isFinite(bounds.start) ? Number(bounds.start) : null;
+      const endMs = bounds && Number.isFinite(bounds.end) ? Number(bounds.end) : null;
+      if (!(startMs != null && endMs != null && endMs > startMs)) break;
+
+      job.current = { chunkIndex, start_ymd: curStart, end_ymd: chunkEnd, startMs, endMs };
+      job.progress_done = chunkIndex;
+
+      const scope = (`tools_shipping_cr_backfill_${job.job_id}_` + String(chunkIndex)).slice(0, 64);
+      try {
+        const r = await salesTruth.reconcileRange(job.shop, startMs, endMs, scope);
+        job.last_result = r || null;
+      } catch (e) {
+        job.last_result = null;
+        throw e;
+      }
+
+      chunkIndex += 1;
+      curStart = ymdAddDays(chunkEnd, 1);
+    }
+
+    job.progress_done = job.progress_total;
+    job.done = true;
+  } catch (err) {
+    job.error = err && err.message ? String(err.message).slice(0, 300) : 'backfill_failed';
+  } finally {
+    job.running = false;
+    job.finished_at = Date.now();
+    job.current = null;
+  }
+}
 
 function safeShopParam(req) {
   const raw = req && req.query && req.query.shop != null ? String(req.query.shop).trim().toLowerCase() : '';
@@ -106,6 +190,105 @@ router.post('/shipping-cr/labels', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.shipping-cr.labels' } });
     console.error('[tools.shipping-cr.labels]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/shipping-cr/backfill/start', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const shop = (req && req.body && req.body.shop != null) ? String(req.body.shop).trim().toLowerCase() : safeShopParam(req);
+    const safeShop = salesTruth.resolveShopForSales(shop || '');
+    if (!safeShop) return res.status(400).json({ ok: false, error: 'missing_shop' });
+
+    const startYmd = safeYmd(req && req.body && req.body.start_ymd != null ? req.body.start_ymd : '');
+    const endYmd = safeYmd(req && req.body && req.body.end_ymd != null ? req.body.end_ymd : '');
+    if (!startYmd || !endYmd) return res.status(400).json({ ok: false, error: 'invalid_dates' });
+
+    const stepDays = clampInt(req && req.body && req.body.step_days != null ? req.body.step_days : 7, 7, 1, 31);
+
+    const jobId = 'shipcr_' + Date.now().toString(36) + '_' + randomId().slice(0, 8);
+    const totalDays = (() => {
+      try {
+        const a = new Date(startYmd + 'T00:00:00.000Z').getTime();
+        const b = new Date(endYmd + 'T00:00:00.000Z').getTime();
+        if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 0;
+        return Math.floor((b - a) / (24 * 60 * 60 * 1000)) + 1;
+      } catch (_) {
+        return 0;
+      }
+    })();
+    const totalChunks = totalDays > 0 ? Math.ceil(totalDays / stepDays) : 0;
+
+    const job = {
+      job_id: jobId,
+      shop: safeShop,
+      start_ymd: startYmd <= endYmd ? startYmd : endYmd,
+      end_ymd: startYmd <= endYmd ? endYmd : startYmd,
+      step_days: stepDays,
+      progress_total: totalChunks,
+      progress_done: 0,
+      running: false,
+      done: false,
+      error: null,
+      started_at: null,
+      finished_at: null,
+      current: null,
+      last_result: null,
+      created_at: Date.now(),
+    };
+    shippingCrBackfillJobs.set(jobId, job);
+
+    setImmediate(() => {
+      runShippingCrBackfillJob(job).catch(() => {});
+    });
+
+    res.json({
+      ok: true,
+      job_id: jobId,
+      shop: safeShop,
+      start_ymd: job.start_ymd,
+      end_ymd: job.end_ymd,
+      step_days: stepDays,
+      chunks_total: totalChunks,
+    });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.shipping-cr.backfill.start' } });
+    console.error('[tools.shipping-cr.backfill.start]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/shipping-cr/backfill/status', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const jobId = req && req.query && req.query.job_id != null ? String(req.query.job_id) : '';
+    const job = jobId ? shippingCrBackfillJobs.get(jobId) : null;
+    if (!job) return res.status(404).json({ ok: false, error: 'job_not_found' });
+    res.json({
+      ok: true,
+      job: {
+        job_id: job.job_id,
+        shop: job.shop,
+        start_ymd: job.start_ymd,
+        end_ymd: job.end_ymd,
+        step_days: job.step_days,
+        progress_total: job.progress_total,
+        progress_done: job.progress_done,
+        running: !!job.running,
+        done: !!job.done,
+        error: job.error || null,
+        started_at: job.started_at,
+        finished_at: job.finished_at,
+        current: job.current,
+        last_result: job.last_result,
+      },
+    });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.shipping-cr.backfill.status' } });
+    console.error('[tools.shipping-cr.backfill.status]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });

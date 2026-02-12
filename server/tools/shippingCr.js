@@ -23,65 +23,10 @@ function safeJsonParse(raw) {
   try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
-function orderCountryCodeFromRawJson(rawJson) {
-  const raw = safeJsonParse(rawJson);
-  if (!raw || typeof raw !== 'object') return 'XX';
-  const ship =
-    raw?.shipping_address?.country_code ??
-    raw?.shipping_address?.countryCode ??
-    raw?.shippingAddress?.countryCode ??
-    raw?.shippingAddress?.country_code ??
-    null;
-  const bill =
-    raw?.billing_address?.country_code ??
-    raw?.billing_address?.countryCode ??
-    raw?.billingAddress?.countryCode ??
-    raw?.billingAddress?.country_code ??
-    null;
-  return normalizeCountry(ship || bill);
-}
-
-function shippingLinesFromRaw(raw) {
-  if (!raw || typeof raw !== 'object') return [];
-  const lines = raw.shipping_lines || raw.shippingLines || raw.shippingLinesV2 || null;
-  return Array.isArray(lines) ? lines : [];
-}
-
-function shippingLabelFromRaw(raw) {
-  const lines = shippingLinesFromRaw(raw);
-  for (const l of lines) {
-    const title = safeStr(l && (l.title ?? l.name), 200);
-    if (title) return title;
-  }
-  return '';
-}
-
 function numOrNull(v) {
   const n = typeof v === 'number' ? v : Number(v);
   if (!Number.isFinite(n)) return null;
   return n;
-}
-
-function shippingPriceFromRaw(raw) {
-  const lines = shippingLinesFromRaw(raw);
-  // Prefer numeric 'price' / 'price_amount' on the first line when present.
-  for (const l of lines) {
-    const n =
-      numOrNull(l && l.price) ??
-      numOrNull(l && l.price_amount) ??
-      numOrNull(l && l.amount);
-    if (n != null) return n;
-
-    const money =
-      l?.price_set?.shop_money?.amount ??
-      l?.price_set?.presentment_money?.amount ??
-      l?.priceSet?.shopMoney?.amount ??
-      l?.priceSet?.presentmentMoney?.amount ??
-      null;
-    const fromSet = numOrNull(money);
-    if (fromSet != null) return fromSet;
-  }
-  return null;
 }
 
 function normalizeCurrency(code) {
@@ -149,59 +94,53 @@ async function getShippingOptionsByCountry({
       force: false,
     },
     async () => {
-      try {
-        await salesTruth.ensureReconciled(safeShop, startMs, endMs, 'tools_shipping_cr');
-      } catch (_) {}
-
       const db = getDb();
-      const rows = await db.all(
-        `
-          SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_shipping, raw_json
-          FROM orders_shopify
-          WHERE shop = ?
-            AND (
-              (processed_at IS NOT NULL AND processed_at >= ? AND processed_at < ?)
-              OR (processed_at IS NULL AND created_at >= ? AND created_at < ?)
-            )
-            AND (test IS NULL OR test = 0)
-            AND cancelled_at IS NULL
-            AND financial_status = 'paid'
-        `,
-        [safeShop, startMs, endMs, startMs, endMs]
-      );
-
-      const agg = new Map(); // key -> { label, shipping_price, currency, orders }
-      let totalOrders = 0;
-
-      for (const r of rows || []) {
-        const rawJson = r && r.raw_json != null ? String(r.raw_json) : '';
-        const orderCc = orderCountryCodeFromRawJson(rawJson);
-        if (orderCc !== cc) continue;
-
-        totalOrders += 1;
-
-        const raw = safeJsonParse(rawJson);
-        const label = safeStr(shippingLabelFromRaw(raw) || 'Unknown', 220);
-
-        const cur = normalizeCurrency(r && r.currency != null ? r.currency : (raw && raw.currency ? raw.currency : null)) || 'GBP';
-        const totalShip = numOrNull(r && r.total_shipping != null ? r.total_shipping : null);
-        const fromRaw = shippingPriceFromRaw(raw);
-        const price = round2(totalShip != null ? totalShip : (fromRaw != null ? fromRaw : 0));
-
-        const key = `${label}\0${cur}\0${price.toFixed(2)}`;
-        const curRow = agg.get(key) || { label, currency: cur, shipping_price: price, orders: 0 };
-        curRow.orders += 1;
-        agg.set(key, curRow);
+      // Fast path: aggregate from shipping options fact table (pure SQL; no JSON parsing).
+      let aggRows = [];
+      try {
+        aggRows = await db.all(
+          `
+            SELECT
+              COALESCE(NULLIF(TRIM(shipping_label), ''), 'Unknown') AS label,
+              COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+              COALESCE(shipping_price, 0) AS shipping_price,
+              COUNT(*) AS orders
+            FROM orders_shopify_shipping_options
+            WHERE shop = ?
+              AND order_country_code = ?
+              AND (order_test IS NULL OR order_test = 0)
+              AND order_cancelled_at IS NULL
+              AND order_financial_status = 'paid'
+              AND (
+                (order_processed_at IS NOT NULL AND order_processed_at >= ? AND order_processed_at < ?)
+                OR (order_processed_at IS NULL AND order_created_at >= ? AND order_created_at < ?)
+              )
+            GROUP BY COALESCE(NULLIF(TRIM(shipping_label), ''), 'Unknown'),
+                     COALESCE(NULLIF(TRIM(currency), ''), 'GBP'),
+                     COALESCE(shipping_price, 0)
+            ORDER BY orders DESC
+          `,
+          [safeShop, cc, startMs, endMs, startMs, endMs]
+        );
+      } catch (_) {
+        aggRows = [];
       }
 
-      const outRows = Array.from(agg.values())
-        .map((x) => ({
-          label: x.label,
-          currency: x.currency,
-          shipping_price: x.shipping_price,
-          orders: x.orders,
-          cr_pct: pct(x.orders, totalOrders),
-        }))
+      const totalOrders = (aggRows || []).reduce((sum, r) => sum + (r && r.orders != null ? Number(r.orders) || 0 : 0), 0);
+      const outRows = (aggRows || [])
+        .map((r) => {
+          const label = safeStr(r && r.label != null ? r.label : 'Unknown', 220) || 'Unknown';
+          const currency = normalizeCurrency(r && r.currency != null ? r.currency : null) || 'GBP';
+          const price = round2(r && r.shipping_price != null ? r.shipping_price : 0);
+          const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
+          return {
+            label,
+            currency,
+            shipping_price: price,
+            orders,
+            cr_pct: pct(orders, totalOrders),
+          };
+        })
         .sort((a, b) => (b.orders - a.orders) || (String(a.label).localeCompare(String(b.label))) || ((a.shipping_price || 0) - (b.shipping_price || 0)));
 
       return {
