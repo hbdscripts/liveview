@@ -6402,15 +6402,16 @@ const API = '';
 
         // Skip headers that have other right-side actions (buttons, etc).
         // Only inspect direct children so nested controls inside the date dropdown
-        // do not accidentally disable the triple layout.
+        // do not accidentally disable the triple layout. Exclude our own leftCol.
         let hasOtherAuto = false;
         try {
-          hasOtherAuto = !!row.querySelector(':scope > .col-auto:not(.kexo-page-header-date-col)');
+          hasOtherAuto = !!row.querySelector(':scope > .col-auto:not(.kexo-page-header-date-col):not(.kexo-page-header-left-col)');
         } catch (_) {
           hasOtherAuto = Array.prototype.slice.call(row.children || []).some(function(ch) {
             if (!ch || !ch.classList) return false;
             if (!ch.classList.contains('col-auto')) return false;
-            return !ch.classList.contains('kexo-page-header-date-col');
+            if (ch.classList.contains('kexo-page-header-date-col') || ch.classList.contains('kexo-page-header-left-col')) return false;
+            return true;
           });
         }
         if (hasOtherAuto) {

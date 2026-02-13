@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Sticky column resize on mobile)
+Last updated: 2026-02-13 (Page header connector lines fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Page header connector lines: fixed vanishing on resize/pageshow (hasOtherAuto excluded leftCol); lighter color; explicit mobile hide.
 2026-02-13 (latest)
 - Sticky column resize on mobile: Removed CSS override that locked min/max/width to 200px on small screens; fixed getBounds so byRemainingCols cap is skipped when table is scrollable, and mobile uses 80% softMax so resize handle works.
 2026-02-13 (latest)
