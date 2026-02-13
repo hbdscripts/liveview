@@ -41,6 +41,22 @@ const KPI_UI_KEYS = [
 const KPI_UI_KEY_SET = new Set(KPI_UI_KEYS);
 const DATE_RANGE_UI_KEYS = ['today', 'yesterday', '7days', '14days', '30days', 'custom'];
 const DATE_RANGE_UI_KEY_SET = new Set(DATE_RANGE_UI_KEYS);
+const HEADER_KPI_STRIP_PAGE_KEYS = [
+  'dashboard',
+  'live',
+  'sales',
+  'date',
+  'countries',
+  'products',
+  'variants',
+  'channels',
+  'type',
+  'ads',
+  'compare-conversion-rate',
+  'shipping-cr',
+  'settings',
+];
+const HEADER_KPI_STRIP_PAGE_KEY_SET = new Set(HEADER_KPI_STRIP_PAGE_KEYS);
 
 const CHART_UI_KEYS = [
   'dash-chart-revenue',
@@ -86,6 +102,23 @@ function defaultKpiUiConfigV1() {
       },
       dashboard: {
         showDelta: true,
+      },
+    },
+    headerStrip: {
+      pages: {
+        dashboard: true,
+        live: true,
+        sales: true,
+        date: true,
+        countries: true,
+        products: true,
+        variants: true,
+        channels: true,
+        type: true,
+        ads: true,
+        'compare-conversion-rate': true,
+        'shipping-cr': true,
+        settings: false,
       },
     },
     kpis: {
@@ -739,6 +772,17 @@ function normalizeDateRangeList(rawList, defaults) {
   return out;
 }
 
+function normalizeHeaderKpiStripPages(rawPages, defaultsObj) {
+  const defaults = defaultsObj && typeof defaultsObj === 'object' ? defaultsObj : {};
+  const obj = rawPages && typeof rawPages === 'object' ? rawPages : {};
+  const out = {};
+  for (const key of HEADER_KPI_STRIP_PAGE_KEYS) {
+    if (!HEADER_KPI_STRIP_PAGE_KEY_SET.has(key)) continue;
+    out[key] = normalizeBool(obj[key], normalizeBool(defaults[key], true));
+  }
+  return out;
+}
+
 function normalizeKpiUiConfigV1(raw) {
   const def = defaultKpiUiConfigV1();
   const obj = safeJsonParseObject(raw);
@@ -746,6 +790,8 @@ function normalizeKpiUiConfigV1(raw) {
   const options = obj.options && typeof obj.options === 'object' ? obj.options : {};
   const condensed = options.condensed && typeof options.condensed === 'object' ? options.condensed : {};
   const dashboard = options.dashboard && typeof options.dashboard === 'object' ? options.dashboard : {};
+  const headerStrip = obj.headerStrip && typeof obj.headerStrip === 'object' ? obj.headerStrip : {};
+  const headerStripPages = normalizeHeaderKpiStripPages(headerStrip.pages, def.headerStrip.pages);
   const kpis = obj.kpis && typeof obj.kpis === 'object' ? obj.kpis : {};
   const header = normalizeKpiList(kpis.header, def.kpis.header);
   const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard);
@@ -761,6 +807,9 @@ function normalizeKpiUiConfigV1(raw) {
       dashboard: {
         showDelta: normalizeBool(dashboard.showDelta, def.options.dashboard.showDelta),
       },
+    },
+    headerStrip: {
+      pages: headerStripPages,
     },
     kpis: {
       header,

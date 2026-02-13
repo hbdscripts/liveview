@@ -2365,11 +2365,6 @@ body[data-page="compare-conversion-rate"] .page-header .page-title {
   }
 }
 
-/* ── Settings page: hide top KPI bar ── */
-body[data-page="settings"] #kexo-kpis {
-  display: none !important;
-}
-
 /* ── Settings Sources tab: Tabler theme, tiny images in grid ── */
 #settings-traffic-source-mapping-root .tsm-jump-row {
   display: grid;

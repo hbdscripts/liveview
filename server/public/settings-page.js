@@ -32,6 +32,8 @@
   var insightsMergeContext = null;
   var layoutTablesColorsModalBackdropEl = null;
   var tablesConvertedColorsDraft = null;
+  var initialLayoutSubTab = null;
+  var activeLayoutSubTab = 'tables';
 
   var TAB_MAP = {
     general: 'settings-panel-general',
@@ -40,9 +42,7 @@
     'data-reporting': 'settings-panel-data-reporting',
     integrations: 'settings-panel-integrations',
     sources: 'settings-panel-sources',
-    kpis: 'settings-panel-kpis',
     insights: 'settings-panel-insights',
-    charts: 'settings-panel-charts',
     layout: 'settings-panel-layout',
     diagnostics: 'settings-panel-diagnostics',
   };
@@ -51,6 +51,17 @@
     var m = /[?&]tab=([^&]+)/.exec(window.location.search || '');
     if (m && m[1]) {
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
+      if (t === 'charts' || t === 'kpis') {
+        initialLayoutSubTab = t;
+        return 'layout';
+      }
+      if (t === 'layout') {
+        var lm = /[?&](?:layoutTab|layout)=([^&]+)/.exec(window.location.search || '');
+        if (lm && lm[1]) {
+          var lk = lm[1].toLowerCase().replace(/\s+/g, '-');
+          if (lk === 'tables' || lk === 'charts' || lk === 'kpis') initialLayoutSubTab = lk;
+        }
+      }
       if (TAB_MAP[t]) return t;
     }
     return null;
@@ -58,6 +69,10 @@
 
   function getTabFromHash() {
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+    if (hash === 'charts' || hash === 'kpis') {
+      initialLayoutSubTab = hash;
+      return 'layout';
+    }
     if (hash && TAB_MAP[hash]) return hash;
     return null;
   }
@@ -71,6 +86,13 @@
     var active = document.querySelector('.settings-panel.active');
     if (!active || !active.id) return '';
     return String(active.id).replace('settings-panel-', '');
+  }
+
+  function getActiveLayoutSubTab() {
+    var tab = document.querySelector('[data-settings-layout-tab].active');
+    if (!tab) return activeLayoutSubTab || 'tables';
+    var key = String(tab.getAttribute('data-settings-layout-tab') || '').trim().toLowerCase();
+    return key || (activeLayoutSubTab || 'tables');
   }
 
   function renderChartsWhenVisible() {
@@ -102,11 +124,13 @@
     if (key === 'sources') {
       try { if (typeof window.initTrafficSourceMapping === 'function') window.initTrafficSourceMapping({ rootId: 'settings-traffic-source-mapping-root' }); } catch (_) {}
     }
-    if (key === 'charts') {
-      try { renderChartsWhenVisible(); } catch (_) {}
-    }
     if (key === 'layout') {
-      try { renderTablesWhenVisible(); } catch (_) {}
+      var sub = getActiveLayoutSubTab();
+      if (sub === 'charts') {
+        try { renderChartsWhenVisible(); } catch (_) {}
+      } else if (sub === 'tables') {
+        try { renderTablesWhenVisible(); } catch (_) {}
+      }
     }
     if (key === 'insights') {
       try {
@@ -539,10 +563,11 @@
           renderInsightsVariantsPanel(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
         } catch (_) {}
         try {
-          if (getActiveSettingsTab() === 'charts') renderChartsWhenVisible();
-        } catch (_) {}
-        try {
-          if (getActiveSettingsTab() === 'layout') renderTablesWhenVisible();
+          if (getActiveSettingsTab() === 'layout') {
+            var sub = getActiveLayoutSubTab();
+            if (sub === 'charts') renderChartsWhenVisible();
+            else if (sub === 'tables') renderTablesWhenVisible();
+          }
         } catch (_) {}
       })
       .catch(function () {});
@@ -608,6 +633,23 @@
       options: {
         condensed: { showDelta: true, showProgress: true, showSparkline: true },
         dashboard: { showDelta: true },
+      },
+      headerStrip: {
+        pages: {
+          dashboard: true,
+          live: true,
+          sales: true,
+          date: true,
+          countries: true,
+          products: true,
+          variants: true,
+          channels: true,
+          type: true,
+          ads: true,
+          'compare-conversion-rate': true,
+          'shipping-cr': true,
+          settings: false,
+        },
       },
       kpis: {
         header: [
@@ -978,26 +1020,36 @@
     });
   }
 
-  function wireLayoutSubTabs() {
+  function wireLayoutSubTabs(initialKey) {
     var tabs = document.querySelectorAll('[data-settings-layout-tab]');
     if (!tabs.length) return;
+    var KEYS = ['tables', 'charts', 'kpis'];
     function activate(key) {
+      if (KEYS.indexOf(key) < 0) key = 'tables';
+      activeLayoutSubTab = key;
       tabs.forEach(function (tab) {
         var active = tab.getAttribute('data-settings-layout-tab') === key;
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-selected', active ? 'true' : 'false');
       });
-      ['tables'].forEach(function (k) {
+      KEYS.forEach(function (k) {
         var panel = document.getElementById('settings-layout-panel-' + k);
         if (panel) panel.classList.toggle('active', k === key);
       });
+      if (getActiveSettingsTab() === 'layout') {
+        if (key === 'tables') {
+          try { renderTablesWhenVisible(); } catch (_) {}
+        } else if (key === 'charts') {
+          try { renderChartsWhenVisible(); } catch (_) {}
+        }
+      }
     }
     tabs.forEach(function (tab) {
       tab.addEventListener('click', function () {
         activate(tab.getAttribute('data-settings-layout-tab') || 'tables');
       });
     });
-    activate('tables');
+    activate(initialKey || activeLayoutSubTab || 'tables');
   }
 
   function parseRowOptionsText(raw) {
@@ -2874,7 +2926,8 @@
     var headRoot = document.getElementById('settings-kpis-header-root');
     var rangesRoot = document.getElementById('settings-date-ranges-root');
     if (!dashRoot || !headRoot || !rangesRoot) return;
-    var c = cfg && typeof cfg === 'object' ? cfg : defaultKpiUiConfigV1();
+    var def = defaultKpiUiConfigV1();
+    var c = cfg && typeof cfg === 'object' ? cfg : def;
     var options = c.options || {};
     var condensed = options.condensed || {};
     var dashboard = options.dashboard || {};
@@ -2888,9 +2941,39 @@
     if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
     if (optDashDelta) optDashDelta.checked = dashboard.showDelta !== false;
 
+    // Header KPI strip visibility per page.
+    var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
+    var pages = (c.headerStrip && c.headerStrip.pages && typeof c.headerStrip.pages === 'object') ? c.headerStrip.pages : {};
+    try {
+      document.querySelectorAll('[data-kpi-header-strip-page]').forEach(function (el) {
+        var k = String(el.getAttribute('data-kpi-header-strip-page') || '').trim().toLowerCase();
+        if (!k) return;
+        var v = (typeof pages[k] === 'boolean') ? pages[k] : defPages[k];
+        if (typeof v !== 'boolean') v = true;
+        el.checked = v !== false;
+      });
+    } catch (_) {}
+
     renderKpiTable('settings-kpis-dashboard-root', (c.kpis && c.kpis.dashboard) ? c.kpis.dashboard : [], 'dashboard');
     renderKpiTable('settings-kpis-header-root', (c.kpis && c.kpis.header) ? c.kpis.header : [], 'header');
     renderDateRangesTable('settings-date-ranges-root', c.dateRanges || []);
+  }
+
+  function readHeaderStripPagesFromDom() {
+    var def = defaultKpiUiConfigV1();
+    var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
+    var out = {};
+    Object.keys(defPages).forEach(function (k) {
+      out[k] = defPages[k] !== false;
+    });
+    try {
+      document.querySelectorAll('[data-kpi-header-strip-page]').forEach(function (el) {
+        var k = String(el.getAttribute('data-kpi-header-strip-page') || '').trim().toLowerCase();
+        if (!k) return;
+        out[k] = !!el.checked;
+      });
+    } catch (_) {}
+    return out;
   }
 
   function buildKpiUiConfigFromDom() {
@@ -2909,6 +2992,9 @@
         dashboard: {
           showDelta: !!(optDashDelta && optDashDelta.checked),
         },
+      },
+      headerStrip: {
+        pages: readHeaderStripPagesFromDom(),
       },
       kpis: {
         dashboard: readKpiTable('settings-kpis-dashboard-root'),
@@ -2958,6 +3044,9 @@
 
   function init() {
     var initialTab = getTabFromQuery() || getTabFromHash() || 'general';
+    // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
+    // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
+    wireLayoutSubTabs(initialLayoutSubTab);
     activateTab(initialTab);
 
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
@@ -2980,7 +3069,6 @@
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
-    wireLayoutSubTabs();
     wireInsightsVariantsEditor();
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();

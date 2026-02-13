@@ -100,17 +100,9 @@
           <i class="fa-solid fa-map-location-dot me-2" data-icon-key="settings-tab-sources"></i>
           Sources
         </a>
-        <a href="/settings?tab=kpis" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="kpis">
-          <i class="fa-solid fa-gauge-high me-2" data-icon-key="settings-tab-kpis"></i>
-          KPIs &amp; Date Ranges
-        </a>
         <a href="/settings?tab=insights" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="insights">
           <i class="fa-solid fa-chart-pie me-2" data-icon-key="settings-tab-insights"></i>
           Insights
-        </a>
-        <a href="/settings?tab=charts" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="charts">
-          <i class="fa-solid fa-chart-pie me-2" data-icon-key="settings-tab-charts"></i>
-          Charts
         </a>
         <a href="/settings?tab=layout" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="layout">
           <i class="fa-solid fa-table-columns me-2" aria-hidden="true"></i>
@@ -347,86 +339,6 @@
         </div>
       </div>
 
-      <div id="settings-panel-kpis" class="settings-panel">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">KPIs &amp; Date Ranges</h3>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-12">
-                <h4 class="mb-2">KPIs</h4>
-                <p class="text-secondary mb-3">Configure labels and visibility for the dashboard KPI cards and the header KPI chips.</p>
-
-                <div class="card card-sm mb-3">
-                  <div class="card-body">
-                    <div class="row g-3">
-                      <div class="col-12 col-md-6 col-lg-4">
-                        <label class="form-label mb-1">Header</label>
-                        <label class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-delta" />
-                          <span class="form-check-label">Show % change</span>
-                        </label>
-                        <label class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-progress" />
-                          <span class="form-check-label">Show progress bars</span>
-                        </label>
-                        <label class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-sparkline" />
-                          <span class="form-check-label">Show sparklines</span>
-                        </label>
-                      </div>
-                      <div class="col-12 col-md-6 col-lg-4">
-                        <label class="form-label mb-1">Dashboard</label>
-                        <label class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="settings-kpi-opt-dashboard-delta" />
-                          <span class="form-check-label">Show % change badges</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <ul class="nav nav-underline mb-3" id="settings-kpis-layout-tabs" role="tablist">
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link active" type="button" role="tab" data-settings-kpis-layout-tab="dashboard" aria-selected="true">Dashboard</button>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link" type="button" role="tab" data-settings-kpis-layout-tab="header" aria-selected="false">Header</button>
-                  </li>
-                </ul>
-
-                <div id="settings-kpis-layout-panel-dashboard" class="settings-kpis-layout-panel active" role="tabpanel">
-                  <div id="settings-kpis-dashboard-root" class="dm-root">
-                    <div class="dm-loading">Loading KPIs…</div>
-                  </div>
-                </div>
-                <div id="settings-kpis-layout-panel-header" class="settings-kpis-layout-panel" role="tabpanel">
-                  <div id="settings-kpis-header-root" class="dm-root">
-                    <div class="dm-loading">Loading KPIs…</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-12">
-                <hr class="my-4" />
-                <h4 class="mb-2">Date Ranges</h4>
-                <p class="text-secondary mb-3">Configure which date ranges are available in the date dropdown.</p>
-                <div id="settings-date-ranges-root" class="dm-root">
-                  <div class="dm-loading">Loading date ranges…</div>
-                </div>
-              </div>
-
-              <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
-                <button type="button" class="btn btn-primary" id="settings-kpis-save-btn">Save</button>
-                <button type="button" class="btn btn-outline-secondary" id="settings-kpis-reset-btn">Reset to defaults</button>
-                <span id="settings-kpis-msg" class="form-hint"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="settings-panel-insights" class="settings-panel">
         <div class="card">
           <div class="card-header">
@@ -558,26 +470,6 @@
         </div>
       </div>
 
-      <div id="settings-panel-charts" class="settings-panel">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Charts</h3>
-          </div>
-          <div class="card-body">
-            <p class="text-secondary mb-3">Control chart types, colors, and visibility across the app. These settings are global (shared across all users).</p>
-            <div id="settings-charts-root" class="dm-root">
-              <div class="dm-loading">Loading charts…</div>
-            </div>
-            <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
-              <button type="button" class="btn btn-primary" id="settings-charts-save-btn">Save</button>
-              <button type="button" class="btn btn-outline-secondary" id="settings-charts-reset-btn">Reset to defaults</button>
-              <span id="settings-charts-msg" class="form-hint"></span>
-            </div>
-            <div class="text-muted small mt-2">Disabling a chart hides the entire card (header + content).</div>
-          </div>
-        </div>
-      </div>
-
       <div id="settings-panel-layout" class="settings-panel">
         <div class="card">
           <div class="card-header">
@@ -587,6 +479,12 @@
             <ul class="nav nav-underline mb-3" id="settings-layout-tabs" role="tablist">
               <li class="nav-item" role="presentation">
                 <button class="nav-link active" type="button" role="tab" data-settings-layout-tab="tables" aria-selected="true">Tables</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" role="tab" data-settings-layout-tab="charts" aria-selected="false">Charts</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" role="tab" data-settings-layout-tab="kpis" aria-selected="false">KPIs</button>
               </li>
             </ul>
 
@@ -599,6 +497,162 @@
                 <button type="button" class="btn btn-primary" id="settings-layout-tables-save-btn">Save</button>
                 <button type="button" class="btn btn-outline-secondary" id="settings-layout-tables-reset-btn">Reset to defaults</button>
                 <span id="settings-layout-tables-msg" class="form-hint"></span>
+              </div>
+            </div>
+
+            <div id="settings-layout-panel-charts" class="settings-layout-panel" role="tabpanel">
+              <p class="text-secondary mb-3">Control chart types, colors, and visibility across the app. These settings are global (shared across all users).</p>
+              <div id="settings-charts-root" class="dm-root">
+                <div class="dm-loading">Loading charts…</div>
+              </div>
+              <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary" id="settings-charts-save-btn">Save</button>
+                <button type="button" class="btn btn-outline-secondary" id="settings-charts-reset-btn">Reset to defaults</button>
+                <span id="settings-charts-msg" class="form-hint"></span>
+              </div>
+              <div class="text-muted small mt-2">Disabling a chart hides the entire card (header + content).</div>
+            </div>
+
+            <div id="settings-layout-panel-kpis" class="settings-layout-panel" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-12">
+                  <h4 class="mb-2">KPIs</h4>
+                  <p class="text-secondary mb-3">Configure labels and visibility for the dashboard KPI cards and the header KPI chips.</p>
+
+                  <div class="card card-sm mb-3">
+                    <div class="card-body">
+                      <div class="row g-3">
+                        <div class="col-12 col-md-6 col-lg-4">
+                          <label class="form-label mb-1">Header</label>
+                          <label class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-delta" />
+                            <span class="form-check-label">Show % change</span>
+                          </label>
+                          <label class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-progress" />
+                            <span class="form-check-label">Show progress bars</span>
+                          </label>
+                          <label class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="settings-kpi-opt-condensed-sparkline" />
+                            <span class="form-check-label">Show sparklines</span>
+                          </label>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-4">
+                          <label class="form-label mb-1">Dashboard</label>
+                          <label class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="settings-kpi-opt-dashboard-delta" />
+                            <span class="form-check-label">Show % change badges</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card card-sm mb-3">
+                    <div class="card-body">
+                      <label class="form-label mb-2">Header KPI strip: show on pages</label>
+                      <div class="row g-2">
+                        <div class="col-12 col-md-6 col-lg-4">
+                          <div class="text-muted small mb-1">Dashboard</div>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="dashboard" />
+                            <span class="form-check-label">Overview</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="live" />
+                            <span class="form-check-label">Live View</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="sales" />
+                            <span class="form-check-label">Recent Sales</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="date" />
+                            <span class="form-check-label">Table View</span>
+                          </label>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-4">
+                          <div class="text-muted small mb-1">Insights</div>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="countries" />
+                            <span class="form-check-label">Countries</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="products" />
+                            <span class="form-check-label">Products</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="variants" />
+                            <span class="form-check-label">Variants</span>
+                          </label>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-4">
+                          <div class="text-muted small mb-1">Traffic + tools</div>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="channels" />
+                            <span class="form-check-label">Traffic · Channels</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="type" />
+                            <span class="form-check-label">Traffic · Device &amp; Platform</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="ads" />
+                            <span class="form-check-label">Integrations · Google Ads</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="compare-conversion-rate" />
+                            <span class="form-check-label">Tools · Conversion Rate Compare</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="shipping-cr" />
+                            <span class="form-check-label">Tools · Shipping CR</span>
+                          </label>
+                          <label class="form-check">
+                            <input class="form-check-input" type="checkbox" data-kpi-header-strip-page="settings" />
+                            <span class="form-check-label">Settings</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="text-muted small mt-2">Controls the entire top KPI strip (not individual KPI chips).</div>
+                    </div>
+                  </div>
+
+                  <ul class="nav nav-underline mb-3" id="settings-kpis-layout-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" type="button" role="tab" data-settings-kpis-layout-tab="dashboard" aria-selected="true">Dashboard</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" type="button" role="tab" data-settings-kpis-layout-tab="header" aria-selected="false">Header</button>
+                    </li>
+                  </ul>
+
+                  <div id="settings-kpis-layout-panel-dashboard" class="settings-kpis-layout-panel active" role="tabpanel">
+                    <div id="settings-kpis-dashboard-root" class="dm-root">
+                      <div class="dm-loading">Loading KPIs…</div>
+                    </div>
+                  </div>
+                  <div id="settings-kpis-layout-panel-header" class="settings-kpis-layout-panel" role="tabpanel">
+                    <div id="settings-kpis-header-root" class="dm-root">
+                      <div class="dm-loading">Loading KPIs…</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <hr class="my-4" />
+                  <h4 class="mb-2">Date Ranges</h4>
+                  <p class="text-secondary mb-3">Configure which date ranges are available in the date dropdown.</p>
+                  <div id="settings-date-ranges-root" class="dm-root">
+                    <div class="dm-loading">Loading date ranges…</div>
+                  </div>
+                </div>
+
+                <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
+                  <button type="button" class="btn btn-primary" id="settings-kpis-save-btn">Save</button>
+                  <button type="button" class="btn btn-outline-secondary" id="settings-kpis-reset-btn">Reset to defaults</button>
+                  <span id="settings-kpis-msg" class="form-hint"></span>
+                </div>
               </div>
             </div>
           </div>

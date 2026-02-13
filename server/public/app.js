@@ -7655,6 +7655,22 @@ const API = '';
       applyOne('custom', 'Custom\u2026', true, false);
     }
 
+    function applyHeaderKpiStripVisibilityByPage(cfg) {
+      try {
+        var bar = document.getElementById('kexo-kpis');
+        if (!bar || !cfg || cfg.v !== 1) return;
+        var page = '';
+        try {
+          page = String(document.body && document.body.getAttribute ? document.body.getAttribute('data-page') : '').trim().toLowerCase();
+        } catch (_) { page = ''; }
+        if (!page) return;
+        var pages = cfg && cfg.headerStrip && cfg.headerStrip.pages && typeof cfg.headerStrip.pages === 'object' ? cfg.headerStrip.pages : null;
+        if (!pages) return;
+        if (pages[page] === false) bar.style.display = 'none';
+        else bar.style.display = '';
+      } catch (_) {}
+    }
+
     function applyCondensedKpiUiConfig(cfg) {
       var strip = document.getElementById('kexo-condensed-kpis');
       if (!strip || !cfg || cfg.v !== 1) return;
@@ -7813,6 +7829,7 @@ const API = '';
       if (!cfg || typeof cfg !== 'object' || cfg.v !== 1) return;
       kpiUiConfigV1 = cfg;
       try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
+      try { applyHeaderKpiStripVisibilityByPage(cfg); } catch (_) {}
       try { applyCondensedKpiUiConfig(cfg); } catch (_) {}
       try { applyDashboardKpiUiConfig(cfg); } catch (_) {}
       try { syncDateSelectOptions(); } catch (_) {}

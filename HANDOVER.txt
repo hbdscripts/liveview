@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (page header triple layout + KPI sparkline fill)
+Last updated: 2026-02-13 (Settings Layout tabs + header KPI strip visibility)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -17,7 +17,7 @@ IMPORTANT (for future agents)
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
 - Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with gradient, "New Sale: Product Name" + price (10s auto-close; MP3 cha-ching).
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
-- KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`. It sits inside the sticky header wrapper so it stays pinned while scrolling.
+- KPI strip: condensed KPI chips shown on most pages. Visibility is configurable per page via Settings → Layout → KPIs. It sits inside the sticky header wrapper so it stays pinned while scrolling.
 - Page header: the per-page title row (category icon + pretitle + title + date control) stays inside the page body (not sticky). Layout is driven by `app.js` + `custom.css` (icon inside subtitle; title centered; date right with dividers) on simple pages.
 
 Mobile:
@@ -93,10 +93,11 @@ Settings tabs:
 - Data & Reporting: reporting source toggles (orders/sessions) + pixel session mode
 - Integrations: Pixel + Google Ads status/actions
 - Sources: UTM/source mapping
-- KPIs & Date Ranges: KPI order/labels/visibility + date-range labels/availability
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
-- Charts: per-chart enable/type/colors (see Charts section)
-- Layout: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables
+- Layout:
+  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables
+  - Charts: per-chart enable/type/colors (see Charts section)
+  - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 - Diagnostics: config-status + reconcile utilities (Settings-first)
 
 Settings API:
@@ -138,11 +139,11 @@ Icons:
 
 ## Charts (GLOBAL)
 
-Charts are centrally configurable in Settings → Charts:
+Charts are centrally configurable in Settings → Layout → Charts:
 - DB key: `charts_ui_config_v1`
 - Served by: `GET /api/settings` as `chartsUiConfig`
 - Saved by: `POST /api/settings` (`chartsUiConfig` payload)
-- Settings-side charts table rendering is lazy-on-tab-open (render when Charts tab is active) to avoid hidden-panel select/input rendering glitches.
+- Settings-side charts table rendering is lazy-on-tab-open (render when Layout → Charts is active) to avoid hidden-panel select/input rendering glitches.
 
 Runtime apply:
 - `server/public/app.js`: dashboard/insights/traffic charts + map behavior
@@ -166,6 +167,7 @@ KPI/date-range UI config:
 - DB key: `kpi_ui_config_v1` (in `GET /api/settings` as `kpiUiConfig`)
 - Applied by: `server/public/app.js` to:
   - condensed KPI strip order/labels/visibility + display options
+  - condensed KPI strip show/hide per page (settings-managed)
   - dashboard KPI card order/labels/visibility
   - date range menu labels/availability
 
@@ -226,6 +228,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Settings UX + header KPI control:
+  - Charts and KPIs settings moved into Settings → Layout as top tabs (Tables / Charts / KPIs); legacy `?tab=charts` and `?tab=kpis` URLs route into Layout.
+  - KPI settings now include a per-page allowlist for the header KPI strip (so you can disable it on Settings/Dashboard without code changes).
 
 2026-02-13 (latest)
 - Page header layout + KPI sparklines:
