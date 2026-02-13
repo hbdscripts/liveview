@@ -12028,7 +12028,9 @@ const API = '';
 
       let snapshotModal = null;
       let rulesModal = null;
-      let selectedYear = 'all';
+      let selectedMode = 'yearly';
+      let selectedYear = String((new Date()).getFullYear());
+      let selectedMonth = '';
       let rulesDraft = null;
       let editingRuleId = '';
       let snapshotLoading = false;
@@ -12126,6 +12128,27 @@ const API = '';
         return n.toFixed(1).replace(/\.0$/, '') + '%';
       }
 
+      function pad2(n) {
+        const v = Number(n);
+        if (!Number.isFinite(v)) return '00';
+        return String(Math.trunc(v)).padStart(2, '0');
+      }
+
+      function getCurrentYearString() {
+        return String((new Date()).getFullYear());
+      }
+
+      function monthLabel(value) {
+        const m = String(value || '').match(/^(\d{4})-(\d{2})$/);
+        if (!m) return String(value || '');
+        const year = Number(m[1]);
+        const month = Number(m[2]);
+        if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return String(value || '');
+        const d = new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
+        const mon = d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+        return mon + ' ' + String(year).slice(-2);
+      }
+
       function deltaInfo(current, previous) {
         const cur = current == null ? null : Number(current);
         const prev = previous == null ? null : Number(previous);
@@ -12155,33 +12178,111 @@ const API = '';
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
+        const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
         return '' +
-          '<div class="business-snapshot-delta small ' + cls + '">' +
-            '<i class="business-snapshot-delta-icon" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
+          '<div class="dash-kpi-delta business-snapshot-delta ' + cls + '">' +
+            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
             '<span class="business-snapshot-delta-text">' + escapeHtml(delta.text) + '</span>' +
           '</div>';
       }
 
-      function deltaPillHtml(delta) {
+      function deltaCompactHtml(delta) {
         if (!delta || !delta.short) return '';
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
+        const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
         return '' +
-          '<span class="business-snapshot-delta-pill ' + cls + '">' +
-            '<i class="business-snapshot-delta-pill-icon" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
+          '<div class="dash-kpi-delta business-snapshot-delta is-compact ' + cls + '">' +
+            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
             '<span>' + escapeHtml(delta.short) + '</span>' +
-          '</span>';
+          '</div>';
       }
 
-      function metricCardHtml(label, valueText, delta) {
+      function metricVisualPercent(current, previous, useCurrentPercent) {
+        const cur = current == null ? null : Number(current);
+        const prev = previous == null ? null : Number(previous);
+        if (useCurrentPercent && Number.isFinite(cur)) return Math.max(0, Math.min(100, cur));
+        if (Number.isFinite(cur) && Number.isFinite(prev) && (cur > 0 || prev > 0)) {
+          const top = Math.max(Math.abs(cur), Math.abs(prev), 1);
+          return Math.max(0, Math.min(100, (Math.abs(cur) / top) * 100));
+        }
+        return null;
+      }
+
+      function sparklineVisualHtml(current, previous) {
+        const cur = current == null ? null : Number(current);
+        const prev = previous == null ? null : Number(previous);
+        if (!Number.isFinite(cur) && !Number.isFinite(prev)) return '';
+        const p = Number.isFinite(prev) ? prev : (Number.isFinite(cur) ? cur : 0);
+        const c = Number.isFinite(cur) ? cur : p;
+        const points = [p * 0.92, p * 1.04, (p + c) / 2, c * 0.95, c * 1.02];
+        const min = Math.min.apply(null, points);
+        const max = Math.max.apply(null, points);
+        const span = Math.max(max - min, 1);
+        const w = 112;
+        const h = 28;
+        const coords = points.map(function (v, i) {
+          const x = Math.round((i / (points.length - 1)) * w);
+          const y = Math.round(h - ((v - min) / span) * h);
+          return x + ',' + y;
+        }).join(' ');
+        return '' +
+          '<div class="business-snapshot-visual business-snapshot-visual-sparkline">' +
+            '<svg viewBox="0 0 112 28" preserveAspectRatio="none" aria-hidden="true">' +
+              '<polyline points="' + escapeHtml(coords) + '" />' +
+            '</svg>' +
+          '</div>';
+      }
+
+      function progressVisualHtml(current, previous, useCurrentPercent) {
+        const pct = metricVisualPercent(current, previous, useCurrentPercent);
+        if (pct == null) return '';
+        const width = Math.round(pct * 10) / 10;
+        return '' +
+          '<div class="business-snapshot-visual business-snapshot-visual-progress">' +
+            '<div class="progress progress-sm">' +
+              '<div class="progress-bar" role="progressbar" style="width:' + escapeHtml(String(width)) + '%" aria-valuenow="' + escapeHtml(String(width)) + '" aria-valuemin="0" aria-valuemax="100"></div>' +
+            '</div>' +
+          '</div>';
+      }
+
+      function ringVisualHtml(current, previous, useCurrentPercent) {
+        const pct = metricVisualPercent(current, previous, useCurrentPercent);
+        if (pct == null) return '';
+        const clamped = Math.max(0, Math.min(100, Math.round(pct * 10) / 10));
+        return '' +
+          '<div class="business-snapshot-visual business-snapshot-visual-ring" style="--snapshot-ring-pct:' + escapeHtml(String(clamped)) + '">' +
+            '<span>' + escapeHtml(String(Math.round(clamped))) + '%</span>' +
+          '</div>';
+      }
+
+      function metricVisualHtml(options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        const visual = String(opts.visual || '').toLowerCase();
+        const pctOverride = Number(opts.percentOverride);
+        if (visual === 'sparkline') return sparklineVisualHtml(opts.current, opts.previous);
+        if (visual === 'progress') {
+          if (Number.isFinite(pctOverride)) return progressVisualHtml(pctOverride, null, true);
+          return progressVisualHtml(opts.current, opts.previous, !!opts.useCurrentPercent);
+        }
+        if (visual === 'ring') {
+          if (Number.isFinite(pctOverride)) return ringVisualHtml(pctOverride, null, true);
+          return ringVisualHtml(opts.current, opts.previous, !!opts.useCurrentPercent);
+        }
+        return '';
+      }
+
+      function metricCardHtml(label, valueText, delta, options) {
         const dHtml = deltaHtml(delta);
+        const vHtml = metricVisualHtml(options);
         return '' +
           '<div class="col-12 col-md-6 col-xl-3">' +
             '<div class="card h-100 business-snapshot-card">' +
               '<div class="card-body">' +
                 '<div class="subheader">' + escapeHtml(label) + '</div>' +
                 '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
+                (vHtml ? vHtml : '') +
                 (dHtml ? dHtml : '') +
               '</div>' +
             '</div>' +
@@ -12212,60 +12313,101 @@ const API = '';
         const profit = f.profit || {};
 
         const subtitle = document.getElementById('business-snapshot-subtitle');
-        if (subtitle) subtitle.textContent = (data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase());
+        if (subtitle) subtitle.textContent = String(data.periodLabel || '').trim() || 'Business Snapshot';
 
-        // Update year dropdown options to only show years with data.
-        (function updateYearOptions() {
+        (function updateSelectors() {
+          const mode = String(data.mode || selectedMode || 'yearly').toLowerCase();
+          selectedMode = mode === 'monthly' ? 'monthly' : 'yearly';
+          selectedYear = String(data.year || selectedYear || getCurrentYearString());
+          selectedMonth = String(data.month || selectedMonth || '');
+
+          const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
+          const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
+          if (yearlyWrap) yearlyWrap.classList.toggle('d-none', selectedMode !== 'yearly');
+          if (monthlyWrap) monthlyWrap.classList.toggle('d-none', selectedMode !== 'monthly');
+
           const yearSel = document.getElementById('business-snapshot-year');
-          if (!yearSel) return;
-          const years = (data && Array.isArray(data.availableYears)) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
-          const desired = (selectedYear || 'all').toLowerCase();
-          const nextOptions = ['all'].concat(years);
-          const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
-          const same = existing.length === nextOptions.length && existing.every(function (v, i) { return v === nextOptions[i]; });
-          if (same) return;
-          yearSel.innerHTML = '' +
-            '<option value="all">All Time</option>' +
-            years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
-          const canKeep = desired === 'all' || years.indexOf(desired) >= 0;
-          selectedYear = canKeep ? desired : 'all';
-          yearSel.value = selectedYear;
+          if (yearSel) {
+            const years = Array.isArray(data.availableYears) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
+            const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
+            const same = existing.length === years.length && existing.every(function (v, i) { return v === years[i]; });
+            if (!same) {
+              yearSel.innerHTML = years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
+            }
+            if (years.length && years.indexOf(selectedYear) < 0) selectedYear = years[0];
+            yearSel.value = selectedYear;
+          }
+
+          const monthSel = document.getElementById('business-snapshot-month');
+          if (monthSel) {
+            const months = Array.isArray(data.availableMonths) ? data.availableMonths : [];
+            const options = months.map(function (m) {
+              if (m && typeof m === 'object') {
+                return {
+                  value: String(m.value || ''),
+                  label: String(m.label || monthLabel(m.value || '')),
+                };
+              }
+              const v = String(m || '');
+              return { value: v, label: monthLabel(v) };
+            }).filter(function (m) { return m.value; });
+            const existing = Array.from(monthSel.options || []).map(function (o) { return String(o && o.value || ''); });
+            const same = existing.length === options.length && existing.every(function (v, i) { return v === options[i].value; });
+            if (!same) {
+              monthSel.innerHTML = options.map(function (m) {
+                return '<option value="' + escapeHtml(m.value) + '">' + escapeHtml(m.label) + '</option>';
+              }).join('');
+            }
+            if (options.length && !options.some(function (m) { return m.value === selectedMonth; })) {
+              selectedMonth = options[0].value;
+            }
+            monthSel.value = selectedMonth;
+          }
         })();
 
         let financialCards = '';
-        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
-        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous));
-        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous));
-        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
+        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous), { visual: 'sparkline', current: f.revenue && f.revenue.value, previous: f.revenue && f.revenue.previous });
+        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous), { visual: 'sparkline', current: f.orders && f.orders.value, previous: f.orders && f.orders.previous });
+        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous), { visual: 'sparkline', current: f.aov && f.aov.value, previous: f.aov && f.aov.previous });
+        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous), { visual: 'sparkline', current: f.conversionRate && f.conversionRate.value, previous: f.conversionRate && f.conversionRate.previous });
 
         if (profit.visible) {
-          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
-          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous));
-          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
-          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous));
+          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { visual: 'sparkline', current: profit.estimatedProfit && profit.estimatedProfit.value, previous: profit.estimatedProfit && profit.estimatedProfit.previous });
+          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { visual: 'sparkline', current: profit.netProfit && profit.netProfit.value, previous: profit.netProfit && profit.netProfit.previous });
+          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { visual: 'sparkline', current: profit.marginPct && profit.marginPct.value, previous: profit.marginPct && profit.marginPct.previous });
+          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { visual: 'sparkline', current: profit.deductions && profit.deductions.value, previous: profit.deductions && profit.deductions.previous });
         }
 
         let performanceCards = '';
-        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous));
-        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous));
-        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous));
-        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous));
+        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous), { visual: 'progress', current: p.sessions && p.sessions.value, previous: p.sessions && p.sessions.previous });
+        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous), { visual: 'progress', current: p.orders && p.orders.value, previous: p.orders && p.orders.previous });
+        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous), { visual: 'progress', current: p.conversionRate && p.conversionRate.value, previous: p.conversionRate && p.conversionRate.previous, useCurrentPercent: true });
+        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous), { visual: 'progress', current: p.aov && p.aov.value, previous: p.aov && p.aov.previous });
+
+        const newCustomersVal = c.newCustomers && Number(c.newCustomers.value);
+        const returningCustomersVal = c.returningCustomers && Number(c.returningCustomers.value);
+        const knownCustomerTotal = (Number.isFinite(newCustomersVal) ? newCustomersVal : 0) + (Number.isFinite(returningCustomersVal) ? returningCustomersVal : 0);
+        const newPct = knownCustomerTotal > 0 && Number.isFinite(newCustomersVal) ? (newCustomersVal / knownCustomerTotal) * 100 : null;
+        const returningPct = knownCustomerTotal > 0 && Number.isFinite(returningCustomersVal) ? (returningCustomersVal / knownCustomerTotal) * 100 : null;
+        const ltvVal = c.ltv && Number(c.ltv.value);
+        const aovVal = f.aov && Number(f.aov.value);
+        const ltvPct = (Number.isFinite(ltvVal) && Number.isFinite(aovVal) && aovVal > 0) ? Math.max(0, Math.min(100, (ltvVal / aovVal) * 100)) : null;
 
         let customersCards = '';
-        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null);
-        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null);
-        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null);
-        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null);
+        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null, { visual: 'ring', percentOverride: newPct });
+        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null, { visual: 'ring', percentOverride: returningPct });
+        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null, { visual: 'ring', current: c.repeatPurchaseRate && c.repeatPurchaseRate.value, useCurrentPercent: true });
+        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null, { visual: 'ring', percentOverride: ltvPct });
 
         function summaryItemHtml(label, valueText, delta) {
-          const pill = deltaPillHtml(delta);
+          const d = deltaCompactHtml(delta);
           return '' +
             '<div class="col-12 col-md-6 col-xl-4">' +
               '<div class="business-snapshot-summary-item">' +
                 '<div class="subheader">' + escapeHtml(label) + '</div>' +
-                '<div class="d-flex align-items-end justify-content-between gap-2">' +
-                  '<div class="business-snapshot-summary-value">' + escapeHtml(valueText || '—') + '</div>' +
-                  (pill ? pill : '') +
+                '<div class="business-snapshot-summary-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
+                '<div class="business-snapshot-summary-delta-wrap">' +
+                  (d ? d : '') +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -12299,7 +12441,7 @@ const API = '';
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center justify-content-between mb-2">' +
                   '<div class="subheader">Summary vs previous period</div>' +
-                  '<div class="text-muted small">' + escapeHtml(data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase()) + '</div>' +
+                  '<div class="text-muted small">' + escapeHtml(data.compareLabel || 'Previous period') + '</div>' +
                 '</div>' +
                 '<div class="row g-3">' + summaryItems + '</div>' +
               '</div>' +
@@ -12322,7 +12464,13 @@ const API = '';
         snapshotActiveRequest = reqId;
         snapshotLoading = true;
         if (force) setSnapshotLoading();
-        let url = API + '/api/business-snapshot?year=' + encodeURIComponent(selectedYear || 'all');
+        const mode = selectedMode === 'monthly' ? 'monthly' : 'yearly';
+        let url = API + '/api/business-snapshot?mode=' + encodeURIComponent(mode);
+        if (mode === 'monthly') {
+          url += '&month=' + encodeURIComponent(String(selectedMonth || ''));
+        } else {
+          url += '&year=' + encodeURIComponent(String(selectedYear || getCurrentYearString()));
+        }
         if (force) url += '&_=' + Date.now();
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
           .then(function (res) { return (res && res.ok) ? res.json() : null; })
@@ -12625,12 +12773,25 @@ const API = '';
                 '<div class="modal-header p-4">' +
                   '<div class="d-flex flex-column">' +
                     '<h5 class="modal-title mb-0">Business Snapshot</h5>' +
-                    '<div class="text-muted small" id="business-snapshot-subtitle">All Time</div>' +
+                    '<div class="text-muted small" id="business-snapshot-subtitle">Yearly Reports</div>' +
+                    '<div class="business-snapshot-date-mode-grid mt-3">' +
+                      '<div id="business-snapshot-yearly-wrap" class="business-snapshot-report-panel">' +
+                        '<label class="form-label mb-1" for="business-snapshot-year">Yearly Reports</label>' +
+                        '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                          '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year"></select>' +
+                          '<button type="button" class="btn btn-link btn-sm p-0 business-snapshot-switch-btn" id="business-snapshot-switch-monthly">Switch to month reports?</button>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div id="business-snapshot-monthly-wrap" class="business-snapshot-report-panel d-none">' +
+                        '<label class="form-label mb-1" for="business-snapshot-month">Monthly Reports</label>' +
+                        '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                          '<select class="form-select form-select-sm" id="business-snapshot-month" aria-label="Month"></select>' +
+                          '<button type="button" class="btn btn-link btn-sm p-0 business-snapshot-switch-btn" id="business-snapshot-switch-yearly">Switch to yearly reports?</button>' +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
                   '</div>' +
                   '<div class="ms-auto d-flex align-items-center gap-2">' +
-                    '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year">' +
-                      '<option value="all" selected>All Time</option>' +
-                    '</select>' +
                     '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
                       '<i class="fa-thin fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>' +
                     '</button>' +
@@ -12660,7 +12821,38 @@ const API = '';
           const yearSel = document.getElementById('business-snapshot-year');
           if (yearSel) {
             yearSel.addEventListener('change', function () {
-              selectedYear = String(yearSel.value || 'all').toLowerCase();
+              selectedMode = 'yearly';
+              selectedYear = String(yearSel.value || getCurrentYearString());
+              fetchSnapshot(true);
+            });
+          }
+          const monthSel = document.getElementById('business-snapshot-month');
+          if (monthSel) {
+            monthSel.addEventListener('change', function () {
+              selectedMode = 'monthly';
+              selectedMonth = String(monthSel.value || '');
+              fetchSnapshot(true);
+            });
+          }
+          const switchMonthlyBtn = document.getElementById('business-snapshot-switch-monthly');
+          if (switchMonthlyBtn) {
+            switchMonthlyBtn.addEventListener('click', function () {
+              selectedMode = 'monthly';
+              const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
+              const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
+              if (yearlyWrap) yearlyWrap.classList.add('d-none');
+              if (monthlyWrap) monthlyWrap.classList.remove('d-none');
+              fetchSnapshot(true);
+            });
+          }
+          const switchYearlyBtn = document.getElementById('business-snapshot-switch-yearly');
+          if (switchYearlyBtn) {
+            switchYearlyBtn.addEventListener('click', function () {
+              selectedMode = 'yearly';
+              const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
+              const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
+              if (monthlyWrap) monthlyWrap.classList.add('d-none');
+              if (yearlyWrap) yearlyWrap.classList.remove('d-none');
               fetchSnapshot(true);
             });
           }
@@ -12828,9 +13020,14 @@ const API = '';
 
       openBtn.addEventListener('click', function () {
         ensureModals();
-        selectedYear = 'all';
+        selectedMode = 'yearly';
+        selectedYear = getCurrentYearString();
         const yearSel = document.getElementById('business-snapshot-year');
-        if (yearSel) yearSel.value = 'all';
+        if (yearSel) yearSel.value = selectedYear;
+        const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
+        const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
+        if (monthlyWrap) monthlyWrap.classList.add('d-none');
+        if (yearlyWrap) yearlyWrap.classList.remove('d-none');
         setSnapshotLoading();
         openModal(snapshotModal);
         fetchSnapshot(true);

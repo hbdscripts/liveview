@@ -12,8 +12,10 @@ const {
   hasEnabledProfitRules,
 } = require('./profitRulesConfig');
 
-const YEAR_SET = new Set(['2026', '2025', '2024', 'all']);
-const ALL_TIME_START_YMD = '2025-02-01';
+const SNAPSHOT_MODE_SET = new Set(['yearly', 'monthly']);
+const SNAPSHOT_MIN_YEAR = 2025;
+const SNAPSHOT_MIN_MONTH = '2025-01';
+const SNAPSHOT_MIN_START_YMD = '2025-01-01';
 
 function safeJsonParse(raw) {
   if (!raw || typeof raw !== 'string') return null;
@@ -62,18 +64,79 @@ function ymdInTimeZone(ms, timeZone) {
   }
 }
 
-function normalizeSnapshotYear(raw) {
-  const year = raw == null ? '' : String(raw).trim().toLowerCase();
-  if (YEAR_SET.has(year)) return year;
-  return 'all';
+function parseYmdParts(ymd) {
+  const s = typeof ymd === 'string' ? ymd.trim() : '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  return { year, month, day };
 }
 
-function snapshotRangeKeyForYear(year, nowMs, timeZone) {
-  if (year === 'all') {
-    const todayYmd = ymdInTimeZone(nowMs, timeZone) || '2099-12-31';
-    return `r:${ALL_TIME_START_YMD}:${todayYmd}`;
-  }
-  return `r:${year}-01-01:${year}-12-31`;
+function pad2(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '00';
+  return String(Math.trunc(v)).padStart(2, '0');
+}
+
+function formatYmd(year, month, day) {
+  return `${String(year)}-${pad2(month)}-${pad2(day)}`;
+}
+
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function normalizeSnapshotMode(raw) {
+  const mode = raw == null ? '' : String(raw).trim().toLowerCase();
+  return SNAPSHOT_MODE_SET.has(mode) ? mode : 'yearly';
+}
+
+function normalizeSnapshotYear(raw, fallbackYear) {
+  const y = Number(raw);
+  if (!Number.isFinite(y) || y < SNAPSHOT_MIN_YEAR || y > 3000) return String(fallbackYear);
+  return String(Math.trunc(y));
+}
+
+function normalizeSnapshotMonth(raw, fallbackMonth) {
+  const s = raw == null ? '' : String(raw).trim();
+  if (!/^\d{4}-\d{2}$/.test(s)) return fallbackMonth;
+  if (s < SNAPSHOT_MIN_MONTH) return fallbackMonth;
+  return s;
+}
+
+function buildYearlyWindow(yearStr, nowYmd) {
+  const y = Number(yearStr);
+  const nowParts = parseYmdParts(nowYmd);
+  if (!Number.isFinite(y) || !nowParts) return null;
+  const endDay = Math.min(nowParts.day, daysInMonth(y, nowParts.month));
+  const startYmd = `${yearStr}-01-01`;
+  const endYmd = formatYmd(y, nowParts.month, endDay);
+  return { startYmd, endYmd };
+}
+
+function buildMonthlyWindow(monthStr, nowYmd) {
+  const m = String(monthStr || '');
+  const parsed = m.match(/^(\d{4})-(\d{2})$/);
+  const nowParts = parseYmdParts(nowYmd);
+  if (!parsed || !nowParts) return null;
+  const year = Number(parsed[1]);
+  const month = Number(parsed[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+  const startYmd = `${parsed[1]}-${parsed[2]}-01`;
+  const endDayFull = daysInMonth(year, month);
+  const isCurrentMonth = year === nowParts.year && month === nowParts.month;
+  const endDay = isCurrentMonth ? Math.min(nowParts.day, endDayFull) : endDayFull;
+  const endYmd = formatYmd(year, month, endDay);
+  return { startYmd, endYmd };
+}
+
+function rangeKeyFromYmd(startYmd, endYmd) {
+  return `r:${startYmd}:${endYmd}`;
 }
 
 function normalizeCountryOrUnknown(value) {
@@ -284,12 +347,9 @@ async function readLtvAllTime(shop) {
   return round2(revenue / customerCount);
 }
 
-async function readLtvForYearCohort(shop, year) {
+async function readLtvForCohortRange(shop, startUtc, endUtc) {
   if (!shop) return null;
-  const y = Number(year);
-  if (!Number.isFinite(y) || y < 2000 || y > 3000) return null;
-  const startUtc = Date.UTC(y, 0, 1, 0, 0, 0);
-  const endUtc = Date.UTC(y + 1, 0, 1, 0, 0, 0);
+  if (!Number.isFinite(startUtc) || !Number.isFinite(endUtc) || endUtc <= startUtc) return null;
   const db = getDb();
   const [cohortCountRow, cohortRevenueRows] = await Promise.all([
     db.get(
@@ -341,6 +401,15 @@ async function readLtvForYearCohort(shop, year) {
   const revenue = await convertRevenueRowsToGbp(cohortRevenueRows);
   if (!Number.isFinite(revenue)) return null;
   return round2(revenue / cohortCount);
+}
+
+async function readLtvForYearCohort(shop, year) {
+  if (!shop) return null;
+  const y = Number(year);
+  if (!Number.isFinite(y) || y < 2000 || y > 3000) return null;
+  const startUtc = Date.UTC(y, 0, 1, 0, 0, 0);
+  const endUtc = Date.UTC(y + 1, 0, 1, 0, 0, 0);
+  return readLtvForCohortRange(shop, startUtc, endUtc);
 }
 
 async function readOrderCountrySummary(shop, startMs, endMs) {
@@ -449,15 +518,139 @@ function fromMap(container, key) {
   return toNumber(container[key]);
 }
 
+async function readCheckoutOrderBounds(shop, timeZone) {
+  if (!shop) return { minYear: SNAPSHOT_MIN_YEAR, maxYear: SNAPSHOT_MIN_YEAR, maxYmd: null };
+  try {
+    const db = getDb();
+    const row = await db.get(
+      `
+        SELECT MIN(created_at) AS min_ts, MAX(created_at) AS max_ts
+        FROM orders_shopify
+        WHERE shop = ?
+          AND created_at IS NOT NULL
+          AND ${isPaidOrderWhereClause('')}
+          AND checkout_token IS NOT NULL
+          AND TRIM(checkout_token) != ''
+      `,
+      [shop]
+    );
+    const minTs = row && row.min_ts != null ? Number(row.min_ts) : null;
+    const maxTs = row && row.max_ts != null ? Number(row.max_ts) : null;
+    const minYmd = (minTs != null && Number.isFinite(minTs)) ? ymdInTimeZone(minTs, timeZone) : null;
+    const maxYmd = (maxTs != null && Number.isFinite(maxTs)) ? ymdInTimeZone(maxTs, timeZone) : null;
+    const minYear = minYmd ? parseInt(minYmd.slice(0, 4), 10) : SNAPSHOT_MIN_YEAR;
+    const maxYear = maxYmd ? parseInt(maxYmd.slice(0, 4), 10) : SNAPSHOT_MIN_YEAR;
+    return {
+      minYear: Number.isFinite(minYear) ? minYear : SNAPSHOT_MIN_YEAR,
+      maxYear: Number.isFinite(maxYear) ? maxYear : SNAPSHOT_MIN_YEAR,
+      maxYmd: maxYmd || null,
+    };
+  } catch (_) {
+    return { minYear: SNAPSHOT_MIN_YEAR, maxYear: SNAPSHOT_MIN_YEAR, maxYmd: null };
+  }
+}
+
+function buildAvailableYears(currentYear, minYear) {
+  const safeCurrent = Number.isFinite(currentYear) ? currentYear : SNAPSHOT_MIN_YEAR;
+  const safeMin = Number.isFinite(minYear) ? Math.max(SNAPSHOT_MIN_YEAR, minYear) : SNAPSHOT_MIN_YEAR;
+  const out = [];
+  for (let y = safeCurrent; y >= safeMin; y -= 1) out.push(String(y));
+  return out;
+}
+
+function buildAvailableMonths(currentYear, currentMonth) {
+  const out = [];
+  let y = Number.isFinite(currentYear) ? currentYear : SNAPSHOT_MIN_YEAR;
+  let m = Number.isFinite(currentMonth) ? (currentMonth - 1) : 1;
+  if (m < 1) {
+    y -= 1;
+    m = 12;
+  }
+  if (m < 1 || m > 12) m = 1;
+  while (y > SNAPSHOT_MIN_YEAR || (y === SNAPSHOT_MIN_YEAR && m >= 1)) {
+    out.push(`${String(y)}-${pad2(m)}`);
+    m -= 1;
+    if (m < 1) {
+      y -= 1;
+      m = 12;
+    }
+  }
+  return out;
+}
+
+function monthLabel(monthValue) {
+  const parsed = String(monthValue || '').match(/^(\d{4})-(\d{2})$/);
+  if (!parsed) return String(monthValue || '');
+  const y = Number(parsed[1]);
+  const m = Number(parsed[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return String(monthValue || '');
+  const d = new Date(Date.UTC(y, m - 1, 1, 12, 0, 0));
+  const mon = d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+  const yy = String(y).slice(-2);
+  return `${mon} ${yy}`;
+}
+
 async function getBusinessSnapshot(options = {}) {
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
-  const year = normalizeSnapshotYear(options.year);
-  const rangeKey = snapshotRangeKeyForYear(year, nowMs, timeZone);
-  const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
   const shop = salesTruth.resolveShopForSales('');
-
   const token = shop ? await salesTruth.getAccessToken(shop) : '';
+
+  const nowYmd = ymdInTimeZone(nowMs, timeZone) || `${new Date(nowMs).getUTCFullYear()}-01-01`;
+  const nowParts = parseYmdParts(nowYmd) || { year: SNAPSHOT_MIN_YEAR, month: 1, day: 1 };
+
+  const checkoutBounds = await readCheckoutOrderBounds(shop, timeZone);
+  const availableYears = buildAvailableYears(nowParts.year, checkoutBounds.minYear);
+  const availableMonths = buildAvailableMonths(nowParts.year, nowParts.month);
+  const availableMonthOptions = availableMonths.map((value) => ({ value, label: monthLabel(value) }));
+
+  let mode = normalizeSnapshotMode(options.mode);
+  let selectedYear = normalizeSnapshotYear(options.year, availableYears[0] || String(nowParts.year));
+  if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0] || String(nowParts.year);
+  let selectedMonth = normalizeSnapshotMonth(options.month, availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}`);
+  if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}`;
+
+  // Backwards compatibility with old query shape (?year=all)
+  if (String(options.year || '').trim().toLowerCase() === 'all') {
+    mode = 'yearly';
+    selectedYear = availableYears[0] || String(nowParts.year);
+  }
+
+  let currentWindow = null;
+  let previousWindow = null;
+  let periodLabel = '';
+  let compareLabel = '';
+
+  if (mode === 'monthly') {
+    const m = selectedMonth.match(/^(\d{4})-(\d{2})$/);
+    const year = m ? Number(m[1]) : nowParts.year;
+    const month = m ? Number(m[2]) : nowParts.month;
+    const isCurrentMonth = year === nowParts.year && month === nowParts.month;
+    currentWindow = buildMonthlyWindow(selectedMonth, nowYmd);
+    const prevYear = year - 1;
+    const prevNowDay = isCurrentMonth ? Math.min(nowParts.day, daysInMonth(prevYear, month)) : daysInMonth(prevYear, month);
+    const prevNowYmd = formatYmd(prevYear, month, prevNowDay);
+    previousWindow = buildMonthlyWindow(`${String(prevYear)}-${pad2(month)}`, prevNowYmd);
+    periodLabel = `Monthly Reports · ${monthLabel(selectedMonth)}`;
+    compareLabel = `${monthLabel(`${String(prevYear)}-${pad2(month)}`)}`;
+  } else {
+    currentWindow = buildYearlyWindow(selectedYear, nowYmd);
+    const prevYear = Number(selectedYear) - 1;
+    const prevNowYmd = formatYmd(prevYear, nowParts.month, Math.min(nowParts.day, daysInMonth(prevYear, nowParts.month)));
+    previousWindow = buildYearlyWindow(String(prevYear), prevNowYmd);
+    periodLabel = `Yearly Reports · ${selectedYear}`;
+    compareLabel = String(prevYear);
+  }
+
+  if (!currentWindow || !previousWindow) {
+    throw new Error('Could not resolve business snapshot windows');
+  }
+
+  const rangeKey = rangeKeyFromYmd(currentWindow.startYmd, currentWindow.endYmd);
+  const compareRangeKey = rangeKeyFromYmd(previousWindow.startYmd, previousWindow.endYmd);
+  const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
+  const compareBounds = store.getRangeBounds(compareRangeKey, nowMs, timeZone);
+
   const startYmd = ymdInTimeZone(bounds.start, timeZone);
   const endYmd = ymdInTimeZone(Math.max(bounds.start, bounds.end - 1), timeZone);
 
@@ -473,23 +666,13 @@ async function getBusinessSnapshot(options = {}) {
     };
   }
 
-  let compareBounds = null;
-  if (year !== 'all') {
-    const y = Number(year);
-    if (Number.isFinite(y) && y > 2000) {
-      const prevYear = String(y - 1);
-      const prevRangeKey = `r:${prevYear}-01-01:${prevYear}-12-31`;
-      compareBounds = store.getRangeBounds(prevRangeKey, nowMs, timeZone);
-    }
-  }
-
   const [sessionsNowMetrics, sessionsPrevMetrics, revenue, orders, revenuePrev, ordersPrev] = await Promise.all([
     shopifySessionsForBounds(bounds),
-    compareBounds ? shopifySessionsForBounds(compareBounds) : Promise.resolve({ sessions: null, conversionRate: null }),
+    shopifySessionsForBounds(compareBounds),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
-    (shop && compareBounds) ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
-    (shop && compareBounds) ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    shop ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
   ]);
 
   const sessions = toNumber(sessionsNowMetrics && sessionsNowMetrics.sessions);
@@ -498,8 +681,8 @@ async function getBusinessSnapshot(options = {}) {
   let conversionRatePrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.conversionRate);
 
   // Data integrity guardrails:
-  // - If Shopify sessions are unavailable/zero but we have checkout orders, do not show misleading 0% values.
-  // - If conversion_rate is missing but sessions exist, compute a best-effort proxy from checkout orders.
+  // - Never show Sessions=0 when Orders>0.
+  // - If conversion_rate is missing/zero but sessions exist, derive a best-effort ratio.
   let sessionsSafe = sessions;
   let sessionsPrevSafe = sessionsPrev;
   const ordersNowN = toNumber(orders);
@@ -518,15 +701,13 @@ async function getBusinessSnapshot(options = {}) {
   const aov = (toNumber(revenue) != null && toNumber(orders) != null && Number(orders) > 0) ? round2(Number(revenue) / Number(orders)) : null;
   const aovPrev = (toNumber(revenuePrev) != null && toNumber(ordersPrev) != null && Number(ordersPrev) > 0) ? round2(Number(revenuePrev) / Number(ordersPrev)) : null;
 
-  const [distinctCustomers, ltvValue, customerRepeatOrReturning] = await Promise.all([
+  const [distinctCustomers, ltvValue, returningRaw] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
-    year === 'all' ? readLtvAllTime(shop) : readLtvForYearCohort(shop, year),
-    year === 'all'
-      ? readRepeatCustomerCountInRange(shop, bounds.start, bounds.end)
-      : readReturningCustomerCountBeforeStart(shop, bounds.start, bounds.end),
+    mode === 'yearly' ? readLtvForYearCohort(shop, selectedYear) : readLtvForCohortRange(shop, bounds.start, bounds.end),
+    readReturningCustomerCountBeforeStart(shop, bounds.start, bounds.end),
   ]);
 
-  const returningCustomers = toNumber(customerRepeatOrReturning);
+  const returningCustomers = toNumber(returningRaw);
   const newCustomers = (toNumber(distinctCustomers) != null && returningCustomers != null)
     ? Math.max(0, (Number(distinctCustomers) || 0) - (Number(returningCustomers) || 0))
     : null;
@@ -553,15 +734,10 @@ async function getBusinessSnapshot(options = {}) {
       const estNow = round2((summaryNow.revenueGbp || 0) - deductionsNow);
       const marginNow = summaryNow.revenueGbp > 0 ? round1((estNow / summaryNow.revenueGbp) * 100) : null;
 
-      let deductionsPrev = null;
-      let estPrev = null;
-      let marginPrev = null;
-      if (compare && compare.range && Number.isFinite(compare.range.start) && Number.isFinite(compare.range.end)) {
-        const summaryPrev = await readOrderCountrySummary(shop, compare.range.start, compare.range.end);
-        deductionsPrev = computeProfitDeductions(summaryPrev, profitRules);
-        estPrev = round2((summaryPrev.revenueGbp || 0) - deductionsPrev);
-        marginPrev = summaryPrev.revenueGbp > 0 ? round1((estPrev / summaryPrev.revenueGbp) * 100) : null;
-      }
+      const summaryPrev = await readOrderCountrySummary(shop, compareBounds.start, compareBounds.end);
+      const deductionsPrev = computeProfitDeductions(summaryPrev, profitRules);
+      const estPrev = round2((summaryPrev.revenueGbp || 0) - deductionsPrev);
+      const marginPrev = summaryPrev.revenueGbp > 0 ? round1((estPrev / summaryPrev.revenueGbp) * 100) : null;
 
       profitSection.visible = true;
       profitSection.unavailable = false;
@@ -578,41 +754,14 @@ async function getBusinessSnapshot(options = {}) {
 
   return {
     ok: true,
-    year,
+    mode,
+    year: selectedYear,
+    month: selectedMonth,
+    periodLabel,
+    compareLabel,
     rangeKey,
-    availableYears: await (async function() {
-      if (!shop) return [];
-      try {
-        const db = getDb();
-        const row = await db.get(
-          `
-            SELECT MIN(created_at) AS min_ts, MAX(created_at) AS max_ts
-            FROM orders_shopify
-            WHERE shop = ?
-              AND created_at IS NOT NULL
-              AND ${isPaidOrderWhereClause('')}
-              AND checkout_token IS NOT NULL
-              AND TRIM(checkout_token) != ''
-          `,
-          [shop]
-        );
-        const minTs = row && row.min_ts != null ? Number(row.min_ts) : null;
-        const maxTs = row && row.max_ts != null ? Number(row.max_ts) : null;
-        if (minTs == null || maxTs == null || !Number.isFinite(minTs) || !Number.isFinite(maxTs)) return [];
-        const minYmd = ymdInTimeZone(minTs, timeZone);
-        const maxYmd = ymdInTimeZone(maxTs, timeZone);
-        const minYear = minYmd ? parseInt(minYmd.slice(0, 4), 10) : null;
-        const maxYear = maxYmd ? parseInt(maxYmd.slice(0, 4), 10) : null;
-        if (!Number.isFinite(minYear) || !Number.isFinite(maxYear)) return [];
-        const years = [];
-        for (let y = maxYear; y >= minYear; y--) {
-          years.push(String(y));
-        }
-        return years;
-      } catch (_) {
-        return [];
-      }
-    })(),
+    availableYears,
+    availableMonths: availableMonthOptions,
     range: {
       start: bounds.start,
       end: bounds.end,
@@ -641,6 +790,7 @@ async function getBusinessSnapshot(options = {}) {
       sessions: 'shopifyql (sessions)',
       timeZone,
       rangeYmd: { since: startYmd || null, until: endYmd || null },
+      compareRangeYmd: { since: previousWindow.startYmd, until: previousWindow.endYmd },
     },
   };
 }

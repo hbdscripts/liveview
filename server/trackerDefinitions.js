@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 29;
+const DEFINITIONS_VERSION = 30;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -85,7 +85,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     endpoint: {
       method: 'GET',
       path: '/api/business-snapshot',
-      params: ['year=2026|2025|2024|all'],
+      params: ['mode=yearly|monthly', 'year=YYYY (when mode=yearly)', 'month=YYYY-MM (when mode=monthly)'],
     },
     sources: [
       { kind: 'db', tables: ['settings'], note: 'profit_rules_v1 persistence for estimated profit toggles/rules' },
@@ -104,7 +104,8 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
       { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
       { name: 'Conversion rate', value: 'ShopifyQL conversion_rate (sessions dataset) over the selected SINCE/UNTIL range (fallback: checkout orders / sessions when conversion_rate is missing/0 but sessions exist)' },
-      { name: 'Customers (all time)', value: 'Returning Customers is treated as Repeat Customers (>=2 paid orders in the all-time range)' },
+      { name: 'Yearly comparison window', value: 'Yearly mode compares Jan-01→today-in-year against Jan-01→same-day previous year' },
+      { name: 'Monthly comparison window', value: 'Monthly mode compares selected month against same month in previous year (partial month when current month)' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: true },
     requires: { dbTables: ['settings', 'orders_shopify'], shopifyToken: true },
