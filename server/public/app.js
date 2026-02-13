@@ -3192,6 +3192,9 @@ const API = '';
           tbody.setAttribute('data-kexo-click-bound', '1');
           tbody.addEventListener('click', function(e) {
             const target = e && e.target ? e.target : null;
+            // Clicking interactive elements inside a row should not open the side panel.
+            // Product links open the Product Insights modal only.
+            if (target && target.closest && target.closest('a.js-product-modal-link')) return;
             const row = target && target.closest ? target.closest('.grid-row.clickable[data-session-id]') : null;
             if (!row || !tbody.contains(row)) return;
             selectedSessionId = row.getAttribute('data-session-id');

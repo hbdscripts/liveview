@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (live view map + countries map render fix + traffic trend charts + products table hiding + countries map default + header category icons)
+Last updated: 2026-02-13 (sessions table click UX + page layout + live view map + countries map render fix + traffic trend charts + products table hiding + countries map default + header category icons)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -234,6 +234,8 @@ Ops/reliability:
   - Countries map default mode is now `map-flat` (Settings → Charts).
   - Countries map rendering now waits for the report loader to finish so the map doesn't initialize at 0x0 size (invisible/scale(0)).
   - Page headers now show the active top-menu category icon (Dashboard/Insights/Traffic/etc) next to the pretitle/title, using the same accent color as the active nav item.
+  - Sessions tables (Live/Table/Sales): clicking a product link opens the Product Insights modal only; clicking the row opens the side panel.
+  - Page layout: restored `page-body` flex growth so content always starts at the top (no vertical centering on short pages).
 
 2026-02-13 (latest)
 - Header/nav mobile follow-up:

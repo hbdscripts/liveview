@@ -1508,12 +1508,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* ── Back to top button ── */
 #back-to-top-btn { cursor: pointer; }
 
-/* ── Prevent page-body from stretching on pages with little content ── */
-.page-header {
-  flex: 0 0 auto;
-}
+/* ── Layout: keep content pinned to top (avoid vertical centering on short pages) ── */
 .page-body {
-  flex: 0 0 auto;
+  flex: 1 0 auto;
   overflow: visible !important;
 }
 
