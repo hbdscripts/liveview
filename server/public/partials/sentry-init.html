@@ -6,7 +6,15 @@
       dsn: dsn,
       environment: (window.location && window.location.hostname === 'localhost') ? 'development' : 'production',
       tracesSampleRate: 0.2,
-      maxBreadcrumbs: 100
+      maxBreadcrumbs: 100,
+      // Reduce noise from transient network/polling errors (especially on mobile Safari).
+      // Server-side failures still show up via backend Sentry.
+      ignoreErrors: [
+        /Load failed/i,
+        /Failed to fetch/i,
+        /NetworkError when attempting to fetch resource/i,
+        /signal is aborted without reason/i
+      ]
     });
   }
 })();
