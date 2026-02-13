@@ -234,11 +234,12 @@ Ops/reliability:
 
 2026-02-13 (latest)
 - Footer redesign:
-  - Layout: logo far left (small), center row with refresh, sound mute, last sale (icon + text), back to top.
+  - Layout: far left = eye + last sale; center = refresh | logo (40px) | sound; far right = back to top.
+  - Logo: new `/assets/logos/kexo_footer.webp` (40px width), centered in footer.
   - Removed settings and theme icons from footer.
   - All footer icons use fa-jelly-filled; no hover effects on footer icons.
   - New icon keys: footer-back-to-top, footer-sound-muted (mapped in Settings → Theme → Icons).
-  - Back-to-top scrolls to top smoothly; sound mute syncs with header state.
+  - Back-to-top scrolls to top smoothly (with document fallback); sound mute syncs with header state.
 
 2026-02-13 (latest)
 - Header + snapshot/profit:

@@ -1674,13 +1674,22 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-footer-bar {
   gap: 1rem;
 }
+.kexo-footer-left,
+.kexo-footer-right {
+  flex-shrink: 0;
+  flex: 0 0 auto;
+}
+.kexo-footer-center {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .kexo-footer-logo {
   flex-shrink: 0;
   display: flex;
   align-items: center;
 }
 .kexo-footer-logo img {
-  width: 24px;
+  width: 40px;
   height: auto;
 }
 /* Footer icons: no hover effects */

@@ -14919,7 +14919,16 @@ const API = '';
       var backToTop = document.getElementById('back-to-top-btn');
       if (backToTop) {
         backToTop.addEventListener('click', function() {
-          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
+          try {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } catch (_) {
+            try {
+              window.scrollTo(0, 0);
+            } catch (_) {
+              if (document.documentElement) document.documentElement.scrollTop = 0;
+              if (document.body) document.body.scrollTop = 0;
+            }
+          }
         });
       }
     })();

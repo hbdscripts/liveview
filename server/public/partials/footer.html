@@ -1,19 +1,23 @@
       <footer class="footer footer-transparent d-print-none">
         <div class="container-fluid">
-          <div class="footer-inner kexo-footer-bar d-flex align-items-center py-3">
-            <a href="/dashboard/overview" class="kexo-footer-logo" aria-label="Kexo dashboard">
-              <img src="/assets/footer.png" alt="Kexo" width="24">
-            </a>
-            <div class="kexo-footer-center d-flex align-items-center justify-content-center gap-2 flex-grow-1">
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="fa-jelly-filled fa-rotate-right" data-icon-key="footer-refresh"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound">
-                <i class="fa-jelly-filled fa-volume-high footer-sound-icon-on" data-icon-key="footer-sound"></i>
-                <i class="fa-jelly-filled fa-volume-xmark footer-sound-icon-off is-hidden" data-icon-key="footer-sound-muted"></i>
-              </button>
+          <div class="footer-inner kexo-footer-bar d-flex align-items-center justify-content-between py-3">
+            <div class="kexo-footer-left d-flex align-items-center gap-2">
               <span class="text-secondary kexo-footer-last-sale d-flex align-items-center gap-1" style="font-size:.8125rem">
                 <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="fa-jelly-filled fa-eye" data-icon-key="footer-last-sale-show"></i><i class="fa-jelly-filled fa-eye-slash" data-icon-key="footer-last-sale-hide" style="display:none"></i></button>
                 <span class="footer-last-sale-text">Last sale: <span class="last-sale-ago">&mdash;</span></span>
               </span>
+            </div>
+            <div class="kexo-footer-center d-flex align-items-center justify-content-center gap-2">
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="fa-jelly-filled fa-rotate-right" data-icon-key="footer-refresh"></i></button>
+              <a href="/dashboard/overview" class="kexo-footer-logo" aria-label="Kexo dashboard">
+                <img src="/assets/logos/kexo_footer.webp" alt="Kexo" width="40">
+              </a>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound">
+                <i class="fa-jelly-filled fa-volume-high footer-sound-icon-on" data-icon-key="footer-sound"></i>
+                <i class="fa-jelly-filled fa-volume-xmark footer-sound-icon-off is-hidden" data-icon-key="footer-sound-muted"></i>
+              </button>
+            </div>
+            <div class="kexo-footer-right">
               <button type="button" class="btn btn-icon btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="fa-jelly-filled fa-arrow-up" data-icon-key="footer-back-to-top"></i></button>
             </div>
           </div>
