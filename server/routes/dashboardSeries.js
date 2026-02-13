@@ -769,6 +769,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
         return {
+          product_id: pid || null,
           title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
           handle: meta && meta.handle ? String(meta.handle) : null,
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
@@ -1258,6 +1259,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
         return {
+          product_id: pid || null,
           title: r.title || (meta && meta.title ? String(meta.title) : null) || 'Unknown',
           handle: meta && meta.handle ? String(meta.handle) : null,
           revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,

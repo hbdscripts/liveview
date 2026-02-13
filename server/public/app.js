@@ -4548,19 +4548,22 @@ const API = '';
       grid.innerHTML = list.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
         const handle = row && row.handle ? String(row.handle) : '';
+        const productId = (row && row.product_id) ? String(row.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const thumb = row && row.thumb_url ? String(row.thumb_url) : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
-        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+        const canOpen = handle || (productId && /^\d+$/.test(productId));
         const thumbInner = '<span class="thumb-wrap">' +
             (thumb
               ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
               : '') +
           '</span>';
-        const img = productUrl
+        const img = canOpen
           ? '<a class="leaderboard-thumb-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '"' +
             (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+            (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
             (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
             (thumb ? (' data-product-thumb="' + escapeHtml(thumb) + '"') : '') +
           '>' + thumbInner + '</a>'
@@ -4640,11 +4643,14 @@ const API = '';
         var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '—';
         var cr = r && r.cr != null ? pct(r.cr) : '—';
         var handle = r && r.handle ? String(r.handle) : '';
-        var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        var nameInner = handle
+        var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+        var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+        var canOpen = handle || (productId && /^\d+$/.test(productId));
+        var nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(title) + '</a>'
             )
@@ -4886,15 +4892,18 @@ const API = '';
       }
       tbody.innerHTML = rows.map(function(v) {
         const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && v && v.handle) ? (mainBase + '/products/' + encodeURIComponent(String(v.handle))) : '';
         const handle = (v && v.handle) ? String(v.handle).trim().toLowerCase() : '';
+        const productId = (v && v.product_id) ? String(v.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(String(handle))) : '#';
         const title = (v && v.title) ? String(v.title).trim() : '';
 
         const nameText = displayVariantName(v);
-        const nameInner = handle
+        const canOpen = handle || (productId && /^\d+$/.test(productId));
+        const nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(nameText) + '</a>'
             )
@@ -5205,13 +5214,16 @@ const API = '';
       }
       tbody.innerHTML = rows.map(function(p) {
         const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && p.handle) ? (mainBase + '/products/' + encodeURIComponent(String(p.handle))) : '';
         const handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+        const productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(String(handle))) : '#';
         const title = (p && p.title) ? String(p.title).trim() : '';
-        const nameInner = handle
+        const canOpen = handle || (productId && /^\d+$/.test(productId));
+        const nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(title) + '</a>'
             )
@@ -5585,15 +5597,18 @@ const API = '';
       tbody.innerHTML = pageRows.map(function(row) {
         const title = row && row.title != null ? String(row.title) : 'Product';
         const handle = row && row.handle ? String(row.handle) : '';
+        const productId = (row && row.product_id) ? String(row.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
-        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
         const placeholderSvg = '<i class="fa-light fa-image" data-icon-key="breakdown-placeholder-image" aria-hidden="true"></i>';
         const normalizedHandle = handle ? String(handle).trim().toLowerCase() : '';
-        const titleLink = normalizedHandle
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+        const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
+        const titleLink = canOpen
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
               (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
+              (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
               (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
             '>' + escapeHtml(title) + '</a>'
           : escapeHtml(title);
@@ -6193,17 +6208,20 @@ const API = '';
         const label = countryLabel(iso);
         const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
+        const productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const mainBase = getMainBaseUrl();
-        const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '';
+        const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '—';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
-        const titleLink = normalizedHandle
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+        const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
+        const titleLink = canOpen
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
               (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
+              (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
               (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
             '>' + escapeHtml(productTitle) + '</a>'
           : escapeHtml(productTitle);
@@ -15059,11 +15077,14 @@ const API = '';
             prodTbody.innerHTML = productsPageRows.map(function(p) {
               var title = p && p.title ? String(p.title) : 'Unknown';
               var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
-              var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-              var titleHtml = handle
+              var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+              var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+              var canOpen = handle || (productId && /^\d+$/.test(productId));
+              var titleHtml = canOpen
                 ? (
-                    '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                    '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
                       (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                      (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
                       (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
                     '>' + escapeHtml(title) + '</a>'
                   )
@@ -15136,11 +15157,14 @@ const API = '';
           tbody.innerHTML = pageRows.map(function(p) {
             var title = p && p.title ? String(p.title) : 'Unknown';
             var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
-            var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-            var titleHtml = handle
+            var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+            var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+            var canOpen = handle || (productId && /^\d+$/.test(productId));
+            var titleHtml = canOpen
               ? (
-                  '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                  '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
                     (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                    (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
                     (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
                   '>' + escapeHtml(title) + '</a>'
                 )
@@ -15299,6 +15323,7 @@ const API = '';
       var modalEl = null;
       var currentMode = 'product'; // product | page
       var currentHandle = null;
+      var currentProductId = null;
       var currentTitle = null;
       var currentProductUrl = null;
       var currentPageUrl = null;
@@ -15547,6 +15572,7 @@ const API = '';
         destroyCharts();
         currentMode = 'product';
         currentHandle = null;
+        currentProductId = null;
         currentTitle = null;
         currentProductUrl = null;
         currentPageUrl = null;
@@ -16074,11 +16100,13 @@ const API = '';
             '&range=' + encodeURIComponent(currentRangeKey || 'today') +
             '&_=' + Date.now();
         } else {
-          if (!currentHandle) { setStatus('No product selected.'); return; }
-          url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) +
-            '&range=' + encodeURIComponent(currentRangeKey || 'today') +
-            (shop ? ('&shop=' + encodeURIComponent(shop)) : '') +
-            '&_=' + Date.now();
+          if (!currentHandle && !currentProductId) { setStatus('No product selected.'); return; }
+          var q = 'range=' + encodeURIComponent(currentRangeKey || 'today') + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + '&_=' + Date.now();
+          if (currentHandle) {
+            url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) + '&' + q;
+          } else {
+            url = (API || '') + '/api/product-insights?product_id=' + encodeURIComponent(currentProductId) + '&' + q;
+          }
         }
 
         fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
@@ -16093,10 +16121,16 @@ const API = '';
           .catch(function() { setStatus(currentMode === 'page' ? 'Could not load page insights.' : 'Could not load product insights.'); });
       }
 
-      function openProduct(handle, options) {
-        currentHandle = normalizeHandle(handle);
-        if (!currentHandle) return;
+      function openProduct(handleOrProductId, options) {
         options = options || {};
+        var raw = String(handleOrProductId || '').trim();
+        var pid = options.productId ? String(options.productId).trim() : '';
+        if (!pid && /^\d+$/.test(raw)) pid = raw;
+        if (!pid && /gid:\/\/shopify\/Product\/(\d+)/i.test(raw)) pid = raw.replace(/gid:\/\/shopify\/Product\/(\d+)/i, '$1');
+        var h = pid ? null : normalizeHandle(handleOrProductId);
+        if (!h && !pid) return;
+        currentHandle = h || null;
+        currentProductId = pid || null;
         currentMode = 'product';
         currentPageUrl = null;
         currentTitle = options.title ? String(options.title) : null;
@@ -16115,6 +16149,7 @@ const API = '';
         currentMode = 'page';
         currentPageUrl = u;
         currentHandle = null;
+        currentProductId = null;
         options = options || {};
         currentTitle = options.title ? String(options.title) : null;
         currentProductUrl = null;
@@ -16133,11 +16168,13 @@ const API = '';
         if (isModifiedClick(e)) return;
         var h = normalizeHandle(a.getAttribute('data-product-handle') || '');
         if (!h) h = parseHandleFromHref(a.getAttribute('href') || '');
-        if (!h) return;
+        var pid = (a.getAttribute('data-product-id') || '').trim();
+        if (!h && !pid) return;
         e.preventDefault();
-        openProduct(h, {
+        openProduct(h || pid, {
           title: a.getAttribute('data-product-title') || '',
           productUrl: a.getAttribute('href') || '',
+          productId: pid || undefined,
         });
       });
 

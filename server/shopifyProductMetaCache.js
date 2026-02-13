@@ -30,6 +30,16 @@ function cleanupIfNeeded() {
   for (let i = 0; i < toDrop; i++) cache.delete(entries[i][0]);
 }
 
+function toNumericProductId(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  const m = s.match(/gid:\/\/shopify\/Product\/(\d+)$/i);
+  if (m) return m[1];
+  if (/^\d+$/.test(s)) return s;
+  return s;
+}
+
 function sanitizeThumbUrl(rawUrl) {
   if (!rawUrl) return rawUrl;
   const trimmed = String(rawUrl).trim();
@@ -53,7 +63,9 @@ async function fetchProductMeta(shop, token, productId) {
   const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
   const pid = productId != null ? String(productId).trim() : '';
   if (!safeShop || !pid || !token) return { ok: false, handle: null, title: null, thumb_url: null, product_type: null };
-  const url = `https://${safeShop}/admin/api/${API_VERSION}/products/${encodeURIComponent(pid)}.json`;
+  const numericPid = toNumericProductId(pid);
+  if (!numericPid) return { ok: false, handle: null, title: null, thumb_url: null, product_type: null };
+  const url = `https://${safeShop}/admin/api/${API_VERSION}/products/${encodeURIComponent(numericPid)}.json`;
   const res = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
   if (!res.ok) return { ok: false, handle: null, title: null, thumb_url: null, product_type: null };
   const json = await res.json().catch(() => ({}));

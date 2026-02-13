@@ -45,9 +45,13 @@ function extractNumericId(v) {
   if (typeof v === 'number' && Number.isFinite(v)) return String(Math.trunc(v));
   const s = String(v).trim();
   if (!s) return null;
-  // Shopify GraphQL gid://shopify/Order/123
-  const m = s.match(/\/Order\/(\d+)$/);
-  if (m) return m[1];
+  // Shopify GraphQL gid://shopify/Order/123, Product/123, ProductVariant/123
+  const orderMatch = s.match(/\/Order\/(\d+)$/);
+  if (orderMatch) return orderMatch[1];
+  const productMatch = s.match(/\/Product\/(\d+)$/);
+  if (productMatch) return productMatch[1];
+  const variantMatch = s.match(/\/ProductVariant\/(\d+)$/);
+  if (variantMatch) return variantMatch[1];
   if (/^\d+$/.test(s)) return s;
   return s;
 }

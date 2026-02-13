@@ -189,6 +189,16 @@ function upgradeImgUrl(rawUrl, width) {
   }
 }
 
+function toNumericProductId(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  const m = s.match(/gid:\/\/shopify\/Product\/(\d+)$/i);
+  if (m) return m[1];
+  if (/^\d+$/.test(s)) return s;
+  return s;
+}
+
 function handleMatchSql() {
   // We store several possible signals; keep it fast and permissive.
   // NOTE: handle is already normalized lowercase.
@@ -269,6 +279,86 @@ async function fetchShopifyProductByHandle(shop, token, handle) {
     productId: numericId || null,
     title: title || null,
     handle: prod.handle ? String(prod.handle).trim().toLowerCase() : handle,
+    productType: prod.productType ? String(prod.productType).trim() : null,
+    inventoryUnits: Number.isFinite(totalInventory) ? Math.trunc(totalInventory) : null,
+    inStockVariants: inStockVariants > 0 ? inStockVariants : (variantNodes.length ? 0 : null),
+    images,
+  };
+}
+
+async function fetchShopifyProductById(shop, token, productId) {
+  if (!shop || !token || !productId) return null;
+  const numericId = toNumericProductId(productId);
+  if (!numericId) return null;
+  const safeShop = String(shop).trim().toLowerCase();
+  const gid = `gid://shopify/Product/${numericId}`;
+  const url = `https://${safeShop}/admin/api/${API_VERSION}/graphql.json`;
+  const query = `
+    query ProductById($id: ID!) {
+      node(id: $id) {
+        ... on Product {
+          id
+          title
+          handle
+          productType
+          totalInventory
+          featuredImage { url altText }
+          images(first: 20) { nodes { url altText } }
+          variants(first: 100) {
+            nodes {
+              id
+              legacyResourceId
+              inventoryQuantity
+              availableForSale
+            }
+          }
+        }
+      }
+    }
+  `;
+  const body = JSON.stringify({ query, variables: { id: gid } });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': token,
+    },
+    body,
+  });
+  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  const node = json && json.data && json.data.node ? json.data.node : null;
+  if (!node || !node.id) return null;
+  const prod = node;
+  const title = prod.title ? String(prod.title) : '';
+  const images = [];
+  const seen = new Set();
+  const feat = prod.featuredImage && prod.featuredImage.url ? String(prod.featuredImage.url) : '';
+  if (feat) {
+    const u = feat.trim();
+    if (u && !seen.has(u)) { images.push({ url: u, alt: (prod.featuredImage.altText || '') }); seen.add(u); }
+  }
+  const nodes = prod.images && Array.isArray(prod.images.nodes) ? prod.images.nodes : [];
+  for (const n of nodes) {
+    const u = n && n.url ? String(n.url).trim() : '';
+    if (!u || seen.has(u)) continue;
+    images.push({ url: u, alt: (n.altText || '') });
+    seen.add(u);
+  }
+  const variantNodes = prod.variants && Array.isArray(prod.variants.nodes) ? prod.variants.nodes : [];
+  let inStockVariants = 0;
+  for (const n of variantNodes) {
+    if (!n || typeof n !== 'object') continue;
+    const q = n.inventoryQuantity != null ? Number(n.inventoryQuantity) : NaN;
+    const available = !!n.availableForSale;
+    if (available || (Number.isFinite(q) && q > 0)) inStockVariants += 1;
+  }
+  const totalInventory = prod.totalInventory != null ? Number(prod.totalInventory) : NaN;
+  const handle = prod.handle ? String(prod.handle).trim().toLowerCase() : null;
+  return {
+    productId: numericId || null,
+    title: title || null,
+    handle,
     productType: prod.productType ? String(prod.productType).trim() : null,
     inventoryUnits: Number.isFinite(totalInventory) ? Math.trunc(totalInventory) : null,
     inStockVariants: inStockVariants > 0 ? inStockVariants : (variantNodes.length ? 0 : null),
@@ -377,8 +467,9 @@ async function getProductInsights(req, res) {
   res.setHeader('Cache-Control', 'private, max-age=10');
   res.setHeader('Vary', 'Cookie');
 
-  const handle = normalizeHandle(req.query && req.query.handle ? String(req.query.handle) : '');
-  if (!handle) return res.status(400).json({ ok: false, error: 'Missing handle' });
+  const handleRaw = normalizeHandle(req.query && req.query.handle ? String(req.query.handle) : '');
+  const productIdRaw = req.query && req.query.product_id != null ? String(req.query.product_id).trim() : '';
+  if (!handleRaw && !productIdRaw) return res.status(400).json({ ok: false, error: 'Missing handle or product_id' });
 
   const rangeKey = normalizeRangeKey(req.query && req.query.range ? req.query.range : 'today');
   const timeZone = store.resolveAdminTimeZone();
@@ -392,10 +483,17 @@ async function getProductInsights(req, res) {
   const botFilterSql = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
   const eventsBotFilterSql = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
 
-  // Product metadata (best-effort)
+  // Product metadata (best-effort): handle takes precedence; if missing, resolve from product_id
   let product = null;
-  try { product = await fetchShopifyProductByHandle(shop, token, handle); } catch (_) { product = null; }
-  const productId = product && product.productId ? String(product.productId) : null;
+  let handle = handleRaw;
+  if (handle) {
+    try { product = await fetchShopifyProductByHandle(shop, token, handle); } catch (_) { product = null; }
+  }
+  if (!product && productIdRaw && token) {
+    try { product = await fetchShopifyProductById(shop, token, productIdRaw); } catch (_) { product = null; }
+    if (product && product.handle) handle = product.handle;
+  }
+  const productId = product && product.productId ? String(product.productId) : (productIdRaw ? toNumericProductId(productIdRaw) : null);
   let details = {
     inventoryUnits: product && product.inventoryUnits != null ? Number(product.inventoryUnits) : null,
     inStockVariants: product && product.inStockVariants != null ? Number(product.inStockVariants) : null,

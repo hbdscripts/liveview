@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Page header connector lines fix)
+Last updated: 2026-02-13 (Product name and clickability fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Product name and clickability: Trending Up/Down, Top Products, best-sellers, variants, breakdown, country-product tables now show real product names and clickable links even when Shopify meta fetch fails or handle is missing. Backend: shopifyProductMetaCache normalizes GID to numeric before REST API call; salesTruth extractNumericId handles Product/Variant GIDs; Product Insights API accepts product_id and resolves handle via GraphQL. Frontend: product links use data-product-id when handle missing; modal opens by product_id.
 2026-02-13 (latest)
 - Page header connector lines: fixed vanishing on resize/pageshow (hasOtherAuto excluded leftCol); lighter color; explicit mobile hide.
 2026-02-13 (latest)
