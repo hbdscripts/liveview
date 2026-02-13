@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Dashboard regression fixes: KPI/date/map/audio/rows)
+Last updated: 2026-02-13 (Nav/mobile-menu parity + sticky/session table fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,19 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Header/nav + mobile parity:
+  - Stripped remaining Tabler mobile-menu JS branches from `server/public/app.js` (legacy `mobile-date-*` / `mobile-tabs-*` paths) so desktop and mobile use the same shared nav/date behavior.
+  - Added hard overrides in `server/public/custom.css` to keep top nav inline/horizontal on mobile (no Tabler stacked navbar fallback).
+- Sessions/sticky table UX:
+  - Added a shared sticky-wrap marker class (`kexo-sticky-wrap`) during sticky initialization on all devices.
+  - Sticky first-column width persistence is now split by viewport bucket (mobile/desktop) and constrained by remaining column count, preventing oversized first columns that caused very tall session rows ("10 secs ago" wrapping vertically).
+  - Session age/history cells on Live/Sales/Table are now forced single-line in `custom.css`.
+- `/dashboard/live` cleanup:
+  - Removed the "Next update" markup from `server/public/dashboard/live.html` and limited next-update timer styling to Sales only.
+- Sticky header behavior:
+  - Explicitly set `.page` / `.page-wrapper` overflow to visible in `custom.css` to keep the sticky header stack tracking consistently while scrolling through page body content.
 
 2026-02-13 (latest)
 - Dashboard/header regressions fixed:

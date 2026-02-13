@@ -15,6 +15,7 @@ html, body {
   width: 100%;
   align-items: stretch !important;
   justify-content: flex-start !important;
+  overflow: visible !important;
 }
 .page-wrapper {
   min-width: 0;
@@ -22,6 +23,7 @@ html, body {
   max-width: none !important;
   margin: 0 !important;
   align-self: stretch !important;
+  overflow: visible !important;
 }
 
 .kexo-nav-svg {
@@ -302,8 +304,7 @@ a {
   100% { background: transparent; }
 }
 
-/* Live/Sales "Next update" UI (these pages don't load app.css) */
-body[data-page="live"] .next-update-block,
+/* Sales-only "Next update" UI (these pages don't load app.css) */
 body[data-page="sales"] .next-update-block {
   display: inline-flex;
   align-items: center;
@@ -311,7 +312,6 @@ body[data-page="sales"] .next-update-block {
   font-size: 0.875rem;
   color: var(--tblr-secondary, #626976);
 }
-body[data-page="live"] .next-update-timer,
 body[data-page="sales"] .next-update-timer {
   --progress: 0;
   display: inline-flex;
@@ -1624,12 +1624,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* ── Date bar (holds hidden select; visible date picker moved into page-header by JS) ── */
 .kexo-date-bar { height: 0; overflow: hidden; margin: 0; padding: 0; }
 
-.mobile-date-item.active,
-.mobile-date-item[aria-current="true"] {
-  background: rgba(var(--tblr-primary-rgb), .12);
-  color: var(--tblr-primary);
-}
-
 /* ── KPI condensed strip (navbar): single line, no wrap ────────────── */
 .kexo-kpis-condensed-row {
   display: flex;
@@ -1789,6 +1783,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
     min-width: max-content;
     justify-content: flex-start;
     white-space: nowrap;
+    flex-direction: row !important;
   }
   .kexo-desktop-nav-list .nav-link {
     padding: .55rem .6rem;
@@ -2027,6 +2022,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   margin: 0;
   width: 100%;
   padding: 0;
+}
+/* Strip Tabler mobile navbar behavior: keep one horizontal nav model. */
+.kexo-desktop-nav .navbar-nav {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+}
+.kexo-desktop-nav .navbar-nav .nav-item {
+  flex: 0 0 auto;
+}
+.kexo-desktop-nav .navbar-nav .dropdown {
+  position: relative;
+}
+.kexo-desktop-nav .navbar-nav .dropdown-menu {
+  position: absolute !important;
 }
 .kexo-desktop-nav-list .nav-link,
 .kexo-desktop-nav-settings .nav-link {
@@ -2642,6 +2651,19 @@ html[data-bs-theme="dark"] .landing-thumb {
   color: var(--tblr-pagination-active-color) !important;
   background-color: var(--tblr-pagination-active-bg);
   border-color: var(--tblr-pagination-active-border-color);
+}
+
+/* Keep session age/history values on one line to avoid tall rows. */
+body[data-page="live"] #sessions-table .arrived-cell > span,
+body[data-page="live"] #sessions-table .last-seen-cell > span,
+body[data-page="sales"] #sessions-table .arrived-cell > span,
+body[data-page="sales"] #sessions-table .last-seen-cell > span,
+body[data-page="date"] #sessions-table .arrived-cell > span,
+body[data-page="date"] #sessions-table .last-seen-cell > span,
+body[data-page="live"] #sessions-table .grid-body .grid-row .grid-cell:nth-child(8),
+body[data-page="sales"] #sessions-table .grid-body .grid-row .grid-cell:nth-child(8),
+body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child(8) {
+  white-space: nowrap;
 }
 
 /* ── Responsive ── */

@@ -1000,6 +1000,14 @@ const API = '';
       var ABS_MAX_WIDTH = 420;
       var LS_KEY = 'kexo-sticky-col-width';
 
+      function getViewportBucket() {
+        try {
+          return (window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches) ? 'mobile' : 'desktop';
+        } catch (_) {
+          return 'desktop';
+        }
+      }
+
       function getWrapTableId(wrap) {
         if (!wrap) return '';
         try {
@@ -1066,9 +1074,24 @@ const API = '';
         } catch (_) {}
 
         var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
+        var colCount = 0;
+        try {
+          var headerRow = wrap && wrap.querySelector ? wrap.querySelector('.grid-row--header') : null;
+          if (headerRow && headerRow.querySelectorAll) {
+            colCount = headerRow.querySelectorAll('.grid-cell').length;
+          } else {
+            var tableHeadRow = wrap && wrap.querySelector ? wrap.querySelector('table thead tr') : null;
+            if (tableHeadRow && tableHeadRow.children) colCount = tableHeadRow.children.length || 0;
+          }
+        } catch (_) { colCount = 0; }
         if (Number.isFinite(wrapW) && wrapW > 0) {
           var softMax = Math.max(min + 16, Math.round(wrapW * 0.65));
           max = Math.min(max, softMax);
+          if (colCount > 1) {
+            var minOtherColWidth = classKey === 'live' ? 72 : 64;
+            var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
+            max = Math.min(max, byRemainingCols);
+          }
         }
         min = Math.max(ABS_MIN_WIDTH, Math.min(min, ABS_MAX_WIDTH - 16));
         max = Math.max(min + 16, Math.min(max, ABS_MAX_WIDTH));
@@ -1095,7 +1118,7 @@ const API = '';
           if (tableId) suffix = tableId;
           else if (page) suffix = String(page).trim().toLowerCase();
         } catch (_) {}
-        return LS_KEY + ':' + suffix;
+        return LS_KEY + ':' + suffix + ':' + getViewportBucket();
       }
 
       function readSavedWidth(wrap) {
@@ -1202,6 +1225,7 @@ const API = '';
 
       function bind(wrap) {
         if (!wrap) return;
+        try { wrap.classList.add('kexo-sticky-wrap'); } catch (_) {}
         applyWidth(wrap, readSavedWidth(wrap));
         ensureHandle(wrap);
         if (wrap.getAttribute('data-sticky-resize-wrap-bound') === '1') return;
@@ -1494,9 +1518,8 @@ const API = '';
       if (!block) return;
       const labelEl = document.getElementById('next-update-label');
       const timerWrap = document.getElementById('next-update-timer-wrap');
-      const isLive = PAGE === 'live';
       const isSales = PAGE === 'sales';
-      const show = activeMainTab === 'spy' && (isLive || isSales);
+      const show = activeMainTab === 'sales' && isSales;
       block.classList.toggle('is-hidden', !show);
       if (!show) return;
 
@@ -5811,28 +5834,6 @@ const API = '';
       });
     }
 
-    function syncMobileDateMenuAvailability() {
-      const sel = document.getElementById('global-date-select');
-      const menu = document.getElementById('mobile-date-menu');
-      if (!sel || !menu) return;
-      try {
-        menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
-          const key = String(it.getAttribute('data-value') || '').trim();
-          if (!key) return;
-          const opt = sel.querySelector('option[value="' + key + '"]');
-          if (!opt) return;
-          const hidden = !!opt.hidden;
-          const disabled = !!opt.disabled;
-          it.style.display = hidden ? 'none' : '';
-          if (disabled) it.setAttribute('disabled', 'disabled');
-          else it.removeAttribute('disabled');
-          it.classList.toggle('disabled', disabled);
-          it.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-          if (opt.textContent) it.textContent = String(opt.textContent).trim();
-        });
-      } catch (_) {}
-    }
-
     function mountDesktopDatePickerIntoPageHeader() {
       try {
         const dateWrap = document.querySelector('.kexo-desktop-nav .kexo-topbar-date');
@@ -5938,7 +5939,6 @@ const API = '';
       updateRowsPerPageVisibility();
       syncHeaderDateDisplay();
       syncHeaderDateMenuAvailability();
-      syncMobileDateMenuAvailability();
     }
 
     function applyRangeAvailable(available) {
@@ -5960,13 +5960,6 @@ const API = '';
         try { o.hidden = (key === 'yesterday' && !allowYesterday); } catch (_) {}
       });
 
-      try {
-        const menu = document.getElementById('mobile-date-menu');
-        if (menu) {
-          const item = menu.querySelector('.mobile-date-item[data-value="yesterday"]');
-          if (item) item.style.display = allowYesterday ? '' : 'none';
-        }
-      } catch (_) {}
       if (dateRange !== 'live' && !isCustomDayRangeKey(dateRange) && !isCustomRangeKey(dateRange) && available && available[dateRange] === false) {
         dateRange = 'today';
         customRangeStartYmd = null;
@@ -11157,62 +11150,6 @@ const API = '';
         initHeaderDateMenu();
         try { ensureUiSettingsLoaded({ apply: true }); } catch (_) {}
       }
-      (function initMobileDateMenu() {
-        const btn = document.getElementById('mobile-date-btn');
-        const menu = document.getElementById('mobile-date-menu');
-        const sel = document.getElementById('global-date-select');
-        if (!btn || !menu || !sel) return;
-
-        function syncSelection() {
-          let cur = String(dateRange || 'today');
-          if (cur === 'live' || cur === 'sales' || cur === '1h') cur = 'today';
-          if (typeof cur === 'string' && (cur.startsWith('r:') || cur.startsWith('d:'))) cur = 'custom';
-          menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
-            const v = it.getAttribute('data-value');
-            it.setAttribute('aria-current', v === cur ? 'true' : 'false');
-            it.classList.toggle('active', v === cur);
-          });
-        }
-
-        function closeDropdown() {
-          try {
-            if (window.bootstrap && window.bootstrap.Dropdown) {
-              const dd = window.bootstrap.Dropdown.getOrCreateInstance(btn);
-              dd.hide();
-            }
-          } catch (_) {}
-        }
-
-        const dropdown = btn.closest('.dropdown');
-        if (dropdown) {
-          dropdown.addEventListener('show.bs.dropdown', syncSelection);
-          dropdown.addEventListener('shown.bs.dropdown', syncSelection);
-        }
-        btn.addEventListener('click', function() { setTimeout(syncSelection, 0); });
-        sel.addEventListener('change', syncSelection);
-
-        menu.querySelectorAll('.mobile-date-item[data-value]').forEach(function(it) {
-          it.addEventListener('click', function(e) {
-            e.preventDefault();
-            const v = String(it.getAttribute('data-value') || '').trim().toLowerCase();
-            if (!v) return;
-            try {
-              const opt = sel.querySelector('option[value="' + v + '"]');
-              if (opt && opt.disabled) return;
-            } catch (_) {}
-            sel.value = v;
-            try {
-              sel.dispatchEvent(new Event('change', { bubbles: true }));
-            } catch (_) {
-              // Fallback for older browsers
-              const ev = document.createEvent('Event');
-              ev.initEvent('change', true, true);
-              sel.dispatchEvent(ev);
-            }
-            closeDropdown();
-          });
-        });
-      })();
       (function initTableTitleTabs() {
         const tabsWrap = document.getElementById('table-title-tabs');
         if (!tabsWrap) return;
@@ -11255,9 +11192,6 @@ const API = '';
         const panelStats = document.getElementById('tab-panel-stats');
         const panelProducts = document.getElementById('tab-panel-products');
         const panelAds = document.getElementById('tab-panel-ads');
-        const mobileBtn = document.getElementById('mobile-tabs-btn');
-        const mobileMenu = document.getElementById('mobile-tabs-menu');
-        const mobileCurrent = document.getElementById('mobile-tabs-current');
         const pageTitleEl = document.getElementById('page-title');
         const navLinks = document.querySelectorAll('[data-nav]');
 
@@ -11320,31 +11254,6 @@ const API = '';
             adsLoading = null;
           });
           return adsLoading;
-        }
-
-        function closeMobileMenu() {
-          if (!mobileMenu || !mobileBtn) return;
-          mobileMenu.classList.remove('open');
-          mobileBtn.setAttribute('aria-expanded', 'false');
-        }
-
-        function syncMobileMenu(tab) {
-          if (mobileCurrent) {
-            mobileCurrent.textContent = TAB_LABELS[tab] || 'Overview';
-          }
-          if (mobileMenu) {
-            mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
-              const t = btn.getAttribute('data-tab');
-              btn.setAttribute('aria-current', t === tab ? 'true' : 'false');
-            });
-          }
-        }
-
-        function toggleMobileMenu() {
-          if (!mobileMenu || !mobileBtn) return;
-          const nextOpen = !mobileMenu.classList.contains('open');
-          mobileMenu.classList.toggle('open', nextOpen);
-          mobileBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
         }
 
         function tabFromHash() {
@@ -11451,8 +11360,6 @@ const API = '';
           var showDateSel = true;
           var globalDateSel = document.getElementById('global-date-select');
           if (globalDateSel) globalDateSel.style.display = showDateSel ? '' : 'none';
-          var mobileDateBtn = document.getElementById('mobile-date-btn');
-          if (mobileDateBtn) mobileDateBtn.style.display = showDateSel ? '' : 'none';
 
           syncDateSelectOptions();
           updateNextUpdateUi();
@@ -11516,8 +11423,6 @@ const API = '';
           var isProducts = tab === 'products';
           var isAds = tab === 'ads';
           activeMainTab = tab;
-          syncMobileMenu(tab);
-          closeMobileMenu();
           setHash(tab);
 
           if (pageTitleEl && !PAGE) {
@@ -11572,30 +11477,6 @@ const API = '';
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
         if (tabTools) tabTools.addEventListener('click', function() { setTab('tools'); });
-        if (mobileBtn && mobileMenu) {
-          mobileBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleMobileMenu();
-          });
-          mobileMenu.querySelectorAll('.mobile-tabs-item[data-tab]').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-              e.preventDefault();
-              var t = btn.getAttribute('data-tab') || 'dashboard';
-              setTab(t);
-            });
-          });
-          document.addEventListener('click', function(e) {
-            if (!mobileMenu.classList.contains('open')) return;
-            var target = e.target;
-            if (mobileMenu.contains(target) || mobileBtn.contains(target)) return;
-            closeMobileMenu();
-          });
-          document.addEventListener('keydown', function(e) {
-            if (e.key !== 'Escape') return;
-            closeMobileMenu();
-          });
-        }
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
