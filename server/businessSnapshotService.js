@@ -494,8 +494,24 @@ async function getBusinessSnapshot(options = {}) {
 
   const sessions = toNumber(sessionsNowMetrics && sessionsNowMetrics.sessions);
   const sessionsPrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.sessions);
-  const conversionRate = toNumber(sessionsNowMetrics && sessionsNowMetrics.conversionRate);
-  const conversionRatePrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.conversionRate);
+  let conversionRate = toNumber(sessionsNowMetrics && sessionsNowMetrics.conversionRate);
+  let conversionRatePrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.conversionRate);
+
+  // Data integrity guardrails:
+  // - If Shopify sessions are unavailable/zero but we have checkout orders, do not show misleading 0% values.
+  // - If conversion_rate is missing but sessions exist, compute a best-effort proxy from checkout orders.
+  let sessionsSafe = sessions;
+  let sessionsPrevSafe = sessionsPrev;
+  const ordersNowN = toNumber(orders);
+  const ordersPrevN = toNumber(ordersPrev);
+  if (sessionsSafe != null && sessionsSafe <= 0 && ordersNowN != null && ordersNowN > 0) sessionsSafe = null;
+  if (sessionsPrevSafe != null && sessionsPrevSafe <= 0 && ordersPrevN != null && ordersPrevN > 0) sessionsPrevSafe = null;
+  if (conversionRate == null && sessionsSafe != null && ordersNowN != null) {
+    conversionRate = safePercent(ordersNowN, sessionsSafe);
+  }
+  if (conversionRatePrev == null && sessionsPrevSafe != null && ordersPrevN != null) {
+    conversionRatePrev = safePercent(ordersPrevN, sessionsPrevSafe);
+  }
 
   const aov = (toNumber(revenue) != null && toNumber(orders) != null && Number(orders) > 0) ? round2(Number(revenue) / Number(orders)) : null;
   const aovPrev = (toNumber(revenuePrev) != null && toNumber(ordersPrev) != null && Number(ordersPrev) > 0) ? round2(Number(revenuePrev) / Number(ordersPrev)) : null;
@@ -607,7 +623,7 @@ async function getBusinessSnapshot(options = {}) {
       profit: profitSection,
     },
     performance: {
-      sessions: metric(sessions, sessionsPrev),
+      sessions: metric(sessionsSafe, sessionsPrevSafe),
       orders: metric(orders, ordersPrev),
       conversionRate: metric(conversionRate, conversionRatePrev),
       aov: metric(aov, aovPrev),

@@ -29,8 +29,8 @@ function sanitizeYmd(dateYmd) {
 function sanitizeTimeZone(timeZone) {
   const tz = typeof timeZone === 'string' ? timeZone.trim() : '';
   if (!tz) return '';
-  // Best-effort allowlist: IANA names like "Europe/London".
-  if (!/^[A-Za-z_]+\/[A-Za-z_]+$/.test(tz)) return '';
+  // Best-effort allowlist: IANA names like "Europe/London" or "America/Argentina/Buenos_Aires".
+  if (!/^[A-Za-z0-9_+\-]+(\/[A-Za-z0-9_+\-]+)+$/.test(tz)) return '';
   return tz;
 }
 
@@ -69,7 +69,7 @@ function normalizeConversionRate(val) {
 }
 
 function extractSessionsCount(table) {
-  if (!table?.rows?.length) return 0;
+  if (!table?.rows?.length) return null;
   const columns = (table.columns || []).map((c) => c && c.name);
   const normalized = columns.map(normalizeColumnName);
   const sessionsIdx = normalized.findIndex((n) => n === 'sessions' || n.includes('sessions'));
@@ -250,8 +250,9 @@ async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, u
   let conversionRate = null;
   let conversionError = '';
 
-  const tzSuffix = tz ? (' WITH TIMEZONE ' + tz) : '';
-  const combinedQuery = `FROM sessions SHOW sessions, conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`;
+  const tzSuffix = tz ? (` WITH TIMEZONE '${tz}'`) : '';
+  // Use a TIMESERIES query (day) so ShopifyQL returns rows reliably for ranges.
+  const combinedQuery = `FROM sessions SHOW sessions, conversion_rate TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`;
   const combined = await fetchShopifyQlTable(shop, accessToken, combinedQuery);
   if (!combined.error && combined.table?.rows?.length) {
     sessions = extractSessionsCount(combined.table);
@@ -261,7 +262,7 @@ async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, u
   }
 
   if (sessions == null) {
-    const sessionsOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    const sessionsOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`);
     if (!sessionsOnly.error) {
       sessions = extractSessionsCount(sessionsOnly.table);
     } else if (!conversionError) {
@@ -270,7 +271,7 @@ async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, u
   }
 
   if (conversionRate == null) {
-    const convOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    const convOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW conversion_rate TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`);
     if (!convOnly.error) {
       conversionRate = extractConversionRate(convOnly.table, ['conversion_rate']);
     } else if (!conversionError) {
@@ -279,7 +280,7 @@ async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, u
   }
 
   if (conversionRate == null) {
-    const convAlt = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW online_store_conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    const convAlt = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW online_store_conversion_rate TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`);
     if (!convAlt.error) {
       conversionRate = extractConversionRate(convAlt.table, ['online_store_conversion_rate']);
     } else if (!conversionError) {
