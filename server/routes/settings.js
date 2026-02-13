@@ -5,6 +5,7 @@
  * Currently used to toggle pixel session strategy for debugging session count drift.
  */
 const store = require('../store');
+const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
 const {
   VARIANTS_CONFIG_KEY,
@@ -847,6 +848,24 @@ function normalizeSettingsScopeMode(v) {
   return 'global';
 }
 
+async function readSettingsKeyMap(keys) {
+  const list = Array.isArray(keys) ? keys.map((k) => (k == null ? '' : String(k))).filter(Boolean) : [];
+  if (!list.length) return {};
+  const placeholders = list.map(() => '?').join(', ');
+  const db = getDb();
+  const rows = await db.all(
+    `SELECT key, value FROM settings WHERE key IN (${placeholders})`,
+    list
+  );
+  const map = {};
+  for (const row of rows || []) {
+    const k = row && row.key != null ? String(row.key) : '';
+    if (!k) continue;
+    map[k] = row && row.value != null ? String(row.value) : '';
+  }
+  return map;
+}
+
 async function readSettingsPayload() {
   let pixelSessionMode = 'legacy';
   let assetOverrides = {};
@@ -856,11 +875,26 @@ async function readSettingsPayload() {
   let profitRules = defaultProfitRulesConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
+  let rawMap = {};
   try {
-    pixelSessionMode = normalizePixelSessionMode(await store.getSetting(PIXEL_SESSION_MODE_KEY));
+    rawMap = await readSettingsKeyMap([
+      PIXEL_SESSION_MODE_KEY,
+      SETTINGS_SCOPE_MODE_KEY,
+      ASSET_OVERRIDES_KEY,
+      KPI_UI_CONFIG_V1_KEY,
+      CHARTS_UI_CONFIG_V1_KEY,
+      TABLES_UI_CONFIG_V1_KEY,
+      PROFIT_RULES_V1_KEY,
+      VARIANTS_CONFIG_KEY,
+    ]);
+  } catch (_) {
+    rawMap = {};
+  }
+  try {
+    pixelSessionMode = normalizePixelSessionMode(rawMap[PIXEL_SESSION_MODE_KEY]);
   } catch (_) {}
   try {
-    const rawScope = await store.getSetting(SETTINGS_SCOPE_MODE_KEY);
+    const rawScope = rawMap[SETTINGS_SCOPE_MODE_KEY];
     const normalizedScope = normalizeSettingsScopeMode(rawScope);
     settingsScopeMode = normalizedScope;
     // Persist the default once so the DB reflects the current project policy.
@@ -870,28 +904,28 @@ async function readSettingsPayload() {
     }
   } catch (_) {}
   try {
-    const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
+    const raw = rawMap[ASSET_OVERRIDES_KEY];
     const parsed = safeJsonParseObject(raw);
     if (parsed) assetOverrides = parsed;
   } catch (_) {}
   try {
-    const raw = await store.getSetting(KPI_UI_CONFIG_V1_KEY);
+    const raw = rawMap[KPI_UI_CONFIG_V1_KEY];
     kpiUiConfig = normalizeKpiUiConfigV1(raw);
   } catch (_) {}
   try {
-    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const raw = rawMap[CHARTS_UI_CONFIG_V1_KEY];
     chartsUiConfig = normalizeChartsUiConfigV1(raw);
   } catch (_) {}
   try {
-    const raw = await store.getSetting(TABLES_UI_CONFIG_V1_KEY);
+    const raw = rawMap[TABLES_UI_CONFIG_V1_KEY];
     tablesUiConfig = normalizeTablesUiConfigV1(raw);
   } catch (_) {}
   try {
-    const raw = await store.getSetting(PROFIT_RULES_V1_KEY);
+    const raw = rawMap[PROFIT_RULES_V1_KEY];
     profitRules = normalizeProfitRulesConfigV1(raw);
   } catch (_) {}
   try {
-    const raw = await store.getSetting(VARIANTS_CONFIG_KEY);
+    const raw = rawMap[VARIANTS_CONFIG_KEY];
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
@@ -1360,8 +1394,16 @@ const THEME_KEYS = [
 
 async function getThemeDefaults(req, res) {
   const result = { ok: true };
-  for (const key of THEME_KEYS) {
-    try { result[key] = (await store.getSetting('theme_' + key)) || ''; } catch (_) { result[key] = ''; }
+  try {
+    const dbKeys = THEME_KEYS.map((k) => 'theme_' + k);
+    const map = await readSettingsKeyMap(dbKeys);
+    for (const key of THEME_KEYS) {
+      const dbKey = 'theme_' + key;
+      const raw = map[dbKey];
+      result[key] = raw != null ? String(raw) : '';
+    }
+  } catch (_) {
+    for (const key of THEME_KEYS) result[key] = '';
   }
   res.setHeader('Cache-Control', 'no-store');
   res.json(result);
