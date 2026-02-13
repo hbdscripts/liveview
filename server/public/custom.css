@@ -1597,13 +1597,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
   color: #333;
   background: #fff;
-  border: 1px solid #e1e1e1;
+  border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 1px 1px #f1f1f1;
   border-radius: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+  height: 40px;
+  padding-left: 15px !important;
 }
 .kexo-date-btn:hover {
   border-color: #9ca3af;
@@ -2293,10 +2295,44 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* ── Page header category icon (matches active top menu icon + accent) ── */
 .kexo-page-header-category-icon {
   color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  margin: 2px 4px 0 0;
-  float: left;
+  margin: 0 4px 0 0;
+  float: none;
   font-size: 12px !important;
+}
+
+/* Tools page header: center icon+title block with date control */
+body[data-page="shipping-cr"] .page-header .row.align-items-center,
+body[data-page="compare-conversion-rate"] .page-header .row.align-items-center {
+  justify-content: center;
+  align-items: center !important;
+  gap: 0;
+}
+body[data-page="shipping-cr"] .page-header .row.align-items-center > .col,
+body[data-page="compare-conversion-rate"] .page-header .row.align-items-center > .col {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
+body[data-page="shipping-cr"] .page-header .kexo-page-header-date-col,
+body[data-page="compare-conversion-rate"] .page-header .kexo-page-header-date-col {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+}
+body[data-page="shipping-cr"] .page-header .page-pretitle,
+body[data-page="compare-conversion-rate"] .page-header .page-pretitle {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+body[data-page="shipping-cr"] .page-header .page-title,
+body[data-page="compare-conversion-rate"] .page-header .page-title {
+  font-size: 1rem;
+  line-height: 1.25;
 }
 
 @media (max-width: 1199.98px) {

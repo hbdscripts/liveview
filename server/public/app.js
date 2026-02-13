@@ -6087,7 +6087,7 @@ const API = '';
         let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
         if (!dateCol) {
           dateCol = document.createElement('div');
-          dateCol.className = 'col-auto d-flex align-items-center kexo-page-header-date-col';
+          dateCol.className = 'col-auto kexo-page-header-date-col';
           headerRow.appendChild(dateCol);
         }
 

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (header/table UX polish)
+Last updated: 2026-02-13 (tools header centered + date box sizing)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Tools page header alignment:
+  - `/tools/shipping-cr` and `/tools/compare-conversion-rate` now center the page icon + pretitle + title + date control as one middle-aligned header group.
+  - Page header category icon now uses inline-flex alignment (no float), improving subtitle baseline alignment.
+  - Date control button now uses 40px height and larger left padding to match the requested layout.
+  - Tools page title size is now `1rem`.
 
 2026-02-13 (latest)
 - Header/table UX polish:
