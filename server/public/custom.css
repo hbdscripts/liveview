@@ -2201,6 +2201,21 @@ html[data-bs-theme="dark"] .report-build-wrap {
   margin-right: 0;
 }
 
+/* ── Page header category icon (matches active top menu icon + accent) ── */
+.kexo-page-header-category-icon {
+  float: left;
+  font-size: 31px;
+  font-weight: 200;
+  color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
+  margin: 3px 10px 0 0;
+  border-right: 1px dotted rgba(148, 163, 184, 0.7);
+  padding: 2px 10px 0 0;
+  display: block;
+  width: 45px;
+  height: 35px;
+  opacity: 1;
+}
+
 @media (max-width: 1199.98px) {
   :root {
     --kexo-kpi-min-width: 132px;

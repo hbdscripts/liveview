@@ -11718,6 +11718,50 @@ const API = '';
         }
 
         var TAB_TO_NAV = { spy: 'live', stats: 'countries' };
+        function syncPageHeaderCategoryIcon() {
+          // Inject the active top-menu category icon into the page header (next to pretitle/title),
+          // using the same icon + accent as the active dropdown toggle.
+          try {
+            var pretitle = document.querySelector('.page-header .page-pretitle');
+            if (!pretitle) return;
+            var col = pretitle.parentElement;
+            if (!col) return;
+
+            var existing = col.querySelector('.kexo-page-header-category-icon');
+            if (existing) { try { existing.remove(); } catch (_) {} }
+
+            var navList = document.querySelector('.kexo-desktop-nav-list');
+            if (!navList) return;
+
+            // Top-level active category (Dashboard/Insights/Traffic/Integrations/Tools)
+            var activeCat = navList.querySelector(':scope > .nav-item.dropdown.active');
+            if (!activeCat) return;
+
+            var toggle = activeCat.querySelector(':scope > .nav-link.dropdown-toggle');
+            if (!toggle) return;
+
+            var iconSrc = toggle.querySelector('.kexo-nav-svg');
+            if (!iconSrc) return;
+
+            var icon = iconSrc.cloneNode(true);
+            // Avoid nav spacing helpers (they use !important and fight our header layout).
+            try { icon.classList.remove('me-1', 'me-2'); } catch (_) {}
+            icon.classList.add('kexo-page-header-category-icon');
+            icon.setAttribute('aria-hidden', 'true');
+
+            // Apply the same accent index as the active top-level nav item.
+            var idx = 0;
+            try {
+              var kids = Array.prototype.slice.call(navList.children || []);
+              idx = kids.indexOf(activeCat) + 1;
+            } catch (_) { idx = 0; }
+            if (idx >= 1 && idx <= 5) {
+              icon.classList.add('kexo-accent-' + String(idx));
+            }
+
+            col.insertBefore(icon, pretitle);
+          } catch (_) {}
+        }
         function updateNavSelection(tab) {
           var navKey = TAB_TO_NAV[tab] || tab;
           navLinks.forEach(function(link) {
@@ -11797,6 +11841,8 @@ const API = '';
             else toolsDropdownItem.classList.remove('active');
           }
 
+          // Keep the page header icon in sync with the active top-level dropdown.
+          syncPageHeaderCategoryIcon();
         }
 
         function runTabWork(tab) {

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (traffic trend charts + live 5m chart + products table hiding + countries map default)
+Last updated: 2026-02-13 (traffic trend charts + live 5m chart + products table hiding + countries map default + header category icons)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -232,6 +232,7 @@ Ops/reliability:
   - Products page hides tables with 0 sessions and shows a footer note ("Tables without sessions are hidden").
   - Live View online chart now shows an animated 5-minute trend (1m buckets) and defaults to line mode in Settings → Charts.
   - Countries map default mode is now `map-flat` (Settings → Charts).
+  - Page headers now show the active top-menu category icon (Dashboard/Insights/Traffic/etc) next to the pretitle/title, using the same accent color as the active nav item.
 
 2026-02-13 (latest)
 - Header/nav mobile follow-up:
