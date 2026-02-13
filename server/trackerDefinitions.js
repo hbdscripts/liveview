@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 23;
+const DEFINITIONS_VERSION = 24;
 const LAST_UPDATED = '2026-02-12';
 
 /**
@@ -317,6 +317,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Attribution caveat', value: 'Sessions depend on landing URLs with ?variant=<id>; default-option landings without variant param can under-attribute variant sessions.' },
       { name: 'Seeding', value: 'Settings → Insights → Variants includes “Suggest mappings” which seeds editable custom tables from Shopify selectedOptions + recent observed variant activity (API: GET /api/insights-variants-suggestions (optional refresh=1), POST /api/insights-variants-suggestions/apply).' },
       { name: 'Table aliases', value: 'Each mapping table can include aliases (e.g. Size, Chain Length, Bracelet Length). Aliases help scope inference and allow suggestion seeding to merge multiple Shopify option labels into one table.' },
+      { name: 'Table icons', value: 'Each mapping table can set an optional FontAwesome class string (e.g. fa-solid fa-grid-round) used on the Variants card header.' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['settings', 'sessions', 'orders_shopify_line_items'], shopifyToken: false },

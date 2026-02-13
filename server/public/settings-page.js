@@ -191,6 +191,8 @@
     return false;
   }
 
+  var DEFAULT_VARIANTS_TABLE_ICON = 'fa-solid fa-grid-round';
+
   function normalizeTokenList(rawList) {
     var out = [];
     var seen = {};
@@ -213,6 +215,19 @@
         .map(function (s) { return s.trim(); })
         .filter(Boolean)
     );
+  }
+
+  function buildTableAliasChipsHtml(aliasList, tableIdx) {
+    var list = Array.isArray(aliasList) ? aliasList : [];
+    return list.map(function (a) {
+      var token = String(a || '');
+      if (!token) return '';
+      return '' +
+        '<span class="badge bg-secondary-lt kexo-alias-chip">' +
+          '<span class="kexo-alias-chip-text">' + escapeHtml(token) + '</span>' +
+          '<button type="button" class="kexo-alias-chip-remove" aria-label="Remove alias" data-action="remove-table-alias" data-table-idx="' + String(tableIdx) + '" data-alias="' + escapeHtml(token) + '">×</button>' +
+        '</span>';
+    }).join('');
   }
 
   function normalizeIgnoredTitle(raw) {
@@ -255,6 +270,8 @@
       var orderRaw = parseInt(String(table.order), 10);
       var order = Number.isFinite(orderRaw) ? Math.max(0, orderRaw) : (idx + 1);
       var aliases = Array.isArray(table.aliases) ? normalizeTokenList(table.aliases) : parseAliasesFromText(table.aliases);
+      var iconRaw = table.icon == null ? '' : String(table.icon);
+      var icon = iconRaw.trim().replace(/\s+/g, ' ').slice(0, 120);
       var ignored = normalizeIgnoredList(table.ignored);
       var rules = [];
       var seenRuleIds = {};
@@ -269,7 +286,7 @@
         var exclude = normalizeTokenList(rule.exclude);
         rules.push({ id: ruleId, label: label, include: include, exclude: exclude });
       });
-      out.push({ id: id, name: name, enabled: enabled, order: order, aliases: aliases, ignored: ignored, rules: rules });
+      out.push({ id: id, name: name, enabled: enabled, order: order, aliases: aliases, icon: icon, ignored: ignored, rules: rules });
     });
     defaults.tables.forEach(function (table) {
       if (seenIds[table.id]) return;
@@ -2149,7 +2166,7 @@
     var html = '' +
       '<div id="settings-insights-variants-errors"></div>' +
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-        '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped.</div>' +
+        '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped. <strong>Table aliases</strong> are synonyms for Shopify option labels (e.g. Size/Chain Length) and help Suggestions merge into the same table.</div>' +
         '<div class="d-flex align-items-center gap-2">' +
           '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
         '</div>' +
@@ -2158,11 +2175,19 @@
     tables.forEach(function (table, tableIdx) {
       if (!table) return;
       var rules = Array.isArray(table.rules) ? table.rules : [];
+      var aliasList = Array.isArray(table.aliases) ? table.aliases : [];
+      var aliasValue = aliasList.join(', ');
+      var aliasChips = buildTableAliasChipsHtml(aliasList, tableIdx);
+      var iconValue = String((table.icon || '').trim() || DEFAULT_VARIANTS_TABLE_ICON);
       html += '<div class="card card-sm mb-3" data-table-idx="' + String(tableIdx) + '">' +
         '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-grow-1">' +
             '<input type="text" class="form-control form-control-sm" style="max-width:280px" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
-            '<input type="text" class="form-control form-control-sm" style="max-width:360px" placeholder="Aliases (e.g. Size, Chain Length)" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml((table.aliases || []).join(', ')) + '">' +
+            '<div class="kexo-alias-chipbox form-control form-control-sm" style="max-width:360px" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
+              '<input type="hidden" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(aliasValue) + '">' +
+              '<div class="kexo-alias-chipbox-chips" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '</div>' +
+              '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)">' +
+            '</div>' +
             '<span class="badge bg-secondary-lt">Custom</span>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
@@ -2186,7 +2211,7 @@
             : '';
           html += '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
             '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
-            '<td><textarea class="form-control form-control-sm" rows="2" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
+            '<td><textarea class="form-control form-control-sm" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
             '<td class="text-end">' +
               '<div class="d-inline-flex align-items-center gap-2">' +
                 mergeBtn +
@@ -2199,7 +2224,10 @@
 
       html += '</tbody></table></div>' +
         '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
+          '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+            '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
+            '<input type="text" class="form-control form-control-sm" style="max-width:260px" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
+          '</div>' +
           '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
         '</div>' +
         '</div>' +
@@ -2233,6 +2261,10 @@
       table.aliases = parseAliasesFromText(rawValue);
       return;
     }
+    if (field === 'table-icon') {
+      table.icon = String(rawValue == null ? '' : rawValue).trim().replace(/\s+/g, ' ').slice(0, 120);
+      return;
+    }
     var rIdx = parseInt(String(ruleIdx), 10);
     var rules = Array.isArray(table.rules) ? table.rules : [];
     if (!Number.isFinite(rIdx) || rIdx < 0 || rIdx >= rules.length) return;
@@ -2264,9 +2296,11 @@
       var tIdx = card.getAttribute('data-table-idx');
       var nameEl = card.querySelector('input[data-field="table-name"][data-table-idx="' + String(tIdx) + '"]');
       var aliasesEl = card.querySelector('input[data-field="table-aliases"][data-table-idx="' + String(tIdx) + '"]');
+      var iconEl = card.querySelector('input[data-field="table-icon"][data-table-idx="' + String(tIdx) + '"]');
       var enabledEl = card.querySelector('input[data-field="table-enabled"][data-table-idx="' + String(tIdx) + '"]');
       if (nameEl) updateDraftValue(tIdx, null, 'table-name', nameEl.value, false);
       if (aliasesEl) updateDraftValue(tIdx, null, 'table-aliases', aliasesEl.value, false);
+      if (iconEl) updateDraftValue(tIdx, null, 'table-icon', iconEl.value, false);
       if (enabledEl) updateDraftValue(tIdx, null, 'table-enabled', '', !!enabledEl.checked);
 
       card.querySelectorAll('tr[data-rule-idx]').forEach(function (tr) {
@@ -2294,10 +2328,62 @@
     persistInsightsVariantsConfig(insightsVariantsDraft, { successText: 'Variants reset.' });
   }
 
+  function getAliasChipboxEls(rootEl, tableIdx) {
+    if (!rootEl) return null;
+    var idx = String(tableIdx);
+    var box = rootEl.querySelector('[data-alias-chipbox][data-table-idx="' + idx + '"]');
+    if (!box) return null;
+    var hidden = box.querySelector('input[data-field="table-aliases"][data-table-idx="' + idx + '"]');
+    var chips = box.querySelector('[data-alias-chips][data-table-idx="' + idx + '"]');
+    var input = box.querySelector('input[data-alias-input][data-table-idx="' + idx + '"]');
+    return { box: box, hidden: hidden, chips: chips, input: input };
+  }
+
+  function setAliasChipboxAliases(rootEl, tableIdx, aliasList) {
+    var els = getAliasChipboxEls(rootEl, tableIdx);
+    if (!els || !els.hidden || !els.chips) return;
+    var next = normalizeTokenList(aliasList);
+    els.hidden.value = next.join(', ');
+    try { els.hidden.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    els.chips.innerHTML = buildTableAliasChipsHtml(next, tableIdx);
+  }
+
+  function addAliasChipboxFromText(rootEl, tableIdx, rawText) {
+    var els = getAliasChipboxEls(rootEl, tableIdx);
+    if (!els || !els.hidden) return;
+    var current = parseAliasesFromText(els.hidden.value || '');
+    var incoming = parseAliasesFromText(rawText || '');
+    if (!incoming.length) return;
+    var next = normalizeTokenList(current.concat(incoming));
+    setAliasChipboxAliases(rootEl, tableIdx, next);
+  }
+
+  function removeAliasChipboxToken(rootEl, tableIdx, rawToken) {
+    var token = String(rawToken == null ? '' : rawToken).trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 120);
+    if (!token) return;
+    var els = getAliasChipboxEls(rootEl, tableIdx);
+    if (!els || !els.hidden) return;
+    var current = parseAliasesFromText(els.hidden.value || '');
+    if (!current.length) return;
+    var next = current.filter(function (t) { return String(t || '') !== token; });
+    setAliasChipboxAliases(rootEl, tableIdx, next);
+  }
+
   function wireInsightsVariantsEditor() {
     var root = document.getElementById('settings-insights-variants-root');
     if (!root || root.getAttribute('data-insights-variants-wired') === '1') return;
     root.setAttribute('data-insights-variants-wired', '1');
+
+    root.addEventListener('click', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.closest) return;
+      if (target.closest('button[data-action]')) return;
+      var box = target.closest('[data-alias-chipbox]');
+      if (!box) return;
+      var input = box.querySelector('input[data-alias-input]');
+      if (!input) return;
+      try { input.focus(); } catch (_) {}
+    });
 
     root.addEventListener('click', function (e) {
       var btn = e && e.target && e.target.closest ? e.target.closest('button[data-action]') : null;
@@ -2318,6 +2404,7 @@
           enabled: true,
           order: tables.length + 1,
           aliases: [],
+          icon: DEFAULT_VARIANTS_TABLE_ICON,
           rules: [
             { id: 'new-rule', label: 'New Rule', include: [], exclude: [] },
           ],
@@ -2331,6 +2418,12 @@
       if (!Number.isFinite(tIdx) || tIdx < 0 || tIdx >= tables.length) return;
       var table = tables[tIdx];
       if (!table) return;
+
+      if (action === 'remove-table-alias') {
+        var token = btn.getAttribute('data-alias') || '';
+        removeAliasChipboxToken(root, tIdx, token);
+        return;
+      }
 
       if (action === 'remove-table') {
         if (isBuiltinInsightsTableId(table.id)) return;
@@ -2363,6 +2456,49 @@
         insightsVariantsDraft = normalizeInsightsVariantsConfig(cfg);
         renderInsightsVariantsPanel(insightsVariantsDraft);
       }
+    });
+
+    root.addEventListener('keydown', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.getAttribute) return;
+      if (target.getAttribute('data-alias-input') == null) return;
+      var tableIdx = target.getAttribute('data-table-idx');
+      var tIdx = parseInt(String(tableIdx || ''), 10);
+      if (!Number.isFinite(tIdx) || tIdx < 0) return;
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addAliasChipboxFromText(root, tIdx, target.value || '');
+        try { target.value = ''; } catch (_) {}
+        return;
+      }
+    });
+
+    root.addEventListener('focusout', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.getAttribute) return;
+      if (target.getAttribute('data-alias-input') == null) return;
+      var v = String(target.value || '').trim();
+      if (!v) return;
+      var tableIdx = target.getAttribute('data-table-idx');
+      var tIdx = parseInt(String(tableIdx || ''), 10);
+      if (!Number.isFinite(tIdx) || tIdx < 0) return;
+      addAliasChipboxFromText(root, tIdx, v);
+      try { target.value = ''; } catch (_) {}
+    });
+
+    root.addEventListener('paste', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.getAttribute) return;
+      if (target.getAttribute('data-alias-input') == null) return;
+      var text = '';
+      try { text = (e.clipboardData && e.clipboardData.getData) ? String(e.clipboardData.getData('text') || '') : ''; } catch (_) { text = ''; }
+      if (!text) return;
+      e.preventDefault();
+      var tableIdx = target.getAttribute('data-table-idx');
+      var tIdx = parseInt(String(tableIdx || ''), 10);
+      if (!Number.isFinite(tIdx) || tIdx < 0) return;
+      addAliasChipboxFromText(root, tIdx, text);
+      try { target.value = ''; } catch (_) {}
     });
 
     root.addEventListener('change', function (e) {

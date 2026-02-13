@@ -157,9 +157,10 @@ function normalizeTable(rawTable, index) {
   const orderRaw = Number(obj.order);
   const order = Number.isFinite(orderRaw) ? Math.max(0, Math.trunc(orderRaw)) : index + 1;
   const aliases = normalizeTokenList(obj.aliases);
+  const icon = (obj.icon == null ? '' : String(obj.icon)).trim().replace(/\s+/g, ' ').slice(0, 120);
   const rules = normalizeRules(obj.rules);
   const ignored = normalizeIgnoredList(obj.ignored);
-  return { id, name, enabled, order, aliases, rules, ignored };
+  return { id, name, enabled, order, aliases, icon, rules, ignored };
 }
 
 function sortTablesByOrderThenName(a, b) {

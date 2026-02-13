@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-12 (Refresh policy: only Live/Sales auto-update)
+Last updated: 2026-02-13 (Refresh policy: only Live/Sales auto-update)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -226,6 +226,12 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Settings → Insights → Variants:
+  - Table aliases are now a chip/tag input (Enter/comma/paste to add; click × to remove) to make merging Shopify option-name synonyms much easier.
+  - Added per-table icon class (FontAwesome) editable next to “Add row mapping”; used on Insights → Variants table cards (default `fa-solid fa-grid-round`).
+  - Footer layout: **Save** is now the only right-side button and is green; other actions (Suggest/Warn/Ignored/Reset) live on the left.
+
 2026-02-12 (latest)
 - Settings → Layout accordion: chevron moved to left, single chevron (rotates 180° when expanded), accordion-button font-size 16px, chevron fa-regular 14px #444.
 
@@ -305,7 +311,7 @@ Ops/reliability:
 - Suggest mappings now defaults to a **fast** build (skips truth reconcile); the modal includes a loader with elapsed time plus a **Refresh from Shopify** button for the slower/accurate refresh.
 - Variants settings save is no longer blocked by unmapped coverage; it saves and returns **coverage warnings** to guide mapping/ignore.
 - Coverage warnings no longer spam inline at the top of Settings → Variants; they are accessible via a **Warnings** button + modal.
-- Settings → Variants: **Reset Variants** button (footer-right; only shows when tables exist) wipes all mapping tables/rules/ignores (config only; no DB changes).
+- Settings → Variants: **Reset Variants** button (only shows when tables exist) wipes all mapping tables/rules/ignores (config only; no DB changes).
 - Settings → Variants: added per-row **Merge** action to merge include aliases into another label and remove the source row (helps clean up seeded duplicates).
 - Fixed settings editor escaping so Output labels can safely include quotes/ranges (e.g. `7.5" - 9" inches`).
 - Insights → Variants: All Variant Stats now shows **Mapped+Ignored %** and a per-table **Top Unmapped (by sessions)** section.

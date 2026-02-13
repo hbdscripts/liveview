@@ -542,6 +542,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
       id: table.id,
       name: table.name,
       order: table.order,
+      icon: table.icon || '',
       rows,
     });
   }
