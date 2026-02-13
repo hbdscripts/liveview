@@ -2335,7 +2335,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .page-header .page-title {
   display: block;
-  text-align: left;
+  text-align: center;
 }
 
 .page-title {
@@ -2426,6 +2426,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
   .page-header .row.align-items-center {
     margin: 0 !important;
     display: block !important;
+  }
+  .page-header .page-title {
+    text-align: left;
   }
   .kexo-page-header-category-icon {
     display: none;
