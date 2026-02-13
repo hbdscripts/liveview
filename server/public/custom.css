@@ -2226,6 +2226,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* Main-menu dropdown icons: lighter shade of parent accent (no opacity). */
 .kexo-desktop-nav-list .dropdown-item .kexo-nav-svg {
   color: color-mix(in srgb, var(--kexo-accent, var(--tblr-primary, #3eb3ab)) 55%, white) !important;
+  font-size: 11px;
+  padding-left: 1px;
 }
 /* Settings/date dropdown icons (in nav row) keep theme-configured color. */
 .kexo-desktop-nav-settings .dropdown-item .kexo-nav-svg {
