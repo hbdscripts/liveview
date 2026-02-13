@@ -15024,16 +15024,18 @@ const API = '';
       var backToTop = document.getElementById('back-to-top-btn');
       if (backToTop) {
         backToTop.addEventListener('click', function() {
-          try {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } catch (_) {
-            try {
-              window.scrollTo(0, 0);
-            } catch (_) {
-              if (document.documentElement) document.documentElement.scrollTop = 0;
-              if (document.body) document.body.scrollTop = 0;
+          function scrollToTop() {
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
+            if (document.documentElement) document.documentElement.scrollTop = 0;
+            if (document.body) document.body.scrollTop = 0;
+            try { window.scrollTo(0, 0); } catch (_) {}
+            if (window.parent !== window) {
+              try { window.parent.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) {}
+              try { window.parent.scrollTo(0, 0); } catch (_) {}
             }
           }
+          scrollToTop();
+          requestAnimationFrame(scrollToTop);
         });
       }
     })();
