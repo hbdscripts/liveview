@@ -6064,54 +6064,75 @@ const API = '';
       });
     }
 
-    function mountPageHeaderIntoHeaderStack() {
+    function syncPageHeaderTripleLayout(headerRow) {
       try {
-        const pageHeader = document.querySelector('.page-body > .container-fluid > .page-header');
-        const stack = document.querySelector('.kexo-header-stack');
-        if (!pageHeader || !stack) return;
-        if (pageHeader.getAttribute('data-kexo-relocated') === '1') return;
-
-        let slot = document.getElementById('kexo-page-header-slot');
-        if (!slot) {
-          slot = document.createElement('div');
-          slot.id = 'kexo-page-header-slot';
-          slot.className = 'kexo-page-header-slot';
-          const slotContainer = document.createElement('div');
-          slotContainer.className = 'container-fluid';
-          slot.appendChild(slotContainer);
-
-          const kpis = document.getElementById('kexo-kpis');
-          if (kpis && kpis.parentElement === stack) {
-            try { kpis.insertAdjacentElement('afterend', slot); } catch (_) { stack.appendChild(slot); }
-          } else {
-            stack.appendChild(slot);
-          }
-        }
-
-        const container = slot.querySelector('.container-fluid') || slot;
-        if (pageHeader.parentElement !== container) container.appendChild(pageHeader);
-        pageHeader.setAttribute('data-kexo-relocated', '1');
-        pageHeader.classList.add('kexo-page-header--in-stack');
-      } catch (_) {}
-    }
-
-    function syncPageHeaderCenteredClass(headerRow) {
-      try {
-        const row = headerRow || document.querySelector('.page-header .row.align-items-center');
+        const row =
+          headerRow ||
+          document.querySelector('.page-header .row.align-items-center') ||
+          document.querySelector('.page-header .row');
         if (!row) return;
+
         const dateCol = row.querySelector('.kexo-page-header-date-col');
         if (!dateCol) {
-          row.classList.remove('kexo-page-header-row-centered');
+          row.classList.remove('kexo-page-header-layout-triple');
           return;
         }
+
+        // Skip headers that have other right-side actions (buttons, etc).
         const hasOtherAuto = !!row.querySelector('.col-auto:not(.kexo-page-header-date-col)');
-        row.classList.toggle('kexo-page-header-row-centered', !hasOtherAuto);
+        if (hasOtherAuto) {
+          row.classList.remove('kexo-page-header-layout-triple');
+          return;
+        }
+
+        const pretitle = row.querySelector('.page-pretitle');
+        const title = row.querySelector('.page-title');
+        if (!pretitle || !title) return;
+
+        const legacyPretitleParent = pretitle.parentElement;
+        const legacyTitleParent = title.parentElement;
+
+        let leftCol = row.querySelector('.kexo-page-header-left-col');
+        if (!leftCol) {
+          leftCol = document.createElement('div');
+          leftCol.className = 'col-auto kexo-page-header-left-col';
+        }
+
+        let titleCol = row.querySelector('.kexo-page-header-title-col');
+        if (!titleCol) {
+          titleCol = document.createElement('div');
+          titleCol.className = 'col kexo-page-header-title-col';
+        }
+
+        // Ensure order: left, title, date.
+        if (leftCol.parentElement !== row) {
+          row.insertBefore(leftCol, row.firstChild || null);
+        }
+        if (titleCol.parentElement !== row) {
+          row.insertBefore(titleCol, dateCol);
+        }
+        if (dateCol.parentElement === row && dateCol.nextElementSibling) {
+          row.appendChild(dateCol);
+        }
+
+        if (pretitle.parentElement !== leftCol) leftCol.appendChild(pretitle);
+        if (title.parentElement !== titleCol) titleCol.appendChild(title);
+
+        // Clean up legacy wrapper(s) if we emptied them.
+        try {
+          [legacyPretitleParent, legacyTitleParent].forEach(function(p) {
+            if (!p) return;
+            if (p === leftCol || p === titleCol || p === row) return;
+            if (p.children && p.children.length === 0) p.remove();
+          });
+        } catch (_) {}
+
+        row.classList.add('kexo-page-header-layout-triple');
       } catch (_) {}
     }
 
     function mountDesktopDatePickerIntoPageHeader() {
       try {
-        mountPageHeaderIntoHeaderStack();
         const dateBtn = document.getElementById('kexo-date-display');
         const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
@@ -6144,7 +6165,7 @@ const API = '';
           sourceLi.classList.add('is-date-relocated');
           sourceLi.classList.remove('is-date-inline-fallback');
         }
-        syncPageHeaderCenteredClass(headerRow);
+        syncPageHeaderTripleLayout(headerRow);
       } catch (_) {}
     }
 
@@ -12177,11 +12198,16 @@ const API = '';
           try {
             var pretitle = document.querySelector('.page-header .page-pretitle');
             if (!pretitle) return;
-            var col = pretitle.parentElement;
-            if (!col) return;
-
-            var existing = col.querySelector('.kexo-page-header-category-icon');
-            if (existing) { try { existing.remove(); } catch (_) {} }
+            // Remove previous injected icon(s) (legacy placed as sibling; current placed inside pretitle).
+            try {
+              pretitle.querySelectorAll('.kexo-page-header-category-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
+            } catch (_) {}
+            try {
+              var parent = pretitle.parentElement;
+              if (parent) {
+                parent.querySelectorAll(':scope > .kexo-page-header-category-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
+              }
+            } catch (_) {}
 
             var navList = document.querySelector('.kexo-desktop-nav-list');
             if (!navList) return;
@@ -12220,7 +12246,7 @@ const API = '';
               if (computedColor) icon.style.color = computedColor;
             } catch (_) {}
 
-            col.insertBefore(icon, pretitle);
+            pretitle.insertBefore(icon, pretitle.firstChild || null);
           } catch (_) {}
         }
         function updateNavSelection(tab) {
@@ -13143,7 +13169,7 @@ const API = '';
             }
           }).catch(function() {});
         }
-        function renderSparkline(elId, dataArr, color, type, compareArr) {
+        function renderSparkline(elId, dataArr, color, type) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
@@ -13154,31 +13180,11 @@ const API = '';
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : 0;
           });
-          var compareNums = Array.isArray(compareArr)
-            ? compareArr.map(function(v) {
-                var n = (typeof v === 'number') ? v : Number(v);
-                return isFinite(n) ? n : 0;
-              })
-            : null;
-          if (compareNums && compareNums.length > 1 && compareNums.length !== nums.length) {
-            if (compareNums.length > nums.length) compareNums = compareNums.slice(compareNums.length - nums.length);
-            if (compareNums.length < nums.length) {
-              var lead = compareNums.length ? compareNums[0] : 0;
-              while (compareNums.length < nums.length) compareNums.unshift(lead);
-            }
-          }
-          if (compareNums && compareNums.length < 2) compareNums = null;
           var minVal = nums[0];
           var maxVal = nums[0];
           for (var i = 1; i < nums.length; i++) {
             if (nums[i] < minVal) minVal = nums[i];
             if (nums[i] > maxVal) maxVal = nums[i];
-          }
-          if (compareNums && compareNums.length) {
-            for (var j = 0; j < compareNums.length; j++) {
-              if (compareNums[j] < minVal) minVal = compareNums[j];
-              if (compareNums[j] > maxVal) maxVal = compareNums[j];
-            }
           }
           if (!isFinite(minVal)) minVal = 0;
           if (!isFinite(maxVal)) maxVal = 0;
@@ -13202,15 +13208,14 @@ const API = '';
             yMax = maxVal + pad;
           }
 
-          var hasCompare = !!(compareNums && compareNums.length >= 2);
+          var chartType = String(type || '').toLowerCase() === 'area' ? 'area' : 'line';
+          var isArea = chartType === 'area';
           var chart = new ApexCharts(sparkEl, {
-            chart: { type: 'line', height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: hasCompare ? [{ name: 'Previous', data: compareNums }, { name: 'Current', data: nums }] : [{ name: 'Current', data: nums }],
-            stroke: hasCompare
-              ? { width: [1.6, 2.55], curve: [sparkCurve, sparkCurve], dashArray: [6, 0], lineCap: 'round' }
-              : { width: 2.45, curve: sparkCurve, lineCap: 'round' },
-            fill: { type: 'solid', opacity: 1 },
-            colors: hasCompare ? ['#9ca3af', color] : [color],
+            chart: { type: chartType, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: [{ name: 'Trend', data: nums }],
+            stroke: { width: 2.45, curve: sparkCurve, lineCap: 'round' },
+            fill: { type: 'solid', opacity: isArea ? 0.22 : 1 },
+            colors: [color],
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
             tooltip: { enabled: false }
@@ -13259,18 +13264,6 @@ const API = '';
         var kpiRangeForTone = null;
         try { kpiRangeForTone = getStatsRange(); } catch (_) { kpiRangeForTone = null; }
         var compareTone = kpiDataForTone && kpiDataForTone.compare ? kpiDataForTone.compare : null;
-        var compareSeriesRangeKey = compareRangeKeyFromKpiPayload(kpiDataForTone);
-        var compareSeriesHistory = (compareSeriesRangeKey && dashCompareRangeKey === compareSeriesRangeKey && Array.isArray(dashCompareSeriesCache))
-          ? dashCompareSeriesCache
-          : null;
-        if (compareSeriesRangeKey && !compareSeriesHistory) {
-          ensureDashboardCompareSeries(kpiDataForTone).then(function(series) {
-            if (!series || !series.length) return;
-            if (dashCache && dashLastRangeKey === dashRangeKeyFromDateRange()) {
-              try { renderDashboard(dashCache); } catch (_) {}
-            }
-          }).catch(function() {});
-        }
         var currentRevenueTone = numFromRangeMap(kpiDataForTone, 'sales', kpiRangeForTone);
         var currentOrdersTone = numFromRangeMap(kpiDataForTone, 'convertedCount', kpiRangeForTone);
         var currentSessionsTone = sessionsFromBreakdownMap(kpiDataForTone, kpiRangeForTone);
@@ -13352,24 +13345,11 @@ const API = '';
         var aovHistorySpark = sparklineSeries.map(function(d) { return d.aov; });
         var bounceHistorySpark = sparklineSeries.map(function(d) { return d.bounceRate; });
         var itemsHistorySpark = sparklineSeries.map(function(d) { return d.units || 0; });
-        var revenueCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.revenue; }) : null;
-        var sessionsCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.sessions; }) : null;
-        var ordersCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.orders; }) : null;
-        var returningCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.returningCustomerOrders || 0; }) : null;
-        var convCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.convRate; }) : null;
-        var aovCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.aov; }) : null;
-        var bounceCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.bounceRate; }) : null;
-        var itemsCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) { return d.units || 0; }) : null;
         var roasHistorySpark = sparklineSeries.map(function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
         });
-        var roasCompareHistorySpark = compareSeriesHistory ? compareSeriesHistory.map(function(d) {
-          var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
-          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
-          return (spend > 0) ? (rev / spend) : 0;
-        }) : null;
         var revenueSpark = sparkSeriesFromCompare(currentRevenueTone, compareRevenueTone, revenueHistorySpark);
         var sessionsSpark = sparkSeriesFromCompare(currentSessionsTone, compareSessionsTone, sessionsHistorySpark);
         var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
@@ -13382,18 +13362,18 @@ const API = '';
         var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
         var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
-        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone));
-        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'line', sessionsCompareHistorySpark || sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone));
-        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'line', ordersCompareHistorySpark || sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone));
-        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'line', returningCompareHistorySpark || sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone));
-        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'line', convCompareHistorySpark || sparkCompareSeries(convSpark, currentConvTone, compareConvTone));
-        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'line', aovCompareHistorySpark || sparkCompareSeries(aovSpark, currentAovTone, compareAovTone));
-        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'line', bounceCompareHistorySpark || sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone));
-        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'line', roasCompareHistorySpark || sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone));
-        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'line', itemsCompareHistorySpark || sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone));
-        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'line', ordersCompareHistorySpark || sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone));
-        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone));
-        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'line', revenueCompareHistorySpark || sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone));
+        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'area');
+        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'area');
+        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'area');
+        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'area');
+        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'area');
+        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'area');
+        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'area');
+        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'area');
+        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'area');
+        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'area');
+        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'area');
+        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'area');
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
