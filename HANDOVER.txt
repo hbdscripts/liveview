@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Table row hover: no darker 2nd cell)
+Last updated: 2026-02-13 (Table last row: no border-bottom)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Table last row: No border-bottom on last row cells (grid tables, table-responsive, tsm-table, product-insights) so the card/table outer border provides the bottom edge.
 2026-02-13 (latest)
 - Table row hover: Removed nth-child(2) hover overrides so the first TD after the sticky column matches the rest of the row (no darker adjacent cell).
 2026-02-13 (latest)

@@ -303,7 +303,14 @@ a {
   line-height: 1.4;
 }
 
+/* Last row: no border-bottom so the card/table outer border provides the bottom edge */
 .grid-body .grid-row:last-child .grid-cell {
+  border-bottom: none !important;
+}
+.table-responsive table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+#settings-traffic-source-mapping-root .tsm-table .grid-body .grid-row:last-child .grid-cell {
   border-bottom: none !important;
 }
 
@@ -983,6 +990,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   color: var(--tblr-secondary);
 }
 #product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
+  border-bottom: none !important;
   padding-bottom: 1.1rem;
 }
 
