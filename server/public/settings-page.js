@@ -695,6 +695,7 @@
   function defaultChartsUiConfigV1() {
     return {
       v: 1,
+      hideOnMobile: true,
       charts: [
         { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
         { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
@@ -872,8 +873,17 @@
     if (!root) return;
     var c = cfg && typeof cfg === 'object' ? cfg : defaultChartsUiConfigV1();
     var list = c && Array.isArray(c.charts) ? c.charts : [];
+    var hideOnMobile = !(c && c.hideOnMobile === false);
 
-    var html = '<div class="table-responsive overflow-x-auto">' +
+    var html = '' +
+      '<div class="d-flex align-items-start justify-content-between gap-3 mb-3">' +
+        '<label class="form-check form-switch m-0">' +
+          '<input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (hideOnMobile ? 'checked' : '') + '>' +
+          '<span class="form-check-label">Hide charts on mobile</span>' +
+        '</label>' +
+        '<div class="text-muted small" style="max-width:520px;">When enabled, chart cards are hidden on small screens. Tables still show as normal.</div>' +
+      '</div>' +
+      '<div class="table-responsive overflow-x-auto">' +
       '<table class="table table-sm table-vcenter mb-0 charts-settings-table">' +
       '<thead><tr>' +
       '<th class="charts-col-on">On</th>' +
@@ -954,7 +964,8 @@
   function buildChartsUiConfigFromDom() {
     var root = document.getElementById('settings-charts-root');
     if (!root) return defaultChartsUiConfigV1();
-    var out = { v: 1, charts: [] };
+    var hideEl = document.getElementById('settings-charts-hide-mobile');
+    var out = { v: 1, hideOnMobile: hideEl ? !!hideEl.checked : true, charts: [] };
     root.querySelectorAll('tr[data-chart-key]').forEach(function (tr) {
       var key = (tr.getAttribute('data-chart-key') || '').trim().toLowerCase();
       if (!key) return;

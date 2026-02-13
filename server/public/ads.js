@@ -252,7 +252,24 @@
     return null;
   }
 
+  function isMobileViewport() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function shouldHideChartsOnMobile() {
+    var cfg = null;
+    try { cfg = window.__kexoChartsUiConfigV1 || null; } catch (_) { cfg = null; }
+    // Default ON when config is missing/outdated (project policy).
+    if (!cfg || cfg.v !== 1) return true;
+    return cfg.hideOnMobile !== false;
+  }
+
   function isChartEnabledByUiConfig(key, fallbackEnabled) {
+    if (shouldHideChartsOnMobile() && isMobileViewport()) return false;
     var it = getChartsUiItem(key);
     if (it && it.enabled === false) return false;
     return fallbackEnabled !== false;

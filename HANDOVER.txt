@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Tables: sticky ellipsis + no mobile header icons)
+Last updated: 2026-02-13 (Charts: hide on mobile + Tables: sticky resize consistency)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -237,6 +237,10 @@ Ops/reliability:
   - Sticky first-column cells now use border-aware CSS ellipsis that expands/contracts during resize.
   - Table headers no longer switch to icon-only labels on mobile (headers stay text + ellipsis).
   - Rows-per-page control (`kexo-table-rows-control`) is hidden on mobile.
+  - Sticky resize now binds for dynamically inserted tables (notably Insights → Variants) and mobile max-width is no longer artificially constrained by 2-up grids.
+  - Live View “Latest sales” table is exempt from sticky-first-column and shows country code beside the flag.
+- Charts:
+  - Added Layout → Charts setting “Hide charts on mobile” (default ON) to hide all chart cards on small screens.
 - Footer redesign:
   - Layout: far left = eye + last sale; center = refresh | logo (40px) | sound; far right = back to top.
   - Logo: new `/assets/logos/kexo_footer.webp` (40px width), centered in footer.

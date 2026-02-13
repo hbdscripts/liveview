@@ -1086,7 +1086,8 @@ const API = '';
 
         // Site-wide sticky sizing rules by table-grid cardinality.
         if (classKey !== 'live' && gridCount === 1) max = Math.min(max, 250);
-        if (classKey !== 'live' && gridCount === 2) max = Math.min(max, 150);
+        // On mobile the cards stack; allow sticky labels to expand more naturally.
+        if (classKey !== 'live' && gridCount === 2 && getViewportBucket() !== 'mobile') max = Math.min(max, 150);
         if (gridCount >= 3) min = Math.max(min, 100);
 
         // Optional per-table overrides from Settings → Layout → Tables.
@@ -1270,6 +1271,11 @@ const API = '';
 
       function bind(wrap) {
         if (!wrap) return;
+        // Latest Sales (Live View) is intentionally not sticky/resizable.
+        try {
+          var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
+          if (tid === 'latest-sales-table') return;
+        } catch (_) {}
         try { wrap.classList.add('kexo-sticky-wrap'); } catch (_) {}
         applyWidthSingle(wrap, readSavedWidth(wrap));
         ensureHandle(wrap);
@@ -1301,6 +1307,26 @@ const API = '';
       try {
         window.addEventListener('kexo:tablesUiConfigApplied', function() { run(); });
       } catch (_) {}
+
+      // Bind dynamically inserted tables (Variants page builds tables after fetch).
+      if (typeof MutationObserver !== 'undefined') {
+        try {
+          var docMo = new MutationObserver(function(muts) {
+            muts.forEach(function(m) {
+              (m.addedNodes || []).forEach(function(n) {
+                if (!(n instanceof Element)) return;
+                try {
+                  if (n.matches && n.matches(WRAP_SELECTOR)) bind(n);
+                } catch (_) {}
+                try {
+                  if (n.querySelectorAll) n.querySelectorAll(WRAP_SELECTOR).forEach(function(w) { bind(w); });
+                } catch (_) {}
+              });
+            });
+          });
+          docMo.observe(document.documentElement, { childList: true, subtree: true });
+        } catch (_) {}
+      }
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -3709,7 +3735,7 @@ const API = '';
           : (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
         return (
           '<tr>' +
-            '<td class="w-1">' + flagImgSmall(cc) + '</td>' +
+            '<td class="w-1"><span class="d-inline-flex align-items-center gap-1">' + flagImgSmall(cc) + '<span class="text-muted small">' + escapeHtml(cc) + '</span></span></td>' +
             '<td>' + titleHtml + '</td>' +
             '<td class="text-end text-muted">' + escapeHtml(ago) + '</td>' +
             '<td class="text-end fw-semibold">' + escapeHtml(money) + '</td>' +
@@ -7651,6 +7677,37 @@ const API = '';
       }
     } catch (_) {}
 
+    function isChartsMobileViewport() {
+      try {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function shouldHideChartsOnMobile() {
+      var cfg = chartsUiConfigV1;
+      // Default ON when config is missing/outdated (requested project policy).
+      if (!cfg || typeof cfg !== 'object' || cfg.v !== 1) return true;
+      return cfg.hideOnMobile !== false;
+    }
+
+    function applyHideChartsOnMobileClass() {
+      var root = null;
+      try { root = document.documentElement; } catch (_) { root = null; }
+      if (!root || !root.classList) return;
+      var on = shouldHideChartsOnMobile();
+      var mobile = isChartsMobileViewport();
+      root.classList.toggle('kexo-hide-charts-mobile', !!(on && mobile));
+    }
+
+    try {
+      applyHideChartsOnMobileClass();
+      window.addEventListener('resize', function() {
+        try { applyHideChartsOnMobileClass(); } catch (_) {}
+      });
+    } catch (_) {}
+
     function getChartsUiItem(key) {
       var cfg = chartsUiConfigV1;
       if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.charts)) return null;
@@ -7666,6 +7723,7 @@ const API = '';
     }
 
     function isChartEnabledByUiConfig(key, fallbackEnabled) {
+      if (shouldHideChartsOnMobile() && isChartsMobileViewport()) return false;
       var it = getChartsUiItem(key);
       if (it && it.enabled === false) return false;
       return fallbackEnabled !== false;
@@ -7714,6 +7772,7 @@ const API = '';
       chartsUiConfigV1 = cfg;
       try { window.__kexoChartsUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(CHARTS_UI_CFG_LS_KEY, cfg); } catch (_) {}
+      try { applyHideChartsOnMobileClass(); } catch (_) {}
       return prevSig !== nextSig;
     }
 

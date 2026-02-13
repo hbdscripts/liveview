@@ -74,6 +74,18 @@
 
         var iconColor = localStorage.getItem('tabler-theme-icon-color');
         if (iconColor) root.style.setProperty('--kexo-theme-icon-color', iconColor);
+
+        // Charts: hide on mobile (Layout → Charts setting). Default is ON.
+        try {
+          var hideCharts = true;
+          var rawCharts = localStorage.getItem('kexo:charts-ui-config:v1');
+          if (rawCharts) {
+            var parsedCharts = JSON.parse(String(rawCharts));
+            if (parsedCharts && parsedCharts.v === 1 && parsedCharts.hideOnMobile === false) hideCharts = false;
+          }
+          var isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+          if (hideCharts && isMobile) root.classList.add('kexo-hide-charts-mobile');
+        } catch (_) {}
       } catch (e) {}
     })();
   </script>

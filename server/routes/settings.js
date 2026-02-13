@@ -171,6 +171,7 @@ function defaultKpiUiConfigV1() {
 function defaultChartsUiConfigV1() {
   return {
     v: 1,
+    hideOnMobile: true,
     charts: [
       { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
       { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
@@ -725,6 +726,7 @@ function normalizeChartsUiConfigV1(raw) {
   if (!obj || obj.v !== 1) return def;
   return {
     v: 1,
+    hideOnMobile: normalizeBool(obj.hideOnMobile, def.hideOnMobile),
     charts: normalizeChartsList(obj.charts, def.charts),
   };
 }
@@ -1651,6 +1653,10 @@ async function getThemeVarsCss(req, res) {
     }
     maybeFullWidth('dash-chart-revenue', 'dash-chart-orders');
     maybeFullWidth('dash-chart-conv', 'dash-chart-sessions');
+
+    // Optional: hide ALL charts on mobile. This is controlled by the html class so it can
+    // toggle at runtime (no reload) and so per-chart disabled rules still work normally.
+    rules.push('@media (max-width: 991.98px){html.kexo-hide-charts-mobile [data-kexo-chart-key]{display:none!important;}}');
 
     if (rules.length) {
       chartsCss = ['/* KEXO: server-injected chart visibility */', ...rules, ''].join('\n');

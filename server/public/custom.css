@@ -722,6 +722,26 @@ body:not([data-page="settings"]) .table-responsive table td:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Live View: Latest sales table should NOT use the sticky/resizable first column. */
+body[data-page="live"] #latest-sales-table thead th:first-child,
+body[data-page="live"] #latest-sales-table tbody td:first-child {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+  width: 1% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  box-shadow: none !important;
+  border-right: none !important;
+  background: inherit !important;
+  padding-right: .75rem !important;
+}
+body[data-page="live"] #latest-sales-table .kexo-sticky-resize-handle {
+  display: none !important;
+}
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
@@ -2068,6 +2088,11 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 }
 
 @media (max-width: 991.98px) {
+  /* Charts: optional hide-on-mobile (controlled by Charts setting). */
+  html.kexo-hide-charts-mobile [data-kexo-chart-key] {
+    display: none !important;
+  }
+
   .page-body > .container-fluid,
   .footer .container-fluid {
     padding-left: .75rem;
