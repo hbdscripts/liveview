@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot modal polish: XL + trend summary)
+Last updated: 2026-02-13 (Business Snapshot metrics audit: conversion + customers)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -252,6 +252,9 @@ Ops/reliability:
   - Snapshot UX polish: modal is now XL, year selector sits in the modal header, deltas show trend icons, and there’s a bottom “Summary vs previous period” footer card.
   - Profit setup callout no longer includes a “Configure” button (use the modal header settings icon).
   - Snapshot loading is now last-request-wins (avoids stale year data) and shows an in-modal Retry button on failures.
+  - Snapshot metrics audit fixes:
+    - Conversion Rate % now uses **session-based conversion** (converted sessions via `purchase_events`→`orders_shopify`) instead of raw order-count / sessions (prevents inflated “88%” style outputs).
+    - All Time customers now treat “Returning Customers” as **Repeat Customers** (>=2 paid orders in the all-time range), so Repeat Purchase Rate is meaningful.
 - Settings icon cleanup + style tweaks:
   - Disabled auto-injected inner card title icons on Settings page (`fontawesome-icons.js` skips `data-page="settings"`), so inner Settings cards/tables no longer get extra gear icons.
   - Added Theme Icons support for `header-business-snapshot` (including persistence via `theme_icon_glyph_header_business_snapshot`).

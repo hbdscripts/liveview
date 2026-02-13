@@ -132,6 +132,79 @@ async function readDistinctCustomerCount(shop, startMs, endMs) {
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
 
+async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
+  if (!shop) return 0;
+  const db = getDb();
+  const row = await db.get(
+    `
+      SELECT COUNT(DISTINCT o.customer_id) AS n
+      FROM orders_shopify o
+      WHERE o.shop = ?
+        AND o.created_at >= ? AND o.created_at < ?
+        AND ${isPaidOrderWhereClause('o')}
+        AND o.customer_id IS NOT NULL
+        AND TRIM(o.customer_id) != ''
+        AND EXISTS (
+          SELECT 1
+          FROM orders_shopify p
+          WHERE p.shop = o.shop
+            AND p.customer_id = o.customer_id
+            AND ${isPaidOrderWhereClause('p')}
+            AND p.created_at < ?
+        )
+    `,
+    [shop, startMs, endMs, startMs]
+  );
+  return row && row.n != null ? Number(row.n) || 0 : 0;
+}
+
+async function readRepeatCustomerCountInRange(shop, startMs, endMs) {
+  if (!shop) return 0;
+  const db = getDb();
+  const row = await db.get(
+    `
+      SELECT COUNT(*) AS n
+      FROM (
+        SELECT o.customer_id
+        FROM orders_shopify o
+        WHERE o.shop = ?
+          AND o.created_at >= ? AND o.created_at < ?
+          AND ${isPaidOrderWhereClause('o')}
+          AND o.customer_id IS NOT NULL
+          AND TRIM(o.customer_id) != ''
+        GROUP BY o.customer_id
+        HAVING COUNT(*) >= 2
+      ) t
+    `,
+    [shop, startMs, endMs]
+  );
+  return row && row.n != null ? Number(row.n) || 0 : 0;
+}
+
+async function readConvertedSessionCount(shop, startMs, endMs, { trafficMode = 'human_only' } = {}) {
+  if (!shop) return 0;
+  const db = getDb();
+  const trafficSql = trafficMode === 'human_only' ? ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)' : '';
+  const row = await db.get(
+    `
+      SELECT COUNT(*) AS n FROM (
+        SELECT DISTINCT s.session_id AS session_id
+        FROM sessions s
+        INNER JOIN purchase_events pe ON pe.session_id = s.session_id AND pe.shop = ?
+        INNER JOIN orders_shopify o ON o.shop = pe.shop AND o.order_id = pe.linked_order_id
+        WHERE s.started_at >= ? AND s.started_at < ?
+          ${trafficSql}
+          AND pe.event_type IN ('checkout_completed', 'checkout_started')
+          AND pe.occurred_at >= ? AND pe.occurred_at < ?
+          AND o.created_at >= ? AND o.created_at < ?
+          AND ${isPaidOrderWhereClause('o')}
+      ) t
+    `,
+    [shop, startMs, endMs, startMs, endMs, startMs, endMs]
+  );
+  return row && row.n != null ? Number(row.n) || 0 : 0;
+}
+
 async function readRevenueRowsByCurrency(shop, startMs, endMs) {
   if (!shop) return [];
   const db = getDb();
@@ -370,22 +443,40 @@ async function getBusinessSnapshot(options = {}) {
   const revenue = fromMap(kpis && kpis.sales, rangeKey);
   const orders = fromMap(kpis && kpis.convertedCount, rangeKey);
   const aov = fromMap(kpis && kpis.aov, rangeKey);
-  const conversionRate = fromMap(kpis && kpis.conversion, rangeKey);
   const trafficMain = kpis && kpis.trafficBreakdown && kpis.trafficBreakdown[rangeKey];
   const sessions = trafficMain && trafficMain.human_sessions != null ? toNumber(trafficMain.human_sessions) : null;
 
   const revenuePrev = compare ? toNumber(compare.sales) : null;
   const ordersPrev = compare ? toNumber(compare.convertedCount) : null;
   const aovPrev = compare ? toNumber(compare.aov) : null;
-  const conversionRatePrev = compare ? toNumber(compare.conversion) : null;
   const sessionsPrev = compare && compare.trafficBreakdown ? toNumber(compare.trafficBreakdown.human_sessions) : null;
 
-  const [distinctCustomers, ltvValue] = await Promise.all([
+  let conversionRate = fromMap(kpis && kpis.conversion, rangeKey);
+  let conversionRatePrev = compare ? toNumber(compare.conversion) : null;
+  try {
+    const [convertedSessionsNow, convertedSessionsPrev] = await Promise.all([
+      readConvertedSessionCount(shop, bounds.start, bounds.end, { trafficMode: 'human_only' }),
+      (compare && compare.range && Number.isFinite(compare.range.start) && Number.isFinite(compare.range.end))
+        ? readConvertedSessionCount(shop, compare.range.start, compare.range.end, { trafficMode: 'human_only' })
+        : Promise.resolve(null),
+    ]);
+    const convNow = safePercent(convertedSessionsNow, sessions);
+    const convPrev = safePercent(convertedSessionsPrev, sessionsPrev);
+    if (convNow != null) conversionRate = convNow;
+    conversionRatePrev = convPrev;
+  } catch (_) {
+    // Fail-open: keep derived KPI conversion if session-based conversion is unavailable.
+  }
+
+  const [distinctCustomers, ltvValue, customerRepeatOrReturning] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
     year === 'all' ? readLtvAllTime(shop) : readLtvForYearCohort(shop, year),
+    year === 'all'
+      ? readRepeatCustomerCountInRange(shop, bounds.start, bounds.end)
+      : readReturningCustomerCountBeforeStart(shop, bounds.start, bounds.end),
   ]);
 
-  const returningCustomers = fromMap(kpis && kpis.returningCustomerCount, rangeKey);
+  const returningCustomers = toNumber(customerRepeatOrReturning);
   const newCustomers = (toNumber(distinctCustomers) != null && returningCustomers != null)
     ? Math.max(0, (Number(distinctCustomers) || 0) - (Number(returningCustomers) || 0))
     : null;
