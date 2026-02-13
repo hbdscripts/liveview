@@ -12066,6 +12066,12 @@ const API = '';
         const el = document.createElement('div');
         el.className = 'modal-backdrop fade show business-snapshot-backdrop';
         el.setAttribute('aria-hidden', 'true');
+        el.addEventListener('click', function () {
+          try {
+            if (modalVisible(rulesModal)) closeModal(rulesModal);
+            else if (modalVisible(snapshotModal)) closeModal(snapshotModal);
+          } catch (_) {}
+        });
         document.body.appendChild(el);
         backdropEl = el;
         return el;
