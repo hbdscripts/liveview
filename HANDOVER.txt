@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot: Shopify-sourced sessions/conversion + UI polish)
+Last updated: 2026-02-13 (Business Snapshot: Shopify sessions range fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -253,9 +253,10 @@ Ops/reliability:
   - Profit setup callout no longer includes a “Configure” button (use the modal header settings icon).
   - Snapshot loading is now last-request-wins (avoids stale year data) and shows an in-modal Retry button on failures.
   - Snapshot metrics audit fixes:
-    - Conversion Rate % + Sessions are now sourced from **ShopifyQL sessions** over a **SINCE/UNTIL** range (not KEXO sessions), so year views don’t show `Sessions=0` when KEXO tracking is newer.
+    - Conversion Rate % + Sessions are now sourced from **ShopifyQL sessions** over a **SINCE/UNTIL** range (uses `TIMESERIES day` + quoted `WITH TIMEZONE`) (not KEXO sessions), so year views don’t show `Sessions=0` when KEXO tracking is newer.
     - Revenue/Orders/AOV in Snapshot now use **checkout_token** truth orders (online-store aligned) so you don’t get impossible cases like `Orders > Sessions`.
     - All Time customers treat “Returning Customers” as **Repeat Customers** (>=2 paid orders in the all-time range), so Repeat Purchase Rate is meaningful.
+    - Guardrails: if ShopifyQL sessions are unavailable, Snapshot shows **Unavailable** (never `Sessions=0` with nonzero Orders). If ShopifyQL conversion_rate is missing/0 but sessions exist, Snapshot derives a best-effort conversion from checkout orders/sessions.
   - Snapshot UI follow-up:
     - Removed the inline Profit Rules callout card (profit remains accessible via the modal header settings icon).
     - Added a real dark backdrop and removed “—” delta badges when comparisons aren’t available.

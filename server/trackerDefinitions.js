@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 28;
+const DEFINITIONS_VERSION = 29;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -103,7 +103,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
       { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
       { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
-      { name: 'Conversion rate', value: 'ShopifyQL conversion_rate (sessions dataset) over the selected SINCE/UNTIL range' },
+      { name: 'Conversion rate', value: 'ShopifyQL conversion_rate (sessions dataset) over the selected SINCE/UNTIL range (fallback: checkout orders / sessions when conversion_rate is missing/0 but sessions exist)' },
       { name: 'Customers (all time)', value: 'Returning Customers is treated as Repeat Customers (>=2 paid orders in the all-time range)' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: true },
