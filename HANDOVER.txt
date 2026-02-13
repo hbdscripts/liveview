@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (strip dropdowns: align with nav, white/black, icon lighter shade)
+Last updated: 2026-02-13 (tools+sentry stability, shipping sessions denominator)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,17 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Tools + Sentry stability:
+  - Added server shim route `GET /assets/cash-register.mp3` that redirects to Shopify CDN to eliminate residual audio 404s.
+  - Shipping CR Sessions denominator now counts human sessions in the selected range where **checkout started OR purchase occurred**, with country match using `country_code` fallback to `cf_country`.
+  - Fixed `dashCache is not defined` by sharing dashboard cache state across rows-per-page handlers.
+  - Fixed `ensureApexCharts is not defined` in dashboard chart rendering by waiting on existing Apex loader helper.
+  - Reduced Sentry frontend noise: fetch wrapper now skips capturing expected `AbortError` (and offline `Failed to fetch`) cases.
+- Tools UI polish:
+  - Shipping CR + Compare Conversion Rate buttons now use normal Tabler button size + `btn-list` grouping (removed tiny `btn-sm` usage).
+  - Removed forced tools card radius override so tool containers follow default Tabler corner radius.
 
 2026-02-13 (latest)
 - Strip dropdowns (Online, Settings, Avatar): align left with main nav, white bg + black text/icons; removed Theme dropdown link/icon color settings; main-menu dropdown icons use lighter shade of accent (color-mix) instead of opacity.

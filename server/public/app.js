@@ -1369,6 +1369,7 @@ const API = '';
     let shopifySessionsToday = null;
     let shopifySessionsTodayLoaded = false;
     let shopifySessionsTodayLoading = false;
+    let dashCache = null;
     const PRODUCTS_LEADERBOARD_VIEW_KEY = 'products-leaderboard-view';
     const PRODUCTS_LEADERBOARD_FETCH_LIMIT = 20;
     let productsLeaderboardView = 'title';
@@ -12807,7 +12808,6 @@ const API = '';
 
     // ── Dashboard tab logic ──────────────────────────────────────────────
     (function initDashboard() {
-      var dashCache = null;
       var dashLoading = false;
       var dashLastRangeKey = null;
       var dashLastDayYmd = null;
@@ -12913,7 +12913,10 @@ const API = '';
       var dashChartConfigs = {};
 
       function makeChart(chartId, labels, datasets, opts) {
-        if (typeof ApexCharts === 'undefined') return ensureApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
+        if (typeof ApexCharts === 'undefined') {
+          waitForApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
+          return null;
+        }
         if (!chartId) return null;
         var el = document.getElementById(chartId);
         if (!el) { console.warn('[dashboard] chart element not found:', chartId); return null; }

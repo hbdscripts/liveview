@@ -233,6 +233,11 @@ app.get('/app.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.css'));
 });
 
+// Sale chime asset shim: keep legacy /assets URL working even when local file is absent.
+app.get('/assets/cash-register.mp3', (req, res) => {
+  res.redirect(307, 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264');
+});
+
 // Admin UI (embedded dashboard static assets)
 app.use(express.static(path.join(__dirname, 'public'), { redirect: false }));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));

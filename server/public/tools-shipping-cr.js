@@ -182,7 +182,7 @@
 
     var summary = '<div class="tools-note tools-note--spaced"><strong>' + esc(countryName) + '</strong> • ' + esc(cc) +
       ' — ' + esc(formatCount(totalOrders)) + (totalOrders === 1 ? ' order' : ' orders') +
-      ' • ' + esc(formatCount(checkoutStartedSessions)) + (checkoutStartedSessions === 1 ? ' checkout-started session' : ' checkout-started sessions') +
+      ' • ' + esc(formatCount(checkoutStartedSessions)) + (checkoutStartedSessions === 1 ? ' checkout/purchase session' : ' checkout/purchase sessions') +
       '</div>';
 
     if (!rows.length) {

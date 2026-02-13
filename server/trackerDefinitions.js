@@ -394,11 +394,11 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Shipping label', value: 'orders_shopify_shipping_options.shipping_label (from Shopify shipping_lines[].title)' },
       { name: 'Paid shipping', value: 'orders_shopify_shipping_options.shipping_price_paid (presentment amount; falls back to shipping_price)', formula: 'What was actually charged for shipping' },
       { name: 'Set shipping', value: 'orders_shopify_shipping_options.shipping_price_set (presentment amount; falls back to paid)', formula: 'Listed/set shipping rate presented at checkout' },
-      { name: 'Sessions', value: 'COUNT(sessions) WHERE checkout_started_at in range AND country_code matches (human-only; constant across rows)', formula: 'Checkout-started sessions for the selected country+range' },
+      { name: 'Sessions', value: 'COUNT(sessions) WHERE (checkout_started_at OR purchased_at) in range AND country matches via country_code→cf_country fallback (human-only; constant across rows)', formula: 'Checkout-or-purchase sessions for the selected country+range' },
       { name: 'CR%', value: 'orders / total_orders × 100', formula: 'Share of orders for that shipping label+price within the selected country+timeframe' },
     ],
     math: [
-      { name: 'Important', value: 'CR% here is a share-of-orders metric (per shipping option), not Orders/Sessions. Sessions is shown only as context (checkout-started sessions for the selected country+range).' },
+      { name: 'Important', value: 'CR% here is a share-of-orders metric (per shipping option), not Orders/Sessions. Sessions is shown only as context (checkout-or-purchase sessions for the selected country+range).' },
       { name: 'Date basis', value: 'Filters by orders_shopify.processed_at when present; falls back to created_at when processed_at is NULL. Bounds use admin timezone (getRangeBounds r:YYYY-MM-DD:YYYY-MM-DD).' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },

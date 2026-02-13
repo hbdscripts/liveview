@@ -128,20 +128,23 @@ async function getShippingOptionsByCountry({
         aggRows = [];
       }
 
-      // Sessions: checkout-started sessions in range for country (constant per shipping option).
-      // Note: sessions are not shop-scoped; we filter by country + timestamp and exclude known bots.
+      // Sessions context (constant per shipping option row):
+      // count sessions in range that either reached checkout or purchased, with country_code fallback to cf_country.
       let checkoutStartedSessions = 0;
       try {
         const row = await db.get(
           `
             SELECT COUNT(*) AS c
             FROM sessions s
-            WHERE s.checkout_started_at IS NOT NULL
-              AND s.checkout_started_at >= ? AND s.checkout_started_at < ?
+            WHERE (
+                (s.checkout_started_at IS NOT NULL AND s.checkout_started_at >= ? AND s.checkout_started_at < ?)
+                OR
+                (s.purchased_at IS NOT NULL AND s.purchased_at >= ? AND s.purchased_at < ?)
+              )
               AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-              AND s.country_code = ?
+              AND UPPER(TRIM(COALESCE(NULLIF(s.country_code, ''), s.cf_country, ''))) = ?
           `,
-          [startMs, endMs, cc]
+          [startMs, endMs, startMs, endMs, cc]
         );
         checkoutStartedSessions = row && row.c != null ? Number(row.c) || 0 : 0;
       } catch (_) {

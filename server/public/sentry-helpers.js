@@ -56,6 +56,21 @@
 
   var _nativeFetch = typeof fetch === 'function' ? fetch : null;
 
+  function shouldSkipFetchCapture(err) {
+    var name = '';
+    var msg = '';
+    try { name = err && err.name ? String(err.name) : ''; } catch (_) { name = ''; }
+    try { msg = err && err.message ? String(err.message) : ''; } catch (_) { msg = ''; }
+    if (name === 'AbortError') return true;
+    if (/aborted/i.test(msg)) return true;
+    if (name === 'TypeError' && /failed to fetch/i.test(msg)) {
+      try {
+        if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
   function kexoFetch(url, opts) {
     var urlStr = typeof url === 'string' ? url : (url && url.url) || '';
     var method = (opts && opts.method) || 'GET';
@@ -69,7 +84,9 @@
         return r;
       },
       function (err) {
-        kexoCaptureError(err, { url: urlStr, method: method, type: 'fetch' });
+        if (!shouldSkipFetchCapture(err)) {
+          kexoCaptureError(err, { url: urlStr, method: method, type: 'fetch' });
+        }
         throw err;
       }
     );
