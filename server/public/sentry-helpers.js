@@ -56,13 +56,29 @@
 
   var _nativeFetch = typeof fetch === 'function' ? fetch : null;
 
-  function shouldSkipFetchCapture(err) {
+  function isSameOriginApiUrl(urlStr) {
+    var s = urlStr == null ? '' : String(urlStr);
+    if (!s) return false;
+    if (s.indexOf('/api/') === 0) return true;
+    try {
+      var u = new URL(s, window.location.origin);
+      return u && u.origin === window.location.origin && String(u.pathname || '').indexOf('/api/') === 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function shouldSkipFetchCapture(err, urlStr, method) {
     var name = '';
     var msg = '';
     try { name = err && err.name ? String(err.name) : ''; } catch (_) { name = ''; }
     try { msg = err && err.message ? String(err.message) : ''; } catch (_) { msg = ''; }
     if (name === 'AbortError') return true;
     if (/aborted/i.test(msg)) return true;
+    var m = method == null ? 'GET' : String(method);
+    var isApiGet = String(m).toUpperCase() === 'GET' && isSameOriginApiUrl(urlStr);
+    // Network flakiness on polling endpoints (Safari: "Load failed") is not actionable as an exception.
+    if (name === 'TypeError' && isApiGet && (/failed to fetch/i.test(msg) || /load failed/i.test(msg) || /networkerror/i.test(msg))) return true;
     if (name === 'TypeError' && /failed to fetch/i.test(msg)) {
       try {
         if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return true;
@@ -84,7 +100,7 @@
         return r;
       },
       function (err) {
-        if (!shouldSkipFetchCapture(err)) {
+        if (!shouldSkipFetchCapture(err, urlStr, method)) {
           kexoCaptureError(err, { url: urlStr, method: method, type: 'fetch' });
         }
         throw err;
