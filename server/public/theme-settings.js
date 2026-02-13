@@ -32,7 +32,7 @@
     'nav-toggle-integrations': 'fa-puzzle-piece',
     'nav-toggle-tools': 'fa-screwdriver-wrench',
     'nav-toggle-settings': 'fa-gear',
-    'header-business-snapshot': 'fa-sack-dollar',
+    'header-business-snapshot': 'fa-sterling-sign',
     'nav-item-overview': 'fa-house',
     'nav-item-live': 'fa-satellite-dish',
     'nav-item-sales': 'fa-cart-shopping',
