@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot: returning customers + delta/header polish)
+Last updated: 2026-02-13 (Sentry 24h review: snapshot fix + settings query batching)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -264,6 +264,11 @@ Ops/reliability:
     - API now accepts `GET /api/business-snapshot?mode=yearly&year=YYYY` or `?mode=monthly&month=YYYY-MM`.
     - Snapshot cards now render **real ApexCharts** sparklines/radials (no placeholder SVG/CSS “fake” charts) and the bottom Summary panel has been removed.
     - Customers: “Returning Customers” is now customers who have **>=2 paid orders by the end of the selected window** (so early years like 2025 don’t incorrectly show 0 when repeats exist).
+    - Fixed a Postgres reliability bug: returning customer query no longer uses a grouped outer reference (prevents `/api/business-snapshot` 500s).
+  - Settings performance:
+    - `/api/theme-defaults` and `/api/settings` now batch-read settings keys to avoid N+1 query warnings.
+  - Sentry noise reduction:
+    - Frontend ignores generic transient network errors (Load failed / Failed to fetch / aborted) and `sentry-helpers.js` skips capturing those for same-origin `GET /api/*` calls.
     - UI polish: deltas now render as a compact **icon + %** in the card top-right (no “vs previous period:” prefix) and the Snapshot header has subtle low-opacity bar-chart background art.
     - Profit Rules modal overlay is now extra-dark (~80%) when open so it visually separates from the Snapshot behind it.
   - Snapshot UI follow-up:
