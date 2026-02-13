@@ -88,6 +88,21 @@
       ? ('Mappings issue: ' + String(unmappedCount) + ' unmapped, ' + String(ambiguousCount) + ' ambiguous')
       : '';
 
+    var variantsDef = (typeof window.KEXO_TABLE_DEFS !== 'undefined' && window.KEXO_TABLE_DEFS['variants-table'])
+      ? window.KEXO_TABLE_DEFS['variants-table'] : null;
+    var tableHtml = (typeof window.buildKexoGridTable === 'function' && variantsDef)
+      ? window.buildKexoGridTable({
+          wrapClass: variantsDef.wrapClass || 'country-table-wrap',
+          wrapId: wrapId,
+          tableId: tableId,
+          tableClass: variantsDef.tableClass || 'by-country-table best-variants-table',
+          ariaLabel: title,
+          columns: variantsDef.columns || [],
+          bodyId: bodyId,
+          emptyMessage: 'Loading…'
+        })
+      : ('<div class="country-table-wrap" id="' + escapeHtml(wrapId) + '"><div id="' + escapeHtml(tableId) + '" class="grid-table by-country-table best-variants-table" role="table" aria-label="' + escapeHtml(title) + '"><div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row"><div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Variant"><span class="th-label-long">Variant</span><span class="th-label-short"></span></div><div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"></span></div><div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"></span></div><div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"></span></div><div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"></span></div></div></div><div id="' + escapeHtml(bodyId) + '" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Loading…</div></div></div></div></div>');
+
     return '' +
       '<div class="stats-card card" id="' + escapeHtml(cardId) + '" data-table-class="dashboard" data-table-zone="variants-' + escapeHtml(safeId) + '" data-table-id="' + escapeHtml(tableId) + '">' +
         '<div class="card-header d-flex align-items-center flex-wrap gap-2">' +
@@ -98,22 +113,7 @@
               : '') +
           '</div>' +
         '</div>' +
-        '<div class="country-table-wrap" id="' + escapeHtml(wrapId) + '">' +
-          '<div id="' + escapeHtml(tableId) + '" class="grid-table by-country-table best-variants-table" role="table" aria-label="' + escapeHtml(title) + '">' +
-            '<div class="grid-header kexo-grid-header" role="rowgroup">' +
-              '<div class="grid-row grid-row--header" role="row">' +
-                '<div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Variant"><span class="th-label-long">Variant</span><span class="th-label-short"><i class="fa-jelly-filled fa-shapes" data-icon-key="table-icon-variants-variant" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="sessions" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-variants-sessions" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-variants-orders" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-variants-cr" aria-hidden="true"></i></span></div>' +
-                '<div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-variants-revenue" aria-hidden="true"></i></span></div>' +
-              '</div>' +
-            '</div>' +
-            '<div id="' + escapeHtml(bodyId) + '" class="grid-body" role="rowgroup">' +
-              '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Loading…</div></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
+        tableHtml +
         '<div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="' + escapeHtml(paginationId) + '" aria-label="' + escapeHtml(title) + ' pagination"></div>' +
       '</div>';
   }

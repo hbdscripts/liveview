@@ -389,14 +389,7 @@
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
           </div>
-          <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-top-products">
-              <thead>
-                <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th><th class="text-end w-1">CR%</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
         </div>
       </div>
@@ -405,14 +398,7 @@
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>
           </div>
-          <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-top-countries">
-              <thead>
-                <tr><th>Country</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th><th class="text-end w-1">CR%</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
         </div>
       </div>
@@ -484,14 +470,7 @@
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Trending Up</h3>
           </div>
-          <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-trending-up">
-              <thead>
-                <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th><th class="text-end w-1">CR%</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <div id="dash-trending-up-mount" data-kexo-table="dash-trending-up"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-up-pagination" aria-label="Trending up pagination"></div>
         </div>
       </div>
@@ -500,14 +479,7 @@
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Trending Down</h3>
           </div>
-          <div class="table-responsive">
-            <table class="table table-vcenter card-table" id="dash-trending-down">
-              <thead>
-                <tr><th>Product</th><th class="text-end w-1">Revenue</th><th class="text-end w-1">Orders</th><th class="text-end w-1">CR%</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <div id="dash-trending-down-mount" data-kexo-table="dash-trending-down"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-down-pagination" aria-label="Trending down pagination"></div>
         </div>
       </div>
@@ -562,6 +534,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/kexo-table-builder.js" defer></script>
+  <script src="/kexo-table-defs.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/theme-settings.js" defer></script>
 </body>

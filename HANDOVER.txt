@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot: faster load + line-only charts + 3-accent KPIs)
+Last updated: 2026-02-13 (Shared table builder migration)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -180,6 +180,24 @@ KPI data:
 
 ---
 
+## Shared table builder
+
+All data tables and settings config tables use the shared builder. No hand-written table markup.
+
+Files:
+- `server/public/kexo-table-builder.js`: `buildKexoGridTable`, `buildKexoNativeTable`, `buildKexoSettingsTable`
+- `server/public/kexo-table-defs.js`: `KEXO_TABLE_DEFS`, `KEXO_NATIVE_TABLE_DEFS` (column definitions keyed by tableId)
+
+Static HTML tables are replaced with mount points: `<div data-kexo-table="<tableId>"></div>`. On DOMContentLoaded, `app.js` init finds mounts, fetches def, calls builder, injects result. Scripts `kexo-table-builder.js` and `kexo-table-defs.js` must load before `app.js` / `settings-page.js` / `ads.js` / `variants-page.js`.
+
+Table checklist:
+- Grid-table: `.table-scroll-wrap` or `.country-table-wrap` + `.grid-table` with `.grid-row--header`, `.grid-cell`, `.th-label-long`, `.th-label-short` (icon key optional). Body ID must match app selectors (e.g. `table-body`, `best-sellers-body`).
+- Native table: `.table-responsive` + `<table class="table table-vcenter card-table">` for dashboard overview / Latest sales.
+- Settings tables: `.table-responsive` + `<table class="table table-sm table-vcenter">`.
+- Card markup preserves `data-table-id`, `data-table-zone`, `data-table-class` for Layout → Tables config.
+
+---
+
 ## Key frontend files (high-signal)
 
 - `server/public/partials/head-theme.html`: early theme hydration + loads `/theme-vars.css` + Font Awesome + `fontawesome-icons.js`
@@ -231,6 +249,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Shared table builder migration:
+  - Added `kexo-table-builder.js` (buildKexoGridTable, buildKexoNativeTable, buildKexoSettingsTable) and `kexo-table-defs.js` (centralized column definitions).
+  - Migrated variants-page.js, ads.js, app.js TSM, settings-page.js (Charts/KPIs/Date ranges) to use builder.
+  - Replaced static HTML table markup with mount points (`data-kexo-table`) in live, sales, table, overview, products, countries, channels, device pages.
+  - Builder + defs scripts added before app.js/settings-page.js/ads.js/variants-page.js on all relevant pages.
+  - Rule: all new tables must use the builder; no hand-written table markup.
 
 2026-02-13 (latest)
 - Tables:

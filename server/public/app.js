@@ -66,6 +66,41 @@ const API = '';
       'traffic-types-table': 'live',
       'ads-root': 'live',
     });
+
+    (function initKexoTableMounts() {
+      function run() {
+        var mounts = document.querySelectorAll('[data-kexo-table]');
+        if (!mounts.length) return;
+        var build = typeof window.buildKexoGridTable === 'function' ? window.buildKexoGridTable : null;
+        var buildNative = typeof window.buildKexoNativeTable === 'function' ? window.buildKexoNativeTable : null;
+        var defs = window.KEXO_TABLE_DEFS;
+        var nativeDefs = window.KEXO_NATIVE_TABLE_DEFS;
+        if (!build && !buildNative) return;
+        mounts.forEach(function (mount) {
+          var tableId = mount.getAttribute('data-kexo-table');
+          if (!tableId) return;
+          var def = defs && defs[tableId];
+          var nativeDef = nativeDefs && nativeDefs[tableId];
+          if (def && build) {
+            var config = Object.assign({}, def, {
+              tableId: tableId,
+              wrapId: (mount.id || tableId + '-mount') + '-wrap',
+              bodyId: def.bodyId || tableId + '-body'
+            });
+            mount.outerHTML = build(config);
+          } else if (nativeDef && buildNative) {
+            var nativeConfig = Object.assign({}, nativeDef, { tableId: tableId });
+            mount.outerHTML = buildNative(nativeConfig);
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+      } else {
+        run();
+      }
+    })();
+
     const tableRowsCache = {};
     const TABLES_UI_CFG_LS_KEY = 'kexo:tables-ui-config:v1';
     const TABLES_CONVERTED_COLOR_DEFAULTS = Object.freeze({
@@ -2530,15 +2565,7 @@ const API = '';
           });
           html += '</div>';
         } catch (_) {}
-        html += '<div class="tsm-table-scroll">';
-        html +=   '<div class="grid-table tsm-table tsm-sources-grid" role="table" aria-label="Mapped sources">';
-        html +=     '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
-                      '<div class="grid-cell" role="columnheader">Source</div>' +
-                      '<div class="grid-cell" role="columnheader">Key</div>' +
-                      '<div class="grid-cell" role="columnheader">Icon URL</div>' +
-                      '<div class="grid-cell" role="columnheader"></div>' +
-                    '</div></div></div>';
-        html +=     '<div class="grid-body" role="rowgroup">';
+        var sourcesBodyHtml = '';
         sources.forEach(function(s) {
           const key = s && s.source_key != null ? String(s.source_key).trim().toLowerCase() : '';
           if (!key) return;
@@ -2551,7 +2578,7 @@ const API = '';
           const preview = previewSrc
             ? ('<img class="tsm-icon-preview" src="' + escapeHtml(previewSrc) + '" alt="" onerror="this.classList.add(\'is-hidden\')">')
             : '<span class="tsm-icon-spacer" aria-hidden="true"></span>';
-          html += '<div class="grid-row tsm-source-row" role="row" id="tsm-source-' + escapeHtml(key) + '" data-source-key="' + escapeHtml(key) + '">' +
+          sourcesBodyHtml += '<div class="grid-row tsm-source-row" role="row" id="tsm-source-' + escapeHtml(key) + '" data-source-key="' + escapeHtml(key) + '">' +
             '<div class="grid-cell" role="cell"><input class="tsm-input" data-field="label" value="' + escapeHtml(label) + '" /></div>' +
             '<div class="grid-cell" role="cell"><code>' + escapeHtml(key) + '</code></div>' +
             '<div class="grid-cell" role="cell"><div class="tsm-icon-input-row">' +
@@ -2561,7 +2588,23 @@ const API = '';
             '<div class="grid-cell" role="cell"><button type="button" class="tsm-btn primary" data-tsm-action="save-meta">Save</button></div>' +
           '</div>';
         });
-        html += '</div></div></div>';
+        var sourcesGridHtml = (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['tsm-sources-grid'])
+          ? window.buildKexoGridTable({
+              innerOnly: true,
+              tableClass: (window.KEXO_TABLE_DEFS['tsm-sources-grid'].tableClass || 'tsm-table tsm-sources-grid'),
+              ariaLabel: 'Mapped sources',
+              columns: (window.KEXO_TABLE_DEFS['tsm-sources-grid'].columns || []),
+              bodyHtml: sourcesBodyHtml
+            })
+          : ('<div class="grid-table tsm-table tsm-sources-grid" role="table" aria-label="Mapped sources">' +
+              '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+                '<div class="grid-cell" role="columnheader">Source</div>' +
+                '<div class="grid-cell" role="columnheader">Key</div>' +
+                '<div class="grid-cell" role="columnheader">Icon URL</div>' +
+                '<div class="grid-cell" role="columnheader"></div>' +
+              '</div></div>' +
+              '<div class="grid-body" role="rowgroup">' + sourcesBodyHtml + '</div></div>');
+        html += '<div class="tsm-table-scroll">' + sourcesGridHtml + '</div>';
       }
 
       html += '<div class="diag-section-title u-mt-md">' + '<span>' + (trafficSourceMapsShowMappedTokens ? 'Tokens (mapped + unmapped)' : 'Unmapped tokens') + '</span>' + '</div>';
@@ -2606,14 +2649,7 @@ const API = '';
       if (!tokens.length) {
         html += '<div class="diag-note">No tokens captured yet. Click <strong>Scan last 30d</strong> (or wait for new sessions) and they will appear here.</div>';
       } else {
-        html += '<div class="tsm-table-scroll">';
-        html +=   '<div class="grid-table tsm-table tsm-tokens-grid" role="table" aria-label="Tokens">';
-        html +=     '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
-                      '<div class="grid-cell" role="columnheader">Token</div>' +
-                      '<div class="grid-cell" role="columnheader">Seen</div>' +
-                      '<div class="grid-cell" role="columnheader">Map / existing</div>' +
-                    '</div></div></div>';
-        html +=     '<div class="grid-body" role="rowgroup">';
+        var tokensBodyHtml = '';
         tokens.forEach(function(t) {
           const p = t && t.utm_param != null ? String(t.utm_param).trim().toLowerCase() : '';
           const v = t && t.utm_value != null ? String(t.utm_value).trim().toLowerCase() : '';
@@ -2632,7 +2668,7 @@ const API = '';
           });
           opts += '<option value="__other__">Other…</option>';
 
-          html += '<div class="grid-row tsm-token-row" role="row" id="' + escapeHtml(jumpId) + '" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
+          tokensBodyHtml += '<div class="grid-row tsm-token-row" role="row" id="' + escapeHtml(jumpId) + '" data-utm-param="' + escapeHtml(p) + '" data-utm-value="' + escapeHtml(v) + '" data-current-source-key="' + escapeHtml(currentKey) + '">' +
             '<div class="grid-cell" role="cell"><code>' + escapeHtml(p) + '=' + escapeHtml(v) + '</code></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(String(seenCount || 0)) + '<div class="diag-note tsm-seen-subnote">Last: ' + escapeHtml(fmtTs(lastSeen)) + '</div></div>' +
             '<div class="grid-cell" role="cell">' +
@@ -2656,7 +2692,22 @@ const API = '';
             '</div>' +
           '</div>';
         });
-        html += '</div></div></div>';
+        var tokensGridHtml = (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['tsm-tokens-grid'])
+          ? window.buildKexoGridTable({
+              innerOnly: true,
+              tableClass: (window.KEXO_TABLE_DEFS['tsm-tokens-grid'].tableClass || 'tsm-table tsm-tokens-grid'),
+              ariaLabel: 'Tokens',
+              columns: (window.KEXO_TABLE_DEFS['tsm-tokens-grid'].columns || []),
+              bodyHtml: tokensBodyHtml
+            })
+          : ('<div class="grid-table tsm-table tsm-tokens-grid" role="table" aria-label="Tokens">' +
+              '<div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">' +
+                '<div class="grid-cell" role="columnheader">Token</div>' +
+                '<div class="grid-cell" role="columnheader">Seen</div>' +
+                '<div class="grid-cell" role="columnheader">Map / existing</div>' +
+              '</div></div>' +
+              '<div class="grid-body" role="rowgroup">' + tokensBodyHtml + '</div></div>');
+        html += '<div class="tsm-table-scroll">' + tokensGridHtml + '</div>';
         html += '<div class="tsm-actions tsm-actions--footer">' +
           '<button type="button" class="tsm-btn primary" data-tsm-action="save-mappings">' + '<span>Save mappings</span>' + '</button>' +
           '<span class="tsm-save-msg" data-tsm-save-msg></span>' +

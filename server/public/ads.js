@@ -1128,11 +1128,6 @@
       } catch (_) {}
     })();
 
-    // Header cells: Campaign, Spend, Impr, Clicks, Conv, Profit, ROAS, Sales
-    var headerCells = COL_DEFS.map(function (d, idx) {
-      return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-end' };
-    });
-
     var bodyHtml = '';
 
     // Totals row (render in card footer)
@@ -1172,11 +1167,26 @@
       bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
     }
 
-    root.innerHTML =
-      '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
+    var tableHtml;
+    if (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-campaigns-table']) {
+      var adsDef = window.KEXO_TABLE_DEFS['ads-campaigns-table'];
+      tableHtml = window.buildKexoGridTable({
+        innerOnly: true,
+        tableClass: adsDef.tableClass || 'ads-campaign-table',
+        ariaLabel: adsDef.ariaLabel || 'Ads campaigns',
+        columns: adsDef.columns || [],
+        bodyHtml: bodyHtml
+      });
+    } else {
+      var headerCells = COL_DEFS.map(function (d, idx) {
+        return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-end' };
+      });
+      tableHtml = '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
         '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
         '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
       '</div>';
+    }
+    root.innerHTML = tableHtml;
 
     var totalsFooter = document.getElementById('ads-footer');
     if (totalsFooter) {

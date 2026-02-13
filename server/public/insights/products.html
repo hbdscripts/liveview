@@ -67,44 +67,14 @@
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Best Sellers</h3>
       </div>
-      <div class="country-table-wrap" id="best-sellers-wrap">
-        <div id="best-sellers-table" class="grid-table by-country-table best-sellers-table" role="table" aria-label="Best sellers">
-          <div class="grid-header kexo-grid-header" role="rowgroup">
-            <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="title" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-hand-pointer" data-icon-key="table-icon-clicks" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="orders" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-cr" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="descending" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-            </div>
-          </div>
-          <div id="best-sellers-body" class="grid-body" role="rowgroup">
-            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div>
-          </div>
-        </div>
-      </div>
+      <div id="best-sellers-mount" data-kexo-table="best-sellers-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-sellers-pagination" aria-label="Best sellers pagination"></div>
     </div>
     <div class="stats-card card" id="stats-best-variants" data-table-class="product" data-table-zone="products-best-variants" data-table-id="best-variants-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Variant</h3>
       </div>
-      <div class="country-table-wrap" id="best-variants-wrap">
-        <div id="best-variants-table" class="grid-table by-country-table best-variants-table" role="table" aria-label="Best variants">
-          <div class="grid-header kexo-grid-header" role="rowgroup">
-            <div class="grid-row grid-row--header" role="row">
-              <div class="grid-cell bs-product-col sortable" role="columnheader" data-sort="variant" aria-sort="none" tabindex="0" aria-label="Product"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="clicks" aria-sort="none" tabindex="0" aria-label="Sessions"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-hand-pointer" data-icon-key="table-icon-clicks" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="sales" aria-sort="none" tabindex="0" aria-label="Orders"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="cr" aria-sort="none" tabindex="0" aria-label="CR%"><span class="th-label-long">CR%</span><span class="th-label-short"><i class="fa-jelly-filled fa-percent" data-icon-key="table-icon-cr" aria-hidden="true"></i></span></div>
-              <div class="grid-cell sortable" role="columnheader" data-sort="rev" aria-sort="none" tabindex="0" aria-label="Rev"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-            </div>
-          </div>
-          <div id="best-variants-body" class="grid-body" role="rowgroup">
-            <div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div>
-          </div>
-        </div>
-      </div>
+      <div id="best-variants-mount" data-kexo-table="best-variants-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-variants-pagination" aria-label="Best variants pagination"></div>
     </div>
   </div>
@@ -113,108 +83,42 @@
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Necklaces</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-necklaces-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Necklaces">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-necklaces-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-necklaces-mount" data-kexo-table="type-necklaces-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-necklaces-pagination" aria-label="Necklaces pagination"></div>
     </div>
     <div class="stats-card card" id="stats-type-bracelets" data-table-class="product" data-table-zone="products-type-bracelets" data-table-id="type-bracelets-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Bracelets</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-bracelets-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Bracelets">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-bracelets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-bracelets-mount" data-kexo-table="type-bracelets-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-bracelets-pagination" aria-label="Bracelets pagination"></div>
     </div>
     <div class="stats-card card" id="stats-type-earrings" data-table-class="product" data-table-zone="products-type-earrings" data-table-id="type-earrings-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Earrings</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-earrings-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Earrings">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-earrings-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-earrings-mount" data-kexo-table="type-earrings-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-earrings-pagination" aria-label="Earrings pagination"></div>
     </div>
     <div class="stats-card card" id="stats-type-sets" data-table-class="product" data-table-zone="products-type-sets" data-table-id="type-sets-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Jewelry Sets</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-sets-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Sets">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-sets-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-sets-mount" data-kexo-table="type-sets-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-sets-pagination" aria-label="Sets pagination"></div>
     </div>
     <div class="stats-card card" id="stats-type-charms" data-table-class="product" data-table-zone="products-type-charms" data-table-id="type-charms-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Charms</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-charms-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Charms">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-charms-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-charms-mount" data-kexo-table="type-charms-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-charms-pagination" aria-label="Charms pagination"></div>
     </div>
     <div class="stats-card card" id="stats-type-extras" data-table-class="product" data-table-zone="products-type-extras" data-table-id="type-extras-table">
       <div class="card-header">
         <h3 class="card-title" data-kexo-table-title="1">Extras</h3>
       </div>
-      <div class="country-table-wrap">
-        <div id="type-extras-table" class="grid-table by-country-table type-products-table" role="table" aria-label="Extras">
-          <div class="grid-header kexo-grid-header" role="rowgroup"><div class="grid-row grid-row--header" role="row">
-            <div class="grid-cell bs-product-col" role="columnheader"><span class="th-label-long">Product</span><span class="th-label-short"><i class="fa-solid fa-box-open" data-icon-key="table-short-product" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Sessions</span><span class="th-label-short"><i class="fa-jelly-filled fa-users" data-icon-key="table-icon-sessions" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Orders</span><span class="th-label-short"><i class="fa-jelly-filled fa-box-open" data-icon-key="table-icon-orders" aria-hidden="true"></i></span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">CR%</span><span class="th-label-short">CR%</span></div>
-            <div class="grid-cell" role="columnheader"><span class="th-label-long">Rev</span><span class="th-label-short"><i class="fa-jelly-filled fa-sterling-sign" data-icon-key="table-icon-revenue" aria-hidden="true"></i></span></div>
-          </div></div>
-          <div id="type-extras-body" class="grid-body" role="rowgroup"><div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">&mdash;</div></div></div>
-        </div>
-      </div>
+      <div id="type-extras-mount" data-kexo-table="type-extras-table"></div>
       <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="type-extras-pagination" aria-label="Extras pagination"></div>
     </div>
   <div class="text-muted small mt-3" style="text-align:center;" id="products-hidden-tables-note">Tables without sessions are hidden</div>
@@ -268,6 +172,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/kexo-table-builder.js" defer></script>
+  <script src="/kexo-table-defs.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/theme-settings.js" defer></script>
 </body>

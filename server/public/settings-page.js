@@ -875,6 +875,126 @@
     var list = c && Array.isArray(c.charts) ? c.charts : [];
     var hideOnMobile = !(c && c.hideOnMobile === false);
 
+    var tableHtml;
+    if (typeof window.buildKexoSettingsTable === 'function') {
+      tableHtml = window.buildKexoSettingsTable({
+        tableClass: 'table table-sm table-vcenter mb-0 charts-settings-table',
+        columns: [
+          { header: 'On', headerClass: 'charts-col-on' },
+          { header: 'Chart', headerClass: 'charts-col-chart' },
+          { header: 'Type', headerClass: 'charts-col-type' },
+          { header: 'Colors', headerClass: 'charts-col-colors' },
+          { header: 'Pie metric', headerClass: 'charts-col-pie' }
+        ],
+        rows: list,
+        renderRow: function (it) {
+          if (!it || typeof it !== 'object') return '';
+          var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
+          if (!key) return '';
+          var label = it.label != null ? String(it.label) : key;
+          var enabled = it.enabled !== false;
+          var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
+          var colors = Array.isArray(it.colors) ? it.colors : [];
+          var meta = chartMeta(key);
+          var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
+          var series = meta && Array.isArray(meta.series) ? meta.series : [];
+          var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
+          var showPieMetric = !!(meta && meta.pieMetric);
+
+          var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
+          var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
+          for (var i = 0; i < count; i++) {
+            var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+            var val = colors[i] ? String(colors[i]) : '#3eb3ab';
+            if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
+            colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
+              ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
+          }
+          colorHtml += '</div>';
+
+          var pieMetricHtml = '&mdash;';
+          if (showPieMetric) {
+            pieMetricHtml =
+              '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
+                '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
+                '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
+                '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
+              '</select>';
+          }
+
+          return '<tr data-chart-key="' + escapeHtml(key) + '">' +
+            '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+            '<td class="charts-col-chart">' +
+              '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
+              '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
+            '</td>' +
+            '<td class="charts-col-type">' +
+              '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
+                selectOptionsHtml(modes, mode) +
+              '</select>' +
+            '</td>' +
+            '<td class="charts-col-colors">' + colorHtml + '</td>' +
+            '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
+          '</tr>';
+        }
+      });
+    } else {
+      tableHtml = '<div class="table-responsive overflow-x-auto">' +
+        '<table class="table table-sm table-vcenter mb-0 charts-settings-table">' +
+        '<thead><tr><th class="charts-col-on">On</th><th class="charts-col-chart">Chart</th><th class="charts-col-type">Type</th><th class="charts-col-colors">Colors</th><th class="charts-col-pie">Pie metric</th></tr></thead><tbody>';
+      list.forEach(function (it) {
+        if (!it || typeof it !== 'object') return;
+        var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
+        if (!key) return;
+        var label = it.label != null ? String(it.label) : key;
+        var enabled = it.enabled !== false;
+        var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
+        var colors = Array.isArray(it.colors) ? it.colors : [];
+        var meta = chartMeta(key);
+        var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
+        var series = meta && Array.isArray(meta.series) ? meta.series : [];
+        var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
+        var showPieMetric = !!(meta && meta.pieMetric);
+
+        var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
+        var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
+        for (var i = 0; i < count; i++) {
+          var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+          var val = colors[i] ? String(colors[i]) : '#3eb3ab';
+          if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
+          colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
+            ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
+        }
+        colorHtml += '</div>';
+
+        var pieMetricHtml = '&mdash;';
+        if (showPieMetric) {
+          pieMetricHtml =
+            '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
+              '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
+              '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
+              '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
+            '</select>';
+        }
+
+        tableHtml += '<tr data-chart-key="' + escapeHtml(key) + '">' +
+          '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+          '<td class="charts-col-chart">' +
+            '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
+            '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
+          '</td>' +
+          '<td class="charts-col-type">' +
+            '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
+              selectOptionsHtml(modes, mode) +
+            '</select>' +
+          '</td>' +
+          '<td class="charts-col-colors">' + colorHtml + '</td>' +
+          '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
+        '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+    }
+
     var html = '' +
       '<div class="d-flex align-items-start justify-content-between gap-3 mb-3">' +
         '<label class="form-check form-switch m-0">' +
@@ -883,68 +1003,7 @@
         '</label>' +
         '<div class="text-muted small" style="max-width:520px;">When enabled, chart cards are hidden on small screens. Tables still show as normal.</div>' +
       '</div>' +
-      '<div class="table-responsive overflow-x-auto">' +
-      '<table class="table table-sm table-vcenter mb-0 charts-settings-table">' +
-      '<thead><tr>' +
-      '<th class="charts-col-on">On</th>' +
-      '<th class="charts-col-chart">Chart</th>' +
-      '<th class="charts-col-type">Type</th>' +
-      '<th class="charts-col-colors">Colors</th>' +
-      '<th class="charts-col-pie">Pie metric</th>' +
-      '</tr></thead><tbody>';
-
-    list.forEach(function (it) {
-      if (!it || typeof it !== 'object') return;
-      var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
-      if (!key) return;
-      var label = it.label != null ? String(it.label) : key;
-      var enabled = it.enabled !== false;
-      var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
-      var colors = Array.isArray(it.colors) ? it.colors : [];
-      var meta = chartMeta(key);
-      var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
-      var series = meta && Array.isArray(meta.series) ? meta.series : [];
-      var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
-      var showPieMetric = !!(meta && meta.pieMetric);
-
-      var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
-      var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
-      for (var i = 0; i < count; i++) {
-        var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
-        var val = colors[i] ? String(colors[i]) : '#3eb3ab';
-        if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
-        colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
-          ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
-      }
-      colorHtml += '</div>';
-
-      var pieMetricHtml = '&mdash;';
-      if (showPieMetric) {
-        pieMetricHtml =
-          '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
-            '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
-            '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
-            '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
-          '</select>';
-      }
-
-      html += '<tr data-chart-key="' + escapeHtml(key) + '">' +
-        '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
-        '<td class="charts-col-chart">' +
-          '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
-          '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
-        '</td>' +
-        '<td class="charts-col-type">' +
-          '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
-            selectOptionsHtml(modes, mode) +
-          '</select>' +
-        '</td>' +
-        '<td class="charts-col-colors">' + colorHtml + '</td>' +
-        '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
-      '</tr>';
-    });
-
-    html += '</tbody></table></div>' +
+      tableHtml +
       '<div class="text-muted small mt-2">Options are filtered per chart to avoid incompatible types. For pie charts on Channels/Device, the selected metric is used.</div>';
 
     root.innerHTML = html;
@@ -2834,31 +2893,56 @@
     var root = document.getElementById(rootId);
     if (!root) return;
     var rows = Array.isArray(items) ? items : [];
-    var html = '<div class="table-responsive">' +
-      '<table class="table table-sm table-vcenter mb-0">' +
-      '<thead><tr>' +
-      '<th class="w-1">On</th>' +
-      '<th>Label</th>' +
-      '<th class="text-muted">Key</th>' +
-      '<th class="text-end w-1">Order</th>' +
-      '</tr></thead><tbody>';
-    rows.forEach(function (it) {
-      if (!it) return;
-      var key = String(it.key || '').trim().toLowerCase();
-      if (!key) return;
-      var label = it.label != null ? String(it.label) : key;
-      var enabled = !!it.enabled;
-      html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
-        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
-        '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
-        '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
-        '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-          '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-          '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
-        '</div></td>' +
-      '</tr>';
-    });
-    html += '</tbody></table></div>';
+    var html;
+    if (typeof window.buildKexoSettingsTable === 'function') {
+      html = window.buildKexoSettingsTable({
+        tableClass: 'table table-sm table-vcenter mb-0',
+        columns: [
+          { header: 'On', headerClass: 'w-1' },
+          { header: 'Label', headerClass: '' },
+          { header: 'Key', headerClass: 'text-muted' },
+          { header: 'Order', headerClass: 'text-end w-1' }
+        ],
+        rows: rows,
+        renderRow: function (it) {
+          if (!it) return '';
+          var key = String(it.key || '').trim().toLowerCase();
+          if (!key) return '';
+          var label = it.label != null ? String(it.label) : key;
+          var enabled = !!it.enabled;
+          return '<tr data-kpi-key="' + escapeHtml(key) + '">' +
+            '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+            '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+            '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+            '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+              '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+            '</div></td>' +
+          '</tr>';
+        }
+      });
+    } else {
+      html = '<div class="table-responsive">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+      rows.forEach(function (it) {
+        if (!it) return;
+        var key = String(it.key || '').trim().toLowerCase();
+        if (!key) return;
+        var label = it.label != null ? String(it.label) : key;
+        var enabled = !!it.enabled;
+        html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
+          '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+          '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+          '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+          '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+            '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+          '</div></td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
     root.innerHTML = html;
     wireReorderButtons(root);
   }
@@ -2867,32 +2951,58 @@
     var root = document.getElementById(rootId);
     if (!root) return;
     var rows = Array.isArray(items) ? items : [];
-    var html = '<div class="table-responsive">' +
-      '<table class="table table-sm table-vcenter mb-0">' +
-      '<thead><tr>' +
-      '<th class="w-1">On</th>' +
-      '<th>Label</th>' +
-      '<th class="text-muted">Key</th>' +
-      '<th class="text-end w-1">Order</th>' +
-      '</tr></thead><tbody>';
-    rows.forEach(function (it) {
-      if (!it) return;
-      var key = String(it.key || '').trim().toLowerCase();
-      if (!key) return;
-      var label = it.label != null ? String(it.label) : key;
-      var enabled = !!it.enabled;
-      var locked = key === 'today' || key === 'custom';
-      html += '<tr data-range-key="' + escapeHtml(key) + '">' +
-        '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (locked ? ' disabled' : '') + '></label></td>' +
-        '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
-        '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
-        '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-          '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-          '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
-        '</div></td>' +
-      '</tr>';
-    });
-    html += '</tbody></table></div>';
+    var html;
+    if (typeof window.buildKexoSettingsTable === 'function') {
+      html = window.buildKexoSettingsTable({
+        tableClass: 'table table-sm table-vcenter mb-0',
+        columns: [
+          { header: 'On', headerClass: 'w-1' },
+          { header: 'Label', headerClass: '' },
+          { header: 'Key', headerClass: 'text-muted' },
+          { header: 'Order', headerClass: 'text-end w-1' }
+        ],
+        rows: rows,
+        renderRow: function (it) {
+          if (!it) return '';
+          var key = String(it.key || '').trim().toLowerCase();
+          if (!key) return '';
+          var label = it.label != null ? String(it.label) : key;
+          var enabled = !!it.enabled;
+          var locked = key === 'today' || key === 'custom';
+          return '<tr data-range-key="' + escapeHtml(key) + '">' +
+            '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (locked ? ' disabled' : '') + '></label></td>' +
+            '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+            '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+            '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+              '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+            '</div></td>' +
+          '</tr>';
+        }
+      });
+    } else {
+      html = '<div class="table-responsive">' +
+        '<table class="table table-sm table-vcenter mb-0">' +
+        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+      rows.forEach(function (it) {
+        if (!it) return;
+        var key = String(it.key || '').trim().toLowerCase();
+        if (!key) return;
+        var label = it.label != null ? String(it.label) : key;
+        var enabled = !!it.enabled;
+        var locked = key === 'today' || key === 'custom';
+        html += '<tr data-range-key="' + escapeHtml(key) + '">' +
+          '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (locked ? ' disabled' : '') + '></label></td>' +
+          '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+          '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
+          '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
+            '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+          '</div></td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
     root.innerHTML = html;
     wireReorderButtons(root);
   }
