@@ -843,7 +843,7 @@ async function getBusinessSnapshot(options = {}) {
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
-    readCheckoutOrdersTimeseries(shop, bounds.start, bounds.end, timeZone),
+    readCheckoutOrdersTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
   ]);
 
   let sessionsNowMetrics = summarizeSessionsTimeseries(sessionsNowTs);
