@@ -228,6 +228,40 @@ async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
 
+async function readReturningCustomerCountByEnd(shop, startMs, endMs) {
+  if (!shop) return 0;
+  const db = getDb();
+  const row = await db.get(
+    `
+      SELECT COUNT(*) AS n
+      FROM (
+        SELECT o.customer_id
+        FROM orders_shopify o
+        WHERE o.shop = ?
+          AND o.created_at >= ? AND o.created_at < ?
+          AND ${isPaidOrderWhereClause('o')}
+          AND o.checkout_token IS NOT NULL
+          AND TRIM(o.checkout_token) != ''
+          AND o.customer_id IS NOT NULL
+          AND TRIM(o.customer_id) != ''
+        GROUP BY o.customer_id
+        HAVING (
+          SELECT COUNT(*)
+          FROM orders_shopify p
+          WHERE p.shop = o.shop
+            AND p.customer_id = o.customer_id
+            AND ${isPaidOrderWhereClause('p')}
+            AND p.customer_id IS NOT NULL
+            AND TRIM(p.customer_id) != ''
+            AND p.created_at < ?
+        ) >= 2
+      ) t
+    `,
+    [shop, startMs, endMs, endMs]
+  );
+  return row && row.n != null ? Number(row.n) || 0 : 0;
+}
+
 async function readRepeatCustomerCountInRange(shop, startMs, endMs) {
   if (!shop) return 0;
   const db = getDb();
@@ -921,7 +955,7 @@ async function getBusinessSnapshot(options = {}) {
   const [distinctCustomers, ltvValue, returningRaw] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
     mode === 'yearly' ? readLtvForYearCohort(shop, selectedYear) : readLtvForCohortRange(shop, bounds.start, bounds.end),
-    readReturningCustomerCountBeforeStart(shop, bounds.start, bounds.end),
+    readReturningCustomerCountByEnd(shop, bounds.start, bounds.end),
   ]);
 
   const returningCustomers = toNumber(returningRaw);

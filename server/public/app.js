@@ -12087,7 +12087,8 @@ const API = '';
           backdropCount = 0;
           return;
         }
-        ensureBackdrop();
+        const el = ensureBackdrop();
+        try { el.classList.toggle('is-dark', modalVisible(rulesModal)); } catch (_) {}
       }
 
       function openModal(el) {
@@ -12164,7 +12165,7 @@ const API = '';
           dir,
           pct: rounded,
           short,
-          text: 'vs previous period: ' + short,
+          text: short,
         };
       }
 
@@ -12175,15 +12176,15 @@ const API = '';
       }
 
       function deltaHtml(delta) {
-        if (!delta || !delta.text) return '';
+        if (!delta || !delta.short) return '';
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
         const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
         return '' +
-          '<div class="dash-kpi-delta business-snapshot-delta ' + cls + '">' +
+          '<div class="dash-kpi-delta ms-auto business-snapshot-delta ' + cls + '" title="vs previous period">' +
             '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
-            '<span class="business-snapshot-delta-text">' + escapeHtml(delta.text) + '</span>' +
+            '<span class="business-snapshot-delta-text">' + escapeHtml(delta.short) + '</span>' +
           '</div>';
       }
 
@@ -12405,10 +12406,12 @@ const API = '';
           '<div class="col-12 col-md-6 col-xl-3">' +
             '<div class="card h-100 business-snapshot-card">' +
               '<div class="card-body">' +
-                '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                '<div class="d-flex align-items-start gap-2">' +
+                  '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                  (dHtml ? dHtml : '') +
+                '</div>' +
                 '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
                 (chartHtml ? chartHtml : '') +
-                (dHtml ? dHtml : '') +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12856,7 +12859,32 @@ const API = '';
           wrap.innerHTML = '' +
             '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Business Snapshot">' +
               '<div class="modal-content">' +
-                '<div class="modal-header p-4">' +
+                '<div class="modal-header p-4 align-items-start business-snapshot-modal-header">' +
+                  '<div class="business-snapshot-header-bg" aria-hidden="true">' +
+                    '<svg viewBox="0 0 600 140" preserveAspectRatio="none" aria-hidden="true">' +
+                      '<g fill="currentColor">' +
+                        '<rect x="18" y="78" width="18" height="52" rx="3"></rect>' +
+                        '<rect x="48" y="64" width="18" height="66" rx="3"></rect>' +
+                        '<rect x="78" y="86" width="18" height="44" rx="3"></rect>' +
+                        '<rect x="108" y="44" width="18" height="86" rx="3"></rect>' +
+                        '<rect x="138" y="58" width="18" height="72" rx="3"></rect>' +
+                        '<rect x="168" y="24" width="18" height="106" rx="3"></rect>' +
+                        '<rect x="198" y="52" width="18" height="78" rx="3"></rect>' +
+                        '<rect x="228" y="70" width="18" height="60" rx="3"></rect>' +
+                        '<rect x="258" y="34" width="18" height="96" rx="3"></rect>' +
+                        '<rect x="288" y="60" width="18" height="70" rx="3"></rect>' +
+                        '<rect x="318" y="90" width="18" height="40" rx="3"></rect>' +
+                        '<rect x="348" y="68" width="18" height="62" rx="3"></rect>' +
+                        '<rect x="378" y="38" width="18" height="92" rx="3"></rect>' +
+                        '<rect x="408" y="56" width="18" height="74" rx="3"></rect>' +
+                        '<rect x="438" y="28" width="18" height="102" rx="3"></rect>' +
+                        '<rect x="468" y="66" width="18" height="64" rx="3"></rect>' +
+                        '<rect x="498" y="46" width="18" height="84" rx="3"></rect>' +
+                        '<rect x="528" y="74" width="18" height="56" rx="3"></rect>' +
+                        '<rect x="558" y="54" width="18" height="76" rx="3"></rect>' +
+                      '</g>' +
+                    '</svg>' +
+                  '</div>' +
                   '<div class="d-flex flex-column">' +
                     '<h5 class="modal-title mb-0">Business Snapshot</h5>' +
                     '<div class="text-muted small" id="business-snapshot-subtitle">Yearly Reports</div>' +
@@ -12877,7 +12905,7 @@ const API = '';
                       '</div>' +
                     '</div>' +
                   '</div>' +
-                  '<div class="ms-auto d-flex align-items-center gap-2">' +
+                  '<div class="ms-auto d-flex align-items-start gap-2 business-snapshot-header-actions">' +
                     '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
                       '<i class="fa-thin fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>' +
                     '</button>' +
