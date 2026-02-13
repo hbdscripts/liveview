@@ -823,6 +823,19 @@ const API = '';
         return false;
       }
 
+      function hasChartContent(card) {
+        if (!card || !card.querySelector) return false;
+        return !!card.querySelector(CHART_CONTENT_SELECTOR);
+      }
+
+      function isChartOnlyCard(card) {
+        if (!card) return false;
+        if (card.dataset && card.dataset.tableId) return false;
+        var wrap = card.closest ? card.closest('[data-kexo-chart-key]') : null;
+        if (wrap) return true;
+        return hasChartContent(card) && !card.querySelector(TABLE_CONTENT_SELECTOR);
+      }
+
       function getCollapseId(card, index) {
         if (!card || !card.dataset) return 'table-card-' + String(index || 0);
         if (card.dataset.collapseId) return card.dataset.collapseId;
@@ -911,6 +924,27 @@ const API = '';
             header.appendChild(actions);
           }
           actions.appendChild(link);
+          return;
+        }
+
+        if (isChartOnlyCard(card)) {
+          var existingChartLink = header.querySelector('.kexo-builder-icon-link');
+          var existingCollapse = header.querySelector('.kexo-card-collapse-toggle');
+          if (existingCollapse) existingCollapse.remove();
+          if (existingChartLink) return;
+          var chartLink = document.createElement('a');
+          chartLink.href = 'https://app.kexo.io/settings?tab=layout';
+          chartLink.className = 'btn btn-icon btn-ghost-secondary kexo-builder-icon-link';
+          chartLink.title = 'Layout settings';
+          chartLink.setAttribute('aria-label', 'Layout settings');
+          chartLink.innerHTML = '<i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>';
+          var chartActions = header.querySelector(':scope > .card-actions');
+          if (!chartActions) {
+            chartActions = document.createElement('div');
+            chartActions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
+            header.appendChild(chartActions);
+          }
+          chartActions.appendChild(chartLink);
           return;
         }
 

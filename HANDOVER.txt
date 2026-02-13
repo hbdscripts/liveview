@@ -277,6 +277,9 @@ Ops/reliability:
   - Google Ads: ads-footer syncs sticky width when ads-root is resized; run sticky resize after ads render.
 
 2026-02-13 (latest)
+- Chart cards: replaced collapse chevrons with gear icon linking to Settings → Layout (matches table builder). Chart-only cards now show kexo-builder-icon-link; collapse toggle removed.
+
+2026-02-13 (earlier)
 - Chart builder:
   - Added `kexo-chart-defs.js` (KEXO_CHART_DEFS) and `kexo-chart-builder.js` (ensureApexCharts, waitForContainerDimensions, renderApexChart, renderSparkline).
   - Settings → Layout → Charts now uses chart defs from kexo-chart-defs.js.

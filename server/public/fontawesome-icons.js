@@ -137,6 +137,7 @@
     'table-short-product': 'fa-box-open',
     'table-short-consent': 'fa-circle-info',
     'table-builder-icon': 'fa-light fa-gear',
+    'chart-builder-icon': 'fa-light fa-gear',
     'card-title-online': 'fa-jelly-filled fa-users',
     'card-title-revenue': 'fa-jelly-filled fa-sterling-sign',
     'card-title-orders': 'fa-jelly-filled fa-box-open',
