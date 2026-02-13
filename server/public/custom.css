@@ -1406,6 +1406,30 @@ html[data-bs-theme="dark"] .report-build-wrap {
   text-overflow: ellipsis;
 }
 
+.business-snapshot-card {
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.business-snapshot-card-body {
+  position: relative;
+  min-height: 80px;
+}
+
+.business-snapshot-card-content {
+  position: relative;
+  z-index: 1;
+  padding-right: 72px; /* reserve space for top-right delta */
+}
+
+.business-snapshot-card-delta {
+  position: absolute;
+  top: 0.85rem;
+  right: 1rem;
+  z-index: 2;
+  white-space: nowrap;
+}
+
 .business-snapshot-modal-body {
   overflow-x: hidden;
 }
@@ -1487,12 +1511,19 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 
 .business-snapshot-delta.is-flat i {
-  color: var(--tblr-secondary, #626976);
+  color: var(--tblr-primary, #206bc4);
 }
 
 .business-snapshot-chart {
-  margin-top: 0.35rem;
+  min-height: 56px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
   width: 100%;
+  pointer-events: none;
+  opacity: 0.22;
+  z-index: 0;
 }
 
 .business-snapshot-chart .apexcharts-canvas {

@@ -12182,7 +12182,7 @@ const API = '';
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
         const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
         return '' +
-          '<div class="dash-kpi-delta ms-auto business-snapshot-delta ' + cls + '" title="vs previous period">' +
+          '<div class="business-snapshot-card-delta business-snapshot-delta ' + cls + '" title="vs previous period">' +
             '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
             '<span class="business-snapshot-delta-text">' + escapeHtml(delta.short) + '</span>' +
           '</div>';
@@ -12253,7 +12253,8 @@ const API = '';
         const el = document.getElementById(elId);
         if (!el) return;
         const options = opts && typeof opts === 'object' ? opts : {};
-        const chartType = String(options.type || 'area').toLowerCase() === 'bar' ? 'bar' : (String(options.type || 'area').toLowerCase() === 'line' ? 'line' : 'area');
+        const rawType = String(options.type || 'line').toLowerCase();
+        const chartType = rawType === 'bar' ? 'bar' : 'line';
         const color = options.color || snapshotPrimaryColor();
         const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 56;
 
@@ -12281,7 +12282,7 @@ const API = '';
           })
           : Object.assign({}, base, {
             stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
-            fill: { type: 'solid', opacity: chartType === 'area' ? 0.28 : 0 },
+            fill: { type: 'solid', opacity: 0 },
             markers: { size: 0 },
           });
 
@@ -12345,53 +12346,76 @@ const API = '';
         const aov = Array.isArray(series.aov) ? series.aov : [];
 
         const f = payload.financial || {};
+        const perf = payload.performance || {};
         const c = payload.customers || {};
         const profit = f.profit || {};
-
-        const newCustomersVal = c.newCustomers && Number(c.newCustomers.value);
-        const returningCustomersVal = c.returningCustomers && Number(c.returningCustomers.value);
-        const knownCustomerTotal = (Number.isFinite(newCustomersVal) ? newCustomersVal : 0) + (Number.isFinite(returningCustomersVal) ? returningCustomersVal : 0);
-        const newPct = knownCustomerTotal > 0 && Number.isFinite(newCustomersVal) ? (newCustomersVal / knownCustomerTotal) * 100 : null;
-        const returningPct = knownCustomerTotal > 0 && Number.isFinite(returningCustomersVal) ? (returningCustomersVal / knownCustomerTotal) * 100 : null;
-        const repeatPct = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
-        const ltvVal = c.ltv && Number(c.ltv.value);
-        const aovVal = f.aov && Number(f.aov.value);
-        const ltvPct = (Number.isFinite(ltvVal) && Number.isFinite(aovVal) && aovVal > 0) ? Math.max(0, Math.min(100, (ltvVal / aovVal) * 100)) : null;
 
         const marginPct = profit && profit.marginPct && Number.isFinite(Number(profit.marginPct.value)) ? Number(profit.marginPct.value) : null;
         const estProfitVal = profit && profit.estimatedProfit && Number.isFinite(Number(profit.estimatedProfit.value)) ? Number(profit.estimatedProfit.value) : null;
         const netProfitVal = profit && profit.netProfit && Number.isFinite(Number(profit.netProfit.value)) ? Number(profit.netProfit.value) : null;
         const deductionsVal = profit && profit.deductions && Number.isFinite(Number(profit.deductions.value)) ? Number(profit.deductions.value) : null;
         const revenueVal = f.revenue && Number.isFinite(Number(f.revenue.value)) ? Number(f.revenue.value) : null;
-        const deductionsPct = (Number.isFinite(deductionsVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? Math.max(0, Math.min(100, (deductionsVal / revenueVal) * 100)) : null;
         const estRatio = (Number.isFinite(estProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (estProfitVal / revenueVal) : null;
         const netRatio = (Number.isFinite(netProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (netProfitVal / revenueVal) : null;
         const estSeries = (Number.isFinite(estRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * estRatio : 0; }) : [];
         const netSeries = (Number.isFinite(netRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * netRatio : 0; }) : [];
+        const deductionsSeries = (estSeries.length && revenue.length === estSeries.length) ? revenue.map(function (v, i) {
+          const r = Number(v);
+          const p = Number(estSeries[i]);
+          if (!Number.isFinite(r) || !Number.isFinite(p)) return 0;
+          return Math.max(0, r - p);
+        }) : [];
+
+        function snapshotTrendColor(dir) {
+          const d = String(dir || '').toLowerCase();
+          if (d === 'up') return '#2fb344'; // green
+          if (d === 'down') return '#d63939'; // red
+          return '#206bc4'; // blue
+        }
+
+        function trendColorForDelta(delta) {
+          const d = delta && delta.dir ? String(delta.dir) : 'flat';
+          return snapshotTrendColor(d);
+        }
+
+        function sparkLine(id, dataArr, delta) {
+          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56 });
+        }
+
+        function sparkBar(id, dataArr, delta) {
+          renderSnapshotSparkline(id, dataArr, { type: 'bar', color: trendColorForDelta(delta), height: 56 });
+        }
 
         ensureSnapshotApexCharts(function () {
           if (seq !== snapshotChartsSeq) return;
-          const primary = snapshotPrimaryColor();
-          renderSnapshotSparkline('business-snapshot-chart-revenue', revenue, { type: 'area', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-orders', orders, { type: 'area', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-aov', aov, { type: 'line', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-conversion', conv, { type: 'line', color: primary, height: 56 });
+          const revenueDelta = deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous);
+          sparkLine('business-snapshot-chart-revenue', revenue, revenueDelta);
 
-          renderSnapshotSparkline('business-snapshot-chart-sessions', sessions, { type: 'bar', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-perf-orders', orders, { type: 'bar', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-perf-conversion', conv, { type: 'line', color: primary, height: 56 });
-          renderSnapshotSparkline('business-snapshot-chart-perf-aov', aov, { type: 'line', color: primary, height: 56 });
+          // Profit charts (no circles; keep line/bar only)
+          const estDelta = deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous);
+          const netDelta = deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous);
+          const marginDelta = deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous);
+          const deductionsDelta = deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous);
+          if (estSeries.length) sparkLine('business-snapshot-chart-profit', estSeries, estDelta);
+          if (netSeries.length) sparkLine('business-snapshot-chart-net-profit', netSeries, netDelta);
+          if (estSeries.length) sparkLine('business-snapshot-chart-margin', estSeries, marginDelta);
+          if (deductionsSeries.length) sparkBar('business-snapshot-chart-deductions-pct', deductionsSeries, deductionsDelta);
 
-          if (estSeries.length) renderSnapshotSparkline('business-snapshot-chart-profit', estSeries, { type: 'area', color: primary, height: 56 });
-          if (netSeries.length) renderSnapshotSparkline('business-snapshot-chart-net-profit', netSeries, { type: 'area', color: primary, height: 56 });
+          // Performance charts
+          const sessionsDelta = deltaInfo(perf.sessions && perf.sessions.value, perf.sessions && perf.sessions.previous);
+          const ordersDelta = deltaInfo(perf.orders && perf.orders.value, perf.orders && perf.orders.previous);
+          const convDelta = deltaInfo(perf.conversionRate && perf.conversionRate.value, perf.conversionRate && perf.conversionRate.previous);
+          const aovDelta = deltaInfo(perf.aov && perf.aov.value, perf.aov && perf.aov.previous);
+          sparkBar('business-snapshot-chart-sessions', sessions, sessionsDelta);
+          sparkBar('business-snapshot-chart-perf-orders', orders, ordersDelta);
+          sparkLine('business-snapshot-chart-perf-conversion', conv, convDelta);
+          sparkLine('business-snapshot-chart-perf-aov', aov, aovDelta);
 
-          if (newPct != null) renderSnapshotRadial('business-snapshot-chart-new-share', newPct, { color: primary, height: 78 });
-          if (returningPct != null) renderSnapshotRadial('business-snapshot-chart-returning-share', returningPct, { color: primary, height: 78 });
-          if (repeatPct != null) renderSnapshotRadial('business-snapshot-chart-repeat-rate', repeatPct, { color: primary, height: 78 });
-          if (ltvPct != null) renderSnapshotRadial('business-snapshot-chart-ltv-ratio', ltvPct, { color: primary, height: 78 });
-
-          if (marginPct != null) renderSnapshotRadial('business-snapshot-chart-margin', marginPct, { color: primary, height: 78 });
-          if (deductionsPct != null) renderSnapshotRadial('business-snapshot-chart-deductions-pct', deductionsPct, { color: primary, height: 78 });
+          // Customers charts (use existing series as background context; no circles)
+          sparkBar('business-snapshot-chart-new-share', orders, null);
+          sparkBar('business-snapshot-chart-returning-share', orders, null);
+          sparkLine('business-snapshot-chart-repeat-rate', conv, null);
+          sparkLine('business-snapshot-chart-ltv-ratio', aov, null);
         });
       }
 
@@ -12400,18 +12424,18 @@ const API = '';
         const c = chart && typeof chart === 'object' ? chart : null;
         const chartId = c && c.id ? String(c.id) : '';
         const chartHtml = chartId
-          ? ('<div class="business-snapshot-chart" id="' + escapeHtml(chartId) + '"></div>')
+          ? ('<div class="business-snapshot-chart" id="' + escapeHtml(chartId) + '" aria-hidden="true"></div>')
           : '';
         return '' +
           '<div class="col-12 col-md-6 col-xl-3">' +
             '<div class="card h-100 business-snapshot-card">' +
-              '<div class="card-body">' +
-                '<div class="d-flex align-items-start gap-2">' +
-                  '<div class="subheader">' + escapeHtml(label) + '</div>' +
-                  (dHtml ? dHtml : '') +
-                '</div>' +
-                '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
+              '<div class="card-body business-snapshot-card-body">' +
                 (chartHtml ? chartHtml : '') +
+                '<div class="business-snapshot-card-content">' +
+                  '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                  '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
+                '</div>' +
+                (dHtml ? dHtml : '') +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12498,15 +12522,13 @@ const API = '';
 
         let financialCards = '';
         financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous), { id: 'business-snapshot-chart-revenue' });
-        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous), { id: 'business-snapshot-chart-orders' });
-        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous), { id: 'business-snapshot-chart-aov' });
-        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous), { id: 'business-snapshot-chart-conversion' });
 
+        let profitCards = '';
         if (profit.visible) {
-          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { id: 'business-snapshot-chart-profit' });
-          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { id: 'business-snapshot-chart-net-profit' });
-          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { id: 'business-snapshot-chart-margin' });
-          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { id: 'business-snapshot-chart-deductions-pct' });
+          profitCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { id: 'business-snapshot-chart-profit' });
+          profitCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { id: 'business-snapshot-chart-net-profit' });
+          profitCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { id: 'business-snapshot-chart-margin' });
+          profitCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { id: 'business-snapshot-chart-deductions-pct' });
         }
 
         let performanceCards = '';
@@ -12526,6 +12548,12 @@ const API = '';
             '<h3 class="card-title mb-3">Financial</h3>' +
             '<div class="row g-3 business-snapshot-grid">' + financialCards + '</div>' +
           '</div>' +
+          (profit.visible
+            ? ('<div class="business-snapshot-section mb-4">' +
+                '<h3 class="card-title mb-3">Profit</h3>' +
+                '<div class="row g-3 business-snapshot-grid">' + profitCards + '</div>' +
+              '</div>')
+            : '') +
           '<div class="business-snapshot-section mb-4">' +
             '<h3 class="card-title mb-3">Performance</h3>' +
             '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +

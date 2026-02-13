@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Sentry 24h review: snapshot fix + settings query batching)
+Last updated: 2026-02-13 (Business Snapshot: background sparklines + simpler cards)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,7 +262,7 @@ Ops/reliability:
     - Default open state is now **Yearly / current year** (e.g. 2026), not All Time.
     - Yearly comparisons are now **same elapsed window** vs previous year (Jan 1 -> same month/day in prior year), and monthly comparisons are the same month vs prior year (partial when current month).
     - API now accepts `GET /api/business-snapshot?mode=yearly&year=YYYY` or `?mode=monthly&month=YYYY-MM`.
-    - Snapshot cards now render **real ApexCharts** sparklines/radials (no placeholder SVG/CSS “fake” charts) and the bottom Summary panel has been removed.
+    - Snapshot cards now render **real ApexCharts** line/bar sparklines (no radial/circle charts) as subtle background visuals in each card; Financial now only shows **Revenue** (no duplicate Orders/AOV/Conversion cards).
     - Customers: “Returning Customers” is now customers who have **>=2 paid orders by the end of the selected window** (so early years like 2025 don’t incorrectly show 0 when repeats exist).
     - Fixed a Postgres reliability bug: returning customer query no longer uses a grouped outer reference (prevents `/api/business-snapshot` 500s).
   - Settings performance:
