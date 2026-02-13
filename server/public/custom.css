@@ -1985,9 +1985,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
   outline-offset: 2px;
 }
 .kexo-top-strip-online-chevron {
-  margin-left: .25rem;
-  font-size: .65rem;
+  margin: 2px 0 0 0;
   opacity: .85;
+  font-size: 8px !important;
+  width: 10px !important;
 }
 .kexo-top-strip-online-menu {
   /* Match Settings dropdown style (inherit menu background + opacity) */
