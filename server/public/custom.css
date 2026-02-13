@@ -1618,9 +1618,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-date-btn-chevron {
   flex-shrink: 0;
-  margin-left: 10px;
-  font-size: .75rem;
-  color: #000;
+  margin: 3px 0 0 5px;
+  font-size: 12px !important;
+  font-weight: bold;
 }
 .kexo-topbar-date .dropdown-menu {
   min-width: 140px;
@@ -1973,6 +1973,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   margin-top: 5px !important;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   opacity: 0.9;
+  padding: 0;
+  font-size: 13px;
 }
 .kexo-top-strip-settings-item {
   color: #000 !important;
@@ -2296,7 +2298,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .page-header .page-title {
   display: block;
-  text-align: center;
+  text-align: left;
 }
 
 .page-title {
@@ -2393,8 +2395,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   }
   .page-header .kexo-page-header-date-col .kexo-date-btn {
     position: absolute;
-    top: -40px;
-    right: -15px;
+    top: -50px;
+    right: 0;
     font-size: 15px !important;
   }
 
