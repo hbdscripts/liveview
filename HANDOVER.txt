@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Table rows hidden + builder icon)
+Last updated: 2026-02-13 (Table icons + Railway deploy note)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -241,7 +241,7 @@ Ops/reliability:
 ## Deployment notes
 
 - GitHub Actions are manual (`workflow_dispatch`).
-- Railway hosts production; deploys may auto-run from GitHub depending on Railway config.
+- Railway hosts production and auto-deploys from git; do not run `railway up` — push to main is sufficient.
 - `npm start` runs `scripts/prune-runtime-files.js` (removes non-runtime files from the runtime image).
 - SQLite is ephemeral on Railway; production should use Postgres via `DB_URL`.
 
@@ -257,6 +257,9 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Table icons: Every Layout table now has a unique icon key in Settings → Theme → Icons (card-title-table-*). Resolved by data-table-id when present; editable per table.
+- Railway: Do not run `railway up`; auto-deploys from git. Updated commit-and-memory rule, HANDOVER, README.
 2026-02-13 (latest)
 - Table UX:
   - Rows-per-page selector hidden on all tables (page size still from config).

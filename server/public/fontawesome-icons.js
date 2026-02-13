@@ -156,6 +156,26 @@
     'card-title-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
     'card-title-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
     'card-title-chart': 'fa-jelly-filled fa-chart-line',
+    'card-title-table-dash-top-products': 'fa-jelly-filled fa-chart-line',
+    'card-title-table-dash-top-countries': 'fa-jelly-filled fa-globe',
+    'card-title-table-dash-trending-up': 'fa-jelly-filled fa-arrow-trend-up',
+    'card-title-table-dash-trending-down': 'fa-jelly-filled fa-arrow-trend-down',
+    'card-title-table-latest-sales': 'fa-jelly-filled fa-cart-shopping',
+    'card-title-table-sessions': 'fa-jelly-filled fa-users',
+    'card-title-table-country': 'fa-jelly-filled fa-map-location-dot',
+    'card-title-table-country-product': 'fa-jelly-filled fa-globe-americas',
+    'card-title-table-best-sellers': 'fa-jelly-filled fa-trophy',
+    'card-title-table-best-variants': 'fa-jelly-filled fa-shapes',
+    'card-title-table-necklaces': 'fa-jelly-filled fa-gem',
+    'card-title-table-bracelets': 'fa-jelly-filled fa-circle',
+    'card-title-table-earrings': 'fa-jelly-filled fa-heart',
+    'card-title-table-sets': 'fa-jelly-filled fa-layer-group',
+    'card-title-table-charms': 'fa-jelly-filled fa-star',
+    'card-title-table-extras': 'fa-jelly-filled fa-puzzle-piece',
+    'card-title-table-channels': 'fa-jelly-filled fa-diagram-project',
+    'card-title-table-device': 'fa-jelly-filled fa-table-cells',
+    'card-title-table-ads': 'fa-brands fa-google',
+    'card-title-table-variants': 'fa-jelly-filled fa-bezier-curve',
     'dash-kpi-delta-up': 'fa-arrow-trend-up',
     'dash-kpi-delta-down': 'fa-arrow-trend-down',
     'dash-kpi-delta-flat': 'fa-minus',
@@ -260,6 +280,28 @@
     'eye-off': 'fa-jelly fa-eye-slash'
   };
 
+  var TABLE_ID_TO_ICON_KEY = {
+    'dash-top-products': 'card-title-table-dash-top-products',
+    'dash-top-countries': 'card-title-table-dash-top-countries',
+    'dash-trending-up': 'card-title-table-dash-trending-up',
+    'dash-trending-down': 'card-title-table-dash-trending-down',
+    'latest-sales-table': 'card-title-table-latest-sales',
+    'sessions-table': 'card-title-table-sessions',
+    'country-table': 'card-title-table-country',
+    'best-geo-products-table': 'card-title-table-country-product',
+    'best-sellers-table': 'card-title-table-best-sellers',
+    'best-variants-table': 'card-title-table-best-variants',
+    'type-necklaces-table': 'card-title-table-necklaces',
+    'type-bracelets-table': 'card-title-table-bracelets',
+    'type-earrings-table': 'card-title-table-earrings',
+    'type-sets-table': 'card-title-table-sets',
+    'type-charms-table': 'card-title-table-charms',
+    'type-extras-table': 'card-title-table-extras',
+    'traffic-sources-table': 'card-title-table-channels',
+    'traffic-types-table': 'card-title-table-device',
+    'ads-root': 'card-title-table-ads'
+  };
+
   var CARD_TITLE_ICON_RULES = [
     { key: 'card-title-online', test: /people online|online now|online trend/i, fa: 'fa-jelly-filled fa-users' },
     { key: 'card-title-revenue', test: /\brevenue\b|\brev\b|sales total|sales trend/i, fa: 'fa-jelly-filled fa-sterling-sign' },
@@ -301,6 +343,13 @@
 
   function resolveCardTitleIcon(cardTitleEl) {
     if (!cardTitleEl) return pageDefaultCardIcon();
+    var card = cardTitleEl.closest ? cardTitleEl.closest('.card') : null;
+    var tableId = (card && card.dataset && card.dataset.tableId) ? String(card.dataset.tableId).trim() : '';
+    if (tableId) {
+      var iconKey = TABLE_ID_TO_ICON_KEY[tableId];
+      if (!iconKey && tableId.indexOf('variants-table-') === 0) iconKey = 'card-title-table-variants';
+      if (iconKey) return { key: iconKey, fa: ICON_GLYPH_DEFAULTS[iconKey] || 'fa-jelly-filled fa-table-cells' };
+    }
     var text = (cardTitleEl.textContent || '').replace(/\s+/g, ' ').trim();
     for (var i = 0; i < CARD_TITLE_ICON_RULES.length; i += 1) {
       var rule = CARD_TITLE_ICON_RULES[i];
