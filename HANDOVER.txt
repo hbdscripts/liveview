@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Footer redesign: logo left, center actions, fa-jelly-filled icons)
+Last updated: 2026-02-13 (Business Snapshot modal polish: XL + trend summary)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -249,6 +249,9 @@ Ops/reliability:
     - `PUT /api/settings/profit-rules`
   - Business Snapshot now includes an in-modal Profit Rules editor (enable toggle, rule list, add/edit/delete, priority up/down, per-rule enabled toggle, ISO country targeting).
   - Estimated profit formulas are now centralized server-side using paid Shopify truth orders and country-aware rule applicability.
+  - Snapshot UX polish: modal is now XL, year selector sits in the modal header, deltas show trend icons, and there’s a bottom “Summary vs previous period” footer card.
+  - Profit setup callout no longer includes a “Configure” button (use the modal header settings icon).
+  - Snapshot loading is now last-request-wins (avoids stale year data) and shows an in-modal Retry button on failures.
 - Settings icon cleanup + style tweaks:
   - Disabled auto-injected inner card title icons on Settings page (`fontawesome-icons.js` skips `data-page="settings"`), so inner Settings cards/tables no longer get extra gear icons.
   - Added Theme Icons support for `header-business-snapshot` (including persistence via `theme_icon_glyph_header_business_snapshot`).

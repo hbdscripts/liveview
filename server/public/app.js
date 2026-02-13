@@ -3638,6 +3638,7 @@ const API = '';
     // Latest sales table (/dashboard/live): last 5 converted sessions (desktop only).
     let latestSalesFetchInFlight = null;
     let latestSalesCache = null; // array of normalized rows
+    let latestSalesRefetchTimer = null;
 
     function normalizeLatestSaleRow(row) {
       const r = row && typeof row === 'object' ? row : {};
@@ -3714,6 +3715,18 @@ const API = '';
       cur.sort(function(a, b) { return (toMs(b && b.purchased_at) || 0) - (toMs(a && a.purchased_at) || 0); });
       latestSalesCache = cur.slice(0, 5);
       renderLatestSalesTable(latestSalesCache);
+
+      // SSE gives us the raw session row (may lack product title / GBP conversion).
+      // Refresh the server-enriched latest-sales payload shortly after a new sale is detected.
+      if (idx < 0) {
+        try {
+          if (latestSalesRefetchTimer) clearTimeout(latestSalesRefetchTimer);
+          latestSalesRefetchTimer = setTimeout(function() {
+            latestSalesRefetchTimer = null;
+            try { fetchLatestSales({ force: true }); } catch (_) {}
+          }, 400);
+        } catch (_) {}
+      }
     }
 
     function fetchLatestSales(options = {}) {
@@ -11999,6 +12012,8 @@ const API = '';
       let rulesDraft = null;
       let editingRuleId = '';
       let snapshotLoading = false;
+      let snapshotRequestSeq = 0;
+      let snapshotActiveRequest = 0;
 
       function isIsoCountryCode(code) {
         return /^[A-Z]{2}$/.test(String(code || '').trim().toUpperCase());
@@ -12058,26 +12073,63 @@ const API = '';
         return n.toFixed(1).replace(/\.0$/, '') + '%';
       }
 
-      function fmtDelta(current, previous) {
+      function deltaInfo(current, previous) {
         const cur = current == null ? null : Number(current);
         const prev = previous == null ? null : Number(previous);
-        if (cur == null || prev == null || !Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return '';
+        if (cur == null || prev == null || !Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return null;
         const pct = ((cur - prev) / Math.abs(prev)) * 100;
-        if (!Number.isFinite(pct)) return '';
+        if (!Number.isFinite(pct)) return null;
         const rounded = Math.round(pct * 10) / 10;
+        const dir = rounded > 0 ? 'up' : (rounded < 0 ? 'down' : 'flat');
         const sign = rounded > 0 ? '+' : '';
-        return 'vs previous period: ' + sign + rounded.toFixed(1).replace(/\.0$/, '') + '%';
+        const short = sign + rounded.toFixed(1).replace(/\.0$/, '') + '%';
+        return {
+          dir,
+          pct: rounded,
+          short,
+          text: 'vs previous period: ' + short,
+        };
       }
 
-      function metricCardHtml(label, valueText, deltaText) {
-        const hasDelta = deltaText && String(deltaText).trim();
+      function deltaIconKey(dir) {
+        if (dir === 'up') return 'dash-kpi-delta-up';
+        if (dir === 'down') return 'dash-kpi-delta-down';
+        return 'dash-kpi-delta-flat';
+      }
+
+      function deltaHtml(delta) {
+        if (!delta || !delta.text) return '';
+        const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
+        const iconKey = deltaIconKey(dir);
+        const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
+        return '' +
+          '<div class="business-snapshot-delta small ' + cls + '">' +
+            '<i class="business-snapshot-delta-icon" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
+            '<span class="business-snapshot-delta-text">' + escapeHtml(delta.text) + '</span>' +
+          '</div>';
+      }
+
+      function deltaPillHtml(delta) {
+        if (!delta || !delta.short) return '<span class="business-snapshot-delta-pill is-none">—</span>';
+        const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
+        const iconKey = deltaIconKey(dir);
+        const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
+        return '' +
+          '<span class="business-snapshot-delta-pill ' + cls + '">' +
+            '<i class="business-snapshot-delta-pill-icon" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
+            '<span>' + escapeHtml(delta.short) + '</span>' +
+          '</span>';
+      }
+
+      function metricCardHtml(label, valueText, delta) {
+        const dHtml = deltaHtml(delta);
         return '' +
           '<div class="col-12 col-md-6 col-xl-3">' +
-            '<div class="card business-snapshot-card">' +
+            '<div class="card h-100 business-snapshot-card">' +
               '<div class="card-body">' +
                 '<div class="subheader">' + escapeHtml(label) + '</div>' +
                 '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
-                (hasDelta ? ('<div class="text-muted small">' + escapeHtml(deltaText) + '</div>') : '') +
+                (dHtml ? dHtml : '') +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12087,9 +12139,9 @@ const API = '';
         return '' +
           '<div class="col-12">' +
             '<div class="card business-snapshot-callout-card">' +
-              '<div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">' +
-                '<div class="text-muted">Set up Profit Rules to view profit and margin</div>' +
-                '<button type="button" class="btn btn-primary" id="business-snapshot-configure-rules-btn">Configure Profit Rules</button>' +
+              '<div class="card-body">' +
+                '<div class="text-muted">Set up Profit Rules to view profit and margin.</div>' +
+                '<div class="text-muted small mt-1">Use the settings icon in the top-right of this modal.</div>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12099,7 +12151,13 @@ const API = '';
         const body = document.getElementById('business-snapshot-body');
         if (!body) return;
         if (!data || data.ok !== true) {
-          body.innerHTML = '<div class="alert alert-warning mb-0">Snapshot is unavailable right now.</div>';
+          body.innerHTML = '' +
+            '<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">' +
+              '<div>Snapshot is unavailable right now.</div>' +
+              '<button type="button" class="btn btn-sm btn-outline-secondary" id="business-snapshot-retry-btn">Retry</button>' +
+            '</div>';
+          const retryBtn = document.getElementById('business-snapshot-retry-btn');
+          if (retryBtn) retryBtn.addEventListener('click', function () { fetchSnapshot(true); });
           return;
         }
 
@@ -12108,32 +12166,58 @@ const API = '';
         const c = data.customers || {};
         const profit = f.profit || {};
 
+        const subtitle = document.getElementById('business-snapshot-subtitle');
+        if (subtitle) subtitle.textContent = (data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase());
+
         let financialCards = '';
-        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), fmtDelta(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
-        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), fmtDelta(f.orders && f.orders.value, f.orders && f.orders.previous));
-        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), fmtDelta(f.aov && f.aov.value, f.aov && f.aov.previous));
-        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), fmtDelta(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
+        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
+        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous));
+        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous));
+        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
 
         if (profit.visible) {
-          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), fmtDelta(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
-          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), fmtDelta(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous));
-          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), fmtDelta(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
-          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), fmtDelta(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous));
+          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
+          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous));
+          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
+          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous));
         } else {
           financialCards += calloutCardHtml();
         }
 
         let performanceCards = '';
-        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), fmtDelta(p.sessions && p.sessions.value, p.sessions && p.sessions.previous));
-        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), fmtDelta(p.orders && p.orders.value, p.orders && p.orders.previous));
-        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), fmtDelta(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous));
-        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), fmtDelta(p.aov && p.aov.value, p.aov && p.aov.previous));
+        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous));
+        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous));
+        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous));
+        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous));
 
         let customersCards = '';
-        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), '');
-        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), '');
-        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), '');
-        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), '');
+        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null);
+        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null);
+        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null);
+        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null);
+
+        function summaryItemHtml(label, valueText, delta) {
+          return '' +
+            '<div class="col-12 col-md-6 col-xl-4">' +
+              '<div class="business-snapshot-summary-item">' +
+                '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                '<div class="d-flex align-items-end justify-content-between gap-2">' +
+                  '<div class="business-snapshot-summary-value">' + escapeHtml(valueText || '—') + '</div>' +
+                  deltaPillHtml(delta) +
+                '</div>' +
+              '</div>' +
+            '</div>';
+        }
+
+        let summaryItems = '';
+        summaryItems += summaryItemHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
+        summaryItems += summaryItemHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous));
+        summaryItems += summaryItemHtml('Conversion', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
+        summaryItems += summaryItemHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous));
+        if (profit.visible) {
+          summaryItems += summaryItemHtml('Est. Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
+          summaryItems += summaryItemHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
+        }
 
         body.innerHTML = '' +
           '<div class="business-snapshot-section mb-4">' +
@@ -12147,14 +12231,19 @@ const API = '';
           '<div class="business-snapshot-section">' +
             '<h3 class="card-title mb-3">Customers</h3>' +
             '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
+          '</div>' +
+          '<div class="business-snapshot-section mt-4">' +
+            '<div class="card business-snapshot-summary-card">' +
+              '<div class="card-body">' +
+                '<div class="d-flex align-items-center justify-content-between mb-2">' +
+                  '<div class="subheader">Summary vs previous period</div>' +
+                  '<div class="text-muted small">' + escapeHtml(data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase()) + '</div>' +
+                '</div>' +
+                '<div class="row g-3">' + summaryItems + '</div>' +
+                (profit.visible ? '' : ('<div class="text-muted small mt-3">Profit is hidden until Profit Rules are enabled (use the settings icon in the modal header).</div>')) +
+              '</div>' +
+            '</div>' +
           '</div>';
-
-        const configureBtn = document.getElementById('business-snapshot-configure-rules-btn');
-        if (configureBtn) {
-          configureBtn.addEventListener('click', function () {
-            openProfitRulesModal();
-          });
-        }
       }
 
       function setSnapshotLoading() {
@@ -12168,16 +12257,17 @@ const API = '';
       }
 
       function fetchSnapshot(force) {
-        if (snapshotLoading) return Promise.resolve();
+        const reqId = ++snapshotRequestSeq;
+        snapshotActiveRequest = reqId;
         snapshotLoading = true;
         if (force) setSnapshotLoading();
         let url = API + '/api/business-snapshot?year=' + encodeURIComponent(selectedYear || 'all');
         if (force) url += '&_=' + Date.now();
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
           .then(function (res) { return (res && res.ok) ? res.json() : null; })
-          .then(function (data) { renderSnapshot(data); })
-          .catch(function () { renderSnapshot(null); })
-          .finally(function () { snapshotLoading = false; });
+          .then(function (data) { if (reqId === snapshotActiveRequest) renderSnapshot(data); })
+          .catch(function () { if (reqId === snapshotActiveRequest) renderSnapshot(null); })
+          .finally(function () { if (reqId === snapshotActiveRequest) snapshotLoading = false; });
       }
 
       function normalizeRulesPayload(payload) {
@@ -12469,27 +12559,27 @@ const API = '';
           wrap.setAttribute('aria-hidden', 'true');
           wrap.style.display = 'none';
           wrap.innerHTML = '' +
-            '<div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Business Snapshot">' +
+            '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Business Snapshot">' +
               '<div class="modal-content">' +
-                '<div class="modal-header">' +
-                  '<h5 class="modal-title">Business Snapshot</h5>' +
+                '<div class="modal-header p-4">' +
+                  '<div class="d-flex flex-column">' +
+                    '<h5 class="modal-title mb-0">Business Snapshot</h5>' +
+                    '<div class="text-muted small" id="business-snapshot-subtitle">All Time</div>' +
+                  '</div>' +
                   '<div class="ms-auto d-flex align-items-center gap-2">' +
+                    '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year">' +
+                      '<option value="2026">2026</option>' +
+                      '<option value="2025">2025</option>' +
+                      '<option value="2024">2024</option>' +
+                      '<option value="all" selected>All Time</option>' +
+                    '</select>' +
                     '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
                       '<i class="fa-thin fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>' +
                     '</button>' +
                     '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
                   '</div>' +
                 '</div>' +
-                '<div class="modal-body">' +
-                  '<div class="mb-3">' +
-                    '<label class="form-label mb-1" for="business-snapshot-year">Year</label>' +
-                    '<select class="form-select" id="business-snapshot-year">' +
-                      '<option value="2026">2026</option>' +
-                      '<option value="2025">2025</option>' +
-                      '<option value="2024">2024</option>' +
-                      '<option value="all" selected>All Time</option>' +
-                    '</select>' +
-                  '</div>' +
+                '<div class="modal-body p-4 pt-0 business-snapshot-modal-body">' +
                   '<div id="business-snapshot-body"></div>' +
                 '</div>' +
               '</div>' +
