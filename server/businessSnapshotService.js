@@ -590,6 +590,157 @@ function monthLabel(monthValue) {
   return `${mon} ${yy}`;
 }
 
+function ymdAddDays(ymd, deltaDays) {
+  const parts = parseYmdParts(ymd);
+  if (!parts) return ymd;
+  const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12, 0, 0));
+  d.setUTCDate(d.getUTCDate() + (Number(deltaDays) || 0));
+  return formatYmd(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
+function listYmdRange(startYmd, endYmd, maxDays = 800) {
+  const aRaw = String(startYmd || '').slice(0, 10);
+  const bRaw = String(endYmd || '').slice(0, 10);
+  const a = /^\d{4}-\d{2}-\d{2}$/.test(aRaw) ? aRaw : null;
+  const b = /^\d{4}-\d{2}-\d{2}$/.test(bRaw) ? bRaw : null;
+  if (!a || !b) return [];
+  if (a > b) return [];
+  const out = [];
+  let cur = a;
+  for (let i = 0; i < maxDays; i += 1) {
+    out.push(cur);
+    if (cur === b) break;
+    cur = ymdAddDays(cur, 1);
+  }
+  return out;
+}
+
+function sumNumeric(arr) {
+  let t = 0;
+  for (const v of arr || []) {
+    const n = Number(v);
+    if (Number.isFinite(n)) t += n;
+  }
+  return t;
+}
+
+function weightedAvg(values, weights) {
+  let sum = 0;
+  let wSum = 0;
+  const vs = Array.isArray(values) ? values : [];
+  const ws = Array.isArray(weights) ? weights : [];
+  const len = Math.min(vs.length, ws.length);
+  for (let i = 0; i < len; i += 1) {
+    if (vs[i] == null || ws[i] == null) continue;
+    const v = Number(vs[i]);
+    const w = Number(ws[i]);
+    if (!Number.isFinite(v) || !Number.isFinite(w) || w <= 0) continue;
+    sum += v * w;
+    wSum += w;
+  }
+  if (wSum <= 0) return null;
+  return sum / wSum;
+}
+
+function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionRate } = {}) {
+  const labels = Array.isArray(labelsYmd) ? labelsYmd : [];
+  if (labels.length <= 120) {
+    const aov = (Array.isArray(revenueGbp) && Array.isArray(orders))
+      ? revenueGbp.map((r, i) => {
+        const o = Number(orders[i]);
+        const rr = Number(r);
+        if (!Number.isFinite(rr) || !Number.isFinite(o) || o <= 0) return null;
+        return round2(rr / o);
+      })
+      : [];
+    return {
+      granularity: 'day',
+      labelsYmd: labels,
+      revenueGbp: Array.isArray(revenueGbp) ? revenueGbp : [],
+      orders: Array.isArray(orders) ? orders : [],
+      sessions: Array.isArray(sessions) ? sessions : [],
+      conversionRate: Array.isArray(conversionRate) ? conversionRate : [],
+      aov,
+    };
+  }
+
+  const outLabels = [];
+  const outRevenue = [];
+  const outOrders = [];
+  const outSessions = [];
+  const outConv = [];
+  const outAov = [];
+
+  for (let i = 0; i < labels.length; i += 7) {
+    const end = Math.min(labels.length, i + 7);
+    const sliceLabels = labels.slice(i, end);
+    const sliceRevenue = Array.isArray(revenueGbp) ? revenueGbp.slice(i, end) : [];
+    const sliceOrders = Array.isArray(orders) ? orders.slice(i, end) : [];
+    const sliceSessions = Array.isArray(sessions) ? sessions.slice(i, end) : [];
+    const sliceConv = Array.isArray(conversionRate) ? conversionRate.slice(i, end) : [];
+
+    const revSum = sumNumeric(sliceRevenue);
+    const ordSum = sumNumeric(sliceOrders);
+    const sesSum = sumNumeric(sliceSessions);
+    const conv = weightedAvg(sliceConv, sliceSessions);
+    const aov = ordSum > 0 ? round2(revSum / ordSum) : null;
+
+    outLabels.push(sliceLabels[0] || labels[i]);
+    outRevenue.push(round2(revSum) || 0);
+    outOrders.push(ordSum || 0);
+    outSessions.push(sesSum || 0);
+    outConv.push(conv != null ? round1(conv) : null);
+    outAov.push(aov);
+  }
+
+  return {
+    granularity: 'week',
+    labelsYmd: outLabels,
+    revenueGbp: outRevenue,
+    orders: outOrders,
+    sessions: outSessions,
+    conversionRate: outConv,
+    aov: outAov,
+  };
+}
+
+async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
+  const out = new Map(); // ymd -> { orders, revenueGbp }
+  if (!shop) return out;
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price
+      FROM orders_shopify
+      WHERE shop = ?
+        AND created_at >= ? AND created_at < ?
+        AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
+        AND total_price IS NOT NULL
+    `,
+    [shop, startMs, endMs]
+  );
+  if (!rows || !rows.length) return out;
+  const ratesToGbp = await fx.getRatesToGbp();
+  for (const row of rows) {
+    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    if (!Number.isFinite(ts)) continue;
+    const ymd = ymdInTimeZone(ts, timeZone);
+    if (!ymd) continue;
+    const amount = row && row.total_price != null ? Number(row.total_price) : NaN;
+    if (!Number.isFinite(amount)) continue;
+    const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
+    const gbp = fx.convertToGbp(amount, currency, ratesToGbp);
+    if (typeof gbp !== 'number' || !Number.isFinite(gbp)) continue;
+    const current = out.get(ymd) || { orders: 0, revenueGbp: 0 };
+    current.orders += 1;
+    current.revenueGbp += gbp;
+    out.set(ymd, current);
+  }
+  return out;
+}
+
 async function getBusinessSnapshot(options = {}) {
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
@@ -666,14 +817,39 @@ async function getBusinessSnapshot(options = {}) {
     };
   }
 
-  const [sessionsNowMetrics, sessionsPrevMetrics, revenue, orders, revenuePrev, ordersPrev] = await Promise.all([
-    shopifySessionsForBounds(bounds),
+  async function shopifySessionsTimeseriesForBounds(b) {
+    if (!shop || !token) return { labelsYmd: [], sessions: [], conversionRate: [], error: 'No token' };
+    const sYmd = ymdInTimeZone(b.start, timeZone);
+    const eYmd = ymdInTimeZone(Math.max(b.start, b.end - 1), timeZone);
+    if (!sYmd || !eYmd) return { labelsYmd: [], sessions: [], conversionRate: [], error: 'Invalid bounds' };
+    return shopifyQl.fetchShopifySessionsTimeseriesRange(shop, token, { sinceYmd: sYmd, untilYmd: eYmd, timeZone });
+  }
+
+  function summarizeSessionsTimeseries(ts) {
+    const sessionsArr = Array.isArray(ts && ts.sessions) ? ts.sessions : [];
+    const convArr = Array.isArray(ts && ts.conversionRate) ? ts.conversionRate : [];
+    const totalSessions = sessionsArr.length ? sumNumeric(sessionsArr) : null;
+    const conv = weightedAvg(convArr, sessionsArr);
+    return {
+      sessions: totalSessions != null ? totalSessions : null,
+      conversionRate: conv != null ? conv : null,
+    };
+  }
+
+  const [sessionsNowTs, sessionsPrevMetrics, revenue, orders, revenuePrev, ordersPrev, ordersTsMap] = await Promise.all([
+    shopifySessionsTimeseriesForBounds(bounds),
     shopifySessionsForBounds(compareBounds),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    readCheckoutOrdersTimeseries(shop, bounds.start, bounds.end, timeZone),
   ]);
+
+  let sessionsNowMetrics = summarizeSessionsTimeseries(sessionsNowTs);
+  if (sessionsNowMetrics.sessions == null && sessionsNowMetrics.conversionRate == null) {
+    sessionsNowMetrics = await shopifySessionsForBounds(bounds);
+  }
 
   const sessions = toNumber(sessionsNowMetrics && sessionsNowMetrics.sessions);
   const sessionsPrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.sessions);
@@ -700,6 +876,47 @@ async function getBusinessSnapshot(options = {}) {
 
   const aov = (toNumber(revenue) != null && toNumber(orders) != null && Number(orders) > 0) ? round2(Number(revenue) / Number(orders)) : null;
   const aovPrev = (toNumber(revenuePrev) != null && toNumber(ordersPrev) != null && Number(ordersPrev) > 0) ? round2(Number(revenuePrev) / Number(ordersPrev)) : null;
+
+  // --- Chart series (Apex) ---
+  const chartDays = listYmdRange(startYmd, endYmd);
+  const revenueDaily = [];
+  const ordersDaily = [];
+  const sessionsDaily = [];
+  const convDaily = [];
+
+  const sessionsByDay = new Map();
+  const convByDay = new Map();
+  try {
+    const labels = Array.isArray(sessionsNowTs && sessionsNowTs.labelsYmd) ? sessionsNowTs.labelsYmd : [];
+    const sArr = Array.isArray(sessionsNowTs && sessionsNowTs.sessions) ? sessionsNowTs.sessions : [];
+    const cArr = Array.isArray(sessionsNowTs && sessionsNowTs.conversionRate) ? sessionsNowTs.conversionRate : [];
+    for (let i = 0; i < labels.length; i += 1) {
+      const ymd = String(labels[i] || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
+      const sv = toNumber(sArr[i]);
+      const cv = toNumber(cArr[i]);
+      if (sv != null) sessionsByDay.set(ymd, sv);
+      if (cv != null) convByDay.set(ymd, cv);
+    }
+  } catch (_) {}
+
+  for (const ymd of chartDays) {
+    const row = ordersTsMap && ordersTsMap.get ? ordersTsMap.get(ymd) : null;
+    const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
+    const ord = row && row.orders != null ? Number(row.orders) : 0;
+    revenueDaily.push(round2(rev) || 0);
+    ordersDaily.push(Number.isFinite(ord) ? ord : 0);
+    sessionsDaily.push(sessionsByDay.has(ymd) ? sessionsByDay.get(ymd) : null);
+    convDaily.push(convByDay.has(ymd) ? convByDay.get(ymd) : null);
+  }
+
+  const series = downsampleWeekly({
+    labelsYmd: chartDays,
+    revenueGbp: revenueDaily,
+    orders: ordersDaily,
+    sessions: sessionsDaily,
+    conversionRate: convDaily,
+  });
 
   const [distinctCustomers, ltvValue, returningRaw] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
@@ -760,6 +977,7 @@ async function getBusinessSnapshot(options = {}) {
     periodLabel,
     compareLabel,
     rangeKey,
+    series,
     availableYears,
     availableMonths: availableMonthOptions,
     range: {

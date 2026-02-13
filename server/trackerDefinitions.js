@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 30;
+const DEFINITIONS_VERSION = 31;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -98,6 +98,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Performance', value: 'Sessions, Orders, Conversion Rate, AOV' },
       { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate, LTV (cohort-aware)' },
       { name: 'Profit Rules', value: 'Percent of Revenue, Fixed per Order, Fixed per Period with country targeting' },
+      { name: 'Charts', value: 'ApexCharts sparklines/radials rendered in-card (series derived from Shopify truth + ShopifyQL timeseries)' },
     ],
     math: [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },

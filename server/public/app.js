@@ -12105,6 +12105,7 @@ const API = '';
         el.classList.remove('show');
         el.setAttribute('aria-hidden', 'true');
         el.style.display = 'none';
+        try { if (el === snapshotModal) destroySnapshotCharts(); } catch (_) {}
         backdropCount = Math.max(0, backdropCount - 1);
         updateBodyModalOpenClass();
         updateBackdrop();
@@ -12186,103 +12187,227 @@ const API = '';
           '</div>';
       }
 
-      function deltaCompactHtml(delta) {
-        if (!delta || !delta.short) return '';
-        const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
-        const iconKey = deltaIconKey(dir);
-        const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
-        const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
-        return '' +
-          '<div class="dash-kpi-delta business-snapshot-delta is-compact ' + cls + '">' +
-            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
-            '<span>' + escapeHtml(delta.short) + '</span>' +
-          '</div>';
-      }
+      let snapshotCharts = {};
+      let snapshotChartsSeq = 0;
+      let snapshotApexLoading = false;
+      let snapshotApexWaiters = [];
 
-      function metricVisualPercent(current, previous, useCurrentPercent) {
-        const cur = current == null ? null : Number(current);
-        const prev = previous == null ? null : Number(previous);
-        if (useCurrentPercent && Number.isFinite(cur)) return Math.max(0, Math.min(100, cur));
-        if (Number.isFinite(cur) && Number.isFinite(prev) && (cur > 0 || prev > 0)) {
-          const top = Math.max(Math.abs(cur), Math.abs(prev), 1);
-          return Math.max(0, Math.min(100, (Math.abs(cur) / top) * 100));
+      function ensureSnapshotApexCharts(cb) {
+        if (typeof ApexCharts !== 'undefined') { cb(); return; }
+        snapshotApexWaiters.push(cb);
+        if (snapshotApexLoading) return;
+        snapshotApexLoading = true;
+        try {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js';
+          s.defer = true;
+          s.onload = function () {
+            snapshotApexLoading = false;
+            const q = snapshotApexWaiters.slice();
+            snapshotApexWaiters = [];
+            q.forEach(function (fn) { try { fn(); } catch (_) {} });
+          };
+          s.onerror = function () { snapshotApexLoading = false; snapshotApexWaiters = []; };
+          document.head.appendChild(s);
+        } catch (_) {
+          snapshotApexLoading = false;
+          snapshotApexWaiters = [];
         }
-        return null;
       }
 
-      function sparklineVisualHtml(current, previous) {
-        const cur = current == null ? null : Number(current);
-        const prev = previous == null ? null : Number(previous);
-        if (!Number.isFinite(cur) && !Number.isFinite(prev)) return '';
-        const p = Number.isFinite(prev) ? prev : (Number.isFinite(cur) ? cur : 0);
-        const c = Number.isFinite(cur) ? cur : p;
-        const points = [p * 0.92, p * 1.04, (p + c) / 2, c * 0.95, c * 1.02];
-        const min = Math.min.apply(null, points);
-        const max = Math.max.apply(null, points);
-        const span = Math.max(max - min, 1);
-        const w = 112;
-        const h = 28;
-        const coords = points.map(function (v, i) {
-          const x = Math.round((i / (points.length - 1)) * w);
-          const y = Math.round(h - ((v - min) / span) * h);
-          return x + ',' + y;
-        }).join(' ');
-        return '' +
-          '<div class="business-snapshot-visual business-snapshot-visual-sparkline">' +
-            '<svg viewBox="0 0 112 28" preserveAspectRatio="none" aria-hidden="true">' +
-              '<polyline points="' + escapeHtml(coords) + '" />' +
-            '</svg>' +
-          '</div>';
+      function destroySnapshotCharts() {
+        try {
+          Object.keys(snapshotCharts || {}).forEach(function (k) {
+            const ch = snapshotCharts[k];
+            if (!ch) return;
+            try { ch.destroy(); } catch (_) {}
+          });
+        } catch (_) {}
+        snapshotCharts = {};
       }
 
-      function progressVisualHtml(current, previous, useCurrentPercent) {
-        const pct = metricVisualPercent(current, previous, useCurrentPercent);
-        if (pct == null) return '';
-        const width = Math.round(pct * 10) / 10;
-        return '' +
-          '<div class="business-snapshot-visual business-snapshot-visual-progress">' +
-            '<div class="progress progress-sm">' +
-              '<div class="progress-bar" role="progressbar" style="width:' + escapeHtml(String(width)) + '%" aria-valuenow="' + escapeHtml(String(width)) + '" aria-valuemin="0" aria-valuemax="100"></div>' +
-            '</div>' +
-          '</div>';
-      }
-
-      function ringVisualHtml(current, previous, useCurrentPercent) {
-        const pct = metricVisualPercent(current, previous, useCurrentPercent);
-        if (pct == null) return '';
-        const clamped = Math.max(0, Math.min(100, Math.round(pct * 10) / 10));
-        return '' +
-          '<div class="business-snapshot-visual business-snapshot-visual-ring" style="--snapshot-ring-pct:' + escapeHtml(String(clamped)) + '">' +
-            '<span>' + escapeHtml(String(Math.round(clamped))) + '%</span>' +
-          '</div>';
-      }
-
-      function metricVisualHtml(options) {
-        const opts = options && typeof options === 'object' ? options : {};
-        const visual = String(opts.visual || '').toLowerCase();
-        const pctOverride = Number(opts.percentOverride);
-        if (visual === 'sparkline') return sparklineVisualHtml(opts.current, opts.previous);
-        if (visual === 'progress') {
-          if (Number.isFinite(pctOverride)) return progressVisualHtml(pctOverride, null, true);
-          return progressVisualHtml(opts.current, opts.previous, !!opts.useCurrentPercent);
+      function snapshotPrimaryColor() {
+        try {
+          const rgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
+          return 'rgb(' + rgb + ')';
+        } catch (_) {
+          return '#206bc4';
         }
-        if (visual === 'ring') {
-          if (Number.isFinite(pctOverride)) return ringVisualHtml(pctOverride, null, true);
-          return ringVisualHtml(opts.current, opts.previous, !!opts.useCurrentPercent);
-        }
-        return '';
       }
 
-      function metricCardHtml(label, valueText, delta, options) {
+      function normalizeSeriesNumbers(dataArr) {
+        const src = Array.isArray(dataArr) ? dataArr : [];
+        const nums = src.map(function (v) {
+          if (v == null) return null;
+          const n = (typeof v === 'number') ? v : Number(v);
+          return (typeof n === 'number' && isFinite(n)) ? n : null;
+        });
+        // Apex sparkline dislikes 1-point series.
+        if (nums.length === 1) return [nums[0], nums[0]];
+        return nums;
+      }
+
+      function renderSnapshotSparkline(elId, dataArr, opts) {
+        if (typeof ApexCharts === 'undefined') return;
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const options = opts && typeof opts === 'object' ? opts : {};
+        const chartType = String(options.type || 'area').toLowerCase() === 'bar' ? 'bar' : (String(options.type || 'area').toLowerCase() === 'line' ? 'line' : 'area');
+        const color = options.color || snapshotPrimaryColor();
+        const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 56;
+
+        let nums = normalizeSeriesNumbers(dataArr);
+        if (!nums.length) return;
+        // Replace nulls with 0 for smooth sparklines.
+        nums = nums.map(function (v) { return v == null ? 0 : v; });
+
+        // Destroy any existing instance for this element.
+        if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
+        el.innerHTML = '';
+
+        const base = {
+          chart: { type: chartType, height: height, sparkline: { enabled: true }, animations: { enabled: false } },
+          series: [{ name: 'Trend', data: nums }],
+          colors: [color],
+          tooltip: { enabled: false },
+          grid: { padding: { top: 0, right: 0, bottom: -3, left: 0 } },
+          dataLabels: { enabled: false },
+        };
+
+        const apexOpts = chartType === 'bar'
+          ? Object.assign({}, base, {
+            plotOptions: { bar: { columnWidth: '60%', borderRadius: 2 } },
+          })
+          : Object.assign({}, base, {
+            stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
+            fill: { type: 'solid', opacity: chartType === 'area' ? 0.28 : 0 },
+            markers: { size: 0 },
+          });
+
+        try {
+          const chart = new ApexCharts(el, apexOpts);
+          chart.render();
+          snapshotCharts[elId] = chart;
+        } catch (_) {}
+      }
+
+      function renderSnapshotRadial(elId, pct, opts) {
+        if (typeof ApexCharts === 'undefined') return;
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const options = opts && typeof opts === 'object' ? opts : {};
+        const color = options.color || snapshotPrimaryColor();
+        const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 72;
+        const v = (typeof pct === 'number') ? pct : Number(pct);
+        if (!isFinite(v)) return;
+        const clamped = Math.max(0, Math.min(100, v));
+
+        if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
+        el.innerHTML = '';
+
+        try {
+          const chart = new ApexCharts(el, {
+            chart: { type: 'radialBar', height: height, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: [clamped],
+            colors: [color],
+            plotOptions: {
+              radialBar: {
+                hollow: { size: '60%' },
+                track: { background: 'rgba(24,36,51,0.08)' },
+                dataLabels: {
+                  name: { show: false },
+                  value: {
+                    show: true,
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    formatter: function (val) { return Math.round(val) + '%'; },
+                    offsetY: 4,
+                  }
+                },
+              }
+            },
+            stroke: { lineCap: 'round' },
+            tooltip: { enabled: false },
+          });
+          chart.render();
+          snapshotCharts[elId] = chart;
+        } catch (_) {}
+      }
+
+      function renderSnapshotCharts(data, seq) {
+        const payload = data && typeof data === 'object' ? data : {};
+        const series = payload.series && typeof payload.series === 'object' ? payload.series : {};
+        const revenue = Array.isArray(series.revenueGbp) ? series.revenueGbp : [];
+        const orders = Array.isArray(series.orders) ? series.orders : [];
+        const sessions = Array.isArray(series.sessions) ? series.sessions : [];
+        const conv = Array.isArray(series.conversionRate) ? series.conversionRate : [];
+        const aov = Array.isArray(series.aov) ? series.aov : [];
+
+        const f = payload.financial || {};
+        const c = payload.customers || {};
+        const profit = f.profit || {};
+
+        const newCustomersVal = c.newCustomers && Number(c.newCustomers.value);
+        const returningCustomersVal = c.returningCustomers && Number(c.returningCustomers.value);
+        const knownCustomerTotal = (Number.isFinite(newCustomersVal) ? newCustomersVal : 0) + (Number.isFinite(returningCustomersVal) ? returningCustomersVal : 0);
+        const newPct = knownCustomerTotal > 0 && Number.isFinite(newCustomersVal) ? (newCustomersVal / knownCustomerTotal) * 100 : null;
+        const returningPct = knownCustomerTotal > 0 && Number.isFinite(returningCustomersVal) ? (returningCustomersVal / knownCustomerTotal) * 100 : null;
+        const repeatPct = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
+        const ltvVal = c.ltv && Number(c.ltv.value);
+        const aovVal = f.aov && Number(f.aov.value);
+        const ltvPct = (Number.isFinite(ltvVal) && Number.isFinite(aovVal) && aovVal > 0) ? Math.max(0, Math.min(100, (ltvVal / aovVal) * 100)) : null;
+
+        const marginPct = profit && profit.marginPct && Number.isFinite(Number(profit.marginPct.value)) ? Number(profit.marginPct.value) : null;
+        const estProfitVal = profit && profit.estimatedProfit && Number.isFinite(Number(profit.estimatedProfit.value)) ? Number(profit.estimatedProfit.value) : null;
+        const netProfitVal = profit && profit.netProfit && Number.isFinite(Number(profit.netProfit.value)) ? Number(profit.netProfit.value) : null;
+        const deductionsVal = profit && profit.deductions && Number.isFinite(Number(profit.deductions.value)) ? Number(profit.deductions.value) : null;
+        const revenueVal = f.revenue && Number.isFinite(Number(f.revenue.value)) ? Number(f.revenue.value) : null;
+        const deductionsPct = (Number.isFinite(deductionsVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? Math.max(0, Math.min(100, (deductionsVal / revenueVal) * 100)) : null;
+        const estRatio = (Number.isFinite(estProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (estProfitVal / revenueVal) : null;
+        const netRatio = (Number.isFinite(netProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (netProfitVal / revenueVal) : null;
+        const estSeries = (Number.isFinite(estRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * estRatio : 0; }) : [];
+        const netSeries = (Number.isFinite(netRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * netRatio : 0; }) : [];
+
+        ensureSnapshotApexCharts(function () {
+          if (seq !== snapshotChartsSeq) return;
+          const primary = snapshotPrimaryColor();
+          renderSnapshotSparkline('business-snapshot-chart-revenue', revenue, { type: 'area', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-orders', orders, { type: 'area', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-aov', aov, { type: 'line', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-conversion', conv, { type: 'line', color: primary, height: 56 });
+
+          renderSnapshotSparkline('business-snapshot-chart-sessions', sessions, { type: 'bar', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-perf-orders', orders, { type: 'bar', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-perf-conversion', conv, { type: 'line', color: primary, height: 56 });
+          renderSnapshotSparkline('business-snapshot-chart-perf-aov', aov, { type: 'line', color: primary, height: 56 });
+
+          if (estSeries.length) renderSnapshotSparkline('business-snapshot-chart-profit', estSeries, { type: 'area', color: primary, height: 56 });
+          if (netSeries.length) renderSnapshotSparkline('business-snapshot-chart-net-profit', netSeries, { type: 'area', color: primary, height: 56 });
+
+          if (newPct != null) renderSnapshotRadial('business-snapshot-chart-new-share', newPct, { color: primary, height: 78 });
+          if (returningPct != null) renderSnapshotRadial('business-snapshot-chart-returning-share', returningPct, { color: primary, height: 78 });
+          if (repeatPct != null) renderSnapshotRadial('business-snapshot-chart-repeat-rate', repeatPct, { color: primary, height: 78 });
+          if (ltvPct != null) renderSnapshotRadial('business-snapshot-chart-ltv-ratio', ltvPct, { color: primary, height: 78 });
+
+          if (marginPct != null) renderSnapshotRadial('business-snapshot-chart-margin', marginPct, { color: primary, height: 78 });
+          if (deductionsPct != null) renderSnapshotRadial('business-snapshot-chart-deductions-pct', deductionsPct, { color: primary, height: 78 });
+        });
+      }
+
+      function metricCardHtml(label, valueText, delta, chart) {
         const dHtml = deltaHtml(delta);
-        const vHtml = metricVisualHtml(options);
+        const c = chart && typeof chart === 'object' ? chart : null;
+        const chartId = c && c.id ? String(c.id) : '';
+        const chartHtml = chartId
+          ? ('<div class="business-snapshot-chart" id="' + escapeHtml(chartId) + '"></div>')
+          : '';
         return '' +
           '<div class="col-12 col-md-6 col-xl-3">' +
             '<div class="card h-100 business-snapshot-card">' +
               '<div class="card-body">' +
                 '<div class="subheader">' + escapeHtml(label) + '</div>' +
                 '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
-                (vHtml ? vHtml : '') +
+                (chartHtml ? chartHtml : '') +
                 (dHtml ? dHtml : '') +
               '</div>' +
             '</div>' +
@@ -12365,63 +12490,33 @@ const API = '';
           }
         })();
 
+        const chartSeq = ++snapshotChartsSeq;
+        destroySnapshotCharts();
+
         let financialCards = '';
-        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous), { visual: 'sparkline', current: f.revenue && f.revenue.value, previous: f.revenue && f.revenue.previous });
-        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous), { visual: 'sparkline', current: f.orders && f.orders.value, previous: f.orders && f.orders.previous });
-        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous), { visual: 'sparkline', current: f.aov && f.aov.value, previous: f.aov && f.aov.previous });
-        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous), { visual: 'sparkline', current: f.conversionRate && f.conversionRate.value, previous: f.conversionRate && f.conversionRate.previous });
+        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous), { id: 'business-snapshot-chart-revenue' });
+        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous), { id: 'business-snapshot-chart-orders' });
+        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous), { id: 'business-snapshot-chart-aov' });
+        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous), { id: 'business-snapshot-chart-conversion' });
 
         if (profit.visible) {
-          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { visual: 'sparkline', current: profit.estimatedProfit && profit.estimatedProfit.value, previous: profit.estimatedProfit && profit.estimatedProfit.previous });
-          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { visual: 'sparkline', current: profit.netProfit && profit.netProfit.value, previous: profit.netProfit && profit.netProfit.previous });
-          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { visual: 'sparkline', current: profit.marginPct && profit.marginPct.value, previous: profit.marginPct && profit.marginPct.previous });
-          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { visual: 'sparkline', current: profit.deductions && profit.deductions.value, previous: profit.deductions && profit.deductions.previous });
+          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { id: 'business-snapshot-chart-profit' });
+          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { id: 'business-snapshot-chart-net-profit' });
+          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { id: 'business-snapshot-chart-margin' });
+          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { id: 'business-snapshot-chart-deductions-pct' });
         }
 
         let performanceCards = '';
-        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous), { visual: 'progress', current: p.sessions && p.sessions.value, previous: p.sessions && p.sessions.previous });
-        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous), { visual: 'progress', current: p.orders && p.orders.value, previous: p.orders && p.orders.previous });
-        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous), { visual: 'progress', current: p.conversionRate && p.conversionRate.value, previous: p.conversionRate && p.conversionRate.previous, useCurrentPercent: true });
-        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous), { visual: 'progress', current: p.aov && p.aov.value, previous: p.aov && p.aov.previous });
-
-        const newCustomersVal = c.newCustomers && Number(c.newCustomers.value);
-        const returningCustomersVal = c.returningCustomers && Number(c.returningCustomers.value);
-        const knownCustomerTotal = (Number.isFinite(newCustomersVal) ? newCustomersVal : 0) + (Number.isFinite(returningCustomersVal) ? returningCustomersVal : 0);
-        const newPct = knownCustomerTotal > 0 && Number.isFinite(newCustomersVal) ? (newCustomersVal / knownCustomerTotal) * 100 : null;
-        const returningPct = knownCustomerTotal > 0 && Number.isFinite(returningCustomersVal) ? (returningCustomersVal / knownCustomerTotal) * 100 : null;
-        const ltvVal = c.ltv && Number(c.ltv.value);
-        const aovVal = f.aov && Number(f.aov.value);
-        const ltvPct = (Number.isFinite(ltvVal) && Number.isFinite(aovVal) && aovVal > 0) ? Math.max(0, Math.min(100, (ltvVal / aovVal) * 100)) : null;
+        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous), { id: 'business-snapshot-chart-sessions' });
+        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous), { id: 'business-snapshot-chart-perf-orders' });
+        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous), { id: 'business-snapshot-chart-perf-conversion' });
+        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous), { id: 'business-snapshot-chart-perf-aov' });
 
         let customersCards = '';
-        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null, { visual: 'ring', percentOverride: newPct });
-        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null, { visual: 'ring', percentOverride: returningPct });
-        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null, { visual: 'ring', current: c.repeatPurchaseRate && c.repeatPurchaseRate.value, useCurrentPercent: true });
-        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null, { visual: 'ring', percentOverride: ltvPct });
-
-        function summaryItemHtml(label, valueText, delta) {
-          const d = deltaCompactHtml(delta);
-          return '' +
-            '<div class="col-12 col-md-6 col-xl-4">' +
-              '<div class="business-snapshot-summary-item">' +
-                '<div class="subheader">' + escapeHtml(label) + '</div>' +
-                '<div class="business-snapshot-summary-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
-                '<div class="business-snapshot-summary-delta-wrap">' +
-                  (d ? d : '') +
-                '</div>' +
-              '</div>' +
-            '</div>';
-        }
-
-        let summaryItems = '';
-        summaryItems += summaryItemHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
-        summaryItems += summaryItemHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous));
-        summaryItems += summaryItemHtml('Conversion', fmtPercent(f.conversionRate && f.conversionRate.value), deltaInfo(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
-        summaryItems += summaryItemHtml('AOV', fmtCurrency(f.aov && f.aov.value), deltaInfo(f.aov && f.aov.value, f.aov && f.aov.previous));
-        if (profit.visible) {
-          summaryItems += summaryItemHtml('Est. Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
-          summaryItems += summaryItemHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
-        }
+        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null, { id: 'business-snapshot-chart-new-share' });
+        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null, { id: 'business-snapshot-chart-returning-share' });
+        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null, { id: 'business-snapshot-chart-repeat-rate' });
+        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null, { id: 'business-snapshot-chart-ltv-ratio' });
 
         body.innerHTML = '' +
           '<div class="business-snapshot-section mb-4">' +
@@ -12435,18 +12530,9 @@ const API = '';
           '<div class="business-snapshot-section">' +
             '<h3 class="card-title mb-3">Customers</h3>' +
             '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
-          '</div>' +
-          '<div class="business-snapshot-section mt-4">' +
-            '<div class="card business-snapshot-summary-card">' +
-              '<div class="card-body">' +
-                '<div class="d-flex align-items-center justify-content-between mb-2">' +
-                  '<div class="subheader">Summary vs previous period</div>' +
-                  '<div class="text-muted small">' + escapeHtml(data.compareLabel || 'Previous period') + '</div>' +
-                '</div>' +
-                '<div class="row g-3">' + summaryItems + '</div>' +
-              '</div>' +
-            '</div>' +
           '</div>';
+
+        try { renderSnapshotCharts(data, chartSeq); } catch (_) {}
       }
 
       function setSnapshotLoading() {

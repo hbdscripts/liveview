@@ -297,11 +297,77 @@ async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, u
   };
 }
 
+function coerceYmdFromShopifyQlValue(val) {
+  if (val == null) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  // Common outputs include "2026-02-13" or "2026-02-13T00:00:00Z"
+  const ymd = s.slice(0, 10);
+  return sanitizeYmd(ymd);
+}
+
+/**
+ * Range query (timeseries): returns { labelsYmd, sessions, conversionRate, error }.
+ *
+ * Uses SINCE/UNTIL with yyyy-MM-dd date literals and `TIMESERIES day`.
+ */
+async function fetchShopifySessionsTimeseriesRange(shop, accessToken, { sinceYmd, untilYmd, timeZone } = {}) {
+  const since = sanitizeYmd(sinceYmd);
+  const until = sanitizeYmd(untilYmd);
+  if (!since || !until) return { labelsYmd: [], sessions: [], conversionRate: [], error: 'Invalid SINCE/UNTIL date' };
+  if (since > until) return { labelsYmd: [], sessions: [], conversionRate: [], error: 'Invalid SINCE/UNTIL order' };
+  const tz = sanitizeTimeZone(timeZone);
+  const tzSuffix = tz ? (` WITH TIMEZONE '${tz}'`) : '';
+
+  const query = `FROM sessions SHOW sessions, conversion_rate TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`;
+  const combined = await fetchShopifyQlTable(shop, accessToken, query);
+  if (combined.error || !combined.table?.rows?.length) {
+    // Fallback: try alternative conversion metric name.
+    const alt = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions, online_store_conversion_rate TIMESERIES day SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    if (alt.error || !alt.table?.rows?.length) {
+      const msg = combined.error || alt.error || 'No ShopifyQL sessions timeseries rows';
+      return { labelsYmd: [], sessions: [], conversionRate: [], error: String(msg).slice(0, 160) };
+    }
+    return parseSessionsTimeseriesTable(alt.table, { conversionCandidates: ['online_store_conversion_rate'] });
+  }
+  return parseSessionsTimeseriesTable(combined.table, { conversionCandidates: ['conversion_rate', 'online_store_conversion_rate'] });
+}
+
+function parseSessionsTimeseriesTable(table, { conversionCandidates = ['conversion_rate'] } = {}) {
+  const columns = (table?.columns || []).map((c) => c && c.name);
+  const normalized = columns.map(normalizeColumnName);
+  const dayIdx = normalized.findIndex((n) => n === 'day' || n.endsWith('_day') || n.includes('day') || n.includes('date'));
+  const sessionsIdx = normalized.findIndex((n) => n === 'sessions' || n.includes('sessions'));
+  let convIdx = -1;
+  for (const candidate of conversionCandidates) {
+    const idx = normalized.findIndex((n) => n === candidate || n.includes(candidate));
+    if (idx !== -1) { convIdx = idx; break; }
+  }
+
+  const labelsYmd = [];
+  const sessions = [];
+  const conversionRate = [];
+
+  for (const row of table?.rows || []) {
+    const dayRaw = dayIdx >= 0 ? getRowValue(row, dayIdx, columns[dayIdx]) : null;
+    const ymd = coerceYmdFromShopifyQlValue(dayRaw);
+    if (!ymd) continue;
+    const sVal = sessionsIdx >= 0 ? parseNumericValue(getRowValue(row, sessionsIdx, columns[sessionsIdx])) : null;
+    const cVal = convIdx >= 0 ? normalizeConversionRate(getRowValue(row, convIdx, columns[convIdx])) : null;
+    labelsYmd.push(ymd);
+    sessions.push(sVal == null ? null : sVal);
+    conversionRate.push(cVal == null ? null : cVal);
+  }
+
+  return { labelsYmd, sessions, conversionRate, error: '' };
+}
+
 module.exports = {
   // Low-level helper (used by KPI routes as well as diagnostics)
   fetchShopifyQlTable,
   fetchShopifySessionsCount,
   fetchShopifySessionsMetrics,
   fetchShopifySessionsMetricsRange,
+  fetchShopifySessionsTimeseriesRange,
 };
 
