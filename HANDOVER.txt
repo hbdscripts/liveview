@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (tools header divider alignment + product link default)
+Last updated: 2026-02-13 (sticky header now includes KPI strip)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -17,13 +17,13 @@ IMPORTANT (for future agents)
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
 - Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with gradient, "New Sale: Product Name" + price (10s auto-close; MP3 cha-ching).
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
-- KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`.
+- KPI strip: condensed KPI chips shown on most pages; hidden on `/dashboard/overview` and `/settings`. It now sits inside the sticky header wrapper so it stays pinned while scrolling.
 
 Mobile:
 - Uses the same shared top strip + main nav as desktop (no mobile-only hamburger header/overlay).
 - Main nav is horizontally swipeable on touch screens; date-range control stays in the header row.
 - Mobile UA requests are no longer redirected to `/mobile-unsupported`; dashboard/settings/tools routes render directly on mobile.
-- Header/nav stack is sticky via a shared wrapper (`.kexo-header-stack`) so strip + nav stay pinned together.
+- Header stack is sticky via a shared wrapper (`.kexo-header-stack`) so strip + nav + KPI strip stay pinned together while scrolling.
 
 KEXO “5-color” accents:
 - The desktop nav uses a rotating 5-color accent for the active underline and related styling via `.kexo-5color`:
@@ -225,6 +225,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Sticky header follow-up:
+  - KPI strip is now inside `.kexo-header-stack` so the full header (strip + nav + KPIs) stays sticky while scrolling (prevents the header “stopping” at the start of `.page-body`).
 
 2026-02-13 (latest)
 - Tools page header alignment:
