@@ -532,6 +532,7 @@ const { up: up039 } = require('./migrations/039_active_sessions_last_seen_starte
 const { up: up040 } = require('./migrations/040_orders_shopify_processed_at_paid_index');
 const { up: up041 } = require('./migrations/041_orders_shopify_shipping_options');
 const { up: up042 } = require('./migrations/042_orders_shopify_shipping_options_set_and_paid_price');
+const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -585,6 +586,7 @@ async function migrateAndStart() {
   await up040();
   await up041();
   await up042();
+  await up043();
 
   try {
     const r = await runAdsMigrations();

@@ -12291,8 +12291,8 @@ const API = '';
         const el = document.getElementById(elId);
         if (!el) return;
         const options = opts && typeof opts === 'object' ? opts : {};
-        const rawType = String(options.type || 'line').toLowerCase();
-        const chartType = rawType === 'bar' ? 'bar' : (rawType === 'area' ? 'area' : 'line');
+        // Snapshot sparklines are line-only (no bar/area fill).
+        const chartType = 'line';
         const color = options.color || snapshotPrimaryColor();
         const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 56;
 
@@ -12314,21 +12314,11 @@ const API = '';
           dataLabels: { enabled: false },
         };
 
-        const fillOpacity = (function () {
-          const n = Number(options.fillOpacity);
-          if (Number.isFinite(n)) return Math.max(0, Math.min(1, n));
-          return chartType === 'area' ? 0.22 : 0;
-        })();
-
-        const apexOpts = chartType === 'bar'
-          ? Object.assign({}, base, {
-            plotOptions: { bar: { columnWidth: '60%', borderRadius: 2 } },
-          })
-          : Object.assign({}, base, {
-            stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
-            fill: { type: 'solid', opacity: fillOpacity },
-            markers: { size: 0 },
-          });
+        const apexOpts = Object.assign({}, base, {
+          stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
+          fill: { type: 'solid', opacity: 0 },
+          markers: { size: 0 },
+        });
 
         try {
           const chart = new ApexCharts(el, apexOpts);
@@ -12414,9 +12404,22 @@ const API = '';
 
         function snapshotTrendColor(dir) {
           const d = String(dir || '').toLowerCase();
-          if (d === 'up') return '#2fb344'; // green
-          if (d === 'down') return '#d63939'; // red
-          return '#206bc4'; // blue
+          function cssVar(name, fallback) {
+            try {
+              const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+              return v || fallback;
+            } catch (_) {
+              return fallback;
+            }
+          }
+          // Only use the KEXO accent scheme for KPI colors.
+          // Mapping:
+          // - up/growth:   accent-3
+          // - down/loss:   accent-4
+          // - flat/stable: accent-2
+          if (d === 'up') return cssVar('--kexo-accent-3', '#f59e34');
+          if (d === 'down') return cssVar('--kexo-accent-4', '#e4644b');
+          return cssVar('--kexo-accent-2', '#3eb3ab');
         }
 
         function trendColorForDelta(delta) {
@@ -12425,15 +12428,7 @@ const API = '';
         }
 
         function sparkLine(id, dataArr, delta) {
-          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56, fillOpacity: 0 });
-        }
-
-        function sparkBar(id, dataArr, delta) {
-          renderSnapshotSparkline(id, dataArr, { type: 'bar', color: trendColorForDelta(delta), height: 56 });
-        }
-
-        function sparkArea(id, dataArr, delta) {
-          renderSnapshotSparkline(id, dataArr, { type: 'area', color: trendColorForDelta(delta), height: 56, fillOpacity: 0.22 });
+          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56 });
         }
 
         function ensureIsoCategories(labels) {
@@ -12486,6 +12481,8 @@ const API = '';
           el.innerHTML = '';
 
           try {
+            const revenueColor = snapshotTrendColor('up');
+            const costColor = snapshotTrendColor('down');
             const chart = new ApexCharts(el, {
               series: [
                 { name: 'Revenue', data: rev },
@@ -12493,14 +12490,15 @@ const API = '';
               ],
               chart: {
                 height: 320,
-                type: 'area',
+                type: 'line',
                 animations: { enabled: false },
                 toolbar: { show: false },
               },
-              colors: ['#206bc4', '#d63939'],
+              colors: [revenueColor, costColor],
               dataLabels: { enabled: false },
               stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
-              fill: { type: 'solid', opacity: 0.18 },
+              fill: { type: 'solid', opacity: 0 },
+              markers: { size: 0 },
               xaxis: { type: 'datetime', categories },
               tooltip: { x: { format: 'dd/MM/yy' } },
               legend: { show: true, position: 'top', horizontalAlign: 'right' },
@@ -12515,7 +12513,7 @@ const API = '';
           if (seq !== snapshotChartsSeq) return;
           renderSnapshotRevenueCostChart('business-snapshot-chart-revenue-cost', labelsYmd, revenue, cost);
 
-          // Profit charts (no circles; keep line/bar only)
+          // Profit charts (line-only)
           const estDelta = deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous);
           const netDelta = deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous);
           const marginDelta = deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous);
@@ -12523,27 +12521,27 @@ const API = '';
           if (estSeries.length) sparkLine('business-snapshot-chart-profit', estSeries, estDelta);
           if (netSeries.length) sparkLine('business-snapshot-chart-net-profit', netSeries, netDelta);
           if (estSeries.length) sparkLine('business-snapshot-chart-margin', estSeries, marginDelta);
-          if (deductionsSeries.length) sparkBar('business-snapshot-chart-deductions-pct', deductionsSeries, deductionsDelta);
+          if (deductionsSeries.length) sparkLine('business-snapshot-chart-deductions-pct', deductionsSeries, deductionsDelta);
 
           // Performance charts
           const sessionsDelta = deltaInfo(perf.sessions && perf.sessions.value, perf.sessions && perf.sessions.previous);
           const ordersDelta = deltaInfo(perf.orders && perf.orders.value, perf.orders && perf.orders.previous);
           const convDelta = deltaInfo(perf.conversionRate && perf.conversionRate.value, perf.conversionRate && perf.conversionRate.previous);
           const aovDelta = deltaInfo(perf.aov && perf.aov.value, perf.aov && perf.aov.previous);
-          sparkBar('business-snapshot-chart-sessions', sessions, sessionsDelta);
-          sparkBar('business-snapshot-chart-perf-orders', orders, ordersDelta);
-          sparkArea('business-snapshot-chart-perf-conversion', conv, convDelta);
-          sparkArea('business-snapshot-chart-perf-aov', aov, aovDelta);
+          sparkLine('business-snapshot-chart-sessions', sessions, sessionsDelta);
+          sparkLine('business-snapshot-chart-perf-orders', orders, ordersDelta);
+          sparkLine('business-snapshot-chart-perf-conversion', conv, convDelta);
+          sparkLine('business-snapshot-chart-perf-aov', aov, aovDelta);
 
-          // Customers charts (area charts for repeat/LTV; bars for customer counts)
+          // Customers charts (line-only)
           const repeatVal = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
           const ltvVal = c.ltv && Number.isFinite(Number(c.ltv.value)) ? Number(c.ltv.value) : null;
           const repeatSeries = (repeatVal != null && labelsYmd.length) ? labelsYmd.map(function () { return repeatVal; }) : [];
           const ltvSeries = (ltvVal != null && labelsYmd.length) ? labelsYmd.map(function () { return ltvVal; }) : [];
-          sparkBar('business-snapshot-chart-new-share', orders, null);
-          sparkBar('business-snapshot-chart-returning-share', orders, null);
-          sparkArea('business-snapshot-chart-repeat-rate', repeatSeries, null);
-          sparkArea('business-snapshot-chart-ltv-ratio', ltvSeries, null);
+          sparkLine('business-snapshot-chart-new-share', orders, null);
+          sparkLine('business-snapshot-chart-returning-share', orders, null);
+          sparkLine('business-snapshot-chart-repeat-rate', repeatSeries, null);
+          sparkLine('business-snapshot-chart-ltv-ratio', ltvSeries, null);
         });
       }
 
@@ -12565,7 +12563,7 @@ const API = '';
         return '<div class="business-snapshot-cost-rows">' + rows + '</div>';
       }
 
-      function revenueCostCardHtml(financial) {
+      function revenueCostTopHtml(financial) {
         const f = financial && typeof financial === 'object' ? financial : {};
         const revMetric = f.revenue || {};
         const costMetric = f.cost || {};
@@ -12576,32 +12574,30 @@ const API = '';
         const costText = fmtCurrency(costMetric && costMetric.value);
         const tooltipHtml = costBreakdownTooltipHtml(breakdownNow);
         return '' +
-          '<div class="col-12">' +
-            '<div class="card business-snapshot-wide-card">' +
-              '<div class="card-body business-snapshot-wide-body">' +
-                '<div class="business-snapshot-wide-top">' +
-                  '<div class="subheader d-flex align-items-center gap-2">' +
-                    'Revenue &amp; Cost' +
-                    '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="Cost breakdown">' +
-                      '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
-                      '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
-                    '</span>' +
-                  '</div>' +
-                  (dHtml ? dHtml : '') +
+          '<div class="business-snapshot-top">' +
+            '<div class="business-snapshot-top-head">' +
+              '<div class="business-snapshot-top-title-row">' +
+                '<div class="subheader d-flex align-items-center gap-2">' +
+                  'Revenue &amp; Cost' +
+                  '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="Cost breakdown">' +
+                    '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
+                    '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
+                  '</span>' +
                 '</div>' +
-                '<div class="business-snapshot-wide-metrics">' +
-                  '<div class="business-snapshot-wide-metric">' +
-                    '<div class="text-muted small">Revenue</div>' +
-                    '<div class="h2 mb-0">' + escapeHtml(revenueText || 'Unavailable') + '</div>' +
-                  '</div>' +
-                  '<div class="business-snapshot-wide-metric">' +
-                    '<div class="text-muted small">Cost</div>' +
-                    '<div class="h2 mb-0">' + escapeHtml(costText || 'Unavailable') + '</div>' +
-                  '</div>' +
+                (dHtml ? dHtml : '') +
+              '</div>' +
+              '<div class="business-snapshot-top-metrics">' +
+                '<div class="business-snapshot-top-metric">' +
+                  '<div class="text-muted small">Revenue</div>' +
+                  '<div class="h2 mb-0">' + escapeHtml(revenueText || 'Unavailable') + '</div>' +
                 '</div>' +
-                '<div class="business-snapshot-wide-chart" id="business-snapshot-chart-revenue-cost" aria-hidden="true"></div>' +
+                '<div class="business-snapshot-top-metric">' +
+                  '<div class="text-muted small">Cost</div>' +
+                  '<div class="h2 mb-0">' + escapeHtml(costText || 'Unavailable') + '</div>' +
+                '</div>' +
               '</div>' +
             '</div>' +
+            '<div class="business-snapshot-top-chart" id="business-snapshot-chart-revenue-cost" aria-hidden="true"></div>' +
           '</div>';
       }
 
@@ -12636,9 +12632,11 @@ const API = '';
         if (!body) return;
         if (!data || data.ok !== true) {
           body.innerHTML = '' +
-            '<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">' +
-              '<div>Snapshot is unavailable right now.</div>' +
-              '<button type="button" class="btn btn-sm btn-outline-secondary" id="business-snapshot-retry-btn">Retry</button>' +
+            '<div class="p-4">' +
+              '<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">' +
+                '<div>Snapshot is unavailable right now.</div>' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary" id="business-snapshot-retry-btn">Retry</button>' +
+              '</div>' +
             '</div>';
           const retryBtn = document.getElementById('business-snapshot-retry-btn');
           if (retryBtn) retryBtn.addEventListener('click', function () { fetchSnapshot(true); });
@@ -12677,7 +12675,7 @@ const API = '';
         const chartSeq = ++snapshotChartsSeq;
         destroySnapshotCharts();
 
-        const financialCards = revenueCostCardHtml(f);
+        const topBlock = revenueCostTopHtml(f);
 
         let profitCards = '';
         if (profit.visible) {
@@ -12700,23 +12698,22 @@ const API = '';
         customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null, { id: 'business-snapshot-chart-ltv-ratio' });
 
         body.innerHTML = '' +
-          '<div class="business-snapshot-section mb-4">' +
-            '<h3 class="card-title mb-3">Financial</h3>' +
-            '<div class="row g-3 business-snapshot-grid">' + financialCards + '</div>' +
-          '</div>' +
-          (profit.visible
-            ? ('<div class="business-snapshot-section mb-4">' +
-                '<h3 class="card-title mb-3">Profit</h3>' +
-                '<div class="row g-3 business-snapshot-grid">' + profitCards + '</div>' +
-              '</div>')
-            : '') +
-          '<div class="business-snapshot-section mb-4">' +
-            '<h3 class="card-title mb-3">Performance</h3>' +
-            '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +
-          '</div>' +
-          '<div class="business-snapshot-section">' +
-            '<h3 class="card-title mb-3">Customers</h3>' +
-            '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
+          (topBlock ? topBlock : '') +
+          '<div class="business-snapshot-sections p-4">' +
+            (profit.visible
+              ? ('<div class="business-snapshot-section mb-4">' +
+                  '<h3 class="card-title mb-3">Profit</h3>' +
+                  '<div class="row g-3 business-snapshot-grid">' + profitCards + '</div>' +
+                '</div>')
+              : '') +
+            '<div class="business-snapshot-section mb-4">' +
+              '<h3 class="card-title mb-3">Performance</h3>' +
+              '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +
+            '</div>' +
+            '<div class="business-snapshot-section">' +
+              '<h3 class="card-title mb-3">Customers</h3>' +
+              '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
+            '</div>' +
           '</div>';
 
         try { renderSnapshotCharts(data, chartSeq); } catch (_) {}
@@ -12726,7 +12723,7 @@ const API = '';
         const body = document.getElementById('business-snapshot-body');
         if (!body) return;
         body.innerHTML =
-          '<div class="business-snapshot-loading py-4 text-center">' +
+          '<div class="business-snapshot-loading py-4 px-4 text-center">' +
             '<div class="spinner-border text-primary" role="status"></div>' +
             '<div class="text-muted mt-2">Loading business snapshot...</div>' +
           '</div>';
@@ -12740,7 +12737,8 @@ const API = '';
         const year = String(selectedYear || getCurrentYearString());
         let url = API + '/api/business-snapshot?mode=yearly&year=' + encodeURIComponent(year);
         if (force) url += '&_=' + Date.now();
-        return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
+        const cacheMode = force ? 'no-store' : 'default';
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 30000)
           .then(function (res) { return (res && res.ok) ? res.json() : null; })
           .then(function (data) { if (reqId === snapshotActiveRequest) renderSnapshot(data); })
           .catch(function () { if (reqId === snapshotActiveRequest) renderSnapshot(null); })
@@ -13103,7 +13101,7 @@ const API = '';
                     '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
                   '</div>' +
                 '</div>' +
-                '<div class="modal-body p-4 business-snapshot-modal-body">' +
+                '<div class="modal-body p-0 business-snapshot-modal-body">' +
                   '<div id="business-snapshot-body"></div>' +
                 '</div>' +
                 '<div class="modal-footer business-snapshot-modal-footer">' +
@@ -13132,7 +13130,8 @@ const API = '';
           if (yearSel) {
             yearSel.addEventListener('change', function () {
               selectedYear = String(yearSel.value || getCurrentYearString());
-              fetchSnapshot(true);
+              setSnapshotLoading();
+              fetchSnapshot(false);
             });
           }
           const footerSettingsLink = document.getElementById('business-snapshot-footer-settings-link');
@@ -13334,7 +13333,7 @@ const API = '';
         if (yearSel) yearSel.value = selectedYear;
         setSnapshotLoading();
         openModal(snapshotModal);
-        fetchSnapshot(true);
+        fetchSnapshot(false);
       });
     })();
 

@@ -1248,17 +1248,13 @@ async function getBusinessSnapshot(options = {}) {
     summaryNow,
     summaryPrev,
     cogsNowRaw,
-    cogsPrevRaw,
     adsNow,
-    adsPrev,
   ] = await Promise.all([
     readShopName(shop, token).catch(() => null),
     rulesEnabled ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
     rulesEnabled ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
-    readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
     includeGoogleAdsSpend ? readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone) : Promise.resolve({ totalGbp: 0, byYmd: new Map() }),
-    includeGoogleAdsSpend ? readGoogleAdsSpendDailyGbp(compareBounds.start, compareBounds.end, timeZone) : Promise.resolve({ totalGbp: 0, byYmd: new Map() }),
   ]);
 
   const deductionsNowDetailed = (rulesEnabled && summaryNow) ? computeProfitDeductionsDetailed(summaryNow, profitRules) : { total: 0, lines: [] };
@@ -1301,17 +1297,13 @@ async function getBusinessSnapshot(options = {}) {
 
   // Cost totals + breakdown (used by Revenue & Cost chart tooltip)
   const cogsNow = toNumber(cogsNowRaw);
-  const cogsPrev = toNumber(cogsPrevRaw);
   const customExpensesNow = rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0;
-  const customExpensesPrev = rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0;
   const adsSpendNow = includeGoogleAdsSpend ? (Number(adsNow && adsNow.totalGbp) || 0) : 0;
-  const adsSpendPrev = includeGoogleAdsSpend ? (Number(adsPrev && adsPrev.totalGbp) || 0) : 0;
   const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNow > 0)
     ? round2((cogsNow || 0) + customExpensesNow + adsSpendNow)
     : null;
-  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrev > 0)
-    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrev)
-    : null;
+  // Keep Snapshot fast: we don't compute COGS/Ads for previous windows.
+  const costPrev = null;
 
   const costBreakdownNow = [];
   if (cogsNow != null) costBreakdownNow.push({ label: 'Cost of Goods', amountGbp: round2(cogsNow) || 0 });

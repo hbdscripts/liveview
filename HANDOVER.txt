@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Charts: hide on mobile + Tables: sticky resize consistency)
+Last updated: 2026-02-13 (Business Snapshot: faster load + line-only charts + 3-accent KPIs)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -271,8 +271,10 @@ Ops/reliability:
     - Default open state is now **Yearly / current year** (e.g. 2026), not All Time.
     - Yearly comparisons are now **same elapsed window** vs previous year (Jan 1 -> same month/day in prior year), and monthly comparisons are the same month vs prior year (partial when current month).
     - API now accepts `GET /api/business-snapshot?mode=yearly&year=YYYY` or `?mode=monthly&month=YYYY-MM`.
-    - Financial now renders a full-width **Revenue & Cost** area chart (Revenue + Cost line) with a hover tooltip breakdown; Cost = **COGS** + enabled Profit Rule deductions + optional **Google Ads spend** (when enabled).
-    - Remaining cards keep visible KPI sparklines (area for Conversion/AOV/Repeat/LTV; bars for Sessions/Orders).
+    - Financial now renders a full-width (edge-to-edge) **Revenue & Cost** line chart (no area/bar fill) with a hover tooltip breakdown; Cost = **COGS** + enabled Profit Rule deductions + optional **Google Ads spend** (when enabled).
+    - Remaining cards keep visible KPI sparklines (line-only; no fills).
+    - KPI colors in Snapshot are limited to 3 accents: up=growth, down=loss, flat=stable (matches `--kexo-accent-*` scheme).
+    - Performance: Snapshot caches expensive sub-queries (ShopifyQL sessions + COGS + country summaries + Ads spend) via `report_cache` and adds DB indexes to speed common filters.
     - Customers: “Returning Customers” is now customers who have **>=2 paid orders by the end of the selected window** (so early years like 2025 don’t incorrectly show 0 when repeats exist).
     - Fixed a Postgres reliability bug: returning customer query no longer uses a grouped outer reference (prevents `/api/business-snapshot` 500s).
   - Settings performance:

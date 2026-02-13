@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 33;
+const DEFINITIONS_VERSION = 34;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -97,12 +97,12 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'fx', note: 'Currency conversion to GBP for multi-currency order totals' },
     ],
     columns: [
-      { name: 'Financial', value: 'Wide “Revenue & Cost” chart + optional Profit section (Estimated Profit / Margin / Deductions)' },
+      { name: 'Financial', value: 'Full-width “Revenue & Cost” line chart + optional Profit section (Estimated Profit / Margin / Deductions)' },
       { name: 'Performance', value: 'Sessions, Orders, Conversion Rate, AOV' },
       { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate, LTV (cohort-aware)' },
       { name: 'Profit Rules', value: 'Percent of Revenue, Fixed per Order, Fixed per Period with country targeting' },
       { name: 'Integrations', value: 'Profit Rules → Integrations tab: toggles (e.g. include Google Ads spend in Cost chart)' },
-      { name: 'Charts', value: 'ApexCharts: wide Revenue & Cost area chart + per-card KPI sparklines (series derived from Shopify truth + ShopifyQL timeseries)' },
+      { name: 'Charts', value: 'ApexCharts: Revenue & Cost line chart + per-card KPI sparklines (line-only; no area/bar fills)' },
     ],
     math: [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
