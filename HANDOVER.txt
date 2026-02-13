@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (KPI pre-paint hide / no flash)
+Last updated: 2026-02-13 (KPI bottom align tweak + page-title block)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -231,6 +231,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- KPI/header micro-alignment:
+  - Dashboard KPI card sparkline wrapper is nudged down (`bottom: -5px`) with a small radius to better align the chart baseline with the card bottom.
+  - Page header title now renders as block-level (`.page-header .page-title { display: block; }`) to avoid inline-flex centering quirks.
 
 2026-02-13 (latest)
 - KPI visibility flicker fix:
