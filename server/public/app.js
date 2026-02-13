@@ -1311,6 +1311,7 @@ const API = '';
     let liveOnlineChartType = '';
     let liveOnlineChartFetchedAt = 0;
     let liveOnlineChartInFlight = null;
+    let liveOnlineMapChartInstance = null;
     let rangeOverviewChart = null;
     let rangeOverviewChartKey = '';
     let rangeOverviewChartInFlight = null;
@@ -5416,13 +5417,17 @@ const API = '';
       };
     }
 
-    function renderCountriesFlowOverlay(el, rows, primaryRgb) {
+    function renderCountriesFlowOverlay(el, rows, primaryRgb, originIso2) {
       if (!el) return;
       clearCountriesFlowOverlay(el);
       var mapSvg = el.querySelector('svg');
       if (!mapSvg) return;
       var mapRect = mapSvg.getBoundingClientRect();
       if (!mapRect || !(mapRect.width > 20) || !(mapRect.height > 20)) return;
+
+      var originIso = String(originIso2 || 'GB').trim().toUpperCase().slice(0, 2);
+      if (originIso === 'UK') originIso = 'GB';
+      if (!originIso) originIso = 'GB';
 
       var NS = 'http://www.w3.org/2000/svg';
       var overlay = document.createElementNS(NS, 'svg');
@@ -5441,7 +5446,7 @@ const API = '';
             orders: Number((r && r.converted) || 0),
           };
         })
-        .filter(function (r) { return r.iso && r.iso !== 'XX' && r.iso !== 'GB' && r.orders > 0; })
+        .filter(function (r) { return r.iso && r.iso !== 'XX' && r.iso !== originIso && r.orders > 0; })
         .sort(function (a, b) { return b.orders - a.orders; })
         .slice(0, 8);
 
@@ -5450,7 +5455,7 @@ const API = '';
         return;
       }
 
-      var origin = mapRegionCenter(mapSvg, mapRect, 'GB') ||
+      var origin = mapRegionCenter(mapSvg, mapRect, originIso) ||
         { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
       var palette = [
         'rgba(' + primaryRgb + ',0.78)',
@@ -5534,6 +5539,25 @@ const API = '';
         setCountriesMapState(el, 'Map disabled in Settings > Charts.');
         return;
       }
+
+      // jsVectorMap snapshots container size at init. If we render while hidden (page loader / collapsed),
+      // it can end up with a 0x0 SVG (scale(0)) and never recover. Wait until the container is measurable.
+      try {
+        var rect = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+        var w = rect && Number.isFinite(rect.width) ? rect.width : Number(el && el.offsetWidth);
+        var h = rect && Number.isFinite(rect.height) ? rect.height : Number(el && el.offsetHeight);
+        if (!(w > 20) || !(h > 20)) {
+          var tries = (el.__kexoJvmSizeWaitTries || 0) + 1;
+          el.__kexoJvmSizeWaitTries = tries;
+          if (tries <= 60) {
+            setTimeout(function() { renderCountriesMapChart(data); }, 220);
+          } else {
+            el.__kexoJvmSizeWaitTries = 0;
+          }
+          return;
+        }
+        el.__kexoJvmSizeWaitTries = 0;
+      } catch (_) {}
 
       if (countriesMapChartInstance) {
         try { countriesMapChartInstance.destroy(); } catch (_) {}
@@ -9329,6 +9353,192 @@ const API = '';
       }
     }
 
+    function setLiveOnlineMapState(el, text, opts) {
+      if (!el) return;
+      var message = String(text == null ? '' : text).trim() || 'Unavailable';
+      var isError = !!(opts && opts.error);
+      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:' + color + ';text-align:center;padding:0 18px;font-size:.875rem">' +
+          escapeHtml(message) +
+        '</div>';
+    }
+
+    function renderLiveOnlineMapChartFromSessions(sessionList) {
+      var el = document.getElementById('live-online-chart');
+      if (!el) return;
+      var chartKey = 'live-online-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
+        liveOnlineChartType = '';
+        if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
+        clearCountriesFlowOverlay(el);
+        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
+        el.innerHTML = '';
+        return;
+      }
+
+      if (typeof jsVectorMap === 'undefined') {
+        if (!el.__kexoJvmWaitTries) setLiveOnlineMapState(el, 'Loading map library...');
+        // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
+        var tries = (el.__kexoJvmWaitTries || 0) + 1;
+        el.__kexoJvmWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoJvmWaitTries = 0;
+          setLiveOnlineMapState(el, 'Map library failed to load.', { error: true });
+          return;
+        }
+        setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 200);
+        return;
+      }
+      try { el.__kexoJvmWaitTries = 0; } catch (_) {}
+
+      // jsVectorMap snapshots container size at init; wait until the container is measurable.
+      try {
+        var rect = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+        if (!rect || !(rect.width > 20) || !(rect.height > 20)) {
+          var sizeTries = (el.__kexoJvmSizeWaitTries || 0) + 1;
+          el.__kexoJvmSizeWaitTries = sizeTries;
+          if (sizeTries <= 60) setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 220);
+          else el.__kexoJvmSizeWaitTries = 0;
+          return;
+        }
+        el.__kexoJvmSizeWaitTries = 0;
+      } catch (_) {}
+
+      var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+      rawMode = String(rawMode || '').trim().toLowerCase();
+      var isAnimated = rawMode !== 'map-flat';
+
+      var list = Array.isArray(sessionList) ? sessionList : (Array.isArray(sessions) ? sessions : []);
+      var countsByIso2 = {};
+      for (var i = 0; i < list.length; i++) {
+        var s = list[i];
+        var iso = (s && s.country_code != null) ? String(s.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
+        if (!iso || iso === 'XX') continue;
+        if (iso === 'UK') iso = 'GB';
+        countsByIso2[iso] = (countsByIso2[iso] || 0) + 1;
+      }
+      var keys = Object.keys(countsByIso2);
+      if (!keys.length) {
+        if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
+        clearCountriesFlowOverlay(el);
+        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
+        setLiveOnlineMapState(el, 'No live activity yet');
+        return;
+      }
+
+      var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
+      var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
+
+      var sigParts = [];
+      for (var k = 0; k < keys.length; k++) {
+        var code = keys[k];
+        sigParts.push(code + ':' + String(countsByIso2[code] || 0));
+      }
+      sigParts.sort();
+      var sig = rawMode + '|' + accent + '|' + sigParts.join('|');
+      if (liveOnlineMapChartInstance && el.__kexoLiveOnlineMapSig === sig) {
+        if (!isAnimated) clearCountriesFlowOverlay(el);
+        return;
+      }
+      try { el.__kexoLiveOnlineMapSig = sig; } catch (_) {}
+
+      // Switching chart types: clear Apex instance.
+      if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
+      liveOnlineChartType = '';
+
+      if (liveOnlineMapChartInstance) {
+        try { liveOnlineMapChartInstance.destroy(); } catch (_) {}
+        liveOnlineMapChartInstance = null;
+      }
+      clearCountriesFlowOverlay(el);
+      el.innerHTML = '';
+
+      try {
+        var rootCss = getComputedStyle(document.documentElement);
+        var border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
+        var muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
+
+        function rgbFromColor(c) {
+          var s = String(c || '').trim();
+          var m = /^#([0-9a-f]{6})$/i.exec(s);
+          if (m) {
+            var hex = m[1];
+            var r = parseInt(hex.slice(0, 2), 16);
+            var g = parseInt(hex.slice(2, 4), 16);
+            var b = parseInt(hex.slice(4, 6), 16);
+            return { r: r, g: g, b: b, rgb: r + ',' + g + ',' + b };
+          }
+          m = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})/i.exec(s);
+          if (m) {
+            var rr = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+            var gg = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+            var bb = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+            return { r: rr, g: gg, b: bb, rgb: rr + ',' + gg + ',' + bb };
+          }
+          return { r: 22, g: 163, b: 74, rgb: '22,163,74' };
+        }
+        var rgb = rgbFromColor(accent);
+        var primaryRgb = rgb.rgb;
+
+        liveOnlineMapChartInstance = new jsVectorMap({
+          selector: '#live-online-chart',
+          map: 'world',
+          backgroundColor: 'transparent',
+          zoomButtons: false,
+          zoomOnScroll: false,
+          zoomAnimate: false,
+          regionStyle: {
+            initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
+            hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
+            selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
+          },
+          series: {
+            regions: [
+              {
+                attribute: 'fill',
+                values: countsByIso2,
+                scale: ['rgba(' + primaryRgb + ',0.18)', 'rgba(' + primaryRgb + ',0.46)', 'rgba(' + primaryRgb + ',0.92)'],
+                normalizeFunction: 'polynomial',
+              }
+            ]
+          },
+          onRegionTooltipShow: function(tooltip, code2) {
+            var iso2 = (code2 || '').toString().trim().toUpperCase();
+            var name = (liveOnlineMapChartInstance && typeof liveOnlineMapChartInstance.getRegionName === 'function')
+              ? (liveOnlineMapChartInstance.getRegionName(iso2) || iso2)
+              : iso2;
+            var n = countsByIso2[iso2] || 0;
+            if (!n) {
+              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
+              return;
+            }
+            tooltip.html(
+              '<div style="min-width:180px">' +
+                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(formatSessions(n)) + '</span></div>' +
+              '</div>'
+            );
+          }
+        });
+
+        if (isAnimated) {
+          setTimeout(function () {
+            try {
+              var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+              pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+              var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+              renderCountriesFlowOverlay(el, pseudo, primaryRgb, originIso);
+            } catch (_) {}
+          }, 120);
+        }
+      } catch (err) {
+        console.error('[live-online-map] render error:', err);
+        setLiveOnlineMapState(el, 'Map rendering failed.', { error: true });
+      }
+    }
+
     function renderLiveOnlineTrendChart(payload) {
       var el = document.getElementById('live-online-chart');
       if (!el) return;
@@ -9349,6 +9559,9 @@ const API = '';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
         liveOnlineChartType = '';
+        if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
+        clearCountriesFlowOverlay(el);
+        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
         el.innerHTML = '';
         return;
       }
@@ -9503,6 +9716,25 @@ const API = '';
       liveOnlineChart.render();
     }
 
+    function refreshLiveOnlineChart(options) {
+      var chartKey = 'live-online-chart';
+      var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+      rawMode = String(rawMode || '').trim().toLowerCase();
+      if (rawMode.indexOf('map-') === 0) {
+        try { renderLiveOnlineMapChartFromSessions(Array.isArray(sessions) ? sessions : []); } catch (_) {}
+        return Promise.resolve(null);
+      }
+
+      // Switching away from map: clean up jsVectorMap instance + overlay.
+      var el = document.getElementById('live-online-chart');
+      if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
+      if (el) {
+        clearCountriesFlowOverlay(el);
+        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
+      }
+      return refreshLiveOnlineTrendChart(options || {});
+    }
+
     function refreshLiveOnlineTrendChart(options) {
       var el = document.getElementById('live-online-chart');
       if (!el) return Promise.resolve(null);
@@ -9653,7 +9885,7 @@ const API = '';
     }
 
     function refreshSessionPageCharts(options) {
-      if (document.getElementById('live-online-chart')) return refreshLiveOnlineTrendChart(options || {});
+      if (document.getElementById('live-online-chart')) return refreshLiveOnlineChart(options || {});
       if (document.getElementById('sessions-overview-chart')) return refreshSessionsOverviewChart(options || {});
       return Promise.resolve(null);
     }

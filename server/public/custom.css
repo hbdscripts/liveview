@@ -207,6 +207,9 @@ a {
 #countries-map-chart {
   position: relative;
 }
+#live-online-chart {
+  position: relative;
+}
 .kexo-map-flow-overlay {
   position: absolute;
   inset: 0;
