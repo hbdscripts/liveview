@@ -741,17 +741,6 @@ body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cel
 body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
 }
-/* Hover should still highlight the adjacent (2nd) column. */
-body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row:hover .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row:hover .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .table-responsive table tbody tr:hover td:nth-child(2) {
-  background: var(--row-hover, rgba(var(--tblr-primary-rgb), .024)) !important;
-}
-body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .table-responsive table tbody tr.converted:hover td:nth-child(2) {
-  background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
-}
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell,
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .product-cell,

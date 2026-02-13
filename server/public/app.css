@@ -420,7 +420,6 @@
       font-size: .85rem;
     }
     .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child { background: var(--kexo-sticky-cell-bg, #fff) !important; }
-    .table-scroll-wrap .grid-body .grid-row.converted:hover .grid-cell:nth-child(2) { background: var(--kexo-converted-cell-bg, #f9fcfa) !important; }
 
     /* Column alignment: keep first column left, rest centered */
     .grid-table .grid-cell:not(:first-child) { text-align: center; }
