@@ -1591,25 +1591,26 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 120px;
-  width: 120px;
-  padding: 0 .75rem;
-  font-size: .8125rem;
-  font-weight: 500;
-  color: #333;
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 1px 1px 1px #f1f1f1;
-  border-radius: 4px;
+  /* max-width: 120px; */
+  /* width: 120px; */
+  padding: 0;
+  font-size: 15px;
+  /* font-weight: 500; */
+  color: #444;
+  background: #fafafa;
+  border: 0;
+  /* box-shadow: 0 1px 1px 1px #f1f1f1; */
+  /* border-radius: 4px; */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
   height: 40px;
   padding-left: 15px !important;
+  font-weight: 600 !important;
 }
 .kexo-date-btn:hover {
-  border-color: #9ca3af;
+  background: #f3f4f6;
 }
 .kexo-date-btn-label {
   overflow: hidden;
@@ -1839,10 +1840,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
     padding: 0;
   }
   .kexo-date-btn {
-    width: 102px;
-    max-width: 102px;
-    padding: .3rem .55rem;
-    font-size: .75rem;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    font-size: 15px;
   }
   .kexo-date-btn-chevron {
     margin-left: .4rem;
@@ -2282,6 +2283,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 /* Keep the date picker inline with the page title on mobile (avoid wrapping/overhang). */
 .page-header .row.align-items-center {
   flex-wrap: nowrap;
+  margin: 0 10px;
 }
 .page-header .row.align-items-center > .col {
   min-width: 0;
@@ -2294,6 +2296,17 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .page-header .page-title {
   display: block;
+  text-align: center;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: var(--tblr-line-height-h2);
+  font-weight: 300;
+  color: inherit;
+  display: flex;
+  align-items: center;
 }
 
 /* Page pretitle: icon + label should align cleanly. */
@@ -2368,6 +2381,38 @@ html[data-bs-theme="dark"] .report-build-wrap {
   margin: 0 4px 0 0;
   float: none;
   font-size: 12px !important;
+}
+
+@media (max-width: 991.98px) {
+  .page-header .row.align-items-center {
+    margin: 0 !important;
+    display: block !important;
+  }
+  .kexo-page-header-category-icon {
+    display: none;
+  }
+  .page-header .kexo-page-header-date-col .kexo-date-btn {
+    position: absolute;
+    top: -40px;
+    right: -15px;
+    font-size: 15px !important;
+  }
+
+  body:not([data-page="settings"]) .table-scroll-wrap,
+  body:not([data-page="settings"]) .country-table-wrap,
+  body:not([data-page="settings"]) .table-responsive {
+    --kexo-sticky-col-width: 200px;
+    --kexo-sticky-col-min-width: 200px;
+    --kexo-sticky-col-max-width: 200px;
+  }
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
+  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+  body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
+  body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
+  body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
+    box-shadow: 0 0 0 0 !important;
+  }
 }
 
 body[data-page="shipping-cr"] .page-header .page-title,
