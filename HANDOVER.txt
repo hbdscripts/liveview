@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Table last row: no border-bottom)
+Last updated: 2026-02-13 (Sticky column shadow when scrolled)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Sticky column: When table is horizontally scrolled (swipe/scroll right), sticky cells get a stronger outer shadow to indicate they stay fixed; class kexo-sticky-scrolled toggled via scroll listener in app.js.
 2026-02-13 (latest)
 - Table last row: No border-bottom on last row cells (grid tables, table-responsive, tsm-table, product-insights) so the card/table outer border provides the bottom edge.
 2026-02-13 (latest)

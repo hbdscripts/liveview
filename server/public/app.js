@@ -715,10 +715,26 @@ const API = '';
         wrap.classList.toggle('is-drag-scroll', !!canDrag);
       }
 
+      function shouldSkipStickyScrollClass(wrap) {
+        if (!wrap || !wrap.querySelector) return true;
+        return !!wrap.querySelector('#latest-sales-table');
+      }
+
+      function updateStickyScrollClass(wrap) {
+        if (!wrap || shouldSkipStickyScrollClass(wrap)) return;
+        var scrolled = (wrap.scrollLeft || 0) > 0;
+        wrap.classList.toggle('kexo-sticky-scrolled', scrolled);
+      }
+
       function bind(wrap) {
         if (!wrap || wrap.getAttribute('data-drag-scroll-bound') === '1') return;
         wrap.setAttribute('data-drag-scroll-bound', '1');
         setDragEnabledClass(wrap);
+
+        if (!shouldSkipStickyScrollClass(wrap)) {
+          updateStickyScrollClass(wrap);
+          wrap.addEventListener('scroll', function() { updateStickyScrollClass(wrap); }, { passive: true });
+        }
 
         var startX = 0;
         var startScrollLeft = 0;
@@ -763,7 +779,10 @@ const API = '';
 
         if (typeof ResizeObserver !== 'undefined') {
           try {
-            var ro = new ResizeObserver(function() { setDragEnabledClass(wrap); });
+            var ro = new ResizeObserver(function() {
+              setDragEnabledClass(wrap);
+              if (!shouldSkipStickyScrollClass(wrap)) updateStickyScrollClass(wrap);
+            });
             ro.observe(wrap);
             wrap._dragScrollObserver = ro;
           } catch (_) {}
