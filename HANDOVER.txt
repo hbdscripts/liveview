@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (sessions table click UX + page layout + live view map + countries map render fix + traffic trend charts + products table hiding + countries map default + header category icons)
+Last updated: 2026-02-13 (jsVectorMap tooltip fix + deterministic map fills + live map mode lock)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,15 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Countries + Live jsVectorMap fixes:
+  - Fixed map hover crash (`tooltip.html is not a function`) by adding a safe tooltip writer that supports jsVectorMap tooltip API variants (`html`, `text`, element fallback).
+  - Replaced map numeric `scale/normalizeFunction` fill logic with deterministic ISO->color mapping to prevent `fill="undefined"` (which showed key regions as black).
+  - Hardened `.jvm-tooltip` CSS (`display:none`, fixed positioning, non-interactive) so empty tooltip nodes do not appear in page flow/footer when inactive.
+- Live chart mode behavior:
+  - `live-online-chart` is now map-only (`map-animated` / `map-flat`) in Settings schema and Settings UI metadata.
+  - Runtime mode sanitization in `app.js` now forces `/dashboard/live` to map mode when stale non-map config is cached.
 
 2026-02-13 (latest)
 - Traffic + Insights UX:

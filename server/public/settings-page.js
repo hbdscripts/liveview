@@ -798,7 +798,7 @@
     'dash-chart-conv': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Kexo', 'Shopify (if available)'] },
     'dash-chart-sessions': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions'] },
     'dash-chart-adspend': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue', 'Ad spend'] },
-    'live-online-chart': { modes: ['map-animated', 'map-flat', 'bar', 'line', 'area', 'multi-line-labels'], series: ['Online now'] },
+    'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'] },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'] },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'] },
     'ads-overview-chart': { modes: ['combo', 'line', 'area', 'multi-line-labels'], series: ['Sales', 'Spend', 'ROAS'] },

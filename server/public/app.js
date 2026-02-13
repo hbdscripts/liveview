@@ -5513,6 +5513,86 @@ const API = '';
         '</div>';
     }
 
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, minAlpha, maxAlpha) {
+      var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
+      var aMin = Number(minAlpha);
+      var aMax = Number(maxAlpha);
+      if (!Number.isFinite(aMin)) aMin = 0.24;
+      if (!Number.isFinite(aMax)) aMax = 0.92;
+      if (aMax < aMin) {
+        var swap = aMax;
+        aMax = aMin;
+        aMin = swap;
+      }
+      var entries = [];
+      var keys = Object.keys(src);
+      for (var i = 0; i < keys.length; i++) {
+        var iso = String(keys[i] || '').trim().toUpperCase();
+        if (!iso) continue;
+        var n = Number(src[iso]);
+        if (!Number.isFinite(n) || n <= 0) continue;
+        entries.push({ iso: iso, value: n });
+      }
+      if (!entries.length) return {};
+      var min = Infinity;
+      var max = -Infinity;
+      for (var j = 0; j < entries.length; j++) {
+        var v = entries[j].value;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      var out = {};
+      var fixedAlpha = (aMin + aMax) / 2;
+      for (var k = 0; k < entries.length; k++) {
+        var row = entries[k];
+        var alpha = fixedAlpha;
+        if (max > min) {
+          var t = (row.value - min) / (max - min);
+          if (!Number.isFinite(t)) t = 0;
+          t = Math.max(0, Math.min(1, t));
+          alpha = aMin + (aMax - aMin) * t;
+        }
+        var alphaStr = String(Math.max(0, Math.min(1, alpha)).toFixed(3)).replace(/0+$/, '').replace(/\.$/, '');
+        out[row.iso] = 'rgba(' + primaryRgb + ',' + alphaStr + ')';
+      }
+      return out;
+    }
+
+    function setVectorMapTooltipContent(tooltip, html, text) {
+      if (!tooltip) return;
+      var htmlContent = html == null ? '' : String(html);
+      var textContent = text == null ? '' : String(text);
+      try {
+        if (typeof tooltip.html === 'function') {
+          tooltip.html(htmlContent);
+          return;
+        }
+      } catch (_) {}
+      try {
+        if (typeof tooltip.text === 'function') {
+          tooltip.text(textContent || htmlContent);
+          return;
+        }
+      } catch (_) {}
+      try {
+        if (tooltip.element && tooltip.element.nodeType === 1) {
+          tooltip.element.innerHTML = htmlContent;
+          return;
+        }
+      } catch (_) {}
+      try {
+        if (tooltip.nodeType === 1) {
+          tooltip.innerHTML = htmlContent;
+          return;
+        }
+      } catch (_) {}
+      try {
+        if (typeof tooltip.setContent === 'function') {
+          tooltip.setContent(htmlContent || textContent);
+        }
+      } catch (_) {}
+    }
+
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
@@ -5577,6 +5657,7 @@ const API = '';
 
       const revenueByIso2 = {};
       const ordersByIso2 = {};
+      const mapMetricByIso2 = {};
       for (const r of rows || []) {
         let iso = (r && r.country_code != null) ? String(r.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
         if (!iso || iso === 'XX') continue;
@@ -5586,6 +5667,10 @@ const API = '';
         if (!Number.isFinite(rev) && !Number.isFinite(ord)) continue;
         revenueByIso2[iso] = (revenueByIso2[iso] || 0) + (Number.isFinite(rev) ? rev : 0);
         ordersByIso2[iso] = (ordersByIso2[iso] || 0) + (Number.isFinite(ord) ? ord : 0);
+        const metric = (Number.isFinite(rev) && rev > 0) ? rev : ((Number.isFinite(ord) && ord > 0) ? ord : 0);
+        if (metric > 0) {
+          mapMetricByIso2[iso] = (mapMetricByIso2[iso] || 0) + metric;
+        }
       }
 
       el.innerHTML = '';
@@ -5619,6 +5704,7 @@ const API = '';
         }
         const rgb = rgbFromColor(accent);
         const primaryRgb = rgb.rgb;
+        const regionFillByIso2 = buildMapFillScaleByIso(mapMetricByIso2, primaryRgb, 0.24, 0.92);
 
         countriesMapChartInstance = new jsVectorMap({
           selector: '#countries-map-chart',
@@ -5636,9 +5722,7 @@ const API = '';
             regions: [
               {
                 attribute: 'fill',
-                values: revenueByIso2,
-                scale: ['rgba(' + primaryRgb + ',0.18)', 'rgba(' + primaryRgb + ',0.46)', 'rgba(' + primaryRgb + ',0.92)'],
-                normalizeFunction: 'polynomial',
+                values: regionFillByIso2,
               }
             ]
           },
@@ -5650,17 +5734,23 @@ const API = '';
             const rev = revenueByIso2[iso] || 0;
             const ord = ordersByIso2[iso] || 0;
             if (!rev && !ord) {
-              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
+              setVectorMapTooltipContent(
+                tooltip,
+                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                name
+              );
               return;
             }
             const revHtml = formatRevenue(Number(rev) || 0) || '—';
             const ordHtml = ord ? (formatSessions(ord) + ' orders') : '—';
-            tooltip.html(
+            setVectorMapTooltipContent(
+              tooltip,
               '<div style="min-width:180px">' +
                 '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
                 '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style="color:inherit">' + escapeHtml(revHtml) + '</span></div>' +
                 '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style="color:inherit">' + escapeHtml(ordHtml) + '</span></div>' +
-              '</div>'
+              '</div>',
+              name + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml
             );
           }
         });
@@ -7292,8 +7382,17 @@ const API = '';
     }
 
     function chartModeFromUiConfig(key, fallbackMode) {
-      var it = getChartsUiItem(key);
+      var k = String(key == null ? '' : key).trim().toLowerCase();
+      var it = getChartsUiItem(k);
       var m = it && it.mode != null ? String(it.mode).trim().toLowerCase() : '';
+      if (k === 'live-online-chart') {
+        if (m === 'map-animated' || m === 'map-flat') return m;
+        return 'map-animated';
+      }
+      if (k === 'countries-map-chart') {
+        if (m === 'map-animated' || m === 'map-flat') return m;
+        return 'map-flat';
+      }
       if (m) return m;
       return String(fallbackMode || '').trim().toLowerCase() || '';
     }
@@ -9484,6 +9583,7 @@ const API = '';
         }
         var rgb = rgbFromColor(accent);
         var primaryRgb = rgb.rgb;
+        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, 0.24, 0.92);
 
         liveOnlineMapChartInstance = new jsVectorMap({
           selector: '#live-online-chart',
@@ -9501,9 +9601,7 @@ const API = '';
             regions: [
               {
                 attribute: 'fill',
-                values: countsByIso2,
-                scale: ['rgba(' + primaryRgb + ',0.18)', 'rgba(' + primaryRgb + ',0.46)', 'rgba(' + primaryRgb + ',0.92)'],
-                normalizeFunction: 'polynomial',
+                values: regionFillByIso2,
               }
             ]
           },
@@ -9514,14 +9612,21 @@ const API = '';
               : iso2;
             var n = countsByIso2[iso2] || 0;
             if (!n) {
-              tooltip.html('<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>');
+              setVectorMapTooltipContent(
+                tooltip,
+                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                name
+              );
               return;
             }
-            tooltip.html(
+            var sessionsText = formatSessions(n);
+            setVectorMapTooltipContent(
+              tooltip,
               '<div style="min-width:180px">' +
                 '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(formatSessions(n)) + '</span></div>' +
-              '</div>'
+                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(sessionsText) + '</span></div>' +
+              '</div>',
+              name + ' | Sessions (last 5m): ' + sessionsText
             );
           }
         });

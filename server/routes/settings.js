@@ -65,7 +65,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-conv': ['area', 'line', 'bar', 'multi-line-labels'],
   'dash-chart-sessions': ['area', 'line', 'bar', 'multi-line-labels'],
   'dash-chart-adspend': ['area', 'line', 'bar', 'multi-line-labels'],
-  'live-online-chart': ['map-animated', 'map-flat', 'bar', 'line', 'area', 'multi-line-labels'],
+  'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'ads-overview-chart': ['combo', 'line', 'area', 'multi-line-labels'],
