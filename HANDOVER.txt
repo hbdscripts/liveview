@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Settings Layout tabs + header KPI strip visibility)
+Last updated: 2026-02-13 (header connector lines + KPI sparkline profile)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -18,7 +18,7 @@ Desktop chrome (shared header across pages via `server/public/partials/header.ht
 - Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with gradient, "New Sale: Product Name" + price (10s auto-close; MP3 cha-ching).
 - Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages. Visibility is configurable per page via Settings → Layout → KPIs. It sits inside the sticky header wrapper so it stays pinned while scrolling.
-- Page header: the per-page title row (category icon + pretitle + title + date control) stays inside the page body (not sticky). Layout is driven by `app.js` + `custom.css` (icon inside subtitle; title centered; date right with dividers) on simple pages.
+- Page header: the per-page title row (category icon + pretitle + title + date control) stays inside the page body (not sticky). Layout is driven by `app.js` + `custom.css` (icon inside subtitle; title centered; date right) with segmented 2px connector lines around the title on simple pages.
 
 Mobile:
 - Uses the same shared top strip + main nav as desktop (no mobile-only hamburger header/overlay).
@@ -228,6 +228,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Header/KPI visual polish:
+  - Page header triple layout now uses segmented horizontal connector lines (`left/meta — title — date`) with 10px outer margins.
+  - Triple-layout stability improved by checking only direct `.col-auto` children before disabling the layout (prevents unintended left-jump).
+  - KPI strip bottom gap removed (no extra white band under the sticky KPI row).
+  - Dashboard KPI sparkline profile tuned to read as stronger “peaks/mountains” (less y-padding, taller sparkline area, stronger fill/stroke).
 
 2026-02-13 (latest)
 - Settings UX + header KPI control:

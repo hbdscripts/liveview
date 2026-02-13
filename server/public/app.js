@@ -6079,7 +6079,18 @@ const API = '';
         }
 
         // Skip headers that have other right-side actions (buttons, etc).
-        const hasOtherAuto = !!row.querySelector('.col-auto:not(.kexo-page-header-date-col)');
+        // Only inspect direct children so nested controls inside the date dropdown
+        // do not accidentally disable the triple layout.
+        let hasOtherAuto = false;
+        try {
+          hasOtherAuto = !!row.querySelector(':scope > .col-auto:not(.kexo-page-header-date-col)');
+        } catch (_) {
+          hasOtherAuto = Array.prototype.slice.call(row.children || []).some(function(ch) {
+            if (!ch || !ch.classList) return false;
+            if (!ch.classList.contains('col-auto')) return false;
+            return !ch.classList.contains('kexo-page-header-date-col');
+          });
+        }
         if (hasOtherAuto) {
           row.classList.remove('kexo-page-header-layout-triple');
           return;
@@ -6887,12 +6898,13 @@ const API = '';
           var chart = new ApexCharts(el, {
             chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
-            stroke: { width: 2, curve: 'smooth', lineCap: 'round' },
+            stroke: { width: 2.15, curve: 'smooth', lineCap: 'round' },
             // NOTE: ApexCharts 4.x can incorrectly apply fill opacity to line stroke color.
             // Keep fill opacity at 1 for visible strokes; line charts still render line-only.
             fill: { type: 'solid', opacity: 1 },
             colors: [sparkColor],
             markers: { size: 0 },
+            grid: { padding: { top: 0, right: 0, bottom: -2, left: 0 } },
             tooltip: { enabled: false }
           });
           chart.render();
@@ -13220,7 +13232,9 @@ const API = '';
           var yMin = -1;
           var yMax = 1;
           if (!allZero) {
-            var pad = Math.max(1e-6, span * 0.25);
+            // Keep some headroom but avoid over-padding, so peaks read more like
+            // the original "mountain" profile instead of looking flattened.
+            var pad = Math.max(1e-6, span * 0.12);
             yMin = minVal - pad;
             yMax = maxVal + pad;
           }
@@ -13228,13 +13242,14 @@ const API = '';
           var chartType = String(type || '').toLowerCase() === 'area' ? 'area' : 'line';
           var isArea = chartType === 'area';
           var chart = new ApexCharts(sparkEl, {
-            chart: { type: chartType, height: 40, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: chartType, height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ name: 'Trend', data: nums }],
-            stroke: { width: 2.45, curve: sparkCurve, lineCap: 'round' },
-            fill: { type: 'solid', opacity: isArea ? 0.22 : 1 },
+            stroke: { width: 2.55, curve: sparkCurve, lineCap: 'round' },
+            fill: { type: 'solid', opacity: isArea ? 0.28 : 1 },
             colors: [color],
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
+            grid: { padding: { top: 0, right: 0, bottom: -3, left: 0 } },
             tooltip: { enabled: false }
           });
           chart.render();
