@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Latest sales UX + product modal)
+Last updated: 2026-02-13 (Table rows hidden + builder icon)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,10 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Table UX:
+  - Rows-per-page selector hidden on all tables (page size still from config).
+  - Table layout icon (links to Settings → Layout) replaced with gear; configurable via Settings → Theme → Icons (table-builder-icon).
 2026-02-13 (latest)
 - Live View Latest sales:
   - Removed table header (noHeader on latest-sales-table).

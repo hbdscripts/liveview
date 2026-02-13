@@ -1373,6 +1373,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_table_short_type',
   'theme_icon_glyph_table_short_product',
   'theme_icon_glyph_table_short_consent',
+  'theme_icon_glyph_table_builder_icon',
   'theme_icon_glyph_card_title_online',
   'theme_icon_glyph_card_title_revenue',
   'theme_icon_glyph_card_title_orders',

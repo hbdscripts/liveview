@@ -903,7 +903,7 @@ const API = '';
           link.className = 'btn btn-icon btn-ghost-secondary kexo-builder-icon-link';
           link.title = 'Layout settings';
           link.setAttribute('aria-label', 'Layout settings');
-          link.innerHTML = '<i class="fa-thin fa-table-list" style="color:#999" aria-hidden="true"></i>';
+          link.innerHTML = '<i class="fa-light fa-gear" data-icon-key="table-builder-icon" style="color:#999" aria-hidden="true"></i>';
           var actions = header.querySelector(':scope > .card-actions');
           if (!actions) {
             actions = document.createElement('div');

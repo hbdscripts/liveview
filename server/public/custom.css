@@ -60,11 +60,9 @@ i[class*="fa-"] {
   justify-content: center;
 }
 
+/* Rows-per-page selector hidden; page size still applied from config. */
 .kexo-table-rows-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  margin: 0;
+  display: none !important;
 }
 
 .kexo-table-rows-select.form-select.form-select-sm {
@@ -79,13 +77,6 @@ i[class*="fa-"] {
   background-image: none !important;
   background-position: initial !important;
   background-size: initial !important;
-}
-
-@media (max-width: 991.98px) {
-  /* Hide table rows-per-page control on mobile. */
-  .kexo-table-rows-control {
-    display: none !important;
-  }
 }
 
 .kexo-card-collapse-chevron {
