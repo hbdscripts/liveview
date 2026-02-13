@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Nav/mobile-menu parity + sticky/session table fixes)
+Last updated: 2026-02-13 (mobile nav/date/KPI visibility + sticky follow-up)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,18 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Header/nav mobile follow-up:
+  - Fixed inline nav left-edge clipping by zeroing nav row gutters/paddings and resetting mobile nav horizontal start position on page show.
+  - Restored inline mobile dropdown usability by toggling nav-left overflow state while dropdowns are open (`.kexo-desktop-nav-left.is-dropdown-open`), preventing clipped menus.
+- Date picker visibility:
+  - `mountDesktopDatePickerIntoPageHeader()` now relocates the date picker only on desktop (`min-width: 992px`); on mobile the picker is returned to the nav date slot.
+  - Added resize/orientation/pageshow listeners so date picker placement stays correct when viewport changes.
+- KPI visibility:
+  - Re-enabled Settings-driven dashboard KPI card hiding (`item.enabled === false`) in `applyDashboardKpiUiConfig`.
+- Sticky header follow-up:
+  - Updated `.page > .page-wrapper` flex sizing (`flex: 1 0 auto`) and kept `.page-body` overflow visible to avoid sticky header constraints ending near page-body start.
 
 2026-02-13 (latest)
 - Header/nav + mobile parity:

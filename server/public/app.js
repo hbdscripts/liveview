@@ -5836,11 +5836,20 @@ const API = '';
 
     function mountDesktopDatePickerIntoPageHeader() {
       try {
-        const dateWrap = document.querySelector('.kexo-desktop-nav .kexo-topbar-date');
+        const dateBtn = document.getElementById('kexo-date-display');
+        const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
-        const sourceLi = dateWrap.closest('li.kexo-nav-date-slot, li.nav-item');
+        const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
         const headerRow = document.querySelector('.page-header .row');
-        if (!headerRow) {
+        const isDesktopViewport = (typeof window.matchMedia === 'function')
+          ? window.matchMedia('(min-width: 992px)').matches
+          : ((window.innerWidth || 0) >= 992);
+        const canRelocate = !!(headerRow && isDesktopViewport);
+
+        if (!canRelocate) {
+          if (sourceLi && dateWrap.parentElement !== sourceLi) {
+            sourceLi.appendChild(dateWrap);
+          }
           if (sourceLi) {
             sourceLi.classList.add('is-date-inline-fallback');
             sourceLi.classList.remove('is-date-relocated');
@@ -5857,10 +5866,10 @@ const API = '';
 
         if (dateWrap.parentElement !== dateCol) {
           dateCol.appendChild(dateWrap);
-          if (sourceLi) {
-            sourceLi.classList.add('is-date-relocated');
-            sourceLi.classList.remove('is-date-inline-fallback');
-          }
+        }
+        if (sourceLi) {
+          sourceLi.classList.add('is-date-relocated');
+          sourceLi.classList.remove('is-date-inline-fallback');
         }
       } catch (_) {}
     }
@@ -7458,13 +7467,14 @@ const API = '';
           var lbl = String(item.label).trim();
           if (lbl) labelEl.textContent = lbl;
         }
-        // Dashboard cards stay visible regardless of header KPI visibility toggles.
-        col.classList.remove('is-user-disabled');
+        var enabled = item.enabled !== false;
+        col.classList.toggle('is-user-disabled', !enabled);
         frag.appendChild(col);
         seen.add(col);
       });
       allCols.forEach(function(col) {
         if (!col || seen.has(col)) return;
+        col.classList.remove('is-user-disabled');
         frag.appendChild(col);
       });
       grid.appendChild(frag);
@@ -11115,6 +11125,12 @@ const API = '';
       const dateSelect = document.getElementById('global-date-select');
       if (dateSelect) {
         mountDesktopDatePickerIntoPageHeader();
+        try {
+          const syncHeaderDatePlacement = function() { mountDesktopDatePickerIntoPageHeader(); };
+          window.addEventListener('resize', syncHeaderDatePlacement, { passive: true });
+          window.addEventListener('orientationchange', syncHeaderDatePlacement);
+          window.addEventListener('pageshow', syncHeaderDatePlacement);
+        } catch (_) {}
         syncDateSelectOptions();
         applyRangeAvailable({ today: true, yesterday: true });
         updateLiveViewTitle();
@@ -11477,6 +11493,56 @@ const API = '';
         if (tabProducts) tabProducts.addEventListener('click', function() { setTab('products'); });
         if (tabAds) tabAds.addEventListener('click', function() { setTab('ads'); });
         if (tabTools) tabTools.addEventListener('click', function() { setTab('tools'); });
+      })();
+      (function initTopNavMobileBehavior() {
+        const navLeft = document.querySelector('.kexo-desktop-nav-left');
+        if (!navLeft) return;
+
+        function isMobileViewport() {
+          try {
+            if (typeof window.matchMedia === 'function') return window.matchMedia('(max-width: 991.98px)').matches;
+          } catch (_) {}
+          return (window.innerWidth || 0) < 992;
+        }
+
+        function syncDropdownOverflowState() {
+          if (!isMobileViewport()) {
+            navLeft.classList.remove('is-dropdown-open');
+            return;
+          }
+          const hasOpenMenu = !!navLeft.querySelector('.dropdown-menu.show');
+          navLeft.classList.toggle('is-dropdown-open', hasOpenMenu);
+        }
+
+        function resetNavStartPosition() {
+          if (!isMobileViewport()) return;
+          try { navLeft.scrollLeft = 0; } catch (_) {}
+        }
+
+        navLeft.addEventListener('show.bs.dropdown', function() {
+          if (!isMobileViewport()) return;
+          navLeft.classList.add('is-dropdown-open');
+        });
+
+        navLeft.addEventListener('hide.bs.dropdown', function() {
+          if (!isMobileViewport()) return;
+          setTimeout(syncDropdownOverflowState, 0);
+        });
+
+        window.addEventListener('resize', function() {
+          syncDropdownOverflowState();
+        }, { passive: true });
+        window.addEventListener('orientationchange', function() {
+          resetNavStartPosition();
+          syncDropdownOverflowState();
+        });
+        window.addEventListener('pageshow', function() {
+          resetNavStartPosition();
+          syncDropdownOverflowState();
+        });
+
+        resetNavStartPosition();
+        syncDropdownOverflowState();
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');

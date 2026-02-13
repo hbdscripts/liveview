@@ -25,6 +25,10 @@ html, body {
   align-self: stretch !important;
   overflow: visible !important;
 }
+.page > .page-wrapper {
+  flex: 1 0 auto !important;
+  min-height: 100%;
+}
 
 .kexo-nav-svg {
   width: 1em;
@@ -1507,6 +1511,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .page-body {
   flex: 0 0 auto;
+  overflow: visible !important;
 }
 
 /* ── Layout alignment + top navbar ───────────────────────────────── */
@@ -1766,6 +1771,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
     align-items: center;
     justify-content: space-between;
     gap: .35rem;
+    margin-left: 0;
+    margin-right: 0;
   }
   .kexo-desktop-nav-left {
     display: block;
@@ -1774,6 +1781,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     flex: 1 1 auto;
+  }
+  .kexo-desktop-nav-left.is-dropdown-open {
+    overflow: visible;
   }
   .kexo-desktop-nav-left::-webkit-scrollbar {
     display: none;
@@ -1784,6 +1794,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
     justify-content: flex-start;
     white-space: nowrap;
     flex-direction: row !important;
+    padding-left: .1rem;
+    padding-right: .1rem;
   }
   .kexo-desktop-nav-list .nav-link {
     padding: .55rem .6rem;
@@ -1987,6 +1999,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   justify-content: center;
   flex-wrap: nowrap;
   position: relative;
+  --bs-gutter-x: 0;
+  --tblr-gutter-x: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+.kexo-desktop-nav-row > .kexo-desktop-nav-left,
+.kexo-desktop-nav-row > .kexo-desktop-nav-right {
+  padding-left: 0;
+  padding-right: 0;
 }
 .kexo-desktop-nav-left {
   flex: 1 1 auto;
@@ -2105,6 +2126,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 0 0 .375rem .375rem;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   min-width: 13rem;
+  z-index: 1085;
   border: none !important;
   --tblr-dropdown-bg: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)));
   --tblr-dropdown-link-color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937));
