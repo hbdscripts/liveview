@@ -7,10 +7,10 @@
 
   var PRODUCT_COLS = [
     { key: 'product', label: 'Product', sortable: false, cellClass: 'bs-product-col', iconKey: 'table-short-product' },
-    { key: 'clicks', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },
-    { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders' },
-    { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr' },
-    { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue' }
+    { key: 'clicks', label: 'Sessions', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-sessions' },
+    { key: 'orders', label: 'Orders', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-orders' },
+    { key: 'cr', label: 'CR%', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-cr' },
+    { key: 'rev', label: 'Rev', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
   ];
 
   window.KEXO_TABLE_DEFS = {

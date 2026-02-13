@@ -251,6 +251,10 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
+- Variants page: removed header buttons (Variant Settings, All Variant Stats).
+- Products page: hidden-tables note moved full-width above footer, shown only when at least one type table is hidden; PRODUCT_COLS numeric alignment fixed (text-end); builder tables use table-list icon link to Layout settings instead of collapse chevron.
+
+2026-02-13 (latest)
 - All tables builder migration:
   - Migrated tools.js (compare CR), tools-shipping-cr.js, variants-page.js (diagnostics modals), settings-page.js (Ignore List, Merge rules), app.js (kvTable, Profit Rules, Product insights), ads.js (modal sales) to use builder.
   - Added KEXO_TOOLS_TABLE_DEFS, KEXO_VARIANTS_MODAL_TABLE_DEFS, KEXO_SETTINGS_MODAL_TABLE_DEFS, KEXO_APP_MODAL_TABLE_DEFS, KEXO_BREAKDOWN_TABLE_DEFS.

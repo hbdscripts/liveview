@@ -105,6 +105,9 @@ i[class*="fa-"] {
   display: none !important;
 }
 
+.kexo-builder-icon-link { color: #999; }
+.kexo-builder-icon-link:hover { color: inherit; }
+
 /* ── KEXO 3-color logic (reusable) ─────────────────────────────────── */
 /* Usage:
    - Apply `kexo-3color` to a container.

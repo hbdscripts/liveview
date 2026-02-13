@@ -895,6 +895,25 @@ const API = '';
         if (!hasTableContent(card)) return;
         var header = getDirectHeader(card);
         if (!header) return;
+
+        if (card.dataset && card.dataset.tableId) {
+          if (header.querySelector('.kexo-builder-icon-link')) return;
+          var link = document.createElement('a');
+          link.href = 'https://app.kexo.io/settings?tab=layout';
+          link.className = 'btn btn-icon btn-ghost-secondary kexo-builder-icon-link';
+          link.title = 'Layout settings';
+          link.setAttribute('aria-label', 'Layout settings');
+          link.innerHTML = '<i class="fa-thin fa-table-list" style="color:#999" aria-hidden="true"></i>';
+          var actions = header.querySelector(':scope > .card-actions');
+          if (!actions) {
+            actions = document.createElement('div');
+            actions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
+            header.appendChild(actions);
+          }
+          actions.appendChild(link);
+          return;
+        }
+
         var storageKey = getStorageKey(card, index);
         var btn = header.querySelector('.kexo-card-collapse-toggle');
         if (!btn) {
@@ -982,9 +1001,14 @@ const API = '';
         if (!actions) return;
 
         var collapseBtn = header.querySelector('.kexo-card-collapse-toggle');
+        var builderLink = header.querySelector('.kexo-builder-icon-link');
         if (collapseBtn && collapseBtn.parentElement !== actions) {
           collapseBtn.classList.remove('ms-auto');
           actions.appendChild(collapseBtn);
+        }
+        if (builderLink && builderLink.parentElement !== actions) {
+          builderLink.classList.remove('ms-auto');
+          actions.appendChild(builderLink);
         }
 
         var control = actions.querySelector('.kexo-table-rows-control[data-table-id="' + tableId + '"]');
@@ -993,8 +1017,9 @@ const API = '';
           control.className = 'kexo-table-rows-control';
           control.setAttribute('data-table-id', tableId);
           control.innerHTML = '<select class="form-select form-select-sm kexo-table-rows-select" aria-label="Rows per table"></select>';
-          if (collapseBtn && collapseBtn.parentElement === actions) {
-            actions.insertBefore(control, collapseBtn);
+          var insertBefore = (collapseBtn && collapseBtn.parentElement === actions) ? collapseBtn : (builderLink && builderLink.parentElement === actions) ? builderLink : null;
+          if (insertBefore) {
+            actions.insertBefore(control, insertBefore);
           } else {
             actions.appendChild(control);
           }
@@ -4582,6 +4607,17 @@ const API = '';
             if (card && !card.classList.contains('is-hidden')) { anyVisible = true; break; }
           }
           rowWrap.classList.toggle('is-hidden', !anyVisible);
+        }
+        var note = document.getElementById('products-hidden-tables-note');
+        if (note) {
+          var hiddenCount = 0;
+          for (var i = 0; i < TYPE_TABLE_DEFS.length; i++) {
+            var id = TYPE_TABLE_DEFS[i] && TYPE_TABLE_DEFS[i].id ? String(TYPE_TABLE_DEFS[i].id) : '';
+            if (!id) continue;
+            var card = document.getElementById('stats-type-' + id);
+            if (card && card.classList.contains('is-hidden')) hiddenCount++;
+          }
+          note.style.display = hiddenCount > 0 ? '' : 'none';
         }
       } catch (_) {}
     }
