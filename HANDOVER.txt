@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Dashboard CR% + Live latest sales + Settings diagnostics accordion)
+Last updated: 2026-02-13 (Header: remove avatar + move sign out into Settings menu)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -318,7 +318,7 @@ Ops/reliability:
 
 2026-02-13 (latest)
 - Header + theme UX:
-  - Top strip: Online badge now has a View Live dropdown; Settings menu is icon-only and no longer includes Theme/Sign out; a new email-initial avatar dropdown contains Sign out.
+  - Top strip: Online badge dropdown now links to **Live View** (same icon as main menu). Avatar dropdown removed; **Sign out** moved into the Settings dropdown.
   - Theme: added Custom CSS (saved in theme defaults, injected inline in head after stylesheets).
   - Main nav: dropdown item icons now inherit the parent accent color at 0.7 opacity.
   - Date picker: now relocates into the page header on mobile too (inline with the page title row).

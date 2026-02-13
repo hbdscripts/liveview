@@ -13680,10 +13680,11 @@ const API = '';
     // ── User avatar: fetch /api/me and populate ────────────────────────
     (function initUserAvatar() {
       try {
+        var avatarEl = document.getElementById('user-avatar');
+        var emailEl = document.getElementById('user-email');
+        if (!avatarEl && !emailEl) return;
         fetch('/api/me').then(function(r) { return r.json(); }).then(function(d) {
           if (!d || !d.email) return;
-          var avatarEl = document.getElementById('user-avatar');
-          var emailEl = document.getElementById('user-email');
           if (avatarEl && d.initial) avatarEl.textContent = d.initial;
           if (emailEl) emailEl.textContent = d.email;
         }).catch(function() {});
