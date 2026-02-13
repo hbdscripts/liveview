@@ -506,10 +506,12 @@ async function getBusinessSnapshot(options = {}) {
   const ordersPrevN = toNumber(ordersPrev);
   if (sessionsSafe != null && sessionsSafe <= 0 && ordersNowN != null && ordersNowN > 0) sessionsSafe = null;
   if (sessionsPrevSafe != null && sessionsPrevSafe <= 0 && ordersPrevN != null && ordersPrevN > 0) sessionsPrevSafe = null;
-  if (conversionRate == null && sessionsSafe != null && ordersNowN != null) {
+  if (sessionsSafe == null) conversionRate = null;
+  if (sessionsPrevSafe == null) conversionRatePrev = null;
+  if ((conversionRate == null || conversionRate <= 0) && sessionsSafe != null && ordersNowN != null) {
     conversionRate = safePercent(ordersNowN, sessionsSafe);
   }
-  if (conversionRatePrev == null && sessionsPrevSafe != null && ordersPrevN != null) {
+  if ((conversionRatePrev == null || conversionRatePrev <= 0) && sessionsPrevSafe != null && ordersPrevN != null) {
     conversionRatePrev = safePercent(ordersPrevN, sessionsPrevSafe);
   }
 
