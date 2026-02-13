@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (chart error Sentry instrumentation + jsVectorMap series stability)
+Last updated: 2026-02-13 (header UX dropdowns + Theme custom CSS + mobile date header + Ads sticky footer)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -227,6 +227,12 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
+- Header + theme UX:
+  - Top strip: Online badge now has a View Live dropdown; Settings menu is icon-only and no longer includes Theme/Sign out; a new email-initial avatar dropdown contains Sign out.
+  - Theme: added Custom CSS (saved in theme defaults, injected inline in head after stylesheets).
+  - Main nav: dropdown item icons now inherit the parent accent color at 0.7 opacity.
+  - Date picker: now relocates into the page header on mobile too (inline with the page title row).
+  - Google Ads: sticky first-column width now syncs with the footer totals row.
 - Chart + map observability hardening:
   - Added `kexoCaptureMessage()` in `server/public/sentry-helpers.js` and a chart-aware `console.error` Sentry bridge (with short dedupe) so frontend chart/map console failures are captured automatically.
   - Added explicit chart/map error/message capture hooks across `server/public/app.js`, `server/public/ads.js`, and `server/public/tools.js` for render failures and library-load failures.
@@ -258,8 +264,8 @@ Ops/reliability:
   - Fixed inline nav left-edge clipping by zeroing nav row gutters/paddings and resetting mobile nav horizontal start position on page show.
   - Restored inline mobile dropdown usability by toggling nav-left overflow state while dropdowns are open (`.kexo-desktop-nav-left.is-dropdown-open`), preventing clipped menus.
 - Date picker visibility:
-  - `mountDesktopDatePickerIntoPageHeader()` now relocates the date picker only on desktop (`min-width: 992px`); on mobile the picker is returned to the nav date slot.
-  - Added resize/orientation/pageshow listeners so date picker placement stays correct when viewport changes.
+  - `mountDesktopDatePickerIntoPageHeader()` now relocates the date picker into the page header on all viewports when a `.page-header` exists; otherwise it falls back to the nav slot.
+  - Resize/orientation/pageshow listeners keep placement correct when viewport changes.
 - KPI visibility:
   - Re-enabled Settings-driven dashboard KPI card hiding (`item.enabled === false`) in `applyDashboardKpiUiConfig`.
 - Sticky header follow-up:

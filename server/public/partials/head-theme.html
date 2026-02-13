@@ -78,6 +78,68 @@
     })();
   </script>
   <link rel="stylesheet" href="/theme-vars.css" />
+  <script>
+    (function () {
+      try {
+        var DEFAULT_CUSTOM_CSS = [
+          '.kexo-product-link {',
+          '    color: #2f445c !important;',
+          '    font-size: 12px;',
+          '    text-decoration: underline;',
+          '    text-underline-offset: 2px;',
+          '    text-decoration-color: #6e7b8d;',
+          '}',
+          '',
+        ].join('\n');
+
+        function readCustomCss() {
+          var v = '';
+          try { v = localStorage.getItem('tabler-theme-custom-css') || ''; } catch (_) { v = ''; }
+          if (!String(v || '').trim()) v = DEFAULT_CUSTOM_CSS;
+          return String(v || '');
+        }
+
+        function ensureStyleEl() {
+          var head = document.head || document.getElementsByTagName('head')[0];
+          if (!head) return null;
+          var el = document.getElementById('kexo-theme-custom-css');
+          if (!el) {
+            el = document.createElement('style');
+            el.id = 'kexo-theme-custom-css';
+            el.type = 'text/css';
+            head.appendChild(el);
+          }
+          return el;
+        }
+
+        var styleEl = ensureStyleEl();
+        if (styleEl) {
+          styleEl.textContent = readCustomCss();
+          // Ensure it ends up after other CSS includes.
+          try { document.head.appendChild(styleEl); } catch (_) {}
+        }
+
+        if (!window.__kexoCustomCssHeadObserver && typeof MutationObserver !== 'undefined') {
+          window.__kexoCustomCssHeadObserver = true;
+          var moving = false;
+          var keepLast = function () {
+            if (moving) return;
+            moving = true;
+            try {
+              var head = document.head;
+              var el = document.getElementById('kexo-theme-custom-css');
+              if (head && el && head.lastElementChild !== el) head.appendChild(el);
+            } catch (_) {}
+            setTimeout(function () { moving = false; }, 0);
+          };
+          keepLast();
+          try {
+            new MutationObserver(function () { keepLast(); }).observe(document.head, { childList: true });
+          } catch (_) {}
+        }
+      } catch (_) {}
+    })();
+  </script>
   <script src="https://browser.sentry-cdn.com/10.38.0/bundle.min.js" crossorigin="anonymous"></script>
   <!--#include partials/sentry-init.html-->
   <script src="/sentry-helpers.js"></script>

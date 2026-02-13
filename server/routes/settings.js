@@ -1094,6 +1094,7 @@ const THEME_KEYS = [
   'theme_menu_hover_color',
   'theme_header_strip_border',
   'theme_header_strip_padding',
+  'theme_custom_css',
   'theme_icon_default',
   'theme_icon_topnav',
   'theme_icon_dropdown',

@@ -1040,12 +1040,14 @@ const API = '';
           var table = wrap.querySelector ? wrap.querySelector('table[id], .grid-table[id]') : null;
           if (table && table.id) return String(table.id).trim();
         } catch (_) {}
-        try {
-          if (wrap.id) return String(wrap.id).trim();
-        } catch (_) {}
+        // Prefer the owning card's declared table id so related wraps (e.g. Ads footer)
+        // share the same sticky width key.
         try {
           var card = wrap.closest ? wrap.closest('.card[data-table-id]') : null;
           if (card && card.dataset && card.dataset.tableId) return String(card.dataset.tableId).trim();
+        } catch (_) {}
+        try {
+          if (wrap.id) return String(wrap.id).trim();
         } catch (_) {}
         return '';
       }
@@ -1176,13 +1178,32 @@ const API = '';
         return clampWidth(wrap, Number.isFinite(n) ? n : getBounds(wrap).def);
       }
 
-      function applyWidth(wrap, width) {
+      function applyWidthSingle(wrap, width) {
         if (!wrap || !wrap.style) return;
         var bounds = getBounds(wrap);
         var next = clampWidth(wrap, width);
         wrap.style.setProperty('--kexo-sticky-col-min-width', bounds.min + 'px');
         wrap.style.setProperty('--kexo-sticky-col-max-width', bounds.max + 'px');
         wrap.style.setProperty('--kexo-sticky-col-width', next + 'px');
+      }
+
+      function applyWidthToGroup(wrap, width) {
+        if (!wrap) return;
+        var key = '';
+        try { key = getStorageKey(wrap); } catch (_) { key = ''; }
+        applyWidthSingle(wrap, width);
+        if (!key) return;
+        try {
+          document.querySelectorAll(WRAP_SELECTOR).forEach(function(other) {
+            if (!other || other === wrap) return;
+            try {
+              if (getStorageKey(other) !== key) return;
+            } catch (_) {
+              return;
+            }
+            applyWidthSingle(other, width);
+          });
+        } catch (_) {}
       }
 
       function markResizeInteraction(wrap) {
@@ -1226,7 +1247,7 @@ const API = '';
           e.preventDefault();
           e.stopPropagation();
           var next = startW + (e.clientX - startX);
-          applyWidth(wrap, next);
+          applyWidthToGroup(wrap, next);
           markResizeInteraction(wrap);
         });
 
@@ -1252,14 +1273,14 @@ const API = '';
       function bind(wrap) {
         if (!wrap) return;
         try { wrap.classList.add('kexo-sticky-wrap'); } catch (_) {}
-        applyWidth(wrap, readSavedWidth(wrap));
+        applyWidthSingle(wrap, readSavedWidth(wrap));
         ensureHandle(wrap);
         if (wrap.getAttribute('data-sticky-resize-wrap-bound') === '1') return;
         wrap.setAttribute('data-sticky-resize-wrap-bound', '1');
         if (typeof ResizeObserver !== 'undefined') {
           try {
             var ro = new ResizeObserver(function() {
-              applyWidth(wrap, wrapWidth(wrap));
+              applyWidthSingle(wrap, wrapWidth(wrap));
               ensureHandle(wrap);
             });
             ro.observe(wrap);
@@ -6049,10 +6070,7 @@ const API = '';
         if (!dateWrap) return;
         const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
         const headerRow = document.querySelector('.page-header .row');
-        const isDesktopViewport = (typeof window.matchMedia === 'function')
-          ? window.matchMedia('(min-width: 992px)').matches
-          : ((window.innerWidth || 0) >= 992);
-        const canRelocate = !!(headerRow && isDesktopViewport);
+        const canRelocate = !!headerRow;
 
         if (!canRelocate) {
           if (sourceLi && dateWrap.parentElement !== sourceLi) {
@@ -6068,7 +6086,7 @@ const API = '';
         let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
         if (!dateCol) {
           dateCol = document.createElement('div');
-          dateCol.className = 'col-auto d-none d-lg-flex align-items-center kexo-page-header-date-col';
+          dateCol.className = 'col-auto d-flex align-items-center kexo-page-header-date-col';
           headerRow.appendChild(dateCol);
         }
 

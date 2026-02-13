@@ -276,6 +276,16 @@
     'theme-menu-hover-color': 'black',
     'theme-header-strip-border': 'show',
     'theme-header-strip-padding': '0 5px',
+    'theme-custom-css': [
+      '.kexo-product-link {',
+      '    color: #2f445c !important;',
+      '    font-size: 12px;',
+      '    text-decoration: underline;',
+      '    text-underline-offset: 2px;',
+      '    text-decoration-color: #6e7b8d;',
+      '}',
+      '',
+    ].join('\n'),
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -319,6 +329,7 @@
   ];
   var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter', 'theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
+  var CUSTOM_CSS_KEYS = ['theme-custom-css'];
 
   function hexToRgb(hex) {
     var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || '').trim());
@@ -629,6 +640,26 @@
     } catch (_) {}
   }
 
+  function applyThemeCustomCss(rawCss) {
+    var css = rawCss == null ? '' : String(rawCss);
+    try {
+      var styleEl = document.getElementById('kexo-theme-custom-css');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'kexo-theme-custom-css';
+        styleEl.type = 'text/css';
+        document.head.appendChild(styleEl);
+      }
+      if (styleEl.textContent !== css) styleEl.textContent = css;
+      // Keep this style tag last in <head> (after other CSS includes).
+      try {
+        if (document.head && document.head.lastElementChild !== styleEl) {
+          document.head.appendChild(styleEl);
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+
   function applyTheme(key, value) {
     var root = document.documentElement;
     if (key === 'theme') {
@@ -758,6 +789,8 @@
       root.style.setProperty('--kexo-header-online-border-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-logo-url') {
       applyHeaderLogoOverride(value);
+    } else if (key === 'theme-custom-css') {
+      applyThemeCustomCss(value);
     } else if (ICON_GLYPH_ALL_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
@@ -864,6 +897,11 @@
       }
       if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
       if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
+      if (key === 'theme-custom-css') {
+        var cssInput = form.querySelector('[name="' + key + '"]');
+        if (cssInput) cssInput.value = String(val == null ? '' : val);
+        return;
+      }
       if (ICON_STYLE_KEYS.indexOf(key) >= 0) {
         var styleInput = form.querySelector('[name="' + key + '"]');
         if (styleInput) styleInput.value = normalizeIconStyle(val, DEFAULTS[key]);
@@ -1121,6 +1159,12 @@
       headerInputCardNoIcon('theme-menu-hover-opacity', 'Menu hover opacity', 'Hover tint strength 0–100%. 0 = no overlay, 8 = subtle.', '8'),
       headerSelectCardNoIcon('theme-menu-hover-color', 'Menu hover tint', 'Black = darken on hover, White = lighten on hover.', { black: 'Black', white: 'White' }, 'black'),
     ].join('');
+    var customCssFieldset =
+      '<fieldset class="mb-4">' +
+        '<legend class="form-label">Custom CSS</legend>' +
+        '<div class="text-secondary small mb-2">Injected inline into <code>&lt;head&gt;</code> after other stylesheets. Changes are global.</div>' +
+        '<textarea class="form-control font-monospace" name="theme-custom-css" rows="9" spellcheck="false" placeholder="/* Custom CSS */"></textarea>' +
+      '</fieldset>';
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" data-theme-subtab="icons" aria-selected="true">Icons</button></li>' +
@@ -1175,6 +1219,7 @@
           '<label class="form-label">Header & nav colors</label>' +
           '<div class="row g-3">' + colorRemainingGrid + '</div>' +
         '</div>' +
+        customCssFieldset +
         '<div class="mb-4">' +
           '<label class="form-label">Strip border & padding</label>' +
           '<div class="row g-3">' +
@@ -1300,7 +1345,8 @@
 
     formEl.addEventListener('change', function (e) {
       var name = e && e.target ? e.target.name : '';
-      var val = e && e.target && e.target.value != null ? String(e.target.value).trim() : '';
+      var rawVal = e && e.target && e.target.value != null ? String(e.target.value) : '';
+      var val = name === 'theme-custom-css' ? rawVal : rawVal.trim();
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
@@ -1352,11 +1398,12 @@
       });
     }
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
-        var val = String(input.value || '').trim();
+        var rawVal = String(input.value || '');
+        var val = key === 'theme-custom-css' ? rawVal : rawVal.trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
         if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
         if (key === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[key]);

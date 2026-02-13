@@ -1902,6 +1902,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-desktop-top-strip-right {
   justify-content: flex-end;
+  gap: .35rem;
 }
 .kexo-desktop-brand-link {
   display: inline-flex;
@@ -1941,7 +1942,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: var(--kexo-header-settings-label-display, inline);
 }
 .kexo-top-strip-settings-toggle .kexo-settings-icon {
-  margin-right: var(--kexo-header-settings-icon-gap, .35rem);
+  margin-right: 0;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
 .kexo-top-strip-settings-menu {
@@ -1974,10 +1975,60 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--kexo-header-online-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
   background: none;
   border: none;
-  cursor: default;
-  pointer-events: none;
+  cursor: pointer;
+  pointer-events: auto;
   user-select: none;
   white-space: nowrap;
+}
+.kexo-top-strip-online:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.38);
+  outline-offset: 2px;
+}
+.kexo-top-strip-online-chevron {
+  margin-left: .25rem;
+  font-size: .65rem;
+  opacity: .85;
+}
+.kexo-top-strip-online-menu {
+  /* Match Settings dropdown style (inherit menu background + opacity) */
+  background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+  border: none !important;
+  border-radius: 0 0 .375rem .375rem;
+  margin-top: 5px !important;
+}
+
+.kexo-user-avatar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: .2rem;
+  border-radius: 999px;
+}
+.kexo-user-avatar-toggle:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.38);
+  outline-offset: 2px;
+}
+.kexo-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.28);
+  user-select: none;
+}
+.kexo-user-avatar-toggle:hover .kexo-user-avatar,
+.kexo-user-avatar-toggle:focus .kexo-user-avatar {
+  background: rgba(255,255,255,0.26);
+  border-color: rgba(255,255,255,0.38);
 }
 .kexo-top-strip-online-icon {
   margin-right: .1rem;
@@ -2160,7 +2211,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav-settings .nav-link:focus {
   background: var(--kexo-menu-hover-bg, rgba(0,0,0,.08)) !important;
 }
-.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg,
+/* Main-menu dropdown icons: match parent accent at 0.7 opacity. */
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg {
+  color: var(--kexo-accent, var(--kexo-top-menu-dropdown-icon-color, var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)))) !important;
+  opacity: 0.7;
+}
+/* Settings/date dropdown icons keep theme-configured dropdown icon color. */
 .kexo-desktop-nav-settings .dropdown-item .kexo-nav-svg {
   color: var(--kexo-top-menu-dropdown-icon-color, var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937))) !important;
 }
@@ -2205,6 +2261,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .page-header .kexo-page-header-date-col .kexo-date-btn {
   margin-right: 0;
+}
+
+/* Keep the date picker inline with the page title on mobile (avoid wrapping/overhang). */
+.page-header .row.align-items-center {
+  flex-wrap: nowrap;
+}
+.page-header .row.align-items-center > .col {
+  min-width: 0;
+}
+.page-header .page-pretitle,
+.page-header .page-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Page header category icon (matches active top menu icon + accent) ── */
