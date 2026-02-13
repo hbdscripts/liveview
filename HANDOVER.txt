@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot modal + Profit Rules + settings icon cleanup)
+Last updated: 2026-02-13 (Footer redesign: logo left, center actions, fa-jelly-filled icons)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -231,6 +231,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Footer redesign:
+  - Layout: logo far left (small), center row with refresh, sound mute, last sale (icon + text), back to top.
+  - Removed settings and theme icons from footer.
+  - All footer icons use fa-jelly-filled; no hover effects on footer icons.
+  - New icon keys: footer-back-to-top, footer-sound-muted (mapped in Settings → Theme → Icons).
+  - Back-to-top scrolls to top smoothly; sound mute syncs with header state.
 
 2026-02-13 (latest)
 - Header + snapshot/profit:

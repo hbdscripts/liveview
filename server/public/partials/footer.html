@@ -1,18 +1,20 @@
       <footer class="footer footer-transparent d-print-none">
         <div class="container-fluid">
-          <div class="footer-inner d-flex align-items-center justify-content-between py-3">
-            <div class="d-flex align-items-center gap-1 footer-left">
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="fa-light fa-rotate-right" data-icon-key="footer-refresh"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound"><i class="fa-light fa-volume-high" data-icon-key="footer-sound"></i></button>
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-theme-btn d-none d-lg-inline-flex" aria-label="Theme"><i class="fa-light fa-palette" data-icon-key="footer-theme"></i></button>
-            </div>
-            <a href="/dashboard/overview" class="footer-logo" aria-label="Kexo dashboard">
-              <img src="/assets/footer.png" alt="Kexo" width="30">
+          <div class="footer-inner kexo-footer-bar d-flex align-items-center py-3">
+            <a href="/dashboard/overview" class="kexo-footer-logo" aria-label="Kexo dashboard">
+              <img src="/assets/footer.png" alt="Kexo" width="24">
             </a>
-            <div class="d-flex align-items-center gap-1 footer-right">
-              <button type="button" class="btn btn-icon btn-ghost-secondary footer-diagnostics-btn" aria-label="Settings"><i class="fa-light fa-gear" data-icon-key="footer-settings"></i></button>
-              <a href="/app/logout" class="btn btn-icon btn-ghost-secondary d-lg-none" aria-label="Sign out"><i class="fa-light fa-right-from-bracket" data-icon-key="footer-signout"></i></a>
-              <span class="text-secondary d-none d-lg-flex align-items-center gap-1 footer-last-sale-wrap" style="font-size:.8125rem"><span class="footer-last-sale-text">Last sale: <span class="last-sale-ago">&mdash;</span> </span><button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="fa-light fa-eye" data-icon-key="footer-last-sale-show"></i><i class="fa-light fa-eye-slash" data-icon-key="footer-last-sale-hide" style="display:none"></i></button></span>
+            <div class="kexo-footer-center d-flex align-items-center justify-content-center gap-2 flex-grow-1">
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-refresh-btn" aria-label="Refresh"><i class="fa-jelly-filled fa-rotate-right" data-icon-key="footer-refresh"></i></button>
+              <button type="button" class="btn btn-icon btn-ghost-secondary footer-audio-btn" aria-label="Sound">
+                <i class="fa-jelly-filled fa-volume-high footer-sound-icon-on" data-icon-key="footer-sound"></i>
+                <i class="fa-jelly-filled fa-volume-xmark footer-sound-icon-off is-hidden" data-icon-key="footer-sound-muted"></i>
+              </button>
+              <span class="text-secondary kexo-footer-last-sale d-flex align-items-center gap-1" style="font-size:.8125rem">
+                <button type="button" id="footer-last-sale-toggle" class="btn btn-icon btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="fa-jelly-filled fa-eye" data-icon-key="footer-last-sale-show"></i><i class="fa-jelly-filled fa-eye-slash" data-icon-key="footer-last-sale-hide" style="display:none"></i></button>
+                <span class="footer-last-sale-text">Last sale: <span class="last-sale-ago">&mdash;</span></span>
+              </span>
+              <button type="button" class="btn btn-icon btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="fa-jelly-filled fa-arrow-up" data-icon-key="footer-back-to-top"></i></button>
             </div>
           </div>
         </div>

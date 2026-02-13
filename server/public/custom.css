@@ -1543,9 +1543,28 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 0;
   background: transparent;
 }
-.footer-settings-btn { cursor: pointer; }
-
-/* ── Back to top button ── */
+.kexo-footer-bar {
+  gap: 1rem;
+}
+.kexo-footer-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.kexo-footer-logo img {
+  width: 24px;
+  height: auto;
+}
+/* Footer icons: no hover effects */
+.kexo-footer-bar .btn-icon:hover,
+.kexo-footer-bar .btn-icon:focus {
+  background: transparent !important;
+  color: inherit !important;
+}
+/* Footer audio: sync mute state (same as #audio-mute-btn) */
+.footer-audio-btn .footer-sound-icon-off { display: none; }
+.footer-audio-btn.muted .footer-sound-icon-on { display: none; }
+.footer-audio-btn.muted .footer-sound-icon-off { display: inline; }
 #back-to-top-btn { cursor: pointer; }
 
 /* ── Layout: keep content pinned to top (avoid vertical centering on short pages) ── */
@@ -2945,8 +2964,9 @@ body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child
   #tab-panel-dashboard .row.g-3 > .col-sm-6.col-lg-3 { flex: 0 0 100%; max-width: 100%; }
   .row.g-3 { --bs-gutter-x: .5rem; --bs-gutter-y: .5rem; }
 
-  /* Footer: stack on mobile */
-  .footer .d-flex { flex-wrap: wrap; justify-content: center !important; gap: .5rem; }
+  /* Footer: wrap center items on mobile */
+  .kexo-footer-bar { flex-wrap: wrap; }
+  .kexo-footer-center { flex-wrap: wrap; justify-content: center; }
 
   /* Product/breakdown cells: constrain */
   .breakdown-product-name { max-width: 100px; }

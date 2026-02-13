@@ -76,11 +76,13 @@
     'settings-diagnostics-reconcile': 'fa-sliders',
     'footer-refresh': 'fa-rotate-right',
     'footer-sound': 'fa-volume-high',
+    'footer-sound-muted': 'fa-volume-xmark',
     'footer-theme': 'fa-palette',
     'footer-settings': 'fa-gear',
     'footer-signout': 'fa-right-from-bracket',
     'footer-last-sale-show': 'fa-eye',
     'footer-last-sale-hide': 'fa-eye-slash',
+    'footer-back-to-top': 'fa-arrow-up',
     'side-panel-close': 'fa-xmark',
     'side-panel-activity': 'fa-list',
     'side-panel-details': 'fa-user',
@@ -182,7 +184,7 @@
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';
     if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
-    if (key.indexOf('footer-') === 0) return 'fa-jelly';
+    if (key.indexOf('footer-') === 0) return 'fa-jelly-filled';
     if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
     if (key.indexOf('kpi-compare-') === 0) return 'fa-light';
     if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
