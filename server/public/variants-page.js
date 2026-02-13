@@ -721,6 +721,7 @@
     });
     dismissGlobalPageLoader();
     try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('kexo:variant-cards-rendered')); } catch (_) {}
   }
 
   function setLoadingUi(on) {

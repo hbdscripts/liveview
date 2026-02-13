@@ -258,6 +258,15 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
+- Table builder bug fixes:
+  - Dashboard overview/sales: ellipsis on fixed cells (product-cell, country-cell, last-action-cell; table-responsive).
+  - Trending Down: product titles fallback to "Product {id}" when DB/meta missing.
+  - Variants: kexo:variant-cards-rendered event for builder icon; min-width: 0 on cards to reduce scrollbars.
+  - Traffic channels: source-icons margin-inline-end for gap before label.
+  - Traffic device: traffic-type-parent first-cell ellipsis.
+  - Google Ads: ads-footer syncs sticky width when ads-root is resized; run sticky resize after ads render.
+
+2026-02-13 (latest)
 - Chart builder:
   - Added `kexo-chart-defs.js` (KEXO_CHART_DEFS) and `kexo-chart-builder.js` (ensureApexCharts, waitForContainerDimensions, renderApexChart, renderSparkline).
   - Settings → Layout → Charts now uses chart defs from kexo-chart-defs.js.

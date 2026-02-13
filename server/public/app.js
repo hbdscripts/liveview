@@ -1067,6 +1067,9 @@ const API = '';
       window.addEventListener('kexo:tablesUiConfigApplied', function() {
         run(document);
       });
+      window.addEventListener('kexo:variant-cards-rendered', function() {
+        run(document);
+      });
       window.addEventListener('kexo:icon-theme-changed', function() {
         run(document);
         setTimeout(function() { run(document); }, 80);
@@ -1251,18 +1254,26 @@ const API = '';
         var key = '';
         try { key = getStorageKey(wrap); } catch (_) { key = ''; }
         applyWidthSingle(wrap, width);
-        if (!key) return;
-        try {
-          document.querySelectorAll(WRAP_SELECTOR).forEach(function(other) {
-            if (!other || other === wrap) return;
-            try {
-              if (getStorageKey(other) !== key) return;
-            } catch (_) {
-              return;
-            }
-            applyWidthSingle(other, width);
-          });
-        } catch (_) {}
+        var applied = wrapWidth(wrap);
+        if (key) {
+          try {
+            document.querySelectorAll(WRAP_SELECTOR).forEach(function(other) {
+              if (!other || other === wrap) return;
+              try {
+                if (getStorageKey(other) !== key) return;
+              } catch (_) {
+                return;
+              }
+              applyWidthSingle(other, applied);
+            });
+          } catch (_) {}
+        }
+        if (wrap.id === 'ads-root' && Number.isFinite(applied)) {
+          try {
+            var footer = document.getElementById('ads-footer');
+            if (footer && footer !== wrap) applyWidthSingle(footer, applied);
+          } catch (_) {}
+        }
       }
 
       function markResizeInteraction(wrap) {

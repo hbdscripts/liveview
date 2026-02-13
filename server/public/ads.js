@@ -1217,6 +1217,7 @@
 
     patchFooterAndNote(status, summary);
     syncFooterScroll();
+    try { if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize(); } catch (_) {}
     renderAdsOverviewChart(summary);
 
     // Bind sortable headers

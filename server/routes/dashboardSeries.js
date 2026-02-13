@@ -472,6 +472,10 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     r.thumb_url = meta && meta.thumb_url ? String(meta.thumb_url) : null;
     r.handle = meta && meta.handle ? String(meta.handle) : null;
     if ((!r.title || r.title === 'Unknown') && meta && meta.title) r.title = String(meta.title);
+    if (!r.title || r.title === 'Unknown') {
+      const pid = r.product_id ? String(r.product_id).trim() : '';
+      r.title = pid ? ('Product ' + pid.replace(/^gid:\/\/shopify\/Product\//i, '')) : 'Unknown';
+    }
   });
 
   // Attach sessions + CR% (orders / sessions) for the current period.

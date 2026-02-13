@@ -768,8 +768,30 @@ body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .pro
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .breakdown-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .breakdown-cell,
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .traffic-source-cell,
-body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .traffic-source-cell {
+body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .traffic-source-cell,
+body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .last-action-cell,
+body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .last-action-cell {
   max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body:not([data-page="settings"]) .table-responsive table td:first-child .product-cell,
+body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.traffic-source-cell .source-icons {
+  margin-inline-end: 0.5rem;
+  flex-shrink: 0;
+}
+.traffic-type-parent .grid-cell:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.traffic-type-parent .grid-cell:first-child .traffic-type-toggle {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
