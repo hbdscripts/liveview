@@ -81,6 +81,13 @@ i[class*="fa-"] {
   background-size: initial !important;
 }
 
+@media (max-width: 991.98px) {
+  /* Hide table rows-per-page control on mobile. */
+  .kexo-table-rows-control {
+    display: none !important;
+  }
+}
+
 .kexo-card-collapse-chevron {
   display: inline-flex;
   align-items: center;
@@ -290,6 +297,8 @@ a {
   background: transparent !important;
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .grid-cell {
@@ -665,6 +674,9 @@ body:not([data-page="settings"]) .table-responsive {
   --kexo-sticky-col-width: 120px;
   --kexo-sticky-col-min-width: 72px;
   --kexo-sticky-col-max-width: 360px;
+  --kexo-sticky-resize-handle-width: 18px;
+  --kexo-sticky-border-gap: 10px;
+  --kexo-sticky-firstcol-safe-padding-right: calc(var(--kexo-sticky-resize-handle-width, 18px) + var(--kexo-sticky-border-gap, 10px));
   overflow-x: auto;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
@@ -678,8 +690,10 @@ body:not([data-page="settings"]) .table-responsive table thead th:first-child {
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
-  overflow: visible !important;
-  padding-right: 14px !important;
+  white-space: nowrap;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   box-shadow:
@@ -695,6 +709,7 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
+  padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
   background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
   border-right: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   box-shadow: 6px 0 16px -4px rgba(15, 23, 42, 0.2);
@@ -823,11 +838,25 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   user-select: none;
 }
 
-/* Table header abbreviations on mobile */
+/* Table header labels: always text + CSS ellipsis (no mobile icon swap) */
 .th-label-long {
-  display: inline;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.th-label-short {
+  display: none !important;
+}
+
+/* Standard <table> headers: keep single-line with CSS ellipsis */
+body:not([data-page="settings"]) .table-responsive table thead th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Product Insights modal */
 #product-insights-modal .modal-header {
@@ -956,6 +985,10 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
 .kexo-product-link {
   display: inline-block;
   max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: inherit;
   text-decoration: none;
   cursor: pointer;
@@ -970,24 +1003,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   border-radius: 6px;
 }
 
+/* (legacy) kept for safety: short header/icon labels are disabled globally */
 .th-label-short {
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.th-label-short svg {
-  width: 16px;
-  height: 16px;
-}
-
-@media (max-width: 768px) {
-  .th-label-long {
-    display: none;
-  }
-  .th-label-short {
-    display: inline-flex;
-  }
+  display: none !important;
 }
 
 /* Traffic type expandable rows */

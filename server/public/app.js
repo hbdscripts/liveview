@@ -631,8 +631,6 @@ const API = '';
         var labels = Array.from(headerCells).map(function(c) {
           var a = c.getAttribute('aria-label');
           if (a) return a.trim();
-          var short = c.querySelector('.th-label-short');
-          if (short && short.textContent) return short.textContent.trim();
           var long = c.querySelector('.th-label-long');
           if (long && long.textContent) return long.textContent.trim();
           return (c.textContent || '').trim();
