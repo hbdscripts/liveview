@@ -11994,6 +11994,14 @@ const API = '';
               icon.classList.add('kexo-accent-' + String(idx));
             }
 
+            // Ensure the header icon matches the EXACT computed color from the menu icon,
+            // even if accents are altered by theme/scripts (no drift).
+            try {
+              var computedColor = (window.getComputedStyle && iconSrc) ? window.getComputedStyle(iconSrc).color : '';
+              computedColor = String(computedColor || '').trim();
+              if (computedColor) icon.style.color = computedColor;
+            } catch (_) {}
+
             col.insertBefore(icon, pretitle);
           } catch (_) {}
         }
