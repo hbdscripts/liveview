@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (tools+sentry stability, shipping sessions denominator)
+Last updated: 2026-02-13 (header/table UX polish)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Header/table UX polish:
+  - Avatar no longer moves on hover (removed margin-right).
+  - Strip dropdowns (Online, Settings, Avatar): border-radius 4px, opacity 0.9.
+  - Header KPI strip: swipeable overflow without scrollbar (overflow-x: auto, scrollbar hidden).
+  - Sessions tables (live/sales/table): min-width 640px to prevent squashing; overflow-x swipeable with hidden scrollbar.
+  - Page header category icon: padding 0, margin 2px 4px 0 0, font-size 12px.
 
 2026-02-13 (latest)
 - Tools + Sentry stability:
