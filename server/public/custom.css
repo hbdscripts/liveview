@@ -1741,7 +1741,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 600 !important;
 }
 .kexo-date-btn:hover {
-  background: #f3f4f6;
+  background: none !important;
 }
 .kexo-date-btn-label {
   overflow: hidden;
@@ -1830,14 +1830,14 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-kpi-chip-sparkline {
   position: absolute;
-  top: -5px;
+  top: 0;
   right: var(--kexo-kpi-spark-right, 6px);
   left: auto;
   bottom: auto;
   width: var(--kexo-kpi-spark-width, clamp(36px, calc(var(--kexo-kpi-width) * 0.3), 45px));
   height: 30px;
   z-index: 0;
-  opacity: 0.85;
+  opacity: 0.25;
   pointer-events: none;
 }
 .kexo-kpi-chip > .subheader,
