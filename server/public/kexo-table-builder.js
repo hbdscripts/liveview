@@ -103,13 +103,18 @@
     var bodyId = c.bodyId || '';
     var tableClass = c.tableClass || 'table table-vcenter card-table';
     var ariaLabel = c.ariaLabel || '';
+    var noHeader = !!(c.noHeader);
 
-    var thCells = '';
-    columns.forEach(function (col) {
-      var hdr = col.header != null ? String(col.header) : '';
-      var cls = col.headerClass != null ? ' class="' + escapeHtml(String(col.headerClass).trim()) + '"' : '';
-      thCells += '<th' + cls + '>' + escapeHtml(hdr) + '</th>';
-    });
+    var theadHtml = '';
+    if (!noHeader) {
+      var thCells = '';
+      columns.forEach(function (col) {
+        var hdr = col.header != null ? String(col.header) : '';
+        var cls = col.headerClass != null ? ' class="' + escapeHtml(String(col.headerClass).trim()) + '"' : '';
+        thCells += '<th' + cls + '>' + escapeHtml(hdr) + '</th>';
+      });
+      theadHtml = '<thead><tr>' + thCells + '</tr></thead>';
+    }
 
     var tbodyAttrs = bodyId ? ' id="' + escapeHtml(bodyId) + '"' : '';
     var tableAttrs = ' class="' + escapeHtml(tableClass) + '"';
@@ -118,7 +123,7 @@
 
     return '<div class="table-responsive">' +
       '<table' + tableAttrs + '>' +
-        '<thead><tr>' + thCells + '</tr></thead>' +
+        theadHtml +
         '<tbody' + tbodyAttrs + '></tbody>' +
       '</table>' +
     '</div>';

@@ -1875,7 +1875,7 @@ async function listLatestSales(limit = 5) {
     return Math.round(v * 100) / 100;
   }
 
-  function parseTopProductTitleFromOrderRawJson(rawJson) {
+  function parseTopProductFromOrderRawJson(rawJson) {
     const order = safeJsonParse(rawJson);
     const items = order && Array.isArray(order.line_items) ? order.line_items : [];
     let best = null;
@@ -1895,11 +1895,13 @@ async function listLatestSales(limit = 5) {
       const unit = numOrNull(priceRaw) ?? 0;
       const lineTotal = unit * qty;
       if (!Number.isFinite(lineTotal)) continue;
+      const productIdRaw = (li && li.product_id != null ? li.product_id : null) ?? li?.productId ?? null;
+      const productId = productIdRaw != null ? safeStr(productIdRaw, 64) : '';
       if (!best || lineTotal > best.lineTotal || (lineTotal === best.lineTotal && unit > best.unit)) {
-        best = { title, unit, qty, lineTotal };
+        best = { title, unit, qty, lineTotal, productId: productId || null };
       }
     }
-    return best && best.title ? best.title : '';
+    return best ? { title: best.title || '', productId: best.productId || null } : { title: '', productId: null };
   }
 
   const purchaseLinkCache = new Map(); // session_id -> { order_id, checkout_token, order_total, order_currency } | null
@@ -2096,11 +2098,22 @@ async function listLatestSales(limit = 5) {
     // Prefer truth order enrichment when available.
     let productTitle = null;
     let orderTotalGbp = null;
+    let resolvedHandle = lastHandle || firstHandle || null;
     const truth = await findTruthOrderForSession(sessionId, purchasedAt, baseTotal, baseCur);
     if (truth) {
       try {
-        const title = parseTopProductTitleFromOrderRawJson(truth && truth.raw_json != null ? String(truth.raw_json) : '');
-        productTitle = title ? title : null;
+        const top = parseTopProductFromOrderRawJson(truth && truth.raw_json != null ? String(truth.raw_json) : '');
+        productTitle = top && top.title ? top.title : null;
+        // When session lacks product handle, derive from order line item product_id via Shopify meta.
+        if (!resolvedHandle && top && top.productId && shop) {
+          try {
+            const token = await salesTruth.getAccessToken(shop);
+            if (token) {
+              const meta = await productMetaCache.getProductMeta(shop, token, top.productId);
+              if (meta && meta.ok && meta.handle) resolvedHandle = String(meta.handle).trim() || null;
+            }
+          } catch (_) {}
+        }
       } catch (_) {
         productTitle = null;
       }
@@ -2121,8 +2134,8 @@ async function listLatestSales(limit = 5) {
       order_currency: baseCur || null,
       order_total_gbp: orderTotalGbp,
       product_title: productTitle,
-      last_product_handle: lastHandle || null,
-      first_product_handle: firstHandle || null,
+      last_product_handle: resolvedHandle || lastHandle || null,
+      first_product_handle: firstHandle || resolvedHandle || null,
     });
   }
   return out;

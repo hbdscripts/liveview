@@ -3822,7 +3822,7 @@ const API = '';
           : (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
         return (
           '<tr>' +
-            '<td class="w-1"><span class="d-inline-flex align-items-center gap-1">' + flagImgSmall(cc) + '<span class="text-muted small">' + escapeHtml(cc) + '</span></span></td>' +
+            '<td class="w-1">' + flagImgSmall(cc) + '</td>' +
             '<td>' + titleHtml + '</td>' +
             '<td class="text-end text-muted">' + escapeHtml(ago) + '</td>' +
             '<td class="text-end fw-semibold">' + escapeHtml(money) + '</td>' +

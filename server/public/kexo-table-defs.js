@@ -242,6 +242,7 @@
     },
     'latest-sales-table': {
       tableId: 'latest-sales-table',
+      noHeader: true,
       columns: [
         { header: '', headerClass: 'w-1' },
         { header: 'Product', headerClass: '' },
