@@ -7488,7 +7488,17 @@ const API = '';
     var uiSettingsInFlight = null;
     var kpiUiConfigV1 = null;
     var chartsUiConfigV1 = null;
+    var KPI_UI_CFG_LS_KEY = 'kexo:kpi-ui-config:v1';
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
+
+    // Hydrate KPI prefs from localStorage so disabled KPIs are hidden on first paint.
+    try {
+      var cachedKpis = safeReadLocalStorageJson(KPI_UI_CFG_LS_KEY);
+      if (cachedKpis && cachedKpis.v === 1 && cachedKpis.kpis) {
+        kpiUiConfigV1 = cachedKpis;
+        try { window.__kexoKpiUiConfigV1 = cachedKpis; } catch (_) {}
+      }
+    } catch (_) {}
 
     // Hydrate chart prefs from localStorage so first paint uses the last saved config.
     try {
@@ -7841,12 +7851,16 @@ const API = '';
       if (!cfg || typeof cfg !== 'object' || cfg.v !== 1) return;
       kpiUiConfigV1 = cfg;
       try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
+      try { safeWriteLocalStorageJson(KPI_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try { applyHeaderKpiStripVisibilityByPage(cfg); } catch (_) {}
       try { applyCondensedKpiUiConfig(cfg); } catch (_) {}
       try { applyDashboardKpiUiConfig(cfg); } catch (_) {}
       try { syncDateSelectOptions(); } catch (_) {}
       try { ensureDateRangeAllowedByUiConfig(); } catch (_) {}
     }
+
+    // Apply cached KPI settings immediately (before async /api/settings returns).
+    try { if (kpiUiConfigV1) applyKpiUiConfigV1(kpiUiConfigV1); } catch (_) {}
 
     function ensureUiSettingsLoaded(options) {
       options = options && typeof options === 'object' ? options : {};

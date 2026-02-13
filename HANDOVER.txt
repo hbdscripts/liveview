@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (header connector lines + KPI sparkline profile)
+Last updated: 2026-02-13 (KPI pre-paint hide / no flash)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -170,6 +170,9 @@ KPI/date-range UI config:
   - condensed KPI strip show/hide per page (settings-managed)
   - dashboard KPI card order/labels/visibility
   - date range menu labels/availability
+- First-paint behavior:
+  - `app.js` hydrates KPI UI config from localStorage (`kexo:kpi-ui-config:v1`) and applies it before `/api/settings` resolves.
+  - `/theme-vars.css` also injects CSS to pre-hide disabled condensed KPI chips and disabled Dashboard KPI cards (`#dash-kpi-grid`) to reduce refresh flicker.
 
 KPI data:
 - `GET /api/kpis` (server cached; also localStorage warm-paint to avoid empty chips on navigation)
@@ -228,6 +231,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- KPI visibility flicker fix:
+  - Disabled KPI items now hide at first paint (localStorage hydrate + server-injected CSS in `/theme-vars.css`), so hidden KPIs no longer flash briefly on refresh.
 
 2026-02-13 (latest)
 - Header/KPI visual polish:

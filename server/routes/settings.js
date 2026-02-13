@@ -1566,6 +1566,20 @@ async function getThemeVarsCss(req, res) {
       returns: 'cond-kpi-returns-sparkline',
       items: 'cond-kpi-items-sold-sparkline',
     };
+    const dashboardValueIdByKey = {
+      revenue: 'dash-kpi-revenue',
+      orders: 'dash-kpi-orders',
+      conv: 'dash-kpi-conv',
+      aov: 'dash-kpi-aov',
+      sessions: 'dash-kpi-sessions',
+      bounce: 'dash-kpi-bounce',
+      returning: 'dash-kpi-returning',
+      roas: 'dash-kpi-roas',
+      cogs: 'dash-kpi-cogs',
+      fulfilled: 'dash-kpi-fulfilled',
+      returns: 'dash-kpi-returns',
+      items: 'dash-kpi-items',
+    };
     const rules = [];
     disabled.forEach((k) => {
       const key = k && k.key != null ? String(k.key).trim().toLowerCase() : '';
@@ -1574,6 +1588,19 @@ async function getThemeVarsCss(req, res) {
       // Match the exact chip by an always-present child id.
       rules.push(`#kexo-condensed-kpis .kexo-kpi-chip:has(> #${sparklineId}){display:none!important;}`);
     });
+
+    // Dashboard overview KPI cards: hide disabled cards before app.js reorders/relabels.
+    const disabledDashboard = (cfg && cfg.v === 1 && cfg.kpis && Array.isArray(cfg.kpis.dashboard))
+      ? cfg.kpis.dashboard.filter((k) => k && k.enabled === false)
+      : [];
+    disabledDashboard.forEach((k) => {
+      const key = k && k.key != null ? String(k.key).trim().toLowerCase() : '';
+      const valueId = dashboardValueIdByKey[key];
+      if (!valueId) return;
+      // Dashboard cards are direct children of #dash-kpi-grid and can be matched via their value id.
+      rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}){display:none!important;}`);
+    });
+
     if (rules.length) {
       kpisCss = ['/* KEXO: server-injected KPI visibility */', ...rules, ''].join('\n');
     }
