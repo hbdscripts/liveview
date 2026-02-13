@@ -2081,7 +2081,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border: none;
   background: none;
   border-radius: var(--kexo-header-settings-radius, var(--tblr-border-radius, .375rem));
-  padding: 0 5px;
+  padding: 5px !important;
   font-size: 15px;
   font-weight: 500;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
@@ -2095,7 +2095,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: var(--kexo-header-settings-label-display, inline);
 }
 .kexo-top-strip-settings-toggle .kexo-settings-icon {
-  margin-right: 0;
+  margin-right: 5px;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
 /* Strip dropdowns (Online, Settings, Avatar): white bg, black text/icons, aligned with nav left. */
