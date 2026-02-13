@@ -11361,21 +11361,23 @@ const API = '';
             );
           }
           function kvTable(rows) {
-            var body = (rows || []).map(function(r) {
-              return (
-                '<tr>' +
-                  '<td class="text-secondary">' + escapeHtml(r[0] || '') + '</td>' +
-                  '<td class="text-end">' + (r[1] != null ? String(r[1]) : '\u2014') + '</td>' +
-                '</tr>'
-              );
-            }).join('');
-            return (
-              '<div class="table-responsive">' +
-                '<table class="table table-sm table-vcenter mb-0">' +
-                  '<tbody>' + body + '</tbody>' +
-                '</table>' +
-              '</div>'
-            );
+            if (typeof buildKexoSettingsTable !== 'function') {
+              var body = (rows || []).map(function(r) {
+                return '<tr><td class="text-secondary">' + escapeHtml(r[0] || '') + '</td><td class="text-end">' + (r[1] != null ? String(r[1]) : '\u2014') + '</td></tr>';
+              }).join('');
+              return '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>';
+            }
+            var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['diagnostics-kv-table']) || {};
+            return buildKexoSettingsTable({
+              tableClass: 'table table-sm table-vcenter mb-0',
+              columns: (def.columns || []).length ? def.columns : [
+                { header: 'Metric', headerClass: 'text-secondary' },
+                { header: 'Value', headerClass: 'text-end' }
+              ],
+              bodyHtml: (rows || []).map(function(r) {
+                return '<tr><td class="text-secondary">' + escapeHtml(r[0] || '') + '</td><td class="text-end">' + (r[1] != null ? String(r[1]) : '\u2014') + '</td></tr>';
+              }).join('')
+            });
           }
           function accordionItem(key, title, bodyHtml) {
             var safeKey = String(key || '').replace(/[^a-z0-9_-]+/gi, '');
@@ -13224,12 +13226,20 @@ const API = '';
                     '<h6 class="mb-0">Rules</h6>' +
                     '<button type="button" class="btn btn-outline-primary btn-sm" id="profit-rules-add-btn">Add Expense Rule</button>' +
                   '</div>' +
-                  '<div class="table-responsive mb-3">' +
-                    '<table class="table table-sm table-vcenter">' +
-                      '<thead><tr><th>Rule name</th><th>Applies to</th><th>Type</th><th>Value</th><th>Priority</th><th>Enabled</th><th>Actions</th></tr></thead>' +
-                      '<tbody id="profit-rules-table-body"></tbody>' +
-                    '</table>' +
-                  '</div>' +
+                  '<div class="mb-3">' + (typeof buildKexoNativeTable === 'function' ? buildKexoNativeTable({
+                    tableId: 'profit-rules-table',
+                    bodyId: 'profit-rules-table-body',
+                    tableClass: 'table table-sm table-vcenter',
+                    columns: (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['profit-rules-table'] && window.KEXO_APP_MODAL_TABLE_DEFS['profit-rules-table'].columns) || [
+                      { header: 'Rule name', headerClass: '' },
+                      { header: 'Applies to', headerClass: '' },
+                      { header: 'Type', headerClass: '' },
+                      { header: 'Value', headerClass: '' },
+                      { header: 'Priority', headerClass: '' },
+                      { header: 'Enabled', headerClass: '' },
+                      { header: 'Actions', headerClass: '' }
+                    ]
+                  }) : '<div class="table-responsive"><table class="table table-sm table-vcenter"><thead><tr><th>Rule name</th><th>Applies to</th><th>Type</th><th>Value</th><th>Priority</th><th>Enabled</th><th>Actions</th></tr></thead><tbody id="profit-rules-table-body"></tbody></table></div>') + '</div>' +
                   '<div class="card is-hidden" id="profit-rules-form-wrap">' +
                     '<div class="card-body">' +
                       '<h6 id="profit-rules-form-title" class="mb-3">Add Expense Rule</h6>' +
@@ -15284,17 +15294,15 @@ const API = '';
                     '<div class="col-12 col-lg-7" id="product-insights-col-right">' +
                       '<div class="card" data-no-card-collapse="1">' +
                         '<div class="card-header"><h3 class="card-title" id="product-insights-details-title">Product details</h3></div>' +
-                        '<div class="table-responsive">' +
-                          '<table class="table table-vcenter card-table table-sm kexo-product-insights-metrics">' +
-                            '<thead>' +
-                              '<tr>' +
-                                '<th>Metric</th>' +
-                                '<th class="text-end">Value</th>' +
-                              '</tr>' +
-                            '</thead>' +
-                            '<tbody id="product-insights-metrics-table"></tbody>' +
-                          '</table>' +
-                        '</div>' +
+                        '<div>' + (typeof buildKexoNativeTable === 'function' ? buildKexoNativeTable({
+                          tableId: 'product-insights-metrics-table-wrap',
+                          bodyId: 'product-insights-metrics-table',
+                          tableClass: 'table table-vcenter card-table table-sm kexo-product-insights-metrics',
+                          columns: (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['product-insights-metrics-table'] && window.KEXO_APP_MODAL_TABLE_DEFS['product-insights-metrics-table'].columns) || [
+                            { header: 'Metric', headerClass: '' },
+                            { header: 'Value', headerClass: 'text-end' }
+                          ]
+                        }) : '<div class="table-responsive"><table class="table table-vcenter card-table table-sm kexo-product-insights-metrics"><thead><tr><th>Metric</th><th class="text-end">Value</th></tr></thead><tbody id="product-insights-metrics-table"></tbody></table></div>') + '</div>' +
                       '</div>' +
                       '<div class="card mt-3" data-no-card-collapse="1" id="product-insights-top-countries-card" style="display:none">' +
                         '<div class="card-header"><h3 class="card-title">Top countries</h3></div>' +

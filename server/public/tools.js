@@ -463,34 +463,36 @@
 
     var variantsHtml = '';
     if (Array.isArray(data.variants) && data.variants.length) {
-      var rows = data.variants;
-      variantsHtml += '<div class="tools-table-wrap"><table class="tools-table">' +
-        '<thead><tr>' +
-          '<th>Variant</th>' +
-          '<th>Sessions (before)</th>' +
-          '<th>Orders (before)</th>' +
-          '<th>CR (before)</th>' +
-          '<th>Sessions (after)</th>' +
-          '<th>Orders (after)</th>' +
-          '<th>CR (after)</th>' +
-          '<th>% change</th>' +
-        '</tr></thead><tbody>';
-      for (var i = 0; i < rows.length; i++) {
-        var r = rows[i] || {};
-        var b = r.before || {};
-        var a = r.after || {};
-        variantsHtml += '<tr>' +
-          '<td>' + esc(r.variant_name || r.variant_id || '') + '</td>' +
-          '<td>' + fmtNum(b.sessions) + '</td>' +
-          '<td>' + fmtNum(b.orders) + '</td>' +
-          '<td>' + fmtPct(b.cr) + '</td>' +
-          '<td>' + fmtNum(a.sessions) + '</td>' +
-          '<td>' + fmtNum(a.orders) + '</td>' +
-          '<td>' + fmtPct(a.cr) + '</td>' +
-          '<td>' + fmtDeltaPct(r.pct_change) + '</td>' +
-        '</tr>';
-      }
-      variantsHtml += '</tbody></table></div>';
+      var def = (window.KEXO_TOOLS_TABLE_DEFS && window.KEXO_TOOLS_TABLE_DEFS['tools-compare-cr-table']) || {};
+      variantsHtml = buildKexoSettingsTable({
+        tableClass: def.tableClass || 'tools-table table table-sm table-vcenter',
+        wrapClass: def.wrapClass || 'tools-table-wrap',
+        columns: (def.columns || []).length ? def.columns : [
+          { header: 'Variant', headerClass: '' },
+          { header: 'Sessions (before)', headerClass: '' },
+          { header: 'Orders (before)', headerClass: '' },
+          { header: 'CR (before)', headerClass: '' },
+          { header: 'Sessions (after)', headerClass: '' },
+          { header: 'Orders (after)', headerClass: '' },
+          { header: 'CR (after)', headerClass: '' },
+          { header: '% change', headerClass: '' }
+        ],
+        rows: data.variants,
+        renderRow: function (r) {
+          var b = r.before || {};
+          var a = r.after || {};
+          return '<tr>' +
+            '<td>' + esc(r.variant_name || r.variant_id || '') + '</td>' +
+            '<td>' + fmtNum(b.sessions) + '</td>' +
+            '<td>' + fmtNum(b.orders) + '</td>' +
+            '<td>' + fmtPct(b.cr) + '</td>' +
+            '<td>' + fmtNum(a.sessions) + '</td>' +
+            '<td>' + fmtNum(a.orders) + '</td>' +
+            '<td>' + fmtPct(a.cr) + '</td>' +
+            '<td>' + fmtDeltaPct(r.pct_change) + '</td>' +
+          '</tr>';
+        }
+      });
     }
 
     resultsEl.classList.remove('is-hidden');

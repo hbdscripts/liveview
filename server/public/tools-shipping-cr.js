@@ -191,35 +191,35 @@
       return;
     }
 
-    var table = '' +
-      '<div class="tools-table-wrap">' +
-        '<table class="tools-table table table-vcenter">' +
-          '<thead><tr>' +
-            '<th>Country</th>' +
-            '<th>Shipping label</th>' +
-            '<th>Paid shipping</th>' +
-            '<th>Set shipping</th>' +
-            '<th class="text-end">Sessions</th>' +
-            '<th>CR%</th>' +
-          '</tr></thead><tbody>';
-
-    for (var i = 0; i < rows.length; i++) {
-      var r = rows[i] || {};
-      var label = r.label != null ? String(r.label) : '';
-      var cur = r.currency != null ? String(r.currency) : '';
-      var paidPrice = r.shipping_price_paid != null ? Number(r.shipping_price_paid) : (r.shipping_price != null ? Number(r.shipping_price) : null);
-      var setPrice = r.shipping_price_set != null ? Number(r.shipping_price_set) : null;
-      var pct = r.cr_pct;
-      table += '<tr>' +
-        '<td>' + esc(countryName) + '</td>' +
-        '<td>' + esc(label || '—') + '</td>' +
-        '<td>' + esc(formatMoney(paidPrice, cur)) + '</td>' +
-        '<td>' + esc(formatMoney(setPrice != null ? setPrice : paidPrice, cur)) + '</td>' +
-        '<td class="text-end">' + esc(formatCount(checkoutStartedSessions)) + '</td>' +
-        '<td>' + esc(fmtPct(pct)) + '</td>' +
-      '</tr>';
-    }
-    table += '</tbody></table></div>';
+    var def = (window.KEXO_TOOLS_TABLE_DEFS && window.KEXO_TOOLS_TABLE_DEFS['tools-shipping-cr-table']) || {};
+    var table = buildKexoSettingsTable({
+      tableClass: def.tableClass || 'tools-table table table-vcenter',
+      wrapClass: def.wrapClass || 'tools-table-wrap',
+      columns: (def.columns || []).length ? def.columns : [
+        { header: 'Country', headerClass: '' },
+        { header: 'Shipping label', headerClass: '' },
+        { header: 'Paid shipping', headerClass: '' },
+        { header: 'Set shipping', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: '' }
+      ],
+      rows: rows,
+      renderRow: function (r) {
+        var label = r.label != null ? String(r.label) : '';
+        var cur = r.currency != null ? String(r.currency) : '';
+        var paidPrice = r.shipping_price_paid != null ? Number(r.shipping_price_paid) : (r.shipping_price != null ? Number(r.shipping_price) : null);
+        var setPrice = r.shipping_price_set != null ? Number(r.shipping_price_set) : null;
+        var pct = r.cr_pct;
+        return '<tr>' +
+          '<td>' + esc(countryName) + '</td>' +
+          '<td>' + esc(label || '—') + '</td>' +
+          '<td>' + esc(formatMoney(paidPrice, cur)) + '</td>' +
+          '<td>' + esc(formatMoney(setPrice != null ? setPrice : paidPrice, cur)) + '</td>' +
+          '<td class="text-end">' + esc(formatCount(checkoutStartedSessions)) + '</td>' +
+          '<td>' + esc(fmtPct(pct)) + '</td>' +
+        '</tr>';
+      }
+    });
 
     resultsEl.classList.remove('is-hidden');
     resultsEl.innerHTML = summary + table;

@@ -729,15 +729,33 @@
       el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No attributed sales in this period.</div>';
       return;
     }
-    var h = '<table class="ads-modal-sales-table"><thead><tr><th>Country</th><th>Value</th><th>Time</th></tr></thead><tbody>';
-    for (var i = 0; i < sales.length; i++) {
-      var s = sales[i];
-      var cc = s.country ? s.country.toLowerCase() : '';
-      var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
-      h += '<tr><td>' + flag + esc(s.country || '—') + '</td><td>' + esc(fmtMoney(s.value, currency)) + '</td><td>' + esc(fmtTime(s.time)) + '</td></tr>';
-    }
-    h += '</tbody></table>';
-    el.innerHTML = h;
+    var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['ads-modal-sales-table']) || {};
+    var tableHtml = typeof buildKexoSettingsTable === 'function'
+      ? buildKexoSettingsTable({
+          tableClass: (def.tableClass || 'ads-modal-sales-table'),
+          columns: (def.columns || []).length ? def.columns : [
+            { header: 'Country', headerClass: '' },
+            { header: 'Value', headerClass: '' },
+            { header: 'Time', headerClass: '' }
+          ],
+          rows: sales,
+          renderRow: function (s) {
+            var cc = s.country ? s.country.toLowerCase() : '';
+            var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            return '<tr><td>' + flag + esc(s.country || '—') + '</td><td>' + esc(fmtMoney(s.value, currency)) + '</td><td>' + esc(fmtTime(s.time)) + '</td></tr>';
+          }
+        })
+      : (function () {
+          var h = '<table class="ads-modal-sales-table"><thead><tr><th>Country</th><th>Value</th><th>Time</th></tr></thead><tbody>';
+          for (var i = 0; i < sales.length; i++) {
+            var s = sales[i];
+            var cc = s.country ? s.country.toLowerCase() : '';
+            var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            h += '<tr><td>' + flag + esc(s.country || '—') + '</td><td>' + esc(fmtMoney(s.value, currency)) + '</td><td>' + esc(fmtTime(s.time)) + '</td></tr>';
+          }
+          return h + '</tbody></table>';
+        })();
+    el.innerHTML = tableHtml;
   }
 
   /* ── inject modal CSS ────────────────────────────────────── */

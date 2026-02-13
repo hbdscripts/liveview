@@ -250,4 +250,159 @@
       ]
     }
   };
+
+  window.KEXO_TOOLS_TABLE_DEFS = {
+    'tools-compare-cr-table': {
+      tableClass: 'tools-table table table-sm table-vcenter',
+      wrapClass: 'tools-table-wrap',
+      columns: [
+        { header: 'Variant', headerClass: '' },
+        { header: 'Sessions (before)', headerClass: '' },
+        { header: 'Orders (before)', headerClass: '' },
+        { header: 'CR (before)', headerClass: '' },
+        { header: 'Sessions (after)', headerClass: '' },
+        { header: 'Orders (after)', headerClass: '' },
+        { header: 'CR (after)', headerClass: '' },
+        { header: '% change', headerClass: '' }
+      ]
+    },
+    'tools-shipping-cr-table': {
+      tableClass: 'tools-table table table-vcenter',
+      wrapClass: 'tools-table-wrap',
+      columns: [
+        { header: 'Country', headerClass: '' },
+        { header: 'Shipping label', headerClass: '' },
+        { header: 'Paid shipping', headerClass: '' },
+        { header: 'Set shipping', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: '' }
+      ]
+    }
+  };
+
+  window.KEXO_VARIANTS_MODAL_TABLE_DEFS = {
+    'variants-issues-table': {
+      columns: [
+        { header: 'Variant title', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'Rev', headerClass: 'text-end' },
+        { header: 'Matched rules', headerClass: '' },
+        { header: 'Actions', headerClass: 'text-end' }
+      ],
+      columnsNoMatches: [
+        { header: 'Variant title', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'Rev', headerClass: 'text-end' },
+        { header: 'Actions', headerClass: 'text-end' }
+      ]
+    },
+    'variants-top-unmapped-table': {
+      columns: [
+        { header: 'Variant', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'Rev', headerClass: 'text-end' }
+      ]
+    },
+    'variants-all-stats-totals-table': {
+      columns: [
+        { header: 'Table', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'Rev', headerClass: 'text-end' }
+      ]
+    },
+    'variants-all-stats-coverage-table': {
+      columns: [
+        { header: 'Table', headerClass: '' },
+        { header: 'Total Sessions', headerClass: 'text-end' },
+        { header: 'In Scope Sessions', headerClass: 'text-end' },
+        { header: 'Mapped', headerClass: 'text-end' },
+        { header: 'Ignored', headerClass: 'text-end' },
+        { header: 'Out Of Scope', headerClass: 'text-end' },
+        { header: 'Unmapped', headerClass: 'text-end' },
+        { header: 'Resolved In Mapped', headerClass: 'text-end' },
+        { header: 'Mapped %', headerClass: 'text-end' },
+        { header: 'Mapped+Ignored %', headerClass: 'text-end' }
+      ]
+    }
+  };
+
+  window.KEXO_SETTINGS_MODAL_TABLE_DEFS = {
+    'settings-ignore-list-table': {
+      columns: [
+        { header: 'Table', headerClass: '' },
+        { header: 'Ignored variant title', headerClass: '' },
+        { header: 'Actions', headerClass: 'text-end' }
+      ]
+    },
+    'settings-merge-rules-table': {
+      columns: [
+        { header: 'Output', headerClass: '' },
+        { header: 'Include aliases', headerClass: '' },
+        { header: 'Actions', headerClass: 'text-end w-1' }
+      ]
+    },
+    'settings-kpis-table': {
+      columns: [
+        { header: 'On', headerClass: 'w-1' },
+        { header: 'Label', headerClass: '' },
+        { header: 'Key', headerClass: 'text-muted' },
+        { header: 'Order', headerClass: 'text-end w-1' }
+      ]
+    },
+    'settings-date-ranges-table': {
+      columns: [
+        { header: 'On', headerClass: 'w-1' },
+        { header: 'Label', headerClass: '' },
+        { header: 'Key', headerClass: 'text-muted' },
+        { header: 'Order', headerClass: 'text-end w-1' }
+      ]
+    }
+  };
+
+  window.KEXO_APP_MODAL_TABLE_DEFS = {
+    'diagnostics-kv-table': {
+      columns: [
+        { header: 'Metric', headerClass: 'text-secondary' },
+        { header: 'Value', headerClass: 'text-end' }
+      ]
+    },
+    'profit-rules-table': {
+      columns: [
+        { header: 'Rule name', headerClass: '' },
+        { header: 'Applies to', headerClass: '' },
+        { header: 'Type', headerClass: '' },
+        { header: 'Value', headerClass: '' },
+        { header: 'Priority', headerClass: '' },
+        { header: 'Enabled', headerClass: '' },
+        { header: 'Actions', headerClass: '' }
+      ]
+    },
+    'product-insights-metrics-table': {
+      columns: [
+        { header: 'Metric', headerClass: '' },
+        { header: 'Value', headerClass: 'text-end' }
+      ]
+    },
+    'ads-modal-sales-table': {
+      tableClass: 'ads-modal-sales-table',
+      columns: [
+        { header: 'Country', headerClass: '' },
+        { header: 'Value', headerClass: '' },
+        { header: 'Time', headerClass: '' }
+      ]
+    }
+  };
+
+  window.KEXO_BREAKDOWN_TABLE_DEFS = {
+    'breakdown-aov-table': { columns: [{ key: 'country', label: 'Country' }, { key: 'revenue', label: 'Rev' }, { key: 'aov', label: 'AOV' }, { key: 'conversion', label: 'CR%' }] },
+    'breakdown-product-table': { columns: [{ key: 'product', label: 'Product' }, { key: 'rev', label: 'Rev' }, { key: 'cr', label: 'CR%' }] },
+    'breakdown-type-table': { columns: [{ key: 'type', label: 'Type' }, { key: 'rev', label: 'Rev' }, { key: 'cr', label: 'CR%' }] },
+    'breakdown-finish-table': { columns: [{ key: 'finish', label: 'Finish' }, { key: 'rev', label: 'Rev' }, { key: 'cr', label: 'CR%' }] },
+    'breakdown-length-table': { columns: [{ key: 'length', label: 'Length' }, { key: 'rev', label: 'Rev' }, { key: 'cr', label: 'CR%' }] },
+    'breakdown-chainstyle-table': { columns: [{ key: 'chainstyle', label: 'Chain style' }, { key: 'rev', label: 'Rev' }, { key: 'cr', label: 'CR%' }] }
+  };
 })();

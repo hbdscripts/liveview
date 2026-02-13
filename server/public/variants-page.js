@@ -226,21 +226,44 @@
   function renderIssueRows(items, includeMatches, tableId) {
     var list = Array.isArray(items) ? items : [];
     if (!list.length) return '<div class="text-secondary">No examples.</div>';
-    var rows = list.map(function (item) {
-      var title = item && item.variant_title ? String(item.variant_title) : 'Unknown variant';
-      var sessions = item && item.sessions != null ? formatInt(item.sessions) : '0';
-      var orders = item && item.orders != null ? formatInt(item.orders) : '0';
-      var revenue = item && item.revenue != null ? formatMoney(item.revenue) : '£0';
-      var matches = '';
-      if (includeMatches) {
-        var rawMatches = Array.isArray(item && item.matches) ? item.matches : [];
-        matches = rawMatches.map(function (m) {
-          if (!m) return '';
-          return m.label || m.id || '';
-        }).filter(Boolean).join(', ');
-      }
-      return '' +
-        '<tr>' +
+    var def = (window.KEXO_VARIANTS_MODAL_TABLE_DEFS && window.KEXO_VARIANTS_MODAL_TABLE_DEFS['variants-issues-table']) || {};
+    var columns = includeMatches ? (def.columns || []) : (def.columnsNoMatches || []);
+    if (!columns.length) {
+      columns = includeMatches
+        ? [
+            { header: 'Variant title', headerClass: '' },
+            { header: 'Sessions', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'Rev', headerClass: 'text-end' },
+            { header: 'Matched rules', headerClass: '' },
+            { header: 'Actions', headerClass: 'text-end' }
+          ]
+        : [
+            { header: 'Variant title', headerClass: '' },
+            { header: 'Sessions', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'Rev', headerClass: 'text-end' },
+            { header: 'Actions', headerClass: 'text-end' }
+          ];
+    }
+    return buildKexoSettingsTable({
+      tableClass: 'table table-sm table-vcenter mb-0',
+      columns: columns,
+      rows: list,
+      renderRow: function (item) {
+        var title = item && item.variant_title ? String(item.variant_title) : 'Unknown variant';
+        var sessions = item && item.sessions != null ? formatInt(item.sessions) : '0';
+        var orders = item && item.orders != null ? formatInt(item.orders) : '0';
+        var revenue = item && item.revenue != null ? formatMoney(item.revenue) : '£0';
+        var matches = '';
+        if (includeMatches) {
+          var rawMatches = Array.isArray(item && item.matches) ? item.matches : [];
+          matches = rawMatches.map(function (m) {
+            if (!m) return '';
+            return m.label || m.id || '';
+          }).filter(Boolean).join(', ');
+        }
+        return '<tr>' +
           '<td>' + escapeHtml(title) + '</td>' +
           '<td class="text-end">' + escapeHtml(sessions) + '</td>' +
           '<td class="text-end">' + escapeHtml(orders) + '</td>' +
@@ -248,23 +271,8 @@
           (includeMatches ? '<td>' + escapeHtml(matches || '—') + '</td>' : '') +
           '<td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 variants-ignore-link" data-ignore-table-id="' + escapeHtml(String(tableId || '')) + '" data-ignore-title="' + escapeHtml(title) + '">Ignore</button></td>' +
         '</tr>';
-    }).join('');
-    return '' +
-      '<div class="table-responsive">' +
-        '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead>' +
-            '<tr>' +
-              '<th>Variant title</th>' +
-              '<th class="text-end">Sessions</th>' +
-              '<th class="text-end">Orders</th>' +
-              '<th class="text-end">Rev</th>' +
-              (includeMatches ? '<th>Matched rules</th>' : '') +
-              '<th class="text-end">Actions</th>' +
-            '</tr>' +
-          '</thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table>' +
-      '</div>';
+      }
+    });
   }
 
   function openIssuesModal(tableState) {
@@ -372,24 +380,49 @@
         '</div>';
     }
 
-    var totalsRows = summaries.map(function (row) {
-      return '' +
-        '<tr>' +
+    var defTotals = (window.KEXO_VARIANTS_MODAL_TABLE_DEFS && window.KEXO_VARIANTS_MODAL_TABLE_DEFS['variants-all-stats-totals-table']) || {};
+    var defCoverage = (window.KEXO_VARIANTS_MODAL_TABLE_DEFS && window.KEXO_VARIANTS_MODAL_TABLE_DEFS['variants-all-stats-coverage-table']) || {};
+    var totalsTableHtml = buildKexoSettingsTable({
+      tableClass: 'table table-sm table-vcenter mb-0',
+      columns: (defTotals.columns || []).length ? defTotals.columns : [
+        { header: 'Table', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'Rev', headerClass: 'text-end' }
+      ],
+      rows: summaries,
+      renderRow: function (row) {
+        return '<tr>' +
           '<td>' + escapeHtml(row.tableName) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.totalSessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.totalOrders)) + '</td>' +
           '<td class="text-end">' + formatMoney(row.totalRevenue) + '</td>' +
         '</tr>';
-    }).join('');
-    var coverageRows = summaries.map(function (row) {
-      var mappedPct = row.inScopeSessions > 0
-        ? ((row.mapped.sessions / row.inScopeSessions) * 100).toFixed(1) + '%'
-        : '—';
-      var mappedPlusIgnoredPct = row.inScopeSessions > 0
-        ? (((row.mapped.sessions + row.ignored.sessions) / row.inScopeSessions) * 100).toFixed(1) + '%'
-        : '—';
-      return '' +
-        '<tr>' +
+      }
+    });
+    var coverageTableHtml = buildKexoSettingsTable({
+      tableClass: 'table table-sm table-vcenter mb-0',
+      columns: (defCoverage.columns || []).length ? defCoverage.columns : [
+        { header: 'Table', headerClass: '' },
+        { header: 'Total Sessions', headerClass: 'text-end' },
+        { header: 'In Scope Sessions', headerClass: 'text-end' },
+        { header: 'Mapped', headerClass: 'text-end' },
+        { header: 'Ignored', headerClass: 'text-end' },
+        { header: 'Out Of Scope', headerClass: 'text-end' },
+        { header: 'Unmapped', headerClass: 'text-end' },
+        { header: 'Resolved In Mapped', headerClass: 'text-end' },
+        { header: 'Mapped %', headerClass: 'text-end' },
+        { header: 'Mapped+Ignored %', headerClass: 'text-end' }
+      ],
+      rows: summaries,
+      renderRow: function (row) {
+        var mappedPct = row.inScopeSessions > 0
+          ? ((row.mapped.sessions / row.inScopeSessions) * 100).toFixed(1) + '%'
+          : '—';
+        var mappedPlusIgnoredPct = row.inScopeSessions > 0
+          ? (((row.mapped.sessions + row.ignored.sessions) / row.inScopeSessions) * 100).toFixed(1) + '%'
+          : '—';
+        return '<tr>' +
           '<td>' + escapeHtml(row.tableName) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.totalSessions)) + '</td>' +
           '<td class="text-end">' + escapeHtml(formatInt(row.inScopeSessions)) + '</td>' +
@@ -401,7 +434,8 @@
           '<td class="text-end">' + escapeHtml(mappedPct) + '</td>' +
           '<td class="text-end">' + escapeHtml(mappedPlusIgnoredPct) + '</td>' +
         '</tr>';
-    }).join('');
+      }
+    });
 
     function renderTopUnmappedBySessions(diag) {
       var d = diag && typeof diag === 'object' ? diag : {};
@@ -418,32 +452,36 @@
       });
       var top = list.slice(0, 12);
       if (!top.length) return '';
-      var rows = top.map(function (it) {
-        var title = it && it.variant_title ? String(it.variant_title) : 'Unknown variant';
-        var vid = it && it.variant_id ? String(it.variant_id) : '';
-        var sessions = formatInt(it && it.sessions != null ? it.sessions : 0);
-        var orders = formatInt(it && it.orders != null ? it.orders : 0);
-        var revenue = formatMoney(it && it.revenue != null ? it.revenue : 0);
-        return '' +
-          '<tr>' +
+      var def = (window.KEXO_VARIANTS_MODAL_TABLE_DEFS && window.KEXO_VARIANTS_MODAL_TABLE_DEFS['variants-top-unmapped-table']) || {};
+      var tableHtml = buildKexoSettingsTable({
+        tableClass: 'table table-sm table-vcenter mb-0',
+        columns: (def.columns || []).length ? def.columns : [
+          { header: 'Variant', headerClass: '' },
+          { header: 'Sessions', headerClass: 'text-end' },
+          { header: 'Orders', headerClass: 'text-end' },
+          { header: 'Rev', headerClass: 'text-end' }
+        ],
+        rows: top,
+        renderRow: function (it) {
+          var title = it && it.variant_title ? String(it.variant_title) : 'Unknown variant';
+          var vid = it && it.variant_id ? String(it.variant_id) : '';
+          var sessions = formatInt(it && it.sessions != null ? it.sessions : 0);
+          var orders = formatInt(it && it.orders != null ? it.orders : 0);
+          var revenue = formatMoney(it && it.revenue != null ? it.revenue : 0);
+          return '<tr>' +
             '<td>' + escapeHtml(title) + (vid ? '<div class="text-secondary small"><code>' + escapeHtml(vid) + '</code></div>' : '') + '</td>' +
             '<td class="text-end">' + escapeHtml(sessions) + '</td>' +
             '<td class="text-end">' + escapeHtml(orders) + '</td>' +
             '<td class="text-end">' + revenue + '</td>' +
           '</tr>';
-      }).join('');
+        }
+      });
       var tableName = d.tableName || d.tableId || 'Table';
       var unmappedCount = Number(d.unmappedCount) || top.length;
-      return '' +
-        '<details class="mb-2">' +
-          '<summary class="fw-semibold">' + escapeHtml(tableName) + ' \u00b7 ' + escapeHtml(String(unmappedCount)) + ' unmapped</summary>' +
-          '<div class="table-responsive mt-2">' +
-            '<table class="table table-sm table-vcenter mb-0">' +
-              '<thead><tr><th>Variant</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">Rev</th></tr></thead>' +
-              '<tbody>' + rows + '</tbody>' +
-            '</table>' +
-          '</div>' +
-        '</details>';
+      return '<details class="mb-2">' +
+        '<summary class="fw-semibold">' + escapeHtml(tableName) + ' \u00b7 ' + escapeHtml(String(unmappedCount)) + ' unmapped</summary>' +
+        '<div class="mt-2">' + tableHtml + '</div>' +
+      '</details>';
     }
 
     var topUnmappedHtml = diagnostics
@@ -456,22 +494,11 @@
         '<div class="text-secondary small mb-2">These are the highest-session unmapped examples for each table in this range.</div>' +
         topUnmappedHtml;
     }
-    return '' +
-      attributionHtml +
+    return attributionHtml +
       '<h4 class="mb-2">All Variant Totals</h4>' +
-      '<div class="table-responsive mb-3">' +
-        '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead><tr><th>Table</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">Rev</th></tr></thead>' +
-          '<tbody>' + totalsRows + '</tbody>' +
-        '</table>' +
-      '</div>' +
+      '<div class="mb-3">' + totalsTableHtml + '</div>' +
       '<h4 class="mb-2">Mapped Coverage (Sessions)</h4>' +
-      '<div class="table-responsive">' +
-        '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead><tr><th>Table</th><th class="text-end">Total Sessions</th><th class="text-end">In Scope Sessions</th><th class="text-end">Mapped</th><th class="text-end">Ignored</th><th class="text-end">Out Of Scope</th><th class="text-end">Unmapped</th><th class="text-end">Resolved In Mapped</th><th class="text-end">Mapped %</th><th class="text-end">Mapped+Ignored %</th></tr></thead>' +
-          '<tbody>' + coverageRows + '</tbody>' +
-        '</table>' +
-      '</div>' +
+      '<div>' + coverageTableHtml + '</div>' +
       '<div class="text-secondary small mt-2">Mapped % uses in-scope sessions only. Mapped+Ignored % can be useful when you intentionally ignore outliers. Resolved In Mapped is a subset of Mapped sessions where multiple rules matched and the system auto-chose the most specific alias.</div>' +
       topUnmappedHtml;
   }

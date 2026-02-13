@@ -133,6 +133,7 @@
   function buildKexoSettingsTable(config) {
     var c = config || {};
     var tableClass = c.tableClass || 'table table-sm table-vcenter mb-0';
+    var wrapClass = c.wrapClass || 'table-responsive overflow-x-auto';
     var columns = Array.isArray(c.columns) ? c.columns : [];
     var rows = Array.isArray(c.rows) ? c.rows : [];
     var rowKey = c.rowKey || 'key';
@@ -154,7 +155,7 @@
       bodyRows = c.bodyHtml;
     }
 
-    return '<div class="table-responsive overflow-x-auto">' +
+    return '<div class="' + escapeHtml(wrapClass) + '">' +
       '<table class="' + escapeHtml(tableClass) + '">' +
         '<thead><tr>' + thCells + '</tr></thead>' +
         '<tbody>' + bodyRows + '</tbody>' +

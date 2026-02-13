@@ -1798,21 +1798,23 @@
       body.innerHTML = '<div class="text-secondary">No ignored variant titles yet.</div>';
       return;
     }
-    var rows = entries.map(function (entry) {
-      return '' +
-        '<tr>' +
+    var def = (window.KEXO_SETTINGS_MODAL_TABLE_DEFS && window.KEXO_SETTINGS_MODAL_TABLE_DEFS['settings-ignore-list-table']) || {};
+    body.innerHTML = buildKexoSettingsTable({
+      tableClass: 'table table-sm table-vcenter mb-0',
+      columns: (def.columns || []).length ? def.columns : [
+        { header: 'Table', headerClass: '' },
+        { header: 'Ignored variant title', headerClass: '' },
+        { header: 'Actions', headerClass: 'text-end' }
+      ],
+      rows: entries,
+      renderRow: function (entry) {
+        return '<tr>' +
           '<td>' + escapeHtml(entry.tableName) + '<div class="text-secondary small"><code>' + escapeHtml(entry.tableId) + '</code></div></td>' +
           '<td>' + escapeHtml(entry.title) + '</td>' +
           '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
         '</tr>';
-    }).join('');
-    body.innerHTML = '' +
-      '<div class="table-responsive">' +
-        '<table class="table table-sm table-vcenter mb-0">' +
-          '<thead><tr><th>Table</th><th>Ignored variant title</th><th class="text-end">Actions</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table>' +
-      '</div>';
+      }
+    });
   }
 
   function openInsightsIgnoreModal() {
@@ -2320,32 +2322,40 @@
         '</div>' +
         '<div class="card-body">' +
           '<div class="text-muted small mb-2">Key: <code>' + escapeHtml(table.id || '') + '</code></div>' +
-          '<div class="table-responsive">' +
-            '<table class="table table-sm table-vcenter mb-0">' +
-              '<thead><tr><th style="min-width:140px">Output</th><th style="min-width:180px">Include aliases</th><th class="text-end w-1">Actions</th></tr></thead>' +
-              '<tbody>';
-
-      if (!rules.length) {
-        html += '<tr><td colspan="3" class="text-secondary small">No rules yet.</td></tr>';
-      } else {
-        rules.forEach(function (rule, ruleIdx) {
-          var mergeBtn = rules.length > 1
-            ? ('<button type="button" class="btn btn-sm btn-outline-primary" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
-            : '';
-          html += '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
-            '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
-            '<td><textarea class="form-control form-control-sm" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
-            '<td class="text-end">' +
-              '<div class="d-inline-flex align-items-center gap-2">' +
-                mergeBtn +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
-              '</div>' +
-            '</td>' +
-          '</tr>';
-        });
-      }
-
-      html += '</tbody></table></div>' +
+          (function () {
+            var def = (window.KEXO_SETTINGS_MODAL_TABLE_DEFS && window.KEXO_SETTINGS_MODAL_TABLE_DEFS['settings-merge-rules-table']) || {};
+            var cols = (def.columns || []).length ? def.columns : [
+              { header: 'Output', headerClass: '' },
+              { header: 'Include aliases', headerClass: '' },
+              { header: 'Actions', headerClass: 'text-end w-1' }
+            ];
+            var rowsData = rules.length ? rules.map(function (r, i) { return { rule: r, ruleIdx: i }; }) : [{ _empty: true }];
+            return buildKexoSettingsTable({
+              tableClass: 'table table-sm table-vcenter mb-0',
+              columns: cols,
+              rows: rowsData,
+              renderRow: function (item) {
+                if (item && item._empty) {
+                  return '<tr><td colspan="3" class="text-secondary small">No rules yet.</td></tr>';
+                }
+                var rule = item.rule;
+                var ruleIdx = item.ruleIdx;
+                var mergeBtn = rules.length > 1
+                  ? ('<button type="button" class="btn btn-sm btn-outline-primary" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
+                  : '';
+                return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
+                  '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
+                  '<td><textarea class="form-control form-control-sm" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
+                  '<td class="text-end">' +
+                    '<div class="d-inline-flex align-items-center gap-2">' +
+                      mergeBtn +
+                      '<button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
+                    '</div>' +
+                  '</td>' +
+                '</tr>';
+              }
+            });
+          })() +
         '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-wrap">' +
             '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +

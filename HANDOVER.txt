@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Shared table builder migration)
+Last updated: 2026-02-13 (All tables builder migration)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -186,7 +186,7 @@ All data tables and settings config tables use the shared builder. No hand-writt
 
 Files:
 - `server/public/kexo-table-builder.js`: `buildKexoGridTable`, `buildKexoNativeTable`, `buildKexoSettingsTable`
-- `server/public/kexo-table-defs.js`: `KEXO_TABLE_DEFS`, `KEXO_NATIVE_TABLE_DEFS` (column definitions keyed by tableId)
+- `server/public/kexo-table-defs.js`: `KEXO_TABLE_DEFS`, `KEXO_NATIVE_TABLE_DEFS`, `KEXO_TOOLS_TABLE_DEFS`, `KEXO_VARIANTS_MODAL_TABLE_DEFS`, `KEXO_SETTINGS_MODAL_TABLE_DEFS`, `KEXO_APP_MODAL_TABLE_DEFS`, `KEXO_BREAKDOWN_TABLE_DEFS` (column definitions keyed by tableId)
 
 Static HTML tables are replaced with mount points: `<div data-kexo-table="<tableId>"></div>`. On DOMContentLoaded, `app.js` init finds mounts, fetches def, calls builder, injects result. Scripts `kexo-table-builder.js` and `kexo-table-defs.js` must load before `app.js` / `settings-page.js` / `ads.js` / `variants-page.js`.
 
@@ -251,12 +251,11 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
-- Shared table builder migration:
-  - Added `kexo-table-builder.js` (buildKexoGridTable, buildKexoNativeTable, buildKexoSettingsTable) and `kexo-table-defs.js` (centralized column definitions).
-  - Migrated variants-page.js, ads.js, app.js TSM, settings-page.js (Charts/KPIs/Date ranges) to use builder.
-  - Replaced static HTML table markup with mount points (`data-kexo-table`) in live, sales, table, overview, products, countries, channels, device pages.
-  - Builder + defs scripts added before app.js/settings-page.js/ads.js/variants-page.js on all relevant pages.
-  - Rule: all new tables must use the builder; no hand-written table markup.
+- All tables builder migration:
+  - Migrated tools.js (compare CR), tools-shipping-cr.js, variants-page.js (diagnostics modals), settings-page.js (Ignore List, Merge rules), app.js (kvTable, Profit Rules, Product insights), ads.js (modal sales) to use builder.
+  - Added KEXO_TOOLS_TABLE_DEFS, KEXO_VARIANTS_MODAL_TABLE_DEFS, KEXO_SETTINGS_MODAL_TABLE_DEFS, KEXO_APP_MODAL_TABLE_DEFS, KEXO_BREAKDOWN_TABLE_DEFS.
+  - Builder + defs scripts added to tools/compare-conversion-rate.html and tools/shipping-cr.html.
+  - Breakdown defs added for future use (no HTML exists yet).
 
 2026-02-13 (latest)
 - Tables:
