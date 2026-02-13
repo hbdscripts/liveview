@@ -74,10 +74,102 @@ function sanitizeKeyList(arr, { max = 200, maxLen = 80 } = {}) {
   return out;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+function chooseTrafficSeriesBucket(bounds, rangeKey) {
+  const rk = String(rangeKey || '').trim().toLowerCase();
+  const spanMs = Math.max(0, Number(bounds && bounds.end) - Number(bounds && bounds.start));
+  // Today / Yesterday (and short custom ranges) look better as hourly points.
+  if (rk === 'today' || rk === 'yesterday' || spanMs <= (2 * DAY_MS + 6 * HOUR_MS)) {
+    return { bucket: 'hour', stepMs: HOUR_MS };
+  }
+  return { bucket: 'day', stepMs: DAY_MS };
+}
+
+function buildBucketStarts(bounds, stepMs) {
+  const start = Number(bounds && bounds.start) || 0;
+  const end = Number(bounds && bounds.end) || 0;
+  const step = Math.max(1, Number(stepMs) || DAY_MS);
+  const out = [];
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return out;
+  for (let ts = start; ts < end; ts += step) out.push(ts);
+  return out;
+}
+
+async function fetchBucketedSessionCounts(db, { bounds, stepMs, keySql, extraWhereSql = '' } = {}) {
+  const start = Number(bounds && bounds.start) || 0;
+  const end = Number(bounds && bounds.end) || 0;
+  const step = Math.max(1, Number(stepMs) || DAY_MS);
+  if (!db || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+  const extra = extraWhereSql ? ` AND (${extraWhereSql})` : '';
+  const rows = await db.all(
+    `
+      WITH base AS (
+        SELECT
+          CAST((sessions.started_at - ?) / ? AS INTEGER) AS bucket,
+          ${keySql} AS key
+        FROM sessions
+        WHERE sessions.started_at >= ? AND sessions.started_at < ?
+          AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)
+          ${extra}
+      )
+      SELECT bucket, LOWER(TRIM(COALESCE(key, ''))) AS key, COUNT(*) AS sessions
+      FROM base
+      WHERE key IS NOT NULL AND TRIM(key) != ''
+      GROUP BY bucket, LOWER(TRIM(COALESCE(key, '')))
+      ORDER BY bucket ASC
+    `,
+    [start, step, start, end]
+  );
+  return Array.isArray(rows) ? rows : [];
+}
+
+function buildTopSessionSeries({ buckets, rows, allowedKeys, labelForKey, maxSeries = 5 } = {}) {
+  const bucketCount = Array.isArray(buckets) ? buckets.length : 0;
+  const allowed = sanitizeKeyList(allowedKeys || [], { max: 500 });
+  const allowSet = new Set(allowed.map((k) => String(k).trim().toLowerCase()));
+  if (!bucketCount || allowSet.size === 0) return [];
+
+  const dataByKey = new Map(); // key -> Array(bucketCount)
+  for (const k of allowSet) dataByKey.set(k, Array.from({ length: bucketCount }, () => 0));
+
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const key = (r && r.key != null) ? String(r.key).trim().toLowerCase() : '';
+    if (!key || !allowSet.has(key)) continue;
+    const b = r && r.bucket != null ? Number(r.bucket) : NaN;
+    if (!Number.isFinite(b) || b < 0 || b >= bucketCount) continue;
+    const n = r && r.sessions != null ? Number(r.sessions) : 0;
+    const arr = dataByKey.get(key);
+    if (!arr) continue;
+    arr[b] = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+    dataByKey.set(key, arr);
+  }
+
+  const series = [];
+  for (const key of allowSet) {
+    const arr = dataByKey.get(key) || [];
+    let total = 0;
+    for (let i = 0; i < arr.length; i++) total += Number(arr[i]) || 0;
+    if (total <= 0) continue;
+    series.push({
+      key,
+      label: typeof labelForKey === 'function' ? labelForKey(key) : key,
+      totalSessions: total,
+      sessions: arr,
+    });
+  }
+
+  series.sort((a, b) => (Number(b.totalSessions) || 0) - (Number(a.totalSessions) || 0));
+  return series.slice(0, Math.max(1, Math.min(20, Number(maxSeries) || 5)));
+}
+
 async function getPrefs() {
   const rawSources = await store.getSetting('traffic_sources_enabled');
   const rawTypes = await store.getSetting('traffic_types_enabled');
-  const sources = sanitizeKeyList(safeJsonParse(rawSources) || []);
+  const parsedSources = safeJsonParse(rawSources);
+  const sources = sanitizeKeyList(parsedSources || []);
+  const sourcesExplicitEmpty = Array.isArray(parsedSources) && parsedSources.length === 0;
   const parsedTypes = safeJsonParse(rawTypes);
   let types = sanitizeKeyList(parsedTypes || []);
   const filtered = types.filter((k) => ALLOWED_DEVICE_KEYS.has(k));
@@ -90,7 +182,7 @@ async function getPrefs() {
     else if (types.length) types = DEFAULT_DEVICE_KEYS.slice(); // upgrade old (platform/model) selections
     else types = [];
   }
-  return { sourcesEnabled: sources, typesEnabled: types };
+  return { sourcesEnabled: sources, typesEnabled: types, sourcesExplicitEmpty };
 }
 
 async function setPrefs({ sourcesEnabled, typesEnabled } = {}) {
@@ -279,6 +371,16 @@ async function getTraffic(req, res) {
       const availableSourcesMerged = Array.from(availableSourceMap.values())
         .sort((a, b) => (Number(b.sessions) - Number(a.sessions)) || ((Number(b.last_seen) || 0) - (Number(a.last_seen) || 0)) || String(a.label).localeCompare(String(b.label)));
 
+      // Default selection: if no channels are saved yet, show the top 5 available.
+      const sourcesEnabled = Array.isArray(prefs.sourcesEnabled) ? prefs.sourcesEnabled.slice() : [];
+      const sourcesEnabledEffective = (!sourcesEnabled.length && !prefs.sourcesExplicitEmpty)
+        ? availableSourcesMerged
+          .map((r) => (r && r.key != null ? String(r.key).trim().toLowerCase() : ''))
+          .filter(Boolean)
+          .slice(0, 5)
+        : sourcesEnabled;
+      const prefsEffective = { ...prefs, sourcesEnabled: sourcesEnabledEffective };
+
       // --- Source breakdown (range) ---
       const tSessionsBySource0 = Date.now();
       const rangeSourceKeyExpr = effectiveSourceKeySql('sessions');
@@ -427,7 +529,7 @@ async function getTraffic(req, res) {
       }
       msSalesBySource = Date.now() - tSalesBySource0;
 
-      const sourceRows = (prefs.sourcesEnabled || []).map((key) => {
+      const sourceRows = (prefsEffective.sourcesEnabled || []).map((key) => {
         const sessions = sessionsBySource.get(key) || 0;
         const sales = salesBySource.get(key) || { orders: 0, revenueGbp: 0 };
         const orders = Number(sales.orders) || 0;
@@ -566,6 +668,45 @@ async function getTraffic(req, res) {
       });
       msBuild = Date.now() - tBuild0;
 
+      // --- Chart series (time trend) ---
+      const bucketCfg = chooseTrafficSeriesBucket(bounds, rangeKey);
+      const buckets = buildBucketStarts(bounds, bucketCfg.stepMs);
+      let sourcesChart = { bucket: bucketCfg.bucket, stepMs: bucketCfg.stepMs, buckets, series: [] };
+      let typesChart = { bucket: bucketCfg.bucket, stepMs: bucketCfg.stepMs, buckets, series: [] };
+      try {
+        if ((prefsEffective.sourcesEnabled || []).length && buckets.length) {
+          const srcCounts = await fetchBucketedSessionCounts(db, {
+            bounds,
+            stepMs: bucketCfg.stepMs,
+            keySql: rangeSourceKeyExpr,
+            extraWhereSql: "sessions.traffic_source_key IS NOT NULL AND TRIM(sessions.traffic_source_key) != ''",
+          });
+          sourcesChart.series = buildTopSessionSeries({
+            buckets,
+            rows: srcCounts,
+            allowedKeys: prefsEffective.sourcesEnabled,
+            labelForKey,
+            maxSeries: 5,
+          });
+        }
+      } catch (_) {}
+      try {
+        if (enabledDevices.length && buckets.length) {
+          const typeCounts = await fetchBucketedSessionCounts(db, {
+            bounds,
+            stepMs: bucketCfg.stepMs,
+            keySql: "LOWER(COALESCE(NULLIF(TRIM(sessions.ua_device_type), ''), 'unknown'))",
+          });
+          typesChart.series = buildTopSessionSeries({
+            buckets,
+            rows: typeCounts,
+            allowedKeys: enabledDevices,
+            labelForKey: (device) => labelForTypeKey('device:' + String(device || '').trim().toLowerCase()),
+            maxSeries: 5,
+          });
+        }
+      } catch (_) {}
+
       const t1 = Date.now();
       const totalMs = t1 - t0;
       if (req.query && (req.query.timing === '1' || totalMs > 1500)) {
@@ -588,16 +729,18 @@ async function getTraffic(req, res) {
         timeZone,
         range: { key: rangeKey, start: bounds.start, end: bounds.end },
         reporting,
-        prefs,
+        prefs: prefsEffective,
         sources: {
-          enabled: prefs.sourcesEnabled,
+          enabled: prefsEffective.sourcesEnabled,
           available: availableSourcesMerged,
           rows: sourceRows,
+          chart: sourcesChart,
         },
         types: {
           enabled: prefs.typesEnabled,
           available: availableTypes,
           rows: typeRows,
+          chart: typesChart,
         },
       };
     }
@@ -611,8 +754,8 @@ async function getTraffic(req, res) {
     range: { key: rangeKey, start: bounds.start, end: bounds.end },
     reporting,
     prefs,
-    sources: { enabled: prefs.sourcesEnabled, available: [], rows: [] },
-    types: { enabled: prefs.typesEnabled, available: [], rows: [] },
+    sources: { enabled: prefs.sourcesEnabled, available: [], rows: [], chart: { bucket: 'day', stepMs: DAY_MS, buckets: [], series: [] } },
+    types: { enabled: prefs.typesEnabled, available: [], rows: [], chart: { bucket: 'day', stepMs: DAY_MS, buckets: [], series: [] } },
   });
 }
 

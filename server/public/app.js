@@ -1308,6 +1308,7 @@ const API = '';
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let onlineCountInFlight = false;
     let liveOnlineChart = null;
+    let liveOnlineChartType = '';
     let liveOnlineChartFetchedAt = 0;
     let liveOnlineChartInFlight = null;
     let rangeOverviewChart = null;
@@ -4212,6 +4213,12 @@ const API = '';
     }
 
     // ── Product Type Tables (Necklaces, Bracelets, Earrings, Sets, Charms, Extras) ──
+    function setHiddenById(id, hidden) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle('is-hidden', !!hidden);
+    }
+
     var TYPE_TABLE_DEFS = [
       { id: 'necklaces', keys: ['necklaces', 'necklace'] },
       { id: 'bracelets', keys: ['bracelets', 'bracelet'] },
@@ -4241,6 +4248,15 @@ const API = '';
       var tbody = document.getElementById('type-' + def.id + '-body');
       if (!tbody) return;
       var rows = getTypeProducts(data, def);
+      var sessionsTotal = 0;
+      for (var i = 0; i < rows.length; i++) sessionsTotal += Number(rows[i] && rows[i].sessions) || 0;
+      var hideCard = !leaderboardLoading && sessionsTotal <= 0;
+      setHiddenById('stats-type-' + def.id, hideCard);
+      if (hideCard) {
+        tbody.innerHTML = '';
+        updateCardPagination('type-' + def.id, 1, 1);
+        return;
+      }
       if (!rows.length) {
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (leaderboardLoading ? 'Loading\u2026' : 'No data') + '</div></div>';
         updateCardPagination('type-' + def.id, 1, 1);
@@ -4283,6 +4299,20 @@ const API = '';
 
     function renderAllTypeTables(data) {
       TYPE_TABLE_DEFS.forEach(function(def) { renderTypeTable(data, def); });
+      // If every type table is hidden (0 sessions), hide the whole row.
+      try {
+        var rowWrap = document.getElementById('products-type-tables-row');
+        if (rowWrap) {
+          var anyVisible = false;
+          for (var i = 0; i < TYPE_TABLE_DEFS.length; i++) {
+            var id = TYPE_TABLE_DEFS[i] && TYPE_TABLE_DEFS[i].id ? String(TYPE_TABLE_DEFS[i].id) : '';
+            if (!id) continue;
+            var card = document.getElementById('stats-type-' + id);
+            if (card && !card.classList.contains('is-hidden')) { anyVisible = true; break; }
+          }
+          rowWrap.classList.toggle('is-hidden', !anyVisible);
+        }
+      } catch (_) {}
     }
 
     (function initTypeTablePagination() {
@@ -4429,12 +4459,23 @@ const API = '';
       const tbody = document.getElementById('best-variants-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestVariants)) {
+        setHiddenById('stats-best-variants', false);
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
         updateSortHeadersInContainer(document.getElementById('best-variants-table'), tableSortState.bestVariants.by, tableSortState.bestVariants.dir);
         updateCardPagination('best-variants', 1, 1);
         return;
       }
       const rows = data.bestVariants.slice();
+      var hasSessions = false;
+      for (var i = 0; i < rows.length; i++) {
+        if ((Number(rows[i] && rows[i].clicks) || 0) > 0) { hasSessions = true; break; }
+      }
+      setHiddenById('stats-best-variants', !hasSessions);
+      if (!hasSessions) {
+        tbody.innerHTML = '';
+        updateCardPagination('best-variants', 1, 1);
+        return;
+      }
       const bvBy = (tableSortState.bestVariants.by || 'rev').toString().trim().toLowerCase();
       const bvDir = (tableSortState.bestVariants.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
       function displayVariantName(v) {
@@ -4725,12 +4766,23 @@ const API = '';
       const tbody = document.getElementById('best-sellers-body');
       if (!tbody) return;
       if (!data || !Array.isArray(data.bestSellers)) {
+        setHiddenById('stats-best-sellers', false);
         tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + (errorMessage ? escapeHtml(errorMessage) : 'No shop or no data') + '</div></div>';
         updateBestSellersSortHeaders();
         updateCardPagination('best-sellers', 1, 1);
         return;
       }
       const rows = data.bestSellers.slice();
+      var hasSessions = false;
+      for (var i = 0; i < rows.length; i++) {
+        if ((Number(rows[i] && rows[i].clicks) || 0) > 0) { hasSessions = true; break; }
+      }
+      setHiddenById('stats-best-sellers', !hasSessions);
+      if (!hasSessions) {
+        tbody.innerHTML = '';
+        updateCardPagination('best-sellers', 1, 1);
+        return;
+      }
       const sortKey = (bestSellersSortBy || 'rev').toString().trim().toLowerCase();
       const sortDir = (bestSellersSortDir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
       rows.sort(function(a, b) {
@@ -5514,7 +5566,7 @@ const API = '';
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        const rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+        const rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
         const isAnimated = rawMode !== 'map-flat';
         const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
         const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
@@ -8528,12 +8580,163 @@ const API = '';
       if (channelsChartInstance) { try { channelsChartInstance.destroy(); } catch (_) {} channelsChartInstance = null; }
       if (data) channelsChartData = data;
       var d = channelsChartData;
+
+      // New trend chart: multi-series sessions over time (top 5) with right-side legend.
+      var chartPayload = d && d.sources && d.sources.chart ? d.sources.chart : null;
+      if (chartPayload && Array.isArray(chartPayload.buckets) && Array.isArray(chartPayload.series)) {
+        var buckets = chartPayload.buckets.slice();
+        var seriesRows = chartPayload.series.slice()
+          .filter(function(s) { return s && Array.isArray(s.sessions); })
+          .slice(0, 5);
+        if (!buckets.length || !seriesRows.length) {
+          var enabledKeys = d && d.sources && Array.isArray(d.sources.enabled) ? d.sources.enabled : [];
+          var msg = enabledKeys && enabledKeys.length ? 'No channel data available' : 'Open Settings (footer) → Traffic to choose channels.';
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">' + escapeHtml(msg) + '</div>';
+          return;
+        }
+        // Normalize to the shortest series length.
+        var len = buckets.length;
+        seriesRows.forEach(function(s) { if (Array.isArray(s.sessions)) len = Math.min(len, s.sessions.length); });
+        if (!Number.isFinite(len) || len < 2) {
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
+          return;
+        }
+        buckets = buckets.slice(0, len);
+        seriesRows = seriesRows.map(function(s) { return { ...s, sessions: (s.sessions || []).slice(0, len) }; });
+
+        var bucketKind = chartPayload.bucket === 'hour' ? 'hour' : 'day';
+        var categories = buckets.map(function(ts) { return bucketKind === 'hour' ? shortTimeLabel(ts) : shortDayLabel(ts); });
+        var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+        var showEndLabels = rawMode === 'multi-line-labels';
+        var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+        var palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e']);
+        var colors = seriesRows.map(function(_s, i) { return palette[i % palette.length]; });
+
+        // Split layout: plot + legend
+        el.innerHTML = '<div class="kexo-series-split-chart">' +
+          '<div class="kexo-series-split-plot" id="channels-chart-plot"></div>' +
+          '<div class="kexo-series-split-legend" id="channels-chart-legend" aria-label="Top channels"></div>' +
+          '</div>';
+        var plotEl = document.getElementById('channels-chart-plot');
+        var legendEl = document.getElementById('channels-chart-legend');
+        if (!plotEl) return;
+
+        if (legendEl) {
+          legendEl.innerHTML = seriesRows.map(function(s, i) {
+            var lbl = (s && (s.label || s.key)) ? String(s.label || s.key) : '—';
+            var total = (s && typeof s.totalSessions === 'number') ? s.totalSessions : 0;
+            if (!Number.isFinite(total)) total = 0;
+            return '<div class="kexo-series-legend-item" title="' + escapeHtml(lbl) + '">' +
+              '<span class="kexo-series-legend-dot" style="background:' + escapeHtml(colors[i] || '#4b94e4') + '"></span>' +
+              '<div class="kexo-series-legend-meta">' +
+                '<div class="kexo-series-legend-label">' + escapeHtml(lbl) + '</div>' +
+                '<div class="kexo-series-legend-value">' + escapeHtml(Math.max(0, Math.trunc(total)).toLocaleString()) + '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        // Chart data: sessions only (series = channel)
+        var apexSeries = seriesRows.map(function(s, i) {
+          var name = (s && (s.label || s.key)) ? String(s.label || s.key) : ('Series ' + String(i + 1));
+          var nums = (s && Array.isArray(s.sessions)) ? s.sessions.map(function(v) { var n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0; }) : [];
+          return { name: name, data: nums };
+        });
+
+        if (mode === 'pie') {
+          plotEl.innerHTML = '';
+          try {
+            channelsChartInstance = new ApexCharts(plotEl, {
+              chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+              series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
+              labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
+              colors: colors,
+              legend: { show: false },
+              dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+              tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+            });
+            channelsChartInstance.render();
+          } catch (err) {
+            console.error('[channels] chart render error:', err);
+            plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          }
+          return;
+        }
+
+        var chartType = normalizeChartType(mode, 'line');
+        plotEl.innerHTML = '';
+        try {
+          channelsChartInstance = new ApexCharts(plotEl, {
+            chart: {
+              type: chartType,
+              height: 320,
+              fontFamily: 'Inter, sans-serif',
+              toolbar: { show: false },
+              zoom: { enabled: false },
+              animations: { enabled: true, easing: 'easeinout', speed: 350, dynamicAnimation: { enabled: true, speed: 350 } },
+              stacked: chartType === 'bar',
+            },
+            series: apexSeries,
+            colors: colors,
+            stroke: chartType === 'bar' ? { width: 0 } : { width: 2.6, curve: 'smooth' },
+            fill: chartType === 'area'
+              ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.05, stops: [0, 100] } }
+              : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+            plotOptions: chartType === 'bar' ? { bar: { horizontal: false, columnWidth: '62%', borderRadius: 3 } } : {},
+            markers: { size: 0, hover: { size: 4 } },
+            dataLabels: (showEndLabels && chartType === 'line') ? {
+              enabled: true,
+              formatter: function(val, ctx) {
+                try {
+                  var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                  var w = ctx && ctx.w ? ctx.w : null;
+                  var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                  if (dp !== last) return '';
+                } catch (_) { return ''; }
+                return Number(val || 0).toLocaleString();
+              },
+              style: { fontSize: '10px' },
+              background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+              offsetY: -3,
+            } : { enabled: false },
+            xaxis: {
+              categories: categories,
+              labels: { style: { fontSize: '11px' }, rotate: bucketKind === 'hour' ? -18 : 0, hideOverlappingLabels: true }
+            },
+            yaxis: {
+              min: 0,
+              forceNiceScale: true,
+              labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
+            },
+            tooltip: {
+              shared: true,
+              intersect: false,
+              y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } },
+            },
+            legend: { show: false },
+            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
+          });
+          var renderPromise = channelsChartInstance.render();
+          if (renderPromise && typeof renderPromise.then === 'function') {
+            renderPromise.catch(function(err) {
+              try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'channelsChartRender', page: PAGE }); } catch (_) {}
+              console.error('[channels] chart render error:', err);
+              plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+            });
+          }
+        } catch (err) {
+          console.error('[channels] chart render error:', err);
+          plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        }
+        return;
+      }
+
       var rows = d && d.sources && Array.isArray(d.sources.rows) ? d.sources.rows.slice() : [];
       rows = rows.filter(function(r) {
         return r && ((Number(r.revenueGbp) || 0) > 0 || (Number(r.sessions) || 0) > 0 || (Number(r.orders) || 0) > 0);
       });
       rows.sort(function(a, b) { return (Number(b && b.revenueGbp) || 0) - (Number(a && a.revenueGbp) || 0); });
-      rows = rows.slice(0, 8);
+      rows = rows.slice(0, 5);
       if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No channel data available</div>';
         return;
@@ -8703,11 +8906,163 @@ const API = '';
         return;
       }
       if (typeChartInstance) { try { typeChartInstance.destroy(); } catch (_) {} typeChartInstance = null; }
+
+      // New trend chart: multi-series sessions over time (top 5) with right-side legend.
+      var chartPayload = data && data.types && data.types.chart ? data.types.chart : null;
+      if (chartPayload && Array.isArray(chartPayload.buckets) && Array.isArray(chartPayload.series)) {
+        var buckets = chartPayload.buckets.slice();
+        var seriesRows = chartPayload.series.slice()
+          .filter(function(s) { return s && Array.isArray(s.sessions); })
+          .slice(0, 5);
+        if (!buckets.length || !seriesRows.length) {
+          var enabledKeys = data && data.types && Array.isArray(data.types.enabled) ? data.types.enabled : [];
+          var msg = enabledKeys && enabledKeys.length ? 'No type data available' : 'Open Settings (footer) → Traffic to choose device types.';
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">' + escapeHtml(msg) + '</div>';
+          return;
+        }
+        // Normalize to the shortest series length.
+        var len = buckets.length;
+        seriesRows.forEach(function(s) { if (Array.isArray(s.sessions)) len = Math.min(len, s.sessions.length); });
+        if (!Number.isFinite(len) || len < 2) {
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
+          return;
+        }
+        buckets = buckets.slice(0, len);
+        seriesRows = seriesRows.map(function(s) { return { ...s, sessions: (s.sessions || []).slice(0, len) }; });
+
+        var bucketKind = chartPayload.bucket === 'hour' ? 'hour' : 'day';
+        var categories = buckets.map(function(ts) { return bucketKind === 'hour' ? shortTimeLabel(ts) : shortDayLabel(ts); });
+        var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+        var showEndLabels = rawMode === 'multi-line-labels';
+        var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+        var palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e']);
+        var colors = seriesRows.map(function(_s, i) { return palette[i % palette.length]; });
+
+        // Split layout: plot + legend
+        el.innerHTML = '<div class="kexo-series-split-chart">' +
+          '<div class="kexo-series-split-plot" id="type-chart-plot"></div>' +
+          '<div class="kexo-series-split-legend" id="type-chart-legend" aria-label="Top device types"></div>' +
+          '</div>';
+        var plotEl = document.getElementById('type-chart-plot');
+        var legendEl = document.getElementById('type-chart-legend');
+        if (!plotEl) return;
+
+        if (legendEl) {
+          legendEl.innerHTML = seriesRows.map(function(s, i) {
+            var lbl = (s && (s.label || s.key)) ? String(s.label || s.key) : '—';
+            var total = (s && typeof s.totalSessions === 'number') ? s.totalSessions : 0;
+            if (!Number.isFinite(total)) total = 0;
+            return '<div class="kexo-series-legend-item" title="' + escapeHtml(lbl) + '">' +
+              '<span class="kexo-series-legend-dot" style="background:' + escapeHtml(colors[i] || '#4b94e4') + '"></span>' +
+              '<div class="kexo-series-legend-meta">' +
+                '<div class="kexo-series-legend-label">' + escapeHtml(lbl) + '</div>' +
+                '<div class="kexo-series-legend-value">' + escapeHtml(Math.max(0, Math.trunc(total)).toLocaleString()) + '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        // Chart data: sessions only (series = type)
+        var apexSeries = seriesRows.map(function(s, i) {
+          var name = (s && (s.label || s.key)) ? String(s.label || s.key) : ('Series ' + String(i + 1));
+          var nums = (s && Array.isArray(s.sessions)) ? s.sessions.map(function(v) { var n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0; }) : [];
+          return { name: name, data: nums };
+        });
+
+        if (mode === 'pie') {
+          plotEl.innerHTML = '';
+          try {
+            typeChartInstance = new ApexCharts(plotEl, {
+              chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+              series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
+              labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
+              colors: colors,
+              legend: { show: false },
+              dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+              tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+            });
+            typeChartInstance.render();
+          } catch (err) {
+            console.error('[type] chart render error:', err);
+            plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          }
+          return;
+        }
+
+        var chartType = normalizeChartType(mode, 'line');
+        plotEl.innerHTML = '';
+        try {
+          typeChartInstance = new ApexCharts(plotEl, {
+            chart: {
+              type: chartType,
+              height: 320,
+              fontFamily: 'Inter, sans-serif',
+              toolbar: { show: false },
+              zoom: { enabled: false },
+              animations: { enabled: true, easing: 'easeinout', speed: 350, dynamicAnimation: { enabled: true, speed: 350 } },
+              stacked: chartType === 'bar',
+            },
+            series: apexSeries,
+            colors: colors,
+            stroke: chartType === 'bar' ? { width: 0 } : { width: 2.6, curve: 'smooth' },
+            fill: chartType === 'area'
+              ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.05, stops: [0, 100] } }
+              : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+            plotOptions: chartType === 'bar' ? { bar: { horizontal: false, columnWidth: '62%', borderRadius: 3 } } : {},
+            markers: { size: 0, hover: { size: 4 } },
+            dataLabels: (showEndLabels && chartType === 'line') ? {
+              enabled: true,
+              formatter: function(val, ctx) {
+                try {
+                  var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                  var w = ctx && ctx.w ? ctx.w : null;
+                  var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                  if (dp !== last) return '';
+                } catch (_) { return ''; }
+                return Number(val || 0).toLocaleString();
+              },
+              style: { fontSize: '10px' },
+              background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+              offsetY: -3,
+            } : { enabled: false },
+            xaxis: {
+              categories: categories,
+              labels: { style: { fontSize: '11px' }, rotate: bucketKind === 'hour' ? -18 : 0, hideOverlappingLabels: true }
+            },
+            yaxis: {
+              min: 0,
+              forceNiceScale: true,
+              labels: { style: { fontSize: '11px' }, formatter: function(v) { return Number(v || 0).toLocaleString(); } }
+            },
+            tooltip: {
+              shared: true,
+              intersect: false,
+              y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } },
+            },
+            legend: { show: false },
+            grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
+          });
+          var renderPromise = typeChartInstance.render();
+          if (renderPromise && typeof renderPromise.then === 'function') {
+            renderPromise.catch(function(err) {
+              try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'typeChartRender', page: PAGE }); } catch (_) {}
+              console.error('[type] chart render error:', err);
+              plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+            });
+          }
+        } catch (err) {
+          console.error('[type] chart render error:', err);
+          plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        }
+        return;
+      }
+
       var rows = data && data.types && Array.isArray(data.types.rows) ? data.types.rows.slice() : [];
       rows = rows.filter(function(r) {
         return r && ((Number(r.sessions) || 0) > 0 || (Number(r.orders) || 0) > 0 || (Number(r.revenueGbp) || 0) > 0);
       });
       rows.sort(function(a, b) { return (Number(b && b.sessions) || 0) - (Number(a && a.sessions) || 0); });
+      rows = rows.slice(0, 5);
       if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);font-size:.875rem">No type data available</div>';
         return;
@@ -8945,6 +9300,19 @@ const API = '';
       }
     }
 
+    function shortDayLabel(tsMs) {
+      var ts = Number(tsMs);
+      if (!Number.isFinite(ts)) return '';
+      try {
+        return new Intl.DateTimeFormat('en-GB', {
+          day: '2-digit',
+          month: 'short',
+        }).format(new Date(ts));
+      } catch (_) {
+        return '';
+      }
+    }
+
     function shortDateTimeLabel(tsMs) {
       var ts = Number(tsMs);
       if (!Number.isFinite(ts)) return '';
@@ -8980,6 +9348,7 @@ const API = '';
       var chartKey = 'live-online-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
+        liveOnlineChartType = '';
         el.innerHTML = '';
         return;
       }
@@ -8992,10 +9361,6 @@ const API = '';
       }
       var compactMode = viewport > 0 && viewport <= 960;
       var points = compactMode && allPoints.length > 6 ? allPoints.slice(-6) : allPoints;
-      if (liveOnlineChart) {
-        try { liveOnlineChart.destroy(); } catch (_) {}
-        liveOnlineChart = null;
-      }
       if (!points.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No live activity yet</div>';
         return;
@@ -9005,12 +9370,69 @@ const API = '';
         var n = p && p.online != null ? Number(p.online) : NaN;
         return Number.isFinite(n) ? n : 0;
       });
-      el.innerHTML = '';
-      var rawMode = chartModeFromUiConfig(chartKey, 'bar') || 'bar';
+      var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
       var showEndLabels = rawMode === 'multi-line-labels';
       var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode;
-      chartType = normalizeChartType(chartType, 'bar');
+      chartType = normalizeChartType(chartType, 'line');
       var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
+      var apexSeries = [{ name: 'Online now', data: values }];
+
+      // Smooth updates: keep the chart instance and update series/options.
+      if (liveOnlineChart && liveOnlineChartType === chartType) {
+        try {
+          var updateOpts = {
+            colors: palette,
+            xaxis: {
+              categories: labels,
+              tickPlacement: 'between',
+              labels: { style: { fontSize: '11px' } },
+            },
+          };
+          if (chartType === 'bar') {
+            updateOpts.stroke = { show: false };
+            updateOpts.dataLabels = { enabled: false };
+            updateOpts.fill = { type: 'solid', opacity: 1 };
+            updateOpts.plotOptions = { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } };
+            updateOpts.markers = { size: 0 };
+          } else {
+            updateOpts.stroke = { curve: 'smooth', width: 3 };
+            updateOpts.fill = chartType === 'area'
+              ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
+              : { type: 'solid', opacity: 0 };
+            updateOpts.plotOptions = {};
+            updateOpts.markers = { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } };
+            updateOpts.dataLabels = (showEndLabels && chartType === 'line') ? {
+              enabled: true,
+              formatter: function(val, ctx) {
+                try {
+                  var dp = ctx && ctx.dataPointIndex != null ? Number(ctx.dataPointIndex) : -1;
+                  var w = ctx && ctx.w ? ctx.w : null;
+                  var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
+                  if (dp !== last) return '';
+                } catch (_) { return ''; }
+                return Number(val || 0).toLocaleString();
+              },
+              style: { fontSize: '10px' },
+              background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
+              offsetY: -3,
+            } : { enabled: false };
+          }
+          liveOnlineChart.updateOptions(updateOpts, false, true);
+          liveOnlineChart.updateSeries(apexSeries, true);
+          return;
+        } catch (_) {
+          try { liveOnlineChart.destroy(); } catch (_) {}
+          liveOnlineChart = null;
+          liveOnlineChartType = '';
+        }
+      }
+
+      if (liveOnlineChart) {
+        try { liveOnlineChart.destroy(); } catch (_) {}
+        liveOnlineChart = null;
+        liveOnlineChartType = '';
+      }
+      el.innerHTML = '';
 
       var apexOpts = {
         chart: {
@@ -9019,8 +9441,15 @@ const API = '';
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
           zoom: { enabled: false },
+          animations: {
+            enabled: true,
+            easing: 'easeinout',
+            speed: 450,
+            animateGradually: { enabled: true, delay: 80 },
+            dynamicAnimation: { enabled: true, speed: 450 },
+          },
         },
-        series: [{ name: 'Online now', data: values }],
+        series: apexSeries,
         xaxis: {
           categories: labels,
           tickPlacement: 'between',
@@ -9069,6 +9498,7 @@ const API = '';
         } : { enabled: false };
       }
 
+      liveOnlineChartType = chartType;
       liveOnlineChart = new ApexCharts(el, apexOpts);
       liveOnlineChart.render();
     }
@@ -9083,7 +9513,7 @@ const API = '';
         return Promise.resolve(null);
       }
       if (liveOnlineChartInFlight) return liveOnlineChartInFlight;
-      var url = API + '/api/sessions/online-series?minutes=60&stepMinutes=5' + (force ? ('&_=' + Date.now()) : '');
+      var url = API + '/api/sessions/online-series?minutes=5&stepMinutes=1' + (force ? ('&_=' + Date.now()) : '');
       liveOnlineChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
