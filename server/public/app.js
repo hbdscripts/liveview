@@ -1756,7 +1756,19 @@ const API = '';
     // Sale toast chime: try assets/cash-register.mp3 first, fall back to Shopify CDN.
     var CASH_REGISTER_MP3_CDN = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
     function getCashRegisterMp3Url() {
-      return (typeof getAssetsBase === 'function' ? getAssetsBase() : (API || '') + '/assets') + '/cash-register.mp3';
+      var defaultAssetsBase = (API || '') + '/assets';
+      var assetsBase = '';
+      try {
+        assetsBase = typeof getAssetsBase === 'function' ? String(getAssetsBase() || '').trim() : '';
+      } catch (_) {
+        assetsBase = '';
+      }
+      // Only use a custom assets host/path when it is explicitly configured.
+      // The default local /assets path may not include this MP3 in all environments.
+      if (assetsBase && assetsBase !== defaultAssetsBase) {
+        return assetsBase.replace(/\/+$/, '') + '/cash-register.mp3';
+      }
+      return CASH_REGISTER_MP3_CDN;
     }
 
     function bindSaleAudioFallback() {
@@ -5407,16 +5419,30 @@ const API = '';
       el.appendChild(overlay);
     }
 
+    function setCountriesMapState(el, text, opts) {
+      if (!el) return;
+      var message = String(text == null ? '' : text).trim() || 'Unavailable';
+      var isError = !!(opts && opts.error);
+      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:' + color + ';text-align:center;padding:0 18px;">' +
+          escapeHtml(message) +
+        '</div>';
+    }
+
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
       if (typeof jsVectorMap === 'undefined') {
+        if (!el.__kexoJvmWaitTries) {
+          setCountriesMapState(el, 'Loading map library...');
+        }
         // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
         const tries = (el.__kexoJvmWaitTries || 0) + 1;
         el.__kexoJvmWaitTries = tries;
         if (tries >= 25) {
           el.__kexoJvmWaitTries = 0;
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);text-align:center;padding:0 18px;">Map library failed to load.</div>';
+          setCountriesMapState(el, 'Map library failed to load.', { error: true });
           return;
         }
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
@@ -5430,7 +5456,7 @@ const API = '';
           countriesMapChartInstance = null;
         }
         clearCountriesFlowOverlay(el);
-        el.innerHTML = '';
+        setCountriesMapState(el, 'Map disabled in Settings > Charts.');
         return;
       }
 
@@ -5443,7 +5469,7 @@ const API = '';
       const c = data && data.country ? data.country : {};
       const rows = c[getStatsRange()] || [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:var(--tblr-secondary);">No data</div>';
+        setCountriesMapState(el, 'No country data for this range.');
         return;
       }
 
@@ -5544,7 +5570,7 @@ const API = '';
         }
       } catch (err) {
         console.error('[countries-map] map render error:', err);
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;">Map rendering failed</div>';
+        setCountriesMapState(el, 'Map rendering failed.', { error: true });
       }
     }
 
@@ -5811,8 +5837,15 @@ const API = '';
       try {
         const dateWrap = document.querySelector('.kexo-desktop-nav .kexo-topbar-date');
         if (!dateWrap) return;
+        const sourceLi = dateWrap.closest('li.kexo-nav-date-slot, li.nav-item');
         const headerRow = document.querySelector('.page-header .row');
-        if (!headerRow) return;
+        if (!headerRow) {
+          if (sourceLi) {
+            sourceLi.classList.add('is-date-inline-fallback');
+            sourceLi.classList.remove('is-date-relocated');
+          }
+          return;
+        }
 
         let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
         if (!dateCol) {
@@ -5822,9 +5855,11 @@ const API = '';
         }
 
         if (dateWrap.parentElement !== dateCol) {
-          const sourceLi = dateWrap.closest('li.nav-item');
           dateCol.appendChild(dateWrap);
-          if (sourceLi) sourceLi.classList.add('is-date-relocated');
+          if (sourceLi) {
+            sourceLi.classList.add('is-date-relocated');
+            sourceLi.classList.remove('is-date-inline-fallback');
+          }
         }
       } catch (_) {}
     }
@@ -7430,8 +7465,8 @@ const API = '';
           var lbl = String(item.label).trim();
           if (lbl) labelEl.textContent = lbl;
         }
-        var enabled = item.enabled !== false;
-        col.classList.toggle('is-user-disabled', !enabled);
+        // Dashboard cards stay visible regardless of header KPI visibility toggles.
+        col.classList.remove('is-user-disabled');
         frag.appendChild(col);
         seen.add(col);
       });
@@ -11425,7 +11460,10 @@ const API = '';
           function ensureKpis() {
             var staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
             if (staleKpis) refreshKpis({ force: false });
-            else renderLiveKpis(getKpiData());
+            else {
+              renderLiveKpis(getKpiData());
+              try { fetchCondensedSeries(); } catch (_) {}
+            }
           }
 
           if (tab === 'tools') {

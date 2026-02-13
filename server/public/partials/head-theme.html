@@ -88,11 +88,11 @@
     /* Critical KPI styles to prevent first-paint oversize flash before custom.css loads */
     .kexo-desktop-nav{display:none}
     @media(min-width:992px){.kexo-desktop-nav{display:flex}.kexo-top-navbar{display:none}}
+    .kexo-desktop-nav .kexo-nav-date-slot{visibility:hidden}
     :root{--kexo-top-row-height:2.65rem}
     .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
     .kexo-date-bar{height:0;overflow:hidden;margin:0;padding:0}
     #kexo-kpis{min-height:var(--kexo-top-row-height);overflow:hidden;background:#fff;border-bottom:1px solid #e6e7e9;box-shadow:2px 2px 2px #eee;margin:0 0 10px;padding:0 0 2px 5px;display:flex;align-items:center}
-    body[data-page="dashboard"] #kexo-kpis{display:none!important}
     body[data-page="settings"] #kexo-kpis{display:none!important}
     #kexo-kpis .container-fluid{width:100%;max-width:100%;padding-left:0;padding-right:0}
     #kexo-kpis .kexo-kpis-condensed-row{display:flex;align-items:center;width:100%;min-width:0;flex-wrap:nowrap;padding:12px 5px}

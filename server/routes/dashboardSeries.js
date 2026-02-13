@@ -12,6 +12,9 @@ const fx = require('../fx');
 const reportCache = require('../reportCache');
 const productMetaCache = require('../shopifyProductMetaCache');
 
+const DASHBOARD_TOP_TABLE_MAX_ROWS = 10;
+const DASHBOARD_TRENDING_MAX_ROWS = 10;
+
 function sessionFilterForTraffic(trafficMode) {
   if (trafficMode === 'human_only') {
     return config.dbUrl
@@ -332,11 +335,11 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
     .sort(function(a, b) { return b.deltaRevenue - a.deltaRevenue; })
-    .slice(0, 8);
+    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const down = base
     .filter(function(r) { return r.deltaRevenue < -0.005; })
     .sort(function(a, b) { return a.deltaRevenue - b.deltaRevenue; })
-    .slice(0, 8);
+    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   return { trendingUp: up, trendingDown: down };
 }
 
@@ -568,7 +571,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
-             LIMIT 5`
+             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
           : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
@@ -576,7 +579,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
-             LIMIT 5`,
+             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
       // Fetch product thumbnails
@@ -609,7 +612,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         };
       });
       if (!topProducts.length) {
-        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: 5 });
+        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
         if (rawTop && rawTop.length) {
           let fallbackToken = token;
           if (!fallbackToken) {
@@ -679,7 +682,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           return { country: entry[0], revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
         })
         .sort(function(a, b) { return b.revenue - a.revenue; })
-        .slice(0, 5);
+        .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);
     } catch (_) {}
   }
 
@@ -1054,7 +1057,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
-             LIMIT 5`
+             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
           : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
@@ -1062,7 +1065,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
-             LIMIT 5`,
+             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
       let token = null;
@@ -1094,7 +1097,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         };
       });
       if (!topProducts.length) {
-        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: 5 });
+        const rawTop = await fallbackTopProductsFromOrdersRawJson(db, shop, overallStart, overallEnd, ratesToGbp, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
         if (rawTop && rawTop.length) {
           let fallbackToken = token;
           if (!fallbackToken) {
@@ -1164,7 +1167,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           return { country: entry[0], revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
         })
         .sort(function(a, b) { return b.revenue - a.revenue; })
-        .slice(0, 5);
+        .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);
     } catch (_) {}
   }
 

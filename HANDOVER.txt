@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Refresh policy: only Live/Sales auto-update)
+Last updated: 2026-02-13 (Dashboard regression fixes: KPI/date/map/audio/rows)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,18 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Dashboard/header regressions fixed:
+  - Disabled condensed KPI chips are now hidden pre-paint via `/theme-vars.css` (no refresh flash), while dashboard KPI cards no longer hide when KPI visibility toggles are off (order/labels still apply).
+  - Dashboard now shows the condensed KPI strip again (settings page remains hidden).
+  - Desktop nav date slot is hidden before relocation into page header (removes transient duplicate date box on refresh).
+- Tools + tables:
+  - `/tools/shipping-cr` now loads ApexCharts so condensed KPI sparklines render consistently on that page.
+  - Dashboard overview API now returns up to 10 rows for Top Products, Top Countries, and Trending tables so 5/10 row selectors materially change visible rows.
+- Countries map + sale sound reliability:
+  - Countries map now shows explicit loading/disabled/no-data/error states; server-side chart-hide CSS no longer fully hides the countries map card when disabled.
+  - Sale sound now prefers the Shopify CDN MP3 unless a custom assets base URL is configured, avoiding default `/assets/cash-register.mp3` 404s.
 
 2026-02-13 (latest)
 - Settings → Insights → Variants:

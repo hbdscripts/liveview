@@ -2157,6 +2157,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-nav .nav-item.is-date-relocated {
   display: none !important;
 }
+.kexo-desktop-nav .kexo-nav-date-slot.is-date-inline-fallback {
+  visibility: visible !important;
+}
 .page-header .kexo-page-header-date-col {
   margin-left: auto;
 }
@@ -2171,11 +2174,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
   :root {
     --kexo-kpi-min-width: 132px;
   }
-}
-
-/* ── Dashboard page: hide top KPI bar (show only in-page cards) ── */
-body[data-page="dashboard"] #kexo-kpis {
-  display: none !important;
 }
 
 /* ── Settings page: hide top KPI bar ── */

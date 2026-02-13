@@ -1466,6 +1466,7 @@ async function getThemeVarsCss(req, res) {
     disabled.forEach((c) => {
       const key = c && c.key != null ? String(c.key).trim().toLowerCase() : '';
       if (!key) return;
+      if (key === 'countries-map-chart') return; // Keep map card visible so runtime can show disabled/no-data/error state.
       // NOTE: HTML uses data-kexo-chart-key="<key>" on the wrapper we want to hide.
       rules.push(`[data-kexo-chart-key="${key}"]{display:none!important;}`);
     });
@@ -1493,8 +1494,44 @@ async function getThemeVarsCss(req, res) {
     }
   } catch (_) {}
 
+  // Condensed KPI visibility (hide disabled chips before paint).
+  let kpisCss = '';
+  try {
+    const raw = await store.getSetting(KPI_UI_CONFIG_V1_KEY);
+    const cfg = normalizeKpiUiConfigV1(raw);
+    const disabled = (cfg && cfg.v === 1 && cfg.kpis && Array.isArray(cfg.kpis.header))
+      ? cfg.kpis.header.filter((k) => k && k.enabled === false)
+      : [];
+    const sparklineIdByKey = {
+      orders: 'cond-kpi-orders-sparkline',
+      revenue: 'cond-kpi-revenue-sparkline',
+      conv: 'cond-kpi-conv-sparkline',
+      roas: 'cond-kpi-roas-sparkline',
+      sessions: 'cond-kpi-sessions-sparkline',
+      returning: 'cond-kpi-returning-sparkline',
+      aov: 'cond-kpi-aov-sparkline',
+      cogs: 'cond-kpi-cogs-sparkline',
+      bounce: 'cond-kpi-bounce-sparkline',
+      fulfilled: 'cond-kpi-orders-fulfilled-sparkline',
+      returns: 'cond-kpi-returns-sparkline',
+      items: 'cond-kpi-items-sold-sparkline',
+    };
+    const rules = [];
+    disabled.forEach((k) => {
+      const key = k && k.key != null ? String(k.key).trim().toLowerCase() : '';
+      const sparklineId = sparklineIdByKey[key];
+      if (!sparklineId) return;
+      // Match the exact chip by an always-present child id.
+      rules.push(`#kexo-condensed-kpis .kexo-kpi-chip:has(> #${sparklineId}){display:none!important;}`);
+    });
+    if (rules.length) {
+      kpisCss = ['/* KEXO: server-injected KPI visibility */', ...rules, ''].join('\n');
+    }
+  } catch (_) {}
+
   res.setHeader('Cache-Control', 'no-store');
-  res.type('text/css').send(css + (chartsCss ? ('\n' + chartsCss) : ''));
+  const extraCss = [chartsCss, kpisCss].filter(Boolean).join('\n');
+  res.type('text/css').send(css + (extraCss ? ('\n' + extraCss) : ''));
 }
 
 module.exports = {
