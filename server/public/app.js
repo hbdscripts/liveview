@@ -1415,6 +1415,16 @@ const API = '';
       trafficTypes: { type: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
     };
 
+    function rerenderDashboardFromCache() {
+      try {
+        if (typeof window.refreshDashboard === 'function') {
+          window.refreshDashboard({ force: false, silent: true });
+          return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+
     function applyTableRowsPerPageChange(tableId, rows) {
       var id = String(tableId == null ? '' : tableId).trim();
       var n = Number(rows);
@@ -1458,22 +1468,22 @@ const API = '';
       }
       if (id === 'dash-top-products') {
         dashTopProductsPage = 1;
-        if (dashCache) renderDashboard(dashCache);
+        rerenderDashboardFromCache();
         return;
       }
       if (id === 'dash-top-countries') {
         dashTopCountriesPage = 1;
-        if (dashCache) renderDashboard(dashCache);
+        rerenderDashboardFromCache();
         return;
       }
       if (id === 'dash-trending-up') {
         dashTrendingUpPage = 1;
-        if (dashCache) renderDashboard(dashCache);
+        rerenderDashboardFromCache();
         return;
       }
       if (id === 'dash-trending-down') {
         dashTrendingDownPage = 1;
-        if (dashCache) renderDashboard(dashCache);
+        rerenderDashboardFromCache();
         return;
       }
       var typeMatch = id.match(/^type-([a-z0-9-]+)-table$/i);
@@ -3650,7 +3660,7 @@ const API = '';
       const cur = r.order_currency != null ? String(r.order_currency).trim().toUpperCase() : '';
       const lastHandle = r.last_product_handle != null ? String(r.last_product_handle).trim() : '';
       const firstHandle = r.first_product_handle != null ? String(r.first_product_handle).trim() : '';
-      return {
+      const out = {
         session_id: sid || null,
         country_code: cc || 'XX',
         purchased_at: purchasedAt,
@@ -3659,6 +3669,12 @@ const API = '';
         last_product_handle: lastHandle || null,
         first_product_handle: firstHandle || null,
       };
+      const totalGbpRaw = r.order_total_gbp != null ? (typeof r.order_total_gbp === 'number' ? r.order_total_gbp : parseFloat(String(r.order_total_gbp))) : null;
+      const totalGbp = (typeof totalGbpRaw === 'number' && Number.isFinite(totalGbpRaw)) ? totalGbpRaw : null;
+      if (totalGbp != null) out.order_total_gbp = totalGbp;
+      const titleRaw = r.product_title != null ? String(r.product_title).trim() : '';
+      if (titleRaw) out.product_title = titleRaw;
+      return out;
     }
 
     function renderLatestSalesTable(rows) {
@@ -3672,12 +3688,14 @@ const API = '';
         return;
       }
       const mainBase = getMainBaseUrl();
-      tbody.innerHTML = list.slice(0, 5).map(function(s) {
+      const pageSize = getTableRowsPerPage('latest-sales-table', 'dashboard');
+      tbody.innerHTML = list.slice(0, pageSize).map(function(s) {
         const cc = (s && s.country_code ? String(s.country_code) : 'XX').toUpperCase().slice(0, 2) || 'XX';
         const handle = (s && s.last_product_handle) ? String(s.last_product_handle).trim()
           : (s && s.first_product_handle) ? String(s.first_product_handle).trim()
           : '';
-        const title = handle ? (titleCaseFromHandle(handle) || '') : '';
+        const explicitTitle = (s && s.product_title != null) ? String(s.product_title).trim() : '';
+        const title = explicitTitle || (handle ? (titleCaseFromHandle(handle) || '') : '');
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
         const titleHtml = handle
           ? (
@@ -3688,7 +3706,9 @@ const API = '';
             )
           : escapeHtml(title || '\u2014');
         const ago = (s && s.purchased_at != null) ? arrivedAgo(s.purchased_at) : '\u2014';
-        const money = (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
+        const money = (s && typeof s.order_total_gbp === 'number')
+          ? (formatMoney(s.order_total_gbp, 'GBP') || '\u2014')
+          : (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
         return (
           '<tr>' +
             '<td class="w-1">' + flagImgSmall(cc) + '</td>' +
@@ -10596,10 +10616,10 @@ const API = '';
       bindDelegate('best-variants', function(pg) { bestVariantsPage = pg; fetchBestVariants(); });
       bindDelegate('traffic-sources', function(pg) { trafficSourcesPage = pg; renderTrafficTables(trafficCache || {}); });
       bindDelegate('traffic-types', function(pg) { trafficTypesPage = pg; renderTrafficTables(trafficCache || {}); });
-      bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; if (dashCache) renderDashboard(dashCache); });
-      bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; if (dashCache) renderDashboard(dashCache); });
-      bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; if (dashCache) renderDashboard(dashCache); });
-      bindDelegate('dash-trending-down', function(pg) { dashTrendingDownPage = pg; if (dashCache) renderDashboard(dashCache); });
+      bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('dash-trending-down', function(pg) { dashTrendingDownPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });
@@ -14315,7 +14335,7 @@ const API = '';
                     '>' + escapeHtml(title) + '</a>'
                   )
                 : escapeHtml(title);
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end">' + fmtPct(p.cr) + '</td></tr>';
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + fmtPct(p.cr) + '</td></tr>';
             }).join('');
           }
         }
@@ -14335,7 +14355,7 @@ const API = '';
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = (c.country || 'XX').toUpperCase();
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end">' + fmtPct(c.cr) + '</td></tr>';
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + fmtPct(c.cr) + '</td></tr>';
             }).join('');
           }
         }
@@ -14396,7 +14416,7 @@ const API = '';
             var revCell = '<div>' + deltaText(p) + '</div>';
             var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
             var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
-            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end">' + crCell + '</td></tr>';
+            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end kexo-nowrap">' + crCell + '</td></tr>';
           }).join('');
         }
 

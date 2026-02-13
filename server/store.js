@@ -1847,7 +1847,237 @@ async function listLatestSales(limit = 5) {
       `,
     [lim]
   );
-  return (rows || []).map(r => {
+  const shop = salesTruth.resolveShopForSales('');
+  let ratesToGbp = null;
+  try { ratesToGbp = await fx.getRatesToGbp(); } catch (_) { ratesToGbp = null; }
+
+  function safeJsonParse(str) {
+    if (!str || typeof str !== 'string') return null;
+    try { return JSON.parse(str); } catch (_) { return null; }
+  }
+
+  function safeStr(v, maxLen = 256) {
+    if (v == null) return '';
+    const s = String(v).trim();
+    if (!s) return '';
+    return s.length > maxLen ? s.slice(0, maxLen) : s;
+  }
+
+  function numOrNull(v) {
+    if (v == null) return null;
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function round2(n) {
+    const v = typeof n === 'number' ? n : Number(n);
+    if (!Number.isFinite(v)) return null;
+    return Math.round(v * 100) / 100;
+  }
+
+  function parseTopProductTitleFromOrderRawJson(rawJson) {
+    const order = safeJsonParse(rawJson);
+    const items = order && Array.isArray(order.line_items) ? order.line_items : [];
+    let best = null;
+    for (const li of items) {
+      const title = safeStr(li && li.title, 256);
+      if (!title) continue;
+      const qtyRaw = li && li.quantity != null ? li.quantity : 1;
+      const qty = (() => {
+        const n = typeof qtyRaw === 'number' ? qtyRaw : parseInt(String(qtyRaw), 10);
+        return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 1;
+      })();
+      const priceRaw =
+        (li && li.price != null ? li.price : null) ??
+        li?.price_set?.shop_money?.amount ??
+        li?.priceSet?.shopMoney?.amount ??
+        null;
+      const unit = numOrNull(priceRaw) ?? 0;
+      const lineTotal = unit * qty;
+      if (!Number.isFinite(lineTotal)) continue;
+      if (!best || lineTotal > best.lineTotal || (lineTotal === best.lineTotal && unit > best.unit)) {
+        best = { title, unit, qty, lineTotal };
+      }
+    }
+    return best && best.title ? best.title : '';
+  }
+
+  const purchaseLinkCache = new Map(); // session_id -> { order_id, checkout_token, order_total, order_currency } | null
+  const truthOrderCache = new Map(); // key -> order row | null
+
+  async function getLatestPurchaseLink(sessionId) {
+    const sid = String(sessionId || '').trim();
+    if (!sid) return null;
+    if (purchaseLinkCache.has(sid)) return purchaseLinkCache.get(sid);
+    let row = null;
+    try {
+      row = await db.get(
+        config.dbUrl
+          ? `
+            SELECT order_id, checkout_token, order_total, order_currency
+            FROM purchases
+            WHERE session_id = $1
+            ORDER BY purchased_at DESC
+            LIMIT 1
+          `
+          : `
+            SELECT order_id, checkout_token, order_total, order_currency
+            FROM purchases
+            WHERE session_id = ?
+            ORDER BY purchased_at DESC
+            LIMIT 1
+          `,
+        [sid]
+      );
+    } catch (_) {
+      row = null;
+    }
+    purchaseLinkCache.set(sid, row || null);
+    return row || null;
+  }
+
+  async function getTruthOrderByOrderId(orderId) {
+    const oid = safeStr(orderId, 64);
+    if (!shop || !oid) return null;
+    const key = 'order:' + oid;
+    if (truthOrderCache.has(key)) return truthOrderCache.get(key);
+    let row = null;
+    try {
+      row = await db.get(
+        config.dbUrl
+          ? `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = $1 AND order_id = $2
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+            LIMIT 1
+          `
+          : `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = ? AND order_id = ?
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+            LIMIT 1
+          `,
+        [shop, oid]
+      );
+    } catch (_) {
+      row = null;
+    }
+    truthOrderCache.set(key, row || null);
+    return row || null;
+  }
+
+  async function getTruthOrderByCheckoutToken(checkoutToken) {
+    const token = safeStr(checkoutToken, 128);
+    if (!shop || !token) return null;
+    const key = 'token:' + token;
+    if (truthOrderCache.has(key)) return truthOrderCache.get(key);
+    let row = null;
+    try {
+      row = await db.get(
+        config.dbUrl
+          ? `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = $1 AND checkout_token = $2
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+            ORDER BY created_at DESC
+            LIMIT 1
+          `
+          : `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = ? AND checkout_token = ?
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+            ORDER BY created_at DESC
+            LIMIT 1
+          `,
+        [shop, token]
+      );
+    } catch (_) {
+      row = null;
+    }
+    truthOrderCache.set(key, row || null);
+    return row || null;
+  }
+
+  async function findTruthOrderForSession(sessionId, purchasedAtMs, orderTotal, orderCurrency) {
+    if (!shop) return null;
+    const purchase = await getLatestPurchaseLink(sessionId);
+    const directOrderId = safeStr(purchase && purchase.order_id, 64);
+    const directToken = safeStr(purchase && purchase.checkout_token, 128);
+    if (directOrderId) {
+      const byId = await getTruthOrderByOrderId(directOrderId);
+      if (byId) return byId;
+    }
+    if (directToken) {
+      const byToken = await getTruthOrderByCheckoutToken(directToken);
+      if (byToken) return byToken;
+    }
+
+    // Heuristic match: nearest paid truth order around purchased_at with matching currency + total.
+    const ts = numOrNull(purchasedAtMs);
+    const total = numOrNull(orderTotal);
+    const cur = fx.normalizeCurrency(orderCurrency) || 'GBP';
+    if (ts == null || total == null) return null;
+    const WINDOW_MS = 2 * 60 * 60 * 1000;
+    const start = Math.max(0, Math.trunc(ts - WINDOW_MS));
+    const end = Math.trunc(ts + WINDOW_MS);
+    const tol = 0.05;
+    try {
+      const row = await db.get(
+        config.dbUrl
+          ? `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = $1
+              AND created_at >= $2 AND created_at <= $3
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+              AND total_price IS NOT NULL
+              AND ABS(total_price - $4) <= $5
+              AND COALESCE(NULLIF(TRIM(currency), ''), 'GBP') = $6
+            ORDER BY ABS(created_at - $7) ASC
+            LIMIT 1
+          `
+          : `
+            SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+            FROM orders_shopify
+            WHERE shop = ?
+              AND created_at >= ? AND created_at <= ?
+              AND (test IS NULL OR test = 0)
+              AND cancelled_at IS NULL
+              AND financial_status = 'paid'
+              AND total_price IS NOT NULL
+              AND ABS(total_price - ?) <= ?
+              AND COALESCE(NULLIF(TRIM(currency), ''), 'GBP') = ?
+            ORDER BY ABS(created_at - ?) ASC
+            LIMIT 1
+          `,
+        config.dbUrl
+          ? [shop, start, end, total, tol, cur, ts]
+          : [shop, start, end, total, tol, cur, ts]
+      );
+      return row || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  const out = [];
+  for (const r of rows || []) {
+    const sessionId = r && r.session_id != null ? String(r.session_id) : null;
+    if (!sessionId) continue;
     const rawCountry = (r && r.session_country != null) ? String(r.session_country) : '';
     const cc = (rawCountry || 'XX').toUpperCase().slice(0, 2) || 'XX';
     const cur = (r && r.order_currency != null) ? String(r.order_currency).trim().toUpperCase() : '';
@@ -1857,16 +2087,45 @@ async function listLatestSales(limit = 5) {
     const purchasedAt = (typeof purchasedAtRaw === 'number' && Number.isFinite(purchasedAtRaw)) ? purchasedAtRaw : null;
     const lastHandle = (r && r.last_product_handle != null) ? String(r.last_product_handle).trim() : '';
     const firstHandle = (r && r.first_product_handle != null) ? String(r.first_product_handle).trim() : '';
-    return {
-      session_id: r && r.session_id != null ? String(r.session_id) : null,
+
+    const purchaseLink = await getLatestPurchaseLink(sessionId);
+    const purchaseTotal = numOrNull(purchaseLink && purchaseLink.order_total);
+    const baseTotal = total != null ? total : purchaseTotal;
+    const baseCur = fx.normalizeCurrency(cur) || fx.normalizeCurrency(purchaseLink && purchaseLink.order_currency) || null;
+
+    // Prefer truth order enrichment when available.
+    let productTitle = null;
+    let orderTotalGbp = null;
+    const truth = await findTruthOrderForSession(sessionId, purchasedAt, baseTotal, baseCur);
+    if (truth) {
+      try {
+        const title = parseTopProductTitleFromOrderRawJson(truth && truth.raw_json != null ? String(truth.raw_json) : '');
+        productTitle = title ? title : null;
+      } catch (_) {
+        productTitle = null;
+      }
+      const truthTotal = numOrNull(truth && truth.total_price);
+      const truthCur = fx.normalizeCurrency(truth && truth.currency) || 'GBP';
+      const gbp = (truthTotal != null) ? fx.convertToGbp(truthTotal, truthCur, ratesToGbp) : null;
+      orderTotalGbp = round2(gbp);
+    } else if (baseTotal != null) {
+      const gbp = fx.convertToGbp(baseTotal, baseCur || 'GBP', ratesToGbp);
+      orderTotalGbp = round2(gbp);
+    }
+
+    out.push({
+      session_id: sessionId,
       country_code: cc,
       purchased_at: purchasedAt,
-      order_total: total,
-      order_currency: cur || null,
+      order_total: baseTotal,
+      order_currency: baseCur || null,
+      order_total_gbp: orderTotalGbp,
+      product_title: productTitle,
       last_product_handle: lastHandle || null,
       first_product_handle: firstHandle || null,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 function purchaseDedupeKeySql(alias = '') {
