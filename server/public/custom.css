@@ -1410,6 +1410,14 @@ html[data-bs-theme="dark"] .report-build-wrap {
   overflow-x: hidden;
 }
 
+.business-snapshot-backdrop.modal-backdrop {
+  opacity: 0.65 !important;
+}
+
+.business-snapshot-backdrop.modal-backdrop.show {
+  opacity: 0.65 !important;
+}
+
 .business-snapshot-delta {
   display: inline-flex;
   align-items: center;
@@ -1482,11 +1490,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--tblr-secondary, #626976);
 }
 
-.business-snapshot-delta-pill.is-none {
-  border-color: rgba(var(--tblr-body-color-rgb, 24, 36, 51), 0.08);
-  background: transparent;
-  color: var(--tblr-secondary, #626976);
-}
+/* When delta is missing we don't render a pill (avoid "—" badges). */
 
 .business-snapshot-delta-pill .business-snapshot-delta-pill-icon {
   font-size: 0.9em;

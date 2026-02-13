@@ -20,6 +20,20 @@ function sanitizeDuring(during) {
   return null;
 }
 
+function sanitizeYmd(dateYmd) {
+  const d = typeof dateYmd === 'string' ? dateYmd.trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  return d;
+}
+
+function sanitizeTimeZone(timeZone) {
+  const tz = typeof timeZone === 'string' ? timeZone.trim() : '';
+  if (!tz) return '';
+  // Best-effort allowlist: IANA names like "Europe/London".
+  if (!/^[A-Za-z_]+\/[A-Za-z_]+$/.test(tz)) return '';
+  return tz;
+}
+
 function normalizeColumnName(name) {
   return String(name || '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
 }
@@ -220,10 +234,73 @@ async function fetchShopifySessionsMetrics(shop, accessToken, { during = 'today'
   };
 }
 
+/**
+ * Range query: returns { sessions, conversionRate, error }.
+ *
+ * Uses SINCE/UNTIL with yyyy-MM-dd date literals (ShopifyQL supports this).
+ */
+async function fetchShopifySessionsMetricsRange(shop, accessToken, { sinceYmd, untilYmd, timeZone } = {}) {
+  const since = sanitizeYmd(sinceYmd);
+  const until = sanitizeYmd(untilYmd);
+  if (!since || !until) return { sessions: null, conversionRate: null, error: 'Invalid SINCE/UNTIL date' };
+  if (since > until) return { sessions: null, conversionRate: null, error: 'Invalid SINCE/UNTIL order' };
+  const tz = sanitizeTimeZone(timeZone);
+
+  let sessions = null;
+  let conversionRate = null;
+  let conversionError = '';
+
+  const tzSuffix = tz ? (' WITH TIMEZONE ' + tz) : '';
+  const combinedQuery = `FROM sessions SHOW sessions, conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`;
+  const combined = await fetchShopifyQlTable(shop, accessToken, combinedQuery);
+  if (!combined.error && combined.table?.rows?.length) {
+    sessions = extractSessionsCount(combined.table);
+    conversionRate = extractConversionRate(combined.table, ['conversion_rate', 'online_store_conversion_rate']);
+  } else if (combined.error) {
+    conversionError = combined.error;
+  }
+
+  if (sessions == null) {
+    const sessionsOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW sessions SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    if (!sessionsOnly.error) {
+      sessions = extractSessionsCount(sessionsOnly.table);
+    } else if (!conversionError) {
+      conversionError = sessionsOnly.error;
+    }
+  }
+
+  if (conversionRate == null) {
+    const convOnly = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    if (!convOnly.error) {
+      conversionRate = extractConversionRate(convOnly.table, ['conversion_rate']);
+    } else if (!conversionError) {
+      conversionError = convOnly.error;
+    }
+  }
+
+  if (conversionRate == null) {
+    const convAlt = await fetchShopifyQlTable(shop, accessToken, `FROM sessions SHOW online_store_conversion_rate SINCE ${since} UNTIL ${until}${tzSuffix}`);
+    if (!convAlt.error) {
+      conversionRate = extractConversionRate(convAlt.table, ['online_store_conversion_rate']);
+    } else if (!conversionError) {
+      conversionError = convAlt.error;
+    }
+  }
+
+  if (conversionRate == null && !conversionError) conversionError = 'conversion_rate unavailable';
+
+  return {
+    sessions: typeof sessions === 'number' ? sessions : null,
+    conversionRate,
+    error: conversionError,
+  };
+}
+
 module.exports = {
   // Low-level helper (used by KPI routes as well as diagnostics)
   fetchShopifyQlTable,
   fetchShopifySessionsCount,
   fetchShopifySessionsMetrics,
+  fetchShopifySessionsMetricsRange,
 };
 

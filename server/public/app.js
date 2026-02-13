@@ -12034,6 +12034,8 @@ const API = '';
       let snapshotLoading = false;
       let snapshotRequestSeq = 0;
       let snapshotActiveRequest = 0;
+      let backdropEl = null;
+      let backdropCount = 0;
 
       function isIsoCountryCode(code) {
         return /^[A-Z]{2}$/.test(String(code || '').trim().toUpperCase());
@@ -12059,12 +12061,35 @@ const API = '';
         document.body.classList.toggle('modal-open', anyOpen);
       }
 
+      function ensureBackdrop() {
+        if (backdropEl && backdropEl.parentNode) return backdropEl;
+        const el = document.createElement('div');
+        el.className = 'modal-backdrop fade show business-snapshot-backdrop';
+        el.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(el);
+        backdropEl = el;
+        return el;
+      }
+
+      function updateBackdrop() {
+        const anyOpen = modalVisible(snapshotModal) || modalVisible(rulesModal);
+        if (!anyOpen) {
+          try { backdropEl && backdropEl.remove && backdropEl.remove(); } catch (_) {}
+          backdropEl = null;
+          backdropCount = 0;
+          return;
+        }
+        ensureBackdrop();
+      }
+
       function openModal(el) {
         if (!el) return;
+        backdropCount += 1;
         el.style.display = 'block';
         el.classList.add('show');
         el.setAttribute('aria-hidden', 'false');
         updateBodyModalOpenClass();
+        updateBackdrop();
       }
 
       function closeModal(el) {
@@ -12072,7 +12097,9 @@ const API = '';
         el.classList.remove('show');
         el.setAttribute('aria-hidden', 'true');
         el.style.display = 'none';
+        backdropCount = Math.max(0, backdropCount - 1);
         updateBodyModalOpenClass();
+        updateBackdrop();
       }
 
       function fmtCurrency(value) {
@@ -12130,7 +12157,7 @@ const API = '';
       }
 
       function deltaPillHtml(delta) {
-        if (!delta || !delta.short) return '<span class="business-snapshot-delta-pill is-none">—</span>';
+        if (!delta || !delta.short) return '';
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
@@ -12156,15 +12183,7 @@ const API = '';
       }
 
       function calloutCardHtml() {
-        return '' +
-          '<div class="col-12">' +
-            '<div class="card business-snapshot-callout-card">' +
-              '<div class="card-body">' +
-                '<div class="text-muted">Set up Profit Rules to view profit and margin.</div>' +
-                '<div class="text-muted small mt-1">Use the settings icon in the top-right of this modal.</div>' +
-              '</div>' +
-            '</div>' +
-          '</div>';
+        return '';
       }
 
       function renderSnapshot(data) {
@@ -12189,6 +12208,24 @@ const API = '';
         const subtitle = document.getElementById('business-snapshot-subtitle');
         if (subtitle) subtitle.textContent = (data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase());
 
+        // Update year dropdown options to only show years with data.
+        (function updateYearOptions() {
+          const yearSel = document.getElementById('business-snapshot-year');
+          if (!yearSel) return;
+          const years = (data && Array.isArray(data.availableYears)) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
+          const desired = (selectedYear || 'all').toLowerCase();
+          const nextOptions = ['all'].concat(years);
+          const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
+          const same = existing.length === nextOptions.length && existing.every(function (v, i) { return v === nextOptions[i]; });
+          if (same) return;
+          yearSel.innerHTML = '' +
+            '<option value="all">All Time</option>' +
+            years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
+          const canKeep = desired === 'all' || years.indexOf(desired) >= 0;
+          selectedYear = canKeep ? desired : 'all';
+          yearSel.value = selectedYear;
+        })();
+
         let financialCards = '';
         financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
         financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), deltaInfo(f.orders && f.orders.value, f.orders && f.orders.previous));
@@ -12200,8 +12237,6 @@ const API = '';
           financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous));
           financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
           financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous));
-        } else {
-          financialCards += calloutCardHtml();
         }
 
         let performanceCards = '';
@@ -12217,13 +12252,14 @@ const API = '';
         customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null);
 
         function summaryItemHtml(label, valueText, delta) {
+          const pill = deltaPillHtml(delta);
           return '' +
             '<div class="col-12 col-md-6 col-xl-4">' +
               '<div class="business-snapshot-summary-item">' +
                 '<div class="subheader">' + escapeHtml(label) + '</div>' +
                 '<div class="d-flex align-items-end justify-content-between gap-2">' +
                   '<div class="business-snapshot-summary-value">' + escapeHtml(valueText || '—') + '</div>' +
-                  deltaPillHtml(delta) +
+                  (pill ? pill : '') +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -12260,7 +12296,6 @@ const API = '';
                   '<div class="text-muted small">' + escapeHtml(data.year === 'all' ? 'All Time' : String(data.year || '').toUpperCase()) + '</div>' +
                 '</div>' +
                 '<div class="row g-3">' + summaryItems + '</div>' +
-                (profit.visible ? '' : ('<div class="text-muted small mt-3">Profit is hidden until Profit Rules are enabled (use the settings icon in the modal header).</div>')) +
               '</div>' +
             '</div>' +
           '</div>';
@@ -12588,9 +12623,6 @@ const API = '';
                   '</div>' +
                   '<div class="ms-auto d-flex align-items-center gap-2">' +
                     '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year">' +
-                      '<option value="2026">2026</option>' +
-                      '<option value="2025">2025</option>' +
-                      '<option value="2024">2024</option>' +
                       '<option value="all" selected>All Time</option>' +
                     '</select>' +
                     '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
@@ -12599,7 +12631,7 @@ const API = '';
                     '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
                   '</div>' +
                 '</div>' +
-                '<div class="modal-body p-4 pt-0 business-snapshot-modal-body">' +
+                '<div class="modal-body p-4 business-snapshot-modal-body">' +
                   '<div id="business-snapshot-body"></div>' +
                 '</div>' +
               '</div>' +

@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 27;
+const DEFINITIONS_VERSION = 28;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -89,9 +89,8 @@ const TRACKER_TABLE_DEFINITIONS = [
     },
     sources: [
       { kind: 'db', tables: ['settings'], note: 'profit_rules_v1 persistence for estimated profit toggles/rules' },
-      { kind: 'db', tables: ['orders_shopify', 'customer_order_facts'], note: 'Revenue/orders/customer/LTV and country-scoped profit deductions from Shopify truth orders' },
-      { kind: 'db', tables: ['purchase_events'], note: 'Session-based conversions: link sessions → orders_shopify for conversion rate' },
-      { kind: 'db', tables: ['sessions'], note: 'Sessions denominator for conversion + performance metrics (human_only)' },
+      { kind: 'db', tables: ['orders_shopify', 'customer_order_facts'], note: 'Revenue/orders/customer/LTV and country-scoped profit deductions from Shopify truth orders (checkout_token only for online store alignment)' },
+      { kind: 'shopifyql', note: 'Sessions + conversion_rate from ShopifyQL sessions dataset (SINCE/UNTIL range)' },
       { kind: 'fx', note: 'Currency conversion to GBP for multi-currency order totals' },
     ],
     columns: [
@@ -104,11 +103,11 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
       { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
       { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
-      { name: 'Conversion rate', value: 'ConvertedSessions / Sessions × 100 (truth via purchase_events→orders_shopify; bot-filtered sessions)' },
+      { name: 'Conversion rate', value: 'ShopifyQL conversion_rate (sessions dataset) over the selected SINCE/UNTIL range' },
       { name: 'Customers (all time)', value: 'Returning Customers is treated as Repeat Customers (>=2 paid orders in the all-time range)' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: true },
-    requires: { dbTables: ['settings', 'orders_shopify', 'purchase_events', 'sessions'], shopifyToken: false },
+    requires: { dbTables: ['settings', 'orders_shopify'], shopifyToken: true },
   },
   {
     id: 'dashboard_overview_top_products_table',

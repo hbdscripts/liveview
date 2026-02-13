@@ -2,6 +2,7 @@ const { getDb } = require('./db');
 const store = require('./store');
 const salesTruth = require('./salesTruth');
 const fx = require('./fx');
+const shopifyQl = require('./shopifyQl');
 const {
   PROFIT_RULES_V1_KEY,
   PROFIT_RULE_TYPES,
@@ -124,6 +125,8 @@ async function readDistinctCustomerCount(shop, startMs, endMs) {
       WHERE shop = ?
         AND created_at >= ? AND created_at < ?
         AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
         AND customer_id IS NOT NULL
         AND TRIM(customer_id) != ''
     `,
@@ -142,6 +145,8 @@ async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
       WHERE o.shop = ?
         AND o.created_at >= ? AND o.created_at < ?
         AND ${isPaidOrderWhereClause('o')}
+        AND o.checkout_token IS NOT NULL
+        AND TRIM(o.checkout_token) != ''
         AND o.customer_id IS NOT NULL
         AND TRIM(o.customer_id) != ''
         AND EXISTS (
@@ -150,6 +155,8 @@ async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
           WHERE p.shop = o.shop
             AND p.customer_id = o.customer_id
             AND ${isPaidOrderWhereClause('p')}
+            AND p.checkout_token IS NOT NULL
+            AND TRIM(p.checkout_token) != ''
             AND p.created_at < ?
         )
     `,
@@ -170,6 +177,8 @@ async function readRepeatCustomerCountInRange(shop, startMs, endMs) {
         WHERE o.shop = ?
           AND o.created_at >= ? AND o.created_at < ?
           AND ${isPaidOrderWhereClause('o')}
+          AND o.checkout_token IS NOT NULL
+          AND TRIM(o.checkout_token) != ''
           AND o.customer_id IS NOT NULL
           AND TRIM(o.customer_id) != ''
         GROUP BY o.customer_id
@@ -215,6 +224,8 @@ async function readRevenueRowsByCurrency(shop, startMs, endMs) {
       WHERE shop = ?
         AND created_at >= ? AND created_at < ?
         AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
       GROUP BY COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
     `,
     [shop, startMs, endMs]
@@ -244,6 +255,8 @@ async function readLtvAllTime(shop) {
         FROM orders_shopify
         WHERE shop = ?
           AND ${isPaidOrderWhereClause('')}
+          AND checkout_token IS NOT NULL
+          AND TRIM(checkout_token) != ''
           AND customer_id IS NOT NULL
           AND TRIM(customer_id) != ''
         GROUP BY COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
@@ -256,6 +269,8 @@ async function readLtvAllTime(shop) {
         FROM orders_shopify
         WHERE shop = ?
           AND ${isPaidOrderWhereClause('')}
+          AND checkout_token IS NOT NULL
+          AND TRIM(checkout_token) != ''
           AND customer_id IS NOT NULL
           AND TRIM(customer_id) != ''
       `,
@@ -285,6 +300,8 @@ async function readLtvForYearCohort(shop, year) {
           FROM orders_shopify
           WHERE shop = ?
             AND ${isPaidOrderWhereClause('')}
+            AND checkout_token IS NOT NULL
+            AND TRIM(checkout_token) != ''
             AND customer_id IS NOT NULL
             AND TRIM(customer_id) != ''
           GROUP BY customer_id
@@ -302,12 +319,16 @@ async function readLtvForYearCohort(shop, year) {
           FROM orders_shopify
           WHERE shop = ?
             AND ${isPaidOrderWhereClause('')}
+            AND checkout_token IS NOT NULL
+            AND TRIM(checkout_token) != ''
             AND customer_id IS NOT NULL
             AND TRIM(customer_id) != ''
           GROUP BY customer_id
         ) c ON c.customer_id = o.customer_id
         WHERE o.shop = ?
           AND ${isPaidOrderWhereClause('o')}
+          AND o.checkout_token IS NOT NULL
+          AND TRIM(o.checkout_token) != ''
           AND c.first_paid_at >= ?
           AND c.first_paid_at < ?
         GROUP BY COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP')
@@ -337,6 +358,8 @@ async function readOrderCountrySummary(shop, startMs, endMs) {
       WHERE shop = ?
         AND created_at >= ? AND created_at < ?
         AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
         AND total_price IS NOT NULL
     `,
     [shop, startMs, endMs]
@@ -434,39 +457,48 @@ async function getBusinessSnapshot(options = {}) {
   const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
   const shop = salesTruth.resolveShopForSales('');
 
-  const kpis = await store.getKpis({
-    trafficMode: 'human_only',
-    rangeKey,
-  });
-  const compare = kpis && kpis.compare && typeof kpis.compare === 'object' ? kpis.compare : null;
+  const token = shop ? await salesTruth.getAccessToken(shop) : '';
+  const startYmd = ymdInTimeZone(bounds.start, timeZone);
+  const endYmd = ymdInTimeZone(Math.max(bounds.start, bounds.end - 1), timeZone);
 
-  const revenue = fromMap(kpis && kpis.sales, rangeKey);
-  const orders = fromMap(kpis && kpis.convertedCount, rangeKey);
-  const aov = fromMap(kpis && kpis.aov, rangeKey);
-  const trafficMain = kpis && kpis.trafficBreakdown && kpis.trafficBreakdown[rangeKey];
-  const sessions = trafficMain && trafficMain.human_sessions != null ? toNumber(trafficMain.human_sessions) : null;
-
-  const revenuePrev = compare ? toNumber(compare.sales) : null;
-  const ordersPrev = compare ? toNumber(compare.convertedCount) : null;
-  const aovPrev = compare ? toNumber(compare.aov) : null;
-  const sessionsPrev = compare && compare.trafficBreakdown ? toNumber(compare.trafficBreakdown.human_sessions) : null;
-
-  let conversionRate = fromMap(kpis && kpis.conversion, rangeKey);
-  let conversionRatePrev = compare ? toNumber(compare.conversion) : null;
-  try {
-    const [convertedSessionsNow, convertedSessionsPrev] = await Promise.all([
-      readConvertedSessionCount(shop, bounds.start, bounds.end, { trafficMode: 'human_only' }),
-      (compare && compare.range && Number.isFinite(compare.range.start) && Number.isFinite(compare.range.end))
-        ? readConvertedSessionCount(shop, compare.range.start, compare.range.end, { trafficMode: 'human_only' })
-        : Promise.resolve(null),
-    ]);
-    const convNow = safePercent(convertedSessionsNow, sessions);
-    const convPrev = safePercent(convertedSessionsPrev, sessionsPrev);
-    if (convNow != null) conversionRate = convNow;
-    conversionRatePrev = convPrev;
-  } catch (_) {
-    // Fail-open: keep derived KPI conversion if session-based conversion is unavailable.
+  async function shopifySessionsForBounds(b) {
+    if (!shop || !token) return { sessions: null, conversionRate: null };
+    const sYmd = ymdInTimeZone(b.start, timeZone);
+    const eYmd = ymdInTimeZone(Math.max(b.start, b.end - 1), timeZone);
+    if (!sYmd || !eYmd) return { sessions: null, conversionRate: null };
+    const metrics = await shopifyQl.fetchShopifySessionsMetricsRange(shop, token, { sinceYmd: sYmd, untilYmd: eYmd, timeZone });
+    return {
+      sessions: toNumber(metrics && metrics.sessions),
+      conversionRate: toNumber(metrics && metrics.conversionRate),
+    };
   }
+
+  let compareBounds = null;
+  if (year !== 'all') {
+    const y = Number(year);
+    if (Number.isFinite(y) && y > 2000) {
+      const prevYear = String(y - 1);
+      const prevRangeKey = `r:${prevYear}-01-01:${prevYear}-12-31`;
+      compareBounds = store.getRangeBounds(prevRangeKey, nowMs, timeZone);
+    }
+  }
+
+  const [sessionsNowMetrics, sessionsPrevMetrics, revenue, orders, revenuePrev, ordersPrev] = await Promise.all([
+    shopifySessionsForBounds(bounds),
+    compareBounds ? shopifySessionsForBounds(compareBounds) : Promise.resolve({ sessions: null, conversionRate: null }),
+    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
+    shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
+    (shop && compareBounds) ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    (shop && compareBounds) ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+  ]);
+
+  const sessions = toNumber(sessionsNowMetrics && sessionsNowMetrics.sessions);
+  const sessionsPrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.sessions);
+  const conversionRate = toNumber(sessionsNowMetrics && sessionsNowMetrics.conversionRate);
+  const conversionRatePrev = toNumber(sessionsPrevMetrics && sessionsPrevMetrics.conversionRate);
+
+  const aov = (toNumber(revenue) != null && toNumber(orders) != null && Number(orders) > 0) ? round2(Number(revenue) / Number(orders)) : null;
+  const aovPrev = (toNumber(revenuePrev) != null && toNumber(ordersPrev) != null && Number(ordersPrev) > 0) ? round2(Number(revenuePrev) / Number(ordersPrev)) : null;
 
   const [distinctCustomers, ltvValue, customerRepeatOrReturning] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
@@ -530,6 +562,39 @@ async function getBusinessSnapshot(options = {}) {
     ok: true,
     year,
     rangeKey,
+    availableYears: await (async function() {
+      if (!shop) return [];
+      try {
+        const db = getDb();
+        const row = await db.get(
+          `
+            SELECT MIN(created_at) AS min_ts, MAX(created_at) AS max_ts
+            FROM orders_shopify
+            WHERE shop = ?
+              AND created_at IS NOT NULL
+              AND ${isPaidOrderWhereClause('')}
+              AND checkout_token IS NOT NULL
+              AND TRIM(checkout_token) != ''
+          `,
+          [shop]
+        );
+        const minTs = row && row.min_ts != null ? Number(row.min_ts) : null;
+        const maxTs = row && row.max_ts != null ? Number(row.max_ts) : null;
+        if (minTs == null || maxTs == null || !Number.isFinite(minTs) || !Number.isFinite(maxTs)) return [];
+        const minYmd = ymdInTimeZone(minTs, timeZone);
+        const maxYmd = ymdInTimeZone(maxTs, timeZone);
+        const minYear = minYmd ? parseInt(minYmd.slice(0, 4), 10) : null;
+        const maxYear = maxYmd ? parseInt(maxYmd.slice(0, 4), 10) : null;
+        if (!Number.isFinite(minYear) || !Number.isFinite(maxYear)) return [];
+        const years = [];
+        for (let y = maxYear; y >= minYear; y--) {
+          years.push(String(y));
+        }
+        return years;
+      } catch (_) {
+        return [];
+      }
+    })(),
     range: {
       start: bounds.start,
       end: bounds.end,
@@ -552,6 +617,12 @@ async function getBusinessSnapshot(options = {}) {
       returningCustomers: metric(returningCustomers, null),
       repeatPurchaseRate: metric(repeatPurchaseRate, null),
       ltv: metric(ltvValue, null),
+    },
+    sources: {
+      sales: 'shopify_orders_api (orders_shopify, checkout_token only)',
+      sessions: 'shopifyql (sessions)',
+      timeZone,
+      rangeYmd: { since: startYmd || null, until: endYmd || null },
     },
   };
 }
