@@ -1228,12 +1228,15 @@ const API = '';
           }
         } catch (_) { colCount = 0; }
         if (Number.isFinite(wrapW) && wrapW > 0) {
-          var softMax = Math.max(min + 16, Math.round(wrapW * 0.65));
+          var isMobile = getViewportBucket() === 'mobile';
+          var fitRatio = isMobile ? 0.8 : 0.65;
+          var softMax = Math.max(min + 16, Math.round(wrapW * fitRatio));
           max = Math.min(max, softMax);
           if (colCount > 1) {
             var minOtherColWidth = classKey === 'live' ? 72 : 64;
             var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
-            max = Math.min(max, byRemainingCols);
+            /* Only cap by remaining cols when table fits; when scrollable, skip so sticky can expand */
+            if (byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
           }
         }
         min = Math.max(ABS_MIN_WIDTH, Math.min(min, ABS_MAX_WIDTH - 16));

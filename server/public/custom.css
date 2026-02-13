@@ -2763,13 +2763,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
     font-size: 15px !important;
   }
 
-  body:not([data-page="settings"]) .table-scroll-wrap,
-  body:not([data-page="settings"]) .country-table-wrap,
-  body:not([data-page="settings"]) .table-responsive {
-    --kexo-sticky-col-width: 200px;
-    --kexo-sticky-col-min-width: 200px;
-    --kexo-sticky-col-max-width: 200px;
-  }
+  /* Sticky min/max/width controlled by JS; no hard lock so resize handle works on mobile */
   body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
   body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
   body:not([data-page="settings"]) .table-responsive table thead th:first-child,
