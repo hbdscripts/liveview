@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (header UX dropdowns + Theme custom CSS + mobile date header + Ads sticky footer)
+Last updated: 2026-02-13 (CSS: container-xl, avatar hover, mobile nav/underline)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- CSS: removed container-xl padding overrides from mobile media query; avatar hover (background/border + margin-right 5px); mobile-only nav-left display block, avatar margin-right 2px, nav-item::after bottom/height overrides.
 
 2026-02-13 (latest)
 - Header + theme UX:
