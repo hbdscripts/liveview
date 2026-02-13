@@ -825,36 +825,13 @@
     };
   }
 
-  var CHART_MODE_LABEL = {
-    'map-animated': 'Map (animated)',
-    'map-flat': 'Map (flat)',
-    area: 'Area',
-    line: 'Line',
-    bar: 'Bar',
-    pie: 'Pie',
-    combo: 'Multiple (combo)',
-    'multi-line-labels': 'Multiple line + labels',
-  };
-
-  var CHART_META = {
-    'dash-chart-revenue': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'] },
-    'dash-chart-orders': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Orders'] },
-    'dash-chart-conv': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Kexo', 'Shopify (if available)'] },
-    'dash-chart-sessions': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions'] },
-    'dash-chart-adspend': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue', 'Ad spend'] },
-    'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'] },
-    'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'] },
-    'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'] },
-    'ads-overview-chart': { modes: ['combo', 'line', 'area', 'multi-line-labels'], series: ['Sales', 'Spend', 'ROAS'] },
-    'channels-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true },
-    'type-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true },
-    'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'] },
-    'countries-map-chart': { modes: ['map-animated', 'map-flat'], series: ['Accent'] },
+  var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {
+    'map-animated': 'Map (animated)', 'map-flat': 'Map (flat)', area: 'Area', line: 'Line', bar: 'Bar', pie: 'Pie',
+    combo: 'Multiple (combo)', 'multi-line-labels': 'Multiple line + labels',
   };
 
   function chartMeta(key) {
-    var k = String(key || '').trim().toLowerCase();
-    return CHART_META[k] || { modes: ['line', 'area'], series: [] };
+    return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [] };
   }
 
   function selectOptionsHtml(modes, selected) {

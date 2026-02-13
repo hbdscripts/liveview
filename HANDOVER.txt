@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (All tables builder migration)
+Last updated: 2026-02-13 (Chart builder + visibility fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -145,6 +145,11 @@ Charts are centrally configurable in Settings → Layout → Charts:
 - Saved by: `POST /api/settings` (`chartsUiConfig` payload)
 - Settings-side charts table rendering is lazy-on-tab-open (render when Layout → Charts is active) to avoid hidden-panel select/input rendering glitches.
 
+Chart builder (mirrors table builder pattern):
+- `server/public/kexo-chart-defs.js`: KEXO_CHART_DEFS keyed by chartKey (modes, series, height, pieMetric)
+- `server/public/kexo-chart-builder.js`: kexoEnsureApexCharts, kexoWaitForContainerDimensions, kexoRenderApexChart, kexoRenderSparkline
+- Chart defs used by Settings → Layout → Charts; builder waits for container dimensions before render (fixes "data with no visuals" in modals).
+
 Runtime apply:
 - `server/public/app.js`: dashboard/insights/traffic charts + map behavior
 - `server/public/ads.js`: Google Ads overview chart
@@ -200,6 +205,8 @@ Table checklist:
 
 ## Key frontend files (high-signal)
 
+- `server/public/kexo-chart-defs.js`: chart definitions (KEXO_CHART_DEFS); load before app.js / settings-page.js
+- `server/public/kexo-chart-builder.js`: chart render helpers (waitForContainerDimensions, ensureApexCharts, renderApexChart, renderSparkline)
 - `server/public/partials/head-theme.html`: early theme hydration + loads `/theme-vars.css` + Font Awesome + `fontawesome-icons.js`
 - `server/public/partials/header.html`: desktop strip + desktop nav + KPI strip + mobile nav
 - `server/public/app.js`: shared bootstrapping + report loader + charts/tables + Settings hydration
@@ -251,6 +258,13 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
+- Chart builder:
+  - Added `kexo-chart-defs.js` (KEXO_CHART_DEFS) and `kexo-chart-builder.js` (ensureApexCharts, waitForContainerDimensions, renderApexChart, renderSparkline).
+  - Settings → Layout → Charts now uses chart defs from kexo-chart-defs.js.
+  - Traffic charts (channels, type), Business Snapshot charts now wait for container dimensions before render (fixes "data with no visuals" in modals and on first paint).
+  - Chart scripts loaded before app.js on dashboard/traffic/insights/tools pages.
+
+2026-02-13 (earlier)
 - Variants page: removed header buttons (Variant Settings, All Variant Stats).
 - Products page: hidden-tables note moved full-width above footer, shown only when at least one type table is hidden; PRODUCT_COLS numeric alignment fixed (text-end); builder tables use table-list icon link to Layout settings instead of collapse chevron.
 

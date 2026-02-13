@@ -9228,29 +9228,35 @@ const API = '';
         });
 
         if (mode === 'pie') {
-          plotEl.innerHTML = '';
-          try {
-            channelsChartInstance = new ApexCharts(plotEl, {
-              chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-              series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
-              labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
-              colors: colors,
-              legend: { show: false },
-              dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
-              tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
-            });
-            channelsChartInstance.render();
-          } catch (err) {
-            console.error('[channels] chart render error:', err);
-            plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          function renderChannelsPie() {
+            plotEl.innerHTML = '';
+            try {
+              channelsChartInstance = new ApexCharts(plotEl, {
+                chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+                series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
+                labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
+                colors: colors,
+                legend: { show: false },
+                dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+                tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+              });
+              channelsChartInstance.render();
+            } catch (err) {
+              console.error('[channels] chart render error:', err);
+              plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+            }
           }
+          if (typeof window.kexoWaitForContainerDimensions === 'function') {
+            window.kexoWaitForContainerDimensions(plotEl, renderChannelsPie);
+          } else { renderChannelsPie(); }
           return;
         }
 
         var chartType = normalizeChartType(mode, 'line');
-        plotEl.innerHTML = '';
-        try {
-          channelsChartInstance = new ApexCharts(plotEl, {
+        function renderChannelsLineBar() {
+          plotEl.innerHTML = '';
+          try {
+            channelsChartInstance = new ApexCharts(plotEl, {
             chart: {
               type: chartType,
               height: 320,
@@ -9312,6 +9318,10 @@ const API = '';
           console.error('[channels] chart render error:', err);
           plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
         }
+        }
+        if (typeof window.kexoWaitForContainerDimensions === 'function') {
+          window.kexoWaitForContainerDimensions(plotEl, renderChannelsLineBar);
+        } else { renderChannelsLineBar(); }
         return;
       }
 
@@ -9555,29 +9565,35 @@ const API = '';
         });
 
         if (mode === 'pie') {
-          plotEl.innerHTML = '';
-          try {
-            typeChartInstance = new ApexCharts(plotEl, {
-              chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-              series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
-              labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
-              colors: colors,
-              legend: { show: false },
-              dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
-              tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
-            });
-            typeChartInstance.render();
-          } catch (err) {
-            console.error('[type] chart render error:', err);
-            plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          function renderTypePie() {
+            plotEl.innerHTML = '';
+            try {
+              typeChartInstance = new ApexCharts(plotEl, {
+                chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+                series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
+                labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
+                colors: colors,
+                legend: { show: false },
+                dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
+                tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
+              });
+              typeChartInstance.render();
+            } catch (err) {
+              console.error('[type] chart render error:', err);
+              plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+            }
           }
+          if (typeof window.kexoWaitForContainerDimensions === 'function') {
+            window.kexoWaitForContainerDimensions(plotEl, renderTypePie);
+          } else { renderTypePie(); }
           return;
         }
 
         var chartType = normalizeChartType(mode, 'line');
-        plotEl.innerHTML = '';
-        try {
-          typeChartInstance = new ApexCharts(plotEl, {
+        function renderTypeLineBar() {
+          plotEl.innerHTML = '';
+          try {
+            typeChartInstance = new ApexCharts(plotEl, {
             chart: {
               type: chartType,
               height: 320,
@@ -9639,6 +9655,10 @@ const API = '';
           console.error('[type] chart render error:', err);
           plotEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
         }
+        }
+        if (typeof window.kexoWaitForContainerDimensions === 'function') {
+          window.kexoWaitForContainerDimensions(plotEl, renderTypeLineBar);
+        } else { renderTypeLineBar(); }
         return;
       }
 
@@ -12409,11 +12429,16 @@ const API = '';
           markers: { size: 0 },
         });
 
-        try {
-          const chart = new ApexCharts(el, apexOpts);
-          chart.render();
-          snapshotCharts[elId] = chart;
-        } catch (_) {}
+        function doRender() {
+          try {
+            const chart = new ApexCharts(el, apexOpts);
+            chart.render();
+            snapshotCharts[elId] = chart;
+          } catch (_) {}
+        }
+        if (typeof window.kexoWaitForContainerDimensions === 'function') {
+          window.kexoWaitForContainerDimensions(el, doRender);
+        } else { doRender(); }
       }
 
       function renderSnapshotRadial(elId, pct, opts) {
@@ -12569,33 +12594,38 @@ const API = '';
           if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
           el.innerHTML = '';
 
-          try {
-            const revenueColor = snapshotTrendColor('up');
-            const costColor = snapshotTrendColor('down');
-            const chart = new ApexCharts(el, {
-              series: [
-                { name: 'Revenue', data: rev },
-                { name: 'Cost', data: cst },
-              ],
-              chart: {
-                height: 320,
-                type: 'line',
-                animations: { enabled: false },
-                toolbar: { show: false },
-              },
-              colors: [revenueColor, costColor],
-              dataLabels: { enabled: false },
-              stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
-              fill: { type: 'solid', opacity: 0 },
-              markers: { size: 0 },
-              xaxis: { type: 'datetime', categories },
-              tooltip: { x: { format: 'dd/MM/yy' } },
-              legend: { show: true, position: 'top', horizontalAlign: 'right' },
-              grid: { padding: { left: 0, right: 0, top: 8, bottom: 0 } },
-            });
-            chart.render();
-            snapshotCharts[elId] = chart;
-          } catch (_) {}
+          function doRender() {
+            try {
+              const revenueColor = snapshotTrendColor('up');
+              const costColor = snapshotTrendColor('down');
+              const chart = new ApexCharts(el, {
+                series: [
+                  { name: 'Revenue', data: rev },
+                  { name: 'Cost', data: cst },
+                ],
+                chart: {
+                  height: 320,
+                  type: 'line',
+                  animations: { enabled: false },
+                  toolbar: { show: false },
+                },
+                colors: [revenueColor, costColor],
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
+                fill: { type: 'solid', opacity: 0 },
+                markers: { size: 0 },
+                xaxis: { type: 'datetime', categories },
+                tooltip: { x: { format: 'dd/MM/yy' } },
+                legend: { show: true, position: 'top', horizontalAlign: 'right' },
+                grid: { padding: { left: 0, right: 0, top: 8, bottom: 0 } },
+              });
+              chart.render();
+              snapshotCharts[elId] = chart;
+            } catch (_) {}
+          }
+          if (typeof window.kexoWaitForContainerDimensions === 'function') {
+            window.kexoWaitForContainerDimensions(el, doRender);
+          } else { doRender(); }
         }
 
         ensureSnapshotApexCharts(function () {
