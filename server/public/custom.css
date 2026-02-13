@@ -1397,6 +1397,24 @@ html[data-bs-theme="dark"] .report-build-wrap {
   gap: .5rem;
 }
 
+.business-snapshot-card .business-snapshot-value {
+  font-size: 1.4rem;
+  line-height: 1.2;
+}
+
+.business-snapshot-callout-card .card-body {
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 8px;
+}
+
+#profit-rules-form-wrap.is-hidden {
+  display: none !important;
+}
+
+#profit-rules-msg.is-hidden {
+  display: none !important;
+}
+
 /* Online indicator */
 .online-dot {
   display: inline-block;

@@ -11986,6 +11986,709 @@ const API = '';
       });
     })();
 
+    (function initBusinessSnapshotModal() {
+      if (window.__businessSnapshotModalInit) return;
+      window.__businessSnapshotModalInit = true;
+
+      const openBtn = document.getElementById('kexo-business-snapshot-btn');
+      if (!openBtn) return;
+
+      let snapshotModal = null;
+      let rulesModal = null;
+      let selectedYear = 'all';
+      let rulesDraft = null;
+      let editingRuleId = '';
+      let snapshotLoading = false;
+
+      function isIsoCountryCode(code) {
+        return /^[A-Z]{2}$/.test(String(code || '').trim().toUpperCase());
+      }
+
+      function normalizeCountryCode(code) {
+        const raw = String(code || '').trim().toUpperCase().slice(0, 2);
+        if (!raw) return '';
+        const fixed = raw === 'UK' ? 'GB' : raw;
+        return isIsoCountryCode(fixed) ? fixed : '';
+      }
+
+      function createRuleId() {
+        return 'rule_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      }
+
+      function modalVisible(el) {
+        return !!(el && el.classList && el.classList.contains('show') && el.getAttribute('aria-hidden') !== 'true');
+      }
+
+      function updateBodyModalOpenClass() {
+        const anyOpen = modalVisible(snapshotModal) || modalVisible(rulesModal);
+        document.body.classList.toggle('modal-open', anyOpen);
+      }
+
+      function openModal(el) {
+        if (!el) return;
+        el.style.display = 'block';
+        el.classList.add('show');
+        el.setAttribute('aria-hidden', 'false');
+        updateBodyModalOpenClass();
+      }
+
+      function closeModal(el) {
+        if (!el) return;
+        el.classList.remove('show');
+        el.setAttribute('aria-hidden', 'true');
+        el.style.display = 'none';
+        updateBodyModalOpenClass();
+      }
+
+      function fmtCurrency(value) {
+        const n = value == null ? null : Number(value);
+        if (n == null || !Number.isFinite(n)) return 'Unavailable';
+        return formatRevenue(n) || 'Unavailable';
+      }
+
+      function fmtCount(value) {
+        const n = value == null ? null : Number(value);
+        if (n == null || !Number.isFinite(n)) return 'Unavailable';
+        return formatSessions(Math.round(n));
+      }
+
+      function fmtPercent(value) {
+        const n = value == null ? null : Number(value);
+        if (n == null || !Number.isFinite(n)) return 'Unavailable';
+        return n.toFixed(1).replace(/\.0$/, '') + '%';
+      }
+
+      function fmtDelta(current, previous) {
+        const cur = current == null ? null : Number(current);
+        const prev = previous == null ? null : Number(previous);
+        if (cur == null || prev == null || !Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return '';
+        const pct = ((cur - prev) / Math.abs(prev)) * 100;
+        if (!Number.isFinite(pct)) return '';
+        const rounded = Math.round(pct * 10) / 10;
+        const sign = rounded > 0 ? '+' : '';
+        return 'vs previous period: ' + sign + rounded.toFixed(1).replace(/\.0$/, '') + '%';
+      }
+
+      function metricCardHtml(label, valueText, deltaText) {
+        const hasDelta = deltaText && String(deltaText).trim();
+        return '' +
+          '<div class="col-12 col-md-6 col-xl-3">' +
+            '<div class="card business-snapshot-card">' +
+              '<div class="card-body">' +
+                '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
+                (hasDelta ? ('<div class="text-muted small">' + escapeHtml(deltaText) + '</div>') : '') +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      }
+
+      function calloutCardHtml() {
+        return '' +
+          '<div class="col-12">' +
+            '<div class="card business-snapshot-callout-card">' +
+              '<div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">' +
+                '<div class="text-muted">Set up Profit Rules to view profit and margin</div>' +
+                '<button type="button" class="btn btn-primary" id="business-snapshot-configure-rules-btn">Configure Profit Rules</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      }
+
+      function renderSnapshot(data) {
+        const body = document.getElementById('business-snapshot-body');
+        if (!body) return;
+        if (!data || data.ok !== true) {
+          body.innerHTML = '<div class="alert alert-warning mb-0">Snapshot is unavailable right now.</div>';
+          return;
+        }
+
+        const f = data.financial || {};
+        const p = data.performance || {};
+        const c = data.customers || {};
+        const profit = f.profit || {};
+
+        let financialCards = '';
+        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), fmtDelta(f.revenue && f.revenue.value, f.revenue && f.revenue.previous));
+        financialCards += metricCardHtml('Orders', fmtCount(f.orders && f.orders.value), fmtDelta(f.orders && f.orders.value, f.orders && f.orders.previous));
+        financialCards += metricCardHtml('AOV', fmtCurrency(f.aov && f.aov.value), fmtDelta(f.aov && f.aov.value, f.aov && f.aov.previous));
+        financialCards += metricCardHtml('Conversion Rate %', fmtPercent(f.conversionRate && f.conversionRate.value), fmtDelta(f.conversionRate && f.conversionRate.value, f.conversionRate && f.conversionRate.previous));
+
+        if (profit.visible) {
+          financialCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), fmtDelta(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous));
+          financialCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), fmtDelta(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous));
+          financialCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), fmtDelta(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous));
+          financialCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), fmtDelta(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous));
+        } else {
+          financialCards += calloutCardHtml();
+        }
+
+        let performanceCards = '';
+        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), fmtDelta(p.sessions && p.sessions.value, p.sessions && p.sessions.previous));
+        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), fmtDelta(p.orders && p.orders.value, p.orders && p.orders.previous));
+        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), fmtDelta(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous));
+        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), fmtDelta(p.aov && p.aov.value, p.aov && p.aov.previous));
+
+        let customersCards = '';
+        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), '');
+        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), '');
+        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), '');
+        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), '');
+
+        body.innerHTML = '' +
+          '<div class="business-snapshot-section mb-4">' +
+            '<h3 class="card-title mb-3">Financial</h3>' +
+            '<div class="row g-3 business-snapshot-grid">' + financialCards + '</div>' +
+          '</div>' +
+          '<div class="business-snapshot-section mb-4">' +
+            '<h3 class="card-title mb-3">Performance</h3>' +
+            '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +
+          '</div>' +
+          '<div class="business-snapshot-section">' +
+            '<h3 class="card-title mb-3">Customers</h3>' +
+            '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
+          '</div>';
+
+        const configureBtn = document.getElementById('business-snapshot-configure-rules-btn');
+        if (configureBtn) {
+          configureBtn.addEventListener('click', function () {
+            openProfitRulesModal();
+          });
+        }
+      }
+
+      function setSnapshotLoading() {
+        const body = document.getElementById('business-snapshot-body');
+        if (!body) return;
+        body.innerHTML =
+          '<div class="business-snapshot-loading py-4 text-center">' +
+            '<div class="spinner-border text-primary" role="status"></div>' +
+            '<div class="text-muted mt-2">Loading business snapshot...</div>' +
+          '</div>';
+      }
+
+      function fetchSnapshot(force) {
+        if (snapshotLoading) return Promise.resolve();
+        snapshotLoading = true;
+        if (force) setSnapshotLoading();
+        let url = API + '/api/business-snapshot?year=' + encodeURIComponent(selectedYear || 'all');
+        if (force) url += '&_=' + Date.now();
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
+          .then(function (res) { return (res && res.ok) ? res.json() : null; })
+          .then(function (data) { renderSnapshot(data); })
+          .catch(function () { renderSnapshot(null); })
+          .finally(function () { snapshotLoading = false; });
+      }
+
+      function normalizeRulesPayload(payload) {
+        const src = payload && typeof payload === 'object' ? payload : {};
+        const out = {
+          enabled: !!src.enabled,
+          currency: (src.currency && typeof src.currency === 'string' ? src.currency : 'GBP').toUpperCase(),
+          rules: [],
+        };
+        const list = Array.isArray(src.rules) ? src.rules : [];
+        for (let i = 0; i < list.length; i++) {
+          const row = list[i] && typeof list[i] === 'object' ? list[i] : {};
+          const mode = row.appliesTo && row.appliesTo.mode === 'countries' ? 'countries' : 'all';
+          const countries = mode === 'countries' && row.appliesTo && Array.isArray(row.appliesTo.countries)
+            ? row.appliesTo.countries.map(normalizeCountryCode).filter(Boolean)
+            : [];
+          out.rules.push({
+            id: row.id ? String(row.id) : createRuleId(),
+            name: row.name ? String(row.name) : 'Expense',
+            appliesTo: mode === 'countries' && countries.length ? { mode: 'countries', countries } : { mode: 'all', countries: [] },
+            type: row.type ? String(row.type) : 'percent_revenue',
+            value: Number.isFinite(Number(row.value)) ? Number(row.value) : 0,
+            notes: row.notes ? String(row.notes) : '',
+            enabled: row.enabled !== false,
+            sort: Number.isFinite(Number(row.sort)) ? Math.trunc(Number(row.sort)) : (i + 1),
+          });
+        }
+        out.rules.sort(function (a, b) { return (Number(a.sort) || 0) - (Number(b.sort) || 0); });
+        return out;
+      }
+
+      function fetchProfitRules(force) {
+        let url = API + '/api/settings/profit-rules';
+        if (force) url += '?_=' + Date.now();
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
+          .then(function (res) { return (res && res.ok) ? res.json() : null; })
+          .then(function (payload) {
+            const normalized = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : null);
+            rulesDraft = normalized;
+            return normalized;
+          })
+          .catch(function () {
+            const fallback = normalizeRulesPayload({ enabled: false, currency: 'GBP', rules: [] });
+            rulesDraft = fallback;
+            return fallback;
+          });
+      }
+
+      function setRulesMessage(text, ok) {
+        const el = document.getElementById('profit-rules-msg');
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.toggle('text-success', !!ok);
+        el.classList.toggle('text-danger', ok === false);
+        el.classList.toggle('is-hidden', !text);
+      }
+
+      function sortRulesDraft() {
+        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return;
+        rulesDraft.rules.sort(function (a, b) {
+          const sa = Number(a && a.sort != null ? a.sort : 0) || 0;
+          const sb = Number(b && b.sort != null ? b.sort : 0) || 0;
+          if (sa !== sb) return sa - sb;
+          return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+        });
+      }
+
+      function reindexRulesSort() {
+        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return;
+        sortRulesDraft();
+        rulesDraft.rules.forEach(function (rule, idx) {
+          rule.sort = idx + 1;
+        });
+      }
+
+      function ruleTypeLabel(type) {
+        if (type === 'fixed_per_order') return 'Fixed per Order';
+        if (type === 'fixed_per_period') return 'Fixed per Period';
+        return 'Percent of Revenue';
+      }
+
+      function ruleValueLabel(rule) {
+        if (!rule) return '—';
+        const value = Number(rule.value);
+        if (!Number.isFinite(value)) return '—';
+        if (rule.type === 'percent_revenue') return value.toFixed(2).replace(/\.00$/, '') + '%';
+        return fmtCurrency(value);
+      }
+
+      function renderRulesList() {
+        const body = document.getElementById('profit-rules-table-body');
+        if (!body) return;
+        if (!rulesDraft || !Array.isArray(rulesDraft.rules) || !rulesDraft.rules.length) {
+          body.innerHTML = '<tr><td colspan="7" class="text-muted">No rules yet.</td></tr>';
+          return;
+        }
+        sortRulesDraft();
+        let html = '';
+        rulesDraft.rules.forEach(function (rule, idx) {
+          const applies = rule && rule.appliesTo && rule.appliesTo.mode === 'countries'
+            ? ((rule.appliesTo.countries || []).join(', ') || '—')
+            : 'All';
+          html += '' +
+            '<tr data-rule-id="' + escapeHtml(rule.id || '') + '">' +
+              '<td>' + escapeHtml(rule.name || 'Expense') + '</td>' +
+              '<td>' + escapeHtml(applies) + '</td>' +
+              '<td>' + escapeHtml(ruleTypeLabel(rule.type)) + '</td>' +
+              '<td>' + escapeHtml(ruleValueLabel(rule)) + '</td>' +
+              '<td class="text-nowrap">' +
+                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="move-up" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (idx <= 0 ? ' disabled' : '') + '>Up</button> ' +
+                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="move-down" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (idx >= (rulesDraft.rules.length - 1) ? ' disabled' : '') + '>Down</button>' +
+              '</td>' +
+              '<td>' +
+                '<label class="form-check form-switch m-0">' +
+                  '<input class="form-check-input" type="checkbox" data-pr-action="toggle-enabled" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (rule.enabled ? ' checked' : '') + '>' +
+                '</label>' +
+              '</td>' +
+              '<td class="text-nowrap">' +
+                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="edit" data-rule-id="' + escapeHtml(rule.id || '') + '">Edit</button> ' +
+                '<button class="btn btn-sm btn-ghost-danger" data-pr-action="delete" data-rule-id="' + escapeHtml(rule.id || '') + '">Delete</button>' +
+              '</td>' +
+            '</tr>';
+        });
+        body.innerHTML = html;
+      }
+
+      function getRuleById(ruleId) {
+        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return null;
+        return rulesDraft.rules.find(function (rule) { return String(rule && rule.id || '') === String(ruleId || ''); }) || null;
+      }
+
+      function setFormMode(modeText) {
+        const title = document.getElementById('profit-rules-form-title');
+        if (title) title.textContent = modeText || 'Add Expense Rule';
+      }
+
+      function showRulesForm(rule) {
+        const panel = document.getElementById('profit-rules-form-wrap');
+        if (!panel) return;
+        panel.classList.remove('is-hidden');
+        const editing = !!rule;
+        editingRuleId = editing ? String(rule.id || '') : '';
+        setFormMode(editing ? 'Edit Expense Rule' : 'Add Expense Rule');
+        const nameEl = document.getElementById('profit-rule-name');
+        const modeAllEl = document.getElementById('profit-rule-applies-all');
+        const modeCountriesEl = document.getElementById('profit-rule-applies-countries');
+        const countriesEl = document.getElementById('profit-rule-countries');
+        const typeEl = document.getElementById('profit-rule-type');
+        const valueEl = document.getElementById('profit-rule-value');
+        const notesEl = document.getElementById('profit-rule-notes');
+        const enabledEl = document.getElementById('profit-rule-enabled');
+        if (nameEl) nameEl.value = editing ? (rule.name || '') : '';
+        const mode = editing && rule.appliesTo && rule.appliesTo.mode === 'countries' ? 'countries' : 'all';
+        if (modeAllEl) modeAllEl.checked = mode === 'all';
+        if (modeCountriesEl) modeCountriesEl.checked = mode === 'countries';
+        if (countriesEl) countriesEl.value = editing && rule.appliesTo && Array.isArray(rule.appliesTo.countries) ? rule.appliesTo.countries.join(', ') : '';
+        if (typeEl) typeEl.value = editing ? (rule.type || 'percent_revenue') : 'percent_revenue';
+        if (valueEl) valueEl.value = editing ? String(Number(rule.value) || 0) : '';
+        if (notesEl) notesEl.value = editing ? (rule.notes || '') : '';
+        if (enabledEl) enabledEl.checked = editing ? (rule.enabled !== false) : true;
+      }
+
+      function hideRulesForm() {
+        const panel = document.getElementById('profit-rules-form-wrap');
+        if (!panel) return;
+        panel.classList.add('is-hidden');
+        editingRuleId = '';
+      }
+
+      function readRuleForm() {
+        const nameEl = document.getElementById('profit-rule-name');
+        const modeCountriesEl = document.getElementById('profit-rule-applies-countries');
+        const countriesEl = document.getElementById('profit-rule-countries');
+        const typeEl = document.getElementById('profit-rule-type');
+        const valueEl = document.getElementById('profit-rule-value');
+        const notesEl = document.getElementById('profit-rule-notes');
+        const enabledEl = document.getElementById('profit-rule-enabled');
+
+        const name = nameEl ? String(nameEl.value || '').trim() : '';
+        if (!name) return { ok: false, error: 'Rule name is required.' };
+
+        const type = typeEl ? String(typeEl.value || '').trim() : 'percent_revenue';
+        if (['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(type) < 0) {
+          return { ok: false, error: 'Invalid calculation type.' };
+        }
+
+        const value = valueEl ? Number(valueEl.value) : NaN;
+        if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Value must be a positive number.' };
+
+        const mode = modeCountriesEl && modeCountriesEl.checked ? 'countries' : 'all';
+        let countries = [];
+        if (mode === 'countries') {
+          const raw = countriesEl ? String(countriesEl.value || '') : '';
+          countries = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
+          const uniq = [];
+          const seen = new Set();
+          countries.forEach(function (cc) {
+            if (!cc || seen.has(cc)) return;
+            seen.add(cc);
+            uniq.push(cc);
+          });
+          countries = uniq;
+          if (!countries.length) return { ok: false, error: 'Enter at least one valid ISO country code.' };
+          if (!countries.every(isIsoCountryCode)) return { ok: false, error: 'Country codes must be 2-letter ISO values.' };
+        }
+
+        return {
+          ok: true,
+          rule: {
+            id: editingRuleId || createRuleId(),
+            name: name.slice(0, 80),
+            appliesTo: mode === 'countries' ? { mode: 'countries', countries: countries.slice(0, 64) } : { mode: 'all', countries: [] },
+            type,
+            value,
+            notes: notesEl ? String(notesEl.value || '').trim().slice(0, 400) : '',
+            enabled: enabledEl ? !!enabledEl.checked : true,
+          },
+        };
+      }
+
+      function saveRuleForm() {
+        const parsed = readRuleForm();
+        if (!parsed.ok) {
+          setRulesMessage(parsed.error, false);
+          return;
+        }
+        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) rulesDraft = normalizeRulesPayload(null);
+        const existing = getRuleById(parsed.rule.id);
+        if (existing) {
+          existing.name = parsed.rule.name;
+          existing.appliesTo = parsed.rule.appliesTo;
+          existing.type = parsed.rule.type;
+          existing.value = parsed.rule.value;
+          existing.notes = parsed.rule.notes;
+          existing.enabled = parsed.rule.enabled;
+        } else {
+          parsed.rule.sort = (rulesDraft.rules.length || 0) + 1;
+          rulesDraft.rules.push(parsed.rule);
+        }
+        reindexRulesSort();
+        renderRulesList();
+        hideRulesForm();
+        setRulesMessage('Rule saved in draft.', true);
+      }
+
+      function saveProfitRules() {
+        if (!rulesDraft) rulesDraft = normalizeRulesPayload(null);
+        const enabledToggle = document.getElementById('profit-rules-enabled');
+        rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!rulesDraft.enabled;
+        reindexRulesSort();
+        setRulesMessage('Saving…', true);
+        return fetchWithTimeout(API + '/api/settings/profit-rules', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ profitRules: rulesDraft }),
+        }, 25000)
+          .then(function (res) { return (res && res.ok) ? res.json() : null; })
+          .then(function (payload) {
+            const saved = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : rulesDraft);
+            rulesDraft = saved;
+            setRulesMessage('Profit rules saved.', true);
+            if (modalVisible(snapshotModal)) fetchSnapshot(true);
+          })
+          .catch(function () {
+            setRulesMessage('Failed to save profit rules.', false);
+          });
+      }
+
+      function openProfitRulesModal() {
+        ensureModals();
+        setRulesMessage('', null);
+        fetchProfitRules(false).then(function (rules) {
+          const enabledToggle = document.getElementById('profit-rules-enabled');
+          if (enabledToggle) enabledToggle.checked = !!(rules && rules.enabled);
+          renderRulesList();
+          hideRulesForm();
+          openModal(rulesModal);
+        });
+      }
+
+      function ensureModals() {
+        if (snapshotModal && rulesModal) return;
+        if (!snapshotModal) {
+          const wrap = document.createElement('div');
+          wrap.className = 'modal modal-blur fade';
+          wrap.id = 'business-snapshot-modal';
+          wrap.tabIndex = -1;
+          wrap.setAttribute('aria-hidden', 'true');
+          wrap.style.display = 'none';
+          wrap.innerHTML = '' +
+            '<div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Business Snapshot">' +
+              '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                  '<h5 class="modal-title">Business Snapshot</h5>' +
+                  '<div class="ms-auto d-flex align-items-center gap-2">' +
+                    '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
+                      '<i class="fa-thin fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>' +
+                    '</button>' +
+                    '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                  '<div class="mb-3">' +
+                    '<label class="form-label mb-1" for="business-snapshot-year">Year</label>' +
+                    '<select class="form-select" id="business-snapshot-year">' +
+                      '<option value="2026">2026</option>' +
+                      '<option value="2025">2025</option>' +
+                      '<option value="2024">2024</option>' +
+                      '<option value="all" selected>All Time</option>' +
+                    '</select>' +
+                  '</div>' +
+                  '<div id="business-snapshot-body"></div>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.body.appendChild(wrap);
+          snapshotModal = wrap;
+
+          const closeBtn = document.getElementById('business-snapshot-close-btn');
+          if (closeBtn) closeBtn.addEventListener('click', function () { closeModal(snapshotModal); });
+          snapshotModal.addEventListener('click', function (e) {
+            if (modalVisible(rulesModal)) return;
+            if (e && e.target === snapshotModal) closeModal(snapshotModal);
+          });
+          document.addEventListener('keydown', function (e) {
+            if (!modalVisible(snapshotModal)) return;
+            if (modalVisible(rulesModal)) return;
+            if ((e && (e.key || e.code)) === 'Escape') closeModal(snapshotModal);
+          });
+
+          const yearSel = document.getElementById('business-snapshot-year');
+          if (yearSel) {
+            yearSel.addEventListener('change', function () {
+              selectedYear = String(yearSel.value || 'all').toLowerCase();
+              fetchSnapshot(true);
+            });
+          }
+          const rulesBtn = document.getElementById('business-snapshot-rules-btn');
+          if (rulesBtn) rulesBtn.addEventListener('click', function () { openProfitRulesModal(); });
+        }
+
+        if (!rulesModal) {
+          const wrap = document.createElement('div');
+          wrap.className = 'modal modal-blur fade';
+          wrap.id = 'profit-rules-modal';
+          wrap.tabIndex = -1;
+          wrap.setAttribute('aria-hidden', 'true');
+          wrap.style.display = 'none';
+          wrap.innerHTML = '' +
+            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Profit Rules">' +
+              '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                  '<h5 class="modal-title">Profit Rules</h5>' +
+                  '<button type="button" class="btn-close" id="profit-rules-close-btn" aria-label="Close"></button>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                  '<div class="mb-3">' +
+                    '<label class="form-check form-switch m-0">' +
+                      '<input class="form-check-input" type="checkbox" id="profit-rules-enabled">' +
+                      '<span class="form-check-label">Enable estimated profit in Business Snapshot</span>' +
+                    '</label>' +
+                  '</div>' +
+                  '<div class="d-flex align-items-center justify-content-between mb-2">' +
+                    '<h6 class="mb-0">Rules</h6>' +
+                    '<button type="button" class="btn btn-outline-primary btn-sm" id="profit-rules-add-btn">Add Expense Rule</button>' +
+                  '</div>' +
+                  '<div class="table-responsive mb-3">' +
+                    '<table class="table table-sm table-vcenter">' +
+                      '<thead><tr><th>Rule name</th><th>Applies to</th><th>Type</th><th>Value</th><th>Priority</th><th>Enabled</th><th>Actions</th></tr></thead>' +
+                      '<tbody id="profit-rules-table-body"></tbody>' +
+                    '</table>' +
+                  '</div>' +
+                  '<div class="card is-hidden" id="profit-rules-form-wrap">' +
+                    '<div class="card-body">' +
+                      '<h6 id="profit-rules-form-title" class="mb-3">Add Expense Rule</h6>' +
+                      '<div class="row g-3">' +
+                        '<div class="col-12 col-md-6">' +
+                          '<label class="form-label">Name</label>' +
+                          '<input class="form-control" id="profit-rule-name" placeholder="VAT">' +
+                        '</div>' +
+                        '<div class="col-12 col-md-6">' +
+                          '<label class="form-label">Calculation type</label>' +
+                          '<select class="form-select" id="profit-rule-type">' +
+                            '<option value="percent_revenue">Percent of Revenue</option>' +
+                            '<option value="fixed_per_order">Fixed per Order</option>' +
+                            '<option value="fixed_per_period">Fixed per Period</option>' +
+                          '</select>' +
+                        '</div>' +
+                        '<div class="col-12">' +
+                          '<label class="form-label d-block">Applies to</label>' +
+                          '<label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="profit-rule-applies" id="profit-rule-applies-all" checked><span class="form-check-label">All countries</span></label>' +
+                          '<label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="profit-rule-applies" id="profit-rule-applies-countries"><span class="form-check-label">Specific countries</span></label>' +
+                          '<input class="form-control mt-2" id="profit-rule-countries" placeholder="GB, US, AU">' +
+                        '</div>' +
+                        '<div class="col-12 col-md-6">' +
+                          '<label class="form-label">Value</label>' +
+                          '<input type="number" step="0.01" min="0" class="form-control" id="profit-rule-value" placeholder="20">' +
+                        '</div>' +
+                        '<div class="col-12 col-md-6 d-flex align-items-end">' +
+                          '<label class="form-check form-switch m-0">' +
+                            '<input class="form-check-input" type="checkbox" id="profit-rule-enabled" checked>' +
+                            '<span class="form-check-label">Enabled</span>' +
+                          '</label>' +
+                        '</div>' +
+                        '<div class="col-12">' +
+                          '<label class="form-label">Notes (optional)</label>' +
+                          '<textarea class="form-control" id="profit-rule-notes" rows="2"></textarea>' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="d-flex justify-content-end gap-2 mt-3">' +
+                        '<button type="button" class="btn btn-ghost-secondary" id="profit-rule-cancel-btn">Cancel</button>' +
+                        '<button type="button" class="btn btn-primary" id="profit-rule-save-btn">Save</button>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="small mt-3 is-hidden" id="profit-rules-msg"></div>' +
+                '</div>' +
+                '<div class="modal-footer">' +
+                  '<button type="button" class="btn btn-ghost-secondary" id="profit-rules-dismiss-btn">Close</button>' +
+                  '<button type="button" class="btn btn-primary" id="profit-rules-save-btn">Save Rules</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.body.appendChild(wrap);
+          rulesModal = wrap;
+
+          const closeBtn = document.getElementById('profit-rules-close-btn');
+          if (closeBtn) closeBtn.addEventListener('click', function () { closeModal(rulesModal); });
+          const dismissBtn = document.getElementById('profit-rules-dismiss-btn');
+          if (dismissBtn) dismissBtn.addEventListener('click', function () { closeModal(rulesModal); });
+          rulesModal.addEventListener('click', function (e) {
+            if (e && e.target === rulesModal) closeModal(rulesModal);
+          });
+          document.addEventListener('keydown', function (e) {
+            if (!modalVisible(rulesModal)) return;
+            if ((e && (e.key || e.code)) === 'Escape') closeModal(rulesModal);
+          });
+
+          const addBtn = document.getElementById('profit-rules-add-btn');
+          if (addBtn) addBtn.addEventListener('click', function () {
+            setRulesMessage('', null);
+            showRulesForm(null);
+          });
+          const cancelBtn = document.getElementById('profit-rule-cancel-btn');
+          if (cancelBtn) cancelBtn.addEventListener('click', function () { hideRulesForm(); });
+          const saveRuleBtn = document.getElementById('profit-rule-save-btn');
+          if (saveRuleBtn) saveRuleBtn.addEventListener('click', function () { saveRuleForm(); });
+          const saveRulesBtn = document.getElementById('profit-rules-save-btn');
+          if (saveRulesBtn) saveRulesBtn.addEventListener('click', function () { saveProfitRules(); });
+
+          const tableBody = document.getElementById('profit-rules-table-body');
+          if (tableBody) {
+            tableBody.addEventListener('click', function (e) {
+              const target = e && e.target ? e.target : null;
+              const btn = target && target.closest ? target.closest('[data-pr-action]') : null;
+              if (!btn) return;
+              const action = String(btn.getAttribute('data-pr-action') || '').trim();
+              const ruleId = String(btn.getAttribute('data-rule-id') || '').trim();
+              const rule = getRuleById(ruleId);
+              if (!rule) return;
+              if (action === 'edit') {
+                setRulesMessage('', null);
+                showRulesForm(rule);
+                return;
+              }
+              if (action === 'delete') {
+                rulesDraft.rules = rulesDraft.rules.filter(function (r) { return String(r.id || '') !== ruleId; });
+                reindexRulesSort();
+                renderRulesList();
+                setRulesMessage('Rule removed.', true);
+                return;
+              }
+              if (action === 'move-up' || action === 'move-down') {
+                sortRulesDraft();
+                const idx = rulesDraft.rules.findIndex(function (r) { return String(r && r.id || '') === ruleId; });
+                if (idx < 0) return;
+                const nextIdx = action === 'move-up' ? idx - 1 : idx + 1;
+                if (nextIdx < 0 || nextIdx >= rulesDraft.rules.length) return;
+                const tmp = rulesDraft.rules[idx];
+                rulesDraft.rules[idx] = rulesDraft.rules[nextIdx];
+                rulesDraft.rules[nextIdx] = tmp;
+                reindexRulesSort();
+                renderRulesList();
+                setRulesMessage('Rule priority updated.', true);
+              }
+            });
+            tableBody.addEventListener('change', function (e) {
+              const target = e && e.target ? e.target : null;
+              if (!target || target.getAttribute('data-pr-action') !== 'toggle-enabled') return;
+              const ruleId = String(target.getAttribute('data-rule-id') || '').trim();
+              const rule = getRuleById(ruleId);
+              if (!rule) return;
+              rule.enabled = !!target.checked;
+              setRulesMessage('Rule updated in draft.', true);
+            });
+          }
+        }
+      }
+
+      openBtn.addEventListener('click', function () {
+        ensureModals();
+        selectedYear = 'all';
+        const yearSel = document.getElementById('business-snapshot-year');
+        if (yearSel) yearSel.value = 'all';
+        setSnapshotLoading();
+        openModal(snapshotModal);
+        fetchSnapshot(true);
+      });
+    })();
+
     (function initTrafficTypeTree() {
       const body = document.getElementById('traffic-types-body');
       if (!body) return;

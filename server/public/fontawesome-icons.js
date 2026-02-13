@@ -38,6 +38,7 @@
     'nav-toggle-integrations': 'fa-puzzle-piece',
     'nav-toggle-tools': 'fa-screwdriver-wrench',
     'nav-toggle-settings': 'fa-gear',
+    'header-business-snapshot': 'fa-sack-dollar',
     'nav-item-overview': 'fa-house',
     'nav-item-live': 'fa-satellite-dish',
     'nav-item-sales': 'fa-cart-shopping',
@@ -166,8 +167,10 @@
   function defaultIconStyleForKey(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'fa-light';
-    if (isLockedSettingsIconKey(key)) return 'fa-solid';
+    if (isLockedSettingsIconKey(key)) return 'fa-thin';
+    if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
     if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';
@@ -333,6 +336,9 @@
   }
 
   function ensureCardTitleIcons(root) {
+    var page = '';
+    try { page = (document.body && document.body.getAttribute('data-page') || '').trim().toLowerCase(); } catch (_) {}
+    if (page === 'settings') return;
     var titles = (root || document).querySelectorAll('.card-header .card-title');
     titles.forEach(function (titleEl) {
       if (!titleEl || !titleEl.classList) return;

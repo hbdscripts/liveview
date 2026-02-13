@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Header: remove avatar + move sign out into Settings menu)
+Last updated: 2026-02-13 (Business Snapshot modal + Profit Rules + settings icon cleanup)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -231,6 +231,21 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Header + snapshot/profit:
+  - Added a new configurable top-strip money button (`data-icon-key="header-business-snapshot"`) next to the Settings button.
+  - Added `GET /api/business-snapshot?year=2026|2025|2024|all` for Business Snapshot cards (Financial / Performance / Customers) with previous-period deltas where available.
+  - Added Profit Rules persistence key `profit_rules_v1` and dedicated endpoints:
+    - `GET /api/settings/profit-rules`
+    - `PUT /api/settings/profit-rules`
+  - Business Snapshot now includes an in-modal Profit Rules editor (enable toggle, rule list, add/edit/delete, priority up/down, per-rule enabled toggle, ISO country targeting).
+  - Estimated profit formulas are now centralized server-side using paid Shopify truth orders and country-aware rule applicability.
+- Settings icon cleanup + style tweaks:
+  - Disabled auto-injected inner card title icons on Settings page (`fontawesome-icons.js` skips `data-page="settings"`), so inner Settings cards/tables no longer get extra gear icons.
+  - Added Theme Icons support for `header-business-snapshot` (including persistence via `theme_icon_glyph_header_business_snapshot`).
+  - Updated Settings tab/diagnostics icon defaults from `fa-solid` to `fa-thin`.
+  - Updated strip dropdown menu styling to include `padding: 0` and `font-size: 13px` on `.kexo-top-strip-settings-menu, .kexo-top-strip-online-menu`.
 
 2026-02-13 (latest)
 - Dashboard overview:

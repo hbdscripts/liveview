@@ -52,6 +52,7 @@ const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
 const settings = require('./routes/settings');
 const dashboardSeries = require('./routes/dashboardSeries');
+const businessSnapshot = require('./routes/businessSnapshot');
 const dashboardAuth = require('./middleware/dashboardAuth');
 
 const app = express();
@@ -99,6 +100,8 @@ app.get('/api/latest-sales', sessionsRouter.latestSales);
 app.get('/api/config-status', configStatus);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
+app.get('/api/settings/profit-rules', settings.getProfitRules);
+app.put('/api/settings/profit-rules', settings.putProfitRules);
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 // Server-injected theme variables (prevents first-paint header flash).
@@ -141,6 +144,7 @@ app.get('/api/page-insights', pageInsights.getPageInsights);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
+app.get('/api/business-snapshot', businessSnapshot.getBusinessSnapshot);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);

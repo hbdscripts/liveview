@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 25;
+const DEFINITIONS_VERSION = 26;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -76,6 +76,36 @@ const TRACKER_TABLE_DEFINITIONS = [
       },
     },
     requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'business_snapshot_modal',
+    page: 'Header',
+    name: 'Business Snapshot modal + Profit Rules',
+    ui: { elementIds: ['kexo-business-snapshot-btn', 'business-snapshot-modal', 'profit-rules-modal'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/business-snapshot',
+      params: ['year=2026|2025|2024|all'],
+    },
+    sources: [
+      { kind: 'db', tables: ['settings'], note: 'profit_rules_v1 persistence for estimated profit toggles/rules' },
+      { kind: 'db', tables: ['orders_shopify', 'customer_order_facts'], note: 'Revenue/orders/customer/LTV and country-scoped profit deductions from Shopify truth orders' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions denominator for conversion + performance metrics (human_only)' },
+      { kind: 'fx', note: 'Currency conversion to GBP for multi-currency order totals' },
+    ],
+    columns: [
+      { name: 'Financial', value: 'Revenue, Orders, AOV, Conversion Rate and optional estimated profit/margin cards' },
+      { name: 'Performance', value: 'Sessions, Orders, Conversion Rate, AOV' },
+      { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate, LTV (cohort-aware)' },
+      { name: 'Profit Rules', value: 'Percent of Revenue, Fixed per Order, Fixed per Period with country targeting' },
+    ],
+    math: [
+      { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
+      { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
+      { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: true },
+    requires: { dbTables: ['settings', 'orders_shopify', 'sessions'], shopifyToken: false },
   },
   {
     id: 'dashboard_overview_top_products_table',

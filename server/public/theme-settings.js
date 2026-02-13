@@ -32,6 +32,7 @@
     'nav-toggle-integrations': 'fa-puzzle-piece',
     'nav-toggle-tools': 'fa-screwdriver-wrench',
     'nav-toggle-settings': 'fa-gear',
+    'header-business-snapshot': 'fa-sack-dollar',
     'nav-item-overview': 'fa-house',
     'nav-item-live': 'fa-satellite-dish',
     'nav-item-sales': 'fa-cart-shopping',
@@ -173,8 +174,10 @@
   function defaultIconStyleForKey(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'fa-light';
-    if (isLockedSettingsIconKey(key)) return 'fa-solid';
+    if (isLockedSettingsIconKey(key)) return 'fa-thin';
+    if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
     if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';
@@ -611,7 +614,7 @@
     if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';
     if (key.indexOf('card-collapse-') === 0) return 'Card collapse chevron icon. Shows on collapsible cards in dashboard and insights pages.';
     if (key.indexOf('dash-kpi-delta-') === 0) return 'Overview KPI delta icon. Shows in KPI cards on /dashboard/overview.';
-    if (key.indexOf('settings-tab-') === 0 || key.indexOf('settings-diagnostics-') === 0) return 'Settings page icon. Locked to a fixed fa-solid class and not editable.';
+    if (key.indexOf('settings-tab-') === 0 || key.indexOf('settings-diagnostics-') === 0) return 'Settings page icon. Locked to a fixed fa-thin class and not editable.';
     if (key.indexOf('chart-type-') === 0) return 'Chart type switch icon used when chart type controls are enabled.';
     return 'Icon shown in the app UI for key "' + key + '".';
   }
@@ -1164,7 +1167,7 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Set icon classes with full Font Awesome specs only (for example <code>fa-light fa-bars</code> or <code>fa-solid fa-circle-check</code>). Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-solid</code> classes and are intentionally excluded from this list.</div>' +
+        '<div class="text-secondary mb-3">Set icon classes with full Font Awesome specs only (for example <code>fa-light fa-bars</code> or <code>fa-thin fa-circle-check</code>). Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-thin</code> classes and are intentionally excluded from this list.</div>' +
         '<h4 class="mb-2">Global icon visuals</h4>' +
         '<div class="row g-3">' + visualGrid + '</div>' +
         '<hr class="my-3" />' +

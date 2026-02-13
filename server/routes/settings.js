@@ -16,6 +16,11 @@ const {
   validateConfigAgainstVariants,
 } = require('../variantInsightsConfig');
 const { getObservedVariantsForValidation } = require('../variantInsightsService');
+const {
+  PROFIT_RULES_V1_KEY,
+  defaultProfitRulesConfigV1,
+  normalizeProfitRulesConfigV1,
+} = require('../profitRulesConfig');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
@@ -848,6 +853,7 @@ async function readSettingsPayload() {
   let kpiUiConfig = defaultKpiUiConfigV1();
   let chartsUiConfig = defaultChartsUiConfigV1();
   let tablesUiConfig = defaultTablesUiConfigV1();
+  let profitRules = defaultProfitRulesConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   try {
@@ -881,6 +887,10 @@ async function readSettingsPayload() {
     tablesUiConfig = normalizeTablesUiConfigV1(raw);
   } catch (_) {}
   try {
+    const raw = await store.getSetting(PROFIT_RULES_V1_KEY);
+    profitRules = normalizeProfitRulesConfigV1(raw);
+  } catch (_) {}
+  try {
     const raw = await store.getSetting(VARIANTS_CONFIG_KEY);
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
@@ -895,6 +905,7 @@ async function readSettingsPayload() {
     kpiUiConfig,
     chartsUiConfig,
     tablesUiConfig,
+    profitRules,
     insightsVariantsConfig,
   };
 }
@@ -1010,6 +1021,22 @@ async function postSettings(req, res) {
     }
   }
 
+  // Profit rules config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'profitRules')) {
+    try {
+      if (body.profitRules == null) {
+        await store.setSetting(PROFIT_RULES_V1_KEY, '');
+      } else {
+        const normalized = normalizeProfitRulesConfigV1(body.profitRules);
+        const json = JSON.stringify(normalized);
+        if (json.length > 120000) throw new Error('Profit rules config too large');
+        await store.setSetting(PROFIT_RULES_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save profit rules config' });
+    }
+  }
+
   // Fast-path ignore add from Insights -> Variants mapping modal.
   if (body.insightsVariantsIgnore && typeof body.insightsVariantsIgnore === 'object') {
     try {
@@ -1111,6 +1138,37 @@ async function postSettings(req, res) {
   res.json(payload);
 }
 
+async function getProfitRules(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  let profitRules = defaultProfitRulesConfigV1();
+  try {
+    const raw = await store.getSetting(PROFIT_RULES_V1_KEY);
+    profitRules = normalizeProfitRulesConfigV1(raw);
+  } catch (_) {}
+  res.json({ ok: true, profitRules });
+}
+
+async function putProfitRules(req, res) {
+  if (req.method !== 'PUT') {
+    return res.status(405).set('Allow', 'PUT').end();
+  }
+  const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  const payload = Object.prototype.hasOwnProperty.call(body, 'profitRules') ? body.profitRules : body;
+  try {
+    const normalized = normalizeProfitRulesConfigV1(payload);
+    const json = JSON.stringify(normalized);
+    if (json.length > 120000) throw new Error('Profit rules config too large');
+    await store.setSetting(PROFIT_RULES_V1_KEY, json);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: true, profitRules: normalized });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: err && err.message ? String(err.message) : 'Failed to save profit rules config',
+    });
+  }
+}
+
 // ── Theme defaults (shared across all logins) ──────────────────────────────
 // Must match the keys used by `server/public/theme-settings.js` (hyphens converted to underscores).
 const THEME_KEYS = [
@@ -1170,6 +1228,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_nav_toggle_integrations',
   'theme_icon_glyph_nav_toggle_tools',
   'theme_icon_glyph_nav_toggle_settings',
+  'theme_icon_glyph_header_business_snapshot',
   'theme_icon_glyph_nav_item_overview',
   'theme_icon_glyph_nav_item_live',
   'theme_icon_glyph_nav_item_sales',
@@ -1624,6 +1683,8 @@ async function getThemeVarsCss(req, res) {
 module.exports = {
   getSettings,
   postSettings,
+  getProfitRules,
+  putProfitRules,
   normalizePixelSessionMode,
   PIXEL_SESSION_MODE_KEY,
   getThemeDefaults,
