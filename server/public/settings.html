@@ -105,7 +105,7 @@
           Insights
         </a>
         <a href="/settings?tab=layout" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="layout">
-          <i class="fa-solid fa-table-columns me-2" aria-hidden="true"></i>
+          <i class="fa-solid fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>
           Layout
         </a>
         <a href="/settings?tab=diagnostics" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="diagnostics">
@@ -120,7 +120,7 @@
       <div id="settings-panel-general" class="settings-panel active">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">General</h3>
+            <h3 class="card-title"><i class="fa-solid fa-sliders me-2" data-icon-key="settings-tab-general" aria-hidden="true"></i>General</h3>
           </div>
           <div class="card-body">
             <p class="text-secondary">Read-only environment values.</p>
@@ -182,7 +182,7 @@
       <div id="settings-panel-theme" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Theme</h3>
+            <h3 class="card-title"><i class="fa-solid fa-palette me-2" data-icon-key="settings-tab-theme" aria-hidden="true"></i>Theme</h3>
           </div>
           <div class="card-body" id="settings-theme-panel">
             <div class="dm-loading">Loading theme…</div>
@@ -193,7 +193,7 @@
       <div id="settings-panel-assets" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Assets</h3>
+            <h3 class="card-title"><i class="fa-solid fa-image me-2" data-icon-key="settings-tab-assets" aria-hidden="true"></i>Assets</h3>
           </div>
           <div class="card-body">
             <p class="text-secondary">Override favicon, logos. URL override only.</p>
@@ -217,7 +217,7 @@
       <div id="settings-panel-data-reporting" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Data &amp; Reporting</h3>
+            <h3 class="card-title"><i class="fa-solid fa-chart-column me-2" data-icon-key="settings-tab-data-reporting" aria-hidden="true"></i>Data &amp; Reporting</h3>
           </div>
           <div class="card-body">
             <p class="text-secondary">Orders source, sessions source, pixel session mode. Auto-saves on change.</p>
@@ -248,7 +248,7 @@
       <div id="settings-panel-integrations" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Integrations</h3>
+            <h3 class="card-title"><i class="fa-solid fa-plug me-2" data-icon-key="settings-tab-integrations" aria-hidden="true"></i>Integrations</h3>
           </div>
           <div class="card-body">
             <p class="text-secondary mb-3">Shopify + Google Ads integration status and controls.</p>
@@ -328,7 +328,7 @@
       <div id="settings-panel-sources" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Traffic Sources</h3>
+            <h3 class="card-title"><i class="fa-solid fa-map-location-dot me-2" data-icon-key="settings-tab-sources" aria-hidden="true"></i>Traffic Sources</h3>
           </div>
           <div class="card-body">
             <p class="text-secondary">Map UTM parameters and referrers to source labels and icons.</p>
@@ -342,7 +342,7 @@
       <div id="settings-panel-insights" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Insights</h3>
+            <h3 class="card-title"><i class="fa-solid fa-chart-pie me-2" data-icon-key="settings-tab-insights" aria-hidden="true"></i>Insights</h3>
           </div>
           <div class="card-body">
             <ul class="nav nav-underline mb-3" id="settings-insights-layout-tabs" role="tablist">
@@ -473,7 +473,7 @@
       <div id="settings-panel-layout" class="settings-panel">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Layout</h3>
+            <h3 class="card-title"><i class="fa-solid fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>Layout</h3>
           </div>
           <div class="card-body">
             <ul class="nav nav-underline mb-3" id="settings-layout-tabs" role="tablist">
@@ -705,7 +705,7 @@
       <div id="settings-panel-diagnostics" class="settings-panel">
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <h3 class="card-title mb-0">Diagnostics</h3>
+            <h3 class="card-title mb-0"><i class="fa-solid fa-chart-line me-2" data-icon-key="settings-tab-diagnostics" aria-hidden="true"></i>Diagnostics</h3>
             <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
               <button type="button" class="btn btn-sm btn-outline-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
                 <i class="fa-solid fa-rotate-right" data-icon-key="settings-diagnostics-refresh" aria-hidden="true"></i> Refresh
@@ -720,8 +720,11 @@
             <div class="text-secondary small mb-3">
               <strong>Refresh</strong> re-reads diagnostics only. <strong>Reconcile</strong> runs a manual Shopify truth sync for the last 7 days, then refreshes diagnostics.
             </div>
-            <div id="diagnostics-content" class="dm-root">
-              <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">&mdash;</div></div></div>
+            <div id="diagnostics-content">
+              <div class="d-flex align-items-center gap-2 text-secondary">
+                <div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>
+                <div>Loading diagnostics…</div>
+              </div>
             </div>
           </div>
         </div>

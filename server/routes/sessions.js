@@ -95,4 +95,18 @@ function onlineSeries(req, res) {
     });
 }
 
-module.exports = { list, onlineSeries, events };
+function latestSales(req, res) {
+  const limitRaw = req && req.query ? req.query.limit : null;
+  const limit = Math.max(1, Math.min(20, parseInt(String(limitRaw || 5), 10) || 5));
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  Sentry.addBreadcrumb({ category: 'api', message: 'sessions.latestSales', data: { limit } });
+  return store.listLatestSales(limit)
+    .then((sales) => res.json({ sales: Array.isArray(sales) ? sales : [] }))
+    .catch((err) => {
+      Sentry.captureException(err, { extra: { route: 'sessions.latestSales' } });
+      console.error(err);
+      res.status(500).json({ error: 'Internal error' });
+    });
+}
+
+module.exports = { list, onlineSeries, events, latestSales };

@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 24;
-const LAST_UPDATED = '2026-02-12';
+const DEFINITIONS_VERSION = 25;
+const LAST_UPDATED = '2026-02-13';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -76,6 +76,156 @@ const TRACKER_TABLE_DEFINITIONS = [
       },
     },
     requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_top_products_table',
+    page: 'Overview',
+    name: 'Top products table',
+    ui: { elementIds: ['dash-top-products'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/dashboard-series',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|1h|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'force=1 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid truth line item revenue + distinct order count grouped by product_id in range' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions by sessions.first_product_handle for CR% denominator (human_only; started_at in range)' },
+      { kind: 'shopify', note: 'Product metadata for title/handle/thumb_url when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Product', value: 'topProducts[].title + handle (links to /products/{handle})' },
+      { name: 'Revenue', value: 'topProducts[].revenue (GBP)' },
+      { name: 'Orders', value: 'topProducts[].orders' },
+      { name: 'CR%', value: 'topProducts[].cr', formula: 'orders / sessions × 100 (sessions counted by product handle)' },
+    ],
+    math: [
+      { name: 'Traffic mode', value: 'human_only (exclude cf_known_bot=1)' },
+      { name: 'CR cap', value: 'CR% is capped at 100%' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items', 'sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_top_countries_table',
+    page: 'Overview',
+    name: 'Top countries table',
+    ui: { elementIds: ['dash-top-countries'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/dashboard-series',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|1h|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'force=1 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify'], note: 'Paid truth orders in range; country from orders_shopify.raw_json shipping/billing country_code' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions by COALESCE(s.country_code, s.cf_country) for CR% denominator (human_only; started_at in range)' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Country', value: 'topCountries[].country (2-letter ISO)' },
+      { name: 'Revenue', value: 'topCountries[].revenue (GBP)' },
+      { name: 'Orders', value: 'topCountries[].orders' },
+      { name: 'CR%', value: 'topCountries[].cr', formula: 'orders / sessions × 100 (sessions counted by session country)' },
+    ],
+    math: [
+      { name: 'Traffic mode', value: 'human_only (exclude cf_known_bot=1)' },
+      { name: 'CR cap', value: 'CR% is capped at 100%' },
+      { name: 'Country basis', value: 'Orders country uses Shopify order addresses; sessions country uses session geolocation (can differ)' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify', 'sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_trending_up_table',
+    page: 'Overview',
+    name: 'Trending up table',
+    ui: { elementIds: ['dash-trending-up'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/dashboard-series',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|1h|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'force=1 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid truth line item revenue/orders by product_id in now + prev windows' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions by sessions.first_product_handle in now + prev windows (human_only)' },
+      { kind: 'shopify', note: 'Product metadata for title/handle/thumb_url when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Product', value: 'trendingUp[].title + handle' },
+      { name: 'Revenue', value: 'trendingUp[].deltaRevenue (GBP)', formula: 'revenueNow - revenuePrev' },
+      { name: 'Orders', value: 'trendingUp[].deltaOrders', formula: 'ordersNow - ordersPrev' },
+      { name: 'CR%', value: 'trendingUp[].cr', formula: 'ordersNow / sessionsNow × 100' },
+    ],
+    math: [
+      { name: 'Compare window', value: 'prev period is equal duration immediately before now window (today is time-of-day aligned to yesterday)' },
+      { name: 'Traffic mode', value: 'human_only (exclude cf_known_bot=1)' },
+      { name: 'CR cap', value: 'CR% is capped at 100%' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items', 'sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_trending_down_table',
+    page: 'Overview',
+    name: 'Trending down table',
+    ui: { elementIds: ['dash-trending-down'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/dashboard-series',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|1h|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'force=1 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid truth line item revenue/orders by product_id in now + prev windows' },
+      { kind: 'db', tables: ['sessions'], note: 'Sessions by sessions.first_product_handle in now + prev windows (human_only)' },
+      { kind: 'shopify', note: 'Product metadata for title/handle/thumb_url when token stored' },
+      { kind: 'fx', note: 'Revenue converted to GBP (fx.getRatesToGbp)' },
+    ],
+    columns: [
+      { name: 'Product', value: 'trendingDown[].title + handle' },
+      { name: 'Revenue', value: 'trendingDown[].deltaRevenue (GBP)', formula: 'revenueNow - revenuePrev' },
+      { name: 'Orders', value: 'trendingDown[].deltaOrders', formula: 'ordersNow - ordersPrev' },
+      { name: 'CR%', value: 'trendingDown[].cr', formula: 'ordersNow / sessionsNow × 100' },
+    ],
+    math: [
+      { name: 'Compare window', value: 'prev period is equal duration immediately before now window (today is time-of-day aligned to yesterday)' },
+      { name: 'Traffic mode', value: 'human_only (exclude cf_known_bot=1)' },
+      { name: 'CR cap', value: 'CR% is capped at 100%' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items', 'sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_live_latest_sales_table',
+    page: 'Live View',
+    name: 'Latest sales table',
+    ui: { elementIds: ['latest-sales-table'] },
+    endpoint: { method: 'GET', path: '/api/latest-sales', params: ['limit=5 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['sessions', 'visitors'], note: 'Latest converted sessions ordered by purchased_at desc' },
+      { kind: 'pixel', note: 'Populates sessions via /api/ingest (purchase events set has_purchased, purchased_at, order_total/currency, product handles)' },
+    ],
+    columns: [
+      { name: 'Country', value: 'country_code', formula: 'COALESCE(s.country_code, visitors.last_country, s.cf_country)' },
+      { name: 'Product', value: 'last_product_handle (fallback first_product_handle)' },
+      { name: 'Ago', value: 'purchased_at', formula: 'relative time string (client)' },
+      { name: 'Value', value: 'order_total + order_currency', formula: 'money formatting (client)' },
+    ],
+    math: [],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions', 'visitors'], shopifyToken: false },
   },
   {
     id: 'breakdown_country',

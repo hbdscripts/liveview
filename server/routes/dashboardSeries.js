@@ -24,6 +24,148 @@ function sessionFilterForTraffic(trafficMode) {
   return { sql: '', params: [] };
 }
 
+function normalizeHandleKey(v) {
+  if (typeof v !== 'string') return '';
+  const s = v.trim().toLowerCase();
+  return s ? s.slice(0, 128) : '';
+}
+
+function normalizeCountryKey(v) {
+  if (typeof v !== 'string') return '';
+  const s = v.trim().toUpperCase();
+  return s ? s.slice(0, 2) : '';
+}
+
+function uniqueNonEmpty(list) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(list) ? list : []) {
+    const s = raw != null ? String(raw) : '';
+    if (!s) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+function inPlaceholders(count, startIndex) {
+  const n = Math.max(0, Math.trunc(Number(count) || 0));
+  if (!n) return '';
+  if (config.dbUrl) {
+    const base = Math.max(1, Math.trunc(Number(startIndex) || 1));
+    const parts = [];
+    for (let i = 0; i < n; i++) parts.push('$' + (base + i));
+    return parts.join(', ');
+  }
+  return new Array(n).fill('?').join(', ');
+}
+
+function crPct(orders, sessions) {
+  const o = typeof orders === 'number' && Number.isFinite(orders) ? orders : 0;
+  const s = typeof sessions === 'number' && Number.isFinite(sessions) ? sessions : null;
+  if (s == null) return null;
+  if (s <= 0) return 0;
+  const raw = (o / s) * 100;
+  if (!Number.isFinite(raw) || raw < 0) return 0;
+  return Math.round(Math.min(raw, 100) * 10) / 10;
+}
+
+async function fetchSessionCountsByProductHandle(db, startMs, endMs, handles, filter) {
+  const out = new Map();
+  const keys = uniqueNonEmpty((handles || []).map(normalizeHandleKey)).filter(Boolean);
+  if (!keys.length) return out;
+
+  const filterSql = String(filter && filter.sql ? filter.sql : '').replace(/\bs\./g, 's.').replace(/sessions\./g, 's.');
+  const filterParams = (filter && Array.isArray(filter.params)) ? filter.params : [];
+
+  const phStart = config.dbUrl ? '$1' : '?';
+  const phEnd = config.dbUrl ? '$2' : '?';
+  const inPh = inPlaceholders(keys.length, 3);
+
+  const rows = await db.all(
+    `
+      SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS n
+      FROM sessions s
+      WHERE s.started_at >= ${phStart} AND s.started_at < ${phEnd}
+        AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+        AND LOWER(TRIM(s.first_product_handle)) IN (${inPh})
+        ${filterSql}
+      GROUP BY LOWER(TRIM(s.first_product_handle))
+    `,
+    [startMs, endMs, ...keys, ...filterParams]
+  );
+  for (const r of rows || []) {
+    const k = r && r.handle != null ? normalizeHandleKey(String(r.handle)) : '';
+    if (!k) continue;
+    out.set(k, Number(r.n) || 0);
+  }
+  return out;
+}
+
+async function fetchSessionCountsByCountryCode(db, startMs, endMs, countries, filter) {
+  const out = new Map();
+  const keys = uniqueNonEmpty((countries || []).map(normalizeCountryKey)).filter(Boolean);
+  if (!keys.length) return out;
+
+  const filterSql = String(filter && filter.sql ? filter.sql : '').replace(/\bs\./g, 's.').replace(/sessions\./g, 's.');
+  const filterParams = (filter && Array.isArray(filter.params)) ? filter.params : [];
+
+  const phStart = config.dbUrl ? '$1' : '?';
+  const phEnd = config.dbUrl ? '$2' : '?';
+  const inPh = inPlaceholders(keys.length, 3);
+
+  const expr = `UPPER(SUBSTR(COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(s.cf_country), ''), 'XX'), 1, 2))`;
+
+  const rows = await db.all(
+    `
+      SELECT ${expr} AS country, COUNT(*) AS n
+      FROM sessions s
+      WHERE s.started_at >= ${phStart} AND s.started_at < ${phEnd}
+        AND ${expr} IN (${inPh})
+        ${filterSql}
+      GROUP BY ${expr}
+    `,
+    [startMs, endMs, ...keys, ...filterParams]
+  );
+  for (const r of rows || []) {
+    const k = r && r.country != null ? normalizeCountryKey(String(r.country)) : '';
+    if (!k) continue;
+    out.set(k, Number(r.n) || 0);
+  }
+  return out;
+}
+
+async function attachCrToTopProducts(db, startMs, endMs, filter, topProducts) {
+  const list = Array.isArray(topProducts) ? topProducts : [];
+  const handles = list.map(p => normalizeHandleKey(p && p.handle != null ? String(p.handle) : '')).filter(Boolean);
+  const sessionsByHandle = handles.length ? await fetchSessionCountsByProductHandle(db, startMs, endMs, handles, filter) : new Map();
+  return list.map(function(p) {
+    const h = normalizeHandleKey(p && p.handle != null ? String(p.handle) : '');
+    const sessions = h ? (sessionsByHandle.get(h) || 0) : null;
+    return {
+      ...p,
+      sessions,
+      cr: sessions == null ? null : crPct(Number(p && p.orders) || 0, sessions),
+    };
+  });
+}
+
+async function attachCrToTopCountries(db, startMs, endMs, filter, topCountries) {
+  const list = Array.isArray(topCountries) ? topCountries : [];
+  const codes = list.map(c => normalizeCountryKey(c && c.country != null ? String(c.country) : '')).filter(Boolean);
+  const sessionsByCountry = codes.length ? await fetchSessionCountsByCountryCode(db, startMs, endMs, codes, filter) : new Map();
+  return list.map(function(c) {
+    const cc = normalizeCountryKey(c && c.country != null ? String(c.country) : '');
+    const sessions = cc ? (sessionsByCountry.get(cc) || 0) : null;
+    return {
+      ...c,
+      sessions,
+      cr: sessions == null ? null : crPct(Number(c && c.orders) || 0, sessions),
+    };
+  });
+}
+
 async function fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter) {
   const sessionsPerDay = {};
   const bouncePerDay = {};
@@ -256,7 +398,7 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
   }
 }
 
-async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
+async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   if (!shop || !nowBounds || !prevBounds) return { trendingUp: [], trendingDown: [] };
   const nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end);
   const prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end);
@@ -331,6 +473,25 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds) {
     r.handle = meta && meta.handle ? String(meta.handle) : null;
     if ((!r.title || r.title === 'Unknown') && meta && meta.title) r.title = String(meta.title);
   });
+
+  // Attach sessions + CR% (orders / sessions) for the current period.
+  try {
+    const handles = uniqueNonEmpty(base.map(r => normalizeHandleKey(r && r.handle != null ? String(r.handle) : ''))).filter(Boolean);
+    const sessionsNowByHandle = handles.length
+      ? await fetchSessionCountsByProductHandle(db, nowBounds.start, nowBounds.end, handles, filter)
+      : new Map();
+    const sessionsPrevByHandle = handles.length
+      ? await fetchSessionCountsByProductHandle(db, prevBounds.start, prevBounds.end, handles, filter)
+      : new Map();
+    base.forEach(function(r) {
+      const h = normalizeHandleKey(r && r.handle != null ? String(r.handle) : '');
+      const sessionsNow = h ? (sessionsNowByHandle.get(h) || 0) : null;
+      const sessionsPrev = h ? (sessionsPrevByHandle.get(h) || 0) : null;
+      r.sessionsNow = sessionsNow;
+      r.sessionsPrev = sessionsPrev;
+      r.cr = sessionsNow == null ? null : crPct(Number(r && r.ordersNow) || 0, sessionsNow);
+    });
+  } catch (_) {}
 
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
@@ -644,6 +805,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
+  try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
+
   // Top countries by revenue
   let topCountries = [];
   if (shop) {
@@ -686,6 +849,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
+  try { topCountries = await attachCrToTopCountries(db, overallStart, overallEnd, filter, topCountries); } catch (_) {}
+
   // Trending up/down vs previous equivalent period
   let trendingUp = [];
   let trendingDown = [];
@@ -693,7 +858,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     const nowBounds = { start: overallStart, end: overallEnd };
     const prevBounds = { start: Math.max(getPlatformStartMs(nowMs, timeZone), overallStart - (overallEnd - overallStart)), end: overallStart };
     try {
-      const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds);
+      const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
       trendingUp = t && t.trendingUp ? t.trendingUp : [];
       trendingDown = t && t.trendingDown ? t.trendingDown : [];
     } catch (_) {}
@@ -1129,6 +1294,8 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
+  try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
+
   // Top countries by revenue (range)
   let topCountries = [];
   if (shop) {
@@ -1171,6 +1338,8 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
+  try { topCountries = await attachCrToTopCountries(db, overallStart, overallEnd, filter, topCountries); } catch (_) {}
+
   // Trending up/down vs previous equivalent period
   let trendingUp = [];
   let trendingDown = [];
@@ -1179,7 +1348,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     const prevBounds = getCompareWindow(rangeKey, { start: overallStart, end: overallEnd }, nowMs, timeZone);
     if (prevBounds) {
       try {
-        const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds);
+        const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
         trendingUp = t && t.trendingUp ? t.trendingUp : [];
         trendingDown = t && t.trendingDown ? t.trendingDown : [];
       } catch (_) {}

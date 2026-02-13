@@ -1712,6 +1712,7 @@ const API = '';
     // Add width=100 to hotlinked images (? or & depending on existing params).
     function hotImg(url) {
       if (typeof url !== 'string') return url;
+      if (/[?&]width=/i.test(url)) return url;
       if (/^https?:\/\//i.test(url)) {
         try {
           const u = new URL(url);
@@ -1763,11 +1764,12 @@ const API = '';
       var n = toMs(startedAt);
       if (n == null) return '\u2014';
       var s = Math.floor((Date.now() - n) / 1000);
-      if (s < 0) return 'just now';
-      if (s < 60) return s + ' secs ago';
-      if (s < 3600) return Math.floor(s / 60) + ' mins ago';
-      if (s < 86400) return Math.floor(s / 3600) + ' hrs ago';
-      return Math.floor(s / 86400) + ' days ago';
+      if (s < 0) return 'now';
+      if (s < 60) return s + (s === 1 ? 'sec' : 'secs');
+      if (s < 3600) return Math.floor(s / 60) + 'min';
+      if (s < 86400) return Math.floor(s / 3600) + 'hr';
+      var d = Math.floor(s / 86400);
+      return d + (d === 1 ? 'day' : 'days');
     }
 
     var storeBaseUrlFallback = '';
@@ -2293,7 +2295,7 @@ const API = '';
     function trafficSourceBuiltInIconSrc(key) {
       const k = key != null ? String(key).trim().toLowerCase() : '';
       if (!k) return '';
-      if (k === 'google_ads') return getAssetsBase() + '/adwords.png?width=100';
+      if (k === 'google_ads') return SOURCE_GOOGLE_IMG;
       if (k === 'google_organic') return SOURCE_GOOGLE_IMG;
       if (k === 'bing_ads' || k === 'bing_organic') return SOURCE_BING_IMG;
       if (k === 'omnisend') return SOURCE_OMNISEND_IMG;
@@ -3612,7 +3614,8 @@ const API = '';
 
         // Pull fresh KPI data (fast metrics) immediately after cache reset.
         try { refreshKpis({ force: true }); } catch (_) {}
-        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
+        // Keep the dashboard tables/charts in sync, but do not re-show the global loader.
+        try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
         // Refresh condensed KPI extras as well.
         try { refreshKpiExtrasSoft(); } catch (_) {}
       }, 320);
@@ -3631,6 +3634,114 @@ const API = '';
       latestSaleFetchInFlight = p;
       return p;
     }
+
+    // Latest sales table (/dashboard/live): last 5 converted sessions (desktop only).
+    let latestSalesFetchInFlight = null;
+    let latestSalesCache = null; // array of normalized rows
+
+    function normalizeLatestSaleRow(row) {
+      const r = row && typeof row === 'object' ? row : {};
+      const sid = r.session_id != null ? String(r.session_id) : '';
+      const cc = r.country_code != null ? String(r.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
+      const purchasedAt = r.purchased_at != null ? toMs(r.purchased_at) : null;
+      const totalRaw = r.order_total != null ? (typeof r.order_total === 'number' ? r.order_total : parseFloat(String(r.order_total))) : null;
+      const total = (typeof totalRaw === 'number' && Number.isFinite(totalRaw)) ? totalRaw : null;
+      const cur = r.order_currency != null ? String(r.order_currency).trim().toUpperCase() : '';
+      const lastHandle = r.last_product_handle != null ? String(r.last_product_handle).trim() : '';
+      const firstHandle = r.first_product_handle != null ? String(r.first_product_handle).trim() : '';
+      return {
+        session_id: sid || null,
+        country_code: cc || 'XX',
+        purchased_at: purchasedAt,
+        order_total: total,
+        order_currency: cur || null,
+        last_product_handle: lastHandle || null,
+        first_product_handle: firstHandle || null,
+      };
+    }
+
+    function renderLatestSalesTable(rows) {
+      const table = document.getElementById('latest-sales-table');
+      if (!table) return;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No sales</td></tr>';
+        return;
+      }
+      const mainBase = getMainBaseUrl();
+      tbody.innerHTML = list.slice(0, 5).map(function(s) {
+        const cc = (s && s.country_code ? String(s.country_code) : 'XX').toUpperCase().slice(0, 2) || 'XX';
+        const handle = (s && s.last_product_handle) ? String(s.last_product_handle).trim()
+          : (s && s.first_product_handle) ? String(s.first_product_handle).trim()
+          : '';
+        const title = handle ? (titleCaseFromHandle(handle) || '') : '';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+        const titleHtml = handle
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+                (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(title || handle) + '</a>'
+            )
+          : escapeHtml(title || '\u2014');
+        const ago = (s && s.purchased_at != null) ? arrivedAgo(s.purchased_at) : '\u2014';
+        const money = (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
+        return (
+          '<tr>' +
+            '<td class="w-1">' + flagImgSmall(cc) + '</td>' +
+            '<td>' + titleHtml + '</td>' +
+            '<td class="text-end text-muted">' + escapeHtml(ago) + '</td>' +
+            '<td class="text-end fw-semibold">' + escapeHtml(money) + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    function upsertLatestSaleRow(nextRaw) {
+      const table = document.getElementById('latest-sales-table');
+      if (!table) return;
+      const next = normalizeLatestSaleRow(nextRaw);
+      if (!next || !next.session_id || next.purchased_at == null) return;
+      const cur = Array.isArray(latestSalesCache) ? latestSalesCache.slice() : [];
+      const idx = cur.findIndex(function(r) { return r && r.session_id && String(r.session_id) === String(next.session_id); });
+      if (idx >= 0) {
+        cur[idx] = { ...(cur[idx] || {}), ...next };
+      } else {
+        cur.unshift(next);
+      }
+      cur.sort(function(a, b) { return (toMs(b && b.purchased_at) || 0) - (toMs(a && a.purchased_at) || 0); });
+      latestSalesCache = cur.slice(0, 5);
+      renderLatestSalesTable(latestSalesCache);
+    }
+
+    function fetchLatestSales(options = {}) {
+      const force = !!(options && options.force);
+      if (!force && latestSalesFetchInFlight) return latestSalesFetchInFlight;
+      const table = document.getElementById('latest-sales-table');
+      if (!table) return Promise.resolve(null);
+      const url = API + '/api/latest-sales?limit=5&_=' + Date.now();
+      const p = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) {
+          const list = (json && Array.isArray(json.sales)) ? json.sales : [];
+          latestSalesCache = list.map(normalizeLatestSaleRow).filter(function(r) { return r && r.session_id; }).slice(0, 5);
+          renderLatestSalesTable(latestSalesCache);
+          return latestSalesCache;
+        })
+        .catch(function() { return null; })
+        .finally(function() { if (latestSalesFetchInFlight === p) latestSalesFetchInFlight = null; });
+      latestSalesFetchInFlight = p;
+      return p;
+    }
+
+    (function initLatestSalesTable() {
+      const table = document.getElementById('latest-sales-table');
+      if (!table) return;
+      renderLatestSalesTable([]);
+      fetchLatestSales({ force: false });
+    })();
 
     function buildSalesKpiUpdateFromStats(data) {
       const rangeKey = getStatsRange();
@@ -10582,8 +10693,13 @@ const API = '';
       const modalCardEl = null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
       if (configStatusEl && !preserveView) {
-        configStatusEl.innerHTML = '<div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building diagnostics</div><div class="report-build-step">—</div></div></div>';
-        diagnosticsStepEl = configStatusEl.querySelector('.report-build-step');
+        configStatusEl.innerHTML =
+          '<div class="d-flex align-items-center gap-2 text-secondary">' +
+            '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>' +
+            '<div>Loading diagnostics…</div>' +
+          '</div>' +
+          '<div id="settings-diagnostics-loading-step" class="text-secondary small mt-2">\u2014</div>';
+        diagnosticsStepEl = configStatusEl.querySelector('#settings-diagnostics-loading-step');
         if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Connecting to diagnostics services';
       }
       if (compareOpen && compareStatusEl) {
@@ -11087,345 +11203,253 @@ const API = '';
 
           const copyIcon = '<i class="fa-light fa-copy" data-icon-key="diag-copy" aria-hidden="true"></i>';
 
-          // Font Awesome icons for tabs
-          var tabIcons = {
-            sales: '<i class="fa-light fa-sterling-sign" data-icon-key="diag-tab-sales" aria-hidden="true"></i>',
-            compare: '<i class="fa-light fa-scale-balanced" data-icon-key="diag-tab-compare" aria-hidden="true"></i>',
-            traffic: '<i class="fa-light fa-route" data-icon-key="diag-tab-traffic" aria-hidden="true"></i>',
-            pixel: '<i class="fa-light fa-crosshairs" data-icon-key="diag-tab-pixel" aria-hidden="true"></i>',
-            googleads: '<i class="fa-light fa-rectangle-ad" data-icon-key="diag-tab-googleads" aria-hidden="true"></i>',
-            shopify: '<i class="fa-light fa-bag-shopping" data-icon-key="diag-tab-shopify" aria-hidden="true"></i>',
-            system: '<i class="fa-light fa-server" data-icon-key="diag-tab-system" aria-hidden="true"></i>',
-            defs: '<i class="fa-light fa-book-open" data-icon-key="diag-tab-definitions" aria-hidden="true"></i>'
-          };
-
-          function diagTab(key, label) {
-            return '<button type="button" class="dm-tab-btn" data-diag-tab="' + escapeHtml(key) + '" aria-selected="false">' +
-              (tabIcons[key] ? tabIcons[key] : '') +
-              '<span>' + escapeHtml(label) + '</span>' +
-            '</button>';
+          // Settings → Diagnostics (Tabler accordion, no tabs/custom dm-* classes)
+          function badgeLt(text, tone) {
+            var cls = 'bg-secondary-lt';
+            if (tone === 'ok') cls = 'bg-success-lt';
+            else if (tone === 'warn') cls = 'bg-warning-lt';
+            else if (tone === 'bad') cls = 'bg-danger-lt';
+            return '<span class="badge ' + cls + '">' + escapeHtml(String(text || '')) + '</span>';
           }
-          function diagTabPanel(key, innerHtml) {
-            return '<div class="dm-tab-panel" data-diag-panel="' + escapeHtml(key) + '">' + (innerHtml || '') + '</div>';
+          function cardSm(titleHtml, bodyHtml) {
+            return (
+              '<div class="card card-sm">' +
+                '<div class="card-header"><h4 class="card-title mb-0">' + titleHtml + '</h4></div>' +
+                '<div class="card-body">' + (bodyHtml || '') + '</div>' +
+              '</div>'
+            );
           }
-
-          let html = '';
-          html += '<div id="be-diag-root" class="dm-root">';
-
-          // ── HERO SECTION: comparison cards + bots (outside tabs) ──
-          html += '<div class="dm-hero-section">';
-          html +=   '<div class="dm-compare-row">';
-          // Shopify card
-          html +=     '<div class="dm-compare-card">';
-          html +=       '<div class="dm-compare-card-head">';
-          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" alt="Shopify" />';
-          html +=         '<div><div class="dm-compare-card-title">Shopify</div></div>';
-          html +=       '</div>';
-          html +=       '<div class="dm-metrics">' +
-                            metric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
-                            metric('CR%', fmtPct(shopifyCr)) +
-                            metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
-                            metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                          '</div>';
-          html +=     '</div>';
-          // Kexo card
-          html +=     '<div class="dm-compare-card">';
-          html +=       '<div class="dm-compare-card-head">';
-          html +=         '<img class="dm-compare-card-icon" src="' + escapeHtml(KEXO_LOGO_URL) + '" alt="Kexo" />';
-          html +=         '<div><div class="dm-compare-card-title">Kexo</div></div>';
-          html +=       '</div>';
-          html +=       '<div class="dm-metrics">' +
-                            metric('Sessions (human, today)', fmtSessions(kexoSessionsToday)) +
-                            metric('CR%', fmtPct(kexoCr)) +
-                            metric('Orders (paid)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014') +
-                            metric('Revenue (paid)', fmtRevenue(truthRevenue)) +
-                          '</div>';
-          html +=       '<div class="dm-bots-stat">Bots blocked today: <span class="dm-bots-stat-value">' + (botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') + '</span></div>';
-          html +=     '</div>';
-          html +=   '</div>'; // dm-compare-row
-          html += '</div>'; // dm-hero-section
-
-          // Compare
-          let compare = '';
-          compare += card('Comparison (today)', (
-            '<div class="dm-table-wrap">' +
-              '<div class="dm-table" role="table" aria-label="Comparison">' +
-                '<div class="dm-table-row">' +
-                  '<div class="dm-table-cell">Item</div>' +
-                  '<div class="dm-table-cell"><span class="dm-table-cell-icon-wrap">' + brandIconTiny('Shopify', SHOPIFY_LOGO_URL, '149,191,71') + '<span>Shopify</span></span></div>' +
-                  '<div class="dm-table-cell"><span class="dm-table-cell-icon-wrap">' + brandIconTiny('Kexo', KEXO_LOGO_URL, '13,148,136') + '<span>Kexo</span></span></div>' +
-                  '<div class="dm-table-cell">Diff</div>' +
+          function kvTable(rows) {
+            var body = (rows || []).map(function(r) {
+              return (
+                '<tr>' +
+                  '<td class="text-secondary">' + escapeHtml(r[0] || '') + '</td>' +
+                  '<td class="text-end">' + (r[1] != null ? String(r[1]) : '\u2014') + '</td>' +
+                '</tr>'
+              );
+            }).join('');
+            return (
+              '<div class="table-responsive">' +
+                '<table class="table table-sm table-vcenter mb-0">' +
+                  '<tbody>' + body + '</tbody>' +
+                '</table>' +
+              '</div>'
+            );
+          }
+          function accordionItem(key, title, bodyHtml) {
+            var safeKey = String(key || '').replace(/[^a-z0-9_-]+/gi, '');
+            var headingId = 'settings-diagnostics-heading-' + safeKey;
+            var collapseId = 'settings-diagnostics-collapse-' + safeKey;
+            return (
+              '<div class="accordion-item">' +
+                '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+                  '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="false" aria-controls="' + escapeHtml(collapseId) + '">' +
+                    '<span class="kexo-settings-accordion-chevron"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
+                    '<span class="fw-semibold">' + escapeHtml(title || '') + '</span>' +
+                  '</button>' +
+                '</h2>' +
+                '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#settings-diagnostics-accordion">' +
+                  '<div class="accordion-body">' + (bodyHtml || '') + '</div>' +
                 '</div>' +
-                '<div class="dm-table-row">' +
-                  '<div class="dm-table-cell">Sessions</div>' +
-                  '<div class="dm-table-cell">' + fmtSessions(shopifySessionsToday) + '</div>' +
-                  '<div class="dm-table-cell">' + fmtSessions(kexoSessionsToday) + '</div>' +
-                  '<div class="dm-table-cell">' + (sessionsDiff == null ? '\u2014' : diffSpan(sessionsDiff, function(a){ return formatSessions(a); }, '')) + '</div>' +
-                '</div>' +
-                '<div class="dm-table-row">' +
-                  '<div class="dm-table-cell">Conversion rate</div>' +
-                  '<div class="dm-table-cell">' + fmtPct(shopifyCr) + '</div>' +
-                  '<div class="dm-table-cell">' + fmtPct(kexoCr) + '</div>' +
-                  '<div class="dm-table-cell">' + (crDiff == null ? '\u2014' : diffSpan(crDiff, function(a){ const s=(Math.round(a*10)/10).toFixed(1).replace(/\\.0$/,''); return s; }, 'pp')) + '</div>' +
-                '</div>' +
-              '</div>' +
-            '</div>'
-          ));
-          if (missingScopes.length) {
-            compare += '<div class="dm-hint dm-mt">' + escapeHtml('Missing scopes: re-open the app from Shopify Admin to re-authorize and grant the missing scopes.') + '</div>';
-          }
-          if (evidenceExpected != null && evidenceExpected > 0 && evTotal === 0) {
-            compare += '<div class="dm-hint dm-mt">Evidence can be 0 right after reinstall/pixel creation; it only starts counting from the next checkout.</div>';
+              '</div>'
+            );
           }
 
-          // Sales
-          let salesPanel = '';
-          salesPanel += '<div class="dm-grid">';
-          salesPanel += card('Quick drift', (
-            rowKV('Pixel vs truth orders', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
-            rowKV('Pixel vs truth revenue', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue))) +
-            rowKV('Evidence vs checkout-token', driftEvidenceCheckoutOrders == null ? '\u2014' : codeInline((driftEvidenceCheckoutOrders >= 0 ? '+' : '') + String(driftEvidenceCheckoutOrders)))
-          ));
-          salesPanel += card('Truth (paid)', (
-            rowKV('Orders', truthOrders != null ? codeInline(String(truthOrders)) : '\u2014') +
-            rowKV('Revenue', truthRevenue != null ? codeInline(formatRevenue(truthRevenue)) : '\u2014') +
-            rowKV('Checkout-token orders', truthCheckoutOrders != null ? codeInline(String(truthCheckoutOrders)) : '\u2014') +
-            rowKV('Checkout-token revenue', truthCheckoutRevenue != null ? codeInline(formatRevenue(truthCheckoutRevenue)) : '\u2014')
-          ));
-          salesPanel += card('Pixel (derived)', (
-            rowKV('Derived orders', pixelDerivedOrders != null ? codeInline(String(pixelDerivedOrders)) : '\u2014') +
-            rowKV('Derived revenue', pixelDerivedRevenue != null ? codeInline(formatRevenue(pixelDerivedRevenue)) : '\u2014') +
-            rowKV('Drift vs truth (orders)', driftPixelOrders == null ? '\u2014' : codeInline((driftPixelOrders >= 0 ? '+' : '') + String(driftPixelOrders))) +
-            rowKV('Drift vs truth (revenue)', driftPixelRevenue == null ? '\u2014' : codeInline('\u00a3' + (driftPixelRevenue >= 0 ? '+' : '') + String(driftPixelRevenue)))
-          ));
-          salesPanel += '</div>';
-          salesPanel += '<div class="dm-grid dm-mt">';
-          salesPanel += card('Evidence (checkout_completed)', (
-            rowKV('Events (today)', evTotal != null ? codeInline(String(evTotal)) : '\u2014') +
-            rowKV('Converted sessions (today)', evSessions != null ? codeInline(String(evSessions)) : '\u2014') +
-            rowKV('Linked / unlinked', (evLinked != null && evUnlinked != null) ? (codeInline(String(evLinked)) + ' linked · ' + codeInline(String(evUnlinked)) + ' unlinked') : '\u2014') +
-            (typeof evidenceToday.lastOccurredAt === 'number' ? rowKV('Last event', codeInline(formatTs(evidenceToday.lastOccurredAt))) : '')
-          ));
-          salesPanel += card('Returning', (
-            rowKV('Returning customers', truthReturningCustomers != null ? codeInline(String(truthReturningCustomers)) : '\u2014') +
-            rowKV('Returning revenue', truthReturningRevenue != null ? codeInline(formatRevenue(truthReturningRevenue)) : '\u2014')
-          ));
-          salesPanel += '</div>';
-          const lastReconcile = truth && truth.lastReconcile ? truth.lastReconcile : null;
-          const reconcileParts = [];
-          if (lastReconcile && typeof lastReconcile.fetched === 'number') reconcileParts.push('fetched ' + String(lastReconcile.fetched));
-          if (lastReconcile && typeof lastReconcile.inserted === 'number') reconcileParts.push('inserted ' + String(lastReconcile.inserted));
-          if (lastReconcile && typeof lastReconcile.updated === 'number') reconcileParts.push('updated ' + String(lastReconcile.updated));
-          if (lastReconcile && typeof lastReconcile.evidenceLinked === 'number') reconcileParts.push('linked ' + String(lastReconcile.evidenceLinked));
-          salesPanel += '<div class="dm-mt">' + card('Actions explained', (
-            rowKV('Refresh', 'Re-reads diagnostics only. No write operations.') +
-            rowKV('Reconcile', 'Runs Shopify truth sync for last 7 days, then refreshes diagnostics.') +
-            rowKV('Last reconcile', lastReconcile && typeof lastReconcile.ts === 'number'
-              ? (codeInline(formatTs(lastReconcile.ts)) + (reconcileParts.length ? (' · ' + codeInline(reconcileParts.join(', '))) : ''))
-              : '\u2014')
-          )) + '</div>';
+          var overviewBody = '';
+          overviewBody += '<div class="row g-3">';
+          overviewBody +=   '<div class="col-12 col-xl-6">' + cardSm(
+            '<span class="d-flex align-items-center gap-2"><img src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" width="20" height="20" alt="" aria-hidden="true" decoding="async" /><span>Shopify</span></span>',
+            kvTable([
+              ['Sessions (today)', fmtSessions(shopifySessionsToday)],
+              ['CR% (today)', fmtPct(shopifyCr)],
+              ['Orders (paid, today)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014'],
+              ['Revenue (paid, today)', fmtRevenue(truthRevenue)],
+            ])
+          ) + '</div>';
+          overviewBody +=   '<div class="col-12 col-xl-6">' + cardSm(
+            '<span class="d-flex align-items-center gap-2"><img src="' + escapeHtml(KEXO_LOGO_URL) + '" width="20" height="20" alt="" aria-hidden="true" decoding="async" /><span>Kexo</span></span>',
+            kvTable([
+              ['Sessions (human, today)', fmtSessions(kexoSessionsToday)],
+              ['CR% (truth, today)', fmtPct(kexoCr)],
+              ['Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014'],
+              ['Orders (paid, today)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014'],
+              ['Revenue (paid, today)', fmtRevenue(truthRevenue)],
+            ])
+          ) + '</div>';
+          overviewBody += '</div>';
+          if (shopifyCrSource) {
+            overviewBody += '<div class="text-secondary small mt-3">Shopify CR source: ' + escapeHtml(shopifyCrSource) + '</div>';
+          }
+          if (shopifyConversionRateNote) {
+            overviewBody += '<div class="text-secondary small mt-2">' + escapeHtml(shopifyConversionRateNote) + '</div>';
+          }
 
-          // AI + future-agent guidance: interpret truth vs evidence drift
-          try {
-            const denomForCoverage = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
-            const missingOrders = (typeof missingEvidenceCount === 'number')
-              ? missingEvidenceCount
-              : ((denomForCoverage != null && evTotal != null) ? Math.max(0, denomForCoverage - evTotal) : null);
-            const coveragePct = (denomForCoverage != null && denomForCoverage > 0 && evTotal != null)
-              ? (evTotal / denomForCoverage) * 100
-              : null;
-            const cov = (coveragePct != null) ? (Math.round(coveragePct * 10) / 10) : null;
-            const covTone = (cov == null) ? 'warn' : (cov >= 95 ? 'ok' : (cov >= 80 ? 'warn' : 'bad'));
-
-            function missingLine(o) {
+          var salesBody = '';
+          var lastReconcile = truth && truth.lastReconcile ? truth.lastReconcile : null;
+          var reconcileBits = [];
+          if (lastReconcile && typeof lastReconcile.fetched === 'number') reconcileBits.push('fetched ' + String(lastReconcile.fetched));
+          if (lastReconcile && typeof lastReconcile.inserted === 'number') reconcileBits.push('inserted ' + String(lastReconcile.inserted));
+          if (lastReconcile && typeof lastReconcile.updated === 'number') reconcileBits.push('updated ' + String(lastReconcile.updated));
+          if (lastReconcile && typeof lastReconcile.evidenceLinked === 'number') reconcileBits.push('linked ' + String(lastReconcile.evidenceLinked));
+          var denomForCoverage = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
+          var missingOrders = (typeof missingEvidenceCount === 'number')
+            ? missingEvidenceCount
+            : ((denomForCoverage != null && evTotal != null) ? Math.max(0, denomForCoverage - evTotal) : null);
+          salesBody += '<div class="row g-3">';
+          salesBody +=   '<div class="col-12 col-xl-6">' + cardSm('Truth (paid)', kvTable([
+            ['Orders', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014'],
+            ['Revenue', fmtRevenue(truthRevenue)],
+            ['Checkout-token orders', truthCheckoutOrders != null ? escapeHtml(String(truthCheckoutOrders)) : '\u2014'],
+            ['Checkout-token revenue', truthCheckoutRevenue != null ? fmtRevenue(truthCheckoutRevenue) : '\u2014'],
+            ['Returning customers', truthReturningCustomers != null ? escapeHtml(String(truthReturningCustomers)) : '\u2014'],
+            ['Returning revenue', truthReturningRevenue != null ? fmtRevenue(truthReturningRevenue) : '\u2014'],
+          ])) + '</div>';
+          salesBody +=   '<div class="col-12 col-xl-6">' + cardSm('Evidence + Pixel', kvTable([
+            ['Evidence events (today)', evTotal != null ? escapeHtml(String(evTotal)) : '\u2014'],
+            ['Converted sessions (today)', evSessions != null ? escapeHtml(String(evSessions)) : '\u2014'],
+            ['Linked / unlinked', (evLinked != null && evUnlinked != null) ? (escapeHtml(String(evLinked)) + ' / ' + escapeHtml(String(evUnlinked))) : '\u2014'],
+            ['Pixel derived orders', pixelDerivedOrders != null ? escapeHtml(String(pixelDerivedOrders)) : '\u2014'],
+            ['Pixel derived revenue', pixelDerivedRevenue != null ? fmtRevenue(pixelDerivedRevenue) : '\u2014'],
+          ])) + '</div>';
+          salesBody +=   '<div class="col-12">' + cardSm('Drift + reconcile', kvTable([
+            ['Pixel vs checkout-token (orders)', driftPixelCheckoutOrders == null ? '\u2014' : escapeHtml(String(driftPixelCheckoutOrders >= 0 ? '+' : '') + String(driftPixelCheckoutOrders))],
+            ['Pixel vs checkout-token (revenue)', driftPixelCheckoutRevenue == null ? '\u2014' : escapeHtml('\u00a3' + String(driftPixelCheckoutRevenue >= 0 ? '+' : '') + String(driftPixelCheckoutRevenue))],
+            ['Evidence vs checkout-token (orders)', driftEvidenceCheckoutOrders == null ? '\u2014' : escapeHtml(String(driftEvidenceCheckoutOrders >= 0 ? '+' : '') + String(driftEvidenceCheckoutOrders))],
+            ['Missing evidence (count)', missingOrders == null ? '\u2014' : badgeLt(String(missingOrders), missingOrders === 0 ? 'ok' : (missingOrders <= 3 ? 'warn' : 'bad'))],
+            ['Last reconcile', (lastReconcile && typeof lastReconcile.ts === 'number')
+              ? (escapeHtml(formatTs(lastReconcile.ts)) + (reconcileBits.length ? (' \u00b7 ' + escapeHtml(reconcileBits.join(', '))) : ''))
+              : '\u2014'],
+          ])) + '</div>';
+          salesBody += '</div>';
+          if (missingEvidenceNote) {
+            salesBody += '<div class="text-secondary small mt-3">' + escapeHtml(missingEvidenceNote) + '</div>';
+          }
+          if (missingEvidenceSample && missingEvidenceSample.length) {
+            function missingLineSimple(o) {
               if (!o || typeof o !== 'object') return '';
-              const bits = [];
-              const on = o.order_name != null ? String(o.order_name).trim() : '';
-              const oid = o.order_id != null ? String(o.order_id).trim() : '';
-              const ca = (o.created_at != null && isFinite(Number(o.created_at))) ? Number(o.created_at) : null;
-              const src = o.source_name != null ? String(o.source_name).trim() : '';
-              const refh = o.referring_site_host != null ? String(o.referring_site_host).trim() : '';
-              const landh = o.landing_site_host != null ? String(o.landing_site_host).trim() : '';
-              const gw = o.gateway != null ? String(o.gateway).trim() : '';
-              if (on) bits.push(escapeHtml(on));
-              if (oid) bits.push('id ' + escapeHtml(oid));
-              if (ca != null) bits.push(escapeHtml(formatTs(ca)));
-              if (src) bits.push('source=' + escapeHtml(src));
-              if (landh) bits.push('landing=' + escapeHtml(landh));
-              if (refh) bits.push('ref=' + escapeHtml(refh));
-              if (gw) bits.push('gateway=' + escapeHtml(gw));
-              if (!bits.length) return '';
-              return '<div class="dm-missing-line">' + bits.join(' · ') + '</div>';
+              var bits = [];
+              var on = o.order_name != null ? String(o.order_name).trim() : '';
+              var oid = o.order_id != null ? String(o.order_id).trim() : '';
+              var ca = (o.created_at != null && isFinite(Number(o.created_at))) ? Number(o.created_at) : null;
+              var src = o.source_name != null ? String(o.source_name).trim() : '';
+              if (on) bits.push(on);
+              if (oid) bits.push('id ' + oid);
+              if (ca != null) bits.push(formatTs(ca));
+              if (src) bits.push('source=' + src);
+              return bits.length ? bits.join(' \u00b7 ') : '';
             }
-
-            let missingSampleHtml = '';
-            if (missingEvidenceSample && missingEvidenceSample.length) {
-              const lines = missingEvidenceSample.slice(0, 25).map(missingLine).filter(Boolean).join('');
-              missingSampleHtml =
-                '<details class="dm-missing-details">' +
-                  '<summary>Missing evidence orders (sample ' + escapeHtml(String(missingEvidenceSample.length)) + ')</summary>' +
-                  '<div class="dm-def-details-body">' + (lines || '<div class="dm-def-note">No sample rows.</div>') + '</div>' +
-                  '<div class="dm-hint">If these are mostly <code class="dm-code">source=web</code> but still missing evidence, it’s usually adblock/consent or pixel not running on the completion surface. If they’re <code class="dm-code">source=pos</code> / manual / subscription renewals, pixel evidence won’t exist.</div>' +
-                '</details>';
+            var lines = missingEvidenceSample.slice(0, 20).map(missingLineSimple).filter(Boolean);
+            if (lines.length) {
+              salesBody += '<details class="mt-3">';
+              salesBody +=   '<summary class="text-secondary">Missing evidence orders (sample ' + escapeHtml(String(missingEvidenceSample.length)) + ')</summary>';
+              salesBody +=   '<div class="mt-2">';
+              salesBody +=     lines.map(function(t) { return '<div class="text-secondary small">' + escapeHtml(t) + '</div>'; }).join('');
+              salesBody +=   '</div>';
+              salesBody += '</details>';
             }
-
-            const guide =
-              '<div class="dm-guide dm-hint">' +
-                '<div class="dm-guide-title">How to debug sales drift (Truth vs Kexo)</div>' +
-                '<ul>' +
-                  '<li><strong>Truth</strong> = Shopify Orders API cache (`orders_shopify`, paid, not cancelled). This is the authoritative number.</li>' +
-                  '<li><strong>Evidence</strong> = Web Pixel <code class="dm-code">checkout_completed</code> events (`purchase_events`). If Evidence &lt; Truth, events are missing (capture issue), not a truth sync issue.</li>' +
-                  '<li><strong>Kexo derived</strong> = `purchases` (built from evidence). If it matches Evidence (as it does when linked/unlinked looks healthy), drift is upstream of purchases.</li>' +
-                  '<li>First check: pixel installed + ingestUrl match, and Evidence linked/unlinked (linking health). Then inspect the Missing Evidence sample below.</li>' +
-                '</ul>' +
-              '</div>';
-
-            salesPanel += '<div class="dm-mt">' + card('Sales drift (AI notes)', (
-              rowKV('Coverage (evidence / truth)', (evTotal != null && denomForCoverage != null)
-                ? (codeInline(String(evTotal)) + ' / ' + codeInline(String(denomForCoverage)) + ' ' + pillInline((cov != null ? (cov + '%') : '\u2014') + ' evidence', covTone))
-                : '\u2014'
-              ) +
-              rowKV('Missing evidence (count)', missingOrders == null ? '\u2014' : pillInline(String(missingOrders), missingOrders === 0 ? 'ok' : (missingOrders <= 3 ? 'warn' : 'bad'))) +
-              (missingEvidenceNote ? ('<div class="dm-hint">' + escapeHtml(missingEvidenceNote) + '</div>') : '') +
-              guide +
-              (missingSampleHtml || '')
-            )) + '</div>';
-          } catch (_) {}
-
-          // Traffic
-          let trafficPanel = '';
-          trafficPanel += '<div class="dm-grid">';
-          trafficPanel += card('Sessions', (
-            (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number' ? rowKV('Reached app (today)', codeInline(formatSessions(traffic.today.sessionsReachedApp))) : '') +
-            (traffic && traffic.today && typeof traffic.today.humanSessions === 'number' ? rowKV('Human sessions (today)', codeInline(formatSessions(traffic.today.humanSessions))) : '') +
-            (traffic && traffic.today && typeof traffic.today.botSessionsTagged === 'number' ? rowKV('Bot sessions tagged (today)', codeInline(formatSessions(traffic.today.botSessionsTagged))) : '') +
-            (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number' ? rowKV('Total traffic est. (today)', codeInline(formatSessions(traffic.today.totalTrafficEst)), 'Total traffic est. = sessions reached app + bots blocked at edge.') : '')
-          ));
-          let shopifySessionsNote = '';
-          if (typeof traffic.shopifySessionsToday === 'number') {
-            shopifySessionsNote += rowKV('Shopify sessions (today)', codeInline(formatSessions(traffic.shopifySessionsToday)));
-            if (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') {
-              shopifySessionsNote += rowKV('Shopify − ours (human)', codeInline(formatSessions(traffic.shopifySessionsToday - traffic.today.humanSessions)));
-            }
-          } else if (traffic.shopifySessionsTodayNote) {
-            shopifySessionsNote += rowKV('Shopify sessions (today)', '\u2014', escapeHtml(traffic.shopifySessionsTodayNote));
           }
-          trafficPanel += card('Shopify vs ours', shopifySessionsNote || rowKV('Shopify sessions (today)', '\u2014'));
-          trafficPanel += card('Traffic tab settings', (
-            '<div class="dm-def-section-title">Channels</div>' +
-            '<div id="traffic-sources-picker" class="traffic-picker-list"><div class="dm-def-note">Loading…</div></div>' +
-            '<div class="dm-def-section-title">Device types</div>' +
-            '<div id="traffic-types-picker" class="traffic-picker-list"><div class="dm-def-note">Loading…</div></div>' +
-            '<div class="dm-def-note">These controls replace the Traffic tab table settings icons.</div>'
-          ));
-          trafficPanel += '</div>';
 
-          // Pixel
-          let pixelPanel = '';
-          pixelPanel += '<div class="dm-grid">';
-          pixelPanel += card('Pixel (Shopify)', (
-            rowKV('Installed', pixel && pixel.installed === true ? pillInline('Yes', 'ok') : (pixel && pixel.installed === false ? pillInline('No', 'bad') : '\u2014')) +
-            (pixel && pixel.message ? rowKV('Status', codeInline(pixel.message)) : '') +
-            (pixelIngestUrl ? rowKV('Pixel ingestUrl', codeInline(pixelIngestUrl)) : '') +
-            (expectedIngestUrl ? rowKV('Expected ingestUrl', codeInline(expectedIngestUrl)) : '') +
-            (ingestUrlMatch == null ? '' : rowKV('IngestUrl match', ingestUrlMatch ? pillInline('Match', 'ok') : pillInline('Mismatch', 'bad')))
-          ));
-          pixelPanel += card('Session mode (beta)', (
-            '<label class="dm-toggle-row">' +
-              '<input type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
-              '<span>Share session across tabs (30m inactivity)</span>' +
-            '</label>' +
-            '<div class="dm-hint">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>' +
-            '<div id="pixel-session-mode-msg" class="dm-toggle-msg"></div>'
-          ));
-          pixelPanel += '</div>';
+          var trafficBody = '';
+          trafficBody += '<div class="row g-3">';
+          trafficBody +=   '<div class="col-12 col-xl-6">' + cardSm('Sessions (today)', kvTable([
+            ['Reached app', (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number') ? escapeHtml(formatSessions(traffic.today.sessionsReachedApp)) : '\u2014'],
+            ['Human sessions', (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') ? escapeHtml(formatSessions(traffic.today.humanSessions)) : '\u2014'],
+            ['Bot sessions tagged', (traffic && traffic.today && typeof traffic.today.botSessionsTagged === 'number') ? escapeHtml(formatSessions(traffic.today.botSessionsTagged)) : '\u2014'],
+            ['Total traffic est.', (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number') ? escapeHtml(formatSessions(traffic.today.totalTrafficEst)) : '\u2014'],
+          ])) + '</div>';
+          trafficBody +=   '<div class="col-12 col-xl-6">' + cardSm('Shopify vs ours', kvTable([
+            ['Shopify sessions (today)', shopifySessionsToday != null ? escapeHtml(formatSessions(shopifySessionsToday)) : '\u2014'],
+            ['Shopify CR% (today)', fmtPct(shopifyCr)],
+            ['Ours CR% (truth, today)', fmtPct(kexoCr)],
+          ])) + '</div>';
+          trafficBody += '</div>';
 
-          // Shopify
-          let shopifyPanel = '';
-          shopifyPanel += '<div class="dm-grid">';
-          shopifyPanel += card('Auth + scopes', (
-            rowKV('Shop', shopify.shop ? codeInline(shopify.shop) : pillInline('Missing', 'bad')) +
-            rowKV('Token stored', shopify.hasToken ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
-            (storedScopesStr ? rowKV('Stored scopes', codeInline(storedScopesStr)) : '') +
-            (serverScopesStr ? rowKV('Required scopes', codeInline(serverScopesStr)) : '') +
-            (missingScopes.length ? rowKV('Missing scopes', codeInline(missingScopes.join(', '))) : rowKV('Missing scopes', pillInline('None', 'ok')))
-          ));
-          shopifyPanel += card('Truth sync health', (
-            rowKV('Sync age', staleSec != null ? codeInline(staleSec + 's') : '\u2014') +
-            (health && health.lastSuccessAt ? rowKV('Last sync', codeInline(formatTs(health.lastSuccessAt))) : '') +
-            (health && health.lastError ? rowKV('Last error', codeInline(String(health.lastError).slice(0, 220))) : '') +
-            (typeof truthToday.lastOrderCreatedAt === 'number' ? rowKV('Last order', codeInline(formatTs(truthToday.lastOrderCreatedAt))) : '')
-          ));
-          shopifyPanel += '</div>';
+          var pixelBody = '';
+          var installedBadge = (pixel && pixel.installed === true) ? badgeLt('Installed', 'ok') : ((pixel && pixel.installed === false) ? badgeLt('Not installed', 'bad') : badgeLt('\u2014', 'warn'));
+          pixelBody += '<div class="row g-3">';
+          pixelBody +=   '<div class="col-12 col-xl-6">' + cardSm('Pixel (Shopify)', kvTable([
+            ['Installed', installedBadge],
+            ['Pixel ingestUrl', pixelIngestUrl ? code(pixelIngestUrl) : '\u2014'],
+            ['Expected ingestUrl', expectedIngestUrl ? code(expectedIngestUrl) : '\u2014'],
+            ['IngestUrl match', ingestUrlMatch == null ? '\u2014' : (ingestUrlMatch ? badgeLt('Match', 'ok') : badgeLt('Mismatch', 'bad'))],
+          ])) + '</div>';
+          pixelBody +=   '<div class="col-12 col-xl-6">' + cardSm('Session mode', (
+            '<div class="form-check form-switch mb-2">' +
+              '<input class="form-check-input" type="checkbox" id="pixel-session-mode-toggle"' + (sharedSessionFixEnabled ? ' checked' : '') + ' />' +
+              '<label class="form-check-label" for="pixel-session-mode-toggle">Share session across tabs (30m inactivity)</label>' +
+            '</div>' +
+            '<div class="text-secondary small">Auto-saves. ON shares one session across tabs (30m inactivity) to reduce inflated session counts. OFF uses legacy per-tab sessions.</div>' +
+            '<div id="pixel-session-mode-msg" class="form-hint mt-2"></div>'
+          )) + '</div>';
+          pixelBody += '</div>';
 
-          // Google Ads
-          let googleAdsPanel = '';
+          var shopifyBody = '';
+          shopifyBody += '<div class="row g-3">';
+          shopifyBody +=   '<div class="col-12 col-xl-6">' + cardSm('Auth + scopes', kvTable([
+            ['Shop', shopify && shopify.shop ? code(shopify.shop) : badgeLt('Missing', 'bad')],
+            ['Token stored', shopify && shopify.hasToken ? badgeLt('Yes', 'ok') : badgeLt('No', 'bad')],
+            ['Stored scopes', storedScopesStr ? code(storedScopesStr) : '\u2014'],
+            ['Required scopes', serverScopesStr ? code(serverScopesStr) : '\u2014'],
+            ['Missing scopes', missingScopes.length ? code(missingScopes.join(', ')) : badgeLt('None', 'ok')],
+          ])) + '</div>';
+          shopifyBody +=   '<div class="col-12 col-xl-6">' + cardSm('Truth sync health', kvTable([
+            ['Sync age', staleSec != null ? code(String(staleSec) + 's') : '\u2014'],
+            ['Last sync', (health && health.lastSuccessAt) ? code(formatTs(health.lastSuccessAt)) : '\u2014'],
+            ['Last error', (health && health.lastError) ? code(String(health.lastError).slice(0, 220)) : '\u2014'],
+            ['Last order', (typeof truthToday.lastOrderCreatedAt === 'number') ? code(formatTs(truthToday.lastOrderCreatedAt)) : '\u2014'],
+          ])) + '</div>';
+          shopifyBody += '</div>';
+
+          var googleAdsBody = '';
           try {
-            const ads = c && c.ads ? c.ads : {};
-            const adsStatus = ads && ads.status ? ads.status : null;
-            const providers = (adsStatus && Array.isArray(adsStatus.providers)) ? adsStatus.providers : [];
-            const g = providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || null;
-            const connected = g && g.connected === true;
-            const configured = g && g.configured === true;
-            const customerId = (g && g.customerId) ? String(g.customerId) : '';
-            const loginCustomerId = (g && g.loginCustomerId) ? String(g.loginCustomerId) : '';
-            const hasRefreshToken = g && g.hasRefreshToken === true;
-            const hasDeveloperToken = g && g.hasDeveloperToken === true;
-            const hasAdsDb = g && g.adsDb === true;
-            const apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
-
-            function prettyJson(obj) {
-              try { return JSON.stringify(obj, null, 2); } catch (_) { return String(obj || ''); }
-            }
-
-            googleAdsPanel += '<div class="dm-grid">';
-            googleAdsPanel += card('Connection', (
-              rowKV('Configured', configured ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
-              rowKV('Connected (refresh_token)', connected ? pillInline('Yes', 'ok') : pillInline('No', 'bad')) +
-              rowKV('ADS DB', hasAdsDb ? pillInline('OK', 'ok') : pillInline('Missing', 'bad')) +
-              (customerId ? rowKV('Customer ID', codeInline(customerId)) : '') +
-              (loginCustomerId ? rowKV('Login Customer ID', codeInline(loginCustomerId)) : '') +
-              rowKV('Developer token', hasDeveloperToken ? pillInline('Set', 'ok') : pillInline('Missing', 'bad')) +
-              rowKV('Refresh token', hasRefreshToken ? pillInline('Present', 'ok') : pillInline('Missing', 'bad')) +
-              (apiVer ? rowKV('API version hint', codeInline(apiVer)) : rowKV('API version hint', pillInline('Auto', 'ok')))
-            ));
-
-            const connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/dashboard/overview');
-            googleAdsPanel += card('Actions', (
-              '<div class="dm-bar-actions" style="justify-content:flex-start;">' +
-                '<a class="dm-copy-btn" href="' + escapeHtml(connectUrl) + '" title="Connect Google Ads (OAuth)">' + copyIcon + '<span>Connect</span></a>' +
-                '<button type="button" id="ga-status-btn" class="dm-copy-btn" title="Fetch /api/ads/status">' + copyIcon + '<span>Status</span></button>' +
-                '<button type="button" id="ga-summary-btn" class="dm-copy-btn" title="Fetch /api/ads/summary?range=7d">' + copyIcon + '<span>Summary</span></button>' +
-                '<button type="button" id="ga-refresh-7d-btn" class="dm-copy-btn" title="POST /api/ads/refresh?range=7d">' + copyIcon + '<span>Refresh 7d</span></button>' +
-                '<button type="button" id="ga-refresh-month-btn" class="dm-copy-btn" title="POST /api/ads/refresh?range=month">' + copyIcon + '<span>Refresh month</span></button>' +
-                '<span id="ga-msg" class="dm-copy-msg"></span>' +
+            var ads = c && c.ads ? c.ads : {};
+            var adsStatus = ads && ads.status ? ads.status : null;
+            var providers = (adsStatus && Array.isArray(adsStatus.providers)) ? adsStatus.providers : [];
+            var g = providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || null;
+            var connected = g && g.connected === true;
+            var configured = g && g.configured === true;
+            var customerId = (g && g.customerId) ? String(g.customerId) : '';
+            var loginCustomerId = (g && g.loginCustomerId) ? String(g.loginCustomerId) : '';
+            var hasRefreshToken = g && g.hasRefreshToken === true;
+            var hasDeveloperToken = g && g.hasDeveloperToken === true;
+            var hasAdsDb = g && g.adsDb === true;
+            var apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
+            var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
+            googleAdsBody += '<div class="row g-3">';
+            googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Connection', kvTable([
+              ['Configured', configured ? badgeLt('Yes', 'ok') : badgeLt('No', 'bad')],
+              ['Connected (refresh_token)', connected ? badgeLt('Yes', 'ok') : badgeLt('No', 'bad')],
+              ['ADS DB', hasAdsDb ? badgeLt('OK', 'ok') : badgeLt('Missing', 'bad')],
+              ['Customer ID', customerId ? code(customerId) : '\u2014'],
+              ['Login Customer ID', loginCustomerId ? code(loginCustomerId) : '\u2014'],
+              ['Developer token', hasDeveloperToken ? badgeLt('Set', 'ok') : badgeLt('Missing', 'bad')],
+              ['Refresh token', hasRefreshToken ? badgeLt('Present', 'ok') : badgeLt('Missing', 'bad')],
+              ['API version hint', apiVer ? code(apiVer) : badgeLt('Auto', 'ok')],
+            ])) + '</div>';
+            googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Actions', (
+              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                '<a class="btn btn-outline-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>' +
+                '<button type="button" id="ga-status-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Status</button>' +
+                '<button type="button" id="ga-summary-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Summary</button>' +
+                '<button type="button" id="ga-refresh-7d-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
+                '<button type="button" id="ga-refresh-month-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh month</button>' +
+                '<span id="ga-msg" class="form-hint ms-2"></span>' +
               '</div>' +
-              '<div class="dm-hint">Refresh returns spend sync diagnostics including per-version attempts when Google Ads REST errors occur.</div>'
-            ));
-
-            googleAdsPanel += card('Output', (
-              '<pre id="ga-output" class="dm-json-pre">' + escapeHtml(prettyJson({ ads: adsStatus })) + '</pre>'
-            ));
-            googleAdsPanel += '</div>';
+              '<div class="text-secondary small mt-2">Refresh returns spend sync diagnostics including per-version attempts when Google Ads REST errors occur.</div>'
+            )) + '</div>';
+            googleAdsBody +=   '<div class="col-12">' + cardSm('Output', (
+              '<pre id="ga-output" class="mb-0 small">' + escapeHtml(JSON.stringify({ ads: adsStatus }, null, 2)) + '</pre>'
+            )) + '</div>';
+            googleAdsBody += '</div>';
           } catch (err) {
-            googleAdsPanel = '<div class="dm-error">' + pillInline('Error', 'bad') + '<span>Google Ads diagnostics failed to render.</span></div>';
+            googleAdsBody = '<div class="alert alert-danger mb-0">Google Ads diagnostics failed to render.</div>';
           }
 
-          // System
-          let systemPanel = '';
-          systemPanel += '<div class="dm-grid">';
-          systemPanel += card('Reporting', (
-            (reporting && (reporting.ordersSource || reporting.sessionsSource))
-              ? (
-                (reporting.ordersSource ? rowKV('Orders source', codeInline(reporting.ordersSource)) : '') +
-                (reporting.sessionsSource ? rowKV('Sessions source', codeInline(reporting.sessionsSource)) : '')
-              )
-              : rowKV('Sources', '\u2014')
-          ));
-          let tablesLine = '';
+          var systemBody = '';
+          var tablesLine = '';
           if (db && db.tables) {
-            const t = db.tables;
-            const bits = [];
+            var t = db.tables;
+            var bits = [];
             function add(name, ok) { bits.push(name + (ok ? ' ✓' : ' ✗')); }
             add('settings', !!t.settings);
             add('shop_sessions', !!t.shop_sessions);
@@ -11442,86 +11466,56 @@ const API = '';
             add('shopify_sessions_snapshots', !!t.shopify_sessions_snapshots);
             add('audit_log', !!t.audit_log);
             add('bot_block_counts', !!t.bot_block_counts);
-            tablesLine = codeInline(bits.join(' · '));
+            tablesLine = bits.join(' \u00b7 ');
           }
-          systemPanel += card('Runtime', (
-            (app && app.version ? rowKV('App version', codeInline(app.version)) : '') +
-            (db && db.engine ? rowKV('DB', codeInline(db.engine + (db.configured ? '' : ' (DB_URL not set)'))) : '') +
-            (tablesLine ? rowKV('Tables', tablesLine) : '') +
-            (app && typeof app.sentryConfigured === 'boolean' ? rowKV('Sentry', app.sentryConfigured ? pillInline('ON', 'ok') : pillInline('OFF', 'bad')) : '')
-          ));
-          systemPanel += '</div>';
+          systemBody += '<div class="row g-3">';
+          systemBody +=   '<div class="col-12 col-xl-6">' + cardSm('Reporting', kvTable([
+            ['Orders source', reporting && reporting.ordersSource ? code(reporting.ordersSource) : '\u2014'],
+            ['Sessions source', reporting && reporting.sessionsSource ? code(reporting.sessionsSource) : '\u2014'],
+          ])) + '</div>';
+          systemBody +=   '<div class="col-12 col-xl-6">' + cardSm('Runtime', kvTable([
+            ['App version', app && app.version ? code(app.version) : '\u2014'],
+            ['DB', db && db.engine ? code(db.engine + (db.configured ? '' : ' (DB_URL not set)')) : '\u2014'],
+            ['Tables', tablesLine ? code(tablesLine) : '\u2014'],
+            ['Sentry', (app && typeof app.sentryConfigured === 'boolean') ? (app.sentryConfigured ? badgeLt('ON', 'ok') : badgeLt('OFF', 'bad')) : '\u2014'],
+          ])) + '</div>';
+          systemBody += '</div>';
 
-          // Definitions (reuse existing renderer for content, but in its own top-level tab)
-          let defsPanel = '';
-          defsPanel += card('Metric + table definitions', renderTrackerDefinitions(trackerDefinitions));
+          var defsBody = '';
+          try {
+            if (trackerDefinitions && typeof trackerDefinitions === 'object') {
+              defsBody = cardSm('Tracker definitions (raw)', '<pre class="mb-0 small">' + escapeHtml(JSON.stringify(trackerDefinitions, null, 2)) + '</pre>');
+            } else {
+              defsBody = '<div class="text-secondary">No tracker definitions available from server.</div>';
+            }
+          } catch (_) {
+            defsBody = '<div class="text-secondary">No tracker definitions available from server.</div>';
+          }
 
-          // ── TAB BAR ──
-          html += '<div class="dm-tabs-bar" id="be-diag-tabs">';
-          html +=   diagTab('sales', 'Sales');
-          html +=   diagTab('compare', 'Compare');
-          html +=   diagTab('traffic', 'Traffic');
-          html +=   diagTab('pixel', 'Pixel');
-          html +=   diagTab('googleads', 'Google Ads');
-          html +=   diagTab('shopify', 'Shopify');
-          html +=   diagTab('system', 'System');
-          html +=   diagTab('defs', 'Definitions');
+          var advancedBody = '';
+          advancedBody += '<div class="d-flex align-items-center gap-2 flex-wrap">';
+          advancedBody +=   '<button type="button" id="be-copy-ai-btn" class="btn btn-outline-secondary btn-sm" title="Copy a detailed diagnostics payload for AI">' + copyIcon + ' Copy AI debug</button>';
+          advancedBody +=   '<button type="button" id="be-download-ai-json-btn" class="btn btn-outline-secondary btn-sm" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i> Download JSON</button>';
+          advancedBody +=   '<span id="be-copy-ai-msg" class="form-hint ms-2"></span>';
+          advancedBody += '</div>';
+          advancedBody += '<div class="text-secondary small mt-2">Generated at ' + escapeHtml(aiCopyGeneratedAt) + '.</div>';
+
+          var html = '';
+          html += '<div class="accordion settings-layout-accordion" id="settings-diagnostics-accordion">';
+          html += accordionItem('overview', 'Overview', overviewBody);
+          html += accordionItem('sales', 'Sales', salesBody);
+          html += accordionItem('traffic', 'Traffic', trafficBody);
+          html += accordionItem('pixel', 'Pixel', pixelBody);
+          html += accordionItem('shopify', 'Shopify', shopifyBody);
+          html += accordionItem('googleads', 'Google Ads', googleAdsBody);
+          html += accordionItem('system', 'System', systemBody);
+          html += accordionItem('definitions', 'Definitions', defsBody);
+          html += accordionItem('advanced', 'Advanced', advancedBody);
           html += '</div>';
 
-          // Advanced copy dropdown — inside first tab panel but logically separate
-          var advancedDropdown = '<details class="dm-copy-dropdown">';
-          advancedDropdown += '<summary class="dm-copy-dropdown-summary">Advanced</summary>';
-          advancedDropdown += '<div class="dm-copy-dropdown-body"><div class="dm-bar-row">';
-          advancedDropdown +=   '<div class="dm-bar-meta">' + headerMetaBits.join(' · ') + '</div>';
-          advancedDropdown +=   '<div class="dm-bar-actions">' +
-                       '<button type="button" id="be-copy-ai-btn" class="dm-copy-btn" title="Copy a detailed diagnostics payload for AI">' + copyIcon + '<span>Copy AI debug</span></button>' +
-                       '<button type="button" id="be-download-ai-json-btn" class="dm-copy-btn" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i><span>Download JSON</span></button>' +
-                      '<a href="/auth/google?redirect=/dashboard/overview" class="dm-copy-btn" title="Sign in again with Google if your session expires">' + copyIcon + '<span>Re-login</span></a>' +
-                       '<span id="be-copy-ai-msg" class="dm-copy-msg"></span>' +
-                       (shopify && shopify.hasToken ? pillInline('Token OK', 'ok') : pillInline('Token missing', 'bad')) +
-                       (missingScopes.length ? pillInline('Missing scopes', 'bad') : pillInline('Scopes OK', 'ok')) +
-                     '</div>';
-          advancedDropdown += '</div></div></details>';
-
-          // ── TAB PANELS ──
-          html += diagTabPanel('sales', advancedDropdown + salesPanel);
-          html += diagTabPanel('compare', compare);
-          html += diagTabPanel('traffic', trafficPanel);
-          html += diagTabPanel('pixel', pixelPanel);
-          html += diagTabPanel('googleads', googleAdsPanel);
-          html += diagTabPanel('shopify', shopifyPanel);
-          html += diagTabPanel('system', systemPanel);
-          html += diagTabPanel('defs', defsPanel);
-
-          html += '</div>'; // be-diag-root
-
-          const targetEl = document.getElementById('diagnostics-content');
+          var targetEl = document.getElementById('diagnostics-content');
           if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Building diagnostics panel';
           if (targetEl) targetEl.innerHTML = html;
-
-          // ── Wire up tab switching ──
-          (function initDiagTabs() {
-            var tabBar = document.getElementById('be-diag-tabs');
-            if (!tabBar) return;
-            var btns = tabBar.querySelectorAll('.dm-tab-btn[data-diag-tab]');
-            function activateTab(key) {
-              try { activeDiagTabKey = key; } catch (_) {}
-              btns.forEach(function(b) { b.setAttribute('aria-selected', b.getAttribute('data-diag-tab') === key ? 'true' : 'false'); });
-              document.querySelectorAll('.dm-tab-panel[data-diag-panel]').forEach(function(p) {
-                p.classList.toggle('dm-tab-panel--active', p.getAttribute('data-diag-panel') === key);
-              });
-            }
-            btns.forEach(function(b) {
-              b.addEventListener('click', function() { activateTab(b.getAttribute('data-diag-tab')); });
-            });
-            // Default: restore previously-selected tab (best-effort), else first.
-            if (btns.length) {
-              var preferred = (typeof activeDiagTabKey === 'string' && activeDiagTabKey) ? activeDiagTabKey : '';
-              var exists = false;
-              btns.forEach(function(b) { if (b.getAttribute('data-diag-tab') === preferred) exists = true; });
-              activateTab(exists ? preferred : btns[0].getAttribute('data-diag-tab'));
-            }
-          })();
 
           // Preserve scroll position when refreshing while the modal is already open.
           try {
@@ -11679,9 +11673,11 @@ const API = '';
           // On Settings page: trafficCache is never populated (no modal open). Fetch and populate Channels/Device pickers.
           if (configStatusEl && configStatusEl.id === 'diagnostics-content') {
             try {
-              fetchTrafficData({ force: true }).then(function(data) {
-                try { renderTrafficPickers(data || null); } catch (_) {}
-              }).catch(function() {});
+              if (document.getElementById('traffic-sources-picker') || document.getElementById('traffic-types-picker')) {
+                fetchTrafficData({ force: true }).then(function(data) {
+                  try { renderTrafficPickers(data || null); } catch (_) {}
+                }).catch(function() {});
+              }
             } catch (_) {}
           }
           try {
@@ -11691,8 +11687,8 @@ const API = '';
             function setMsg(t, ok) {
               if (!msg) return;
               msg.textContent = t || '';
-              msg.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
-              msg.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
+              msg.classList.remove('text-success', 'text-danger');
+              msg.classList.add(ok ? 'text-success' : 'text-danger');
             }
             function fallbackCopy(t) {
               const ta = document.createElement('textarea');
@@ -11767,8 +11763,8 @@ const API = '';
               const msgEl = document.getElementById('ga-msg');
               if (!msgEl) return;
               msgEl.textContent = t || '';
-              msgEl.classList.remove('dm-copy-msg--success', 'dm-copy-msg--error');
-              msgEl.classList.add(ok ? 'dm-copy-msg--success' : 'dm-copy-msg--error');
+              msgEl.classList.remove('text-success', 'text-danger');
+              msgEl.classList.add(ok ? 'text-success' : 'text-danger');
             }
             function setGaOutput(obj) {
               const outEl = document.getElementById('ga-output');
@@ -11899,11 +11895,7 @@ const API = '';
         .catch(() => {
           const errEl = document.getElementById('diagnostics-content');
           if (errEl) {
-            errEl.innerHTML =
-              '<div class="dm-error">' +
-                '<span class="dm-pill dm-pill-bad">Error</span>' +
-                '<span>Could not load diagnostics.</span>' +
-              '</div>';
+            errEl.innerHTML = '<div class="alert alert-danger mb-0">Could not load diagnostics.</div>';
           }
           try {
             const compareIsOpenNow = !!(compareModalEl && compareModalEl.classList.contains('open'));
@@ -12904,6 +12896,7 @@ const API = '';
             if (session && session.has_purchased && session.purchased_at != null) {
               maybeTriggerSaleToastFromSse(session);
               maybePatchActiveSaleToastAmount(session);
+              try { upsertLatestSaleRow(session); } catch (_) {}
             }
           }
         } catch (_) {}
@@ -13507,7 +13500,7 @@ const API = '';
           var prodStart = (dashTopProductsPage - 1) * prodPageSize;
           var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
           if (!products.length) {
-            prodTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
+            prodTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
           } else {
             var mainBase = getMainBaseUrl();
             prodTbody.innerHTML = productsPageRows.map(function(p) {
@@ -13522,7 +13515,7 @@ const API = '';
                     '>' + escapeHtml(title) + '</a>'
                   )
                 : escapeHtml(title);
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td></tr>';
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end">' + fmtPct(p.cr) + '</td></tr>';
             }).join('');
           }
         }
@@ -13537,12 +13530,12 @@ const API = '';
           var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
           var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
           if (!countries.length) {
-            countryTbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
+            countryTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
           } else {
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = (c.country || 'XX').toUpperCase();
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td></tr>';
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end">' + fmtPct(c.cr) + '</td></tr>';
             }).join('');
           }
         }
@@ -13562,7 +13555,7 @@ const API = '';
           var pageStart = (page - 1) * pageSize;
           var pageRows = rows.slice(pageStart, pageStart + pageSize);
           if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="dash-empty">No data</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
             return;
           }
           function fmtSignedGbp(v) {
@@ -13599,13 +13592,11 @@ const API = '';
                   '>' + escapeHtml(title) + '</a>'
                 )
               : escapeHtml(title);
-            var revNow = p && typeof p.revenueNow === 'number' ? p.revenueNow : 0;
-            var revPrev = p && typeof p.revenuePrev === 'number' ? p.revenuePrev : 0;
             var ordNow = p && typeof p.ordersNow === 'number' ? p.ordersNow : 0;
-            var ordPrev = p && typeof p.ordersPrev === 'number' ? p.ordersPrev : 0;
-            var revCell = '<div>' + deltaText(p) + '<div class="text-muted small">' + fmtGbp(revNow) + ' vs ' + fmtGbp(revPrev) + '</div></div>';
-            var ordCell = '<div>' + deltaOrdersText(p) + '<div class="text-muted small">' + String(ordNow) + ' vs ' + String(ordPrev) + '</div></div>';
-            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td>' + revCell + '</td><td>' + ordCell + '</td></tr>';
+            var revCell = '<div>' + deltaText(p) + '</div>';
+            var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
+            var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
+            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end">' + crCell + '</td></tr>';
           }).join('');
         }
 
@@ -13616,12 +13607,13 @@ const API = '';
         } catch (_) {}
       }
 
-      function fetchDashboardData(rangeKey, force) {
+      function fetchDashboardData(rangeKey, force, opts) {
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
         dashLoading = true;
-        var build = startReportBuild({
+        var silent = !!(opts && opts.silent);
+        var build = silent ? { step: function() {}, finish: function() {} } : startReportBuild({
           key: 'dashboard',
           title: 'Preparing dashboard overview',
           initialStep: 'Loading dashboard data',
@@ -13659,6 +13651,7 @@ const API = '';
 
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
+        var silent = !!(opts && opts.silent);
         var rk = dashRangeKeyFromDateRange();
         try {
           var curYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
@@ -13673,7 +13666,7 @@ const API = '';
           renderDashboard(dashCache);
           return;
         }
-        fetchDashboardData(rk, force);
+        fetchDashboardData(rk, force, { silent: silent });
       };
 
       // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,

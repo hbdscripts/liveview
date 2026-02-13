@@ -78,6 +78,7 @@ function isProtectedPath(pathname) {
       // Ads tab API (new feature area)
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
+      pathname === '/api/latest-sales' ||
       pathname === '/api/available-days') return true;
   const protectedPages = new Set([
     '/dashboard',

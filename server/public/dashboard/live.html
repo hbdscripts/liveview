@@ -34,12 +34,32 @@
             </div>
           </div>
 <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-spy">
-  <div class="card mb-3" data-kexo-chart-key="live-online-chart">
-    <div class="card-header">
-      <h3 class="card-title">Online Now: <span id="live-online-now-count">0</span></h3>
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100" data-kexo-chart-key="live-online-chart">
+        <div class="card-header">
+          <h3 class="card-title">Online Now: <span id="live-online-now-count">0</span></h3>
+        </div>
+        <div class="card-body">
+          <div class="dash-chart-wrap" id="live-online-chart" style="min-height:220px"></div>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <div class="dash-chart-wrap" id="live-online-chart" style="min-height:220px"></div>
+
+    <div class="col-lg-6 d-none d-lg-block">
+      <div class="card h-100" data-table-class="dashboard" data-table-zone="live-latest-sales" data-table-id="latest-sales-table">
+        <div class="card-header">
+          <h3 class="card-title" data-kexo-table-title="1">Latest sales</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-vcenter card-table" id="latest-sales-table" aria-label="Latest sales">
+            <thead>
+              <tr><th class="w-1"></th><th>Product</th><th class="text-end w-1">Ago</th><th class="text-end w-1">Value</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
   <div class="card" data-table-class="live" data-table-zone="live-sessions" data-table-id="sessions-table">

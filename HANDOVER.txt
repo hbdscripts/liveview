@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (KPI bottom align tweak + page-title block)
+Last updated: 2026-02-13 (Dashboard CR% + Live latest sales + Settings diagnostics accordion)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -42,8 +42,8 @@ KEXO “5-color” accents:
 Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
 Dashboard:
-- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`)
-- `/dashboard/live` → `server/public/dashboard/live.html`
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — top tables now include CR%
+- `/dashboard/live` → `server/public/dashboard/live.html` — desktop shows a Latest sales card beside the map (last 5 sales)
 - `/dashboard/sales` → `server/public/dashboard/sales.html`
 - `/dashboard/table` → `server/public/dashboard/table.html`
 
@@ -98,7 +98,7 @@ Settings tabs:
   - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables
   - Charts: per-chart enable/type/colors (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
-- Diagnostics: config-status + reconcile utilities (Settings-first)
+- Diagnostics: config-status + reconcile utilities rendered as a Tabler accordion (no tabs; Settings-first)
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
@@ -231,6 +231,21 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Dashboard overview:
+  - Added **CR%** column to Top Products, Top Countries, Trending Up, Trending Down.
+  - Trending Up/Down rows are now single-line deltas (removed the “now vs prev” sub-lines).
+- Live View:
+  - Added desktop-only **Latest sales** table beside the map (last 5 sales).
+  - New API: `GET /api/latest-sales?limit=5` (protected).
+- Settings:
+  - Diagnostics redesigned to a **Tabler accordion** (no tabs / no `dm-*` diagnostics markup).
+  - Settings left-nav icons now match the corresponding panel card header icons (new locked icon key `settings-tab-layout`).
+- Misc UX/stability:
+  - Closing the sale toast no longer re-triggers the global page loader.
+  - Source icon 404 fix: `google_ads` now uses the Google icon (no `/assets/adwords.png`).
+  - `hotImg()` no longer appends duplicate `width=` params; `arrivedAgo()` now outputs compact strings (e.g. `9secs`, `1min`, `1hr`).
 
 2026-02-13 (latest)
 - KPI/header micro-alignment:

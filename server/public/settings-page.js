@@ -759,7 +759,8 @@
           key: 'live',
           label: 'Dashboard · Live View',
           tables: [
-            { id: 'sessions-table', name: 'Sessions', tableClass: 'live', zone: 'live-sessions', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'latest-sales-table', name: 'Latest sales', tableClass: 'dashboard', zone: 'live-latest-sales', order: 1, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'sessions-table', name: 'Sessions', tableClass: 'live', zone: 'live-sessions', order: 2, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {

@@ -16,6 +16,8 @@
     'settings-tab-sources': true,
     'settings-tab-kpis': true,
     'settings-tab-insights': true,
+    'settings-tab-charts': true,
+    'settings-tab-layout': true,
     'settings-tab-diagnostics': true,
     'settings-diagnostics-refresh': true,
     'settings-diagnostics-reconcile': true,
@@ -66,6 +68,8 @@
     'settings-tab-sources': 'fa-map-location-dot',
     'settings-tab-kpis': 'fa-gauge-high',
     'settings-tab-insights': 'fa-chart-pie',
+    'settings-tab-charts': 'fa-chart-pie',
+    'settings-tab-layout': 'fa-table-columns',
     'settings-tab-diagnostics': 'fa-chart-line',
     'settings-diagnostics-refresh': 'fa-rotate-right',
     'settings-diagnostics-reconcile': 'fa-sliders',
@@ -104,14 +108,6 @@
     'type-platform-linux': 'fa-linux',
     'type-platform-unknown': 'fa-circle-question',
     'diag-copy': 'fa-copy',
-    'diag-tab-sales': 'fa-sterling-sign',
-    'diag-tab-compare': 'fa-scale-balanced',
-    'diag-tab-traffic': 'fa-route',
-    'diag-tab-pixel': 'fa-crosshairs',
-    'diag-tab-googleads': 'fa-rectangle-ad',
-    'diag-tab-shopify': 'fa-bag-shopping',
-    'diag-tab-system': 'fa-server',
-    'diag-tab-definitions': 'fa-book-open',
     'ads-status-warning': 'fa-triangle-exclamation',
     'ads-status-connected': 'fa-circle-check',
     'ads-status-disconnected': 'fa-circle-xmark',
@@ -609,7 +605,6 @@
     if (key.indexOf('type-device-') === 0) return 'Device type icon. Shows in the Device table on /traffic/device.';
     if (key.indexOf('type-platform-') === 0) return 'Platform icon. Shows in the Device table on /traffic/device.';
     if (key === 'diag-copy') return 'Diagnostics copy icon. Shows in the diagnostics panel on /settings.';
-    if (key.indexOf('diag-tab-') === 0) return 'Diagnostics tab icon. Shows in diagnostics tabs on /settings.';
     if (key.indexOf('ads-status-') === 0 || key === 'ads-actions-refresh') return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
     if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, traffic, integrations, tools, and settings pages.';

@@ -1809,6 +1809,66 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   return { sessions, total };
 }
 
+/** Latest converted sessions by purchased_at desc. Used for /dashboard/live "Latest sales" widget. */
+async function listLatestSales(limit = 5) {
+  const db = getDb();
+  const lim = Math.max(1, Math.min(50, parseInt(String(limit), 10) || 5));
+  const rows = await db.all(
+    config.dbUrl
+      ? `
+        SELECT
+          s.session_id,
+          s.purchased_at,
+          s.order_total,
+          s.order_currency,
+          s.last_product_handle,
+          s.first_product_handle,
+          COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(v.last_country), ''), NULLIF(TRIM(s.cf_country), '')) AS session_country
+        FROM sessions s
+        LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
+        WHERE s.has_purchased = 1 AND s.purchased_at IS NOT NULL
+        ORDER BY s.purchased_at DESC
+        LIMIT $1
+      `
+      : `
+        SELECT
+          s.session_id,
+          s.purchased_at,
+          s.order_total,
+          s.order_currency,
+          s.last_product_handle,
+          s.first_product_handle,
+          COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(v.last_country), ''), NULLIF(TRIM(s.cf_country), '')) AS session_country
+        FROM sessions s
+        LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
+        WHERE s.has_purchased = 1 AND s.purchased_at IS NOT NULL
+        ORDER BY s.purchased_at DESC
+        LIMIT ?
+      `,
+    [lim]
+  );
+  return (rows || []).map(r => {
+    const rawCountry = (r && r.session_country != null) ? String(r.session_country) : '';
+    const cc = (rawCountry || 'XX').toUpperCase().slice(0, 2) || 'XX';
+    const cur = (r && r.order_currency != null) ? String(r.order_currency).trim().toUpperCase() : '';
+    const totalRaw = (r && r.order_total != null) ? (typeof r.order_total === 'number' ? r.order_total : parseFloat(String(r.order_total))) : null;
+    const total = (typeof totalRaw === 'number' && Number.isFinite(totalRaw)) ? totalRaw : null;
+    const purchasedAtRaw = (r && r.purchased_at != null) ? (typeof r.purchased_at === 'number' ? r.purchased_at : Number(r.purchased_at)) : null;
+    const purchasedAt = (typeof purchasedAtRaw === 'number' && Number.isFinite(purchasedAtRaw)) ? purchasedAtRaw : null;
+    const lastHandle = (r && r.last_product_handle != null) ? String(r.last_product_handle).trim() : '';
+    const firstHandle = (r && r.first_product_handle != null) ? String(r.first_product_handle).trim() : '';
+    return {
+      session_id: r && r.session_id != null ? String(r.session_id) : null,
+      country_code: cc,
+      purchased_at: purchasedAt,
+      order_total: total,
+      order_currency: cur || null,
+      last_product_handle: lastHandle || null,
+      first_product_handle: firstHandle || null,
+    };
+  });
+}
+
 function purchaseDedupeKeySql(alias = '') {
   // Prefer checkout_token, then order_id. For rows without either (h: hash), dedupe by session+total+currency+15min.
   const p = alias ? alias + '.' : '';
@@ -3081,6 +3141,7 @@ module.exports = {
   insertEvent,
   listSessions,
   listSessionsByRange,
+  listLatestSales,
   getActiveSessionCount,
   getActiveSessionSeries,
   getSessionEvents,
