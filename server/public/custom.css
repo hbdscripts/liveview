@@ -2027,8 +2027,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-user-avatar-toggle:hover .kexo-user-avatar,
 .kexo-user-avatar-toggle:focus .kexo-user-avatar {
-  background: rgba(255,255,255,0.26);
-  border-color: rgba(255,255,255,0.38);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.18);
+  margin-right: 5px;
 }
 .kexo-top-strip-online-icon {
   margin-right: .1rem;
@@ -2774,8 +2775,13 @@ body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child
 
 /* ── Responsive ── */
 @media (max-width: 576px) {
-  .container-xl { padding-left: .75rem; padding-right: .75rem; }
-  .page-header .container-xl { padding-left: .75rem; padding-right: .75rem; }
+  .kexo-desktop-nav-left { display: block !important; }
+  .kexo-user-avatar-toggle:hover .kexo-user-avatar,
+  .kexo-user-avatar-toggle:focus .kexo-user-avatar { margin-right: 2px; }
+  .kexo-desktop-nav-list .nav-item::after {
+    bottom: -3px;
+    height: 3px;
+  }
 
   /* Keep horizontal scroll behavior on small screens for sticky first column UX. */
   .country-table-wrap,
