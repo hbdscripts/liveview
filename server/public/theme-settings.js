@@ -315,8 +315,6 @@
     'theme-header-online-text-color',
     'theme-header-online-radius',
     'theme-header-online-border-color',
-    'theme-header-main-dropdown-link-color',
-    'theme-header-main-dropdown-icon-color',
     'theme-header-logo-url',
     'theme-header-strip-padding',
   ];
@@ -1146,8 +1144,6 @@
       headerInputCardNoIcon('theme-header-main-link-color', 'Menu link color', 'Color for top-level desktop menu links.', DEFAULTS['theme-header-main-link-color']),
       headerInputCardNoIcon('theme-header-main-border-color', 'Menu border-bottom color', 'Color for the menu bottom border.', DEFAULTS['theme-header-main-border-color']),
       headerInputCardNoIcon('theme-header-main-shadow', 'Menu box-shadow', 'CSS box-shadow for top menu row (for example 2px 2px 2px #eee or none).', DEFAULTS['theme-header-main-shadow']),
-      headerInputCardNoIcon('theme-header-main-dropdown-link-color', 'Dropdown link color', 'Text color for menu and Settings dropdown links.', DEFAULTS['theme-header-main-dropdown-link-color']),
-      headerInputCardNoIcon('theme-header-main-dropdown-icon-color', 'Dropdown icon color', 'Icon color for dropdown item icons.', DEFAULTS['theme-header-main-dropdown-icon-color']),
       headerInputCardNoIcon('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
       headerInputCardNoIcon('theme-header-strip-padding', 'Strip padding', 'CSS padding for the top strip (for example 0 5px).', DEFAULTS['theme-header-strip-padding']),
     ].join('');

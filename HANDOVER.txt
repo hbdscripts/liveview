@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (CSS: container-xl, avatar hover, mobile nav/underline)
+Last updated: 2026-02-13 (strip dropdowns: align with nav, white/black, icon lighter shade)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -227,7 +227,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
-- CSS: removed container-xl padding overrides from mobile media query; avatar hover (background/border + margin-right 5px); mobile-only nav-left display block, avatar margin-right 2px, nav-item::after bottom/height overrides.
+- Strip dropdowns (Online, Settings, Avatar): align left with main nav, white bg + black text/icons; removed Theme dropdown link/icon color settings; main-menu dropdown icons use lighter shade of accent (color-mix) instead of opacity.
 
 2026-02-13 (latest)
 - Header + theme UX:
