@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (tools header centered + date box sizing)
+Last updated: 2026-02-13 (tools header divider alignment + product link default)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -232,6 +232,11 @@ Ops/reliability:
   - Page header category icon now uses inline-flex alignment (no float), improving subtitle baseline alignment.
   - Date control button now uses 40px height and larger left padding to match the requested layout.
   - Tools page title size is now `1rem`.
+  - Follow-up: the divider is now a full-height straight line (stretch layout; zero gutters) so it visually reads as one centered unit.
+
+2026-02-13 (latest)
+- Theme default custom CSS:
+  - Updated default `.kexo-product-link` style (blue, 13px, underlined, tighter underline offset).
 
 2026-02-13 (latest)
 - Header/table UX polish:
