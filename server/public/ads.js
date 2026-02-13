@@ -54,6 +54,28 @@
     });
   }
 
+  function captureChartError(err, context, extra) {
+    try {
+      if (typeof window.kexoCaptureError !== 'function') return;
+      var payload = { context: context || 'adsChart', page: 'ads' };
+      if (extra && typeof extra === 'object') {
+        Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+      }
+      window.kexoCaptureError(err, payload);
+    } catch (_) {}
+  }
+
+  function captureChartMessage(message, context, extra, level) {
+    try {
+      if (typeof window.kexoCaptureMessage !== 'function') return;
+      var payload = { context: context || 'adsChart', page: 'ads' };
+      if (extra && typeof extra === 'object') {
+        Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+      }
+      window.kexoCaptureMessage(String(message || ''), payload, level || 'error');
+    } catch (_) {}
+  }
+
   function profitClass(v) {
     var x = v != null ? Number(v) : 0;
     if (!Number.isFinite(x) || x === 0) return '';
@@ -268,6 +290,10 @@
     el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:var(--tblr-secondary);font-size:.875rem;">' +
       esc(message || 'No campaign data for this range') +
       '</div>';
+    var msg = String(message == null ? '' : message).trim().toLowerCase();
+    if (msg && (msg.indexOf('failed') >= 0 || msg.indexOf('error') >= 0)) {
+      captureChartMessage(message, 'adsOverviewState', { chartKey: 'ads-overview-chart' }, 'error');
+    }
   }
 
   function renderAdsOverviewChart(summary) {
@@ -279,6 +305,7 @@
       el.__kexoApexWaitTries = tries;
       if (tries >= 25) {
         el.__kexoApexWaitTries = 0;
+        captureChartMessage('Chart library failed to load.', 'adsOverviewLibraryLoad', { chartKey: 'ads-overview-chart', tries: tries }, 'error');
         clearAdsOverviewChart('Chart library failed to load.');
         return;
       }
@@ -436,11 +463,13 @@
       });
       var renderPromise = adsOverviewChart.render();
       if (renderPromise && typeof renderPromise.then === 'function') {
-        renderPromise.catch(function () {
+        renderPromise.catch(function (err) {
+          captureChartError(err || new Error('Ads overview chart rendering failed'), 'adsOverviewRender', { chartKey: 'ads-overview-chart' });
           clearAdsOverviewChart('Chart rendering failed');
         });
       }
-    } catch (_) {
+    } catch (err) {
+      captureChartError(err, 'adsOverviewRender', { chartKey: 'ads-overview-chart' });
       clearAdsOverviewChart('Chart rendering failed');
     }
   }
@@ -608,7 +637,10 @@
             var m = document.getElementById('ads-campaign-modal');
             if (!m || !m.classList.contains('open')) return;
           } catch (_) {}
-          if (!ok) return;
+          if (!ok) {
+            captureChartMessage('Chart.js failed to load for campaign modal.', 'adsModalChartJsLoad', { chartKey: 'ads-campaign-modal' }, 'error');
+            return;
+          }
           renderModalChart(data.chart || {}, currency);
         });
         renderModalSales(data.recentSales || [], currency);
@@ -620,53 +652,57 @@
     var canvas = document.getElementById('ads-modal-chart');
     if (!canvas) return;
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} }
-    modalChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: chart.labels || [],
-        datasets: [
-          {
-            label: 'Spend',
-            data: chart.spend || [],
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.08)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2,
-            borderWidth: 2,
-          },
-          {
-            label: 'Sales',
-            data: chart.revenue || [],
-            borderColor: '#0d9488',
-            backgroundColor: 'rgba(13,148,136,0.08)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2,
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { intersect: false, mode: 'index' },
-        plugins: {
-          legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
-          tooltip: {
-            backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { size: 12 }, bodyFont: { size: 12 },
-            padding: 10, cornerRadius: 6,
-            callbacks: {
-              label: function (ctx) { return (ctx.dataset.label || '') + ': ' + (ctx.parsed.y != null ? fmtMoney(ctx.parsed.y, currency || 'GBP') : '—'); },
+    try {
+      modalChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: chart.labels || [],
+          datasets: [
+            {
+              label: 'Spend',
+              data: chart.spend || [],
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239,68,68,0.08)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 2,
+            },
+            {
+              label: 'Sales',
+              data: chart.revenue || [],
+              borderColor: '#0d9488',
+              backgroundColor: 'rgba(13,148,136,0.08)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { size: 12 }, bodyFont: { size: 12 },
+              padding: 10, cornerRadius: 6,
+              callbacks: {
+                label: function (ctx) { return (ctx.dataset.label || '') + ': ' + (ctx.parsed.y != null ? fmtMoney(ctx.parsed.y, currency || 'GBP') : '—'); },
+              },
             },
           },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: function (v) { return fmtMoney(v, currency || 'GBP'); }, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+            x: { ticks: { font: { size: 11 }, maxRotation: 0 }, grid: { display: false } },
+          },
         },
-        scales: {
-          y: { beginAtZero: true, ticks: { callback: function (v) { return fmtMoney(v, currency || 'GBP'); }, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
-          x: { ticks: { font: { size: 11 }, maxRotation: 0 }, grid: { display: false } },
-        },
-      },
-    });
+      });
+    } catch (err) {
+      captureChartError(err, 'adsCampaignModalChartRender', { chartKey: 'ads-campaign-modal' });
+    }
   }
 
   function renderModalSales(sales, currency) {

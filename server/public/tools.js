@@ -57,6 +57,28 @@
       });
   }
 
+  function captureChartError(err, context, extra) {
+    try {
+      if (typeof window.kexoCaptureError !== 'function') return;
+      var payload = { context: context || 'toolsChart', page: 'tools', tool: 'compare-conversion-rate' };
+      if (extra && typeof extra === 'object') {
+        Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+      }
+      window.kexoCaptureError(err, payload);
+    } catch (_) {}
+  }
+
+  function captureChartMessage(message, context, extra, level) {
+    try {
+      if (typeof window.kexoCaptureMessage !== 'function') return;
+      var payload = { context: context || 'toolsChart', page: 'tools', tool: 'compare-conversion-rate' };
+      if (extra && typeof extra === 'object') {
+        Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+      }
+      window.kexoCaptureMessage(String(message || ''), payload, level || 'error');
+    } catch (_) {}
+  }
+
   function normalizeChartType(value, fallback) {
     var v = String(value == null ? '' : value).trim().toLowerCase();
     if (v === 'area' || v === 'bar' || v === 'line') return v;
@@ -307,6 +329,7 @@
       el.__kexoApexWaitTries = tries;
       if (tries >= 25) {
         el.__kexoApexWaitTries = 0;
+        captureChartMessage('Chart library failed to load.', 'toolsCompareChartLibraryLoad', { chartKey: 'tools-compare-chart', tries: tries }, 'error');
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
         return;
       }
@@ -331,63 +354,73 @@
     }
     el.innerHTML = '';
 
-    compareChart = new ApexCharts(el, {
-      chart: {
-        type: chartType,
-        height: 240,
-        fontFamily: 'Inter, sans-serif',
-        toolbar: { show: false },
-      },
-      series: [
-        { name: 'Sessions', data: [beforeSessions, afterSessions] },
-        { name: 'Orders', data: [beforeOrders, afterOrders] },
-        { name: 'CR', data: [beforeCr, afterCr] },
-      ],
-      colors: ['#4b94e4', '#f59e34', '#0d9488'],
-      stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
-      plotOptions: chartType === 'bar' ? { bar: { columnWidth: '42%', borderRadius: 4 } } : {},
-      fill: chartType === 'area'
-        ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
-        : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
-      markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
-      dataLabels: { enabled: false },
-      xaxis: {
-        categories: ['Before', 'After'],
-        labels: { style: { fontSize: '11px' } },
-      },
-      yaxis: [
-        {
-          min: 0,
-          labels: {
-            style: { fontSize: '11px' },
-            formatter: function (v) { return fmtNum(v); },
+    try {
+      compareChart = new ApexCharts(el, {
+        chart: {
+          type: chartType,
+          height: 240,
+          fontFamily: 'Inter, sans-serif',
+          toolbar: { show: false },
+        },
+        series: [
+          { name: 'Sessions', data: [beforeSessions, afterSessions] },
+          { name: 'Orders', data: [beforeOrders, afterOrders] },
+          { name: 'CR', data: [beforeCr, afterCr] },
+        ],
+        colors: ['#4b94e4', '#f59e34', '#0d9488'],
+        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        plotOptions: chartType === 'bar' ? { bar: { columnWidth: '42%', borderRadius: 4 } } : {},
+        fill: chartType === 'area'
+          ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
+          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+        markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: ['Before', 'After'],
+          labels: { style: { fontSize: '11px' } },
+        },
+        yaxis: [
+          {
+            min: 0,
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function (v) { return fmtNum(v); },
+            },
+          },
+          {
+            opposite: true,
+            min: 0,
+            max: crMax,
+            labels: {
+              style: { fontSize: '11px' },
+              formatter: function (v) { return (Number(v) || 0).toFixed(1) + '%'; },
+            },
+          },
+        ],
+        tooltip: {
+          shared: true,
+          intersect: false,
+          y: {
+            formatter: function (v, opts) {
+              var seriesIdx = opts && opts.seriesIndex;
+              if (seriesIdx === 2) return (Number(v) || 0).toFixed(1) + '%';
+              return fmtNum(v);
+            },
           },
         },
-        {
-          opposite: true,
-          min: 0,
-          max: crMax,
-          labels: {
-            style: { fontSize: '11px' },
-            formatter: function (v) { return (Number(v) || 0).toFixed(1) + '%'; },
-          },
-        },
-      ],
-      tooltip: {
-        shared: true,
-        intersect: false,
-        y: {
-          formatter: function (v, opts) {
-            var seriesIdx = opts && opts.seriesIndex;
-            if (seriesIdx === 2) return (Number(v) || 0).toFixed(1) + '%';
-            return fmtNum(v);
-          },
-        },
-      },
-      legend: { position: 'top', fontSize: '12px' },
-      grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-    });
-    compareChart.render();
+        legend: { position: 'top', fontSize: '12px' },
+        grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+      });
+      var compareRender = compareChart.render();
+      if (compareRender && typeof compareRender.then === 'function') {
+        compareRender.catch(function (err) {
+          captureChartError(err || new Error('Compare chart render failed'), 'toolsCompareChartRender', { chartKey: 'tools-compare-chart' });
+        });
+      }
+    } catch (err) {
+      captureChartError(err, 'toolsCompareChartRender', { chartKey: 'tools-compare-chart' });
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:#ef4444;text-align:center;padding:0 18px;font-size:.875rem">Chart rendering failed.</div>';
+    }
   }
 
   function renderResults(data) {

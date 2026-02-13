@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (jsVectorMap tooltip fix + deterministic map fills + live map mode lock)
+Last updated: 2026-02-13 (chart error Sentry instrumentation + jsVectorMap series stability)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -225,6 +225,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-13 (latest)
+- Chart + map observability hardening:
+  - Added `kexoCaptureMessage()` in `server/public/sentry-helpers.js` and a chart-aware `console.error` Sentry bridge (with short dedupe) so frontend chart/map console failures are captured automatically.
+  - Added explicit chart/map error/message capture hooks across `server/public/app.js`, `server/public/ads.js`, and `server/public/tools.js` for render failures and library-load failures.
+- jsVectorMap stability follow-up:
+  - Updated map region series values to numeric weights with explicit `scale` + `normalizeFunction: 'linear'` to prevent `setValues/getValue` runtime crashes on `/dashboard/live` and `/insights/countries`.
 
 2026-02-13 (latest)
 - Countries + Live jsVectorMap fixes:
