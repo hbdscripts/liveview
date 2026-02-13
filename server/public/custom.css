@@ -1555,7 +1555,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding-left: 1rem;
   padding-right: 1rem;
 }
-.page-body > .container-fluid {
+.page-body > .container-fluid,
+.kexo-page-header-slot > .container-fluid {
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -2290,6 +2291,44 @@ html[data-bs-theme="dark"] .report-build-wrap {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Page header moved into the sticky header stack (keeps title/date visible on scroll). */
+.kexo-page-header-slot {
+  background: var(--tblr-body-bg, #f5f7fb);
+}
+.kexo-page-header-slot .page-header {
+  margin-bottom: .75rem;
+  padding-top: .5rem;
+}
+
+/* Page header row: optional centered layout (when JS marks it). */
+.page-header .row.align-items-center.kexo-page-header-row-centered {
+  --bs-gutter-x: 0;
+  justify-content: center;
+  align-items: stretch !important;
+  gap: 0;
+}
+.page-header .row.align-items-center.kexo-page-header-row-centered > .col {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  padding-right: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.page-header .row.align-items-center.kexo-page-header-row-centered .kexo-page-header-date-col {
+  margin-left: 0;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+}
+.page-header .row.align-items-center.kexo-page-header-row-centered .page-pretitle {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
 }
 
 /* ── Page header category icon (matches active top menu icon + accent) ── */

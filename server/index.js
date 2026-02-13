@@ -276,7 +276,19 @@ const ASSET_VERSION = (() => {
 
   try {
     const base = path.join(__dirname, 'public');
-    const files = ['app.js', 'custom.css', 'tabler-theme.css', 'theme-settings.js', 'diagnostics-modal.css', 'sentry-helpers.js'];
+    const files = [
+      'app.js',
+      'custom.css',
+      'tabler-theme.css',
+      'theme-settings.js',
+      'diagnostics-modal.css',
+      'sentry-helpers.js',
+      'partials/head-theme.html',
+      'partials/header.html',
+      'partials/page-body-start.html',
+      'partials/page-body-end.html',
+      'partials/footer.html',
+    ];
     const stamps = files.map((f) => {
       const stat = fs.statSync(path.join(base, f));
       return Math.trunc(stat.mtimeMs).toString(36);

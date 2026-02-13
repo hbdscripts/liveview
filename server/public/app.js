@@ -6064,13 +6064,59 @@ const API = '';
       });
     }
 
+    function mountPageHeaderIntoHeaderStack() {
+      try {
+        const pageHeader = document.querySelector('.page-body > .container-fluid > .page-header');
+        const stack = document.querySelector('.kexo-header-stack');
+        if (!pageHeader || !stack) return;
+        if (pageHeader.getAttribute('data-kexo-relocated') === '1') return;
+
+        let slot = document.getElementById('kexo-page-header-slot');
+        if (!slot) {
+          slot = document.createElement('div');
+          slot.id = 'kexo-page-header-slot';
+          slot.className = 'kexo-page-header-slot';
+          const slotContainer = document.createElement('div');
+          slotContainer.className = 'container-fluid';
+          slot.appendChild(slotContainer);
+
+          const kpis = document.getElementById('kexo-kpis');
+          if (kpis && kpis.parentElement === stack) {
+            try { kpis.insertAdjacentElement('afterend', slot); } catch (_) { stack.appendChild(slot); }
+          } else {
+            stack.appendChild(slot);
+          }
+        }
+
+        const container = slot.querySelector('.container-fluid') || slot;
+        if (pageHeader.parentElement !== container) container.appendChild(pageHeader);
+        pageHeader.setAttribute('data-kexo-relocated', '1');
+        pageHeader.classList.add('kexo-page-header--in-stack');
+      } catch (_) {}
+    }
+
+    function syncPageHeaderCenteredClass(headerRow) {
+      try {
+        const row = headerRow || document.querySelector('.page-header .row.align-items-center');
+        if (!row) return;
+        const dateCol = row.querySelector('.kexo-page-header-date-col');
+        if (!dateCol) {
+          row.classList.remove('kexo-page-header-row-centered');
+          return;
+        }
+        const hasOtherAuto = !!row.querySelector('.col-auto:not(.kexo-page-header-date-col)');
+        row.classList.toggle('kexo-page-header-row-centered', !hasOtherAuto);
+      } catch (_) {}
+    }
+
     function mountDesktopDatePickerIntoPageHeader() {
       try {
+        mountPageHeaderIntoHeaderStack();
         const dateBtn = document.getElementById('kexo-date-display');
         const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
         const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
-        const headerRow = document.querySelector('.page-header .row');
+        const headerRow = document.querySelector('.page-header .row.align-items-center') || document.querySelector('.page-header .row');
         const canRelocate = !!headerRow;
 
         if (!canRelocate) {
@@ -6098,6 +6144,7 @@ const API = '';
           sourceLi.classList.add('is-date-relocated');
           sourceLi.classList.remove('is-date-inline-fallback');
         }
+        syncPageHeaderCenteredClass(headerRow);
       } catch (_) {}
     }
 
