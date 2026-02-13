@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Business Snapshot: background sparklines + simpler cards)
+Last updated: 2026-02-13 (Business Snapshot: Revenue & Cost chart + Ads spend toggle)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -244,14 +244,14 @@ Ops/reliability:
 2026-02-13 (latest)
 - Header + snapshot/profit:
   - Added a new configurable top-strip money button (`data-icon-key="header-business-snapshot"`) next to the Settings button.
-  - Added `GET /api/business-snapshot?year=2026|2025|2024|all` for Business Snapshot cards (Financial / Performance / Customers) with previous-period deltas where available.
+  - Added `GET /api/business-snapshot?mode=yearly&year=YYYY` for Business Snapshot cards (Financial / Performance / Customers) with previous-period deltas where available.
   - Added Profit Rules persistence key `profit_rules_v1` and dedicated endpoints:
     - `GET /api/settings/profit-rules`
     - `PUT /api/settings/profit-rules`
   - Business Snapshot now includes an in-modal Profit Rules editor (enable toggle, rule list, add/edit/delete, priority up/down, per-rule enabled toggle, ISO country targeting).
   - Estimated profit formulas are now centralized server-side using paid Shopify truth orders and country-aware rule applicability.
-  - Snapshot UX polish: modal is now XL, year selector sits in the modal header, deltas show trend icons, and there’s a bottom “Summary vs previous period” footer card.
-  - Profit setup callout no longer includes a “Configure” button (use the modal header settings icon).
+  - Snapshot UX polish: modal is now XL, year selector sits in the modal header, deltas show trend icons, and the header has subtle low-opacity background art (no Summary panel).
+  - Profit setup callout has been removed; use the Snapshot footer Settings link to open Profit Rules.
   - Snapshot loading is now last-request-wins (avoids stale year data) and shows an in-modal Retry button on failures.
   - Snapshot metrics audit fixes:
     - Conversion Rate % + Sessions are now sourced from **ShopifyQL sessions** over a **SINCE/UNTIL** range (uses `TIMESERIES day` + quoted `WITH TIMEZONE`) (not KEXO sessions), so year views don’t show `Sessions=0` when KEXO tracking is newer.
@@ -259,11 +259,12 @@ Ops/reliability:
     - All Time customers treat “Returning Customers” as **Repeat Customers** (>=2 paid orders in the all-time range), so Repeat Purchase Rate is meaningful.
     - Guardrails: if ShopifyQL sessions are unavailable, Snapshot shows **Unavailable** (never `Sessions=0` with nonzero Orders). If ShopifyQL conversion_rate is missing/0 but sessions exist, Snapshot derives a best-effort conversion from checkout orders/sessions.
   - Snapshot report-mode upgrade:
-    - Added **Yearly Reports** and **Monthly Reports** modes under the modal title (only one selector visible at a time, with mode switch links).
+    - Snapshot selector is now **Year-only** in the UI (monthly mode remains supported by the API, but the UI no longer shows mode switch links/labels).
     - Default open state is now **Yearly / current year** (e.g. 2026), not All Time.
     - Yearly comparisons are now **same elapsed window** vs previous year (Jan 1 -> same month/day in prior year), and monthly comparisons are the same month vs prior year (partial when current month).
     - API now accepts `GET /api/business-snapshot?mode=yearly&year=YYYY` or `?mode=monthly&month=YYYY-MM`.
-    - Snapshot cards now render **real ApexCharts** line/bar sparklines (no radial/circle charts) as subtle background visuals in each card; Financial now only shows **Revenue** (no duplicate Orders/AOV/Conversion cards).
+    - Financial now renders a full-width **Revenue & Cost** area chart (Revenue + Cost line) with a hover tooltip breakdown; Cost = **COGS** + enabled Profit Rule deductions + optional **Google Ads spend** (when enabled).
+    - Remaining cards keep visible KPI sparklines (area for Conversion/AOV/Repeat/LTV; bars for Sessions/Orders).
     - Customers: “Returning Customers” is now customers who have **>=2 paid orders by the end of the selected window** (so early years like 2025 don’t incorrectly show 0 when repeats exist).
     - Fixed a Postgres reliability bug: returning customer query no longer uses a grouped outer reference (prevents `/api/business-snapshot` 500s).
   - Settings performance:
@@ -273,7 +274,9 @@ Ops/reliability:
     - UI polish: deltas now render as a compact **icon + %** in the card top-right (no “vs previous period:” prefix) and the Snapshot header has subtle low-opacity bar-chart background art.
     - Profit Rules modal overlay is now extra-dark (~80%) when open so it visually separates from the Snapshot behind it.
   - Snapshot UI follow-up:
-    - Removed the inline Profit Rules callout card (profit remains accessible via the modal header settings icon).
+    - Removed the inline Profit Rules callout card; Snapshot settings moved to a **footer Settings link** (header gear removed).
+    - Profit Rules modal now includes an **Integrations** tab with a toggle to include Google Ads spend in the Cost chart (`profit_rules_v1.integrations.includeGoogleAdsSpend`).
+    - Snapshot modal title now uses the Shopify store’s display name (Shopify Admin API).
     - Added a real dark backdrop and removed “—” delta badges when comparisons aren’t available.
 - Settings icon cleanup + style tweaks:
   - Disabled auto-injected inner card title icons on Settings page (`fontawesome-icons.js` skips `data-page="settings"`), so inner Settings cards/tables no longer get extra gear icons.

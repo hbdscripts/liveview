@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 32;
+const DEFINITIONS_VERSION = 33;
 const LAST_UPDATED = '2026-02-13';
 
 /**
@@ -90,19 +90,24 @@ const TRACKER_TABLE_DEFINITIONS = [
     sources: [
       { kind: 'db', tables: ['settings'], note: 'profit_rules_v1 persistence for estimated profit toggles/rules' },
       { kind: 'db', tables: ['orders_shopify', 'customer_order_facts'], note: 'Revenue/orders/customer/LTV and country-scoped profit deductions from Shopify truth orders (checkout_token only for online store alignment)' },
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'COGS (Cost of Goods) computed from paid truth line-items + Shopify variant unitCost' },
+      { kind: 'db', tables: ['google_ads_spend_hourly'], note: 'Optional: Google Ads spend included in Cost when enabled (ADS_DB_URL / Ads DB)' },
       { kind: 'shopifyql', note: 'Sessions + conversion_rate from ShopifyQL sessions dataset (SINCE/UNTIL range)' },
+      { kind: 'shopify', note: 'Shop name (title) + variant unitCost (for COGS) via Admin API' },
       { kind: 'fx', note: 'Currency conversion to GBP for multi-currency order totals' },
     ],
     columns: [
-      { name: 'Financial', value: 'Revenue, Orders, AOV, Conversion Rate and optional estimated profit/margin cards' },
+      { name: 'Financial', value: 'Wide “Revenue & Cost” chart + optional Profit section (Estimated Profit / Margin / Deductions)' },
       { name: 'Performance', value: 'Sessions, Orders, Conversion Rate, AOV' },
       { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate, LTV (cohort-aware)' },
       { name: 'Profit Rules', value: 'Percent of Revenue, Fixed per Order, Fixed per Period with country targeting' },
-      { name: 'Charts', value: 'ApexCharts sparklines/radials rendered in-card (series derived from Shopify truth + ShopifyQL timeseries)' },
+      { name: 'Integrations', value: 'Profit Rules → Integrations tab: toggles (e.g. include Google Ads spend in Cost chart)' },
+      { name: 'Charts', value: 'ApexCharts: wide Revenue & Cost area chart + per-card KPI sparklines (series derived from Shopify truth + ShopifyQL timeseries)' },
     ],
     math: [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
       { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
+      { name: 'Cost (chart line)', value: 'COGS + enabled Profit Rule deductions + optional Google Ads spend when enabled' },
       { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
       { name: 'Conversion rate', value: 'ShopifyQL conversion_rate (sessions dataset) over the selected SINCE/UNTIL range (fallback: checkout orders / sessions when conversion_rate is missing/0 but sessions exist)' },
       { name: 'Returning customers', value: 'Distinct customers with >=2 paid orders by the end of the selected window (counts repeats inside the window too)' },
@@ -111,7 +116,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Monthly comparison window', value: 'Monthly mode compares selected month against same month in previous year (partial month when current month)' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: true },
-    requires: { dbTables: ['settings', 'orders_shopify'], shopifyToken: true },
+    requires: { dbTables: ['settings', 'orders_shopify', 'orders_shopify_line_items'], shopifyToken: true },
   },
   {
     id: 'dashboard_overview_top_products_table',

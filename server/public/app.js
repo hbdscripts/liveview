@@ -12028,9 +12028,7 @@ const API = '';
 
       let snapshotModal = null;
       let rulesModal = null;
-      let selectedMode = 'yearly';
       let selectedYear = String((new Date()).getFullYear());
-      let selectedMonth = '';
       let rulesDraft = null;
       let editingRuleId = '';
       let snapshotLoading = false;
@@ -12130,25 +12128,8 @@ const API = '';
         return n.toFixed(1).replace(/\.0$/, '') + '%';
       }
 
-      function pad2(n) {
-        const v = Number(n);
-        if (!Number.isFinite(v)) return '00';
-        return String(Math.trunc(v)).padStart(2, '0');
-      }
-
       function getCurrentYearString() {
         return String((new Date()).getFullYear());
-      }
-
-      function monthLabel(value) {
-        const m = String(value || '').match(/^(\d{4})-(\d{2})$/);
-        if (!m) return String(value || '');
-        const year = Number(m[1]);
-        const month = Number(m[2]);
-        if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return String(value || '');
-        const d = new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
-        const mon = d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
-        return mon + ' ' + String(year).slice(-2);
       }
 
       function deltaInfo(current, previous) {
@@ -12254,7 +12235,7 @@ const API = '';
         if (!el) return;
         const options = opts && typeof opts === 'object' ? opts : {};
         const rawType = String(options.type || 'line').toLowerCase();
-        const chartType = rawType === 'bar' ? 'bar' : 'line';
+        const chartType = rawType === 'bar' ? 'bar' : (rawType === 'area' ? 'area' : 'line');
         const color = options.color || snapshotPrimaryColor();
         const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 56;
 
@@ -12276,13 +12257,19 @@ const API = '';
           dataLabels: { enabled: false },
         };
 
+        const fillOpacity = (function () {
+          const n = Number(options.fillOpacity);
+          if (Number.isFinite(n)) return Math.max(0, Math.min(1, n));
+          return chartType === 'area' ? 0.22 : 0;
+        })();
+
         const apexOpts = chartType === 'bar'
           ? Object.assign({}, base, {
             plotOptions: { bar: { columnWidth: '60%', borderRadius: 2 } },
           })
           : Object.assign({}, base, {
             stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
-            fill: { type: 'solid', opacity: 0 },
+            fill: { type: 'solid', opacity: fillOpacity },
             markers: { size: 0 },
           });
 
@@ -12339,7 +12326,9 @@ const API = '';
       function renderSnapshotCharts(data, seq) {
         const payload = data && typeof data === 'object' ? data : {};
         const series = payload.series && typeof payload.series === 'object' ? payload.series : {};
+        const labelsYmd = Array.isArray(series.labelsYmd) ? series.labelsYmd : [];
         const revenue = Array.isArray(series.revenueGbp) ? series.revenueGbp : [];
+        const cost = Array.isArray(series.costGbp) ? series.costGbp : [];
         const orders = Array.isArray(series.orders) ? series.orders : [];
         const sessions = Array.isArray(series.sessions) ? series.sessions : [];
         const conv = Array.isArray(series.conversionRate) ? series.conversionRate : [];
@@ -12379,17 +12368,95 @@ const API = '';
         }
 
         function sparkLine(id, dataArr, delta) {
-          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56 });
+          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56, fillOpacity: 0 });
         }
 
         function sparkBar(id, dataArr, delta) {
           renderSnapshotSparkline(id, dataArr, { type: 'bar', color: trendColorForDelta(delta), height: 56 });
         }
 
+        function sparkArea(id, dataArr, delta) {
+          renderSnapshotSparkline(id, dataArr, { type: 'area', color: trendColorForDelta(delta), height: 56, fillOpacity: 0.22 });
+        }
+
+        function ensureIsoCategories(labels) {
+          const src = Array.isArray(labels) ? labels : [];
+          const cats = src.map(function (ymd) {
+            const d = String(ymd || '').slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+            return d + 'T00:00:00.000Z';
+          }).filter(Boolean);
+          if (cats.length === 1) {
+            // ApexCharts doesn't love a single-point datetime category set.
+            try {
+              const t = Date.parse(cats[0]);
+              if (Number.isFinite(t)) {
+                cats.push(new Date(t + 24 * 60 * 60 * 1000).toISOString());
+              } else {
+                cats.push(cats[0]);
+              }
+            } catch (_) {
+              cats.push(cats[0]);
+            }
+          }
+          return cats;
+        }
+
+        function expandToCategoriesLen(arr, targetLen) {
+          const src = Array.isArray(arr) ? arr : [];
+          if (src.length === targetLen) return src;
+          if (!src.length) return Array(targetLen).fill(0);
+          if (src.length === 1 && targetLen >= 2) return Array(targetLen).fill(src[0]);
+          // Best-effort: pad/truncate.
+          const out = src.slice(0, targetLen);
+          while (out.length < targetLen) out.push(out[out.length - 1]);
+          return out;
+        }
+
+        function renderSnapshotRevenueCostChart(elId, labels, revenueArr, costArr) {
+          if (typeof ApexCharts === 'undefined') return;
+          const el = document.getElementById(elId);
+          if (!el) return;
+          const categories = ensureIsoCategories(labels);
+          if (!categories.length) return;
+
+          const revNums = (normalizeSeriesNumbers(revenueArr) || []).map(function (v) { return v == null ? 0 : v; });
+          const costNums = (normalizeSeriesNumbers(costArr) || []).map(function (v) { return v == null ? 0 : v; });
+          const rev = expandToCategoriesLen(revNums, categories.length);
+          const cst = expandToCategoriesLen(costNums, categories.length);
+
+          if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
+          el.innerHTML = '';
+
+          try {
+            const chart = new ApexCharts(el, {
+              series: [
+                { name: 'Revenue', data: rev },
+                { name: 'Cost', data: cst },
+              ],
+              chart: {
+                height: 320,
+                type: 'area',
+                animations: { enabled: false },
+                toolbar: { show: false },
+              },
+              colors: ['#206bc4', '#d63939'],
+              dataLabels: { enabled: false },
+              stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
+              fill: { type: 'solid', opacity: 0.18 },
+              xaxis: { type: 'datetime', categories },
+              tooltip: { x: { format: 'dd/MM/yy' } },
+              legend: { show: true, position: 'top', horizontalAlign: 'right' },
+              grid: { padding: { left: 0, right: 0, top: 8, bottom: 0 } },
+            });
+            chart.render();
+            snapshotCharts[elId] = chart;
+          } catch (_) {}
+        }
+
         ensureSnapshotApexCharts(function () {
           if (seq !== snapshotChartsSeq) return;
-          const revenueDelta = deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous);
-          sparkLine('business-snapshot-chart-revenue', revenue, revenueDelta);
+          renderSnapshotRevenueCostChart('business-snapshot-chart-revenue-cost', labelsYmd, revenue, cost);
 
           // Profit charts (no circles; keep line/bar only)
           const estDelta = deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous);
@@ -12408,15 +12475,77 @@ const API = '';
           const aovDelta = deltaInfo(perf.aov && perf.aov.value, perf.aov && perf.aov.previous);
           sparkBar('business-snapshot-chart-sessions', sessions, sessionsDelta);
           sparkBar('business-snapshot-chart-perf-orders', orders, ordersDelta);
-          sparkLine('business-snapshot-chart-perf-conversion', conv, convDelta);
-          sparkLine('business-snapshot-chart-perf-aov', aov, aovDelta);
+          sparkArea('business-snapshot-chart-perf-conversion', conv, convDelta);
+          sparkArea('business-snapshot-chart-perf-aov', aov, aovDelta);
 
-          // Customers charts (use existing series as background context; no circles)
+          // Customers charts (area charts for repeat/LTV; bars for customer counts)
+          const repeatVal = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
+          const ltvVal = c.ltv && Number.isFinite(Number(c.ltv.value)) ? Number(c.ltv.value) : null;
+          const repeatSeries = (repeatVal != null && labelsYmd.length) ? labelsYmd.map(function () { return repeatVal; }) : [];
+          const ltvSeries = (ltvVal != null && labelsYmd.length) ? labelsYmd.map(function () { return ltvVal; }) : [];
           sparkBar('business-snapshot-chart-new-share', orders, null);
           sparkBar('business-snapshot-chart-returning-share', orders, null);
-          sparkLine('business-snapshot-chart-repeat-rate', conv, null);
-          sparkLine('business-snapshot-chart-ltv-ratio', aov, null);
+          sparkArea('business-snapshot-chart-repeat-rate', repeatSeries, null);
+          sparkArea('business-snapshot-chart-ltv-ratio', ltvSeries, null);
         });
+      }
+
+      function costBreakdownTooltipHtml(lines) {
+        const list = Array.isArray(lines) ? lines : [];
+        const rows = list
+          .map(function (r) {
+            const label = r && r.label != null ? String(r.label) : '';
+            const amount = r && r.amountGbp != null ? Number(r.amountGbp) : NaN;
+            if (!label) return '';
+            const amtText = Number.isFinite(amount) ? (formatRevenue(amount) || ('£' + String(amount))) : 'Unavailable';
+            return '<div class="business-snapshot-cost-row"><span>' + escapeHtml(label) + '</span><span>' + escapeHtml(amtText) + '</span></div>';
+          })
+          .filter(Boolean)
+          .join('');
+        if (!rows) {
+          return '<div class="text-muted small">No cost breakdown available.</div>';
+        }
+        return '<div class="business-snapshot-cost-rows">' + rows + '</div>';
+      }
+
+      function revenueCostCardHtml(financial) {
+        const f = financial && typeof financial === 'object' ? financial : {};
+        const revMetric = f.revenue || {};
+        const costMetric = f.cost || {};
+        const breakdownNow = Array.isArray(f.costBreakdownNow) ? f.costBreakdownNow : [];
+        const d = deltaInfo(revMetric && revMetric.value, revMetric && revMetric.previous);
+        const dHtml = deltaHtml(d);
+        const revenueText = fmtCurrency(revMetric && revMetric.value);
+        const costText = fmtCurrency(costMetric && costMetric.value);
+        const tooltipHtml = costBreakdownTooltipHtml(breakdownNow);
+        return '' +
+          '<div class="col-12">' +
+            '<div class="card business-snapshot-wide-card">' +
+              '<div class="card-body business-snapshot-wide-body">' +
+                '<div class="business-snapshot-wide-top">' +
+                  '<div class="subheader d-flex align-items-center gap-2">' +
+                    'Revenue &amp; Cost' +
+                    '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="Cost breakdown">' +
+                      '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
+                      '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
+                    '</span>' +
+                  '</div>' +
+                  (dHtml ? dHtml : '') +
+                '</div>' +
+                '<div class="business-snapshot-wide-metrics">' +
+                  '<div class="business-snapshot-wide-metric">' +
+                    '<div class="text-muted small">Revenue</div>' +
+                    '<div class="h2 mb-0">' + escapeHtml(revenueText || 'Unavailable') + '</div>' +
+                  '</div>' +
+                  '<div class="business-snapshot-wide-metric">' +
+                    '<div class="text-muted small">Cost</div>' +
+                    '<div class="h2 mb-0">' + escapeHtml(costText || 'Unavailable') + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="business-snapshot-wide-chart" id="business-snapshot-chart-revenue-cost" aria-hidden="true"></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
       }
 
       function metricCardHtml(label, valueText, delta, chart) {
@@ -12464,64 +12593,34 @@ const API = '';
         const c = data.customers || {};
         const profit = f.profit || {};
 
+        const titleEl = document.getElementById('business-snapshot-title');
+        if (titleEl) {
+          const name = data && data.shopName != null ? String(data.shopName).trim() : '';
+          titleEl.textContent = name || 'Business Snapshot';
+        }
+
         const subtitle = document.getElementById('business-snapshot-subtitle');
         if (subtitle) subtitle.textContent = String(data.periodLabel || '').trim() || 'Business Snapshot';
 
         (function updateSelectors() {
-          const mode = String(data.mode || selectedMode || 'yearly').toLowerCase();
-          selectedMode = mode === 'monthly' ? 'monthly' : 'yearly';
           selectedYear = String(data.year || selectedYear || getCurrentYearString());
-          selectedMonth = String(data.month || selectedMonth || '');
-
-          const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
-          const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
-          if (yearlyWrap) yearlyWrap.classList.toggle('d-none', selectedMode !== 'yearly');
-          if (monthlyWrap) monthlyWrap.classList.toggle('d-none', selectedMode !== 'monthly');
 
           const yearSel = document.getElementById('business-snapshot-year');
-          if (yearSel) {
-            const years = Array.isArray(data.availableYears) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
-            const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
-            const same = existing.length === years.length && existing.every(function (v, i) { return v === years[i]; });
-            if (!same) {
-              yearSel.innerHTML = years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
-            }
-            if (years.length && years.indexOf(selectedYear) < 0) selectedYear = years[0];
-            yearSel.value = selectedYear;
+          if (!yearSel) return;
+          const years = Array.isArray(data.availableYears) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
+          const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
+          const same = existing.length === years.length && existing.every(function (v, i) { return v === years[i]; });
+          if (!same) {
+            yearSel.innerHTML = years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
           }
-
-          const monthSel = document.getElementById('business-snapshot-month');
-          if (monthSel) {
-            const months = Array.isArray(data.availableMonths) ? data.availableMonths : [];
-            const options = months.map(function (m) {
-              if (m && typeof m === 'object') {
-                return {
-                  value: String(m.value || ''),
-                  label: String(m.label || monthLabel(m.value || '')),
-                };
-              }
-              const v = String(m || '');
-              return { value: v, label: monthLabel(v) };
-            }).filter(function (m) { return m.value; });
-            const existing = Array.from(monthSel.options || []).map(function (o) { return String(o && o.value || ''); });
-            const same = existing.length === options.length && existing.every(function (v, i) { return v === options[i].value; });
-            if (!same) {
-              monthSel.innerHTML = options.map(function (m) {
-                return '<option value="' + escapeHtml(m.value) + '">' + escapeHtml(m.label) + '</option>';
-              }).join('');
-            }
-            if (options.length && !options.some(function (m) { return m.value === selectedMonth; })) {
-              selectedMonth = options[0].value;
-            }
-            monthSel.value = selectedMonth;
-          }
+          if (years.length && years.indexOf(selectedYear) < 0) selectedYear = years[0];
+          yearSel.value = selectedYear;
         })();
 
         const chartSeq = ++snapshotChartsSeq;
         destroySnapshotCharts();
 
-        let financialCards = '';
-        financialCards += metricCardHtml('Revenue', fmtCurrency(f.revenue && f.revenue.value), deltaInfo(f.revenue && f.revenue.value, f.revenue && f.revenue.previous), { id: 'business-snapshot-chart-revenue' });
+        const financialCards = revenueCostCardHtml(f);
 
         let profitCards = '';
         if (profit.visible) {
@@ -12581,13 +12680,8 @@ const API = '';
         snapshotActiveRequest = reqId;
         snapshotLoading = true;
         if (force) setSnapshotLoading();
-        const mode = selectedMode === 'monthly' ? 'monthly' : 'yearly';
-        let url = API + '/api/business-snapshot?mode=' + encodeURIComponent(mode);
-        if (mode === 'monthly') {
-          url += '&month=' + encodeURIComponent(String(selectedMonth || ''));
-        } else {
-          url += '&year=' + encodeURIComponent(String(selectedYear || getCurrentYearString()));
-        }
+        const year = String(selectedYear || getCurrentYearString());
+        let url = API + '/api/business-snapshot?mode=yearly&year=' + encodeURIComponent(year);
         if (force) url += '&_=' + Date.now();
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
           .then(function (res) { return (res && res.ok) ? res.json() : null; })
@@ -12601,6 +12695,9 @@ const API = '';
         const out = {
           enabled: !!src.enabled,
           currency: (src.currency && typeof src.currency === 'string' ? src.currency : 'GBP').toUpperCase(),
+          integrations: {
+            includeGoogleAdsSpend: !!(src.integrations && typeof src.integrations === 'object' && src.integrations.includeGoogleAdsSpend === true),
+          },
           rules: [],
         };
         const list = Array.isArray(src.rules) ? src.rules : [];
@@ -12843,6 +12940,9 @@ const API = '';
         if (!rulesDraft) rulesDraft = normalizeRulesPayload(null);
         const enabledToggle = document.getElementById('profit-rules-enabled');
         rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!rulesDraft.enabled;
+        const adsToggle = document.getElementById('profit-rules-include-google-ads');
+        if (!rulesDraft.integrations || typeof rulesDraft.integrations !== 'object') rulesDraft.integrations = { includeGoogleAdsSpend: false };
+        if (adsToggle) rulesDraft.integrations.includeGoogleAdsSpend = !!adsToggle.checked;
         reindexRulesSort();
         setRulesMessage('Saving…', true);
         return fetchWithTimeout(API + '/api/settings/profit-rules', {
@@ -12863,12 +12963,30 @@ const API = '';
           });
       }
 
+      function setProfitRulesTab(tabKey) {
+        const key = tabKey === 'integrations' ? 'integrations' : 'rules';
+        if (!rulesModal) return;
+        const tabs = rulesModal.querySelectorAll ? rulesModal.querySelectorAll('[data-pr-tab]') : [];
+        tabs.forEach(function (btn) {
+          const v = btn && btn.getAttribute ? String(btn.getAttribute('data-pr-tab') || '') : '';
+          if (btn && btn.classList) btn.classList.toggle('active', v === key);
+        });
+        const panes = rulesModal.querySelectorAll ? rulesModal.querySelectorAll('[data-pr-pane]') : [];
+        panes.forEach(function (pane) {
+          const v = pane && pane.getAttribute ? String(pane.getAttribute('data-pr-pane') || '') : '';
+          if (pane && pane.classList) pane.classList.toggle('is-hidden', v !== key);
+        });
+      }
+
       function openProfitRulesModal() {
         ensureModals();
         setRulesMessage('', null);
         fetchProfitRules(false).then(function (rules) {
           const enabledToggle = document.getElementById('profit-rules-enabled');
           if (enabledToggle) enabledToggle.checked = !!(rules && rules.enabled);
+          const adsToggle = document.getElementById('profit-rules-include-google-ads');
+          if (adsToggle) adsToggle.checked = !!(rules && rules.integrations && rules.integrations.includeGoogleAdsSpend);
+          setProfitRulesTab('rules');
           renderRulesList();
           hideRulesForm();
           openModal(rulesModal);
@@ -12914,34 +13032,27 @@ const API = '';
                     '</svg>' +
                   '</div>' +
                   '<div class="d-flex flex-column">' +
-                    '<h5 class="modal-title mb-0">Business Snapshot</h5>' +
+                    '<h5 class="modal-title mb-0" id="business-snapshot-title">Business Snapshot</h5>' +
                     '<div class="text-muted small" id="business-snapshot-subtitle">Yearly Reports</div>' +
                     '<div class="business-snapshot-date-mode-grid mt-3">' +
-                      '<div id="business-snapshot-yearly-wrap" class="business-snapshot-report-panel">' +
-                        '<label class="form-label mb-1" for="business-snapshot-year">Yearly Reports</label>' +
+                      '<div class="business-snapshot-report-panel">' +
                         '<div class="d-flex flex-wrap align-items-center gap-2">' +
                           '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year"></select>' +
-                          '<button type="button" class="btn btn-link btn-sm p-0 business-snapshot-switch-btn" id="business-snapshot-switch-monthly">Switch to month reports?</button>' +
-                        '</div>' +
-                      '</div>' +
-                      '<div id="business-snapshot-monthly-wrap" class="business-snapshot-report-panel d-none">' +
-                        '<label class="form-label mb-1" for="business-snapshot-month">Monthly Reports</label>' +
-                        '<div class="d-flex flex-wrap align-items-center gap-2">' +
-                          '<select class="form-select form-select-sm" id="business-snapshot-month" aria-label="Month"></select>' +
-                          '<button type="button" class="btn btn-link btn-sm p-0 business-snapshot-switch-btn" id="business-snapshot-switch-yearly">Switch to yearly reports?</button>' +
                         '</div>' +
                       '</div>' +
                     '</div>' +
                   '</div>' +
                   '<div class="ms-auto d-flex align-items-start gap-2 business-snapshot-header-actions">' +
-                    '<button type="button" class="btn btn-icon btn-ghost-secondary" id="business-snapshot-rules-btn" aria-label="Configure Profit Rules" title="Configure Profit Rules">' +
-                      '<i class="fa-thin fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>' +
-                    '</button>' +
                     '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
                   '</div>' +
                 '</div>' +
                 '<div class="modal-body p-4 business-snapshot-modal-body">' +
                   '<div id="business-snapshot-body"></div>' +
+                '</div>' +
+                '<div class="modal-footer business-snapshot-modal-footer">' +
+                  '<div class="business-snapshot-footer-settings">' +
+                    '<a href="#" class="link-secondary" id="business-snapshot-footer-settings-link">Settings</a>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -12963,43 +13074,17 @@ const API = '';
           const yearSel = document.getElementById('business-snapshot-year');
           if (yearSel) {
             yearSel.addEventListener('change', function () {
-              selectedMode = 'yearly';
               selectedYear = String(yearSel.value || getCurrentYearString());
               fetchSnapshot(true);
             });
           }
-          const monthSel = document.getElementById('business-snapshot-month');
-          if (monthSel) {
-            monthSel.addEventListener('change', function () {
-              selectedMode = 'monthly';
-              selectedMonth = String(monthSel.value || '');
-              fetchSnapshot(true);
+          const footerSettingsLink = document.getElementById('business-snapshot-footer-settings-link');
+          if (footerSettingsLink) {
+            footerSettingsLink.addEventListener('click', function (e) {
+              e.preventDefault();
+              openProfitRulesModal();
             });
           }
-          const switchMonthlyBtn = document.getElementById('business-snapshot-switch-monthly');
-          if (switchMonthlyBtn) {
-            switchMonthlyBtn.addEventListener('click', function () {
-              selectedMode = 'monthly';
-              const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
-              const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
-              if (yearlyWrap) yearlyWrap.classList.add('d-none');
-              if (monthlyWrap) monthlyWrap.classList.remove('d-none');
-              fetchSnapshot(true);
-            });
-          }
-          const switchYearlyBtn = document.getElementById('business-snapshot-switch-yearly');
-          if (switchYearlyBtn) {
-            switchYearlyBtn.addEventListener('click', function () {
-              selectedMode = 'yearly';
-              const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
-              const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
-              if (monthlyWrap) monthlyWrap.classList.add('d-none');
-              if (yearlyWrap) yearlyWrap.classList.remove('d-none');
-              fetchSnapshot(true);
-            });
-          }
-          const rulesBtn = document.getElementById('business-snapshot-rules-btn');
-          if (rulesBtn) rulesBtn.addEventListener('click', function () { openProfitRulesModal(); });
         }
 
         if (!rulesModal) {
@@ -13017,6 +13102,11 @@ const API = '';
                   '<button type="button" class="btn-close" id="profit-rules-close-btn" aria-label="Close"></button>' +
                 '</div>' +
                 '<div class="modal-body">' +
+                  '<ul class="nav nav-tabs mb-3">' +
+                    '<li class="nav-item"><button type="button" class="nav-link active" data-pr-tab="rules">Rules</button></li>' +
+                    '<li class="nav-item"><button type="button" class="nav-link" data-pr-tab="integrations">Integrations</button></li>' +
+                  '</ul>' +
+                  '<div data-pr-pane="rules">' +
                   '<div class="mb-3">' +
                     '<label class="form-check form-switch m-0">' +
                       '<input class="form-check-input" type="checkbox" id="profit-rules-enabled">' +
@@ -13077,6 +13167,18 @@ const API = '';
                     '</div>' +
                   '</div>' +
                   '<div class="small mt-3 is-hidden" id="profit-rules-msg"></div>' +
+                  '</div>' +
+                  '<div class="is-hidden" data-pr-pane="integrations">' +
+                    '<div class="card card-sm mb-3">' +
+                      '<div class="card-body">' +
+                        '<label class="form-check form-switch m-0">' +
+                          '<input class="form-check-input" type="checkbox" id="profit-rules-include-google-ads">' +
+                          '<span class="form-check-label">Include Google Ads spend in Cost chart</span>' +
+                        '</label>' +
+                        '<div class="text-muted small mt-2">When enabled, the Business Snapshot Cost line includes Google Ads spend for the selected period.</div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
                 '</div>' +
                 '<div class="modal-footer">' +
                   '<button type="button" class="btn btn-ghost-secondary" id="profit-rules-dismiss-btn">Close</button>' +
@@ -13093,6 +13195,14 @@ const API = '';
           if (dismissBtn) dismissBtn.addEventListener('click', function () { closeModal(rulesModal); });
           rulesModal.addEventListener('click', function (e) {
             if (e && e.target === rulesModal) closeModal(rulesModal);
+          });
+          rulesModal.addEventListener('click', function (e) {
+            const target = e && e.target ? e.target : null;
+            const tabBtn = target && target.closest ? target.closest('button[data-pr-tab]') : null;
+            if (!tabBtn) return;
+            e.preventDefault();
+            const key = String(tabBtn.getAttribute('data-pr-tab') || '').trim();
+            setProfitRulesTab(key);
           });
           document.addEventListener('keydown', function (e) {
             if (!modalVisible(rulesModal)) return;
@@ -13162,14 +13272,9 @@ const API = '';
 
       openBtn.addEventListener('click', function () {
         ensureModals();
-        selectedMode = 'yearly';
         selectedYear = getCurrentYearString();
         const yearSel = document.getElementById('business-snapshot-year');
         if (yearSel) yearSel.value = selectedYear;
-        const yearlyWrap = document.getElementById('business-snapshot-yearly-wrap');
-        const monthlyWrap = document.getElementById('business-snapshot-monthly-wrap');
-        if (monthlyWrap) monthlyWrap.classList.add('d-none');
-        if (yearlyWrap) yearlyWrap.classList.remove('d-none');
         setSnapshotLoading();
         openModal(snapshotModal);
         fetchSnapshot(true);

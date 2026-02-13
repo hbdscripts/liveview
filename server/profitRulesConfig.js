@@ -12,6 +12,9 @@ function defaultProfitRulesConfigV1() {
   return {
     enabled: false,
     currency: 'GBP',
+    integrations: {
+      includeGoogleAdsSpend: false,
+    },
     rules: [],
   };
 }
@@ -125,6 +128,14 @@ function normalizeProfitRulesConfigV1(raw) {
   const out = defaultProfitRulesConfigV1();
   out.enabled = typeof parsed.enabled === 'boolean' ? parsed.enabled : out.enabled;
   out.currency = normalizeCurrencyCode(parsed.currency);
+  try {
+    const integ = parsed.integrations && typeof parsed.integrations === 'object' ? parsed.integrations : {};
+    out.integrations = {
+      includeGoogleAdsSpend: integ && integ.includeGoogleAdsSpend === true,
+    };
+  } catch (_) {
+    out.integrations = { includeGoogleAdsSpend: false };
+  }
 
   const list = Array.isArray(parsed.rules) ? parsed.rules : [];
   const normalized = [];

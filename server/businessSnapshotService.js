@@ -3,6 +3,7 @@ const store = require('./store');
 const salesTruth = require('./salesTruth');
 const fx = require('./fx');
 const shopifyQl = require('./shopifyQl');
+const { getAdsDb } = require('./ads/adsDb');
 const {
   PROFIT_RULES_V1_KEY,
   PROFIT_RULE_TYPES,
@@ -16,6 +17,288 @@ const SNAPSHOT_MODE_SET = new Set(['yearly', 'monthly']);
 const SNAPSHOT_MIN_YEAR = 2025;
 const SNAPSHOT_MIN_MONTH = '2025-01';
 const SNAPSHOT_MIN_START_YMD = '2025-01-01';
+
+const SHOPIFY_ADMIN_API_VERSION = '2024-01';
+const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SHOP_NAME_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const COGS_RANGE_CACHE_TTL_MS = 10 * 60 * 1000;
+const ADS_SPEND_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const variantCostCache = new Map(); // key -> { amount, currency, expiresAt }
+const shopNameCache = new Map(); // shop -> { name, expiresAt }
+const cogsRangeCache = new Map(); // key -> { value, expiresAt }
+const adsSpendCache = new Map(); // key -> { totalGbp, byYmdObj, expiresAt }
+
+function sleep(ms) {
+  const n = Number(ms) || 0;
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
+}
+
+function chunkArray(arr, size) {
+  const out = [];
+  const src = Array.isArray(arr) ? arr : [];
+  const n = Math.max(1, Number(size) || 1);
+  for (let i = 0; i < src.length; i += n) out.push(src.slice(i, i + n));
+  return out;
+}
+
+function parseLegacyVariantId(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/\/(\d+)(?:\D.*)?$/);
+  return m && m[1] ? m[1] : '';
+}
+
+async function shopifyFetchWithRetry(url, accessToken, { maxRetries = 6 } = {}) {
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const res = await fetch(url, { headers: { 'X-Shopify-Access-Token': accessToken } });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds = retryAfter ? parseInt(String(retryAfter), 10) : NaN;
+    const waitMs = Number.isFinite(waitSeconds) && waitSeconds > 0 ? waitSeconds * 1000 : 1000;
+    await sleep(Math.min(waitMs, 10000));
+  }
+}
+
+async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6 } = {}) {
+  const url = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}/graphql.json`;
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res;
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds = retryAfter ? parseInt(String(retryAfter), 10) : NaN;
+    const waitMs = Number.isFinite(waitSeconds) && waitSeconds > 0 ? waitSeconds * 1000 : 1000;
+    await sleep(Math.min(waitMs, 10000));
+  }
+}
+
+function cleanupCache(map, maxSize) {
+  const m = map instanceof Map ? map : null;
+  const limit = Number(maxSize) || 0;
+  if (!m || limit <= 0) return;
+  if (m.size <= limit) return;
+  const entries = Array.from(m.entries());
+  entries.sort((a, b) => (a[1]?.expiresAt || 0) - (b[1]?.expiresAt || 0));
+  const toDrop = Math.max(1, m.size - limit);
+  for (let i = 0; i < toDrop; i += 1) m.delete(entries[i][0]);
+}
+
+async function fetchVariantUnitCosts(shop, accessToken, variantIds) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !accessToken || !Array.isArray(variantIds) || !variantIds.length) return new Map();
+  const normalizedIds = Array.from(new Set(variantIds.map(parseLegacyVariantId).filter(Boolean)));
+  const result = new Map();
+  const missing = [];
+  const now = Date.now();
+  for (const vid of normalizedIds) {
+    const key = `${safeShop}:${vid}`;
+    const cached = variantCostCache.get(key);
+    if (cached && cached.expiresAt > now && Number.isFinite(Number(cached.amount))) {
+      result.set(vid, { amount: Number(cached.amount), currency: cached.currency || 'GBP' });
+    } else {
+      missing.push(vid);
+    }
+  }
+  if (!missing.length) return result;
+
+  const chunks = chunkArray(missing, 75);
+  const query = `
+    query VariantUnitCosts($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on ProductVariant {
+          id
+          legacyResourceId
+          inventoryItem {
+            unitCost {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+    }
+  `;
+  for (const part of chunks) {
+    const gqlIds = part.map((id) => `gid://shopify/ProductVariant/${id}`);
+    try {
+      const res = await shopifyGraphqlWithRetry(safeShop, accessToken, query, { ids: gqlIds }, { maxRetries: 6 });
+      const text = await res.text();
+      if (!res.ok) continue;
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+      const nodes = json && json.data && Array.isArray(json.data.nodes) ? json.data.nodes : [];
+      for (const n of nodes) {
+        if (!n || typeof n !== 'object') continue;
+        const vid = parseLegacyVariantId(n.legacyResourceId || n.id);
+        if (!vid) continue;
+        const unitCost = n.inventoryItem && n.inventoryItem.unitCost ? n.inventoryItem.unitCost : null;
+        const amount = unitCost && unitCost.amount != null ? Number(unitCost.amount) : NaN;
+        const currency = unitCost && unitCost.currencyCode ? String(unitCost.currencyCode).toUpperCase() : 'GBP';
+        if (!Number.isFinite(amount)) continue;
+        result.set(vid, { amount, currency });
+        variantCostCache.set(`${safeShop}:${vid}`, {
+          amount,
+          currency,
+          expiresAt: Date.now() + VARIANT_COST_CACHE_TTL_MS,
+        });
+      }
+      cleanupCache(variantCostCache, 5000);
+    } catch (_) {}
+  }
+  return result;
+}
+
+async function readCogsTotalGbpFromLineItems(shop, accessToken, startMs, endMs) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!safeShop || !accessToken || !Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+
+  const cacheKey = `${safeShop}:${start}:${end}`;
+  const cached = cogsRangeCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  let rows = [];
+  try {
+    rows = await getDb().all(
+      `
+        SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
+               UPPER(COALESCE(currency, 'GBP')) AS currency,
+               COALESCE(SUM(quantity), 0) AS qty
+        FROM orders_shopify_line_items
+        WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+          AND (order_test IS NULL OR order_test = 0)
+          AND order_cancelled_at IS NULL
+          AND order_financial_status = 'paid'
+          AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+        GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))
+      `,
+      [safeShop, start, end]
+    );
+  } catch (_) {
+    return null;
+  }
+
+  const variantIds = Array.from(new Set((rows || []).map((r) => parseLegacyVariantId(r && r.variant_id)).filter(Boolean)));
+  if (!variantIds.length) {
+    cogsRangeCache.set(cacheKey, { value: 0, expiresAt: now + COGS_RANGE_CACHE_TTL_MS });
+    cleanupCache(cogsRangeCache, 400);
+    return 0;
+  }
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  const costMap = await fetchVariantUnitCosts(safeShop, accessToken, variantIds);
+  let total = 0;
+  let matchedQty = 0;
+  for (const row of (rows || [])) {
+    const vid = parseLegacyVariantId(row && row.variant_id);
+    const qty = row && row.qty != null ? Number(row.qty) : NaN;
+    if (!vid || !Number.isFinite(qty) || qty <= 0) continue;
+    const cost = costMap.get(vid);
+    if (!cost || !Number.isFinite(Number(cost.amount))) continue;
+    const raw = Number(cost.amount) * qty;
+    const currency = fx.normalizeCurrency(cost.currency) || fx.normalizeCurrency(row && row.currency) || 'GBP';
+    const gbp = fx.convertToGbp(raw, currency, ratesToGbp);
+    if (!Number.isFinite(gbp)) continue;
+    total += gbp;
+    matchedQty += qty;
+  }
+  if (matchedQty <= 0) return null;
+  const rounded = round2(total);
+  cogsRangeCache.set(cacheKey, { value: rounded, expiresAt: now + COGS_RANGE_CACHE_TTL_MS });
+  cleanupCache(cogsRangeCache, 400);
+  return rounded;
+}
+
+async function readShopName(shop, accessToken) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !accessToken) return null;
+  const cached = shopNameCache.get(safeShop);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now && cached.name) return cached.name;
+  try {
+    const res = await shopifyFetchWithRetry(`https://${safeShop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}/shop.json`, accessToken, { maxRetries: 6 });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    const name = json && json.shop && json.shop.name ? String(json.shop.name).trim() : '';
+    if (!name) return null;
+    shopNameCache.set(safeShop, { name, expiresAt: now + SHOP_NAME_CACHE_TTL_MS });
+    cleanupCache(shopNameCache, 50);
+    return name;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone) {
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return { totalGbp: 0, byYmd: new Map() };
+  const tz = typeof timeZone === 'string' ? timeZone : 'UTC';
+  const cacheKey = `ga:${start}:${end}:${tz}`;
+  const now = Date.now();
+  const cached = adsSpendCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    const byYmd = new Map(Object.entries(cached.byYmdObj || {}));
+    return { totalGbp: Number(cached.totalGbp) || 0, byYmd };
+  }
+
+  const adsDb = getAdsDb();
+  if (!adsDb) return { totalGbp: 0, byYmd: new Map() };
+  let rows = [];
+  try {
+    rows = await adsDb.all(
+      `
+        SELECT
+          (EXTRACT(EPOCH FROM DATE_TRUNC('day', hour_ts)) * 1000)::BIGINT AS day_ms,
+          COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+        FROM google_ads_spend_hourly
+        WHERE provider = 'google_ads'
+          AND hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+        GROUP BY day_ms
+        ORDER BY day_ms ASC
+      `,
+      [start, end]
+    );
+  } catch (_) {
+    return { totalGbp: 0, byYmd: new Map() };
+  }
+
+  const byYmd = new Map();
+  let total = 0;
+  for (const r of rows || []) {
+    const ms = r && r.day_ms != null ? Number(r.day_ms) : NaN;
+    const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
+    if (!Number.isFinite(ms)) continue;
+    const ymd = ymdInTimeZone(ms, tz) || null;
+    if (!ymd) continue;
+    const v = Number.isFinite(spend) ? spend : 0;
+    total += v;
+    byYmd.set(ymd, (byYmd.get(ymd) || 0) + v);
+  }
+
+  const byYmdObj = {};
+  for (const [k, v] of byYmd.entries()) byYmdObj[k] = round2(v) || 0;
+  adsSpendCache.set(cacheKey, { totalGbp: round2(total) || 0, byYmdObj, expiresAt: now + ADS_SPEND_CACHE_TTL_MS });
+  cleanupCache(adsSpendCache, 250);
+  return { totalGbp: round2(total) || 0, byYmd };
+}
 
 function safeJsonParse(raw) {
   if (!raw || typeof raw !== 'string') return null;
@@ -504,11 +787,12 @@ function selectedScopeTotals(summary, appliesTo) {
   return { revenueGbp, orders };
 }
 
-function computeProfitDeductions(summary, config) {
+function computeProfitDeductionsDetailed(summary, config) {
   const normalized = normalizeProfitRulesConfigV1(config);
   const allRules = Array.isArray(normalized.rules) ? normalized.rules : [];
   const rules = allRules.filter((rule) => rule && rule.enabled === true);
   let totalDeductions = 0;
+  const lines = [];
 
   // Estimated profit model:
   // - Percent rules subtract a % of selected revenue scope.
@@ -528,8 +812,21 @@ function computeProfitDeductions(summary, config) {
     }
     if (!Number.isFinite(deduction) || deduction <= 0) continue;
     totalDeductions += deduction;
+    lines.push({
+      id: rule.id ? String(rule.id) : '',
+      label: rule.name ? String(rule.name) : 'Expense',
+      type: rule.type ? String(rule.type) : '',
+      amountGbp: round2(deduction) || 0,
+    });
   }
-  return round2(totalDeductions) || 0;
+  return {
+    total: round2(totalDeductions) || 0,
+    lines,
+  };
+}
+
+function computeProfitDeductions(summary, config) {
+  return computeProfitDeductionsDetailed(summary, config).total;
 }
 
 function metric(value, previous) {
@@ -668,7 +965,7 @@ function weightedAvg(values, weights) {
   return sum / wSum;
 }
 
-function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionRate } = {}) {
+function downsampleWeekly({ labelsYmd, revenueGbp, costGbp, orders, sessions, conversionRate } = {}) {
   const labels = Array.isArray(labelsYmd) ? labelsYmd : [];
   if (labels.length <= 120) {
     const aov = (Array.isArray(revenueGbp) && Array.isArray(orders))
@@ -683,6 +980,7 @@ function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionR
       granularity: 'day',
       labelsYmd: labels,
       revenueGbp: Array.isArray(revenueGbp) ? revenueGbp : [],
+      costGbp: Array.isArray(costGbp) ? costGbp : [],
       orders: Array.isArray(orders) ? orders : [],
       sessions: Array.isArray(sessions) ? sessions : [],
       conversionRate: Array.isArray(conversionRate) ? conversionRate : [],
@@ -692,6 +990,7 @@ function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionR
 
   const outLabels = [];
   const outRevenue = [];
+  const outCost = [];
   const outOrders = [];
   const outSessions = [];
   const outConv = [];
@@ -701,11 +1000,13 @@ function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionR
     const end = Math.min(labels.length, i + 7);
     const sliceLabels = labels.slice(i, end);
     const sliceRevenue = Array.isArray(revenueGbp) ? revenueGbp.slice(i, end) : [];
+    const sliceCost = Array.isArray(costGbp) ? costGbp.slice(i, end) : [];
     const sliceOrders = Array.isArray(orders) ? orders.slice(i, end) : [];
     const sliceSessions = Array.isArray(sessions) ? sessions.slice(i, end) : [];
     const sliceConv = Array.isArray(conversionRate) ? conversionRate.slice(i, end) : [];
 
     const revSum = sumNumeric(sliceRevenue);
+    const costSum = sumNumeric(sliceCost);
     const ordSum = sumNumeric(sliceOrders);
     const sesSum = sumNumeric(sliceSessions);
     const conv = weightedAvg(sliceConv, sliceSessions);
@@ -713,6 +1014,7 @@ function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionR
 
     outLabels.push(sliceLabels[0] || labels[i]);
     outRevenue.push(round2(revSum) || 0);
+    outCost.push(round2(costSum) || 0);
     outOrders.push(ordSum || 0);
     outSessions.push(sesSum || 0);
     outConv.push(conv != null ? round1(conv) : null);
@@ -723,6 +1025,7 @@ function downsampleWeekly({ labelsYmd, revenueGbp, orders, sessions, conversionR
     granularity: 'week',
     labelsYmd: outLabels,
     revenueGbp: outRevenue,
+    costGbp: outCost,
     orders: outOrders,
     sessions: outSessions,
     conversionRate: outConv,
@@ -936,9 +1239,148 @@ async function getBusinessSnapshot(options = {}) {
     convDaily.push(convByDay.has(ymd) ? convByDay.get(ymd) : null);
   }
 
+  const profitRules = await readProfitRulesConfig();
+  const rulesEnabled = hasEnabledProfitRules(profitRules);
+  const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
+
+  const [
+    shopName,
+    summaryNow,
+    summaryPrev,
+    cogsNowRaw,
+    cogsPrevRaw,
+    adsNow,
+    adsPrev,
+  ] = await Promise.all([
+    readShopName(shop, token).catch(() => null),
+    rulesEnabled ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
+    rulesEnabled ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
+    readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
+    includeGoogleAdsSpend ? readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone) : Promise.resolve({ totalGbp: 0, byYmd: new Map() }),
+    includeGoogleAdsSpend ? readGoogleAdsSpendDailyGbp(compareBounds.start, compareBounds.end, timeZone) : Promise.resolve({ totalGbp: 0, byYmd: new Map() }),
+  ]);
+
+  const deductionsNowDetailed = (rulesEnabled && summaryNow) ? computeProfitDeductionsDetailed(summaryNow, profitRules) : { total: 0, lines: [] };
+  const deductionsPrevDetailed = (rulesEnabled && summaryPrev) ? computeProfitDeductionsDetailed(summaryPrev, profitRules) : { total: 0, lines: [] };
+
+  // Profit section (existing behaviour): only visible when rules are enabled.
+  let profitSection = {
+    enabled: false,
+    hasEnabledRules: false,
+    visible: false,
+    unavailable: false,
+    estimatedProfit: metric(null, null),
+    netProfit: metric(null, null),
+    marginPct: metric(null, null),
+    deductions: metric(null, null),
+  };
+  try {
+    profitSection.enabled = !!profitRules.enabled;
+    profitSection.hasEnabledRules = rulesEnabled;
+    if (rulesEnabled && summaryNow && summaryPrev) {
+      const deductionsNow = Number(deductionsNowDetailed.total) || 0;
+      const deductionsPrev = Number(deductionsPrevDetailed.total) || 0;
+
+      const estNow = round2((Number(summaryNow.revenueGbp) || 0) - deductionsNow);
+      const estPrev = round2((Number(summaryPrev.revenueGbp) || 0) - deductionsPrev);
+      const marginNow = (Number(summaryNow.revenueGbp) || 0) > 0 ? round1((Number(estNow) / Number(summaryNow.revenueGbp)) * 100) : null;
+      const marginPrev = (Number(summaryPrev.revenueGbp) || 0) > 0 ? round1((Number(estPrev) / Number(summaryPrev.revenueGbp)) * 100) : null;
+
+      profitSection.visible = true;
+      profitSection.unavailable = false;
+      profitSection.estimatedProfit = metric(estNow, estPrev);
+      // Net rules are not separate yet, so net mirrors estimated gross for now.
+      profitSection.netProfit = metric(estNow, estPrev);
+      profitSection.marginPct = metric(marginNow, marginPrev);
+      profitSection.deductions = metric(deductionsNow, deductionsPrev);
+    }
+  } catch (_) {
+    profitSection.unavailable = true;
+  }
+
+  // Cost totals + breakdown (used by Revenue & Cost chart tooltip)
+  const cogsNow = toNumber(cogsNowRaw);
+  const cogsPrev = toNumber(cogsPrevRaw);
+  const customExpensesNow = rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0;
+  const customExpensesPrev = rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0;
+  const adsSpendNow = includeGoogleAdsSpend ? (Number(adsNow && adsNow.totalGbp) || 0) : 0;
+  const adsSpendPrev = includeGoogleAdsSpend ? (Number(adsPrev && adsPrev.totalGbp) || 0) : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNow > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNow)
+    : null;
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrev > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrev)
+    : null;
+
+  const costBreakdownNow = [];
+  if (cogsNow != null) costBreakdownNow.push({ label: 'Cost of Goods', amountGbp: round2(cogsNow) || 0 });
+  if (rulesEnabled) {
+    for (const line of (deductionsNowDetailed.lines || [])) {
+      if (!line || !line.label) continue;
+      const amt = Number(line.amountGbp) || 0;
+      if (amt <= 0) continue;
+      costBreakdownNow.push({ label: String(line.label), amountGbp: round2(amt) || 0 });
+    }
+  }
+  if (adsSpendNow > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNow) || 0 });
+
+  // --- Cost series (daily) ---
+  const revTotalDaily = sumNumeric(revenueDaily);
+  const ordTotalDaily = sumNumeric(ordersDaily);
+  const daysCount = Math.max(1, chartDays.length || 1);
+
+  const cogsDaily = (cogsNow != null && revTotalDaily > 0)
+    ? revenueDaily.map((r) => {
+      const rr = Number(r) || 0;
+      return round2((cogsNow * rr) / revTotalDaily) || 0;
+    })
+    : revenueDaily.map(() => 0);
+
+  const expensesDaily = revenueDaily.map(() => 0);
+  if (rulesEnabled && deductionsNowDetailed && Array.isArray(deductionsNowDetailed.lines) && deductionsNowDetailed.lines.length) {
+    for (const line of deductionsNowDetailed.lines) {
+      if (!line) continue;
+      const amt = Number(line.amountGbp) || 0;
+      if (!Number.isFinite(amt) || amt <= 0) continue;
+      const t = line.type ? String(line.type) : '';
+      if (t === PROFIT_RULE_TYPES.fixedPerPeriod) {
+        const perDay = amt / daysCount;
+        for (let i = 0; i < expensesDaily.length; i += 1) expensesDaily[i] += perDay;
+      } else if (t === PROFIT_RULE_TYPES.fixedPerOrder) {
+        const denom = ordTotalDaily > 0 ? ordTotalDaily : daysCount;
+        for (let i = 0; i < expensesDaily.length; i += 1) {
+          const w = ordTotalDaily > 0 ? (Number(ordersDaily[i]) || 0) : 1;
+          expensesDaily[i] += (amt * w) / denom;
+        }
+      } else {
+        const denom = revTotalDaily > 0 ? revTotalDaily : daysCount;
+        for (let i = 0; i < expensesDaily.length; i += 1) {
+          const w = revTotalDaily > 0 ? (Number(revenueDaily[i]) || 0) : 1;
+          expensesDaily[i] += (amt * w) / denom;
+        }
+      }
+    }
+  }
+
+  const adsDaily = includeGoogleAdsSpend
+    ? chartDays.map((ymd) => {
+      const v = adsNow && adsNow.byYmd && adsNow.byYmd.get ? Number(adsNow.byYmd.get(ymd) || 0) : 0;
+      return round2(v) || 0;
+    })
+    : chartDays.map(() => 0);
+
+  const costDaily = chartDays.map((_, i) => {
+    const a = Number(cogsDaily[i]) || 0;
+    const b = Number(expensesDaily[i]) || 0;
+    const cVal = Number(adsDaily[i]) || 0;
+    return round2(a + b + cVal) || 0;
+  });
+
   const series = downsampleWeekly({
     labelsYmd: chartDays,
     revenueGbp: revenueDaily,
+    costGbp: costDaily,
     orders: ordersDaily,
     sessions: sessionsDaily,
     conversionRate: convDaily,
@@ -956,47 +1398,9 @@ async function getBusinessSnapshot(options = {}) {
     : null;
   const repeatPurchaseRate = safePercent(returningCustomers, distinctCustomers);
 
-  let profitSection = {
-    enabled: false,
-    hasEnabledRules: false,
-    visible: false,
-    unavailable: false,
-    estimatedProfit: metric(null, null),
-    netProfit: metric(null, null),
-    marginPct: metric(null, null),
-    deductions: metric(null, null),
-  };
-  try {
-    const profitRules = await readProfitRulesConfig();
-    const rulesEnabled = hasEnabledProfitRules(profitRules);
-    profitSection.enabled = !!profitRules.enabled;
-    profitSection.hasEnabledRules = rulesEnabled;
-    if (rulesEnabled) {
-      const summaryNow = await readOrderCountrySummary(shop, bounds.start, bounds.end);
-      const deductionsNow = computeProfitDeductions(summaryNow, profitRules);
-      const estNow = round2((summaryNow.revenueGbp || 0) - deductionsNow);
-      const marginNow = summaryNow.revenueGbp > 0 ? round1((estNow / summaryNow.revenueGbp) * 100) : null;
-
-      const summaryPrev = await readOrderCountrySummary(shop, compareBounds.start, compareBounds.end);
-      const deductionsPrev = computeProfitDeductions(summaryPrev, profitRules);
-      const estPrev = round2((summaryPrev.revenueGbp || 0) - deductionsPrev);
-      const marginPrev = summaryPrev.revenueGbp > 0 ? round1((estPrev / summaryPrev.revenueGbp) * 100) : null;
-
-      profitSection.visible = true;
-      profitSection.unavailable = false;
-      profitSection.estimatedProfit = metric(estNow, estPrev);
-      // Net rules are not separate yet, so net mirrors estimated gross for now.
-      profitSection.netProfit = metric(estNow, estPrev);
-      profitSection.marginPct = metric(marginNow, marginPrev);
-      profitSection.deductions = metric(deductionsNow, deductionsPrev);
-    }
-  } catch (_) {
-    // Fail-open: if rules fail, keep non-profit KPIs available.
-    profitSection.unavailable = true;
-  }
-
   return {
     ok: true,
+    shopName: shopName || null,
     mode,
     year: selectedYear,
     month: selectedMonth,
@@ -1012,6 +1416,8 @@ async function getBusinessSnapshot(options = {}) {
     },
     financial: {
       revenue: metric(revenue, revenuePrev),
+      cost: metric(costNow, costPrev),
+      costBreakdownNow,
       orders: metric(orders, ordersPrev),
       aov: metric(aov, aovPrev),
       conversionRate: metric(conversionRate, conversionRatePrev),
