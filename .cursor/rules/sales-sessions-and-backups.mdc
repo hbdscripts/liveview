@@ -13,3 +13,8 @@ alwaysApply: true
   - `sessions`
 - If numbers differ, fix it by **changing reporting sources**, improving **dedupe in queries**, running **reconciliation**, or adding **append-only snapshots** (e.g. `reconcile_snapshots`, `shopify_sessions_snapshots`) — **not** by removing data.
 - **Recovery** is done by **restoring from backups** (SQLite file backups or Postgres backup tables), not by deleting rows.
+
+## Latest sales + product mapping (avoid phantom products)
+
+- Keep `/api/latest-sales` truth-stable: resolve a single top truth line item (`product_id` + `product_title`) and open Product Insights by `product_id` when handle is missing (`server/store.js` + `server/public/app.js`).
+- Don’t gate `purchase_events` insertion on `checkout_token` / `order_id`; evidence grouping supports an `h:` fallback key (`server/salesEvidence.js`). Regression test: `test/latest-sales.test.js`.

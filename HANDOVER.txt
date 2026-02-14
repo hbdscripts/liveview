@@ -251,6 +251,7 @@ Ops/reliability:
 
 - Never delete/truncate core data tables (`purchases`, `purchase_events`, `orders_shopify`, `sessions`) to “fix numbers”.
 - Handle over-reporting via dedupe in stats queries (see `server/store.js` helpers).
+- Sales product mapping: keep Product Insights links truth-stable (open by `product_id` when handle is missing). Avoid reintroducing handle-only linking or session-handle authority for sales widgets (see `server/store.js` `listLatestSales()` + `server/public/app.js` product links).
 - When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
 
 ---
@@ -263,6 +264,10 @@ Ops/reliability:
 2026-02-14 (latest)
 - Live View Latest sales: `/api/latest-sales` now resolves a truth top line item (`product_id` + `product_title`) and the table opens Product Insights by `product_id` when handle is missing (reduces phantom/unclickable rows and prevents wrong-handle clicks).
 - Ingest: `checkout_started` / `checkout_completed` always write `purchase_events`, and `checkout_completed` always writes `purchases` (even when `order_id` / `checkout_token` are missing) for better observability + dedupe.
+  - Regression guardrails:
+    - Backend mapping lives in `server/store.js` `listLatestSales()` (truth top line item via `orders_shopify_line_items`, evidence link via `purchase_events`).
+    - Frontend links live in `server/public/app.js` (Latest sales uses `data-product-id` so modals open without handles).
+    - Test coverage: `test/latest-sales.test.js` (truth `product_id/title` must win over session handles).
 
 2026-02-14 (latest)
 - Map getValue crash: removed `attribute: 'fill'` from jsVectorMap series.regions config so the library treats values as direct colors (ISO→color) instead of expecting a scale with getValue. Fixes "Cannot read properties of undefined (reading 'getValue')" on live map and countries map.
