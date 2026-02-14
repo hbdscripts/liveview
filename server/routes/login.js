@@ -6,6 +6,7 @@
 
 const config = require('../config');
 const oauthLogin = require('./oauthLogin');
+const store = require('../store');
 
 const ERROR_MESSAGES = {
   google_not_configured: 'Google sign-in is not configured.',
@@ -17,7 +18,30 @@ const ERROR_MESSAGES = {
   session: 'Session error. Try again.',
 };
 
-function getLoginHtml(queryError) {
+function safeJsonParseObject(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeAssetUrl(value) {
+  const raw = value != null ? String(value).trim() : '';
+  if (!raw) return '';
+  // Prevent attribute injection (URLs should never contain quotes/angle brackets/whitespace).
+  if (raw.length > 2048) return '';
+  if (/[<>"'\r\n\t ]/.test(raw)) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^\/\//.test(raw)) return raw;
+  if (raw[0] === '/') return raw;
+  return '';
+}
+
+function getLoginHtml(queryError, opts) {
   const errFromQuery = queryError && ERROR_MESSAGES[queryError] ? ERROR_MESSAGES[queryError] : '';
   const errMsg = errFromQuery
     ? `<div class="alert alert-danger mb-3" role="alert">
@@ -29,7 +53,8 @@ function getLoginHtml(queryError) {
     : '';
 
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
-  const faviconHref = config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png';
+  const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/desktop_ui_logo.webp';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -60,7 +85,7 @@ function getLoginHtml(queryError) {
     <div class="container container-tight py-4">
       <div class="text-center mb-4">
         <a href="/" class="navbar-brand navbar-brand-autodark">
-          <img src="/assets/desktop_ui_logo.webp" alt="Kexo" width="100" height="36">
+          <img src="${loginLogoSrc}" alt="Kexo" width="100" height="36">
         </a>
       </div>
       <div class="card card-md">
@@ -82,15 +107,29 @@ function getLoginHtml(queryError) {
 </html>`;
 }
 
-function handleGetLogin(req, res) {
+async function handleGetLogin(req, res) {
   const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
   const queryError = (req.query && req.query.error) || '';
   // Local dev: if Google isn't configured, jump straight to dashboard overview (auth middleware allows).
   if (!hasGoogle && process.env.NODE_ENV !== 'production') {
     return res.redirect(302, '/dashboard/overview');
   }
+
+  // Asset overrides are stored in DB settings and can change at runtime.
+  let assetOverrides = {};
+  try {
+    const raw = await store.getSetting('asset_overrides');
+    const parsed = safeJsonParseObject(raw);
+    if (parsed) assetOverrides = parsed;
+  } catch (_) {}
+  const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
+  const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
+
+  const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
+  const loginLogoSrc = loginLogoOverride || '/assets/desktop_ui_logo.webp';
+
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(getLoginHtml(queryError));
+  res.send(getLoginHtml(queryError, { faviconHref, loginLogoSrc }));
 }
 
 function handleLogout(req, res) {

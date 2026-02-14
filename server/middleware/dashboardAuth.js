@@ -71,6 +71,7 @@ function isProtectedPath(pathname) {
   if (pathname === '/app/login' || pathname === '/app/logout') return true;
   if (pathname.startsWith('/api/sessions') || pathname.startsWith('/api/stream') ||
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
+      pathname.startsWith('/api/assets') || pathname === '/api/asset-overrides' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
       pathname.startsWith('/api/tools') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||

@@ -51,6 +51,7 @@ const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
 const settings = require('./routes/settings');
+const assets = require('./routes/assets');
 const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
 const dashboardAuth = require('./middleware/dashboardAuth');
@@ -104,6 +105,8 @@ app.get('/api/settings/profit-rules', settings.getProfitRules);
 app.put('/api/settings/profit-rules', settings.putProfitRules);
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
+app.get('/api/asset-overrides', assets.getAssetOverrides);
+app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);

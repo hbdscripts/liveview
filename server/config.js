@@ -114,6 +114,19 @@ const config = {
     if (!v) return '';
     return v.startsWith('http') ? v.replace(/\/+$/, '') : 'https://' + v.replace(/^\.+/, '').replace(/\/+$/, '');
   })(),
+  /** Cloudflare R2 (S3-compatible) storage for uploaded branding assets (logos/favicon). */
+  r2: {
+    accountId: (getEnv('R2_ACCOUNT_ID', '') || '').trim(),
+    accessKeyId: (getEnv('R2_ACCESS_KEY_ID', '') || '').trim(),
+    secretAccessKey: (getEnv('R2_SECRET_ACCESS_KEY', '') || '').trim(),
+    bucket: (getEnv('R2_BUCKET', '') || '').trim(),
+    /** Public base URL (no trailing slash) where uploaded objects are accessible. */
+    publicBaseUrl: (function() {
+      const v = (getEnv('R2_PUBLIC_BASE_URL', '') || '').trim();
+      if (!v) return '';
+      return v.startsWith('http') ? v.replace(/\/+$/, '') : 'https://' + v.replace(/^\.+/, '').replace(/\/+$/, '');
+    })(),
+  },
   /** Secret to sign OAuth session cookie (defaults to DASHBOARD_SECRET) */
   oauthCookieSecret: (getEnv('OAUTH_COOKIE_SECRET', '') || getEnv('DASHBOARD_SECRET', '')),
   /** Traffic mode for stats: all | human_only (default all). When human_only, exclude cf_known_bot=1. */

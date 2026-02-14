@@ -1553,6 +1553,79 @@
 
   try { window.openThemePanel = openThemePanel; } catch (_) {}
 
+  // ── Asset overrides (favicon + logos) ─────────────────────────────────────
+  function normalizeAssetOverrideUrl(value) {
+    var raw = value != null ? String(value).trim() : '';
+    if (!raw) return '';
+    if (raw.length > 2048) return '';
+    if (/[<>"'\r\n\t ]/.test(raw)) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (/^\/\//.test(raw)) return raw;
+    if (raw[0] === '/') return raw;
+    return '';
+  }
+
+  function applyFaviconOverride(url) {
+    var safe = normalizeAssetOverrideUrl(url);
+    if (!safe) return;
+    try {
+      var link = document.querySelector('link[rel="icon"]');
+      if (link) link.href = safe;
+    } catch (_) {}
+  }
+
+  function applyImgSrcOverride(selector, url) {
+    var safe = normalizeAssetOverrideUrl(url);
+    if (!safe) return;
+    try {
+      var nodes = document.querySelectorAll(selector);
+      if (!nodes || !nodes.length) {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () { applyImgSrcOverride(selector, safe); }, { once: true });
+        }
+        return;
+      }
+      nodes.forEach(function (img) {
+        if (!img) return;
+        var original = img.getAttribute('data-kexo-default-src');
+        if (!original) {
+          original = img.getAttribute('src') || '';
+          img.setAttribute('data-kexo-default-src', original);
+        }
+        img.setAttribute('src', safe || original);
+      });
+    } catch (_) {}
+  }
+
+  function fetchAssetOverridesAndApply() {
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.ok) return;
+        var overrides = data.assetOverrides || {};
+
+        var favicon = normalizeAssetOverrideUrl(overrides.favicon);
+        if (favicon) applyFaviconOverride(favicon);
+
+        var footerLogo = normalizeAssetOverrideUrl(overrides.footerLogo || overrides.footer_logo);
+        if (footerLogo) applyImgSrcOverride('img[data-kexo-asset="footer-logo"]', footerLogo);
+
+        var kexoLogoFull = normalizeAssetOverrideUrl(overrides.kexoLogoFullcolor || overrides.kexo_logo_fullcolor);
+        if (kexoLogoFull) applyImgSrcOverride('img[src*="/assets/kexo_logo_fullcolor.webp"]', kexoLogoFull);
+
+        // Legacy: if Theme header logo isn't set, fall back to assetOverrides.logo.
+        var legacyHeaderLogo = normalizeAssetOverrideUrl(overrides.logo);
+        if (legacyHeaderLogo) {
+          var stored = '';
+          try { stored = String(localStorage.getItem('theme-header-logo-url') || '').trim(); } catch (_) { stored = ''; }
+          if (!stored) applyHeaderLogoOverride(legacyHeaderLogo);
+        }
+      })
+      .catch(function () {});
+  }
+
   // Init
   clearLockedIconOverrides();
   restoreAll();
@@ -1560,11 +1633,13 @@
     document.addEventListener('DOMContentLoaded', function () {
       bindThemeButtons();
       fetchDefaults();
+      fetchAssetOverridesAndApply();
       if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
     });
   } else {
     bindThemeButtons();
     fetchDefaults();
+    fetchAssetOverridesAndApply();
     if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
   }
 })();

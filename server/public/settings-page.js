@@ -554,9 +554,20 @@
         document.querySelectorAll('#settings-asset-favicon').forEach(function (el) {
           el.value = overrides.favicon || '';
         });
+        document.querySelectorAll('#settings-asset-footer-logo').forEach(function (el) {
+          el.value = overrides.footerLogo || overrides.footer_logo || '';
+        });
+        document.querySelectorAll('#settings-asset-login-logo').forEach(function (el) {
+          el.value = overrides.loginLogo || overrides.login_logo || '';
+        });
+        document.querySelectorAll('#settings-asset-kexo-fullcolor-logo').forEach(function (el) {
+          el.value = overrides.kexoLogoFullcolor || overrides.kexo_logo_fullcolor || '';
+        });
+        // Header logo is stored in Theme defaults; fall back to legacy overrides.logo.
         document.querySelectorAll('#settings-asset-logo').forEach(function (el) {
           el.value = overrides.logo || '';
         });
+        try { loadThemeDefaultsAndPopulateAssets(overrides || {}); } catch (_) {}
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
         try {
@@ -573,12 +584,38 @@
       .catch(function () {});
   }
 
+  function loadThemeDefaultsAndPopulateAssets(fallbackOverrides) {
+    fetch(API + '/api/theme-defaults', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.ok) return;
+        var headerLogo = (data.theme_header_logo_url != null) ? String(data.theme_header_logo_url).trim() : '';
+        if (!headerLogo) {
+          var fb = fallbackOverrides && (fallbackOverrides.logo || fallbackOverrides.headerLogo);
+          headerLogo = fb != null ? String(fb).trim() : '';
+        }
+        document.querySelectorAll('#settings-asset-logo').forEach(function (el) {
+          el.value = headerLogo || '';
+        });
+      })
+      .catch(function () {});
+  }
+
   function saveSettings(payload) {
     return fetch(API + '/api/settings', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+    }).then(function (r) { return r.json(); });
+  }
+
+  function saveThemeDefaults(payload) {
+    return fetch(API + '/api/theme-defaults', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
     }).then(function (r) { return r.json(); });
   }
 
@@ -608,21 +645,237 @@
   function wireAssets() {
     var form = document.getElementById('settings-assets-form');
     if (!form) return;
+
+    function setMsg(text, ok) {
+      var msg = document.getElementById('settings-assets-msg');
+      if (!msg) return;
+      msg.textContent = text || '';
+      if (ok === true) msg.className = 'form-hint ms-2 text-success';
+      else if (ok === false) msg.className = 'form-hint ms-2 text-danger';
+      else msg.className = 'form-hint ms-2 text-secondary';
+    }
+
+    function normalizeAssetUrl(value) {
+      var raw = value != null ? String(value).trim() : '';
+      if (!raw) return '';
+      if (raw.length > 2048) return '';
+      if (/[<>"'\r\n\t ]/.test(raw)) return '';
+      if (/^https?:\/\//i.test(raw)) return raw;
+      if (/^\/\//.test(raw)) return raw;
+      if (raw.charAt(0) === '/') return raw;
+      return '';
+    }
+
+    function applyFaviconOverride(url) {
+      var safe = normalizeAssetUrl(url);
+      try {
+        var link = document.querySelector('link[rel="icon"]');
+        if (link && safe) link.href = safe;
+        else if (link && !safe) link.href = '/assets/favicon.png';
+      } catch (_) {}
+    }
+
+    function applyHeaderLogoOverride(url) {
+      var safe = normalizeAssetUrl(url);
+      try { localStorage.setItem('theme-header-logo-url', safe || ''); } catch (_) {}
+      try {
+        var logos = document.querySelectorAll('.kexo-desktop-brand-link img, .kexo-mobile-logo-link img');
+        if (!logos || !logos.length) return;
+        logos.forEach(function (img) {
+          if (!img) return;
+          var original = img.getAttribute('data-kexo-default-src');
+          if (!original) {
+            original = img.getAttribute('src') || '';
+            img.setAttribute('data-kexo-default-src', original);
+          }
+          img.setAttribute('src', safe || original);
+        });
+      } catch (_) {}
+    }
+
+    function applyFooterLogoOverride(url) {
+      var safe = normalizeAssetUrl(url);
+      try {
+        var imgs = document.querySelectorAll('img[data-kexo-asset="footer-logo"]');
+        if (!imgs || !imgs.length) return;
+        imgs.forEach(function (img) {
+          if (!img) return;
+          var original = img.getAttribute('data-kexo-default-src');
+          if (!original) {
+            original = img.getAttribute('src') || '';
+            img.setAttribute('data-kexo-default-src', original);
+          }
+          img.setAttribute('src', safe || original);
+        });
+      } catch (_) {}
+    }
+
+    function applyKexoFullcolorLogoOverride(url) {
+      var safe = normalizeAssetUrl(url);
+      try {
+        var imgs = document.querySelectorAll('img[src*="/assets/kexo_logo_fullcolor.webp"]');
+        if (!imgs || !imgs.length) return;
+        imgs.forEach(function (img) {
+          if (!img) return;
+          var original = img.getAttribute('data-kexo-default-src');
+          if (!original) {
+            original = img.getAttribute('src') || '';
+            img.setAttribute('data-kexo-default-src', original);
+          }
+          img.setAttribute('src', safe || original);
+        });
+      } catch (_) {}
+    }
+
+    function persistThemeHeaderLogo(url, cb) {
+      saveThemeDefaults({ theme_header_logo_url: url || '' })
+        .then(function (r) {
+          if (cb) cb(null, r);
+        })
+        .catch(function (err) {
+          if (cb) cb(err || new Error('Theme save failed'), null);
+        });
+    }
+
+    function persistAssetOverrides(patch, cb) {
+      saveSettings({ assetOverrides: patch || {} })
+        .then(function (r) {
+          if (cb) cb(null, r);
+        })
+        .catch(function (err) {
+          if (cb) cb(err || new Error('Save failed'), null);
+        });
+    }
+
+    function persistSlot(slot, url) {
+      var safeUrl = normalizeAssetUrl(url);
+      if (!safeUrl) {
+        setMsg('Upload returned an invalid URL', false);
+        return;
+      }
+      setMsg('Saving…', null);
+
+      if (slot === 'header_logo') {
+        persistAssetOverrides({ logo: safeUrl }, function (err1, r1) {
+          if (err1 || !(r1 && r1.ok)) {
+            setMsg((r1 && r1.error) ? r1.error : 'Save failed', false);
+            return;
+          }
+          persistThemeHeaderLogo(safeUrl, function (err2, r2) {
+            if (err2 || !(r2 && r2.ok)) {
+              setMsg((r2 && r2.error) ? r2.error : 'Theme save failed', false);
+              return;
+            }
+            applyHeaderLogoOverride(safeUrl);
+            setMsg('Uploaded & saved.', true);
+          });
+        });
+        return;
+      }
+
+      var patch = {};
+      if (slot === 'favicon') patch.favicon = safeUrl;
+      else if (slot === 'footer_logo') patch.footerLogo = safeUrl;
+      else if (slot === 'login_logo') patch.loginLogo = safeUrl;
+      else if (slot === 'kexo_logo_fullcolor') patch.kexoLogoFullcolor = safeUrl;
+      else patch.other = safeUrl;
+
+      persistAssetOverrides(patch, function (err, r) {
+        if (err || !(r && r.ok)) {
+          setMsg((r && r.error) ? r.error : 'Save failed', false);
+          return;
+        }
+        if (slot === 'favicon') applyFaviconOverride(safeUrl);
+        else if (slot === 'footer_logo') applyFooterLogoOverride(safeUrl);
+        else if (slot === 'kexo_logo_fullcolor') applyKexoFullcolorLogoOverride(safeUrl);
+        setMsg('Uploaded & saved.', true);
+      });
+    }
+
+    function wireUploadButtons() {
+      document.querySelectorAll('[data-kexo-asset-upload="1"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var slot = btn.getAttribute('data-kexo-slot') || '';
+          var fileId = btn.getAttribute('data-kexo-file') || '';
+          var urlId = btn.getAttribute('data-kexo-url') || '';
+          var fileEl = fileId ? document.getElementById(fileId) : null;
+          var urlEl = urlId ? document.getElementById(urlId) : null;
+          var file = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
+          if (!slot) { setMsg('Missing upload slot', false); return; }
+          if (!file) { setMsg('Choose a file first', false); return; }
+
+          setMsg('Uploading…', null);
+          try { btn.disabled = true; } catch (_) {}
+
+          var fd = new FormData();
+          fd.append('file', file);
+          fd.append('slot', slot);
+          fetch(API + '/api/assets/upload?slot=' + encodeURIComponent(slot), {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: fd,
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data || !data.ok) {
+                throw new Error((data && data.error) ? String(data.error) : 'Upload failed');
+              }
+              var url = data.url || '';
+              if (urlEl) urlEl.value = url;
+              try { if (fileEl) fileEl.value = ''; } catch (_) {}
+              persistSlot(slot, url);
+            })
+            .catch(function (err) {
+              setMsg(err && err.message ? String(err.message) : 'Upload failed', false);
+            })
+            .finally(function () {
+              try { btn.disabled = false; } catch (_) {}
+            });
+        });
+      });
+    }
+
+    wireUploadButtons();
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var favicon = (document.getElementById('settings-asset-favicon') || {}).value || '';
-      var logo = (document.getElementById('settings-asset-logo') || {}).value || '';
-      saveSettings({ assetOverrides: { favicon: favicon.trim(), logo: logo.trim() } })
-        .then(function (r) {
-          var msg = document.getElementById('settings-assets-msg');
-          if (msg) {
-            msg.textContent = r && r.ok ? 'Saved.' : (r && r.error ? r.error : 'Save failed');
-            msg.className = 'form-hint ' + (r && r.ok ? 'text-success' : 'text-danger');
+      var favicon = normalizeAssetUrl((document.getElementById('settings-asset-favicon') || {}).value || '');
+      var headerLogo = normalizeAssetUrl((document.getElementById('settings-asset-logo') || {}).value || '');
+      var footerLogo = normalizeAssetUrl((document.getElementById('settings-asset-footer-logo') || {}).value || '');
+      var loginLogo = normalizeAssetUrl((document.getElementById('settings-asset-login-logo') || {}).value || '');
+      var kexoLogoFullcolor = normalizeAssetUrl((document.getElementById('settings-asset-kexo-fullcolor-logo') || {}).value || '');
+
+      setMsg('Saving…', null);
+
+      var assetPatch = {
+        favicon: favicon || '',
+        logo: headerLogo || '',
+        footerLogo: footerLogo || '',
+        loginLogo: loginLogo || '',
+        kexoLogoFullcolor: kexoLogoFullcolor || '',
+      };
+
+      Promise.all([
+        saveSettings({ assetOverrides: assetPatch }),
+        saveThemeDefaults({ theme_header_logo_url: headerLogo || '' }),
+      ])
+        .then(function (results) {
+          var r1 = results && results[0] ? results[0] : null;
+          var r2 = results && results[1] ? results[1] : null;
+          var ok = !!(r1 && r1.ok) && !!(r2 && r2.ok);
+          if (!ok) {
+            var err = (r1 && !r1.ok && r1.error) ? r1.error : ((r2 && !r2.ok && r2.error) ? r2.error : 'Save failed');
+            setMsg(err, false);
+            return;
           }
+          applyFaviconOverride(favicon);
+          applyHeaderLogoOverride(headerLogo);
+          applyFooterLogoOverride(footerLogo);
+          applyKexoFullcolorLogoOverride(kexoLogoFullcolor);
+          setMsg('Saved.', true);
         })
         .catch(function () {
-          var msg = document.getElementById('settings-assets-msg');
-          if (msg) { msg.textContent = 'Save failed'; msg.className = 'form-hint text-danger'; }
+          setMsg('Save failed', false);
         });
     });
   }
