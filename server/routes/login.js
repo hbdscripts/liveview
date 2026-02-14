@@ -138,6 +138,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color-dark.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -160,7 +161,7 @@ function getSignInHtml(queryError, opts) {
     <div class="container container-tight py-4">
       <div class="text-center mb-4">
         <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
-          <img class="kexo-auth-logo" src="/assets/logos/kexo-color-dark.webp" alt="Kexo">
+          <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
         </a>
       </div>
 
@@ -218,6 +219,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color-dark.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -229,7 +231,7 @@ function getSignUpHtml(queryError, opts) {
     <div class="container container-tight py-4">
       <div class="text-center mb-4">
         <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
-          <img class="kexo-auth-logo" src="/assets/logos/kexo-color-dark.webp" alt="Kexo">
+          <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
         </a>
       </div>
 
@@ -300,11 +302,13 @@ async function handleGetLogin(req, res) {
     if (parsed) assetOverrides = parsed;
   } catch (_) {}
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
+  const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
 
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color-dark.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(getSignInHtml(queryError, { faviconHref, redirectTarget, shopDomain, registered }));
+  res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
 }
 
 async function handleGetRegister(req, res) {
@@ -319,10 +323,12 @@ async function handleGetRegister(req, res) {
     if (parsed) assetOverrides = parsed;
   } catch (_) {}
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
+  const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color-dark.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(getSignUpHtml(queryError, { faviconHref, redirectTarget }));
+  res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));
 }
 
 function handleLogout(req, res) {
