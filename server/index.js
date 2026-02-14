@@ -43,6 +43,7 @@ const insightsVariantsSuggestions = require('./routes/insightsVariantsSuggestion
 const worstProducts = require('./routes/worstProducts');
 const productInsights = require('./routes/productInsights');
 const pageInsights = require('./routes/pageInsights');
+const abandonedCarts = require('./routes/abandonedCarts');
 const adsRouter = require('./routes/ads');
 const toolsRouter = require('./routes/tools');
 const ogThumb = require('./routes/ogThumb');
@@ -144,6 +145,8 @@ app.post('/api/insights-variants-suggestions/apply', insightsVariantsSuggestions
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/product-insights', productInsights.getProductInsights);
 app.get('/api/page-insights', pageInsights.getPageInsights);
+// Abandoned carts insights (cart vs checkout modes)
+app.use('/api/abandoned-carts', abandonedCarts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
@@ -413,6 +416,7 @@ const insightsPagesRouter = express.Router();
 insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
+insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
 
 const trafficPagesRouter = express.Router();
 trafficPagesRouter.get('/channels', (req, res) => sendPage(res, 'traffic/channels.html'));
@@ -452,6 +456,7 @@ app.get('/overview', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
 app.get('/variants', redirectWithQuery(301, '/insights/variants'));
+app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
 app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
 app.get('/type', redirectWithQuery(301, '/traffic/device'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));

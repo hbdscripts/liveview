@@ -19,6 +19,63 @@ function clampDays(v, fallback, min = 1, max = 3650) {
   return Math.min(max, Math.max(min, n));
 }
 
+/**
+ * Mark sessions as abandoned once they go inactive beyond ABANDONED_WINDOW_MINUTES.
+ *
+ * Why:
+ * - Ingest only updates sessions while the visitor is active.
+ * - Without a background pass, sessions that "go quiet" never get `is_abandoned=1`.
+ *
+ * We mark abandonment for:
+ * - carts: cart_qty > 0
+ * - checkouts: checkout_started_at IS NOT NULL
+ *
+ * abandoned_at is set to last_seen + window (approx moment abandonment window elapsed),
+ * not `now`, so hourly/day bucketing is more faithful.
+ */
+async function markAbandonedSessions(db, now) {
+  const windowMs = Math.max(0, parseInt(String(config.abandonedWindowMinutes || 0), 10) || 0) * 60 * 1000;
+  if (!windowMs) return { ok: true, skipped: true, reason: 'window_disabled' };
+  const cutoff = now - windowMs;
+  if (!Number.isFinite(cutoff)) return { ok: true, skipped: true, reason: 'invalid_cutoff' };
+
+  try {
+    if (config.dbUrl) {
+      const r = await db.run(
+        `
+          UPDATE sessions
+          SET
+            is_abandoned = 1,
+            abandoned_at = COALESCE(abandoned_at, last_seen + $1)
+          WHERE has_purchased = 0
+            AND is_abandoned = 0
+            AND last_seen < $2
+            AND (COALESCE(cart_qty, 0) > 0 OR checkout_started_at IS NOT NULL)
+        `,
+        [windowMs, cutoff]
+      );
+      return { ok: true, marked: r && r.changes != null ? Number(r.changes) || 0 : 0 };
+    }
+
+    const r = await db.run(
+      `
+        UPDATE sessions
+        SET
+          is_abandoned = 1,
+          abandoned_at = COALESCE(abandoned_at, last_seen + ?)
+        WHERE has_purchased = 0
+          AND is_abandoned = 0
+          AND last_seen < ?
+          AND (COALESCE(cart_qty, 0) > 0 OR checkout_started_at IS NOT NULL)
+      `,
+      [windowMs, cutoff]
+    );
+    return { ok: true, marked: r && r.changes != null ? Number(r.changes) || 0 : 0 };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'mark_failed' };
+  }
+}
+
 async function getSetting(db, key) {
   try {
     const row = await db.get('SELECT value FROM settings WHERE key = ? LIMIT 1', [key]);
@@ -155,6 +212,11 @@ async function runOnce() {
   const retentionCutoff = now - retentionMs;
   const abandonedRetentionMs = config.abandonedRetentionHours * 60 * 60 * 1000;
   const abandonedCutoff = now - abandonedRetentionMs;
+
+  // Mark abandonment (fail-open; cleanup must keep running).
+  try {
+    await markAbandonedSessions(db, now);
+  } catch (_) {}
 
   // Delete only when BOTH last_seen and started_at are older than retention; except abandoned within retention
   if (config.dbUrl) {

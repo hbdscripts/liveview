@@ -125,6 +125,32 @@
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
+    'abandoned-carts-countries-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table abandoned-carts-countries-table',
+      ariaLabel: 'Abandoned carts by country',
+      bodyId: 'abandoned-carts-countries-body',
+      columns: [
+        { key: 'country', label: 'Country', sortable: false, iconKey: 'table-short-geo' },
+        { key: 'abandoned', label: 'Abandoned', sortable: false, iconKey: 'table-icon-sessions' },
+        { key: 'checkout', label: 'Checkout', sortable: false, iconKey: 'table-icon-orders' },
+        { key: 'pct', label: '% Abandoned', sortable: false, iconKey: 'table-icon-cr' },
+        { key: 'rev', label: 'Value', sortable: false, iconKey: 'table-icon-revenue' }
+      ]
+    },
+    'abandoned-carts-country-products-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table abandoned-carts-country-products-table',
+      ariaLabel: 'Abandoned carts by country + product',
+      bodyId: 'abandoned-carts-country-products-body',
+      columns: [
+        { key: 'country', label: 'Country + Product', sortable: false, iconKey: 'table-short-country-product' },
+        { key: 'abandoned', label: 'Abandoned', sortable: false, iconKey: 'table-icon-sessions' },
+        { key: 'checkout', label: 'Checkout', sortable: false, iconKey: 'table-icon-orders' },
+        { key: 'pct', label: '% Abandoned', sortable: false, iconKey: 'table-icon-cr' },
+        { key: 'rev', label: 'Value', sortable: false, iconKey: 'table-icon-revenue' }
+      ]
+    },
     'traffic-sources-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table',

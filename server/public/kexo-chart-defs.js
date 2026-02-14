@@ -30,6 +30,7 @@
     'type-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320 },
     'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 280 },
     'countries-map-chart': { modes: ['map-animated', 'map-flat'], series: ['Accent'], defaultMode: 'map-flat', height: 320 },
+    'abandoned-carts-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Abandoned'], defaultMode: 'line', height: 280 },
   };
 
   window.KEXO_CHART_MODE_LABEL = CHART_MODE_LABEL;

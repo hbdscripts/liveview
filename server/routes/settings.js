@@ -54,6 +54,7 @@ const HEADER_KPI_STRIP_PAGE_KEYS = [
   'date',
   'countries',
   'products',
+  'abandoned-carts',
   'variants',
   'channels',
   'type',
@@ -77,6 +78,7 @@ const CHART_UI_KEYS = [
   'channels-chart',
   'type-chart',
   'products-chart',
+  'abandoned-carts-chart',
   'countries-map-chart',
 ];
 const CHART_UI_KEY_SET = new Set(CHART_UI_KEYS);
@@ -94,6 +96,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'channels-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'type-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'products-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
+  'abandoned-carts-chart': ['line', 'area', 'bar', 'multi-line-labels'],
   'countries-map-chart': ['map-animated', 'map-flat'],
 });
 
@@ -118,6 +121,7 @@ function defaultKpiUiConfigV1() {
         date: true,
         countries: true,
         products: true,
+        'abandoned-carts': true,
         variants: true,
         channels: true,
         type: true,
@@ -185,6 +189,7 @@ function defaultChartsUiConfigV1() {
       { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
       { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
       { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
+      { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'] },
       { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'] },
     ],
   };
@@ -430,6 +435,42 @@ function defaultTablesUiConfigV1() {
             order: 1,
             inGrid: true,
             rows: { default: 5, options: [5, 10] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'abandoned-carts',
+        label: 'Insights · Abandoned Carts',
+        tables: [
+          {
+            id: 'abandoned-carts-countries-table',
+            name: 'Countries',
+            tableClass: 'live',
+            zone: 'abandoned-carts-countries',
+            order: 1,
+            inGrid: true,
+            rows: { default: 5, options: [5] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'abandoned-carts-country-products-table',
+            name: 'Country + Product',
+            tableClass: 'live',
+            zone: 'abandoned-carts-country-products',
+            order: 2,
+            inGrid: true,
+            rows: { default: 5, options: [5] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+          {
+            id: 'sessions-table',
+            name: 'Sessions',
+            tableClass: 'live',
+            zone: 'abandoned-carts-sessions',
+            order: 3,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
             sticky: { minWidth: null, maxWidth: null },
           },
         ],

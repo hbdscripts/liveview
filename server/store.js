@@ -1028,9 +1028,11 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           checkout_started_at = EXCLUDED.checkout_started_at,
           has_purchased = EXCLUDED.has_purchased,
           purchased_at = EXCLUDED.purchased_at,
-          is_abandoned = EXCLUDED.is_abandoned,
-          abandoned_at = EXCLUDED.abandoned_at,
-          recovered_at = EXCLUDED.recovered_at,
+          -- Do not overwrite abandonment markers during upserts.
+          -- These are derived asynchronously (cleanup marker pass) and should remain stable once set.
+          is_abandoned = sessions.is_abandoned,
+          abandoned_at = sessions.abandoned_at,
+          recovered_at = sessions.recovered_at,
           cf_known_bot = EXCLUDED.cf_known_bot,
           cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
           cf_country = EXCLUDED.cf_country,

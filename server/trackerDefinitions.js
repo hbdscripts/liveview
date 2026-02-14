@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 34;
-const LAST_UPDATED = '2026-02-13';
+const DEFINITIONS_VERSION = 35;
+const LAST_UPDATED = '2026-02-14';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -438,6 +438,140 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'orders_shopify', 'orders_shopify_line_items'], shopifyToken: true },
+  },
+  {
+    id: 'insights_abandoned_carts_series_chart',
+    page: 'Abandoned Carts',
+    name: 'Abandoned carts series chart',
+    ui: { elementIds: ['abandoned-carts-chart'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/abandoned-carts/series',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'timezone/timeZone',
+        'mode=cart|checkout',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Counts sessions by abandoned_at buckets with mode filter (cart_qty>0 vs checkout_started_at not null)' },
+      { kind: 'fx', note: 'cart_value converted to GBP (fx.getRatesToGbp + convertToGbp)' },
+      { kind: 'pixel', note: 'cart_qty/cart_value/checkout_started_at populated via /api/ingest; abandonment markers are set by cleanup marker pass' },
+    ],
+    columns: [
+      { name: 'Chart title', value: 'totalAbandonedGbp', formula: 'SUM(cart_value) for abandoned sessions in range, converted to GBP' },
+      { name: 'Line series', value: 'series[].abandoned', formula: 'COUNT(sessions) that became abandoned in each bucket (abandoned_at in bucket)' },
+    ],
+    math: [
+      { name: 'Bucket', value: 'Hour buckets for ~single-day ranges; day buckets for multi-day ranges.' },
+      { name: 'Time basis', value: 'abandoned_at is set to last_seen + ABANDONED_WINDOW_MINUTES when marked abandoned.' },
+      { name: 'Mode', value: 'cart: cart_qty>0; checkout: checkout_started_at IS NOT NULL (both exclude has_purchased=1).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'insights_abandoned_carts_top_countries_table',
+    page: 'Abandoned Carts',
+    name: 'Top countries (abandoned)',
+    ui: { elementIds: ['abandoned-carts-countries-table'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/abandoned-carts/top-countries',
+      params: [
+        'range=...',
+        'timezone/timeZone',
+        'mode=cart|checkout',
+        'limit=5 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Abandoned sessions grouped by session country (COALESCE(country_code, cf_country)) and summed cart_value' },
+      { kind: 'fx', note: 'cart_value converted to GBP' },
+      { kind: 'pixel', note: 'Session geo + cart fields from ingest; is_abandoned/abandoned_at from cleanup marker pass' },
+    ],
+    columns: [
+      { name: 'Country', value: 'rows[].country', formula: 'UPPER(SUBSTR(COALESCE(country_code, cf_country, XX),1,2))' },
+      { name: 'Abandoned', value: 'rows[].abandoned', formula: 'COUNT(abandoned sessions in range for mode)' },
+      { name: 'Checkout', value: 'rows[].checkout_sessions', formula: 'COUNT(sessions with checkout_started_at in range for that country)' },
+      { name: '% Abandoned', value: 'rows[].abandoned_pct', formula: 'cart mode: abandoned / cart_sessions(started_at in range, cart_qty>0); checkout mode: abandoned / checkout_sessions' },
+      { name: 'Value', value: 'rows[].abandoned_value_gbp', formula: 'SUM(cart_value) for abandoned sessions, converted to GBP' },
+    ],
+    math: [
+      { name: 'Sort', value: 'Ordered by abandoned count (desc).' },
+      { name: 'Country basis', value: 'Session country comes from session geo (can differ from Shopify order address country).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'insights_abandoned_carts_top_country_products_table',
+    page: 'Abandoned Carts',
+    name: 'Top country + product (abandoned, landing attribution)',
+    ui: { elementIds: ['abandoned-carts-country-products-table'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/abandoned-carts/top-country-products',
+      params: [
+        'range=...',
+        'timezone/timeZone',
+        'mode=cart|checkout',
+        'limit=5 (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Grouped by session country + landing product (sessions.first_product_handle)' },
+      { kind: 'shopify', note: 'Best-effort: resolve product_title for top handles (requires token if available)' },
+      { kind: 'fx', note: 'cart_value converted to GBP' },
+    ],
+    columns: [
+      { name: 'Country + Product', value: 'rows[].country + rows[].product_title', formula: 'Landing attribution: LOWER(TRIM(first_product_handle))' },
+      { name: 'Abandoned', value: 'rows[].abandoned' },
+      { name: 'Checkout', value: 'rows[].checkout_sessions', formula: 'COUNT(sessions with same country+handle that reached checkout in range)' },
+      { name: '% Abandoned', value: 'rows[].abandoned_pct', formula: 'cart mode: abandoned / cart_sessions(started_at in range, cart_qty>0); checkout mode: abandoned / checkout_sessions' },
+      { name: 'Value', value: 'rows[].abandoned_value_gbp' },
+    ],
+    math: [
+      { name: 'Important', value: 'This table is product-specific within each country (not country-wide sessions).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'insights_abandoned_carts_sessions_table',
+    page: 'Abandoned Carts',
+    name: 'Abandoned sessions table (paginated)',
+    ui: { elementIds: ['sessions-table', 'tab-panel-abandoned-carts'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/abandoned-carts/sessions',
+      params: [
+        'range=...',
+        'timezone/timeZone',
+        'mode=cart|checkout',
+        'limit, offset',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions', 'visitors'], note: 'Sessions list + returning flags + device/network columns' },
+      { kind: 'db', tables: ['events'], note: 'Used for session history + side panel (via /api/session-details)' },
+      { kind: 'shopify', note: 'Best-effort landing title enrichment (handle → title) for session landing column' },
+    ],
+    columns: [
+      { name: 'Landing Page', value: 'sessions.first_path / sessions.first_product_handle (enriched title best-effort)' },
+      { name: 'GEO', value: 'COALESCE(s.country_code, v.last_country, s.cf_country)' },
+      { name: 'Source', value: 'sessions.traffic_source_key' },
+      { name: 'Device', value: 'visitors.device + sessions.ua_device_type/ua_platform' },
+      { name: 'Cart', value: 'sessions.cart_qty + sessions.cart_value' },
+      { name: 'Arrived', value: 'sessions.started_at' },
+      { name: 'Seen', value: 'sessions.last_seen' },
+    ],
+    math: [
+      { name: 'Filter', value: 'is_abandoned=1 AND has_purchased=0 AND abandoned_at in range, plus mode filter (cart_qty>0 vs checkout_started_at not null).' },
+      { name: 'Sort', value: 'ORDER BY abandoned_at desc, last_seen desc.' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions', 'visitors', 'events'], shopifyToken: false },
   },
   {
     id: 'products_best_sellers',
