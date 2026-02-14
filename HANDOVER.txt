@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Mobile login blank dashboard fix)
+Last updated: 2026-02-14 (Mobile nav icons + border fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Mobile nav: icons white by default, grid layout (20% each), removed Bootstrap focus ring/outer border.
 
 2026-02-14 (latest)
 - Mobile login blank dashboard fix: added pageshow (bfcache) and visibilitychange handlers so the dashboard refreshes when the page is restored from back-forward cache or when the user returns from OAuth (e.g. switching to Google app on mobile). Prevents blank dashboard until manual refresh after login.
