@@ -2845,14 +2845,17 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   display: inline-flex;
   align-items: center;
 }
-/* Main menu only: white icons + opacity 0.3 default (date/settings keep theme color) */
+/* Main menu: nav-link text (desktop inherits from below; mobile has its own rules) */
 .kexo-desktop-nav-list .nav-link {
   color: #fff !important;
 }
-.kexo-desktop-nav-list .nav-link > .kexo-nav-svg,
-.kexo-desktop-nav-list .nav-link > i[class*="fa-"] {
-  color: #fff !important;
-  opacity: 0.3;
+/* Desktop only: icons use original accent colours (not white); mobile keeps white+opacity in its media query */
+@media (min-width: 992px) {
+  .kexo-desktop-nav-list .nav-link > .kexo-nav-svg,
+  .kexo-desktop-nav-list .nav-link > i[class*="fa-"] {
+    color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+    opacity: 1;
+  }
 }
 .kexo-desktop-nav-settings .nav-link {
   color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
