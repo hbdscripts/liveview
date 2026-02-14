@@ -2992,6 +2992,15 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item .kexo-nav-dropdown-item-icon {
   color: #fff !important;
 }
+/* When dropdown open: text-shadow on nav link + dropdown items (accent 2 shades darker) */
+.kexo-desktop-nav-list .nav-item.dropdown.show .nav-link,
+.kexo-desktop-nav-list .nav-item.dropdown.show .nav-link > .kexo-nav-svg,
+.kexo-desktop-nav-list .nav-item.dropdown.show .nav-link > i[class*="fa-"],
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item,
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item .kexo-nav-svg,
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item .kexo-nav-dropdown-item-icon {
+  text-shadow: 1px 1px 1px color-mix(in srgb, var(--kexo-accent, var(--tblr-primary, #3eb3ab)) 55%, black) !important;
+}
 .kexo-desktop-nav-list .dropdown-item .kexo-nav-svg {
   font-size: 11px;
   padding-left: 1px;
