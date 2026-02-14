@@ -1949,6 +1949,9 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   opacity: 0.85;
 }
 .kexo-footer-diagnostics-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 8px;
   text-transform: uppercase;
   padding: 1px 0 0 1px;
@@ -1968,9 +1971,6 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 }
 .kexo-status-indicator--offline {
   background: rgba(148, 163, 184, 0.95) !important;
-}
-.kexo-footer-diagnostics-tag-link .kexo-status-indicator {
-  margin-right: 0.35rem;
 }
 @media (max-width: 575.98px) {
   .kexo-footer-diagnostics-tags {

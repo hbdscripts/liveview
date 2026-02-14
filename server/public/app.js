@@ -15151,7 +15151,15 @@ const API = '';
                     '>' + escapeHtml(title) + '</a>'
                   )
                 : escapeHtml(title);
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + fmtPct(p.cr) + '</td></tr>';
+              var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
+              var sessions = (p && typeof p.sessions === 'number' && isFinite(p.sessions)) ? p.sessions : null;
+              var orders = (p && typeof p.orders === 'number' && isFinite(p.orders)) ? p.orders : 0;
+              var crHtml = fmtPct(crVal);
+              if (crVal == null && sessions === 0 && orders > 0) {
+                var tip = 'No tracked product landing sessions in this period.';
+                crHtml = '\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>';
+              }
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -15171,7 +15179,15 @@ const API = '';
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = (c.country || 'XX').toUpperCase();
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + fmtPct(c.cr) + '</td></tr>';
+              var crVal = (c && typeof c.cr === 'number' && isFinite(c.cr)) ? c.cr : null;
+              var sessions = (c && typeof c.sessions === 'number' && isFinite(c.sessions)) ? c.sessions : null;
+              var orders = (c && typeof c.orders === 'number' && isFinite(c.orders)) ? c.orders : 0;
+              var crHtml = fmtPct(crVal);
+              if (crVal == null && sessions === 0 && orders > 0) {
+                var tip = 'No tracked sessions for this country in this period.';
+                crHtml = '\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>';
+              }
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -15406,10 +15422,11 @@ const API = '';
             var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
             html += '<div class="kexo-footer-diagnostics-tag">';
             html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
-            html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>';
             html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
             html += '</a>';
-            html += '<span class="kexo-footer-diagnostics-status">' + esc(it.status) + '</span>';
+            html += '<span class="kexo-footer-diagnostics-status">';
+            html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>' + esc(it.status);
+            html += '</span>';
             html += '</div>';
           });
           tagsEl.innerHTML = html;
