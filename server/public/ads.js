@@ -392,7 +392,9 @@
           { name: 'Spend', type: 'line', data: spendSeries },
           { name: 'ROAS', type: 'line', data: roasSeries },
         ];
-        fillCfg = { type: 'solid', opacity: 0 };
+        // ApexCharts 4.x can hide line strokes when fill opacity is 0.
+        // Keep opacity at 1; line charts still render without an area fill.
+        fillCfg = { type: 'solid', opacity: 1 };
       } else if (mode === 'area') {
         seriesCfg = [
           { name: 'Sales', type: 'area', data: salesSeries },
@@ -418,7 +420,7 @@
         },
         series: seriesCfg,
         colors: mode === 'bar' ? barColors : palette,
-        stroke: mode === 'bar' ? { width: 0 } : { width: [2.6, 2.4, 3], curve: 'smooth' },
+        stroke: mode === 'bar' ? { show: true, width: 0 } : { show: true, width: [2.6, 2.4, 3], curve: 'smooth', lineCap: 'round' },
         fill: fillCfg,
         plotOptions: mode === 'bar' ? {
           bar: { horizontal: true, columnWidth: '70%', borderRadius: 4, distributed: true },

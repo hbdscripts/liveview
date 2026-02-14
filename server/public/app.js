@@ -561,7 +561,7 @@ const API = '';
     }
 
     function abandonedModeDisplayLabel(mode) {
-      return normalizeAbandonedMode(mode) === 'checkout' ? 'Abandoned checkouts' : 'Abandoned carts';
+      return normalizeAbandonedMode(mode) === 'checkout' ? 'Abandoned Checkouts' : 'Abandoned Carts';
     }
 
     function loadAbandonedMode() {
@@ -579,7 +579,7 @@ const API = '';
       var labelEl = document.getElementById('abandoned-mode-label');
       if (labelEl) labelEl.textContent = abandonedModeDisplayLabel(abandonedMode);
       var tableTitle = document.getElementById('table-title-text');
-      if (tableTitle) tableTitle.textContent = (normalizeAbandonedMode(abandonedMode) === 'checkout') ? 'Abandoned checkout sessions' : 'Abandoned cart sessions';
+      if (tableTitle) tableTitle.textContent = abandonedModeDisplayLabel(abandonedMode);
     }
 
     function setAbandonedMode(nextMode, opts) {
@@ -5144,7 +5144,7 @@ const API = '';
             data: chartRows.map(function (row) { return row.revenue; })
           }],
           colors: palette,
-          stroke: { width: chartType === 'bar' ? 0 : 3, curve: 'smooth' },
+          stroke: { show: true, width: chartType === 'bar' ? 0 : 3, curve: 'smooth', lineCap: 'round' },
           markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
           fill: chartType === 'bar'
             ? { type: 'solid', opacity: 1 }
@@ -7319,7 +7319,7 @@ const API = '';
           var chart = new ApexCharts(el, {
             chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
-            stroke: { width: 2.15, curve: 'smooth', lineCap: 'round' },
+            stroke: { show: true, width: 2.15, curve: 'smooth', lineCap: 'round' },
             // NOTE: ApexCharts 4.x can incorrectly apply fill opacity to line stroke color.
             // Keep fill opacity at 1 for visible strokes; line charts still render line-only.
             fill: { type: 'solid', opacity: 1 },
@@ -10367,10 +10367,10 @@ const API = '';
             updateOpts.plotOptions = { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } };
             updateOpts.markers = { size: 0 };
           } else {
-            updateOpts.stroke = { curve: 'smooth', width: 3 };
+            updateOpts.stroke = { show: true, curve: 'smooth', width: 3, lineCap: 'round' };
             updateOpts.fill = chartType === 'area'
               ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
-              : { type: 'solid', opacity: 0 };
+              : { type: 'solid', opacity: 1 };
             updateOpts.plotOptions = {};
             updateOpts.markers = { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } };
             updateOpts.dataLabels = (showEndLabels && chartType === 'line') ? {
@@ -10447,10 +10447,10 @@ const API = '';
         apexOpts.plotOptions = { bar: { horizontal: false, columnWidth: points.length > 8 ? '58%' : '50%', borderRadius: 3 } };
         apexOpts.markers = { size: 0 };
       } else {
-        apexOpts.stroke = { curve: 'smooth', width: 3 };
+        apexOpts.stroke = { show: true, curve: 'smooth', width: 3, lineCap: 'round' };
         apexOpts.fill = chartType === 'area'
           ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
-          : { type: 'solid', opacity: 0 };
+          : { type: 'solid', opacity: 1 };
         apexOpts.plotOptions = {};
         apexOpts.markers = { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } };
         apexOpts.dataLabels = (showEndLabels && chartType === 'line') ? {
@@ -10597,10 +10597,10 @@ const API = '';
         },
         series: chartCfg.series,
         colors: chartCfg.colors,
-        stroke: { curve: 'smooth', width: overviewType === 'bar' ? 0 : 2 },
+        stroke: { show: true, curve: 'smooth', width: overviewType === 'bar' ? 0 : 2, lineCap: 'round' },
         fill: overviewType === 'area'
           ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } }
-          : { type: 'solid', opacity: overviewType === 'line' ? 0 : 1 },
+          : { type: 'solid', opacity: 1 },
         plotOptions: overviewType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
         markers: { size: overviewType === 'line' ? 3 : 0, hover: { size: 5 } },
         dataLabels: (showEndLabels && overviewType === 'line') ? {
@@ -12925,7 +12925,7 @@ const API = '';
         };
 
         const apexOpts = Object.assign({}, base, {
-          stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
+          stroke: { show: true, width: 2.55, curve: 'smooth', lineCap: 'round' },
           // ApexCharts 4.x can hide line strokes when fill opacity is 0.
           fill: { type: 'solid', opacity: 1 },
           markers: { size: 0 },
@@ -13124,7 +13124,7 @@ const API = '';
                 },
                 colors: [revenueColor, costColor],
                 dataLabels: { enabled: false },
-                stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
+                stroke: { show: true, curve: 'smooth', width: 2.6, lineCap: 'round' },
                 fill: {
                   type: 'gradient',
                   gradient: {
@@ -15361,7 +15361,9 @@ const API = '';
             : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
-          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 0 }
+          // ApexCharts 4.x can hide line strokes when fill opacity is 0.
+          // Keep opacity at 1; line charts still render without an area fill.
+          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 1 }
             : chartType === 'bar' ? { type: 'solid', opacity: 1 }
             : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaOpacityFrom, opacityTo: areaOpacityTo, stops: [0, 100] } };
 
@@ -15376,7 +15378,7 @@ const API = '';
             },
             series: apexSeries,
             colors: colors,
-            stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+            stroke: { show: true, width: chartType === 'bar' ? 0 : 2, curve: 'smooth', lineCap: 'round' },
             fill: fillConfig,
             plotOptions: chartType === 'bar' ? { bar: { columnWidth: '60%', borderRadius: 3 } } : {},
             xaxis: {
@@ -15524,7 +15526,7 @@ const API = '';
           var chart = new ApexCharts(sparkEl, {
             chart: { type: 'line', height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
             series: series,
-            stroke: { width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
+            stroke: { show: true, width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
             // ApexCharts 4.x can zero out stroke alpha when line fill opacity is 0.
             // Keep opacity at 1 for visible lines; line charts still render without area fill.
             fill: { type: 'solid', opacity: 1 },
@@ -16435,7 +16437,7 @@ const API = '';
                 { name: 'Conversions', data: ord },
               ],
               colors: ['#0d9488', '#3b82f6'],
-              stroke: { width: 2, curve: 'smooth' },
+              stroke: { show: true, width: 2, curve: 'smooth', lineCap: 'round' },
               fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.16, opacityTo: 0.04, stops: [0, 100] } },
               dataLabels: { enabled: false },
               xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },
@@ -16461,7 +16463,7 @@ const API = '';
                 { name: 'Add to cart', data: atc },
               ],
               colors: ['#6366f1', '#f59e0b', '#ef4444'],
-              stroke: { width: 2, curve: 'smooth' },
+              stroke: { show: true, width: 2, curve: 'smooth', lineCap: 'round' },
               markers: { size: 2, hover: { size: 5 } },
               dataLabels: { enabled: false },
               xaxis: { categories: labels, labels: { style: { fontSize: '10px' } } },

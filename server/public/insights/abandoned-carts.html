@@ -24,9 +24,25 @@
     <!--#include partials/page-body-start.html-->
           <div class="page-header mb-3">
             <div class="row align-items-center">
-              <div class="col">
+              <div class="col-auto kexo-page-header-left-col">
                 <div class="page-pretitle">Insights</div>
+              </div>
+              <div class="col kexo-page-header-title-col">
                 <h2 class="page-title">Abandoned Carts</h2>
+                <div class="d-flex align-items-center justify-content-center gap-2 mt-2 kexo-abandoned-mode-header-row">
+                  <div class="dropdown">
+                    <button type="button" class="btn btn-sm btn-ghost-secondary dropdown-toggle" id="abandoned-mode-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="abandoned-mode-menu">
+                      <span id="abandoned-mode-label">Abandoned Carts</span>
+                    </button>
+                    <div class="dropdown-menu" id="abandoned-mode-menu" aria-labelledby="abandoned-mode-btn">
+                      <button class="dropdown-item" type="button" data-abandoned-mode="cart">Abandoned Carts</button>
+                      <button class="dropdown-item" type="button" data-abandoned-mode="checkout">Abandoned Checkouts</button>
+                    </div>
+                  </div>
+                  <a href="/settings" class="btn btn-sm btn-ghost-secondary btn-icon" aria-label="Settings">
+                    <i class="fa-light fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -64,20 +80,6 @@
   <div class="card" data-table-class="live" data-table-zone="abandoned-carts-sessions" data-table-id="sessions-table">
     <div class="card-header">
       <h3 class="card-title" id="table-title"><span id="table-title-text">Abandoned sessions</span></h3>
-      <div class="card-actions d-flex align-items-center gap-2">
-        <div class="dropdown">
-          <button type="button" class="btn btn-sm btn-ghost-secondary dropdown-toggle" id="abandoned-mode-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="abandoned-mode-menu">
-            <span id="abandoned-mode-label">Abandoned carts</span>
-          </button>
-          <div class="dropdown-menu dropdown-menu-end" id="abandoned-mode-menu" aria-labelledby="abandoned-mode-btn">
-            <button class="dropdown-item" type="button" data-abandoned-mode="cart">Abandoned carts</button>
-            <button class="dropdown-item" type="button" data-abandoned-mode="checkout">Abandoned checkouts</button>
-          </div>
-        </div>
-        <a href="/settings" class="btn btn-sm btn-ghost-secondary btn-icon" aria-label="Settings">
-          <i class="fa-light fa-gear" data-icon-key="nav-item-settings" aria-hidden="true"></i>
-        </a>
-      </div>
     </div>
     <div id="sessions-table-mount" data-kexo-table="sessions-table"></div>
     <div class="table-pagination d-flex align-items-center justify-content-center is-hidden" id="table-pagination" aria-label="Pagination"></div>

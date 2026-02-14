@@ -5,6 +5,18 @@
 (function () {
   'use strict';
 
+  // ApexCharts 4.x can render markers but hide strokes if stroke.show defaults false
+  // (or if vendor scripts tweak defaults). Enforce visible strokes by default.
+  try {
+    if (typeof window !== 'undefined') {
+      window.Apex = window.Apex || {};
+      window.Apex.stroke = window.Apex.stroke || {};
+      if (window.Apex.stroke.show == null || window.Apex.stroke.show === false) {
+        window.Apex.stroke.show = true;
+      }
+    }
+  } catch (_) {}
+
   var APEX_MAX_RETRIES = 25;
   var APEX_RETRY_MS = 200;
   var DIMENSION_POLL_MS = 50;
@@ -152,7 +164,9 @@
       : currency ? function (v) { return v != null ? ('£' + Number(v).toLocaleString()) : '—'; }
       : function (v) { return v != null ? Number(v).toLocaleString() : '—'; };
 
-    var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 0 }
+    // ApexCharts 4.x can zero out stroke alpha when fill opacity is 0 for line charts.
+    // Keep opacity at 1; line charts still render without an area fill.
+    var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 1 }
       : chartType === 'bar' ? { type: 'solid', opacity: 1 }
       : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } };
 
@@ -167,7 +181,7 @@
       },
       series: apexSeries,
       colors: colors,
-      stroke: { width: chartType === 'bar' ? 0 : 2.6, curve: 'smooth' },
+      stroke: { show: true, width: chartType === 'bar' ? 0 : 2.6, curve: 'smooth', lineCap: 'round' },
       fill: fillConfig,
       plotOptions: chartType === 'bar' ? { bar: { columnWidth: '62%', borderRadius: 3 } } : {},
       xaxis: {

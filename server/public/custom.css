@@ -2992,6 +2992,16 @@ body[data-page="settings"] .kexo-page-header-date-col {
     letter-spacing: 0.1px;
     font-weight: 600;
   }
+
+  /* Abandoned Carts page: stack mode toggle under title (no connector lines). */
+  body[data-page="abandoned-carts"] .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col {
+    flex-direction: column;
+    gap: 6px;
+  }
+  body[data-page="abandoned-carts"] .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::before,
+  body[data-page="abandoned-carts"] .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::after {
+    display: none !important;
+  }
 }
 
 /* ── Page header category icon (matches page title icon: size, spacing) ── */

@@ -368,11 +368,11 @@
           { name: 'CR', data: [beforeCr, afterCr] },
         ],
         colors: ['#4b94e4', '#f59e34', '#0d9488'],
-        stroke: { width: chartType === 'bar' ? 0 : 2, curve: 'smooth' },
+        stroke: { show: true, width: chartType === 'bar' ? 0 : 2, curve: 'smooth', lineCap: 'round' },
         plotOptions: chartType === 'bar' ? { bar: { columnWidth: '42%', borderRadius: 4 } } : {},
         fill: chartType === 'area'
           ? { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.08 } }
-          : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+          : { type: 'solid', opacity: 1 },
         markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
         dataLabels: { enabled: false },
         xaxis: {

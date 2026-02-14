@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (KPI palette + compare line color update)
+Last updated: 2026-02-14 (Abandoned Carts header mode toggle + ApexCharts line visibility)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,7 @@ Ops/reliability:
 - Handle over-reporting via dedupe in stats queries (see `server/store.js` helpers).
 - Sales product mapping: keep Product Insights links truth-stable (open by `product_id` when handle is missing). Avoid reintroducing handle-only linking or session-handle authority for sales widgets (see `server/store.js` `listLatestSales()` + `server/public/app.js` product links).
 - Abandoned carts data: do not reintroduce Postgres upsert behaviour that overwrites `sessions.is_abandoned/abandoned_at/recovered_at`. Abandonment is marked asynchronously by the cleanup loop in `server/cleanup.js` based on inactivity beyond `ABANDONED_WINDOW_MINUTES`.
+- ApexCharts 4.x line visibility: line charts must keep `stroke.show=true` and avoid `fill.opacity=0` (can render markers without connecting strokes). See `server/public/kexo-chart-builder.js` + `server/public/app.js` chart configs.
 - When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
 
 ---
@@ -311,9 +312,10 @@ Ops/reliability:
 - Zero-baseline KPI delta labels in condensed/dashboard cards no longer show `new`; they now show signed percentages (e.g. `+100%` when previous is 0 and current is >0).
 
 2026-02-14 (latest)
-- Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode dropdown (Abandoned carts vs Abandoned checkouts).
+- Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode dropdown (Abandoned Carts / Abandoned Checkouts) centered under the page title (drives the whole page).
 - Backend: added `/api/abandoned-carts/*` endpoints and a cleanup marker pass to set `is_abandoned/abandoned_at` reliably; fixed Postgres `upsertSession` to preserve abandonment markers.
 - Settings/Diagnostics: new chart + table defaults added in `server/routes/settings.js`; definitions added in `server/trackerDefinitions.js`.
+- Charts: fixed “dots but no line” by enforcing visible strokes for line charts (`stroke.show=true` and line `fill.opacity=1`).
 
 2026-02-14 (latest)
 - Side panel: padding changed to `0 1.05rem 1.05rem` (no top padding).
