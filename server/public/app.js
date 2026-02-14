@@ -15155,9 +15155,11 @@ const API = '';
               var sessions = (p && typeof p.sessions === 'number' && isFinite(p.sessions)) ? p.sessions : null;
               var orders = (p && typeof p.orders === 'number' && isFinite(p.orders)) ? p.orders : 0;
               var crHtml = fmtPct(crVal);
-              if (crVal == null && sessions === 0 && orders > 0) {
+              if (sessions === 0) {
                 var tip = 'No tracked product landing sessions in this period.';
-                crHtml = '\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>';
+                crHtml = orders > 0
+                  ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
+                  : '\u2014';
               }
               return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
             }).join('');
@@ -15183,9 +15185,11 @@ const API = '';
               var sessions = (c && typeof c.sessions === 'number' && isFinite(c.sessions)) ? c.sessions : null;
               var orders = (c && typeof c.orders === 'number' && isFinite(c.orders)) ? c.orders : 0;
               var crHtml = fmtPct(crVal);
-              if (crVal == null && sessions === 0 && orders > 0) {
+              if (sessions === 0) {
                 var tip = 'No tracked sessions for this country in this period.';
-                crHtml = '\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>';
+                crHtml = orders > 0
+                  ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
+                  : '\u2014';
               }
               return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
             }).join('');

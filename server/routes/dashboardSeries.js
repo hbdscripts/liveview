@@ -30,6 +30,33 @@ function normalizeHandleKey(v) {
   return s ? s.slice(0, 128) : '';
 }
 
+function handleFromPath(path) {
+  if (typeof path !== 'string') return '';
+  const m = path.match(/^\/products\/([^/?#]+)/i);
+  return m ? normalizeHandleKey(m[1]) : '';
+}
+
+function handleFromUrl(url) {
+  if (typeof url !== 'string') return '';
+  const raw = url.trim();
+  if (!raw) return '';
+  try {
+    const u = new URL(raw);
+    return handleFromPath(u.pathname || '');
+  } catch (_) {
+    return handleFromPath(raw);
+  }
+}
+
+function handleFromSessionRow(row) {
+  return (
+    handleFromPath(row && row.first_path) ||
+    normalizeHandleKey(row && row.first_product_handle) ||
+    handleFromUrl(row && row.entry_url) ||
+    ''
+  );
+}
+
 function normalizeCountryKey(v) {
   if (typeof v !== 'string') return '';
   const s = v.trim().toUpperCase();
@@ -65,9 +92,10 @@ function crPct(orders, sessions) {
   const o = typeof orders === 'number' && Number.isFinite(orders) ? orders : 0;
   const s = typeof sessions === 'number' && Number.isFinite(sessions) ? sessions : null;
   if (s == null) return null;
-  if (s <= 0) return 0;
+  // Guardrail: when there is no denominator, CR% is undefined (never coerce to 0.0%).
+  if (s <= 0) return null;
   const raw = (o / s) * 100;
-  if (!Number.isFinite(raw) || raw < 0) return 0;
+  if (!Number.isFinite(raw) || raw < 0) return null;
   return Math.round(Math.min(raw, 100) * 10) / 10;
 }
 
@@ -81,24 +109,29 @@ async function fetchSessionCountsByProductHandle(db, startMs, endMs, handles, fi
 
   const phStart = config.dbUrl ? '$1' : '?';
   const phEnd = config.dbUrl ? '$2' : '?';
-  const inPh = inPlaceholders(keys.length, 3);
 
+  // Prefer the same "product landing" handle resolution logic as other product reports:
+  // first_path (/products/<handle>), else first_product_handle, else entry_url.
   const rows = await db.all(
     `
-      SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS n
+      SELECT s.first_path, s.first_product_handle, s.entry_url
       FROM sessions s
       WHERE s.started_at >= ${phStart} AND s.started_at < ${phEnd}
-        AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
-        AND LOWER(TRIM(s.first_product_handle)) IN (${inPh})
         ${filterSql}
-      GROUP BY LOWER(TRIM(s.first_product_handle))
+        AND (
+          (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+          OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+          OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+        )
     `,
-    [startMs, endMs, ...keys, ...filterParams]
+    [startMs, endMs, ...filterParams]
   );
+
+  const keySet = new Set(keys);
   for (const r of rows || []) {
-    const k = r && r.handle != null ? normalizeHandleKey(String(r.handle)) : '';
-    if (!k) continue;
-    out.set(k, Number(r.n) || 0);
+    const h = handleFromSessionRow(r);
+    if (!h || !keySet.has(h)) continue;
+    out.set(h, (out.get(h) || 0) + 1);
   }
   return out;
 }
