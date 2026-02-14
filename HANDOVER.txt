@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Layout: Insights · Variants accordion)
+Last updated: 2026-02-14 (Stats caching: normalize range bounds)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -256,6 +256,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Stats caching: `/api/stats` now normalizes `range` keys and uses that range’s bounds for `report_cache` keys/metadata (more stable caching for custom day/range keys).
 
 2026-02-14 (latest)
 - Layout → Tables: added **Insights · Variants** accordion (single entry "Variant tables") controlling all tables on /insights/variants. Rows-per-page (5/10) and sticky min/max apply to every user-defined variant table. app.js resolveVariantsTableId maps variants-table-* to insights-variants-tables when on variants page.

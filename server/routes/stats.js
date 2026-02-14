@@ -15,6 +15,17 @@ const STATS_MEMO_DROP_AFTER_MS = 10 * 60 * 1000;
 const STATS_MEMO_PRUNE_MIN_INTERVAL_MS = 60 * 1000;
 let lastStatsMemoPruneAt = 0;
 
+const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
+
+function normalizeRangeKey(raw) {
+  const r = raw != null ? String(raw).trim().toLowerCase() : '';
+  if (!r) return '';
+  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
+  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
+  if (ALLOWED_RANGE.has(r) || isDayKey || isRangeKey) return r;
+  return '';
+}
+
 function maybePruneStatsMemo(now) {
   if (!statsMemoByKey.size) return;
   if ((now - lastStatsMemoPruneAt) < STATS_MEMO_PRUNE_MIN_INTERVAL_MS && statsMemoByKey.size <= STATS_MEMO_MAX_KEYS) return;
@@ -53,7 +64,7 @@ function getStats(req, res, next) {
   res.setHeader('Vary', 'Cookie');
 
   const rangeKeyRaw = req && req.query && typeof req.query.range === 'string' ? req.query.range : '';
-  const rangeKey = rangeKeyRaw ? String(rangeKeyRaw).trim().toLowerCase() : '';
+  const rangeKey = normalizeRangeKey(rangeKeyRaw);
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
   const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
   const now = Date.now();
@@ -76,15 +87,18 @@ function getStats(req, res, next) {
   }
 
   const timeZone = store.resolveAdminTimeZone();
-  const { start: todayStart } = store.getRangeBounds('today', now, timeZone);
+  const boundsKey = rangeKey || 'today';
+  const bounds = store.getRangeBounds(boundsKey, now, timeZone);
+  const cacheStart = bounds && Number.isFinite(Number(bounds.start)) ? Number(bounds.start) : now;
+  const cacheEnd = bounds && Number.isFinite(Number(bounds.end)) ? Number(bounds.end) : now;
 
   const inflight = reportCache.getOrComputeJson(
     {
       shop: '',
       endpoint: 'stats',
       rangeKey: rangeKey || 'default',
-      rangeStartTs: todayStart,
-      rangeEndTs: now,
+      rangeStartTs: cacheStart,
+      rangeEndTs: cacheEnd,
       params: { trafficMode, rangeKey: rangeKey || null },
       ttlMs: 15 * 60 * 1000,
       force,
