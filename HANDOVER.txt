@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Product Insights modal chevrons restored)
+Last updated: 2026-02-14 (Map tooltip stuck fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Map tooltip stuck fix: added mouseleave + scroll listeners on countries/live map containers to hide .jvm-tooltip when cursor leaves the map or page scrolls. Prevents tooltip staying visible when user moves away.
 
 2026-02-14 (latest)
 - Product Insights modal: restored collapse chevrons on Revenue and Demand chart cards (left column). These were removed during chart-card gear-icon cleanup; modal cards now excluded from chart-only treatment so they keep expand/collapse chevrons.

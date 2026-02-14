@@ -6022,6 +6022,20 @@ const API = '';
       return out;
     }
 
+    var mapTooltipScrollBound;
+    function hideMapTooltipOnLeave(container) {
+      if (!container || container.__kexoMapTooltipCleanup) return;
+      container.__kexoMapTooltipCleanup = true;
+      function hideTooltips() {
+        document.querySelectorAll('.jvm-tooltip').forEach(function(t) { t.style.display = 'none'; });
+      }
+      container.addEventListener('mouseleave', hideTooltips, { passive: true });
+      if (!mapTooltipScrollBound) {
+        mapTooltipScrollBound = true;
+        window.addEventListener('scroll', hideTooltips, { passive: true });
+      }
+    }
+
     function setVectorMapTooltipContent(tooltip, html, text) {
       if (!tooltip) return;
       var htmlContent = html == null ? '' : String(html);
@@ -6219,6 +6233,7 @@ const API = '';
             }
           }
         }
+        hideMapTooltipOnLeave(el);
 
         if (isAnimated) {
           setTimeout(function () {
@@ -10513,6 +10528,7 @@ const API = '';
             }
           }
         }
+        hideMapTooltipOnLeave(el);
 
         if (isAnimated) {
           setTimeout(function () {
