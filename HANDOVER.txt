@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Dashboard sparkline compare-line update)
+Last updated: 2026-02-14 (Dashboard sparkline visibility fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Dashboard KPI sparkline visibility fix: line-only sparklines keep `fill.opacity=1` (ApexCharts 4.x quirk) so current + compare lines do not render with transparent stroke.
 
 2026-02-14 (latest)
 - Dashboard KPI sparklines now render line-only (no area fill) and include a second compare line (previous-period baseline) as a dashed overlay.

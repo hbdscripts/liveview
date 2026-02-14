@@ -12612,6 +12612,35 @@ const API = '';
       let snapshotActiveRequest = 0;
       let backdropEl = null;
       let backdropCount = 0;
+      const SNAPSHOT_CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
+      const SNAPSHOT_LTV_DECORATIVE_ARC_PCT = 78;
+      const snapshotClientCache = new Map(); // key -> { data, fetchedAt }
+
+      function snapshotCacheKey(year) {
+        return 'yearly:' + String(year || getCurrentYearString());
+      }
+
+      function getCachedSnapshot(year) {
+        const key = snapshotCacheKey(year);
+        const cached = snapshotClientCache.get(key);
+        if (!cached) return null;
+        const age = Date.now() - Number(cached.fetchedAt || 0);
+        if (!Number.isFinite(age) || age < 0 || age > SNAPSHOT_CLIENT_CACHE_TTL_MS) {
+          snapshotClientCache.delete(key);
+          return null;
+        }
+        return cached.data || null;
+      }
+
+      function setCachedSnapshot(year, data) {
+        if (!data || data.ok !== true) return;
+        const key = snapshotCacheKey(year);
+        snapshotClientCache.set(key, { data, fetchedAt: Date.now() });
+        if (snapshotClientCache.size > 6) {
+          const keys = Array.from(snapshotClientCache.keys());
+          while (snapshotClientCache.size > 6) snapshotClientCache.delete(keys.shift());
+        }
+      }
 
       function isIsoCountryCode(code) {
         return /^[A-Z]{2}$/.test(String(code || '').trim().toUpperCase());
@@ -12692,6 +12721,18 @@ const API = '';
         return formatRevenue(n) || 'Unavailable';
       }
 
+      function fmtCurrencyCompact(value) {
+        const n = value == null ? null : Number(value);
+        if (n == null || !Number.isFinite(n)) return 'Unavailable';
+        const abs = Math.abs(n);
+        if (abs >= 1000000) {
+          const mil = Math.round((n / 1000000) * 10) / 10;
+          return '\u00A3' + String(mil).replace(/\.0$/, '') + 'M';
+        }
+        if (abs >= 1000) return '\u00A3' + Math.round(n / 1000) + 'K';
+        return formatRevenue0(n) || 'Unavailable';
+      }
+
       function fmtCount(value) {
         const n = value == null ? null : Number(value);
         if (n == null || !Number.isFinite(n)) return 'Unavailable';
@@ -12708,12 +12749,25 @@ const API = '';
         return String((new Date()).getFullYear());
       }
 
-      function deltaInfo(current, previous) {
+      function deltaInfo(current, previous, opts) {
+        const options = opts && typeof opts === 'object' ? opts : {};
+        const noDataText = String(options.noDataText || 'No data');
         const cur = current == null ? null : Number(current);
         const prev = previous == null ? null : Number(previous);
-        if (cur == null || prev == null || !Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return null;
+        if (cur == null || !Number.isFinite(cur)) {
+          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
+        }
+        if (prev == null || !Number.isFinite(prev)) {
+          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
+        }
+        if (prev === 0) {
+          if (cur === 0) return { dir: 'flat', pct: 0, short: '0%', text: '0%' };
+          return { dir: cur > 0 ? 'up' : 'down', pct: null, short: noDataText, text: noDataText, noData: true };
+        }
         const pct = ((cur - prev) / Math.abs(prev)) * 100;
-        if (!Number.isFinite(pct)) return null;
+        if (!Number.isFinite(pct)) {
+          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
+        }
         const rounded = Math.round(pct * 10) / 10;
         const dir = rounded > 0 ? 'up' : (rounded < 0 ? 'down' : 'flat');
         const sign = rounded > 0 ? '+' : '';
@@ -12732,17 +12786,42 @@ const API = '';
         return 'dash-kpi-delta-flat';
       }
 
-      function deltaHtml(delta) {
+      function deltaHtml(delta, opts) {
         if (!delta || !delta.short) return '';
+        const options = opts && typeof opts === 'object' ? opts : {};
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
-        const iconCls = dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus');
+        const iconCls = delta.noData
+          ? 'fa-circle-info'
+          : (dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus'));
+        const wrapClass = options.compact ? 'business-snapshot-delta-inline' : 'business-snapshot-card-delta';
+        const titleText = delta.noData ? 'No data for this period' : 'vs previous period';
         return '' +
-          '<div class="business-snapshot-card-delta business-snapshot-delta ' + cls + '" title="vs previous period">' +
+          '<div class="' + wrapClass + ' business-snapshot-delta ' + cls + '" title="' + escapeHtml(titleText) + '">' +
             '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
             '<span class="business-snapshot-delta-text">' + escapeHtml(delta.short) + '</span>' +
           '</div>';
+      }
+
+      function metricInfoIconHtml(label, currentLabel, currentText, previousLabel, previousText, previousHasData) {
+        const safeLabel = escapeHtml(String(label || 'Metric'));
+        const safeCurrentLabel = escapeHtml(String(currentLabel || 'Current period'));
+        const safeCurrentText = escapeHtml(String(currentText || 'Unavailable'));
+        const safePreviousLabel = escapeHtml(String(previousLabel || 'Previous period'));
+        const safePreviousText = previousHasData
+          ? escapeHtml(String(previousText || 'Unavailable'))
+          : 'No data for this period';
+        const tooltipHtml = '' +
+          '<div class="business-snapshot-cost-rows">' +
+            '<div class="business-snapshot-cost-row"><span>' + safeCurrentLabel + '</span><span>' + safeCurrentText + '</span></div>' +
+            '<div class="business-snapshot-cost-row"><span>' + safePreviousLabel + '</span><span>' + safePreviousText + '</span></div>' +
+          '</div>';
+        return '' +
+          '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="' + safeLabel + ' validation">' +
+            '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
+            '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
+          '</span>';
       }
 
       let snapshotCharts = {};
@@ -12823,9 +12902,21 @@ const API = '';
         // Destroy any existing instance for this element.
         if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
         el.innerHTML = '';
+        const animationSpeed = Number.isFinite(Number(options.animationSpeed)) ? Number(options.animationSpeed) : 520;
 
         const base = {
-          chart: { type: chartType, height: height, sparkline: { enabled: true }, animations: { enabled: false } },
+          chart: {
+            type: chartType,
+            height: height,
+            sparkline: { enabled: true },
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: animationSpeed,
+              animateGradually: { enabled: true, delay: 45 },
+              dynamicAnimation: { enabled: true, speed: 280 },
+            },
+          },
           series: [{ name: 'Trend', data: nums }],
           colors: [color],
           tooltip: { enabled: false },
@@ -12835,7 +12926,8 @@ const API = '';
 
         const apexOpts = Object.assign({}, base, {
           stroke: { width: 2.55, curve: 'smooth', lineCap: 'round' },
-          fill: { type: 'solid', opacity: 0 },
+          // ApexCharts 4.x can hide line strokes when fill opacity is 0.
+          fill: { type: 'solid', opacity: 1 },
           markers: { size: 0 },
         });
 
@@ -12858,6 +12950,9 @@ const API = '';
         const options = opts && typeof opts === 'object' ? opts : {};
         const color = options.color || snapshotPrimaryColor();
         const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 72;
+        const showValue = options.showValue !== false;
+        const startAngle = Number.isFinite(Number(options.startAngle)) ? Number(options.startAngle) : -90;
+        const endAngle = Number.isFinite(Number(options.endAngle)) ? Number(options.endAngle) : 90;
         const v = (typeof pct === 'number') ? pct : Number(pct);
         if (!isFinite(v)) return;
         const clamped = Math.max(0, Math.min(100, v));
@@ -12867,17 +12962,30 @@ const API = '';
 
         try {
           const chart = new ApexCharts(el, {
-            chart: { type: 'radialBar', height: height, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: {
+              type: 'radialBar',
+              height: height,
+              sparkline: { enabled: true },
+              animations: {
+                enabled: true,
+                easing: 'easeinout',
+                speed: 620,
+                animateGradually: { enabled: true, delay: 60 },
+                dynamicAnimation: { enabled: true, speed: 360 },
+              },
+            },
             series: [clamped],
             colors: [color],
             plotOptions: {
               radialBar: {
-                hollow: { size: '60%' },
-                track: { background: 'rgba(24,36,51,0.08)' },
+                startAngle: startAngle,
+                endAngle: endAngle,
+                hollow: { size: '62%' },
+                track: { background: 'rgba(24,36,51,0.12)' },
                 dataLabels: {
                   name: { show: false },
                   value: {
-                    show: true,
+                    show: showValue,
                     fontSize: '12px',
                     fontWeight: 500,
                     formatter: function (val) { return Math.round(val) + '%'; },
@@ -12977,11 +13085,16 @@ const API = '';
           if (typeof ApexCharts === 'undefined') return;
           const el = document.getElementById(elId);
           if (!el) return;
-          const categories = ensureIsoCategories(labels);
-          if (!categories.length) return;
-
           const revNums = (normalizeSeriesNumbers(revenueArr) || []).map(function (v) { return v == null ? 0 : v; });
           const costNums = (normalizeSeriesNumbers(costArr) || []).map(function (v) { return v == null ? 0 : v; });
+          let categories = ensureIsoCategories(labels);
+          let xaxisType = 'datetime';
+          if (!categories.length) {
+            const fallbackLen = Math.max(revNums.length, costNums.length);
+            categories = Array.from({ length: fallbackLen }, function (_, idx) { return 'P' + String(idx + 1); });
+            xaxisType = 'category';
+          }
+          if (!categories.length) return;
           const rev = expandToCategoriesLen(revNums, categories.length);
           const cst = expandToCategoriesLen(costNums, categories.length);
 
@@ -12999,17 +13112,37 @@ const API = '';
                 ],
                 chart: {
                   height: 320,
-                  type: 'line',
-                  animations: { enabled: false },
+                  type: 'area',
+                  animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 700,
+                    animateGradually: { enabled: true, delay: 90 },
+                    dynamicAnimation: { enabled: true, speed: 360 },
+                  },
                   toolbar: { show: false },
                 },
                 colors: [revenueColor, costColor],
                 dataLabels: { enabled: false },
                 stroke: { curve: 'smooth', width: 2.6, lineCap: 'round' },
-                fill: { type: 'solid', opacity: 0 },
+                fill: {
+                  type: 'gradient',
+                  gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.22,
+                    opacityTo: 0.02,
+                    stops: [0, 100],
+                  },
+                },
                 markers: { size: 0 },
-                xaxis: { type: 'datetime', categories },
-                tooltip: { x: { format: 'dd/MM/yy' } },
+                xaxis: {
+                  type: xaxisType,
+                  categories,
+                },
+                tooltip: {
+                  x: xaxisType === 'datetime' ? { format: 'dd/MM/yy' } : { show: false },
+                  y: { formatter: function (v) { return formatRevenue(Number(v)) || '\u2014'; } },
+                },
                 legend: { show: true, position: 'top', horizontalAlign: 'right' },
                 grid: { padding: { left: 0, right: 0, top: 8, bottom: 0 } },
               });
@@ -13047,14 +13180,27 @@ const API = '';
           sparkLine('business-snapshot-chart-perf-aov', aov, aovDelta);
 
           // Customers charts (line-only)
+          const newCustomersDelta = deltaInfo(c.newCustomers && c.newCustomers.value, c.newCustomers && c.newCustomers.previous);
+          const returningCustomersDelta = deltaInfo(c.returningCustomers && c.returningCustomers.value, c.returningCustomers && c.returningCustomers.previous);
+          const repeatDelta = deltaInfo(c.repeatPurchaseRate && c.repeatPurchaseRate.value, c.repeatPurchaseRate && c.repeatPurchaseRate.previous);
+          const ltvDelta = deltaInfo(c.ltv && c.ltv.value, c.ltv && c.ltv.previous);
           const repeatVal = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
-          const ltvVal = c.ltv && Number.isFinite(Number(c.ltv.value)) ? Number(c.ltv.value) : null;
           const repeatSeries = (repeatVal != null && labelsYmd.length) ? labelsYmd.map(function () { return repeatVal; }) : [];
-          const ltvSeries = (ltvVal != null && labelsYmd.length) ? labelsYmd.map(function () { return ltvVal; }) : [];
-          sparkLine('business-snapshot-chart-new-share', orders, null);
-          sparkLine('business-snapshot-chart-returning-share', orders, null);
-          sparkLine('business-snapshot-chart-repeat-rate', repeatSeries, null);
-          sparkLine('business-snapshot-chart-ltv-ratio', ltvSeries, null);
+          sparkLine('business-snapshot-chart-new-share', orders.length ? orders : [0, 0], newCustomersDelta);
+          sparkLine('business-snapshot-chart-returning-share', orders.length ? orders : [0, 0], returningCustomersDelta);
+          sparkLine('business-snapshot-chart-repeat-rate', repeatSeries.length ? repeatSeries : (conv.length ? conv : [0, 0]), repeatDelta);
+
+          const ltvValueEl = document.getElementById('business-snapshot-ltv-head-value');
+          if (ltvValueEl) ltvValueEl.textContent = fmtCurrency(c.ltv && c.ltv.value);
+          const ltvDeltaEl = document.getElementById('business-snapshot-ltv-head-delta');
+          if (ltvDeltaEl) ltvDeltaEl.innerHTML = deltaHtml(ltvDelta, { compact: true });
+          renderSnapshotRadial('business-snapshot-chart-ltv-head', SNAPSHOT_LTV_DECORATIVE_ARC_PCT, {
+            height: 126,
+            color: 'var(--kexo-accent-5, #6681e8)',
+            startAngle: -108,
+            endAngle: 108,
+            showValue: false,
+          });
         });
       }
 
@@ -13083,11 +13229,11 @@ const API = '';
         const breakdownNow = Array.isArray(f.costBreakdownNow) ? f.costBreakdownNow : [];
         const d = deltaInfo(revMetric && revMetric.value, revMetric && revMetric.previous);
         const dHtml = deltaHtml(d);
-        const revenueText = fmtCurrency(revMetric && revMetric.value);
-        const costText = fmtCurrency(costMetric && costMetric.value);
+        const revenueText = fmtCurrencyCompact(revMetric && revMetric.value);
+        const costText = fmtCurrencyCompact(costMetric && costMetric.value);
         const tooltipHtml = costBreakdownTooltipHtml(breakdownNow);
         return '' +
-          '<div class="business-snapshot-top">' +
+          '<div class="business-snapshot-top business-snapshot-stage" data-snapshot-stage="top">' +
             '<div class="business-snapshot-top-head">' +
               '<div class="business-snapshot-top-title-row">' +
                 '<div class="subheader d-flex align-items-center gap-2">' +
@@ -13114,12 +13260,27 @@ const API = '';
           '</div>';
       }
 
-      function metricCardHtml(label, valueText, delta, chart) {
+      function metricCardHtml(options) {
+        const o = options && typeof options === 'object' ? options : {};
+        const label = String(o.label || 'Metric');
+        const valueText = String(o.valueText || 'Unavailable');
+        const delta = o.delta || null;
+        const tooltip = o.tooltip && typeof o.tooltip === 'object' ? o.tooltip : null;
         const dHtml = deltaHtml(delta);
-        const c = chart && typeof chart === 'object' ? chart : null;
+        const c = o.chart && typeof o.chart === 'object' ? o.chart : null;
         const chartId = c && c.id ? String(c.id) : '';
         const chartHtml = chartId
           ? ('<div class="business-snapshot-chart" id="' + escapeHtml(chartId) + '" aria-hidden="true"></div>')
+          : '';
+        const infoHtml = tooltip
+          ? metricInfoIconHtml(
+            label,
+            tooltip.currentLabel,
+            tooltip.currentText,
+            tooltip.previousLabel,
+            tooltip.previousText,
+            tooltip.previousHasData
+          )
           : '';
         return '' +
           '<div class="col-12 col-md-6 col-xl-3">' +
@@ -13127,7 +13288,10 @@ const API = '';
               '<div class="card-body business-snapshot-card-body">' +
                 (chartHtml ? chartHtml : '') +
                 '<div class="business-snapshot-card-content">' +
-                  '<div class="subheader">' + escapeHtml(label) + '</div>' +
+                  '<div class="subheader d-flex align-items-center gap-2 business-snapshot-kpi-label">' +
+                    '<span>' + escapeHtml(label) + '</span>' +
+                    (infoHtml ? infoHtml : '') +
+                  '</div>' +
                   '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
                 '</div>' +
                 (dHtml ? dHtml : '') +
@@ -13140,10 +13304,30 @@ const API = '';
         return '';
       }
 
+      function runSnapshotStagedReveal() {
+        const stageDefs = [
+          { selector: '#business-snapshot-ltv-head', stepMs: 0 },
+          { selector: '[data-snapshot-stage="top"]', stepMs: 110 },
+          { selector: '[data-snapshot-stage="profit"]', stepMs: 260 },
+          { selector: '[data-snapshot-stage="performance"]', stepMs: 430 },
+          { selector: '[data-snapshot-stage="customers"]', stepMs: 610 },
+        ];
+        stageDefs.forEach(function (def) {
+          const el = document.querySelector(def.selector);
+          if (!el || !el.classList) return;
+          el.classList.add('business-snapshot-stage');
+          el.classList.remove('is-visible');
+          el.style.setProperty('--snapshot-stage-delay', String(def.stepMs || 0) + 'ms');
+          requestAnimationFrame(function () { el.classList.add('is-visible'); });
+        });
+      }
+
       function renderSnapshot(data) {
         const body = document.getElementById('business-snapshot-body');
         if (!body) return;
         if (!data || data.ok !== true) {
+          const ltvHead = document.getElementById('business-snapshot-ltv-head');
+          if (ltvHead) ltvHead.classList.add('is-hidden');
           body.innerHTML = '' +
             '<div class="p-4">' +
               '<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">' +
@@ -13160,6 +13344,28 @@ const API = '';
         const p = data.performance || {};
         const c = data.customers || {};
         const profit = f.profit || {};
+        const comparison = data.comparison || {};
+        const periodLabel = String(data.periodLabel || '').trim() || 'Current period';
+        const compareLabelRaw = String(data.compareLabel || '').trim();
+        const compareLabel = compareLabelRaw ? ('Previous year \u00B7 ' + compareLabelRaw) : 'Previous period';
+        const previousPeriodHasData = !!comparison.previousPeriodHasData;
+
+        function tooltipData(metric, type) {
+          const m = metric && typeof metric === 'object' ? metric : {};
+          const hasPrev = previousPeriodHasData && m.previous != null && Number.isFinite(Number(m.previous));
+          const formatByType = function formatByType(value) {
+            if (type === 'currency') return fmtCurrency(value);
+            if (type === 'count') return fmtCount(value);
+            return fmtPercent(value);
+          };
+          return {
+            currentLabel: periodLabel,
+            currentText: formatByType(m.value),
+            previousLabel: compareLabel,
+            previousText: formatByType(m.previous),
+            previousHasData: hasPrev,
+          };
+        }
 
         const titleEl = document.getElementById('business-snapshot-title');
         if (titleEl) {
@@ -13169,21 +13375,9 @@ const API = '';
 
         const subtitle = document.getElementById('business-snapshot-subtitle');
         if (subtitle) subtitle.textContent = String(data.periodLabel || '').trim() || 'Business Snapshot';
-
-        (function updateSelectors() {
-          selectedYear = String(data.year || selectedYear || getCurrentYearString());
-
-          const yearSel = document.getElementById('business-snapshot-year');
-          if (!yearSel) return;
-          const years = Array.isArray(data.availableYears) ? data.availableYears.map(function (y) { return String(y); }).filter(Boolean) : [];
-          const existing = Array.from(yearSel.options || []).map(function (o) { return String(o && o.value || ''); });
-          const same = existing.length === years.length && existing.every(function (v, i) { return v === years[i]; });
-          if (!same) {
-            yearSel.innerHTML = years.map(function (y) { return '<option value="' + escapeHtml(y) + '">' + escapeHtml(y) + '</option>'; }).join('');
-          }
-          if (years.length && years.indexOf(selectedYear) < 0) selectedYear = years[0];
-          yearSel.value = selectedYear;
-        })();
+        selectedYear = String(data.year || selectedYear || getCurrentYearString());
+        const ltvHead = document.getElementById('business-snapshot-ltv-head');
+        if (ltvHead) ltvHead.classList.remove('is-hidden');
 
         const chartSeq = ++snapshotChartsSeq;
         destroySnapshotCharts();
@@ -13192,43 +13386,109 @@ const API = '';
 
         let profitCards = '';
         if (profit.visible) {
-          profitCards += metricCardHtml('Estimated Profit', fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value), deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous), { id: 'business-snapshot-chart-profit' });
-          profitCards += metricCardHtml('Net Profit', fmtCurrency(profit.netProfit && profit.netProfit.value), deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous), { id: 'business-snapshot-chart-net-profit' });
-          profitCards += metricCardHtml('Margin %', fmtPercent(profit.marginPct && profit.marginPct.value), deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous), { id: 'business-snapshot-chart-margin' });
-          profitCards += metricCardHtml('Deductions', fmtCurrency(profit.deductions && profit.deductions.value), deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous), { id: 'business-snapshot-chart-deductions-pct' });
+          profitCards += metricCardHtml({
+            label: 'Estimated Profit',
+            valueText: fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value),
+            delta: deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous),
+            chart: { id: 'business-snapshot-chart-profit' },
+            tooltip: tooltipData(profit.estimatedProfit, 'currency'),
+          });
+          profitCards += metricCardHtml({
+            label: 'Net Profit',
+            valueText: fmtCurrency(profit.netProfit && profit.netProfit.value),
+            delta: deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous),
+            chart: { id: 'business-snapshot-chart-net-profit' },
+            tooltip: tooltipData(profit.netProfit, 'currency'),
+          });
+          profitCards += metricCardHtml({
+            label: 'Margin %',
+            valueText: fmtPercent(profit.marginPct && profit.marginPct.value),
+            delta: deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous),
+            chart: { id: 'business-snapshot-chart-margin' },
+            tooltip: tooltipData(profit.marginPct, 'percent'),
+          });
+          profitCards += metricCardHtml({
+            label: 'Deductions',
+            valueText: fmtCurrency(profit.deductions && profit.deductions.value),
+            delta: deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous),
+            chart: { id: 'business-snapshot-chart-deductions-pct' },
+            tooltip: tooltipData(profit.deductions, 'currency'),
+          });
         }
 
         let performanceCards = '';
-        performanceCards += metricCardHtml('Sessions', fmtCount(p.sessions && p.sessions.value), deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous), { id: 'business-snapshot-chart-sessions' });
-        performanceCards += metricCardHtml('Orders', fmtCount(p.orders && p.orders.value), deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous), { id: 'business-snapshot-chart-perf-orders' });
-        performanceCards += metricCardHtml('Conversion Rate %', fmtPercent(p.conversionRate && p.conversionRate.value), deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous), { id: 'business-snapshot-chart-perf-conversion' });
-        performanceCards += metricCardHtml('AOV', fmtCurrency(p.aov && p.aov.value), deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous), { id: 'business-snapshot-chart-perf-aov' });
+        performanceCards += metricCardHtml({
+          label: 'Sessions',
+          valueText: fmtCount(p.sessions && p.sessions.value),
+          delta: deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous),
+          chart: { id: 'business-snapshot-chart-sessions' },
+          tooltip: tooltipData(p.sessions, 'count'),
+        });
+        performanceCards += metricCardHtml({
+          label: 'Orders',
+          valueText: fmtCount(p.orders && p.orders.value),
+          delta: deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous),
+          chart: { id: 'business-snapshot-chart-perf-orders' },
+          tooltip: tooltipData(p.orders, 'count'),
+        });
+        performanceCards += metricCardHtml({
+          label: 'Conversion Rate %',
+          valueText: fmtPercent(p.conversionRate && p.conversionRate.value),
+          delta: deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous),
+          chart: { id: 'business-snapshot-chart-perf-conversion' },
+          tooltip: tooltipData(p.conversionRate, 'percent'),
+        });
+        performanceCards += metricCardHtml({
+          label: 'AOV',
+          valueText: fmtCurrency(p.aov && p.aov.value),
+          delta: deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous),
+          chart: { id: 'business-snapshot-chart-perf-aov' },
+          tooltip: tooltipData(p.aov, 'currency'),
+        });
 
         let customersCards = '';
-        customersCards += metricCardHtml('New Customers', fmtCount(c.newCustomers && c.newCustomers.value), null, { id: 'business-snapshot-chart-new-share' });
-        customersCards += metricCardHtml('Returning Customers', fmtCount(c.returningCustomers && c.returningCustomers.value), null, { id: 'business-snapshot-chart-returning-share' });
-        customersCards += metricCardHtml('Repeat Purchase Rate %', fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value), null, { id: 'business-snapshot-chart-repeat-rate' });
-        customersCards += metricCardHtml('LTV', fmtCurrency(c.ltv && c.ltv.value), null, { id: 'business-snapshot-chart-ltv-ratio' });
+        customersCards += metricCardHtml({
+          label: 'New Customers',
+          valueText: fmtCount(c.newCustomers && c.newCustomers.value),
+          delta: deltaInfo(c.newCustomers && c.newCustomers.value, c.newCustomers && c.newCustomers.previous),
+          chart: { id: 'business-snapshot-chart-new-share' },
+          tooltip: tooltipData(c.newCustomers, 'count'),
+        });
+        customersCards += metricCardHtml({
+          label: 'Returning Customers',
+          valueText: fmtCount(c.returningCustomers && c.returningCustomers.value),
+          delta: deltaInfo(c.returningCustomers && c.returningCustomers.value, c.returningCustomers && c.returningCustomers.previous),
+          chart: { id: 'business-snapshot-chart-returning-share' },
+          tooltip: tooltipData(c.returningCustomers, 'count'),
+        });
+        customersCards += metricCardHtml({
+          label: 'Repeat Purchase Rate %',
+          valueText: fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value),
+          delta: deltaInfo(c.repeatPurchaseRate && c.repeatPurchaseRate.value, c.repeatPurchaseRate && c.repeatPurchaseRate.previous),
+          chart: { id: 'business-snapshot-chart-repeat-rate' },
+          tooltip: tooltipData(c.repeatPurchaseRate, 'percent'),
+        });
 
         body.innerHTML = '' +
           (topBlock ? topBlock : '') +
           '<div class="business-snapshot-sections p-4">' +
             (profit.visible
-              ? ('<div class="business-snapshot-section mb-4">' +
+              ? ('<div class="business-snapshot-section mb-4 business-snapshot-stage" data-snapshot-stage="profit">' +
                   '<h3 class="card-title mb-3">Profit</h3>' +
                   '<div class="row g-3 business-snapshot-grid">' + profitCards + '</div>' +
                 '</div>')
               : '') +
-            '<div class="business-snapshot-section mb-4">' +
+            '<div class="business-snapshot-section mb-4 business-snapshot-stage" data-snapshot-stage="performance">' +
               '<h3 class="card-title mb-3">Performance</h3>' +
               '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +
             '</div>' +
-            '<div class="business-snapshot-section">' +
+            '<div class="business-snapshot-section business-snapshot-stage" data-snapshot-stage="customers">' +
               '<h3 class="card-title mb-3">Customers</h3>' +
               '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
             '</div>' +
           '</div>';
 
+        runSnapshotStagedReveal();
         try { renderSnapshotCharts(data, chartSeq); } catch (_) {}
       }
 
@@ -13242,18 +13502,23 @@ const API = '';
           '</div>';
       }
 
-      function fetchSnapshot(force) {
+      function fetchSnapshot(force, opts) {
+        const options = opts && typeof opts === 'object' ? opts : {};
         const reqId = ++snapshotRequestSeq;
         snapshotActiveRequest = reqId;
         snapshotLoading = true;
-        if (force) setSnapshotLoading();
+        const showLoading = options.showLoading === true || (force && options.showLoading !== false);
+        if (showLoading) setSnapshotLoading();
         const year = String(selectedYear || getCurrentYearString());
         let url = API + '/api/business-snapshot?mode=yearly&year=' + encodeURIComponent(year);
-        if (force) url += '&_=' + Date.now();
+        if (force) url += '&force=1&_=' + Date.now();
         const cacheMode = force ? 'no-store' : 'default';
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 30000)
           .then(function (res) { return (res && res.ok) ? res.json() : null; })
-          .then(function (data) { if (reqId === snapshotActiveRequest) renderSnapshot(data); })
+          .then(function (data) {
+            if (data && data.ok === true) setCachedSnapshot(year, data);
+            if (reqId === snapshotActiveRequest) renderSnapshot(data);
+          })
           .catch(function () { if (reqId === snapshotActiveRequest) renderSnapshot(null); })
           .finally(function () { if (reqId === snapshotActiveRequest) snapshotLoading = false; });
       }
@@ -13575,42 +13840,50 @@ const API = '';
               '<div class="modal-content">' +
                 '<div class="modal-header p-4 align-items-start business-snapshot-modal-header">' +
                   '<div class="business-snapshot-header-bg" aria-hidden="true">' +
-                    '<svg viewBox="0 0 600 140" preserveAspectRatio="none" aria-hidden="true">' +
-                      '<g fill="currentColor">' +
-                        '<rect x="18" y="78" width="18" height="52" rx="3"></rect>' +
-                        '<rect x="48" y="64" width="18" height="66" rx="3"></rect>' +
-                        '<rect x="78" y="86" width="18" height="44" rx="3"></rect>' +
-                        '<rect x="108" y="44" width="18" height="86" rx="3"></rect>' +
-                        '<rect x="138" y="58" width="18" height="72" rx="3"></rect>' +
-                        '<rect x="168" y="24" width="18" height="106" rx="3"></rect>' +
-                        '<rect x="198" y="52" width="18" height="78" rx="3"></rect>' +
-                        '<rect x="228" y="70" width="18" height="60" rx="3"></rect>' +
-                        '<rect x="258" y="34" width="18" height="96" rx="3"></rect>' +
-                        '<rect x="288" y="60" width="18" height="70" rx="3"></rect>' +
-                        '<rect x="318" y="90" width="18" height="40" rx="3"></rect>' +
-                        '<rect x="348" y="68" width="18" height="62" rx="3"></rect>' +
-                        '<rect x="378" y="38" width="18" height="92" rx="3"></rect>' +
-                        '<rect x="408" y="56" width="18" height="74" rx="3"></rect>' +
-                        '<rect x="438" y="28" width="18" height="102" rx="3"></rect>' +
-                        '<rect x="468" y="66" width="18" height="64" rx="3"></rect>' +
-                        '<rect x="498" y="46" width="18" height="84" rx="3"></rect>' +
-                        '<rect x="528" y="74" width="18" height="56" rx="3"></rect>' +
-                        '<rect x="558" y="54" width="18" height="76" rx="3"></rect>' +
+                    '<svg viewBox="0 0 760 180" preserveAspectRatio="none" aria-hidden="true">' +
+                      '<g>' +
+                        '<rect x="24" y="102" width="20" height="48" rx="4" fill="#4b94e4" fill-opacity="0.14"></rect>' +
+                        '<rect x="56" y="92" width="20" height="58" rx="4" fill="#3eb3ab" fill-opacity="0.14"></rect>' +
+                        '<rect x="88" y="108" width="20" height="42" rx="4" fill="#f59e34" fill-opacity="0.14"></rect>' +
+                        '<rect x="120" y="78" width="20" height="72" rx="4" fill="#e4644b" fill-opacity="0.12"></rect>' +
+                        '<rect x="152" y="90" width="20" height="60" rx="4" fill="#6681e8" fill-opacity="0.14"></rect>' +
+                        '<rect x="184" y="66" width="20" height="84" rx="4" fill="#4b94e4" fill-opacity="0.12"></rect>' +
+                        '<rect x="216" y="96" width="20" height="54" rx="4" fill="#3eb3ab" fill-opacity="0.14"></rect>' +
+                        '<rect x="248" y="82" width="20" height="68" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
+                        '<rect x="280" y="58" width="20" height="92" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
+                        '<rect x="312" y="94" width="20" height="56" rx="4" fill="#6681e8" fill-opacity="0.13"></rect>' +
+                        '<rect x="344" y="112" width="20" height="38" rx="4" fill="#4b94e4" fill-opacity="0.13"></rect>' +
+                        '<rect x="376" y="88" width="20" height="62" rx="4" fill="#3eb3ab" fill-opacity="0.13"></rect>' +
+                        '<rect x="408" y="68" width="20" height="82" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
+                        '<rect x="440" y="84" width="20" height="66" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
+                        '<rect x="472" y="62" width="20" height="88" rx="4" fill="#6681e8" fill-opacity="0.14"></rect>' +
+                        '<rect x="504" y="96" width="20" height="54" rx="4" fill="#4b94e4" fill-opacity="0.12"></rect>' +
+                        '<rect x="536" y="80" width="20" height="70" rx="4" fill="#3eb3ab" fill-opacity="0.13"></rect>' +
+                        '<rect x="568" y="102" width="20" height="48" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
+                        '<rect x="600" y="88" width="20" height="62" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
+                        '<rect x="632" y="74" width="20" height="76" rx="4" fill="#6681e8" fill-opacity="0.13"></rect>' +
+                        '<path d="M24 124 C88 88, 152 108, 216 74 C280 44, 344 66, 408 52 C472 38, 536 62, 600 48 C632 42, 662 46, 730 34" fill="none" stroke="#4b94e4" stroke-opacity="0.24" stroke-width="3.2" stroke-linecap="round"></path>' +
+                        '<path d="M24 138 C88 114, 152 128, 216 102 C280 82, 344 90, 408 78 C472 70, 536 84, 600 74 C632 70, 662 72, 730 66" fill="none" stroke="#3eb3ab" stroke-opacity="0.2" stroke-width="2.6" stroke-linecap="round"></path>' +
+                        '<circle cx="216" cy="74" r="3" fill="#f59e34" fill-opacity="0.35"></circle>' +
+                        '<circle cx="408" cy="52" r="3" fill="#e4644b" fill-opacity="0.32"></circle>' +
+                        '<circle cx="600" cy="48" r="3" fill="#6681e8" fill-opacity="0.35"></circle>' +
                       '</g>' +
                     '</svg>' +
                   '</div>' +
                   '<div class="d-flex flex-column">' +
                     '<h5 class="modal-title mb-0" id="business-snapshot-title">Business Snapshot</h5>' +
                     '<div class="text-muted small" id="business-snapshot-subtitle">Yearly Reports</div>' +
-                    '<div class="business-snapshot-date-mode-grid mt-3">' +
-                      '<div class="business-snapshot-report-panel">' +
-                        '<div class="d-flex flex-wrap align-items-center gap-2">' +
-                          '<select class="form-select form-select-sm" id="business-snapshot-year" aria-label="Year"></select>' +
-                        '</div>' +
-                      '</div>' +
-                    '</div>' +
+                    '<div class="text-muted small mt-2">This year compared with the same period last year</div>' +
                   '</div>' +
-                  '<div class="ms-auto d-flex align-items-start gap-2 business-snapshot-header-actions">' +
+                  '<div class="ms-auto d-flex align-items-start gap-3 business-snapshot-header-actions">' +
+                    '<div class="business-snapshot-ltv-head is-hidden" id="business-snapshot-ltv-head">' +
+                      '<div class="business-snapshot-ltv-label">LTV</div>' +
+                      '<div class="business-snapshot-ltv-ring-wrap">' +
+                        '<div class="business-snapshot-ltv-ring" id="business-snapshot-chart-ltv-head" aria-hidden="true"></div>' +
+                        '<div class="business-snapshot-ltv-value" id="business-snapshot-ltv-head-value">&pound;&mdash;</div>' +
+                      '</div>' +
+                      '<div class="business-snapshot-ltv-delta" id="business-snapshot-ltv-head-delta"></div>' +
+                    '</div>' +
                     '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
                   '</div>' +
                 '</div>' +
@@ -13639,14 +13912,6 @@ const API = '';
             if ((e && (e.key || e.code)) === 'Escape') closeModal(snapshotModal);
           });
 
-          const yearSel = document.getElementById('business-snapshot-year');
-          if (yearSel) {
-            yearSel.addEventListener('change', function () {
-              selectedYear = String(yearSel.value || getCurrentYearString());
-              setSnapshotLoading();
-              fetchSnapshot(false);
-            });
-          }
           const footerSettingsLink = document.getElementById('business-snapshot-footer-settings-link');
           if (footerSettingsLink) {
             footerSettingsLink.addEventListener('click', function (e) {
@@ -13850,11 +14115,15 @@ const API = '';
       openBtn.addEventListener('click', function () {
         ensureModals();
         selectedYear = getCurrentYearString();
-        const yearSel = document.getElementById('business-snapshot-year');
-        if (yearSel) yearSel.value = selectedYear;
-        setSnapshotLoading();
         openModal(snapshotModal);
-        fetchSnapshot(false);
+        const cached = getCachedSnapshot(selectedYear);
+        if (cached && cached.ok === true) {
+          renderSnapshot(cached);
+          fetchSnapshot(false, { showLoading: false });
+          return;
+        }
+        setSnapshotLoading();
+        fetchSnapshot(false, { showLoading: false });
       });
     })();
 
@@ -15256,7 +15525,9 @@ const API = '';
             chart: { type: 'line', height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
             series: series,
             stroke: { width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
-            fill: { type: 'solid', opacity: 0 },
+            // ApexCharts 4.x can zero out stroke alpha when line fill opacity is 0.
+            // Keep opacity at 1 for visible lines; line charts still render without area fill.
+            fill: { type: 'solid', opacity: 1 },
             colors: colors,
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
