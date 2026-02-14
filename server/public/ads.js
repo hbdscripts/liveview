@@ -368,14 +368,25 @@
     el.innerHTML = '';
 
     try {
-      var rawMode = chartModeFromUiConfig(chartKey, 'combo') || 'combo';
+      var rawMode = chartModeFromUiConfig(chartKey, 'bar') || 'bar';
       var showEndLabels = rawMode === 'multi-line-labels';
       var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
       var palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab', '#ef4444', '#4b94e4']);
 
       var seriesCfg;
       var fillCfg;
-      if (mode === 'line') {
+      var profitSeries;
+      var barColors;
+      if (mode === 'bar') {
+        profitSeries = campaigns.map(function (c) {
+          var rev = Number((c && c.revenue) || 0);
+          var sp = Number((c && c.spend) || 0);
+          return rev - sp;
+        });
+        seriesCfg = [{ name: 'Profit', type: 'bar', data: profitSeries }];
+        fillCfg = { type: 'solid', opacity: 1 };
+        barColors = profitSeries.map(function (v) { return v >= 0 ? '#22c55e' : '#ef4444'; });
+      } else if (mode === 'line') {
         seriesCfg = [
           { name: 'Sales', type: 'line', data: salesSeries },
           { name: 'Spend', type: 'line', data: spendSeries },
@@ -390,7 +401,6 @@
         ];
         fillCfg = { type: ['gradient', 'gradient', 'gradient'], gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } };
       } else {
-        // Default: combo (Sales/Spend as area, ROAS as line)
         seriesCfg = [
           { name: 'Sales', type: 'area', data: salesSeries },
           { name: 'Spend', type: 'area', data: spendSeries },
@@ -399,19 +409,22 @@
         fillCfg = { type: ['gradient', 'gradient', 'solid'], gradient: { opacityFrom: 0.28, opacityTo: 0.08, stops: [0, 100] } };
       }
 
-      adsOverviewChart = new ApexCharts(el, {
+      var chartOpts = {
         chart: {
-          type: 'line',
+          type: mode === 'bar' ? 'bar' : 'line',
           height: 252,
           fontFamily: 'Inter, sans-serif',
           toolbar: { show: false },
         },
         series: seriesCfg,
-        colors: palette,
-        stroke: { width: [2.6, 2.4, 3], curve: 'smooth' },
+        colors: mode === 'bar' ? barColors : palette,
+        stroke: mode === 'bar' ? { width: 0 } : { width: [2.6, 2.4, 3], curve: 'smooth' },
         fill: fillCfg,
-        markers: { size: 3, hover: { size: 5 } },
-        dataLabels: showEndLabels ? {
+        plotOptions: mode === 'bar' ? {
+          bar: { horizontal: true, columnWidth: '70%', borderRadius: 4, distributed: true },
+        } : {},
+        markers: mode === 'bar' ? { size: 0 } : { size: 3, hover: { size: 5 } },
+        dataLabels: (showEndLabels && mode !== 'bar') ? {
           enabled: true,
           formatter: function(val, ctx) {
             try {
@@ -427,7 +440,14 @@
           background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
           offsetY: -3,
         } : { enabled: false },
-        xaxis: {
+        xaxis: mode === 'bar' ? {
+          categories: categories,
+          labels: {
+            style: { fontSize: '11px' },
+            formatter: function (v) { return fmtMoney(Number(v), currency); },
+          },
+          tickAmount: 6,
+        } : {
           categories: categories,
           labels: {
             style: { fontSize: '11px' },
@@ -436,7 +456,10 @@
             trim: true,
           },
         },
-        yaxis: [
+        yaxis: mode === 'bar' ? {
+          labels: { style: { fontSize: '11px' } },
+          forceNiceScale: true,
+        } : [
           {
             min: 0,
             forceNiceScale: true,
@@ -462,10 +485,11 @@
           }
         ],
         tooltip: {
-          shared: true,
-          intersect: false,
+          shared: mode !== 'bar',
+          intersect: mode === 'bar',
           y: {
             formatter: function (v, opts) {
+              if (mode === 'bar') return fmtMoney(v, currency);
               var idx = opts && opts.seriesIndex != null ? Number(opts.seriesIndex) : 0;
               return idx === 2 ? fmtRoas(v) : fmtMoney(v, currency);
             },
@@ -477,7 +501,8 @@
           markers: { radius: 10 },
         },
         grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-      });
+      };
+      adsOverviewChart = new ApexCharts(el, chartOpts);
       var renderPromise = adsOverviewChart.render();
       if (renderPromise && typeof renderPromise.then === 'function') {
         renderPromise.catch(function (err) {

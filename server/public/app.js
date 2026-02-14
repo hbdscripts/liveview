@@ -5025,7 +5025,12 @@ const API = '';
       });
 
       const chartHeight = Math.max(280, chartRows.length * 30);
-      el.innerHTML = '<div class="products-chart-plot" id="products-chart-plot"></div>';
+      var thumbsHtml = chartRows.map(function(row) {
+        var thumb = row.thumb ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" class="products-chart-thumb-img" loading="lazy">') : '<span class="products-chart-thumb-placeholder"></span>';
+        return '<div class="products-chart-thumb" title="' + escapeHtml(row.title) + '">' + thumb + '</div>';
+      }).join('');
+      el.innerHTML = '<div class="products-chart-plot" id="products-chart-plot"></div>' +
+        '<div class="products-chart-thumbs" id="products-chart-thumbs" aria-label="Product thumbnails">' + thumbsHtml + '</div>';
       const plotEl = document.getElementById('products-chart-plot');
       if (!plotEl) return;
       const categories = chartRows.map(function(row) { return row.titleShort; });
@@ -5121,7 +5126,7 @@ const API = '';
               rotate: -18,
               trim: true,
               hideOverlappingLabels: true,
-              formatter: function(value) { return value == null ? '—' : String(value); }
+              formatter: function() { return ''; }
             }
           },
           yaxis: {
@@ -5931,26 +5936,33 @@ const API = '';
         if (!Number.isFinite(n) || n <= 0) continue;
         entries.push({ iso: iso, value: n });
       }
-      if (!entries.length) return {};
-      var min = Infinity;
-      var max = -Infinity;
-      for (var j = 0; j < entries.length; j++) {
-        var v = entries[j].value;
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }
       var out = {};
-      for (var k = 0; k < entries.length; k++) {
-        var row = entries[k];
-        var weight = 1;
-        if (max > min) {
-          var t = (row.value - min) / (max - min);
-          if (!Number.isFinite(t)) t = 0;
-          weight = Math.max(0, Math.min(1, t));
+      if (entries.length) {
+        var min = Infinity;
+        var max = -Infinity;
+        for (var j = 0; j < entries.length; j++) {
+          var v = entries[j].value;
+          if (v < min) min = v;
+          if (v > max) max = v;
         }
-        out[row.iso] = weight;
+        for (var k = 0; k < entries.length; k++) {
+          var row = entries[k];
+          var weight = 1;
+          if (max > min) {
+            var t = (row.value - min) / (max - min);
+            if (!Number.isFinite(t)) t = 0;
+            weight = Math.max(0, Math.min(1, t));
+          }
+          out[row.iso] = weight;
+        }
       }
-      return out;
+      return new Proxy(out, {
+        get: function(target, prop) {
+          var v = target[prop];
+          if (v !== undefined && v !== null && Number.isFinite(Number(v))) return v;
+          return 0;
+        }
+      });
     }
 
     function setVectorMapTooltipContent(tooltip, html, text) {
@@ -9333,7 +9345,9 @@ const API = '';
             }
           }
           if (typeof window.kexoWaitForContainerDimensions === 'function') {
-            window.kexoWaitForContainerDimensions(plotEl, renderChannelsPie);
+            window.kexoWaitForContainerDimensions(plotEl, function() {
+              requestAnimationFrame(renderChannelsPie);
+            });
           } else { renderChannelsPie(); }
           return;
         }
@@ -9406,7 +9420,9 @@ const API = '';
         }
         }
         if (typeof window.kexoWaitForContainerDimensions === 'function') {
-          window.kexoWaitForContainerDimensions(plotEl, renderChannelsLineBar);
+          window.kexoWaitForContainerDimensions(plotEl, function() {
+            requestAnimationFrame(renderChannelsLineBar);
+          });
         } else { renderChannelsLineBar(); }
         return;
       }
@@ -9670,7 +9686,9 @@ const API = '';
             }
           }
           if (typeof window.kexoWaitForContainerDimensions === 'function') {
-            window.kexoWaitForContainerDimensions(plotEl, renderTypePie);
+            window.kexoWaitForContainerDimensions(plotEl, function() {
+              requestAnimationFrame(renderTypePie);
+            });
           } else { renderTypePie(); }
           return;
         }
@@ -9743,7 +9761,9 @@ const API = '';
         }
         }
         if (typeof window.kexoWaitForContainerDimensions === 'function') {
-          window.kexoWaitForContainerDimensions(plotEl, renderTypeLineBar);
+          window.kexoWaitForContainerDimensions(plotEl, function() {
+            requestAnimationFrame(renderTypeLineBar);
+          });
         } else { renderTypeLineBar(); }
         return;
       }
@@ -10457,6 +10477,8 @@ const API = '';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (rangeOverviewChart) { try { rangeOverviewChart.destroy(); } catch (_) {} rangeOverviewChart = null; }
         el.innerHTML = '';
+        var lbl = document.getElementById('sessions-overview-bucket-label');
+        if (lbl) { lbl.textContent = ''; lbl.setAttribute('aria-hidden', 'true'); }
         return;
       }
       var rows = payload && Array.isArray(payload.series) ? payload.series.slice() : [];
@@ -10466,6 +10488,8 @@ const API = '';
       }
       if (!rows.length) {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No data for this range</div>';
+        var lbl2 = document.getElementById('sessions-overview-bucket-label');
+        if (lbl2) { lbl2.textContent = ''; lbl2.setAttribute('aria-hidden', 'true'); }
         return;
       }
 
@@ -10540,6 +10564,15 @@ const API = '';
       });
       rangeOverviewChart.render();
       rangeOverviewChartKey = String(rangeKey || '');
+      var labelEl = document.getElementById('sessions-overview-bucket-label');
+      if (labelEl && PAGE === 'sales') {
+        var bucketLabel = bucket === 'hour' ? 'By hour' : bucket === 'month' ? 'By month' : 'By day';
+        labelEl.textContent = bucketLabel;
+        labelEl.removeAttribute('aria-hidden');
+      } else if (labelEl) {
+        labelEl.textContent = '';
+        labelEl.setAttribute('aria-hidden', 'true');
+      }
     }
 
     function refreshSessionsOverviewChart(options) {
