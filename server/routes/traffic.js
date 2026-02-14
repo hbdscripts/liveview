@@ -12,6 +12,7 @@ const fx = require('../fx');
 const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
+const { normalizeRangeKey } = require('../rangeKey');
 
 const SOURCE_LABELS = {
   google_organic: 'Google Organic',
@@ -267,11 +268,7 @@ function labelForTypeKey(key) {
 async function getTraffic(req, res) {
   const now = Date.now();
   const timeZone = store.resolveAdminTimeZone();
-  const rangeKeyRaw = typeof req.query.range === 'string' ? req.query.range.trim().toLowerCase() : '';
-  const allowedRange = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d']);
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(rangeKeyRaw);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(rangeKeyRaw);
-  const rangeKey = (allowedRange.has(rangeKeyRaw) || isDayKey || isRangeKey) ? rangeKeyRaw : 'today';
+  const rangeKey = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 

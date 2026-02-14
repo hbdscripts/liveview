@@ -1592,6 +1592,11 @@ const API = '';
     let lastSaleAt = null; // ms; authoritative timestamp of most recent sale we know about (Shopify truth preferred)
     let lastOnlineCount = null; // when dateRange !== 'live', we fetch active count so Online always shows real people online
     let onlineCountInFlight = false;
+    let onlineCountLastFetchedAt = 0;
+    let onlineCountPollTimer = null;
+    let onlineCountAuthBlocked = false;
+    const ONLINE_COUNT_POLL_MS = 15000;
+    const ONLINE_COUNT_RETRY_MS = 30000;
     let liveOnlineChart = null;
     let liveOnlineChartType = '';
     let liveOnlineChartFetchedAt = 0;
@@ -11481,23 +11486,52 @@ const API = '';
       return liveRefreshInFlight;
     }
 
+    function scheduleOnlineCountPoll(ms) {
+      if (onlineCountPollTimer) {
+        try { clearTimeout(onlineCountPollTimer); } catch (_) {}
+        onlineCountPollTimer = null;
+      }
+      if (onlineCountAuthBlocked) return;
+      var delay = (typeof ms === 'number' && isFinite(ms) && ms >= 0) ? ms : ONLINE_COUNT_POLL_MS;
+      onlineCountPollTimer = setTimeout(function() {
+        onlineCountPollTimer = null;
+        try { updateKpis(); } catch (_) {}
+      }, delay);
+    }
+
     function fetchOnlineCount() {
-      if (onlineCountInFlight) return;
+      if (onlineCountInFlight || onlineCountAuthBlocked) return;
       onlineCountInFlight = true;
       if (_fetchAbortControllers.onlineCount) { try { _fetchAbortControllers.onlineCount.abort(); } catch (_) {} }
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       _fetchAbortControllers.onlineCount = ac;
       fetch(API + '/api/sessions?filter=active&countOnly=1&_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store', signal: ac ? ac.signal : undefined })
-        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(r) {
+          if (!r || !r.ok) {
+            if (r && r.status === 401) onlineCountAuthBlocked = true;
+            return null;
+          }
+          return r.json();
+        })
         .then(function(data) {
           if (data != null && typeof data.count === 'number') {
             lastOnlineCount = data.count;
+            onlineCountLastFetchedAt = Date.now();
           }
         })
         .catch(function() {})
         .then(function() {
           onlineCountInFlight = false;
           if (_fetchAbortControllers.onlineCount === ac) _fetchAbortControllers.onlineCount = null;
+          if (onlineCountAuthBlocked) {
+            if (onlineCountPollTimer) {
+              try { clearTimeout(onlineCountPollTimer); } catch (_) {}
+              onlineCountPollTimer = null;
+            }
+          } else {
+            var nextMs = onlineCountLastFetchedAt ? ONLINE_COUNT_POLL_MS : ONLINE_COUNT_RETRY_MS;
+            scheduleOnlineCountPoll(nextMs);
+          }
           updateKpis();
         });
     }
@@ -11541,8 +11575,15 @@ const API = '';
         return;
       }
       // Online is real people online right now; show count regardless of date range (Today, Yesterday, etc.)
+      if (onlineCountAuthBlocked) {
+        // Session/auth is no longer valid (401). Stop auto-polling to avoid API spam.
+        showCount(lastOnlineCount != null ? lastOnlineCount : 0);
+        return;
+      }
+      var onlineCountIsFresh = onlineCountLastFetchedAt > 0 && (Date.now() - onlineCountLastFetchedAt) < ONLINE_COUNT_POLL_MS;
       if (lastOnlineCount != null) {
         showCount(lastOnlineCount);
+        if (!onlineCountIsFresh) fetchOnlineCount();
       } else {
         showSpinner();
         fetchOnlineCount();

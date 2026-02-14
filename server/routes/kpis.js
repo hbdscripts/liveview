@@ -5,17 +5,7 @@
 const Sentry = require('@sentry/node');
 const store = require('../store');
 const reportCache = require('../reportCache');
-
-const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
-
-function normalizeRangeKey(raw) {
-  const r = raw != null ? String(raw).trim().toLowerCase() : '';
-  if (!r) return 'today';
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
-  if (ALLOWED_RANGE.has(r) || isDayKey || isRangeKey) return r;
-  return 'today';
-}
+const { normalizeRangeKey } = require('../rangeKey');
 
 async function getKpis(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'kpis.get', data: { range: req?.query?.range } });
@@ -24,7 +14,7 @@ async function getKpis(req, res) {
   res.setHeader('Cache-Control', 'private, max-age=120');
   res.setHeader('Vary', 'Cookie');
 
-  const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '');
+  const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '', { defaultKey: 'today' });
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
   const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
 

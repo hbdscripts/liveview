@@ -12,16 +12,7 @@
 const { getDb, isPostgres } = require('../db');
 const store = require('../store');
 const fx = require('../fx');
-
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', 'month'];
-
-function normalizeRangeKey(raw) {
-  const r = raw != null ? String(raw).trim().toLowerCase() : '';
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
-  if (RANGE_KEYS.includes(r) || isDayKey || isRangeKey) return r;
-  return 'today';
-}
+const { normalizeRangeKey } = require('../rangeKey');
 
 function normalizeKind(raw) {
   const k = raw != null ? String(raw).trim().toLowerCase() : '';
@@ -53,7 +44,7 @@ async function getPageInsights(req, res) {
   res.setHeader('Vary', 'Cookie');
 
   const kind = normalizeKind(req.query && req.query.kind ? req.query.kind : 'entry');
-  const rangeKey = normalizeRangeKey(req.query && req.query.range ? req.query.range : 'today');
+  const rangeKey = normalizeRangeKey(req.query && req.query.range ? req.query.range : 'today', { defaultKey: 'today' });
   const timeZone = store.resolveAdminTimeZone();
   const { start, end } = store.getRangeBounds(rangeKey, Date.now(), timeZone);
 

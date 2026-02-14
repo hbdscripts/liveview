@@ -4,8 +4,8 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
+const { normalizeRangeKey } = require('../rangeKey');
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const LENGTH_INCHES = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const BOT_FILTER_SQL = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
 
@@ -74,15 +74,12 @@ async function getProductLandingSessionsCount(db, start, end) {
 async function getShopifyLengths(req, res) {
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
-  let range = (req.query.range || 'today').toLowerCase();
+  const range = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
 
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
 
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const timeZone = store.resolveAdminTimeZone();

@@ -51,10 +51,20 @@
     }
   }
 
+  function normalizeRangeKeyForApi(key) {
+    var k = (key == null ? '' : String(key)).trim().toLowerCase();
+    if (k === '7days') return '7d';
+    if (k === '14days') return '14d';
+    if (k === '30days') return '30d';
+    return k;
+  }
+
   function getRangeKey() {
     var el = document.getElementById('global-date-select');
     if (!el || !el.value) return 'today';
-    return String(el.value).trim().toLowerCase() || 'today';
+    var k = normalizeRangeKeyForApi(el.value);
+    if (!k || k === 'custom') return 'today';
+    return k;
   }
 
   function rowsStorageKey(tableId) {

@@ -6,16 +6,13 @@
 
 const Sentry = require('@sentry/node');
 const store = require('../store');
+const { normalizeRangeKey } = require('../rangeKey');
 
 function list(req, res, next) {
-  const range = req.query.range;
-  const rangeAllowed = ['today', 'yesterday', '3d', '7d', '14d', '30d', '1h', 'sales'];
-  const isDayKey = (v) => typeof v === 'string' && /^d:\d{4}-\d{2}-\d{2}$/.test(v);
-  const isRangeKey = (v) => typeof v === 'string' && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(v);
-  if (range != null && range !== '') {
-    if (!rangeAllowed.includes(range) && !isDayKey(range) && !isRangeKey(range)) {
-      return res.status(400).json({ error: 'Invalid range' });
-    }
+  const rangeRaw = req.query.range;
+  const rangeAllowed = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', '1h', 'sales']);
+  if (rangeRaw != null && rangeRaw !== '') {
+    const range = normalizeRangeKey(rangeRaw, { defaultKey: 'today', allowed: rangeAllowed });
     const timezone = req.query.timezone || req.query.timeZone || '';
     const limit = req.query.limit || '25';
     const offset = req.query.offset || '0';

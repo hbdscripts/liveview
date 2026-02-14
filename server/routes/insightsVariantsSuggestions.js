@@ -1,6 +1,7 @@
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
+const { normalizeRangeKey } = require('../rangeKey');
 const {
   VARIANTS_CONFIG_KEY,
   normalizeVariantsConfigV1,
@@ -179,11 +180,7 @@ function mergeSeedTablesIntoConfig(baseConfig, seedTables) {
 }
 
 function normalizeRange(rangeRaw) {
-  let range = (rangeRaw || '30d').toLowerCase();
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = '30d';
-  return range;
+  return normalizeRangeKey(rangeRaw || '30d', { defaultKey: '30d', allowed: RANGE_KEYS });
 }
 
 async function getInsightsVariantsSuggestions(req, res) {

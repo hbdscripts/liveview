@@ -16,8 +16,8 @@ const { getDb } = require('../db');
 const fx = require('../fx');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
+const { normalizeRangeKey } = require('../rangeKey');
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 10;
 /** Minimum landing sessions to include; avoids one-off visits dominating "worst" list. */
@@ -276,10 +276,7 @@ async function mapWithConcurrency(items, limit, fn) {
 }
 
 async function getWorstProducts(req, res) {
-  let range = (req.query.range || 'today').toString().trim().toLowerCase();
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
+  const range = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
 
   const pageSize = clampInt(req.query.pageSize ?? req.query.limit, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
@@ -318,17 +315,14 @@ async function getWorstProducts(req, res) {
 
       // Session landings (human-only). We'll derive conversion from Shopify truth line items per product handle.
       const tRows0 = Date.now();
-      const sessionRows = await db.all(
+      const landingAggRows = await db.all(
         `
-          SELECT s.first_path, s.first_product_handle, s.entry_url
+          SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS landings
           FROM sessions s
           WHERE s.started_at >= ? AND s.started_at < ?
             ${botFilterSql}
-            AND (
-              (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-              OR (s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != '')
-              OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-            )
+            AND s.first_product_handle IS NOT NULL AND TRIM(COALESCE(s.first_product_handle, '')) != ''
+          GROUP BY LOWER(TRIM(s.first_product_handle))
         `,
         [start, end]
       );
@@ -336,13 +330,11 @@ async function getWorstProducts(req, res) {
 
       const tAgg0 = Date.now();
       const landingsByHandle = new Map(); // handle -> landings
-      for (const r of sessionRows || []) {
-        const handle =
-          handleFromPath(r && r.first_path) ||
-          normalizeHandle(r && r.first_product_handle) ||
-          handleFromUrl(r && r.entry_url);
-        if (!handle) continue;
-        landingsByHandle.set(handle, (landingsByHandle.get(handle) || 0) + 1);
+      for (const r of landingAggRows || []) {
+        const handle = normalizeHandle(r && r.handle != null ? String(r.handle) : '');
+        const n = r && r.landings != null ? Number(r.landings) : 0;
+        if (!handle || !Number.isFinite(n)) continue;
+        landingsByHandle.set(handle, Math.max(0, Math.trunc(n)));
       }
 
       const handles = Array.from(landingsByHandle.entries())

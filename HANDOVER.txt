@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Expanded chart style controls in Settings)
+Last updated: 2026-02-14 (Range normalization + faster product landing stats)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,27 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Range key normalization is now consistent across key analytics APIs:
+  - Server endpoints now accept both UI-friendly keys (`7days`/`14days`/`30days`) and canonical keys (`7d`/`14d`/`30d`), plus `month` and custom keys (`d:YYYY-MM-DD`, `r:YYYY-MM-DD:YYYY-MM-DD`).
+  - Shared helper: `server/rangeKey.js` (with unit tests) to prevent drift between routes.
+  - Variants page now normalizes the header date selector before calling `/api/insights-variants` (`server/public/variants-page.js`).
+- Product landing session denominators are faster + more consistent:
+  - Migration: `server/migrations/044_backfill_first_product_handle.js` backfills `sessions.first_product_handle` from `first_path`/`entry_url` when missing.
+  - Ingest now derives `product_handle` from `/products/<handle>` paths when payload omits it (`server/store.js`), so new sessions persist landing handles.
+  - Product report routes now aggregate landings via SQL on `sessions.first_product_handle` (avoids scanning every landing session row):
+    - `server/routes/shopifyBestSellers.js`
+    - `server/routes/shopifyBestVariants.js`
+    - `server/routes/shopifyLeaderboard.js`
+    - `server/routes/worstProducts.js`
+    - `server/routes/shopifyWorstVariants.js`
+  - Geo product report no longer preloads all landing sessions; it aggregates only the selected country+handle pairs (`server/store.js` `getBestGeoProducts()`).
+
+2026-02-14 (latest)
+- Dashboard online KPI polling (`server/public/app.js`) is now 401-safe and rate-limited:
+  - Added explicit auth-fail guard for `/api/sessions?filter=active&countOnly=1` so unauthorized responses stop auto-polling instead of request-looping.
+  - Replaced immediate recursive polling with timed polling (`ONLINE_COUNT_POLL_MS`) plus stale/retry handling (`ONLINE_COUNT_RETRY_MS`) to prevent console/API spam during auth loss.
 
 2026-02-14 (latest)
 - Settings -> Layout -> Charts now includes expanded per-chart style controls (curve, stroke width, dash, marker size, fill opacity, grid dash, labels mode, toolbar toggle, animations toggle) in addition to colors/mode and raw Apex JSON.

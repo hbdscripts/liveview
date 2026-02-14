@@ -12,10 +12,10 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
+const { normalizeRangeKey } = require('../rangeKey');
 
 const API_VERSION = '2025-01';
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', '14d', '30d', 'month'];
 const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const variantCostCache = new Map();
 
@@ -163,14 +163,6 @@ function normalizeHandle(v) {
   if (!h) return null;
   // keep it conservative; Shopify handles are usually <= 255
   return h.slice(0, 128);
-}
-
-function normalizeRangeKey(raw) {
-  const r = raw != null ? String(raw).trim().toLowerCase() : '';
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
-  if (RANGE_KEYS.includes(r) || isDayKey || isRangeKey) return r;
-  return 'today';
 }
 
 function upgradeImgUrl(rawUrl, width) {

@@ -12,8 +12,7 @@ const salesTruth = require('../salesTruth');
 const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
-
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
+const { normalizeRangeKey } = require('../rangeKey');
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -56,10 +55,7 @@ function handleFromSessionRow(row) {
 
 async function getShopifyBestSellers(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
-  let range = (req.query.range || 'today').toLowerCase();
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
+  const range = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();
@@ -182,24 +178,25 @@ async function getShopifyBestSellers(req, res) {
         const clicksByHandle = new Map();
         if (handleSet.size) {
           const tLand0 = Date.now();
-          const landRows = await db.all(
+          const handleList = Array.from(handleSet.values());
+          const placeholders = handleList.map(() => '?').join(', ');
+          const rows = await db.all(
             `
-              SELECT s.first_path, s.first_product_handle, s.entry_url
+              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS clicks
               FROM sessions s
               WHERE s.started_at >= ? AND s.started_at < ?
                 ${botFilterSql}
-                AND (
-                  (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-                  OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-                  OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-                )
+                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                AND LOWER(TRIM(s.first_product_handle)) IN (${placeholders})
+              GROUP BY LOWER(TRIM(s.first_product_handle))
             `,
-            [start, end]
+            [start, end, ...handleList]
           );
-          for (const r of landRows || []) {
-            const h = handleFromSessionRow(r);
-            if (!h || !handleSet.has(h)) continue;
-            clicksByHandle.set(h, (clicksByHandle.get(h) || 0) + 1);
+          for (const r of rows || []) {
+            const h = normalizeHandle(r && r.handle != null ? String(r.handle) : '');
+            const n = r && r.clicks != null ? Number(r.clicks) : 0;
+            if (!h || !Number.isFinite(n)) continue;
+            clicksByHandle.set(h, Math.max(0, Math.trunc(n)));
           }
           msLandings = Date.now() - tLand0;
         }

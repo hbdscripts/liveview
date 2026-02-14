@@ -14,20 +14,11 @@ const store = require('../store');
 const reportCache = require('../reportCache');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
+const { normalizeRangeKey } = require('../rangeKey');
 
-const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 const SHOPIFY_API_VERSION = '2024-01';
 const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const variantCostCache = new Map();
-
-function normalizeRangeKey(raw) {
-  const r = raw != null ? String(raw).trim().toLowerCase() : '';
-  if (!r) return 'today';
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(r);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
-  if (ALLOWED_RANGE.has(r) || isDayKey || isRangeKey) return r;
-  return 'today';
-}
 
 function sleep(ms) {
   const n = Number(ms) || 0;

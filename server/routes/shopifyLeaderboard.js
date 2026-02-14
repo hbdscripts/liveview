@@ -21,8 +21,8 @@ const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
 const productMetaCache = require('../shopifyProductMetaCache');
+const { normalizeRangeKey } = require('../rangeKey');
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const MAX_META_PRODUCTS = 200;
 
 function clampInt(v, fallback, min, max) {
@@ -116,13 +116,10 @@ async function fetchProductMetaBatch(shop, token, productIds, { concurrency = 8 
 async function getShopifyLeaderboard(req, res) {
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
-  let range = (req.query.range || '7d').toLowerCase();
+  const range = normalizeRangeKey(req.query.range, { defaultKey: '7d' });
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = '7d';
 
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
   const topProducts = clampInt(req.query.topProducts, 10, 1, 20);
@@ -266,41 +263,28 @@ async function getShopifyLeaderboard(req, res) {
         const sessionsByType = new Map();
         if (handleSet.size) {
           const botFilterSql = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
-          const landRows = config.dbUrl
-            ? await db.all(
-              `
-                SELECT s.first_path, s.first_product_handle, s.entry_url
-                FROM sessions s
-                WHERE s.started_at >= $1 AND s.started_at < $2
-                  ${botFilterSql}
-                  AND (
-                    (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-                    OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-                    OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-                  )
-              `,
-              [start, end]
-            )
-            : await db.all(
-              `
-                SELECT s.first_path, s.first_product_handle, s.entry_url
-                FROM sessions s
-                WHERE s.started_at >= ? AND s.started_at < ?
-                  ${botFilterSql}
-                  AND (
-                    (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-                    OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-                    OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-                  )
-              `,
-              [start, end]
-            );
-          for (const r of landRows || []) {
-            const h = handleFromSessionRow(r);
-            if (!h || !handleSet.has(h)) continue;
-            sessionsByHandle.set(h, (sessionsByHandle.get(h) || 0) + 1);
+          const handleList = Array.from(handleSet.values());
+          const placeholders = handleList.map(() => '?').join(', ');
+          const rows = await db.all(
+            `
+              SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS sessions
+              FROM sessions s
+              WHERE s.started_at >= ? AND s.started_at < ?
+                ${botFilterSql}
+                AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                AND LOWER(TRIM(s.first_product_handle)) IN (${placeholders})
+              GROUP BY LOWER(TRIM(s.first_product_handle))
+            `,
+            [start, end, ...handleList]
+          );
+          for (const r of rows || []) {
+            const h = normalizeHandle(r && r.handle != null ? String(r.handle) : '');
+            const n = r && r.sessions != null ? Number(r.sessions) : 0;
+            if (!h || !Number.isFinite(n)) continue;
+            const count = Math.max(0, Math.trunc(n));
+            sessionsByHandle.set(h, count);
             const typeKey = typeByHandle.get(h) || null;
-            if (typeKey) sessionsByType.set(typeKey, (sessionsByType.get(typeKey) || 0) + 1);
+            if (typeKey) sessionsByType.set(typeKey, (sessionsByType.get(typeKey) || 0) + count);
           }
         }
 

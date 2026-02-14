@@ -921,7 +921,18 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
 
   const hasPurchased = existing?.has_purchased || (checkoutCompleted ? 1 : 0) || 0;
   const lastPath = payload.path ?? existing?.last_path ?? null;
-  const lastProductHandle = payload.product_handle ?? existing?.last_product_handle ?? null;
+  function normalizeProductHandle(v) {
+    const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+    return s ? s.slice(0, 128) : null;
+  }
+  function productHandleFromPath(pathValue) {
+    const raw = typeof pathValue === 'string' ? pathValue.trim() : '';
+    if (!raw) return null;
+    const m = raw.match(/^\/products\/([^/?#]+)/i);
+    return m && m[1] ? normalizeProductHandle(m[1]) : null;
+  }
+  const derivedLandingHandle = productHandleFromPath(lastPath);
+  const lastProductHandle = normalizeProductHandle(payload.product_handle) || derivedLandingHandle || normalizeProductHandle(existing?.last_product_handle) || null;
 
   let cartValue = payload.cart_value;
   if (cartValue === undefined && existing?.cart_value != null) cartValue = existing.cart_value;
@@ -2765,46 +2776,8 @@ async function getBestGeoProducts(start, end, options = {}) {
   }
 
   // Sessions used as denominator are now country + product handle specific.
+  // For performance, we aggregate after selecting the country+handle pairs we care about.
   const filterAlias = filter.sql.replace(/sessions\./g, 's.');
-  const sessionLandingRows = config.dbUrl
-    ? await db.all(
-      `
-        SELECT
-          s.country_code AS country_code,
-          s.first_path AS first_path,
-          s.first_product_handle AS first_product_handle,
-          s.entry_url AS entry_url
-        FROM sessions s
-        WHERE s.started_at >= $1 AND s.started_at < $2
-          AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-          ${filterAlias}
-          AND (
-            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-          )
-      `,
-      [start, end, ...filter.params]
-    )
-    : await db.all(
-      `
-        SELECT
-          s.country_code AS country_code,
-          s.first_path AS first_path,
-          s.first_product_handle AS first_product_handle,
-          s.entry_url AS entry_url
-        FROM sessions s
-        WHERE s.started_at >= ? AND s.started_at < ?
-          AND s.country_code IS NOT NULL AND s.country_code != '' AND s.country_code != 'XX'
-          ${filterAlias}
-          AND (
-            (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-            OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-            OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-          )
-      `,
-      [start, end, ...filter.params]
-    );
 
   // Truth orders -> country (shipping/billing).
   const orderRows = config.dbUrl
@@ -2950,14 +2923,78 @@ async function getBestGeoProducts(start, end, options = {}) {
   }
 
   const clicksByCountryHandle = new Map();
-  for (const row of sessionLandingRows || []) {
-    const cc = normalizeCountry(row && row.country_code);
-    if (!cc || cc === 'XX') continue;
-    const handle = handleFromSessionRow(row);
-    if (!handle) continue;
-    const pairKey = `${cc}|${handle}`;
-    if (!selectedCountryHandlePairs.has(pairKey)) continue;
-    clicksByCountryHandle.set(pairKey, (clicksByCountryHandle.get(pairKey) || 0) + 1);
+  if (selectedCountryHandlePairs.size) {
+    const selectedCountries = new Set();
+    const selectedHandles = new Set();
+    for (const pair of selectedCountryHandlePairs) {
+      const parts = String(pair || '').split('|');
+      const cc = parts && parts[0] ? String(parts[0]).trim().toUpperCase().slice(0, 2) : '';
+      const handle = parts && parts[1] ? normalizeHandle(String(parts[1])) : '';
+      if (cc && cc !== 'XX') selectedCountries.add(cc);
+      if (handle) selectedHandles.add(handle);
+    }
+    const countries = Array.from(selectedCountries.values()).filter(Boolean);
+    const handles = Array.from(selectedHandles.values()).filter(Boolean);
+    if (countries.length && handles.length) {
+      try {
+        const rows = config.dbUrl
+          ? await (async () => {
+              let p = 2 + (filter.params ? filter.params.length : 0);
+              const ccSql = countries.map(() => `$${++p}`).join(', ');
+              const handleSql = handles.map(() => `$${++p}`).join(', ');
+              return db.all(
+                `
+                  SELECT
+                    UPPER(TRIM(s.country_code)) AS country_code,
+                    LOWER(TRIM(s.first_product_handle)) AS handle,
+                    COUNT(*) AS clicks
+                  FROM sessions s
+                  WHERE s.started_at >= $1 AND s.started_at < $2
+                    AND s.country_code IS NOT NULL AND TRIM(s.country_code) != '' AND s.country_code != 'XX'
+                    ${filterAlias}
+                    AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                    AND UPPER(TRIM(s.country_code)) IN (${ccSql})
+                    AND LOWER(TRIM(s.first_product_handle)) IN (${handleSql})
+                  GROUP BY UPPER(TRIM(s.country_code)), LOWER(TRIM(s.first_product_handle))
+                `,
+                [start, end, ...filter.params, ...countries, ...handles]
+              );
+            })()
+          : await (async () => {
+              const ccSql = countries.map(() => '?').join(', ');
+              const handleSql = handles.map(() => '?').join(', ');
+              return db.all(
+                `
+                  SELECT
+                    UPPER(TRIM(s.country_code)) AS country_code,
+                    LOWER(TRIM(s.first_product_handle)) AS handle,
+                    COUNT(*) AS clicks
+                  FROM sessions s
+                  WHERE s.started_at >= ? AND s.started_at < ?
+                    AND s.country_code IS NOT NULL AND TRIM(s.country_code) != '' AND s.country_code != 'XX'
+                    ${filterAlias}
+                    AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+                    AND UPPER(TRIM(s.country_code)) IN (${ccSql})
+                    AND LOWER(TRIM(s.first_product_handle)) IN (${handleSql})
+                  GROUP BY UPPER(TRIM(s.country_code)), LOWER(TRIM(s.first_product_handle))
+                `,
+                [start, end, ...filter.params, ...countries, ...handles]
+              );
+            })();
+
+        for (const row of rows || []) {
+          const cc = normalizeCountry(row && row.country_code);
+          if (!cc || cc === 'XX') continue;
+          const handle = normalizeHandle(row && row.handle != null ? String(row.handle) : '');
+          if (!handle) continue;
+          const n = row && row.clicks != null ? Number(row.clicks) : 0;
+          if (!Number.isFinite(n)) continue;
+          const pairKey = `${cc}|${handle}`;
+          if (!selectedCountryHandlePairs.has(pairKey)) continue;
+          clicksByCountryHandle.set(pairKey, Math.max(0, Math.trunc(n)));
+        }
+      } catch (_) {}
+    }
   }
 
   const out = [];

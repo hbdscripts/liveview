@@ -13,8 +13,8 @@ const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
 const { sanitizeThumbUrl } = require('../shopifyProductMetaCache');
+const { normalizeRangeKey } = require('../rangeKey');
 
-const RANGE_KEYS = ['today', 'yesterday', '3d', '7d'];
 const MIN_LANDINGS = 3;
 const MAX_CANDIDATE_HANDLES = 200;
 const MAX_CANDIDATE_VARIANTS = 2000;
@@ -157,13 +157,10 @@ async function fetchProductsByHandle(shop, token, handles) {
 
 async function getShopifyWorstVariants(req, res) {
   const shop = (req.query.shop || '').trim().toLowerCase();
-  let range = (req.query.range || 'today').toLowerCase();
+  const range = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
-  const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
-  const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
-  if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const db = getDb();
@@ -206,27 +203,25 @@ async function getShopifyWorstVariants(req, res) {
         msReconcile = Date.now() - tReconcile0;
 
         const tRows0 = Date.now();
-        const sessionRows = await db.all(
+        const landingsRows = await db.all(
           `
-            SELECT s.first_path, s.first_product_handle, s.entry_url
+            SELECT LOWER(TRIM(s.first_product_handle)) AS handle, COUNT(*) AS landings
             FROM sessions s
             WHERE s.started_at >= ? AND s.started_at < ?
               AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)
-              AND (
-                (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
-                OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
-                OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
-              )
+              AND s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != ''
+            GROUP BY LOWER(TRIM(s.first_product_handle))
           `,
           [start, end]
         );
         msRows = Date.now() - tRows0;
 
         const landingsByHandle = new Map();
-        for (const r of sessionRows || []) {
-          const h = handleFromSessionRow(r);
-          if (!h) continue;
-          landingsByHandle.set(h, (landingsByHandle.get(h) || 0) + 1);
+        for (const r of landingsRows || []) {
+          const h = normalizeHandle(r && r.handle != null ? String(r.handle) : '');
+          const n = r && r.landings != null ? Number(r.landings) : 0;
+          if (!h || !Number.isFinite(n)) continue;
+          landingsByHandle.set(h, Math.max(0, Math.trunc(n)));
         }
 
         const handles = Array.from(landingsByHandle.entries())
