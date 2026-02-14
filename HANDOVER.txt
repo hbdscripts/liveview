@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Page header connector darken, Settings header removed)
+Last updated: 2026-02-13 (Footer grid: logo truly centered)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -258,6 +258,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-13 (latest)
+- Footer: bar uses grid 1fr auto 1fr (not flex) so logo is truly centered; diagnostics badges below now align with logo.
 - Page header: connector lines darkened (25% accent mix, same shades); Settings page no longer shows page-header mb-3 div (Administration/Settings title row removed).
 - Footer: back-to-top before settings; formatRelative caps at days (fixes "491952h ago"); diagnostics strip with Kexo Pixel Online/Offline, Google Ads Connected/Offline; uses kexo-status-indicator--online/offline (matches header Online dot). NOTE: Future integrations (e.g. new ad platforms, webhooks) should appear in this footer diagnostics strip.
 2026-02-13 (latest)
