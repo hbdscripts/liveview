@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Footer restructure + Settings date hide)
+Last updated: 2026-02-13 (Sticky UX: shadow, drag-scroll, shake fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Sticky table UX: shadow right-edge only (no top/left/bottom bleed); drag-scroll works in Chrome device emulation when scrollbar hidden (touch events run our handler); window resize debounced refresh for is-drag-scroll/kexo-sticky-scrolled; transform/backface-visibility on sticky cells to reduce scroll jitter.
 2026-02-13 (latest)
 - Footer restructure:
   - Mobile: refresh | logo | back to top only (no last sale, eye, sound). Last sale + eye desktop-only.

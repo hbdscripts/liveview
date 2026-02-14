@@ -743,7 +743,8 @@ const API = '';
 
         wrap.addEventListener('pointerdown', function(e) {
           if (!e || e.button !== 0) return;
-          if ((e.pointerType || '') === 'touch') return; // mobile already supports native swipe
+          var scrollbarHidden = (getComputedStyle(wrap).getPropertyValue('scrollbar-width') || '').trim() === 'none';
+          if ((e.pointerType || '') === 'touch' && !scrollbarHidden) return; // native swipe when scrollbar visible; when hidden (mobile/emulation), run our drag
           if (!wrap.classList.contains('is-drag-scroll')) return;
           if (shouldIgnoreTarget(e.target)) return;
           dragging = true;
@@ -792,6 +793,19 @@ const API = '';
       function run() {
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
+
+      var resizeTid;
+      function refreshAll() {
+        document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) {
+          if (wrap.getAttribute('data-drag-scroll-bound') !== '1') return;
+          setDragEnabledClass(wrap);
+          if (!shouldSkipStickyScrollClass(wrap)) updateStickyScrollClass(wrap);
+        });
+      }
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTid);
+        resizeTid = setTimeout(refreshAll, 80);
+      });
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
