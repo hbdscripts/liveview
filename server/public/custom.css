@@ -2809,8 +2809,8 @@ body[data-page="settings"] .kexo-page-header-date-col {
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 25px;
-    padding: 0 25px;
+    gap: 20px;
+    padding: 0;
     flex: 1 1 auto;
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::before,
@@ -2847,6 +2847,16 @@ body[data-page="settings"] .kexo-page-header-date-col {
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col > .page-title {
     margin: 0;
     flex: 0 0 auto;
+    display: block;
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+    font-weight: 500;
+    color: #555;
+  }
+  .page-header .row.align-items-center.kexo-page-header-layout-triple .page-pretitle {
+    color: #555;
   }
 }
 
