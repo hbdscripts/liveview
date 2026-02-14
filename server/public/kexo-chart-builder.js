@@ -68,50 +68,68 @@
     if (!el || typeof cb !== 'function') return;
     maxWaitMs = typeof maxWaitMs === 'number' && maxWaitMs > 0 ? maxWaitMs : DIMENSION_MAX_WAIT_MS;
     var start = Date.now();
+    var done = false;
+    var ro = null;
+    var t0 = null;
+    var tMax = null;
+
+    function cleanup() {
+      try { if (t0) clearTimeout(t0); } catch (_) {}
+      try { if (tMax) clearTimeout(tMax); } catch (_) {}
+      t0 = null;
+      tMax = null;
+      try { if (ro) ro.disconnect(); } catch (_) {}
+      ro = null;
+    }
+
+    function finish() {
+      if (done) return;
+      done = true;
+      cleanup();
+      try { cb(); } catch (_) {}
+    }
 
     function check() {
+      if (done) return;
       try {
         var w = el.offsetWidth || 0;
         var h = el.offsetHeight || 0;
         if (w > 0 && h > 0) {
-          cb();
+          finish();
           return;
         }
         if (Date.now() - start >= maxWaitMs) {
-          cb();
+          finish();
           return;
         }
         setTimeout(check, DIMENSION_POLL_MS);
       } catch (_) {
-        cb();
+        finish();
       }
     }
 
     if (typeof ResizeObserver !== 'undefined') {
       try {
-        var ro = new ResizeObserver(function () {
+        ro = new ResizeObserver(function () {
+          if (done) return;
           var w = el.offsetWidth || 0;
           var h = el.offsetHeight || 0;
           if (w > 0 && h > 0) {
-            try { ro.disconnect(); } catch (_) {}
-            cb();
+            finish();
           }
         });
         ro.observe(el);
-        setTimeout(function () {
+        t0 = setTimeout(function () {
+          if (done) return;
           try {
             var w = el.offsetWidth || 0;
             var h = el.offsetHeight || 0;
             if (w > 0 && h > 0) {
-              ro.disconnect();
-              cb();
+              finish();
             }
           } catch (_) {}
         }, 0);
-        setTimeout(function () {
-          try { ro.disconnect(); } catch (_) {}
-          cb();
-        }, maxWaitMs);
+        tMax = setTimeout(function () { finish(); }, maxWaitMs);
         return;
       } catch (_) {}
     }

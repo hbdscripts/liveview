@@ -594,7 +594,7 @@ const API = '';
       if (PAGE === 'abandoned-carts') {
         abandonedCartsChartKey = '';
         abandonedCartsTopCacheKey = '';
-        try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
+        try { refreshAbandonedCarts({ force: false }); } catch (_) { try { fetchSessions(); } catch (_) {} }
       }
     }
 
@@ -1601,6 +1601,12 @@ const API = '';
     let abandonedCartsChart = null;
     let abandonedCartsChartKey = '';
     let abandonedCartsChartInFlight = null;
+    let abandonedCartsChartInFlightKey = '';
+    let abandonedCartsChartReqSeq = 0;
+    let abandonedCartsSeriesCache = {};
+    let abandonedCartsSeriesCacheOrder = [];
+    let abandonedCartsSeriesPrefetchInFlight = {};
+    const ABANDONED_CARTS_SERIES_CACHE_MAX = 12;
     let abandonedCartsTopCacheKey = '';
     let abandonedCartsTopCountriesCache = null;
     let abandonedCartsTopCountryProductsCache = null;
@@ -10703,15 +10709,18 @@ const API = '';
       var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
       var showEndLabels = rawMode === 'multi-line-labels';
       var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
-      var palette = chartColorsFromUiConfig(chartKey, ['#ef4444']);
-      var colors = [palette[0] || '#ef4444'];
+      var palette = chartColorsFromUiConfig(chartKey, ['#ef4444', '#f59e34']);
+      var cartColor = palette[0] || '#ef4444';
+      var checkoutColor = palette[1] || '#f59e34';
+      var isCheckout = normalizeAbandonedMode(abandonedMode) === 'checkout';
+      var colors = [isCheckout ? checkoutColor : cartColor];
 
       try {
         abandonedCartsChart = window.kexoRenderApexChart({
           chartKey: chartKey,
           containerEl: el,
           categories: categories,
-          series: [{ name: 'Abandoned', data: nums }],
+          series: [{ name: abandonedModeDisplayLabel(abandonedMode), data: nums }],
           mode: mode,
           colors: colors,
           height: 280,
@@ -10723,32 +10732,98 @@ const API = '';
       setAbandonedCartsChartTitle(data && data.totalAbandonedGbp != null ? Number(data.totalAbandonedGbp) : null);
     }
 
+    function abandonedCartsSeriesCachePut(cacheKey, data) {
+      var k = String(cacheKey || '');
+      if (!k) return;
+      if (data == null) return;
+      abandonedCartsSeriesCache[k] = data;
+      var idx = abandonedCartsSeriesCacheOrder.indexOf(k);
+      if (idx >= 0) abandonedCartsSeriesCacheOrder.splice(idx, 1);
+      abandonedCartsSeriesCacheOrder.push(k);
+      while (abandonedCartsSeriesCacheOrder.length > ABANDONED_CARTS_SERIES_CACHE_MAX) {
+        var drop = abandonedCartsSeriesCacheOrder.shift();
+        if (drop) {
+          try { delete abandonedCartsSeriesCache[drop]; } catch (_) { abandonedCartsSeriesCache[drop] = null; }
+        }
+      }
+    }
+
+    function prefetchAbandonedCartsSeries(rangeKey, mode) {
+      try {
+        if (PAGE !== 'abandoned-carts') return null;
+        var rk = String(rangeKey || '').trim().toLowerCase();
+        if (!rk) return null;
+        var m = normalizeAbandonedMode(mode);
+        var cacheKey = rk + '|' + m;
+        if (abandonedCartsSeriesCache && abandonedCartsSeriesCache[cacheKey]) return null;
+        if (abandonedCartsSeriesPrefetchInFlight && abandonedCartsSeriesPrefetchInFlight[cacheKey]) return abandonedCartsSeriesPrefetchInFlight[cacheKey];
+
+        var url =
+          API + '/api/abandoned-carts/series?range=' + encodeURIComponent(rk) +
+          '&timezone=' + encodeURIComponent(tz) +
+          '&mode=' + encodeURIComponent(m) +
+          '&_=' + Date.now();
+
+        abandonedCartsSeriesPrefetchInFlight[cacheKey] = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(data) {
+            if (data != null) abandonedCartsSeriesCachePut(cacheKey, data);
+            return data;
+          })
+          .catch(function() { return null; })
+          .finally(function() {
+            try { delete abandonedCartsSeriesPrefetchInFlight[cacheKey]; } catch (_) { abandonedCartsSeriesPrefetchInFlight[cacheKey] = null; }
+          });
+
+        return abandonedCartsSeriesPrefetchInFlight[cacheKey];
+      } catch (_) {
+        return null;
+      }
+    }
+
     function refreshAbandonedCartsChart(options) {
       var el = document.getElementById('abandoned-carts-chart');
       if (!el) return Promise.resolve(null);
       options = options || {};
       var force = !!options.force;
       var rangeKey = normalizeRangeKeyForApi(dateRange);
-      var cacheKey = rangeKey + '|' + String(normalizeAbandonedMode(abandonedMode));
+      var modeKey = String(normalizeAbandonedMode(abandonedMode));
+      var cacheKey = rangeKey + '|' + modeKey;
       if (!force && abandonedCartsChartKey === cacheKey && abandonedCartsChart) return Promise.resolve(null);
-      if (abandonedCartsChartInFlight) return abandonedCartsChartInFlight;
+      if (!force && abandonedCartsSeriesCache && abandonedCartsSeriesCache[cacheKey]) {
+        try { renderAbandonedCartsChart(abandonedCartsSeriesCache[cacheKey], cacheKey); } catch (_) {}
+        try { prefetchAbandonedCartsSeries(rangeKey, modeKey === 'checkout' ? 'cart' : 'checkout'); } catch (_) {}
+        return Promise.resolve(abandonedCartsSeriesCache[cacheKey]);
+      }
+      if (abandonedCartsChartInFlight && abandonedCartsChartInFlightKey === cacheKey) return abandonedCartsChartInFlight;
 
       var url =
         API + '/api/abandoned-carts/series?range=' + encodeURIComponent(rangeKey) +
         '&timezone=' + encodeURIComponent(tz) +
-        '&mode=' + encodeURIComponent(normalizeAbandonedMode(abandonedMode)) +
+        '&mode=' + encodeURIComponent(modeKey) +
         '&_=' + Date.now();
 
-      abandonedCartsChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
+      var reqSeq = ++abandonedCartsChartReqSeq;
+      abandonedCartsChartInFlightKey = cacheKey;
+      var p = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
+          if (reqSeq !== abandonedCartsChartReqSeq) return null;
           renderAbandonedCartsChart(data || null, cacheKey);
+          if (data != null) abandonedCartsSeriesCachePut(cacheKey, data);
+          try { prefetchAbandonedCartsSeries(rangeKey, modeKey === 'checkout' ? 'cart' : 'checkout'); } catch (_) {}
           return data;
         })
         .catch(function() { return null; })
-        .finally(function() { abandonedCartsChartInFlight = null; });
+        .finally(function() {
+          if (abandonedCartsChartInFlight === p) {
+            abandonedCartsChartInFlightKey = '';
+            abandonedCartsChartInFlight = null;
+          }
+        });
 
-      return abandonedCartsChartInFlight;
+      abandonedCartsChartInFlight = p;
+      return p;
     }
 
     function setGridTableBodyMessage(tbody, message) {

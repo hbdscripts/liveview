@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Abandoned Carts header mode toggle + ApexCharts line visibility)
+Last updated: 2026-02-14 (Abandoned Carts mode UX + ApexCharts stroke/animation fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -316,6 +316,7 @@ Ops/reliability:
 - Backend: added `/api/abandoned-carts/*` endpoints and a cleanup marker pass to set `is_abandoned/abandoned_at` reliably; fixed Postgres `upsertSession` to preserve abandonment markers.
 - Settings/Diagnostics: new chart + table defaults added in `server/routes/settings.js`; definitions added in `server/trackerDefinitions.js`.
 - Charts: fixed “dots but no line” by enforcing visible strokes for line charts (`stroke.show=true` and line `fill.opacity=1`).
+- Abandoned Carts: chart line color differs by mode (carts vs checkouts) and the series is prefetched/cached so mode switching feels instant.
 
 2026-02-14 (latest)
 - Side panel: padding changed to `0 1.05rem 1.05rem` (no top padding).
