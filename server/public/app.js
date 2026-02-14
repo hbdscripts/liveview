@@ -15363,6 +15363,43 @@ const API = '';
         syncDropdownOverflowState();
         updateMobileNavDropdownTop();
       })();
+      (function initNavDropdownAccent() {
+        var navList = document.querySelector('.kexo-desktop-nav-list');
+        if (!navList) return;
+        var styleEl = document.getElementById('kexo-nav-dropdown-accent');
+        if (!styleEl) {
+          styleEl = document.createElement('style');
+          styleEl.id = 'kexo-nav-dropdown-accent';
+          styleEl.textContent = [
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link,',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .dropdown-menu {',
+            '  --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  color: #fff !important;',
+            '}',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link > .kexo-nav-svg,',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link > i[class*="fa-"] {',
+            '  opacity: 1 !important;',
+            '  color: #fff !important;',
+            '}',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .dropdown-item,',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .dropdown-item .kexo-nav-svg,',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .dropdown-item .kexo-nav-dropdown-item-icon {',
+            '  color: #fff !important;',
+            '}'
+          ].join('\n');
+          document.head.appendChild(styleEl);
+        }
+        navList.addEventListener('show.bs.dropdown', function(e) {
+          var navItem = (e.target && e.target.closest) ? e.target.closest('.nav-item.dropdown') : null;
+          if (navItem) navItem.classList.add('kexo-dropdown-open');
+        });
+        navList.addEventListener('hide.bs.dropdown', function(e) {
+          var navItem = (e.target && e.target.closest) ? e.target.closest('.nav-item.dropdown') : null;
+          if (navItem) navItem.classList.remove('kexo-dropdown-open');
+        });
+      })();
       (function initStripDropdownAlign() {
         function positionStripDropdown(menu) {
           if (!menu || !menu.classList.contains('kexo-strip-dropdown-align')) return;
