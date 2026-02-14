@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Abandoned Carts mode UX + ApexCharts stroke/animation fixes)
+Last updated: 2026-02-14 (Mobile nav dropdown accent styling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -292,7 +292,7 @@ Ops/reliability:
 - Dashboard sparkline growth tone reverted to the original KEXO mapping (`kpiDeltaToneColor('up')` / accent-2), replacing the temporary hardcoded green override.
 
 2026-02-14 (latest)
-- Mobile main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): full-width fixed positioning with JS-calculated top (--kexo-mobile-nav-dropdown-top from nav bar bottom). Seam hidden (margin-top:-1px; no top border). Caret chevron hidden. Focus/open + dropdown-item focus/active now use the menu accent color as background (icon/text white). Dropdown items: 16px font, 10px padding, centered. Arrow icons hidden. Close on scroll (sticky header).
+- Mobile main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): full-width fixed positioning with JS-calculated top (--kexo-mobile-nav-dropdown-top from nav bar bottom). Seam hidden (margin-top:-1px; no top border). Caret chevron hidden. Dropdown menu background matches the tab accent (`--kexo-accent`); dropdown items render with white text and no “sticky” highlight/background; active underline (::after) is disabled on mobile. Arrow icons hidden. Close on scroll (sticky header).
 2026-02-14 (latest)
 - Dashboard overview KPI sparklines now render with sharper/angular peaks (`curve: straight`) instead of smooth curves.
 - Dashboard KPI sparkline growth tone now uses `#0b913d` (accent-2 override for sparkline up-tone).

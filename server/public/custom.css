@@ -2417,6 +2417,8 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
     transform: none !important;
     margin-top: -1px;
     border-top: 0 !important;
+    /* Match the tab/icon accent color */
+    background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
   }
   .kexo-desktop-nav-list .dropdown-item,
   .kexo-desktop-nav-settings .dropdown-item {
@@ -2425,6 +2427,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
     padding-top: 10px !important;
     padding-bottom: 10px !important;
     color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
+    background: none !important;
     text-align: center;
     width: 100%;
     display: block;
@@ -2432,37 +2435,50 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   .kexo-desktop-nav-list .dropdown-menu .kexo-nav-dropdown-item-icon {
     display: none !important;
   }
-  /* Mobile: focus/open uses the accent (icon) color, icon/text turns white */
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus-visible,
+  /* Mobile: remove grey hover/focus bg (we style open state) */
+  .kexo-desktop-nav-list .nav-link:hover,
+  .kexo-desktop-nav-list .nav-link:focus,
+  .kexo-desktop-nav-list .nav-link:focus-visible,
+  .kexo-desktop-nav-settings .nav-link:hover,
+  .kexo-desktop-nav-settings .nav-link:focus,
+  .kexo-desktop-nav-settings .nav-link:focus-visible {
+    background: transparent !important;
+  }
+  /* Mobile: open uses the accent (icon) color, icon/text turns white */
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link[aria-expanded="true"] {
     background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
     color: #fff !important;
   }
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus > .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus-visible > .kexo-nav-svg,
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link[aria-expanded="true"] > .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus > i[class*="fa-"],
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link:focus-visible > i[class*="fa-"],
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link[aria-expanded="true"] > i[class*="fa-"] {
     color: #fff !important;
   }
+  /* Mobile: main-nav dropdown items sit on accent background (no per-item highlight) */
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:hover,
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:focus,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:focus-visible,
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:active,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:focus,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:active {
-    background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item.active {
+    background: none !important;
     color: #fff !important;
   }
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:focus .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:active .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:focus .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:active .kexo-nav-svg,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:focus .kexo-nav-dropdown-item-icon,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-item:active .kexo-nav-dropdown-item-icon,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:focus .kexo-nav-dropdown-item-icon,
-  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:active .kexo-nav-dropdown-item-icon {
-    color: #fff !important;
+  /* Mobile: keep date/settings dropdown items from “sticking” highlighted */
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:hover,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:focus,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:focus-visible,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item:active,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-settings .dropdown-item.active {
+    background: none !important;
+  }
+  /* Mobile: remove active ::after underline/border indicator */
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list > .nav-item::after,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list > .nav-item.active::after,
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-item.active::after {
+    content: none !important;
+    display: none !important;
+    border: 0 !important;
+    height: 0 !important;
   }
   /* Mobile: hide Bootstrap caret chevron on main nav toggles */
   .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
