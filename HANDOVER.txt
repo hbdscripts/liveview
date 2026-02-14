@@ -291,7 +291,7 @@ Ops/reliability:
   - Seed master: `smlsites@gmail.com` (bootstrap to `active/master` on first email-based session).
   - Added local email/password login + signup on `/app/login` (`/auth/local/register`, `/auth/local/login`).
   - Added master-only Admin → Users page (`/admin`) with Active/Pending tabs + Approve/Deny/Promote-to-master actions (`/api/admin/...`).
-  - Top settings dropdown now contains **Admin** + **Business Snapshot** items, shown only for masters (client gates `.kexo-admin-only` via `GET /api/me`).
+  - Top settings dropdown now contains **Admin** + **Business Snapshot** items, shown only for masters (client gates `.kexo-admin-only` via `GET /api/me`; server gates `GET /api/business-snapshot` via `requireMaster`).
 
 2026-02-14 (latest)
 - Active dropdown item (desktop): font-weight 700 + ::after 3px accent border at bottom when dropdown is open. Uses `var(--kexo-accent)` for icon colour.

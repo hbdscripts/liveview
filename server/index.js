@@ -154,7 +154,7 @@ app.use('/api/abandoned-carts', abandonedCarts);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
-app.get('/api/business-snapshot', businessSnapshot.getBusinessSnapshot);
+app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.getBusinessSnapshot);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
