@@ -9,6 +9,7 @@ const config = require('./config');
 const fx = require('./fx');
 const salesTruth = require('./salesTruth');
 const productMetaCache = require('./shopifyProductMetaCache');
+const shopifyLandingMeta = require('./shopifyLandingMeta');
 const shopifyQl = require('./shopifyQl');
 const reportCache = require('./reportCache');
 
@@ -1304,7 +1305,7 @@ async function listSessions(filter) {
   sql += ' ORDER BY s.last_seen DESC';
   const rows = await db.all(sql, params);
 
-  return rows.map(r => {
+  const sessions = rows.map(r => {
     const countryCode = (r.session_country || r.country_code || 'XX').toUpperCase().slice(0, 2);
     const out = { ...r, country_code: countryCode };
     delete out.session_country;
@@ -1318,6 +1319,8 @@ async function listSessions(filter) {
     out.recovered_at = r.recovered_at != null ? Number(r.recovered_at) : null;
     return out;
   });
+  await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
+  return sessions;
 }
 
 /** Count of sessions currently "online" (active window: last_seen and started_at within config windows). Used for Online display regardless of date range. */
@@ -1806,6 +1809,7 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
     return out;
   });
 
+  await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
   return { sessions, total };
 }
 

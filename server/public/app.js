@@ -2077,60 +2077,18 @@ const API = '';
       }).join(' ');
     }
 
-    function productTitleFromPath(path) {
-      if (typeof path !== 'string') return null;
-      const m = path.trim().match(/^\/products\/([^/?#]+)/i);
-      if (!m) return null;
-      return titleCaseFromHandle(m[1]);
-    }
-
-    /** For display: /collections/bracelets -> Bracelets, /products/foo -> title-cased product name, else null. */
-    function friendlyLabelFromPath(path) {
-      if (typeof path !== 'string') return null;
-      const p = path.trim();
-      const pNorm = p.replace(/\/+$/, '') || '/';
-      if (pNorm === '/pages/order-tracker') return 'Order Tracker';
-      if (pNorm === '/pages/contact') return 'Contact';
-      if (pNorm === '/account/login' || pNorm.startsWith('/account/login/')) return 'Login';
-      if (pNorm === '/orders' || pNorm.startsWith('/orders/')) return 'Viewed Order';
-      const collectionsMatch = p.match(/^\/collections\/([^/?#]+)/i);
-      if (collectionsMatch) return titleCaseFromHandle(collectionsMatch[1]);
-      const productsMatch = p.match(/^\/products\/([^/?#]+)/i);
-      if (productsMatch) return titleCaseFromHandle(productsMatch[1]);
-      return null;
-    }
-
+    /** Sort key for landing column: use server-provided landing_title, else path. */
     function landingSortKey(s) {
+      var title = (s && s.landing_title != null) ? String(s.landing_title).trim() : '';
+      if (title) return title;
       function trimStr(v) { return v != null ? String(v).trim() : ''; }
-      function normalizeToPath(pathVal, handleVal) {
-        var path = trimStr(pathVal);
-        var handle = trimStr(handleVal);
-        if (!path && handle) path = '/products/' + handle.replace(/^\/+/, '');
-        if (path && !path.startsWith('/')) path = '/' + path;
-        try {
-          if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/';
-        } catch (_) {}
-        path = (path || '').split('#')[0].split('?')[0];
-        path = path.replace(/\/+$/, '');
-        if (path === '') path = '/';
-        return path;
-      }
-      function collapseKey(path) {
-        if (!path) return '';
-        var pathNorm = path.replace(/\/+$/, '');
-        if (path.indexOf('/checkouts') === 0) return '/checkouts';
-        if (pathNorm === '/cart') return '/cart';
-        if (path === '/orders' || pathNorm === '/orders' || path.indexOf('/orders/') === 0) return '/orders';
-        return path;
-      }
-
-      var path = normalizeToPath(s && s.first_path, s && s.first_product_handle);
-      var key = collapseKey(path);
-      if (!key) return '';
-      if (key === '/') return 'Home';
-      if (key === '/orders') return 'Viewed Order';
-      if (key === '/cart' || key === '/checkouts') return 'Cart';
-      return friendlyLabelFromPath(key) || key;
+      var path = trimStr(s && s.first_path);
+      var handle = trimStr(s && s.first_product_handle);
+      if (!path && handle) path = '/products/' + handle.replace(/^\/+/, '');
+      if (path && !path.startsWith('/')) path = '/' + path;
+      try { if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/'; } catch (_) {}
+      path = (path || '').split('#')[0].split('?')[0].replace(/\/+$/, '') || '/';
+      return path;
     }
 
     function visitsCount(s) {
@@ -2157,17 +2115,16 @@ const API = '';
         return m && m[1] ? normalizeHandle(m[1]) : '';
       }
 
-      // Prefer the explicit product_handle fields; fall back to parsing /products/<handle> from paths.
+      var label = (s && s.landing_title != null) ? String(s.landing_title).trim() : '';
       var handle = normalizeHandle(s && s.first_product_handle) ||
                    normalizeHandle(s && s.last_product_handle) ||
                    handleFromPath(s && s.first_path) ||
                    handleFromPath(s && s.last_path);
       var mainBase = getMainBaseUrl();
       var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
+
       if (handle && productUrl) {
-        var title = '';
-        try { title = friendlyLabelFromPath('/products/' + handle) || handle; } catch (_) { title = handle; }
-        title = String(title || '').trim() || handle;
+        var title = label || handle;
         return '<div class="last-action-cell">' +
           '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
             ' data-product-handle="' + escapeHtml(handle) + '"' +
@@ -2176,25 +2133,13 @@ const API = '';
         '</div>';
       }
 
-      // Fallback: show a friendly landing label with no external link and no thumbnail.
-      var hasFirst = (s && s.first_path != null && s.first_path !== '') || (s && s.first_product_handle != null && s.first_product_handle !== '');
       var path = '';
-      try { path = (s && s.first_path != null && s.first_path !== '' ? s.first_path : (hasFirst ? '' : (s && s.last_path != null ? s.last_path : ''))).trim(); } catch (_) { path = ''; }
+      try { path = (s && s.first_path != null && s.first_path !== '' ? s.first_path : (s && s.last_path != null ? s.last_path : '')).trim(); } catch (_) { path = ''; }
       if (path && !path.startsWith('/')) path = '/' + path;
       try { if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/'; } catch (_) {}
-      path = (path || '').split('#')[0].split('?')[0];
-      path = path.replace(/\/+$/, '');
-      if (path === '') path = '/';
-      var pathNorm = path ? path.replace(/\/+$/, '') : '';
-      var isCheckout = path && path.indexOf('/checkouts') === 0;
-      var isHomeOrOrders = path === '/' || path === '/orders' || pathNorm === '/orders' || (path && path.startsWith('/orders/'));
-      var isCart = path === '/cart' || pathNorm === '/cart';
-      var label = '\u2014';
-      if (isHomeOrOrders) label = path === '/' ? 'Home' : 'Viewed Order';
-      else if (isCart || isCheckout) label = 'Cart';
-      else if (path) label = friendlyLabelFromPath(path) || path;
-      label = String(label || '').trim() || '\u2014';
-      return '<div class="last-action-cell">' + escapeHtml(label) + '</div>';
+      path = (path || '').split('#')[0].split('?')[0].replace(/\/+$/, '') || '/';
+      var display = label || path || '\u2014';
+      return '<div class="last-action-cell">' + escapeHtml(display) + '</div>';
     }
 
     function formatMoney(amount, currencyCode) {
@@ -10843,7 +10788,7 @@ const API = '';
             var path = (e.path || '').trim();
             if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
             if (path && !path.startsWith('/')) path = '/' + path;
-            var pathLabel = path ? (friendlyLabelFromPath(path) || path) : (e.product_handle || '');
+            var pathLabel = path || (e.product_handle || '');
             var fullUrl = mainBase && path ? mainBase + path : '';
             var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.classList.add(\'is-hidden\')">' : '';
             var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(pathLabel) + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
@@ -16062,7 +16007,7 @@ const API = '';
         var page = payload && payload.page ? payload.page : null;
 
         var title = isPage
-          ? (page && page.path ? (friendlyLabelFromPath(page.path) || page.path) : (currentPageUrl || 'Page'))
+          ? (page && page.path ? page.path : (currentPageUrl || 'Page'))
           : ((prod && prod.title) ? String(prod.title) : (currentTitle || currentHandle || 'Product'));
         if (titleEl) titleEl.textContent = title;
         if (detailsTitleEl) detailsTitleEl.textContent = isPage ? 'Page details' : 'Product details';
