@@ -2815,23 +2815,25 @@ body[data-page="settings"] .kexo-page-header-date-col {
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::before,
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::after {
-    --kexo-connector: color-mix(in srgb, var(--kexo-page-header-accent, #4b94e4) 25%, white);
-    --kexo-connector-light: color-mix(in srgb, var(--kexo-page-header-accent, #4b94e4) 12%, white);
-    content: "\2192";
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    --kexo-connector: color-mix(in srgb, var(--tblr-body-color, #1e293b) 70%, black);
+    content: "";
+    display: block;
     flex: 1 1 auto;
     min-width: 26px;
-    background-image:
-      linear-gradient(to right, var(--kexo-connector) 0%, var(--kexo-connector) 100%),
-      linear-gradient(to right, var(--kexo-connector-light) 0%, var(--kexo-connector-light) 100%);
-    background-size: 100% 1px;
-    background-position: 0 50%, 0 calc(50% + 2px);
-    background-repeat: no-repeat;
-    color: var(--kexo-connector);
-    font-size: 0.9rem;
-    line-height: 1;
+    height: 2px;
+    background-color: var(--kexo-connector);
+    -webkit-mask-image:
+      linear-gradient(to right, #fff 0%, #fff calc(100% - 14px), transparent calc(100% - 14px)),
+      url("/assets/icons/connector-arrow.svg")
+    mask-image:
+      linear-gradient(to right, #fff 0%, #fff calc(100% - 14px), transparent calc(100% - 14px)),
+      url("/assets/icons/connector-arrow.svg")
+    -webkit-mask-size: 100% 2px, 14px 14px;
+    mask-size: 100% 2px, 14px 14px;
+    -webkit-mask-position: 0 50%, 100% 50%;
+    mask-position: 0 50%, 100% 50%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
     transform: translateY(1px);
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-date-col {
