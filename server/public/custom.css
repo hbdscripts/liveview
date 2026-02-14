@@ -2920,14 +2920,14 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   z-index: 1085;
   border: none !important;
 }
-.kexo-desktop-nav-list .nav-item.dropdown .dropdown-menu {
+/* Closed only: dark color-mix (never applies when .show) */
+.kexo-desktop-nav-list .nav-item.dropdown:not(.show) .dropdown-menu {
   --tblr-dropdown-bg: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)));
   background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 /* When open: tab + dropdown same bright accent (kexo icon logic per nth-child) */
-.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu,
-.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu.show {
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu {
   --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
   background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
   background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
