@@ -2823,10 +2823,15 @@ body[data-page="settings"] .kexo-page-header-date-col {
     justify-content: flex-end;
     flex: 1 1 auto;
     min-width: 26px;
-    border-top: 1px solid var(--kexo-connector);
-    border-bottom: 1px solid var(--kexo-connector-light);
+    background-image:
+      linear-gradient(to right, var(--kexo-connector) 0%, var(--kexo-connector) 100%),
+      linear-gradient(to right, var(--kexo-connector-light) 0%, var(--kexo-connector-light) 100%);
+    background-size: 100% 1px;
+    background-position: 0 50%, 0 calc(50% + 2px);
+    background-repeat: no-repeat;
     color: var(--kexo-connector);
-    font-size: 0.65rem;
+    font-size: 0.9rem;
+    line-height: 1;
     transform: translateY(1px);
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-date-col {
