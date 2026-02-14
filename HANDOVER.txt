@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Settings chart preview loader fix)
+Last updated: 2026-02-14 (Expanded chart style controls in Settings)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Settings -> Layout -> Charts now includes expanded per-chart style controls (curve, stroke width, dash, marker size, fill opacity, grid dash, labels mode, toolbar toggle, animations toggle) in addition to colors/mode and raw Apex JSON.
+- New chart style config is persisted under `charts_ui_config_v1.charts[].style` and normalized server-side in `server/routes/settings.js`.
+- Runtime now applies these style controls across key chart paths (`server/public/app.js`, `server/public/ads.js`) by merging style-derived Apex overrides with `advancedApexOverride`.
+- `server/public/kexo-chart-builder.js` preview/runtime builder now understands `chartStyle`, so Settings previews reflect the same style controls.
 
 2026-02-14 (latest)
 - Fixed Settings -> Layout -> Charts preview blank-on-load regression:

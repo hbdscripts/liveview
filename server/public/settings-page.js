@@ -946,27 +946,32 @@
   }
 
   function defaultChartsUiConfigV1() {
+    var baseCharts = [
+      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
+      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
+      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
+      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
+      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
+      { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
+      { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
+      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
+      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
+      { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
+      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
+    ].map(function (it) {
+      var row = Object.assign({}, it);
+      row.style = defaultChartStyleConfig();
+      return row;
+    });
     return {
       v: 1,
       hideOnMobile: true,
       // User-managed chart + KPI bundle config source of truth.
       // Runtime reads this payload; avoid adding hardcoded style overrides elsewhere.
-      charts: [
-        { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
-        { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
-        { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
-        { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
-        { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
-        { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
-        { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
-        { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
-        { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
-        { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
-        { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
-        { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
-        { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
-        { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
-      ],
+      charts: baseCharts,
       kpiBundles: {
         dashboardCards: {
           sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} },
@@ -1156,6 +1161,40 @@
     return Math.max(min, Math.min(max, n));
   }
 
+  function defaultChartStyleConfig() {
+    return {
+      curve: 'smooth',
+      strokeWidth: 2.6,
+      dashArray: 0,
+      markerSize: 3,
+      fillOpacity: 0.18,
+      gridDash: 3,
+      dataLabels: 'auto',
+      toolbar: false,
+      animations: true,
+    };
+  }
+
+  function normalizeChartStyleDraft(raw, fallback) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    var def = fallback && typeof fallback === 'object' ? fallback : defaultChartStyleConfig();
+    var curve = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
+    if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = def.curve;
+    var labelsMode = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+    if (labelsMode !== 'on' && labelsMode !== 'off' && labelsMode !== 'auto') labelsMode = def.dataLabels;
+    return {
+      curve: curve,
+      strokeWidth: safeNumber(src.strokeWidth, def.strokeWidth, 0, 8),
+      dashArray: safeNumber(src.dashArray, def.dashArray, 0, 20),
+      markerSize: safeNumber(src.markerSize, def.markerSize, 0, 12),
+      fillOpacity: safeNumber(src.fillOpacity, def.fillOpacity, 0, 1),
+      gridDash: safeNumber(src.gridDash, def.gridDash, 0, 16),
+      dataLabels: labelsMode,
+      toolbar: !!(src.toolbar === true || (src.toolbar == null && def.toolbar)),
+      animations: !(src.animations === false),
+    };
+  }
+
   function defaultKpiBundlePalette() {
     return { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
   }
@@ -1266,6 +1305,7 @@
         label: String(it.label || d.label || key).trim() || key,
         mode: mode,
         colors: colors,
+        style: normalizeChartStyleDraft(it.style, d.style || defaultChartStyleConfig()),
         advancedApexOverride: parseApexOverride(it.advancedApexOverride, d.advancedApexOverride || {}),
       };
       if (meta && meta.pieMetric) {
@@ -1318,6 +1358,7 @@
     var enabled = !(item && item.enabled === false);
     var pieMetric = item && item.pieMetric ? String(item.pieMetric).trim().toLowerCase() : 'sessions';
     var canPie = !!(meta && meta.pieMetric);
+    var style = normalizeChartStyleDraft(item && item.style, defaultChartStyleConfig());
     var collapseId = 'settings-chart-item-' + key.replace(/[^a-z0-9_-]/g, '-');
     var headingId = collapseId + '-heading';
     var isOpen = idx === 0;
@@ -1333,6 +1374,17 @@
           '<div class="col-12 col-lg-8"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-chart-field="label" value="' + escapeHtml(title) + '"></div>' +
           '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
           '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Chart style (quick controls)</label><div class="row g-2">' +
+            '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+          '</div></div>' +
           '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
           '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
           '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>' +
@@ -1421,6 +1473,17 @@
     var modeEl = card.querySelector('[data-chart-field="mode"]');
     var pieMetricEl = card.querySelector('[data-chart-field="pieMetric"]');
     var advancedEl = card.querySelector('[data-chart-field="advancedApexOverride"]');
+    var style = normalizeChartStyleDraft({
+      curve: (card.querySelector('[data-chart-field="style.curve"]') || {}).value,
+      strokeWidth: (card.querySelector('[data-chart-field="style.strokeWidth"]') || {}).value,
+      dashArray: (card.querySelector('[data-chart-field="style.dashArray"]') || {}).value,
+      markerSize: (card.querySelector('[data-chart-field="style.markerSize"]') || {}).value,
+      fillOpacity: (card.querySelector('[data-chart-field="style.fillOpacity"]') || {}).value,
+      gridDash: (card.querySelector('[data-chart-field="style.gridDash"]') || {}).value,
+      dataLabels: (card.querySelector('[data-chart-field="style.dataLabels"]') || {}).value,
+      toolbar: !!(card.querySelector('[data-chart-field="style.toolbar"]') || {}).checked,
+      animations: !!(card.querySelector('[data-chart-field="style.animations"]') || {}).checked,
+    }, def.style || defaultChartStyleConfig());
     var adv = validateApexTextarea(advancedEl, def.advancedApexOverride || {});
     var colors = [];
     card.querySelectorAll('[data-chart-field="color"][data-idx]').forEach(function (inp) {
@@ -1435,6 +1498,7 @@
       mode: modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : String(def.mode || 'line').toLowerCase(),
       pieMetric: pieMetricEl && pieMetricEl.value != null ? String(pieMetricEl.value).trim().toLowerCase() : (def.pieMetric || 'sessions'),
       colors: colors.filter(function (c) { return !!c; }),
+      style: style,
       advancedApexOverride: adv.value,
       hasInvalidJson: !!adv.invalid,
     };
@@ -1493,6 +1557,7 @@
         mode: chartCfg.mode,
         colors: chartCfg.colors && chartCfg.colors.length ? chartCfg.colors : ['#3eb3ab'],
         pieMetric: chartCfg.pieMetric,
+        chartStyle: chartCfg.style,
         advancedApexOverride: chartCfg.advancedApexOverride
       });
       return;
@@ -1619,6 +1684,7 @@
         label: chartCfg.label || chartCfg.key,
         mode: chartCfg.mode,
         colors: chartCfg.colors,
+        style: chartCfg.style,
         pieMetric: chartCfg.pieMetric,
         advancedApexOverride: chartCfg.advancedApexOverride
       });

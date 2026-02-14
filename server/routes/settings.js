@@ -102,6 +102,20 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'countries-map-chart': ['map-animated', 'map-flat'],
 });
 
+function defaultChartStyleConfig() {
+  return {
+    curve: 'smooth',
+    strokeWidth: 2.6,
+    dashArray: 0,
+    markerSize: 3,
+    fillOpacity: 0.18,
+    gridDash: 3,
+    dataLabels: 'auto',
+    toolbar: false,
+    animations: true,
+  };
+}
+
 function defaultKpiUiConfigV1() {
   return {
     v: 1,
@@ -175,26 +189,27 @@ function defaultKpiUiConfigV1() {
 }
 
 function defaultChartsUiConfigV1() {
+  const withStyle = (item) => ({ ...item, style: defaultChartStyleConfig() });
   return {
     v: 1,
     hideOnMobile: true,
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
-      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
-      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
-      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
-      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
-      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
-      { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
-      { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
-      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
-      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
-      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
-      { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
-      { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
-      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
+      withStyle({ key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }),
+      withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
+      withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
+      withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }),
+      withStyle({ key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'], advancedApexOverride: {} }),
+      withStyle({ key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} }),
+      withStyle({ key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} }),
+      withStyle({ key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} }),
+      withStyle({ key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} }),
+      withStyle({ key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} }),
     ],
     kpiBundles: {
       dashboardCards: {
@@ -782,6 +797,7 @@ function normalizeChartsList(rawList, defaults) {
         enabled: normalizeBool(item.enabled, def.enabled),
         mode,
         colors: normalizeColorList(item.colors, def.colors),
+        style: normalizeChartStyle(item.style, def.style || defaultChartStyleConfig()),
         advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
       };
       // Optional: pie metric (only meaningful for pie-capable charts)
@@ -858,6 +874,24 @@ function normalizeApexOverrideObject(raw, fallback) {
   const cleaned = sanitizeApexOverrideValue(obj, 0);
   if (!cleaned || typeof cleaned !== 'object' || Array.isArray(cleaned)) return fb;
   return cleaned;
+}
+
+function normalizeChartStyle(raw, fallback) {
+  const def = fallback && typeof fallback === 'object' ? fallback : defaultChartStyleConfig();
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const curveRaw = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
+  const dataLabelsRaw = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+  return {
+    curve: ['smooth', 'straight', 'stepline'].includes(curveRaw) ? curveRaw : String(def.curve || 'smooth'),
+    strokeWidth: parseBoundedNumber(src.strokeWidth, def.strokeWidth != null ? def.strokeWidth : 2.6, 0, 8),
+    dashArray: parseBoundedNumber(src.dashArray, def.dashArray != null ? def.dashArray : 0, 0, 20),
+    markerSize: parseBoundedNumber(src.markerSize, def.markerSize != null ? def.markerSize : 3, 0, 12),
+    fillOpacity: parseBoundedNumber(src.fillOpacity, def.fillOpacity != null ? def.fillOpacity : 0.18, 0, 1),
+    gridDash: parseBoundedNumber(src.gridDash, def.gridDash != null ? def.gridDash : 3, 0, 16),
+    dataLabels: ['auto', 'on', 'off'].includes(dataLabelsRaw) ? dataLabelsRaw : String(def.dataLabels || 'auto'),
+    toolbar: normalizeBool(src.toolbar, def.toolbar === true),
+    animations: normalizeBool(src.animations, def.animations !== false),
+  };
 }
 
 function normalizeChartsKpiBundle(bundleKey, raw, fallback) {

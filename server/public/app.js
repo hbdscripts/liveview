@@ -5096,7 +5096,7 @@ const API = '';
 
       if (mode === 'pie') {
         try {
-          productsChartInstance = new ApexCharts(plotEl, {
+          var productsPieOpts = {
             chart: {
               type: 'pie',
               height: Math.max(300, chartHeight),
@@ -5124,7 +5124,14 @@ const API = '';
               }
             },
             legend: { position: 'bottom', fontSize: '12px' },
-          });
+          };
+          try {
+            var productsPieOverride = chartAdvancedOverrideFromUiConfig(chartKey, 'pie');
+            if (productsPieOverride && isPlainObject(productsPieOverride)) {
+              productsPieOpts = deepMergeOptions(productsPieOpts, productsPieOverride);
+            }
+          } catch (_) {}
+          productsChartInstance = new ApexCharts(plotEl, productsPieOpts);
           var pieRender = productsChartInstance.render();
           if (pieRender && typeof pieRender.then === 'function') {
             pieRender.catch(function (err) {
@@ -5140,7 +5147,7 @@ const API = '';
 
       var chartType = normalizeChartType(mode, 'line');
       try {
-        productsChartInstance = new ApexCharts(plotEl, {
+        var productsOpts = {
           chart: {
             type: chartType,
             height: chartHeight,
@@ -5212,7 +5219,14 @@ const API = '';
             strokeDashArray: 3,
             padding: { left: 4, right: 8, top: 8, bottom: 8 }
           }
-        });
+        };
+        try {
+          var productsOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+          if (productsOverride && isPlainObject(productsOverride)) {
+            productsOpts = deepMergeOptions(productsOpts, productsOverride);
+          }
+        } catch (_) {}
+        productsChartInstance = new ApexCharts(plotEl, productsOpts);
         var productsRender = productsChartInstance.render();
         if (productsRender && typeof productsRender.then === 'function') {
           productsRender.catch(function (err) {
@@ -8225,12 +8239,106 @@ const API = '';
       return 'sessions';
     }
 
-    function chartAdvancedOverrideFromUiConfig(key) {
+    function defaultChartsLineStyleConfig() {
+      return {
+        curve: 'smooth',
+        strokeWidth: 2.6,
+        dashArray: 0,
+        markerSize: 3,
+        fillOpacity: 0.18,
+        gridDash: 3,
+        dataLabels: 'auto',
+        toolbar: false,
+        animations: true,
+      };
+    }
+
+    function normalizeChartStyleConfig(raw) {
+      var src = isPlainObject(raw) ? raw : {};
+      var def = defaultChartsLineStyleConfig();
+      var curve = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
+      if (curve !== 'smooth' && curve !== 'straight' && curve !== 'stepline') curve = def.curve;
+      var dataLabels = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+      if (dataLabels !== 'auto' && dataLabels !== 'on' && dataLabels !== 'off') dataLabels = def.dataLabels;
+      function n(v, fb, min, max) {
+        var x = Number(v);
+        if (!Number.isFinite(x)) x = Number(fb);
+        if (!Number.isFinite(x)) x = min;
+        if (x < min) x = min;
+        if (x > max) x = max;
+        return x;
+      }
+      return {
+        curve: curve,
+        strokeWidth: n(src.strokeWidth, def.strokeWidth, 0, 8),
+        dashArray: n(src.dashArray, def.dashArray, 0, 20),
+        markerSize: n(src.markerSize, def.markerSize, 0, 12),
+        fillOpacity: n(src.fillOpacity, def.fillOpacity, 0, 1),
+        gridDash: n(src.gridDash, def.gridDash, 0, 16),
+        dataLabels: dataLabels,
+        toolbar: !!src.toolbar,
+        animations: src.animations !== false,
+      };
+    }
+
+    function chartStyleFromUiConfig(key) {
+      var it = getChartsUiItem(key);
+      var raw = it && isPlainObject(it.style) ? it.style : null;
+      return normalizeChartStyleConfig(raw || {});
+    }
+
+    function chartStyleOverrideFromUiConfig(key, modeHint) {
+      var mode = normalizeChartType(String(modeHint || '').trim().toLowerCase() || 'line', 'line');
+      if (mode === 'map-animated' || mode === 'map-flat') return null;
+      var style = chartStyleFromUiConfig(key);
+      var out = {
+        chart: {
+          toolbar: { show: !!style.toolbar },
+          animations: { enabled: !!style.animations }
+        },
+        grid: { strokeDashArray: style.gridDash }
+      };
+      if (style.dataLabels === 'on') out.dataLabels = { enabled: true };
+      if (style.dataLabels === 'off') out.dataLabels = { enabled: false };
+      if (mode !== 'pie') {
+        out.stroke = {
+          show: true,
+          curve: style.curve,
+          width: mode === 'bar' ? 0 : style.strokeWidth,
+          lineCap: 'round',
+          dashArray: mode === 'bar' ? 0 : style.dashArray
+        };
+        out.markers = {
+          size: mode === 'line' ? style.markerSize : 0,
+          hover: { size: Math.max(4, style.markerSize + 2) }
+        };
+        if (mode === 'area') {
+          out.fill = {
+            type: 'gradient',
+            gradient: {
+              shadeIntensity: 1,
+              opacityFrom: style.fillOpacity,
+              opacityTo: Math.max(0, style.fillOpacity * 0.35),
+              stops: [0, 100]
+            }
+          };
+        } else if (mode === 'bar') {
+          out.fill = { type: 'solid', opacity: style.fillOpacity > 0 ? style.fillOpacity : 1 };
+        }
+      }
+      return out;
+    }
+
+    function chartAdvancedOverrideFromUiConfig(key, modeHint) {
       var it = getChartsUiItem(key);
       var raw = it && it.advancedApexOverride && typeof it.advancedApexOverride === 'object'
         ? it.advancedApexOverride
         : null;
-      return isPlainObject(raw) ? raw : null;
+      var merged = {};
+      var styleOverride = chartStyleOverrideFromUiConfig(key, modeHint);
+      if (styleOverride && isPlainObject(styleOverride)) deepMergeOptions(merged, styleOverride);
+      if (isPlainObject(raw)) deepMergeOptions(merged, raw);
+      return Object.keys(merged).length ? merged : null;
     }
 
     function chartUiConfigSignature(cfg) {
@@ -9640,7 +9748,7 @@ const API = '';
           function renderChannelsPie() {
             plotEl.innerHTML = '';
             try {
-              channelsChartInstance = new ApexCharts(plotEl, {
+              var channelsPieOpts = {
                 chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
                 series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
                 labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
@@ -9648,7 +9756,14 @@ const API = '';
                 legend: { show: false },
                 dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
                 tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
-              });
+              };
+              try {
+                var channelsPieOverride = chartAdvancedOverrideFromUiConfig(chartKey, 'pie');
+                if (channelsPieOverride && isPlainObject(channelsPieOverride)) {
+                  channelsPieOpts = deepMergeOptions(channelsPieOpts, channelsPieOverride);
+                }
+              } catch (_) {}
+              channelsChartInstance = new ApexCharts(plotEl, channelsPieOpts);
               channelsChartInstance.render();
             } catch (err) {
               console.error('[channels] chart render error:', err);
@@ -9667,7 +9782,7 @@ const API = '';
         function renderChannelsLineBar() {
           plotEl.innerHTML = '';
           try {
-            channelsChartInstance = new ApexCharts(plotEl, {
+            var channelsOpts = {
             chart: {
               type: chartType,
               height: 320,
@@ -9716,7 +9831,14 @@ const API = '';
             },
             legend: { show: false },
             grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
-          });
+          };
+          try {
+            var channelsOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+            if (channelsOverride && isPlainObject(channelsOverride)) {
+              channelsOpts = deepMergeOptions(channelsOpts, channelsOverride);
+            }
+          } catch (_) {}
+          channelsChartInstance = new ApexCharts(plotEl, channelsOpts);
           var renderPromise = channelsChartInstance.render();
           if (renderPromise && typeof renderPromise.then === 'function') {
             renderPromise.catch(function(err) {
@@ -9784,7 +9906,7 @@ const API = '';
         };
         el.innerHTML = '';
         try {
-          channelsChartInstance = new ApexCharts(el, {
+          var channelsSimplePieOpts = {
             chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
             series: seriesArr,
             labels: categories,
@@ -9792,7 +9914,14 @@ const API = '';
             legend: { position: 'bottom', fontSize: '12px' },
             dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
             tooltip: { y: { formatter: yFmt } },
-          });
+          };
+          try {
+            var channelsSimplePieOverride = chartAdvancedOverrideFromUiConfig(chartKey, 'pie');
+            if (channelsSimplePieOverride && isPlainObject(channelsSimplePieOverride)) {
+              channelsSimplePieOpts = deepMergeOptions(channelsSimplePieOpts, channelsSimplePieOverride);
+            }
+          } catch (_) {}
+          channelsChartInstance = new ApexCharts(el, channelsSimplePieOpts);
           channelsChartInstance.render();
         } catch (err) {
           console.error('[channels] chart render error:', err);
@@ -9804,7 +9933,7 @@ const API = '';
       var chartType = normalizeChartType(mode, 'line');
       el.innerHTML = '';
       try {
-        channelsChartInstance = new ApexCharts(el, {
+        var channelsSimpleOpts = {
           chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
           series: series,
           colors: palette,
@@ -9873,7 +10002,14 @@ const API = '';
           },
           legend: { position: 'top', fontSize: '12px' },
           grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
-        });
+        };
+        try {
+          var channelsSimpleOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+          if (channelsSimpleOverride && isPlainObject(channelsSimpleOverride)) {
+            channelsSimpleOpts = deepMergeOptions(channelsSimpleOpts, channelsSimpleOverride);
+          }
+        } catch (_) {}
+        channelsChartInstance = new ApexCharts(el, channelsSimpleOpts);
         var renderPromise = channelsChartInstance.render();
         if (renderPromise && typeof renderPromise.then === 'function') {
           renderPromise.catch(function(err) {
@@ -9981,7 +10117,7 @@ const API = '';
           function renderTypePie() {
             plotEl.innerHTML = '';
             try {
-              typeChartInstance = new ApexCharts(plotEl, {
+              var typePieOpts = {
                 chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
                 series: seriesRows.map(function(s) { return Number(s && s.totalSessions) || 0; }),
                 labels: seriesRows.map(function(s) { return (s && (s.label || s.key)) ? String(s.label || s.key) : '—'; }),
@@ -9989,7 +10125,14 @@ const API = '';
                 legend: { show: false },
                 dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
                 tooltip: { y: { formatter: function(v) { return Number(v || 0).toLocaleString(); } } },
-              });
+              };
+              try {
+                var typePieOverride = chartAdvancedOverrideFromUiConfig(chartKey, 'pie');
+                if (typePieOverride && isPlainObject(typePieOverride)) {
+                  typePieOpts = deepMergeOptions(typePieOpts, typePieOverride);
+                }
+              } catch (_) {}
+              typeChartInstance = new ApexCharts(plotEl, typePieOpts);
               typeChartInstance.render();
             } catch (err) {
               console.error('[type] chart render error:', err);
@@ -10008,7 +10151,7 @@ const API = '';
         function renderTypeLineBar() {
           plotEl.innerHTML = '';
           try {
-            typeChartInstance = new ApexCharts(plotEl, {
+            var typeOpts = {
             chart: {
               type: chartType,
               height: 320,
@@ -10057,7 +10200,14 @@ const API = '';
             },
             legend: { show: false },
             grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
-          });
+          };
+          try {
+            var typeOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+            if (typeOverride && isPlainObject(typeOverride)) {
+              typeOpts = deepMergeOptions(typeOpts, typeOverride);
+            }
+          } catch (_) {}
+          typeChartInstance = new ApexCharts(plotEl, typeOpts);
           var renderPromise = typeChartInstance.render();
           if (renderPromise && typeof renderPromise.then === 'function') {
             renderPromise.catch(function(err) {
@@ -10125,7 +10275,7 @@ const API = '';
         };
         el.innerHTML = '';
         try {
-          typeChartInstance = new ApexCharts(el, {
+          var typeSimplePieOpts = {
             chart: { type: 'pie', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
             series: seriesArr,
             labels: labels,
@@ -10133,7 +10283,14 @@ const API = '';
             legend: { position: 'bottom', fontSize: '12px' },
             dataLabels: { enabled: true, formatter: function(pct) { return (typeof pct === 'number' && isFinite(pct)) ? (pct.toFixed(0) + '%') : ''; } },
             tooltip: { y: { formatter: yFmt } },
-          });
+          };
+          try {
+            var typeSimplePieOverride = chartAdvancedOverrideFromUiConfig(chartKey, 'pie');
+            if (typeSimplePieOverride && isPlainObject(typeSimplePieOverride)) {
+              typeSimplePieOpts = deepMergeOptions(typeSimplePieOpts, typeSimplePieOverride);
+            }
+          } catch (_) {}
+          typeChartInstance = new ApexCharts(el, typeSimplePieOpts);
           typeChartInstance.render();
         } catch (err) {
           console.error('[type] chart render error:', err);
@@ -10145,7 +10302,7 @@ const API = '';
       var chartType = normalizeChartType(mode, 'line');
       el.innerHTML = '';
       try {
-        typeChartInstance = new ApexCharts(el, {
+        var typeSimpleOpts = {
           chart: { type: chartType, height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
           series: series,
           colors: palette,
@@ -10208,7 +10365,14 @@ const API = '';
             }
           },
           grid: { borderColor: '#f1f1f1', strokeDashArray: 3 }
-        });
+        };
+        try {
+          var typeSimpleOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+          if (typeSimpleOverride && isPlainObject(typeSimpleOverride)) {
+            typeSimpleOpts = deepMergeOptions(typeSimpleOpts, typeSimpleOverride);
+          }
+        } catch (_) {}
+        typeChartInstance = new ApexCharts(el, typeSimpleOpts);
         var renderPromise = typeChartInstance.render();
         if (renderPromise && typeof renderPromise.then === 'function') {
           renderPromise.catch(function(err) {
@@ -10639,6 +10803,12 @@ const API = '';
               offsetY: -3,
             } : { enabled: false };
           }
+          try {
+            var liveUpdateOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+            if (liveUpdateOverride && isPlainObject(liveUpdateOverride)) {
+              updateOpts = deepMergeOptions(updateOpts, liveUpdateOverride);
+            }
+          } catch (_) {}
           liveOnlineChart.updateOptions(updateOpts, false, true);
           liveOnlineChart.updateSeries(apexSeries, true);
           return;
@@ -10721,6 +10891,12 @@ const API = '';
       }
 
       liveOnlineChartType = chartType;
+      try {
+        var liveOverride = chartAdvancedOverrideFromUiConfig(chartKey, chartType);
+        if (liveOverride && isPlainObject(liveOverride)) {
+          apexOpts = deepMergeOptions(apexOpts, liveOverride);
+        }
+      } catch (_) {}
       liveOnlineChart = new ApexCharts(el, apexOpts);
       liveOnlineChart.render();
     }
@@ -10837,7 +11013,7 @@ const API = '';
       overviewType = normalizeChartType(overviewType, 'area');
       chartCfg.colors = chartColorsFromUiConfig(chartKey, chartCfg.colors);
       el.innerHTML = '';
-      rangeOverviewChart = new ApexCharts(el, {
+      var overviewOpts = {
         chart: {
           type: overviewType,
           height: 220,
@@ -10872,7 +11048,14 @@ const API = '';
         yaxis: { min: 0, labels: { style: { fontSize: '11px' }, formatter: chartCfg.yFormatter } },
         tooltip: { y: { formatter: chartCfg.tooltipFormatter } },
         grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-      });
+      };
+      try {
+        var overviewOverride = chartAdvancedOverrideFromUiConfig(chartKey, overviewType);
+        if (overviewOverride && isPlainObject(overviewOverride)) {
+          overviewOpts = deepMergeOptions(overviewOpts, overviewOverride);
+        }
+      } catch (_) {}
+      rangeOverviewChart = new ApexCharts(el, overviewOpts);
       rangeOverviewChart.render();
       rangeOverviewChartKey = String(rangeKey || '');
       var labelEl = document.getElementById('sessions-overview-bucket-label');
@@ -10969,6 +11152,8 @@ const API = '';
           colors: colors,
           height: 280,
           showEndLabels: showEndLabels,
+          chartStyle: chartStyleFromUiConfig(chartKey),
+          advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {}
 
@@ -15758,7 +15943,7 @@ const API = '';
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
           try {
-            var chartOverride = chartAdvancedOverrideFromUiConfig(chartId);
+            var chartOverride = chartAdvancedOverrideFromUiConfig(chartId, chartType);
             if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) {
               apexOpts = deepMergeOptions(apexOpts, chartOverride);
             }

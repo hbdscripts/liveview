@@ -289,6 +289,118 @@
     return Array.isArray(fallbackColors) ? fallbackColors : [];
   }
 
+  function isPlainObject(value) {
+    return !!value && Object.prototype.toString.call(value) === '[object Object]';
+  }
+
+  function deepMergeOptions(base, override) {
+    if (!isPlainObject(base) || !isPlainObject(override)) return base;
+    Object.keys(override).forEach(function (key) {
+      var next = override[key];
+      if (Array.isArray(next)) {
+        base[key] = next.slice();
+        return;
+      }
+      if (isPlainObject(next)) {
+        var cur = isPlainObject(base[key]) ? base[key] : {};
+        base[key] = deepMergeOptions(cur, next);
+        return;
+      }
+      base[key] = next;
+    });
+    return base;
+  }
+
+  function defaultChartStyleConfig() {
+    return {
+      curve: 'smooth',
+      strokeWidth: 2.6,
+      dashArray: 0,
+      markerSize: 3,
+      fillOpacity: 0.18,
+      gridDash: 3,
+      dataLabels: 'auto',
+      toolbar: false,
+      animations: true,
+    };
+  }
+
+  function normalizeChartType(value, fallback) {
+    var v = String(value || '').trim().toLowerCase();
+    if (v === 'multi-line-labels') return 'line';
+    if (['area', 'line', 'bar', 'pie', 'combo'].indexOf(v) >= 0) return v;
+    return fallback || 'line';
+  }
+
+  function normalizeChartStyle(raw) {
+    var src = isPlainObject(raw) ? raw : {};
+    var def = defaultChartStyleConfig();
+    var curve = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
+    if (curve !== 'smooth' && curve !== 'straight' && curve !== 'stepline') curve = def.curve;
+    var labelsMode = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+    if (labelsMode !== 'auto' && labelsMode !== 'on' && labelsMode !== 'off') labelsMode = def.dataLabels;
+    function n(v, fb, min, max) {
+      var x = Number(v);
+      if (!Number.isFinite(x)) x = Number(fb);
+      if (!Number.isFinite(x)) x = min;
+      if (x < min) x = min;
+      if (x > max) x = max;
+      return x;
+    }
+    return {
+      curve: curve,
+      strokeWidth: n(src.strokeWidth, def.strokeWidth, 0, 8),
+      dashArray: n(src.dashArray, def.dashArray, 0, 20),
+      markerSize: n(src.markerSize, def.markerSize, 0, 12),
+      fillOpacity: n(src.fillOpacity, def.fillOpacity, 0, 1),
+      gridDash: n(src.gridDash, def.gridDash, 0, 16),
+      dataLabels: labelsMode,
+      toolbar: !!src.toolbar,
+      animations: src.animations !== false,
+    };
+  }
+
+  function chartStyleOverrideFromUiConfig(key, modeHint) {
+    var it = getChartsUiItem(key);
+    var style = normalizeChartStyle(it && isPlainObject(it.style) ? it.style : {});
+    var mode = normalizeChartType(modeHint || 'line', 'line');
+    var out = {
+      chart: {
+        toolbar: { show: !!style.toolbar },
+        animations: { enabled: !!style.animations }
+      },
+      grid: { strokeDashArray: style.gridDash }
+    };
+    if (style.dataLabels === 'on') out.dataLabels = { enabled: true };
+    if (style.dataLabels === 'off') out.dataLabels = { enabled: false };
+    if (mode !== 'pie') {
+      out.stroke = {
+        show: true,
+        curve: style.curve,
+        width: mode === 'bar' ? 0 : style.strokeWidth,
+        lineCap: 'round',
+        dashArray: mode === 'bar' ? 0 : style.dashArray
+      };
+      out.markers = { size: mode === 'line' ? style.markerSize : 0, hover: { size: Math.max(4, style.markerSize + 2) } };
+      if (mode === 'area') {
+        out.fill = { type: 'gradient', gradient: { opacityFrom: style.fillOpacity, opacityTo: Math.max(0, style.fillOpacity * 0.35), stops: [0, 100] } };
+      } else if (mode === 'bar') {
+        out.fill = { type: 'solid', opacity: style.fillOpacity > 0 ? style.fillOpacity : 1 };
+      }
+    }
+    return out;
+  }
+
+  function chartAdvancedOverrideFromUiConfig(key, modeHint) {
+    var it = getChartsUiItem(key);
+    var raw = it && isPlainObject(it.advancedApexOverride) ? it.advancedApexOverride : null;
+    var merged = {};
+    var styleOverride = chartStyleOverrideFromUiConfig(key, modeHint);
+    if (styleOverride && isPlainObject(styleOverride)) deepMergeOptions(merged, styleOverride);
+    if (raw) deepMergeOptions(merged, raw);
+    return Object.keys(merged).length ? merged : null;
+  }
+
   function shortCampaignLabel(value, maxLen) {
     var raw = value == null ? '' : String(value).trim();
     var cap = Math.max(10, Number(maxLen) || 24);
@@ -504,6 +616,12 @@
         },
         grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
       };
+      try {
+        var adsOverride = chartAdvancedOverrideFromUiConfig(chartKey, mode);
+        if (adsOverride && isPlainObject(adsOverride)) {
+          chartOpts = deepMergeOptions(chartOpts, adsOverride);
+        }
+      } catch (_) {}
       adsOverviewChart = new ApexCharts(el, chartOpts);
       var renderPromise = adsOverviewChart.render();
       if (renderPromise && typeof renderPromise.then === 'function') {

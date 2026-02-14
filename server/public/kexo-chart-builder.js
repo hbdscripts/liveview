@@ -206,6 +206,65 @@
     return target;
   }
 
+  function normalizeChartStyle(raw) {
+    var src = isPlainObject(raw) ? raw : {};
+    var curve = String(src.curve != null ? src.curve : 'smooth').trim().toLowerCase();
+    if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = 'smooth';
+    var labelsMode = String(src.dataLabels != null ? src.dataLabels : 'auto').trim().toLowerCase();
+    if (labelsMode !== 'on' && labelsMode !== 'off' && labelsMode !== 'auto') labelsMode = 'auto';
+    function num(v, fb, min, max) {
+      var n = Number(v);
+      if (!Number.isFinite(n)) n = Number(fb);
+      if (!Number.isFinite(n)) n = min;
+      if (n < min) n = min;
+      if (n > max) n = max;
+      return n;
+    }
+    return {
+      curve: curve,
+      strokeWidth: num(src.strokeWidth, 2.6, 0, 8),
+      dashArray: num(src.dashArray, 0, 0, 20),
+      markerSize: num(src.markerSize, 3, 0, 12),
+      fillOpacity: num(src.fillOpacity, 0.18, 0, 1),
+      gridDash: num(src.gridDash, 3, 0, 16),
+      dataLabels: labelsMode,
+      toolbar: !!src.toolbar,
+      animations: src.animations !== false,
+    };
+  }
+
+  function chartStyleOverride(style, chartType) {
+    if (!style || !isPlainObject(style)) return {};
+    var s = normalizeChartStyle(style);
+    var type = normalizeChartType(chartType || 'line', 'line');
+    if (type === 'map-animated' || type === 'map-flat') return {};
+    var out = {
+      chart: {
+        toolbar: { show: !!s.toolbar },
+        animations: { enabled: !!s.animations }
+      },
+      grid: { strokeDashArray: s.gridDash }
+    };
+    if (s.dataLabels === 'on') out.dataLabels = { enabled: true };
+    if (s.dataLabels === 'off') out.dataLabels = { enabled: false };
+    if (type !== 'pie') {
+      out.stroke = {
+        show: true,
+        curve: s.curve,
+        width: type === 'bar' ? 0 : s.strokeWidth,
+        lineCap: 'round',
+        dashArray: type === 'bar' ? 0 : s.dashArray
+      };
+      out.markers = { size: type === 'line' ? s.markerSize : 0, hover: { size: Math.max(4, s.markerSize + 2) } };
+      if (type === 'area') {
+        out.fill = { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: s.fillOpacity, opacityTo: Math.max(0, s.fillOpacity * 0.35), stops: [0, 100] } };
+      } else if (type === 'bar') {
+        out.fill = { type: 'solid', opacity: s.fillOpacity > 0 ? s.fillOpacity : 1 };
+      }
+    }
+    return out;
+  }
+
   /**
    * Render an ApexCharts line/area/bar chart with canonical data shape.
    * config: { chartKey, containerEl, categories, series, mode?, colors?, height?, pct?, currency?, showEndLabels?, splitLayout?, legendEl?, onError? }
@@ -226,6 +285,7 @@
     var splitLayout = !!c.splitLayout;
     var legendEl = c.legendEl || null;
     var onError = typeof c.onError === 'function' ? c.onError : null;
+    var chartStyle = isPlainObject(c.chartStyle) ? c.chartStyle : null;
     var advancedApexOverride = isPlainObject(c.advancedApexOverride) ? c.advancedApexOverride : {};
 
     if (!el) return null;
@@ -299,6 +359,9 @@
       apexOpts.yaxis = undefined;
       apexOpts.xaxis = undefined;
       apexOpts.tooltip = { y: { formatter: yFmt } };
+    }
+    if (chartStyle) {
+      deepMergeInto(apexOpts, chartStyleOverride(chartStyle, chartType));
     }
     if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
       deepMergeInto(apexOpts, advancedApexOverride);
@@ -500,6 +563,7 @@
       mode: mode,
       colors: colors,
       height: Number.isFinite(Number(c.height)) ? Number(c.height) : 220,
+      chartStyle: c.chartStyle,
       advancedApexOverride: c.advancedApexOverride
     });
   }
