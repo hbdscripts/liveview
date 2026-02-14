@@ -15404,10 +15404,13 @@ const API = '';
           items.forEach(function(it) {
             var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
             var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
+            html += '<div class="kexo-footer-diagnostics-tag">';
+            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
             html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>';
-            html += '<span>' + esc(it.label) + ' ' + esc(it.status) + '</span>';
+            html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
             html += '</a>';
+            html += '<span class="kexo-footer-diagnostics-status">' + esc(it.status) + '</span>';
+            html += '</div>';
           });
           tagsEl.innerHTML = html;
           wrap.style.display = 'block';
