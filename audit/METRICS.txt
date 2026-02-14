@@ -1,0 +1,70 @@
+KEXO metrics definitions (single source of truth)
+Generated: 2026-02-14
+
+This file captures the agreed semantics for core metrics so UI tables/charts do not diverge.
+
+---
+
+Time windows
+
+- Admin timezone: Europe/London (`ADMIN_TIMEZONE`, via `store.resolveAdminTimeZone()`).
+- Range bounds are computed by `store.getRangeBounds(rangeKey, nowMs, timeZone)` and always represent a half-open interval:
+  - Interval is `[startMs, endMs)` (start inclusive, end exclusive).
+  - For ranges that include “today” (e.g. `today`, `3d`, `7d`, `month`, or custom ranges ending today), `endMs` is `nowMs`.
+  - For fixed past days (e.g. `yesterday`, `d:YYYY-MM-DD` in the past), `endMs` is the next day’s start-of-day in admin timezone.
+
+Null / divide-by-zero rules
+
+- Any metric that is a ratio (CR%, bounce rate, ROAS, etc.) is **NULL** when its denominator is 0/unknown.
+- UI must render NULL ratios as `—` (never `0.0%`).
+
+Traffic filtering
+
+- “Human-only” traffic mode excludes sessions with `sessions.cf_known_bot = 1` (treat NULL as human).
+- Most analytics endpoints hardcode human-only; the canonical filter is implemented in `store.sessionFilterForTraffic()` and route-local equivalents.
+
+Sessions
+
+- “Sessions” generally means rows in the `sessions` table where `sessions.started_at` is within `[startMs, endMs)` (admin timezone bounds converted to UTC ms).
+- Global session counts:
+  - Total sessions: COUNT(*) of sessions in range.
+  - Human sessions: COUNT(*) of sessions in range after human-only filter.
+
+Orders (Shopify truth)
+
+- “Orders” generally means distinct Shopify truth orders that are:
+  - `financial_status = 'paid'`
+  - `cancelled_at IS NULL`
+  - `(test IS NULL OR test = 0)`
+- Unless explicitly documented per-endpoint, order time filtering uses the Shopify truth created-at timestamp columns stored in truth tables:
+  - Orders table: `orders_shopify.created_at` (some tools use `processed_at` when present)
+  - Line items table: `orders_shopify_line_items.order_created_at`
+- Core order count metric:
+  - `orders_paid = COUNT(DISTINCT order_id)`
+
+Revenue (GBP)
+
+- “Revenue” is derived from Shopify truth paid orders, summed from line items:
+  - `revenue_raw = SUM(orders_shopify_line_items.line_revenue)` grouped appropriately (product, country, etc.)
+- Display currency is GBP:
+  - Multi-currency revenue is converted to GBP using `fx` rates at report-build time.
+  - Final displayed values are rounded to 2 decimal places.
+
+Conversion rate (CR%)
+
+- Unless explicitly stated otherwise, “CR%” is **orders-based conversion**:
+  - `cr_pct = (orders_paid / sessions_human) * 100`
+  - Rounded to 1 decimal place.
+  - NULL when `sessions_human <= 0`.
+
+Product landing sessions (for product-level CR%)
+
+- For product-level tables (Dashboard Top Products, Products Best Sellers, etc.), the denominator is “product landing sessions”:
+  - Sessions whose *entry* is a product page, attributed to a product handle resolved in this order:
+    1) `sessions.first_path` when it matches `/products/<handle>`
+    2) `sessions.first_product_handle` when non-empty
+    3) `sessions.entry_url` when it contains `/products/<handle>`
+- Product-level CR%:
+  - `product_cr_pct = (product_orders_paid / product_landing_sessions_human) * 100`
+  - NULL when denominator is 0/unknown.
+
