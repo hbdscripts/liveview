@@ -1,0 +1,60 @@
+KEXO reporting audit (end-to-end)
+Generated: 2026-02-14
+
+This is a living audit report focused on data consistency and metric correctness across the UI (tables/charts/KPIs).
+Companion files:
+- audit/map.json (machine-readable UI → API → handler → DB mapping)
+- audit/METRICS_MAP.txt (human summary of the mapping)
+- audit/METRICS.txt (canonical metric definitions)
+
+---
+
+Scope (so far)
+
+- Phase 0 (Inventory & mapping): Completed for the primary analytics pages (Dashboard/Insights/Traffic/Integrations/Tools).
+- Phase 1 (Metric definitions): Core metric semantics documented in audit/METRICS.txt.
+- Fixes shipped: Dashboard CR% guardrails + stats caching normalization + shared metric helper + unit tests.
+
+---
+
+Findings and fixes
+
+1) Dashboard > Top Products table showed “Orders > 0 but CR% = 0.0%”
+
+- Symptom:
+  - Dashboard Overview “Top Products” could show nonzero Orders (from Shopify truth) but CR% rendered as 0.0%.
+- Root causes:
+  - Server-side CR% calculation treated sessions=0 as CR%=0 (coercion instead of undefined).
+  - Session attribution for product landings was narrower than other product reports (handle only from `first_product_handle`), undercounting sessions.
+- Fix (shipped):
+  - `/api/dashboard-series` now returns `cr: null` when Sessions=0 (undefined ratio).
+  - Product landing sessions attribution now resolves handle from `first_path`, then `first_product_handle`, then `entry_url` (aligned with Products → Best Sellers).
+  - UI guardrail: when Sessions=0, CR% is rendered as `—` (tooltip when Orders>0) so stale cached payloads can’t show misleading 0.0%.
+
+2) `/api/stats` caching key stability (custom range support)
+
+- Finding:
+  - `/api/stats` accepted `range=` but cache key metadata was not consistently tied to the requested range bounds.
+- Fix (shipped):
+  - `/api/stats` now normalizes `range` keys and uses that range’s computed bounds for cache key metadata.
+
+3) Shared ratio/percent helper + tests
+
+- Finding:
+  - Ratio metrics (CR%, bounce rate, etc.) were computed with multiple ad-hoc patterns across routes.
+- Fix (shipped):
+  - Added `server/metrics.js` with `percentOrNull()` + `roundTo()`.
+  - Added unit tests (`npm test`) to lock in divide-by-zero and rounding behaviour.
+
+---
+
+Open items / next steps
+
+- Deep-audit each analytics endpoint for:
+  - consistent filters (paid/test/cancelled, bot filtering)
+  - consistent time columns (`created_at` vs `processed_at` semantics)
+  - attribution parity (sessions → product/country/source)
+  - performance (avoid N+1/meta fetch hot paths; cache correctness)
+- Add at least one integration test for a high-value endpoint (start with `/api/dashboard-series`).
+- Add reconciliation harness to reproduce and validate key edge cases (including “orders > 0 but denominator = 0” => CR% undefined).
+
