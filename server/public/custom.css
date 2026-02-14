@@ -1860,14 +1860,20 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   gap: 1rem;
   padding: 10px 0 !important;
 }
-.kexo-footer-left,
-.kexo-footer-right {
-  flex-shrink: 0;
-  flex: 0 0 auto;
+/* Grid layout: equal 1fr sides so logo is truly centered (matches diagnostics below) */
+.kexo-footer-bar-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.kexo-footer-left {
+  justify-self: start;
 }
 .kexo-footer-center {
-  flex: 1 1 auto;
-  min-width: 0;
+  justify-self: center;
+}
+.kexo-footer-right {
+  justify-self: end;
 }
 .kexo-footer-logo {
   flex-shrink: 0;
@@ -3426,10 +3432,6 @@ body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child
   /* Dashboard KPI cards: full width on mobile */
   #tab-panel-dashboard .row.g-3 > .col-sm-6.col-lg-3 { flex: 0 0 100%; max-width: 100%; }
   .row.g-3 { --bs-gutter-x: .5rem; --bs-gutter-y: .5rem; }
-
-  /* Footer: wrap center items on mobile */
-  .kexo-footer-bar { flex-wrap: wrap; }
-  .kexo-footer-center { flex-wrap: wrap; justify-content: center; }
 
   /* Product/breakdown cells: constrain */
   .breakdown-product-name { max-width: 100px; }
