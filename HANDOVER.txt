@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Top menu dropdown icons fix)
+Last updated: 2026-02-14 (Nav dropdown arrow icon fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-14 (latest)
+- Nav dropdown arrow: fixed icon not showing (was fa-sharp-duotone; now fa-solid fa-arrow-turn-down-right). Added nav-dropdown-arrow to theme-settings icon picker and ICON_GLYPH_META.
 - Top menu: arrow icon moved from top-level toggle to dropdown items (Countries, Products, etc.); Bootstrap caret restored on toggles. Page title now shows the current page icon (globe, folder, etc.) via NAV_TO_ICON mapping (desktop only).
 
 2026-02-14 (latest)

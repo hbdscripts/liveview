@@ -33,6 +33,7 @@
     'nav-toggle-tools': 'fa-screwdriver-wrench',
     'nav-toggle-settings': 'fa-gear',
     'header-business-snapshot': 'fa-sterling-sign',
+    'nav-dropdown-arrow': 'fa-solid fa-arrow-turn-down-right',
     'nav-item-overview': 'fa-house',
     'nav-item-live': 'fa-satellite-dish',
     'nav-item-sales': 'fa-cart-shopping',
@@ -192,6 +193,7 @@
     'dash-kpi-delta-up': { title: 'Overview KPI Delta Up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
     'dash-kpi-delta-down': { title: 'Overview KPI Delta Down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
     'dash-kpi-delta-flat': { title: 'Overview KPI Delta Flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
+    'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Traffic, etc.).' },
   };
 
   function isLockedSettingsIconKey(name) {
@@ -205,6 +207,7 @@
     if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
     if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
+    if (key === 'nav-dropdown-arrow') return 'fa-solid';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';

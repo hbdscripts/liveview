@@ -2883,7 +2883,7 @@ body[data-page="settings"] .kexo-page-header-date-col {
   font-size: 12px !important;
 }
 
-/* Page header title icon (chevron, desktop only) */
+/* Page header title icon (desktop only) */
 .kexo-page-header-title-icon {
   color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
   display: inline-flex;
@@ -2891,7 +2891,7 @@ body[data-page="settings"] .kexo-page-header-date-col {
   justify-content: center;
   padding: 0;
   margin: 0 4px 0 0;
-  font-size: 12px !important;
+  font-size: 15px !important;
 }
 
 @media (max-width: 991.98px) {
