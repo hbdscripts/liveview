@@ -2399,18 +2399,22 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
     padding: 0;
   }
   /* Mobile: full-width fixed dropdown below nav bar (top set by JS) */
-  .kexo-desktop-nav .navbar-nav .dropdown-menu {
+  .kexo-desktop-nav .navbar-nav.kexo-desktop-nav-list .dropdown-menu {
     position: fixed !important;
-    top: var(--kexo-mobile-nav-dropdown-top, 0);
+    top: var(--kexo-mobile-nav-dropdown-top, 0) !important;
     width: 100% !important;
+    max-width: 100% !important;
     left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    inset: unset !important;
   }
   .kexo-desktop-nav-list .dropdown-item,
   .kexo-desktop-nav-settings .dropdown-item {
-    font-size: 16px;
+    font-size: 16px !important;
     font-weight: 400;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
     color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
     text-align: center;
     width: 100%;
