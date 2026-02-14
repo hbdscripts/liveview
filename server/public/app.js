@@ -15371,12 +15371,19 @@ const API = '';
           styleEl = document.createElement('style');
           styleEl.id = 'kexo-nav-dropdown-accent';
           styleEl.textContent = [
-            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link,',
+            '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link {',
+            '  --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
+            '  color: #fff !important;',
+            '  border-radius: 4px 4px 0 0;',
+            '}',
             '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .dropdown-menu {',
             '  --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
             '  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
             '  background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;',
             '  color: #fff !important;',
+            '  border-radius: 0 0 4px 4px;',
             '}',
             '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link > .kexo-nav-svg,',
             '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open .nav-link > i[class*="fa-"] {',

@@ -2875,10 +2875,11 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   height: -webkit-fill-available;
   border-radius: 0;
 }
-/* Active category (dropdown closed): icon same as inactive (opacity 0.3 white) */
+/* Active category (dropdown closed): coloured icon at full opacity */
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > .kexo-nav-svg,
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > i[class*="fa-"] {
-  opacity: 0.3;
+  opacity: 1 !important;
+  color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
 }
 /* Dropdown open: icon white for contrast on accent background */
 .kexo-desktop-nav-list .nav-link[aria-expanded="true"] > .kexo-nav-svg,
@@ -2961,12 +2962,6 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item:focus {
   color: #fff !important;
   background: none !important;
-}
-.kexo-desktop-nav-list .nav-link:hover,
-.kexo-desktop-nav-list .nav-link:focus,
-.kexo-desktop-nav-settings .nav-link:hover,
-.kexo-desktop-nav-settings .nav-link:focus {
-  background: var(--kexo-menu-hover-bg, rgba(0,0,0,.08)) !important;
 }
 /* Main-menu dropdown icons: when closed use accent mix; when open match tab icon (white) */
 .kexo-desktop-nav-list .dropdown-item .kexo-nav-svg,
