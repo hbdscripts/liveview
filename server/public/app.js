@@ -6157,7 +6157,7 @@ const API = '';
           },
           series: {
             regions: [
-              { attribute: 'fill', values: regionFillByIso2 }
+              { values: regionFillByIso2 }
             ]
           },
           onRegionTooltipShow: function(event, tooltip, code) {
@@ -10211,7 +10211,7 @@ const API = '';
           },
           series: {
             regions: [
-              { attribute: 'fill', values: regionFillByIso2 }
+              { values: regionFillByIso2 }
             ]
           },
           onRegionTooltipShow: function(event, tooltip, code2) {
