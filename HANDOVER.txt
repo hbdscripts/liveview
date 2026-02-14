@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Dashboard CR% guardrails)
+Last updated: 2026-02-14 (Resize icon + hide table scrollbars)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-14 (latest)
+- Table UX: sticky resize handle icon replaced with chevron/drag SVG (same grey #626976); horizontal scrollbars hidden on all table-scroll-wrap/country-table-wrap/table-responsive (desktop + mobile).
 2026-02-14 (latest)
 - Dashboard overview CR% guardrails:
   - Server: `/api/dashboard-series` now returns `cr: null` when Sessions=0 (CR% is undefined; never coerce to `0.0%`).

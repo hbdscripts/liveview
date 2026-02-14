@@ -126,16 +126,16 @@ i[class*="fa-"] {
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
 }
-/* Sessions tables (live/sales/table): swipeable without scrollbar */
-body[data-page="live"] .table-scroll-wrap,
-body[data-page="sales"] .table-scroll-wrap,
-body[data-page="date"] .table-scroll-wrap {
+/* All table scroll wraps: hide horizontal scrollbar (swipeable/drag-scroll) */
+.table-scroll-wrap,
+.country-table-wrap,
+.table-responsive {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-body[data-page="live"] .table-scroll-wrap::-webkit-scrollbar,
-body[data-page="sales"] .table-scroll-wrap::-webkit-scrollbar,
-body[data-page="date"] .table-scroll-wrap::-webkit-scrollbar {
+.table-scroll-wrap::-webkit-scrollbar,
+.country-table-wrap::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
@@ -821,7 +821,7 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle::before {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 13px 13px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23626976' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12h18'/%3E%3Cpath d='m8 7-5 5 5 5'/%3E%3Cpath d='m16 7 5 5-5 5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg fill='%23626976' viewBox='0 0 1024 1024' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M743.3 512L598.5 656.8l-36.2-36.2L670.9 512 562.3 403.4l36.2-36.2L743.3 512zM425.5 656.8l36.2-36.2L353.1 512l108.6-108.6-36.2-36.2L280.7 512l144.8 144.8z'/%3E%3C/svg%3E");
   opacity: 0.75;
   transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
 }
