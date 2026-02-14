@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Top menu: accent only when dropdown open; dropdown items background:none)
+Last updated: 2026-02-14 (Top menu: active tab uses kexo accent; tab+dropdown same colour when open)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -275,7 +275,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-14 (latest)
-- Top menu (`custom.css`): accent background only when dropdown is open (`[aria-expanded="true"]`); `.nav-item.active` alone no longer shows accent (override for `:not(.show)`). Dropdown items use `background: none`. Mobile open tab gets `height: -webkit-fill-available` and `border-radius: 0`.
+- Top menu (`custom.css`): active tab (dropdown closed) uses kexo accent background per nth-child (e.g. first = blue); when open, tab + dropdown share same accent. Dropdown items use `background: none`. Mobile open tab gets `height: -webkit-fill-available` and `border-radius: 0`.
 - Login page refresh (`server/routes/login.js`):
   - Added a working **Login with Shopify** button beside Google in a 50/50 two-column grid.
   - Shopify button now uses the inline Shopify SVG; Google button uses the inline Google SVG.
