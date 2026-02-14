@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Mobile nav icons + border fix)
+Last updated: 2026-02-14 (Nav icons white/opacity, no radius, per-item accent)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Top menu (desktop + mobile): icons white, opacity 0.3 by default, opacity 1 when active/open; no border-radius on nav link or dropdown; active tab full height and uses accent background (joins dropdown); dropdown uses same accent as its menu item (per-item colour via .nav-item.dropdown.show .dropdown-menu). Desktop: word + chevron shown, no grid. Mobile: words + chevron hidden, grid 20% each.
 
 2026-02-14 (latest)
 - Mobile nav: icons white by default, grid layout (20% each), removed Bootstrap focus ring/outer border.
