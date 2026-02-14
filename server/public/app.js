@@ -14465,34 +14465,6 @@ const API = '';
           try { navLeft.scrollLeft = 0; } catch (_) {}
         }
 
-        function constrainNavDropdownToViewport(menu) {
-          if (!menu || !menu.classList.contains('show')) return;
-          const rect = menu.getBoundingClientRect();
-          const vw = window.innerWidth;
-          const vh = window.innerHeight;
-          const pad = 8;
-          let left = rect.left;
-          let top = rect.top;
-          if (left + rect.width > vw - pad) left = vw - rect.width - pad;
-          if (left < pad) left = pad;
-          if (top + rect.height > vh - pad) top = vh - rect.height - pad;
-          if (top < pad) top = pad;
-          menu.style.setProperty('position', 'fixed');
-          menu.style.setProperty('left', left + 'px');
-          menu.style.setProperty('top', top + 'px');
-        }
-
-        navLeft.querySelectorAll('.dropdown').forEach(function (dropdownEl) {
-          dropdownEl.addEventListener('shown.bs.dropdown', function () {
-            if (!isMobileViewport()) return;
-            const menu = dropdownEl.querySelector('.dropdown-menu');
-            if (menu) {
-              constrainNavDropdownToViewport(menu);
-              requestAnimationFrame(function () { constrainNavDropdownToViewport(menu); });
-            }
-          });
-        });
-
         navLeft.addEventListener('show.bs.dropdown', function() {
           if (!isMobileViewport()) return;
           navLeft.classList.add('is-dropdown-open');
@@ -14505,9 +14477,6 @@ const API = '';
 
         window.addEventListener('resize', function() {
           syncDropdownOverflowState();
-          if (isMobileViewport()) {
-            navLeft.querySelectorAll('.dropdown-menu.show').forEach(constrainNavDropdownToViewport);
-          }
         }, { passive: true });
         window.addEventListener('orientationchange', function() {
           resetNavStartPosition();
