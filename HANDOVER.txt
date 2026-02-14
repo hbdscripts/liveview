@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Footer grid: logo truly centered)
+Last updated: 2026-02-14 (Dashboard CR% guardrails)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,9 +257,15 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-14 (latest)
+- Dashboard overview CR% guardrails:
+  - Server: `/api/dashboard-series` now returns `cr: null` when Sessions=0 (CR% is undefined; never coerce to `0.0%`).
+  - Attribution: Top Products session counts now resolve product handles from `first_path` (`/products/<handle>`), `first_product_handle`, or `entry_url` (aligns with Products → Best Sellers logic).
+  - UI: Top Products / Top Countries tables render CR% as `—` whenever Sessions=0, with an info tooltip when Orders>0.
+
 2026-02-13 (latest)
 - Footer: bar uses grid 1fr auto 1fr (not flex) so logo is truly centered; diagnostics badges below now align with logo.
-- Page header: connector lines solid 1px (not dotted), lighter border-bottom, arrow (→) at end of each; subtitle → title → date. Settings page has no page-header div.
+- Page header: connector lines 2px solid, SVG chevron arrow at end (`/assets/icons/connector-arrow.svg`), theme grey (color-mix body-color 70% black), no bottom border; subtitle → title → date. Settings page has no page-header div.
 - Footer: back-to-top before settings; formatRelative caps at days (fixes "491952h ago"); diagnostics strip with Kexo Pixel Online/Offline, Google Ads Connected/Offline; uses kexo-status-indicator--online/offline (matches header Online dot). NOTE: Future integrations (e.g. new ad platforms, webhooks) should appear in this footer diagnostics strip.
 2026-02-13 (latest)
 - Sticky table UX: shadow right-edge only (no top/left/bottom bleed); drag-scroll works in Chrome device emulation when scrollbar hidden (touch events run our handler); window resize debounced refresh for is-drag-scroll/kexo-sticky-scrolled; transform/backface-visibility on sticky cells to reduce scroll jitter.
