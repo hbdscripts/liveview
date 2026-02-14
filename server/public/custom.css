@@ -2951,6 +2951,22 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   background: none !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
+/* Active dropdown item: font-weight 700 + ::after border at bottom (desktop only; show when dropdown is open) */
+@media (min-width: 992px) {
+  .kexo-desktop-nav-list .dropdown-item[aria-current="page"] {
+    font-weight: 700 !important;
+    position: relative;
+  }
+  .kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item[aria-current="page"]::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    border-bottom: 3px solid var(--kexo-accent, var(--tblr-primary, #3eb3ab));
+  }
+}
 .kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-item {
   color: #fff !important;
 }
