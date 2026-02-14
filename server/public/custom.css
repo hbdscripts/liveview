@@ -363,11 +363,13 @@ body[data-page="sales"] .next-update-timer {
 
 /* Deploy drift: show a dot on refresh buttons */
 body.kexo-update-available #refresh-btn i,
-body.kexo-update-available .footer-refresh-btn i {
+body.kexo-update-available .footer-refresh-btn i,
+body.kexo-update-available #footer-settings-toggle i {
   position: relative;
 }
 body.kexo-update-available #refresh-btn i::after,
-body.kexo-update-available .footer-refresh-btn i::after {
+body.kexo-update-available .footer-refresh-btn i::after,
+body.kexo-update-available #footer-settings-toggle i::after {
   content: "";
   position: absolute;
   top: -2px;
@@ -379,7 +381,8 @@ body.kexo-update-available .footer-refresh-btn i::after {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 html[data-bs-theme="dark"] body.kexo-update-available #refresh-btn i::after,
-html[data-bs-theme="dark"] body.kexo-update-available .footer-refresh-btn i::after {
+html[data-bs-theme="dark"] body.kexo-update-available .footer-refresh-btn i::after,
+html[data-bs-theme="dark"] body.kexo-update-available #footer-settings-toggle i::after {
   box-shadow: 0 0 0 2px rgba(26, 34, 52, 0.85);
 }
 
@@ -1872,16 +1875,19 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   width: 40px;
   height: auto;
 }
-/* Footer icons: no hover effects */
-.kexo-footer-bar .btn-icon:hover,
-.kexo-footer-bar .btn-icon:focus {
+/* Footer: kexo-footer-action for custom styling (no btn-icon hover) */
+.kexo-footer .kexo-footer-action {
+  background: transparent !important;
+}
+.kexo-footer .kexo-footer-action:hover,
+.kexo-footer .kexo-footer-action:focus {
   background: transparent !important;
   color: inherit !important;
 }
-/* Footer audio: sync mute state (same as #audio-mute-btn) */
-.footer-audio-btn .footer-sound-icon-off { display: none; }
-.footer-audio-btn.muted .footer-sound-icon-on { display: none; }
-.footer-audio-btn.muted .footer-sound-icon-off { display: inline; }
+/* Footer settings dropdown audio: sync mute state (same as #audio-mute-btn) */
+.footer-settings-audio .sound-icon-off { display: none; }
+.footer-settings-audio.muted .sound-icon-on { display: none; }
+.footer-settings-audio.muted .sound-icon-off { display: inline; }
 #back-to-top-btn { cursor: pointer; }
 
 /* ── Layout: keep content pinned to top (avoid vertical centering on short pages) ── */
@@ -2326,7 +2332,8 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 }
 /* Strip dropdowns (Online, Settings, Avatar): white bg, black text/icons, aligned with nav left. */
 .kexo-top-strip-settings-menu,
-.kexo-top-strip-online-menu {
+.kexo-top-strip-online-menu,
+.kexo-footer-settings-menu {
   background: #fff !important;
   border: none !important;
   border-radius: 4px;
@@ -2631,6 +2638,10 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 }
 .kexo-desktop-nav .kexo-nav-date-slot.is-date-inline-fallback {
   visibility: visible !important;
+}
+body[data-page="settings"] .kexo-nav-date-slot,
+body[data-page="settings"] .kexo-page-header-date-col {
+  display: none !important;
 }
 .page-header .kexo-page-header-date-col {
   margin-left: auto;

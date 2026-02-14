@@ -79,6 +79,7 @@
     'footer-sound-muted': 'fa-volume-xmark',
     'footer-theme': 'fa-palette',
     'footer-settings': 'fa-gear',
+    'footer-settings-toggle': 'fa-gear',
     'footer-signout': 'fa-right-from-bracket',
     'footer-last-sale-show': 'fa-eye',
     'footer-last-sale-hide': 'fa-eye-slash',

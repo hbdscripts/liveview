@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-13 (Chart bugs fix)
+Last updated: 2026-02-13 (Footer restructure + Settings date hide)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -257,6 +257,12 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-13 (latest)
+- Footer restructure:
+  - Mobile: refresh | logo | back to top only (no last sale, eye, sound). Last sale + eye desktop-only.
+  - Desktop: last sale left, logo center, back to top + settings drop-up right. Refresh + sound moved into settings drop-up.
+  - New class `.kexo-footer` for custom styling; `.kexo-footer-action` replaces btn-icon (no hover). footer-settings-toggle icon configurable in Theme Icons.
+  - Date picker hidden on Settings page (no relocate, CSS hide).
 2026-02-13 (latest)
 - Chart bugs: Sales chart shows time bucket (By hour/day/month) below chart; overview sparklines use consistent bottom alignment; products chart shows thumbnails below instead of titles; map regions no longer black (Proxy default 0 for missing codes); traffic channels/device legend font reduced, plot min-width + rAF for layout; Google Ads chart default bar mode (profit by campaign, green/red).
 2026-02-13 (latest)

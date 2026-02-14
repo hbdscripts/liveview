@@ -1308,6 +1308,7 @@ const THEME_KEYS = [
   'theme_icon_glyph_footer_sound_muted',
   'theme_icon_glyph_footer_theme',
   'theme_icon_glyph_footer_settings',
+  'theme_icon_glyph_footer_settings_toggle',
   'theme_icon_glyph_footer_signout',
   'theme_icon_glyph_footer_last_sale_show',
   'theme_icon_glyph_footer_last_sale_hide',

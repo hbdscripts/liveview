@@ -6497,6 +6497,7 @@ const API = '';
 
     function mountDesktopDatePickerIntoPageHeader() {
       try {
+        if (document.body && document.body.getAttribute('data-page') === 'settings') return;
         const dateBtn = document.getElementById('kexo-date-display');
         const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
@@ -13626,8 +13627,12 @@ const API = '';
         })();
       }
       function syncFooterAudioMute(muted) {
-        document.querySelectorAll('.footer-audio-btn').forEach(function(btn) {
+        document.querySelectorAll('.footer-audio-btn, .footer-settings-audio').forEach(function(btn) {
           btn.classList.toggle('muted', muted);
+          var iconOn = btn.querySelector('.sound-icon-on');
+          var iconOff = btn.querySelector('.sound-icon-off');
+          if (iconOn) iconOn.classList.toggle('is-hidden', muted);
+          if (iconOff) iconOff.classList.toggle('is-hidden', !muted);
         });
       }
       const muteBtn = document.getElementById('audio-mute-btn');
@@ -15336,6 +15341,8 @@ const API = '';
       }
       proxyClick('.footer-refresh-btn', 'refresh-btn');
       proxyClick('.footer-audio-btn', 'audio-mute-btn');
+      proxyClick('.footer-settings-refresh', 'refresh-btn');
+      proxyClick('.footer-settings-audio', 'audio-mute-btn');
       var backToTop = document.getElementById('back-to-top-btn');
       if (backToTop) {
         backToTop.addEventListener('click', function() {
