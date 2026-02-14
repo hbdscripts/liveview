@@ -2854,10 +2854,9 @@ body[data-page="settings"] .kexo-page-header-date-col {
     flex: 0 0 auto;
     display: block;
     text-align: center;
-    text-transform: uppercase;
-    font-size: 14px;
-    letter-spacing: 1px;
-    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: 0.1px;
+    font-weight: 600;
     color: #555;
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple .page-pretitle {
