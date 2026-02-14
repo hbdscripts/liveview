@@ -2868,10 +2868,13 @@ body[data-page="settings"] .kexo-page-header-date-col {
   }
   .page-header .row.align-items-center.kexo-page-header-layout-triple .page-pretitle {
     color: #555;
+    font-size: 16px;
+    letter-spacing: 0.1px;
+    font-weight: 600;
   }
 }
 
-/* ── Page header category icon (matches active top menu icon + accent) ── */
+/* ── Page header category icon (matches page title icon: size, spacing) ── */
 .kexo-page-header-category-icon {
   color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
   display: inline-flex;
@@ -2880,7 +2883,8 @@ body[data-page="settings"] .kexo-page-header-date-col {
   padding: 0;
   margin: 0 4px 0 0;
   float: none;
-  font-size: 12px !important;
+  font-size: 15px !important;
+  flex-shrink: 0;
 }
 
 /* Page header title icon (desktop only) */
