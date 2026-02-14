@@ -2838,7 +2838,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-list .nav-link,
 .kexo-desktop-nav-settings .nav-link {
   font-size: .8125rem;
-  font-weight: 500;
+  font-weight: 400;
   border-radius: 0;
   padding: .5rem .75rem;
   align-self: stretch;
@@ -2866,6 +2866,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-list .nav-item.active:not(.show) > .nav-link {
   background: transparent !important;
   color: #fff !important;
+  font-weight: 700;
 }
 /* Open only (aria-expanded): full opacity, accent background, full height, no radius, no hover when open */
 .kexo-desktop-nav-list .nav-link[aria-expanded="true"] {
