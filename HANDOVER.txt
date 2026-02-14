@@ -269,6 +269,7 @@ Ops/reliability:
   - same/flat = `--kexo-accent-1` (blue)
   - down/decline = `--kexo-accent-4` (fallback `#e4644b`)
 - Business Snapshot deltas now color both icon and text using the same semantic mapping; snapshot KPI sparkline trend colors now match these semantics.
+- Condensed KPI progress bars now use the same semantic mapping as KPI deltas/sparklines (up teal, flat blue, down red).
 - Zero-baseline KPI delta labels in condensed/dashboard cards no longer show `new`; they now show signed percentages (e.g. `+100%` when previous is 0 and current is >0).
 
 2026-02-14 (latest)

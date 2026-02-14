@@ -2213,6 +2213,15 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   margin: 0;
   background: rgba(100, 116, 139, .16);
 }
+.kexo-kpi-chip-progress .progress-bar.bg-success {
+  background-color: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab)) !important;
+}
+.kexo-kpi-chip-progress .progress-bar.bg-secondary {
+  background-color: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4)) !important;
+}
+.kexo-kpi-chip-progress .progress-bar.bg-danger {
+  background-color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)) !important;
+}
 
 #dash-kpi-grid > .is-user-disabled {
   display: none !important;
