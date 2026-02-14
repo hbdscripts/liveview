@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Insights Variants 7days→7d fix)
+Last updated: 2026-02-14 (Charts settings accordion + KPI bundle persistence restored)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Restored Settings -> Layout -> Charts to the accordion-based chart/KPI-bundle editor after a regression back to the old flat table UI.
+- `server/public/settings-page.js` now renders one accordion item per chart/bundle, includes live chart/sparkline previews, validates advanced Apex JSON, and persists `advancedApexOverride` + `kpiBundles`.
+- `server/routes/settings.js` normalization/defaults now include `charts_ui_config_v1.kpiBundles` and chart-level `advancedApexOverride` so settings are retained on save/reload.
+- `server/public/settings.html` chart-tab styles were updated for the new accordion inputs/previews (hex fields + swatches + preview cards).
 
 2026-02-14 (latest)
 - Insights Variants: fixed "Last 7 days" showing less data than "Yesterday". The header date selector sends 7days/14days/30days but the API expected 7d/14d/30d; unnormalized values fell back to today. Added range normalization (7days→7d, etc.) in insightsVariants route.

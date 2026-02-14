@@ -949,23 +949,41 @@
     return {
       v: 1,
       hideOnMobile: true,
-        // User-managed chart + KPI bundle config source of truth.
-        // Runtime reads this payload; avoid adding hardcoded style overrides elsewhere.
+      // User-managed chart + KPI bundle config source of truth.
+      // Runtime reads this payload; avoid adding hardcoded style overrides elsewhere.
       charts: [
-        { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
-        { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
-        { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'] },
-        { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'] },
-        { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'] },
-        { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'] },
-        { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'] },
-        { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'] },
-        { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'] },
-        { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
-        { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
-        { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
-        { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'] },
+        { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
+        { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
+        { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
+        { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
+        { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+        { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
+        { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
+        { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
+        { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
+        { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+        { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+        { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
+        { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
+        { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
       ],
+      kpiBundles: {
+        dashboardCards: {
+          sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} },
+          deltaStyle: { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
+          palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+        },
+        headerStrip: {
+          sparkline: { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} },
+          deltaStyle: { fontSize: 11, fontWeight: 500, iconSize: 10, fontColor: '', iconColor: '' },
+          palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+        },
+        yearlySnapshot: {
+          sparkline: { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} },
+          deltaStyle: { fontSize: 12, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
+          palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+        }
+      }
     };
   }
 
@@ -1092,6 +1110,19 @@
     combo: 'Multiple (combo)', 'multi-line-labels': 'Multiple line + labels',
   };
 
+  var CHARTS_GROUPS = [
+    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-revenue', 'dash-chart-orders', 'dash-chart-conv', 'dash-chart-sessions', 'dash-chart-adspend', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
+    { id: 'traffic', label: 'Traffic charts', keys: ['channels-chart', 'type-chart'] },
+    { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
+    { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },
+  ];
+  var KPI_BUNDLE_ORDER = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
+  var KPI_BUNDLE_META = {
+    dashboardCards: { label: 'KPI Bundle · Dashboard Cards', help: 'Applies to KPI cards on /dashboard/overview.', supportsCompare: true },
+    headerStrip: { label: 'KPI Bundle · Header Strip (top of pages)', help: 'Applies to compact KPI chips shown at the top of pages.', supportsCompare: false },
+    yearlySnapshot: { label: 'KPI Bundle · Yearly Snapshot Modal', help: 'Applies to KPI cards in the yearly snapshot modal.', supportsCompare: false },
+  };
+
   function chartMeta(key) {
     return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [] };
   }
@@ -1107,186 +1138,479 @@
     }).join('');
   }
 
+  function normalizeHexColor(value, fallback) {
+    var raw = value == null ? '' : String(value).trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(raw) ? raw : fallback;
+  }
+
+  function normalizeOptionalHexColor(value) {
+    var raw = value == null ? '' : String(value).trim().toLowerCase();
+    if (!raw) return '';
+    return /^#[0-9a-f]{6}$/.test(raw) ? raw : '';
+  }
+
+  function safeNumber(value, fallback, min, max) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) n = Number(fallback);
+    if (!Number.isFinite(n)) n = min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function defaultKpiBundlePalette() {
+    return { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
+  }
+
+  function defaultKpiBundleSparkline(bundleKey) {
+    if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
+    if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
+    return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} };
+  }
+
+  function defaultKpiBundleDeltaStyle(bundleKey) {
+    if (bundleKey === 'headerStrip') return { fontSize: 11, fontWeight: 500, iconSize: 10, fontColor: '', iconColor: '' };
+    if (bundleKey === 'yearlySnapshot') return { fontSize: 12, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' };
+    return { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' };
+  }
+
+  function defaultKpiBundle(bundleKey) {
+    return {
+      sparkline: defaultKpiBundleSparkline(bundleKey),
+      deltaStyle: defaultKpiBundleDeltaStyle(bundleKey),
+      palette: defaultKpiBundlePalette(),
+    };
+  }
+
+  function parseApexOverride(raw, fallbackObj) {
+    var fb = (fallbackObj && typeof fallbackObj === 'object' && !Array.isArray(fallbackObj)) ? fallbackObj : {};
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
+    var text = raw == null ? '' : String(raw).trim();
+    if (!text) return fb;
+    try {
+      var parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch (_) {}
+    return fb;
+  }
+
+  function prettyJson(value) {
+    try {
+      var obj = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return JSON.stringify(obj, null, 2) || '{}';
+    } catch (_) { return '{}'; }
+  }
+
+  function normalizeBundleDraft(bundleKey, raw) {
+    var src = raw && typeof raw === 'object' ? raw : {};
+    var def = defaultKpiBundle(bundleKey);
+    var spark = src.sparkline && typeof src.sparkline === 'object' ? src.sparkline : {};
+    var delta = src.deltaStyle && typeof src.deltaStyle === 'object' ? src.deltaStyle : {};
+    var palette = src.palette && typeof src.palette === 'object' ? src.palette : {};
+    var mode = String(spark.mode || def.sparkline.mode).trim().toLowerCase();
+    if (['line', 'area', 'bar'].indexOf(mode) < 0) mode = def.sparkline.mode;
+    var curve = String(spark.curve || def.sparkline.curve).trim().toLowerCase();
+    if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = def.sparkline.curve;
+    var fontWeight = parseInt(String(delta.fontWeight != null ? delta.fontWeight : def.deltaStyle.fontWeight), 10);
+    if (fontWeight !== 400 && fontWeight !== 500) fontWeight = def.deltaStyle.fontWeight;
+    var supportsCompare = !!(KPI_BUNDLE_META[bundleKey] && KPI_BUNDLE_META[bundleKey].supportsCompare);
+    return {
+      sparkline: {
+        mode: mode,
+        curve: curve,
+        strokeWidth: safeNumber(spark.strokeWidth, def.sparkline.strokeWidth, 0.5, 6),
+        height: Math.round(safeNumber(spark.height, def.sparkline.height, 18, 120)),
+        showCompare: supportsCompare ? !(spark.showCompare === false) : false,
+        advancedApexOverride: parseApexOverride(spark.advancedApexOverride, def.sparkline.advancedApexOverride),
+      },
+      deltaStyle: {
+        fontSize: Math.round(safeNumber(delta.fontSize, def.deltaStyle.fontSize, 9, 24)),
+        fontWeight: fontWeight,
+        iconSize: Math.round(safeNumber(delta.iconSize, def.deltaStyle.iconSize, 8, 24)),
+        fontColor: normalizeOptionalHexColor(delta.fontColor || ''),
+        iconColor: normalizeOptionalHexColor(delta.iconColor || ''),
+      },
+      palette: {
+        up: normalizeHexColor(palette.up, def.palette.up),
+        down: normalizeHexColor(palette.down, def.palette.down),
+        same: normalizeHexColor(palette.same, def.palette.same),
+        compareLine: normalizeHexColor(palette.compareLine, def.palette.compareLine),
+      },
+    };
+  }
+
+  function normalizeChartsUiConfigDraft(cfg) {
+    var def = defaultChartsUiConfigV1();
+    var src = cfg && typeof cfg === 'object' ? cfg : {};
+    var out = { v: 1, hideOnMobile: !(src.hideOnMobile === false), charts: [], kpiBundles: {} };
+    var incomingByKey = {};
+    (Array.isArray(src.charts) ? src.charts : []).forEach(function (it) {
+      if (!it || typeof it !== 'object') return;
+      var key = String(it.key || '').trim().toLowerCase();
+      if (!key) return;
+      incomingByKey[key] = it;
+    });
+    (def.charts || []).forEach(function (d) {
+      if (!d || typeof d !== 'object') return;
+      var key = String(d.key || '').trim().toLowerCase();
+      if (!key) return;
+      var it = incomingByKey[key] || {};
+      var meta = chartMeta(key);
+      var mode = String(it.mode || d.mode || '').trim().toLowerCase();
+      var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
+      if (modes.indexOf(mode) < 0) mode = String(d.mode || modes[0] || 'line').trim().toLowerCase();
+      var colors = Array.isArray(it.colors) ? it.colors : d.colors;
+      colors = (Array.isArray(colors) ? colors : []).slice(0, 6).map(function (c) { return normalizeHexColor(c, '#3eb3ab'); });
+      if (!colors.length) colors = (Array.isArray(d.colors) ? d.colors : ['#3eb3ab']).slice(0, 6);
+      var row = {
+        key: key,
+        enabled: !(it.enabled === false),
+        label: String(it.label || d.label || key).trim() || key,
+        mode: mode,
+        colors: colors,
+        advancedApexOverride: parseApexOverride(it.advancedApexOverride, d.advancedApexOverride || {}),
+      };
+      if (meta && meta.pieMetric) {
+        var pieMetric = String(it.pieMetric || d.pieMetric || 'sessions').trim().toLowerCase();
+        if (['sessions', 'orders', 'revenue'].indexOf(pieMetric) < 0) pieMetric = 'sessions';
+        row.pieMetric = pieMetric;
+      }
+      out.charts.push(row);
+    });
+    var srcBundles = src.kpiBundles && typeof src.kpiBundles === 'object' ? src.kpiBundles : {};
+    KPI_BUNDLE_ORDER.forEach(function (bundleKey) {
+      out.kpiBundles[bundleKey] = normalizeBundleDraft(bundleKey, srcBundles[bundleKey]);
+    });
+    return out;
+  }
+
+  function chartColorCount(meta, item) {
+    var seriesLen = meta && Array.isArray(meta.series) ? meta.series.length : 0;
+    var colorLen = item && Array.isArray(item.colors) ? item.colors.length : 0;
+    return Math.max(1, Math.min(6, Math.max(seriesLen, colorLen, 1)));
+  }
+
+  function renderChartColorInputs(item, meta) {
+    var colors = Array.isArray(item.colors) ? item.colors : [];
+    var series = meta && Array.isArray(meta.series) ? meta.series : [];
+    var count = chartColorCount(meta, item);
+    var html = '<div class="settings-charts-color-grid">';
+    for (var i = 0; i < count; i += 1) {
+      var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+      var val = normalizeHexColor(colors[i], '#3eb3ab');
+      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';"></span></div></label>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderBundleColorInput(field, value, labelText) {
+    var val = normalizeHexColor(value, '#2fb344');
+    return '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(labelText) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-bundle-field="' + escapeHtml(field) + '" value="' + escapeHtml(val) + '" placeholder="#2fb344"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';"></span></div></label>';
+  }
+
+  function renderChartAccordionItem(item, idx, accordionId) {
+    var key = String(item && item.key || '').trim().toLowerCase();
+    if (!key) return '';
+    var meta = chartMeta(key);
+    var title = item && item.label ? String(item.label) : key;
+    var mode = item && item.mode ? String(item.mode).trim().toLowerCase() : 'line';
+    var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
+    if (modes.indexOf(mode) < 0) mode = modes[0] || 'line';
+    var enabled = !(item && item.enabled === false);
+    var pieMetric = item && item.pieMetric ? String(item.pieMetric).trim().toLowerCase() : 'sessions';
+    var canPie = !!(meta && meta.pieMetric);
+    var collapseId = 'settings-chart-item-' + key.replace(/[^a-z0-9_-]/g, '-');
+    var headingId = collapseId + '-heading';
+    var isOpen = idx === 0;
+    return '<div class="accordion-item settings-charts-item" data-chart-config-key="' + escapeHtml(key) + '">' +
+      '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+        '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
+          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(title) + '</span><span class="text-muted small"><code>' + escapeHtml(key) + '</code></span></span>' +
+        '</button>' +
+      '</h2>' +
+      '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
+        '<div class="accordion-body"><div class="settings-charts-card-body"><div class="row g-3">' +
+          '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +
+          '<div class="col-12 col-lg-8"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-chart-field="label" value="' + escapeHtml(title) + '"></div>' +
+          '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
+          '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
+          '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
+          '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>' +
+        '</div></div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderBundleAccordionItem(bundleKey, bundleCfg, idx, accordionId) {
+    var meta = KPI_BUNDLE_META[bundleKey] || { label: bundleKey, help: '', supportsCompare: false };
+    var spark = bundleCfg && bundleCfg.sparkline ? bundleCfg.sparkline : defaultKpiBundleSparkline(bundleKey);
+    var delta = bundleCfg && bundleCfg.deltaStyle ? bundleCfg.deltaStyle : defaultKpiBundleDeltaStyle(bundleKey);
+    var palette = bundleCfg && bundleCfg.palette ? bundleCfg.palette : defaultKpiBundlePalette();
+    var collapseId = 'settings-chart-bundle-' + String(bundleKey).replace(/[^a-z0-9_-]/g, '-');
+    var headingId = collapseId + '-heading';
+    var isOpen = idx === 0;
+    return '<div class="accordion-item settings-charts-item" data-kpi-bundle-key="' + escapeHtml(bundleKey) + '">' +
+      '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+        '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
+          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(meta.label) + '</span><span class="text-muted small"><code>' + escapeHtml(bundleKey) + '</code></span></span>' +
+        '</button>' +
+      '</h2>' +
+      '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
+        '<div class="accordion-body"><div class="settings-charts-card-body"><div class="text-muted small mb-3">' + escapeHtml(meta.help || '') + '</div><div class="row g-3">' +
+          '<div class="col-12 col-md-6 col-xl-3"><label class="form-label mb-1">Sparkline type</label><select class="form-select form-select-sm" data-bundle-field="sparkline.mode"><option value="line"' + (String(spark.mode) === 'line' ? ' selected' : '') + '>Line</option><option value="area"' + (String(spark.mode) === 'area' ? ' selected' : '') + '>Area</option><option value="bar"' + (String(spark.mode) === 'bar' ? ' selected' : '') + '>Bar</option></select></div>' +
+          '<div class="col-12 col-md-6 col-xl-3"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-bundle-field="sparkline.curve"><option value="straight"' + (String(spark.curve) === 'straight' ? ' selected' : '') + '>Straight</option><option value="smooth"' + (String(spark.curve) === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="stepline"' + (String(spark.curve) === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
+          '<div class="col-12 col-md-6 col-xl-2"><label class="form-label mb-1">Height</label><input type="number" class="form-control form-control-sm" min="18" max="120" step="1" data-bundle-field="sparkline.height" value="' + escapeHtml(String(spark.height)) + '"></div>' +
+          '<div class="col-12 col-md-6 col-xl-2"><label class="form-label mb-1">Stroke width</label><input type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.05" data-bundle-field="sparkline.strokeWidth" value="' + escapeHtml(String(spark.strokeWidth)) + '"></div>' +
+          '<div class="col-12 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-bundle-field="sparkline.showCompare"' + (spark.showCompare ? ' checked' : '') + (meta.supportsCompare ? '' : ' disabled') + '><span class="form-check-label ms-2">Compare line</span></label></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Palette (hex)</label><div class="settings-charts-color-grid">' + renderBundleColorInput('palette.up', palette.up, 'Up / positive') + renderBundleColorInput('palette.down', palette.down, 'Down / negative') + renderBundleColorInput('palette.same', palette.same, 'Even / flat') + renderBundleColorInput('palette.compareLine', palette.compareLine, 'Compare line') + '</div></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Delta text + icon style</label><div class="row g-2">' +
+            '<div class="col-12 col-sm-6 col-xl-2"><label class="form-label mb-1">Font size</label><input type="number" class="form-control form-control-sm" min="9" max="24" step="1" data-bundle-field="deltaStyle.fontSize" value="' + escapeHtml(String(delta.fontSize)) + '"></div>' +
+            '<div class="col-12 col-sm-6 col-xl-2"><label class="form-label mb-1">Font weight</label><select class="form-select form-select-sm" data-bundle-field="deltaStyle.fontWeight"><option value="400"' + (Number(delta.fontWeight) === 400 ? ' selected' : '') + '>400</option><option value="500"' + (Number(delta.fontWeight) === 500 ? ' selected' : '') + '>500</option></select></div>' +
+            '<div class="col-12 col-sm-6 col-xl-2"><label class="form-label mb-1">Icon size</label><input type="number" class="form-control form-control-sm" min="8" max="24" step="1" data-bundle-field="deltaStyle.iconSize" value="' + escapeHtml(String(delta.iconSize)) + '"></div>' +
+            '<div class="col-12 col-sm-6 col-xl-3"><label class="form-label mb-1">Font color (optional)</label><input type="text" class="form-control form-control-sm" data-bundle-field="deltaStyle.fontColor" value="' + escapeHtml(delta.fontColor || '') + '" placeholder="Tone color"></div>' +
+            '<div class="col-12 col-sm-6 col-xl-3"><label class="form-label mb-1">Icon color (optional)</label><input type="text" class="form-control form-control-sm" data-bundle-field="deltaStyle.iconColor" value="' + escapeHtml(delta.iconColor || '') + '" placeholder="Tone color"></div>' +
+          '</div></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-bundle-field="sparkline.advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(spark.advancedApexOverride)) + '</textarea></div>' +
+          '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-kpi-preview-card"><div class="settings-kpi-preview-head"><div class="settings-kpi-preview-title">Revenue</div><div class="settings-kpi-preview-delta" data-kpi-preview-delta><i class="fa-jelly fa-arrow-trend-up" aria-hidden="true"></i><span data-kpi-preview-delta-text>+8.4%</span></div></div><div class="settings-kpi-preview-value">£12.4k</div><div class="settings-charts-preview-canvas" data-kpi-preview-canvas></div></div></div></div>' +
+        '</div></div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function refreshPieMetricState(card) {
+    if (!card || !card.querySelector) return;
+    var modeEl = card.querySelector('[data-chart-field="mode"]');
+    var metricEl = card.querySelector('[data-chart-field="pieMetric"]');
+    if (!modeEl || !metricEl || metricEl.disabled) return;
+    metricEl.disabled = String(modeEl.value || '').trim().toLowerCase() !== 'pie';
+  }
+
+  function syncColorSwatches(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
+      var input = sw.previousElementSibling;
+      if (!input) return;
+      sw.style.background = normalizeHexColor(input.value, '#3eb3ab');
+    });
+  }
+
+  function validateApexTextarea(el, fallbackObj) {
+    if (!el) return { value: fallbackObj || {}, invalid: false };
+    var txt = el.value == null ? '' : String(el.value).trim();
+    if (!txt) {
+      el.classList.remove('is-invalid');
+      return { value: fallbackObj || {}, invalid: false };
+    }
+    try {
+      var parsed = JSON.parse(txt);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        el.classList.remove('is-invalid');
+        return { value: parsed, invalid: false };
+      }
+    } catch (_) {}
+    el.classList.add('is-invalid');
+    return { value: fallbackObj || {}, invalid: true };
+  }
+
+  function readChartConfigFromCard(card) {
+    var key = card ? String(card.getAttribute('data-chart-config-key') || '').trim().toLowerCase() : '';
+    if (!key) return null;
+    var def = (defaultChartsUiConfigV1().charts || []).find(function (it) { return it && String(it.key || '').trim().toLowerCase() === key; }) || { key: key, label: key, enabled: true, mode: 'line', colors: ['#3eb3ab'], advancedApexOverride: {} };
+    var enabledEl = card.querySelector('[data-chart-field="enabled"]');
+    var labelEl = card.querySelector('[data-chart-field="label"]');
+    var modeEl = card.querySelector('[data-chart-field="mode"]');
+    var pieMetricEl = card.querySelector('[data-chart-field="pieMetric"]');
+    var advancedEl = card.querySelector('[data-chart-field="advancedApexOverride"]');
+    var adv = validateApexTextarea(advancedEl, def.advancedApexOverride || {});
+    var colors = [];
+    card.querySelectorAll('[data-chart-field="color"][data-idx]').forEach(function (inp) {
+      var idx = parseInt(inp.getAttribute('data-idx') || '0', 10);
+      if (!Number.isFinite(idx) || idx < 0) idx = 0;
+      colors[idx] = normalizeHexColor(inp.value, '#3eb3ab');
+    });
+    return {
+      key: key,
+      enabled: !!(enabledEl && enabledEl.checked),
+      label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
+      mode: modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : String(def.mode || 'line').toLowerCase(),
+      pieMetric: pieMetricEl && pieMetricEl.value != null ? String(pieMetricEl.value).trim().toLowerCase() : (def.pieMetric || 'sessions'),
+      colors: colors.filter(function (c) { return !!c; }),
+      advancedApexOverride: adv.value,
+      hasInvalidJson: !!adv.invalid,
+    };
+  }
+
+  function readBundleConfigFromCard(card, bundleKey) {
+    var def = defaultKpiBundle(bundleKey);
+    if (!card) return def;
+    function v(path) {
+      var el = card.querySelector('[data-bundle-field="' + path + '"]');
+      if (!el) return null;
+      if (el.type === 'checkbox') return !!el.checked;
+      return el.value;
+    }
+    var mode = String(v('sparkline.mode') || def.sparkline.mode).trim().toLowerCase();
+    if (['line', 'area', 'bar'].indexOf(mode) < 0) mode = def.sparkline.mode;
+    var curve = String(v('sparkline.curve') || def.sparkline.curve).trim().toLowerCase();
+    if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = def.sparkline.curve;
+    var weight = parseInt(String(v('deltaStyle.fontWeight') || def.deltaStyle.fontWeight), 10);
+    if (weight !== 400 && weight !== 500) weight = def.deltaStyle.fontWeight;
+    var advEl = card.querySelector('[data-bundle-field="sparkline.advancedApexOverride"]');
+    var adv = validateApexTextarea(advEl, def.sparkline.advancedApexOverride || {});
+    return {
+      sparkline: {
+        mode: mode,
+        curve: curve,
+        strokeWidth: safeNumber(v('sparkline.strokeWidth'), def.sparkline.strokeWidth, 0.5, 6),
+        height: Math.round(safeNumber(v('sparkline.height'), def.sparkline.height, 18, 120)),
+        showCompare: (KPI_BUNDLE_META[bundleKey] && KPI_BUNDLE_META[bundleKey].supportsCompare) ? !!v('sparkline.showCompare') : false,
+        advancedApexOverride: adv.value,
+      },
+      deltaStyle: {
+        fontSize: Math.round(safeNumber(v('deltaStyle.fontSize'), def.deltaStyle.fontSize, 9, 24)),
+        fontWeight: weight,
+        iconSize: Math.round(safeNumber(v('deltaStyle.iconSize'), def.deltaStyle.iconSize, 8, 24)),
+        fontColor: normalizeOptionalHexColor(v('deltaStyle.fontColor') || ''),
+        iconColor: normalizeOptionalHexColor(v('deltaStyle.iconColor') || ''),
+      },
+      palette: {
+        up: normalizeHexColor(v('palette.up'), def.palette.up),
+        down: normalizeHexColor(v('palette.down'), def.palette.down),
+        same: normalizeHexColor(v('palette.same'), def.palette.same),
+        compareLine: normalizeHexColor(v('palette.compareLine'), def.palette.compareLine),
+      },
+      hasInvalidJson: !!adv.invalid,
+    };
+  }
+
+  function renderChartPreview(card, chartCfg) {
+    var canvas = card ? card.querySelector('[data-chart-preview-canvas]') : null;
+    if (!canvas) return;
+    if (typeof window.kexoRenderChartPreview === 'function') {
+      window.kexoRenderChartPreview({
+        containerEl: canvas,
+        chartKey: chartCfg.key,
+        mode: chartCfg.mode,
+        colors: chartCfg.colors && chartCfg.colors.length ? chartCfg.colors : ['#3eb3ab'],
+        pieMetric: chartCfg.pieMetric,
+        advancedApexOverride: chartCfg.advancedApexOverride
+      });
+      return;
+    }
+    canvas.innerHTML = '<div class="text-muted small py-4 text-center">Preview unavailable.</div>';
+  }
+
+  function renderBundlePreview(card, bundleKey, bundleCfg) {
+    var canvas = card ? card.querySelector('[data-kpi-preview-canvas]') : null;
+    var deltaEl = card ? card.querySelector('[data-kpi-preview-delta]') : null;
+    if (!canvas || !deltaEl) return;
+    var tone = bundleCfg.palette.up || '#2fb344';
+    deltaEl.style.fontSize = String(bundleCfg.deltaStyle.fontSize) + 'px';
+    deltaEl.style.fontWeight = String(bundleCfg.deltaStyle.fontWeight);
+    deltaEl.style.color = bundleCfg.deltaStyle.fontColor || tone;
+    var iconEl = deltaEl.querySelector('i');
+    if (iconEl) {
+      iconEl.style.fontSize = String(bundleCfg.deltaStyle.iconSize) + 'px';
+      iconEl.style.color = bundleCfg.deltaStyle.iconColor || tone;
+    }
+    if (typeof window.kexoRenderKpiSparklinePreview === 'function') {
+      window.kexoRenderKpiSparklinePreview({
+        containerEl: canvas,
+        bundleKey: bundleKey,
+        sparkline: bundleCfg.sparkline,
+        palette: bundleCfg.palette
+      });
+      return;
+    }
+    canvas.innerHTML = '<div class="text-muted small py-4 text-center">Sparkline preview unavailable.</div>';
+  }
+
+  function renderAllChartsPreviews(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
+      var cfg = readChartConfigFromCard(card);
+      if (cfg) renderChartPreview(card, cfg);
+    });
+    KPI_BUNDLE_ORDER.forEach(function (bundleKey) {
+      var card = root.querySelector('[data-kpi-bundle-key="' + bundleKey + '"]');
+      if (!card) return;
+      var cfg = readBundleConfigFromCard(card, bundleKey);
+      renderBundlePreview(card, bundleKey, cfg);
+    });
+  }
+
   function renderChartsUiPanel(cfg) {
     var root = document.getElementById('settings-charts-root');
     if (!root) return;
-    var c = cfg && typeof cfg === 'object' ? cfg : defaultChartsUiConfigV1();
-    var list = c && Array.isArray(c.charts) ? c.charts : [];
-    var hideOnMobile = !(c && c.hideOnMobile === false);
-
-    var tableHtml;
-    if (typeof window.buildKexoSettingsTable === 'function') {
-      tableHtml = window.buildKexoSettingsTable({
-        tableClass: 'table table-sm table-vcenter mb-0 charts-settings-table',
-        columns: [
-          { header: 'On', headerClass: 'charts-col-on' },
-          { header: 'Chart', headerClass: 'charts-col-chart' },
-          { header: 'Type', headerClass: 'charts-col-type' },
-          { header: 'Colors', headerClass: 'charts-col-colors' },
-          { header: 'Pie metric', headerClass: 'charts-col-pie' }
-        ],
-        rows: list,
-        renderRow: function (it) {
-          if (!it || typeof it !== 'object') return '';
-          var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
-          if (!key) return '';
-          var label = it.label != null ? String(it.label) : key;
-          var enabled = it.enabled !== false;
-          var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
-          var colors = Array.isArray(it.colors) ? it.colors : [];
-          var meta = chartMeta(key);
-          var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
-          var series = meta && Array.isArray(meta.series) ? meta.series : [];
-          var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
-          var showPieMetric = !!(meta && meta.pieMetric);
-
-          var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
-          var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
-          for (var i = 0; i < count; i++) {
-            var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
-            var val = colors[i] ? String(colors[i]) : '#3eb3ab';
-            if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
-            colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
-              ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
-          }
-          colorHtml += '</div>';
-
-          var pieMetricHtml = '&mdash;';
-          if (showPieMetric) {
-            pieMetricHtml =
-              '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
-                '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
-                '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
-                '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
-              '</select>';
-          }
-
-          return '<tr data-chart-key="' + escapeHtml(key) + '">' +
-            '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
-            '<td class="charts-col-chart">' +
-              '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
-              '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
-            '</td>' +
-            '<td class="charts-col-type">' +
-              '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
-                selectOptionsHtml(modes, mode) +
-              '</select>' +
-            '</td>' +
-            '<td class="charts-col-colors">' + colorHtml + '</td>' +
-            '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
-          '</tr>';
-        }
-      });
-    } else {
-      tableHtml = '<div class="table-responsive overflow-x-auto">' +
-        '<table class="table table-sm table-vcenter mb-0 charts-settings-table">' +
-        '<thead><tr><th class="charts-col-on">On</th><th class="charts-col-chart">Chart</th><th class="charts-col-type">Type</th><th class="charts-col-colors">Colors</th><th class="charts-col-pie">Pie metric</th></tr></thead><tbody>';
-      list.forEach(function (it) {
-        if (!it || typeof it !== 'object') return;
-        var key = it.key != null ? String(it.key).trim().toLowerCase() : '';
-        if (!key) return;
-        var label = it.label != null ? String(it.label) : key;
-        var enabled = it.enabled !== false;
-        var mode = it.mode != null ? String(it.mode).trim().toLowerCase() : 'line';
-        var colors = Array.isArray(it.colors) ? it.colors : [];
-        var meta = chartMeta(key);
-        var modes = meta && Array.isArray(meta.modes) ? meta.modes : ['line'];
-        var series = meta && Array.isArray(meta.series) ? meta.series : [];
-        var pieMetric = it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : 'sessions';
-        var showPieMetric = !!(meta && meta.pieMetric);
-
-        var colorHtml = '<div class="d-flex flex-wrap align-items-center gap-1 charts-color-row">';
-        var count = Math.max(1, Math.min(6, Math.max(series.length || 0, colors.length || 0, 1)));
-        for (var i = 0; i < count; i++) {
-          var title = series[i] ? String(series[i]) : ('Series ' + (i + 1));
-          var val = colors[i] ? String(colors[i]) : '#3eb3ab';
-          if (!/^#([0-9a-f]{6})$/i.test(val)) val = '#3eb3ab';
-          colorHtml += '<input type="color" class="form-control form-control-color charts-color-swatch" data-field="color" data-idx="' + i + '"' +
-            ' value="' + escapeHtml(val) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">';
-        }
-        colorHtml += '</div>';
-
-        var pieMetricHtml = '&mdash;';
-        if (showPieMetric) {
-          pieMetricHtml =
-            '<select class="form-select form-select-sm charts-pie-select" data-field="pieMetric"' + (mode === 'pie' ? '' : ' disabled') + '>' +
-              '<option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option>' +
-              '<option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option>' +
-              '<option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option>' +
-            '</select>';
-        }
-
-        tableHtml += '<tr data-chart-key="' + escapeHtml(key) + '">' +
-          '<td class="charts-col-on"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
-          '<td class="charts-col-chart">' +
-            '<input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '">' +
-            '<div class="text-muted small mt-1">' + escapeHtml(key) + '</div>' +
-          '</td>' +
-          '<td class="charts-col-type">' +
-            '<select class="form-select form-select-sm charts-type-select" data-field="mode">' +
-              selectOptionsHtml(modes, mode) +
-            '</select>' +
-          '</td>' +
-          '<td class="charts-col-colors">' + colorHtml + '</td>' +
-          '<td class="charts-col-pie">' + pieMetricHtml + '</td>' +
-        '</tr>';
-      });
-      tableHtml += '</tbody></table></div>';
-    }
-
-    var html = '' +
-      '<div class="d-flex align-items-start justify-content-between gap-3 mb-3">' +
-        '<label class="form-check form-switch m-0">' +
-          '<input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (hideOnMobile ? 'checked' : '') + '>' +
-          '<span class="form-check-label">Hide charts on mobile</span>' +
-        '</label>' +
-        '<div class="text-muted small" style="max-width:520px;">When enabled, chart cards are hidden on small screens. Tables still show as normal.</div>' +
+    var c = normalizeChartsUiConfigDraft(cfg);
+    var hideOnMobile = c.hideOnMobile !== false;
+    var accordionId = 'settings-layout-charts-accordion';
+    var html = '<div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">' +
+      '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Hide charts on mobile</span></label>' +
+      '<div class="text-muted small" style="max-width:560px;">Configure one chart/KPI bundle at a time with live previews.</div>' +
       '</div>' +
-      tableHtml +
-      '<div class="text-muted small mt-2">Options are filtered per chart to avoid incompatible types. For pie charts on Channels/Device, the selected metric is used.</div>';
-
-    root.innerHTML = html;
-
-    // Enable/disable pie-metric selector dynamically when mode changes.
-    root.querySelectorAll('select[data-field="mode"]').forEach(function (sel) {
-      sel.addEventListener('change', function () {
-        var tr = sel.closest('tr[data-chart-key]');
-        if (!tr) return;
-        var metricSel = tr.querySelector('select[data-field="pieMetric"]');
-        if (!metricSel) return;
-        metricSel.disabled = String(sel.value || '').trim().toLowerCase() !== 'pie';
+      '<div class="accordion settings-layout-accordion settings-charts-accordion" id="' + escapeHtml(accordionId) + '">';
+    var itemIndex = 0;
+    CHARTS_GROUPS.forEach(function (group) {
+      var keys = group && Array.isArray(group.keys) ? group.keys : [];
+      var groupCharts = c.charts.filter(function (it) { return keys.indexOf(String(it.key || '').trim().toLowerCase()) >= 0; });
+      if (!groupCharts.length) return;
+      html += '<div class="settings-charts-group-label">' + escapeHtml(group.label || '') + '</div>';
+      groupCharts.forEach(function (it) {
+        html += renderChartAccordionItem(it, itemIndex, accordionId);
+        itemIndex += 1;
       });
     });
+    html += '<div class="settings-charts-group-label">KPI bundles</div>';
+    KPI_BUNDLE_ORDER.forEach(function (bundleKey) {
+      html += renderBundleAccordionItem(bundleKey, c.kpiBundles[bundleKey] || defaultKpiBundle(bundleKey), itemIndex, accordionId);
+      itemIndex += 1;
+    });
+    html += '</div>';
+    root.innerHTML = html;
+    root.querySelectorAll('[data-chart-config-key]').forEach(function (card) { refreshPieMetricState(card); });
+    syncColorSwatches(root);
+    renderAllChartsPreviews(root);
+
+    var previewTimer = 0;
+    function queuePreview() {
+      if (previewTimer) {
+        try { clearTimeout(previewTimer); } catch (_) {}
+      }
+      previewTimer = setTimeout(function () {
+        previewTimer = 0;
+        root.querySelectorAll('[data-chart-config-key]').forEach(function (card) { refreshPieMetricState(card); });
+        syncColorSwatches(root);
+        renderAllChartsPreviews(root);
+      }, 100);
+    }
+    root.addEventListener('input', queuePreview);
+    root.addEventListener('change', queuePreview);
   }
 
   function buildChartsUiConfigFromDom() {
     var root = document.getElementById('settings-charts-root');
     if (!root) return defaultChartsUiConfigV1();
     var hideEl = document.getElementById('settings-charts-hide-mobile');
-    var out = { v: 1, hideOnMobile: hideEl ? !!hideEl.checked : true, charts: [] };
-    root.querySelectorAll('tr[data-chart-key]').forEach(function (tr) {
-      var key = (tr.getAttribute('data-chart-key') || '').trim().toLowerCase();
-      if (!key) return;
-      var enabledEl = tr.querySelector('input[data-field="enabled"]');
-      var labelEl = tr.querySelector('input[data-field="label"]');
-      var modeEl = tr.querySelector('select[data-field="mode"]');
-      var metricEl = tr.querySelector('select[data-field="pieMetric"]');
-      var colors = [];
-      tr.querySelectorAll('input[data-field="color"][data-idx]').forEach(function (inp) {
-        var idx = parseInt(inp.getAttribute('data-idx') || '0', 10);
-        if (!Number.isFinite(idx) || idx < 0) idx = 0;
-        colors[idx] = (inp && inp.value) ? String(inp.value).trim() : '';
-      });
+    var out = { v: 1, hideOnMobile: hideEl ? !!hideEl.checked : true, charts: [], kpiBundles: {} };
+    root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
+      var chartCfg = readChartConfigFromCard(card);
+      if (!chartCfg) return;
       out.charts.push({
-        key: key,
-        enabled: !!(enabledEl && enabledEl.checked),
-        label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
-        mode: modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : 'line',
-        colors: colors.filter(function (c) { return !!c; }),
-        pieMetric: metricEl && metricEl.value != null ? String(metricEl.value).trim().toLowerCase() : undefined,
+        key: chartCfg.key,
+        enabled: chartCfg.enabled,
+        label: chartCfg.label || chartCfg.key,
+        mode: chartCfg.mode,
+        colors: chartCfg.colors,
+        pieMetric: chartCfg.pieMetric,
+        advancedApexOverride: chartCfg.advancedApexOverride
       });
     });
-    return out;
+    KPI_BUNDLE_ORDER.forEach(function (bundleKey) {
+      var card = root.querySelector('[data-kpi-bundle-key="' + bundleKey + '"]');
+      out.kpiBundles[bundleKey] = readBundleConfigFromCard(card, bundleKey);
+    });
+    return normalizeChartsUiConfigDraft(out);
   }
 
   function wireChartsSaveReset() {
@@ -1302,16 +1626,21 @@
     }
 
     saveBtn.addEventListener('click', function () {
+      var root = document.getElementById('settings-charts-root');
+      var invalidJson = root ? root.querySelector('.settings-charts-advanced-json.is-invalid') : null;
+      if (invalidJson) {
+        setMsg('Fix invalid Apex JSON before saving.', false);
+        return;
+      }
       var cfg = buildChartsUiConfigFromDom();
       setMsg('Saving\u2026', true);
       saveSettings({ chartsUiConfig: cfg })
         .then(function (r) {
           if (r && r.ok) {
             chartsUiConfigCache = r.chartsUiConfig || cfg;
-            try {
-              localStorage.setItem('kexo:charts-ui-config:v1', JSON.stringify(chartsUiConfigCache));
-            } catch (_) {}
+            try { localStorage.setItem('kexo:charts-ui-config:v1', JSON.stringify(chartsUiConfigCache)); } catch (_) {}
             setMsg('Saved.', true);
+            try { renderChartsUiPanel(chartsUiConfigCache); } catch (_) {}
             try {
               if (window && typeof window.dispatchEvent === 'function') {
                 window.dispatchEvent(new CustomEvent('kexo:chartsUiConfigUpdated', { detail: chartsUiConfigCache }));

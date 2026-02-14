@@ -82,6 +82,8 @@ const CHART_UI_KEYS = [
   'countries-map-chart',
 ];
 const CHART_UI_KEY_SET = new Set(CHART_UI_KEYS);
+const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
+const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-revenue': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -179,21 +181,38 @@ function defaultChartsUiConfigV1() {
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
-      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
-      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'] },
-      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'] },
-      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'] },
-      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'] },
-      { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'] },
-      { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'] },
-      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'] },
-      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
-      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
-      { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
-      { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'] },
-      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'] },
+      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
+      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
+      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
+      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
+      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
+      { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
+      { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
+      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
+      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
+      { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
+      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
     ],
+    kpiBundles: {
+      dashboardCards: {
+        sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} },
+        deltaStyle: { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
+        palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+      },
+      headerStrip: {
+        sparkline: { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} },
+        deltaStyle: { fontSize: 11, fontWeight: 500, iconSize: 10, fontColor: '', iconColor: '' },
+        palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+      },
+      yearlySnapshot: {
+        sparkline: { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} },
+        deltaStyle: { fontSize: 12, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
+        palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
+      },
+    },
   };
 }
 
@@ -763,6 +782,7 @@ function normalizeChartsList(rawList, defaults) {
         enabled: normalizeBool(item.enabled, def.enabled),
         mode,
         colors: normalizeColorList(item.colors, def.colors),
+        advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
       };
       // Optional: pie metric (only meaningful for pie-capable charts)
       if ((CHART_ALLOWED_MODES[key] || []).includes('pie')) {
@@ -779,6 +799,119 @@ function normalizeChartsList(rawList, defaults) {
   return out;
 }
 
+function normalizeHexColor(value, fallback) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(raw) ? raw : fallback;
+}
+
+function normalizeOptionalHexColor(value) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (!raw) return '';
+  return /^#[0-9a-f]{6}$/.test(raw) ? raw : '';
+}
+
+function parseBoundedNumber(value, fallback, min, max) {
+  let n = Number(value);
+  if (!Number.isFinite(n)) n = Number(fallback);
+  if (!Number.isFinite(n)) n = min;
+  if (n < min) n = min;
+  if (n > max) n = max;
+  return n;
+}
+
+function sanitizeApexOverrideValue(value, depth) {
+  if (depth > 6) return undefined;
+  if (value == null) return null;
+  const t = typeof value;
+  if (t === 'string' || t === 'number' || t === 'boolean') return value;
+  if (Array.isArray(value)) {
+    return value.slice(0, 80).map((it) => sanitizeApexOverrideValue(it, depth + 1)).filter((it) => it !== undefined);
+  }
+  if (t === 'object') {
+    const out = {};
+    const entries = Object.entries(value).slice(0, 80);
+    for (const [k, v] of entries) {
+      const key = k == null ? '' : String(k).trim();
+      if (!key) continue;
+      const cleaned = sanitizeApexOverrideValue(v, depth + 1);
+      if (cleaned === undefined) continue;
+      out[key] = cleaned;
+    }
+    return out;
+  }
+  return undefined;
+}
+
+function normalizeApexOverrideObject(raw, fallback) {
+  const fb = fallback && typeof fallback === 'object' && !Array.isArray(fallback) ? fallback : {};
+  let obj = raw;
+  if (typeof raw === 'string') {
+    const txt = raw.trim();
+    if (!txt) return fb;
+    try {
+      obj = JSON.parse(txt);
+    } catch (_) {
+      return fb;
+    }
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return fb;
+  const cleaned = sanitizeApexOverrideValue(obj, 0);
+  if (!cleaned || typeof cleaned !== 'object' || Array.isArray(cleaned)) return fb;
+  return cleaned;
+}
+
+function normalizeChartsKpiBundle(bundleKey, raw, fallback) {
+  const def = fallback && typeof fallback === 'object' ? fallback : {};
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const sparkDef = def.sparkline && typeof def.sparkline === 'object' ? def.sparkline : {};
+  const deltaDef = def.deltaStyle && typeof def.deltaStyle === 'object' ? def.deltaStyle : {};
+  const paletteDef = def.palette && typeof def.palette === 'object' ? def.palette : {};
+  const sparkSrc = src.sparkline && typeof src.sparkline === 'object' ? src.sparkline : {};
+  const deltaSrc = src.deltaStyle && typeof src.deltaStyle === 'object' ? src.deltaStyle : {};
+  const paletteSrc = src.palette && typeof src.palette === 'object' ? src.palette : {};
+  const modeRaw = String(sparkSrc.mode != null ? sparkSrc.mode : sparkDef.mode || 'line').trim().toLowerCase();
+  const mode = ['line', 'area', 'bar'].includes(modeRaw) ? modeRaw : String(sparkDef.mode || 'line');
+  const curveRaw = String(sparkSrc.curve != null ? sparkSrc.curve : sparkDef.curve || 'smooth').trim().toLowerCase();
+  const curve = ['smooth', 'straight', 'stepline'].includes(curveRaw) ? curveRaw : String(sparkDef.curve || 'smooth');
+  const fontWeightRaw = parseInt(String(deltaSrc.fontWeight != null ? deltaSrc.fontWeight : deltaDef.fontWeight || 500), 10);
+  const fontWeight = (fontWeightRaw === 400 || fontWeightRaw === 500) ? fontWeightRaw : 500;
+  const supportsCompare = bundleKey === 'dashboardCards';
+  return {
+    sparkline: {
+      mode,
+      curve,
+      strokeWidth: parseBoundedNumber(sparkSrc.strokeWidth, sparkDef.strokeWidth != null ? sparkDef.strokeWidth : 2.55, 0.5, 6),
+      height: Math.round(parseBoundedNumber(sparkSrc.height, sparkDef.height != null ? sparkDef.height : 50, 18, 120)),
+      showCompare: supportsCompare ? normalizeBool(sparkSrc.showCompare, sparkDef.showCompare !== false) : false,
+      advancedApexOverride: normalizeApexOverrideObject(sparkSrc.advancedApexOverride, sparkDef.advancedApexOverride || {}),
+    },
+    deltaStyle: {
+      fontSize: Math.round(parseBoundedNumber(deltaSrc.fontSize, deltaDef.fontSize != null ? deltaDef.fontSize : 14, 9, 24)),
+      fontWeight,
+      iconSize: Math.round(parseBoundedNumber(deltaSrc.iconSize, deltaDef.iconSize != null ? deltaDef.iconSize : 12, 8, 24)),
+      fontColor: normalizeOptionalHexColor(deltaSrc.fontColor),
+      iconColor: normalizeOptionalHexColor(deltaSrc.iconColor),
+    },
+    palette: {
+      up: normalizeHexColor(paletteSrc.up, paletteDef.up || '#2fb344'),
+      down: normalizeHexColor(paletteSrc.down, paletteDef.down || '#d63939'),
+      same: normalizeHexColor(paletteSrc.same, paletteDef.same || '#66bdb7'),
+      compareLine: normalizeHexColor(paletteSrc.compareLine, paletteDef.compareLine || '#cccccc'),
+    },
+  };
+}
+
+function normalizeChartsKpiBundles(rawBundles, defaults) {
+  const src = rawBundles && typeof rawBundles === 'object' ? rawBundles : {};
+  const defs = defaults && typeof defaults === 'object' ? defaults : {};
+  const out = {};
+  for (const key of CHART_KPI_BUNDLE_KEYS) {
+    if (!CHART_KPI_BUNDLE_KEY_SET.has(key)) continue;
+    out[key] = normalizeChartsKpiBundle(key, src[key], defs[key]);
+  }
+  return out;
+}
+
 function normalizeChartsUiConfigV1(raw) {
   const def = defaultChartsUiConfigV1();
   const obj = safeJsonParseObject(raw);
@@ -787,6 +920,7 @@ function normalizeChartsUiConfigV1(raw) {
     v: 1,
     hideOnMobile: normalizeBool(obj.hideOnMobile, def.hideOnMobile),
     charts: normalizeChartsList(obj.charts, def.charts),
+    kpiBundles: normalizeChartsKpiBundles(obj.kpiBundles, def.kpiBundles),
   };
 }
 

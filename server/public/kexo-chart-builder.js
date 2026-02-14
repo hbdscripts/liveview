@@ -146,6 +146,28 @@
     return fallback || 'line';
   }
 
+  function isPlainObject(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    var proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  }
+
+  function deepMergeInto(target, patch) {
+    if (!isPlainObject(target) || !isPlainObject(patch)) return target;
+    Object.keys(patch).forEach(function (key) {
+      var pv = patch[key];
+      if (Array.isArray(pv)) {
+        target[key] = pv.slice();
+      } else if (isPlainObject(pv)) {
+        if (!isPlainObject(target[key])) target[key] = {};
+        deepMergeInto(target[key], pv);
+      } else {
+        target[key] = pv;
+      }
+    });
+    return target;
+  }
+
   /**
    * Render an ApexCharts line/area/bar chart with canonical data shape.
    * config: { chartKey, containerEl, categories, series, mode?, colors?, height?, pct?, currency?, showEndLabels?, splitLayout?, legendEl?, onError? }
@@ -166,6 +188,7 @@
     var splitLayout = !!c.splitLayout;
     var legendEl = c.legendEl || null;
     var onError = typeof c.onError === 'function' ? c.onError : null;
+    var advancedApexOverride = isPlainObject(c.advancedApexOverride) ? c.advancedApexOverride : {};
 
     if (!el) return null;
 
@@ -177,6 +200,15 @@
       var data = Array.isArray(s && s.data) ? s.data : [];
       return { name: (s && s.name) || '—', data: data.map(function (v) { var n = Number(v); return isFinite(n) ? n : 0; }) };
     });
+    var pieLabels = [];
+    var pieValues = [];
+    if (chartType === 'pie') {
+      apexSeries.forEach(function (s, idx) {
+        pieLabels.push((s && s.name) ? String(s.name) : ('Series ' + String(idx + 1)));
+        var v = Array.isArray(s && s.data) ? Number(s.data[0]) : Number(s && s.data);
+        pieValues.push(Number.isFinite(v) ? v : 0);
+      });
+    }
 
     var yFmt = pct ? function (v) { return v != null ? Number(v).toFixed(1) + '%' : '—'; }
       : currency ? function (v) { return v != null ? ('£' + Number(v).toLocaleString()) : '—'; }
@@ -220,6 +252,19 @@
       markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
       noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } },
     };
+    if (chartType === 'pie') {
+      apexOpts.labels = pieLabels;
+      apexOpts.series = pieValues;
+      apexOpts.legend.show = true;
+      apexOpts.dataLabels = { enabled: true };
+      apexOpts.stroke = { show: false };
+      apexOpts.yaxis = undefined;
+      apexOpts.xaxis = undefined;
+      apexOpts.tooltip = { y: { formatter: yFmt } };
+    }
+    if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
+      deepMergeInto(apexOpts, advancedApexOverride);
+    }
 
     var instance = null;
     ensureApexCharts(function () {
@@ -254,11 +299,27 @@
     var c = config || {};
     var el = c.containerEl;
     var data = Array.isArray(c.data) ? c.data : [];
+    var compareData = Array.isArray(c.compareData) ? c.compareData : [];
+    var showCompare = !!c.showCompare && compareData.length > 1;
     var color = c.color || '#3eb3ab';
+    var compareColor = c.compareColor || '#cccccc';
     var height = typeof c.height === 'number' ? c.height : 30;
+    var mode = normalizeChartType(c.mode || 'line', 'line');
+    var curve = ['smooth', 'straight', 'stepline'].indexOf(String(c.curve || '').trim().toLowerCase()) >= 0
+      ? String(c.curve).trim().toLowerCase() : 'smooth';
+    var strokeWidth = Number(c.strokeWidth);
+    if (!Number.isFinite(strokeWidth)) strokeWidth = 2.15;
+    if (strokeWidth < 0.5) strokeWidth = 0.5;
+    if (strokeWidth > 6) strokeWidth = 6;
+    var advancedApexOverride = isPlainObject(c.advancedApexOverride) ? c.advancedApexOverride : {};
 
     if (!el) return null;
     if (data.length < 2) data = data.length === 1 ? [data[0], data[0]] : [0, 0];
+    if (showCompare && compareData.length < data.length) {
+      var fill = compareData.length ? compareData[compareData.length - 1] : 0;
+      while (compareData.length < data.length) compareData.push(fill);
+    }
+    if (showCompare && compareData.length > data.length) compareData = compareData.slice(0, data.length);
 
     var instance = null;
     ensureApexCharts(function () {
@@ -268,17 +329,27 @@
           el.__kexoChartInstance = null;
         }
         el.innerHTML = '';
-        instance = new ApexCharts(el, {
-          chart: { type: 'line', height: height, sparkline: { enabled: true }, animations: { enabled: false } },
-          series: [{ data: data }],
-          stroke: { width: 2.15, curve: 'smooth', lineCap: 'round' },
-          fill: { type: 'solid', opacity: 1 },
-          colors: [color],
+        var opts = {
+          chart: { type: mode, height: height, sparkline: { enabled: true }, animations: { enabled: false } },
+          series: showCompare ? [{ name: 'Current', data: data }, { name: 'Compare', data: compareData }] : [{ name: 'Current', data: data }],
+          stroke: { width: showCompare ? [strokeWidth, Math.max(1, strokeWidth - 0.8)] : strokeWidth, curve: curve, lineCap: 'round', dashArray: showCompare ? [0, 5] : 0 },
+          fill: mode === 'area' ? { type: 'solid', opacity: showCompare ? [0.22, 0] : 0.2 } : { type: 'solid', opacity: 1 },
+          colors: showCompare ? [color, compareColor] : [color],
           markers: { size: 0 },
           grid: { padding: { top: 0, right: 0, bottom: -2, left: 0 } },
           tooltip: { enabled: false },
-        });
-        instance.render();
+          legend: { show: false }
+        };
+        if (mode === 'bar') {
+          opts.stroke = { width: 0 };
+          opts.fill = { type: 'solid', opacity: 0.9 };
+          opts.plotOptions = { bar: { columnWidth: '62%', borderRadius: 2 } };
+        }
+        if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
+          deepMergeInto(opts, advancedApexOverride);
+        }
+        instance = new ApexCharts(el, opts);
+        try { instance.render(); } catch (_) {}
         el.__kexoChartInstance = instance;
       } catch (_) {}
     });
