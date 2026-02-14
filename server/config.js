@@ -73,6 +73,8 @@ const config = {
   returningGapMinutes: getInt('RETURNING_GAP_MINUTES', 30),
   checkoutStartedWindowMinutes: getInt('CHECKOUT_STARTED_WINDOW_MINUTES', 15),
   dbUrl: getEnv('DB_URL', ''),
+  /** Optional override for local/dev/test SQLite file path (relative or absolute). */
+  sqliteDbPath: (getEnv('SQLITE_DB_PATH', '') || '').trim(),
   adsDbUrl: getEnv('ADS_DB_URL', ''),
   trackingDefaultEnabled: getBool('TRACKING_DEFAULT_ENABLED', true),
   maxEventsPerSession: getInt('MAX_EVENTS_PER_SESSION', 50),
