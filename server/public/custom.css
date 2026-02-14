@@ -2865,16 +2865,11 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   opacity: 1;
   color: inherit;
 }
-/* Active category (dropdown closed): NO accent — match nav background (transparent) + 3px accent border at bottom */
-.kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link {
+/* Active category (dropdown closed): NO accent — match nav background (transparent) */
+.kexo-desktop-nav-list .nav-item.active:not(.show) > .nav-link {
   background: transparent !important;
   color: #fff !important;
   font-weight: 700;
-  box-shadow: inset 0 -3px 0 var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
-}
-/* When dropdown opens: remove the active border */
-.kexo-desktop-nav-list .nav-item.dropdown.show > .nav-link {
-  box-shadow: none !important;
 }
 /* Open only (aria-expanded): full opacity, accent background, full height, no radius, no hover when open */
 .kexo-desktop-nav-list .nav-link[aria-expanded="true"] {
@@ -2917,6 +2912,17 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-list .nav-item.active::after {
   content: none;
   display: none;
+}
+/* Active tab (dropdown closed): ::after 3px accent border at bottom; hide when dropdown opens */
+.kexo-desktop-nav-list .nav-item.dropdown.active:not(.show)::after {
+  content: '';
+  display: block !important;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-bottom: 3px solid var(--kexo-accent, var(--tblr-primary, #3eb3ab));
 }
 
 /* Dropdown: no border-radius, per-item accent when open (matches tab) */
