@@ -39,6 +39,7 @@ const API = '';
       channels: true,
       type: true,
       ads: true,
+      settings: false, /* never show horizontal page loader on settings */
     });
     const TABLE_CLASS_CONFIG = Object.freeze({
       dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
