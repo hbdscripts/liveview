@@ -1,5 +1,5 @@
 KEXO analytics mapping (UI → API → server → DB)
-Generated: 2026-02-14
+Generated: 2026-02-14 (origin/main@60569dc)
 Timezone: Europe/London (ADMIN_TIMEZONE)
 
 This is the human-readable companion to `audit/map.json`.
@@ -67,6 +67,20 @@ Insights
   - Mapping suggestions → GET /api/insights-variants-suggestions?range=...
   - Apply suggestions → POST /api/insights-variants-suggestions/apply
 
+- /insights/abandoned-carts (`server/public/insights/abandoned-carts.html`, data-page="abandoned-carts")
+  - Mode selector: Abandoned Carts (cart) / Abandoned Checkouts (checkout) affects all queries.
+  - Chart: Abandoned value trend → GET /api/abandoned-carts/series?range=...&mode=...&timezone=...
+    - Response: series[].abandoned (count), series[].abandoned_value_gbp (GBP), totalAbandonedGbp.
+  - Table: Countries (`abandoned-carts-countries-table`) → GET /api/abandoned-carts/top-countries?range=...&mode=...&timezone=...&limit=5
+    - Abandoned: COUNT(abandoned sessions) in range
+    - Checkout: COUNT(checkout_started sessions) in range (context metric + checkout-mode denominator)
+    - % Abandoned: Abandoned / (cart sessions started in range OR checkout sessions started in range) × 100 (NULL if denom=0)
+    - Value: SUM(cart_value converted to GBP) for abandoned sessions in range
+  - Table: Country + Product (`abandoned-carts-country-products-table`) → GET /api/abandoned-carts/top-country-products?range=...&mode=...&timezone=...&limit=5
+    - Same metrics as Countries, but grouped by (country, first_product_handle). Titles are best-effort Shopify meta.
+  - Table: Abandoned sessions (`sessions-table`) → GET /api/abandoned-carts/sessions?range=...&mode=...&timezone=...&limit=...&offset=...
+    - Response mirrors the sessions table schema but is filtered to abandoned rows.
+
 Traffic
 
 - /traffic/channels (`server/public/traffic/channels.html`, data-page="channels")
@@ -104,4 +118,7 @@ Shared modals/endpoints (reachable from many pages)
 - Page Insights modal → GET /api/page-insights?url=...&range=...
 - Store base URL + shop domain → GET /api/store-base-url
 - Theme/settings/config diagnostics → GET /api/settings, GET /api/theme-defaults, GET /api/config-status
+- Settings assets:
+  - Read overrides → GET /api/asset-overrides
+  - Upload asset (R2) → POST /api/assets/upload?slot=... (multipart/form-data)
 

@@ -1,9 +1,11 @@
 {
   "generatedAt": "2026-02-14",
   "timezone": "Europe/London",
+  "gitHead": "60569dc",
   "notes": [
     "This file is an inventory/mapping for analytics reporting: UI pages -> tables/charts -> API endpoints -> server handlers -> DB tables/queries.",
-    "Line numbers are approximate and may drift; rely on file paths + function names as the stable identifiers."
+    "Line numbers are approximate and may drift; rely on file paths + function names as the stable identifiers.",
+    "Refreshed against origin/main@60569dc; includes /insights/abandoned-carts and Settings asset endpoints."
   ],
   "pages": [
     {
@@ -380,6 +382,103 @@
       ]
     },
     {
+      "route": "/insights/abandoned-carts",
+      "dataPage": "abandoned-carts",
+      "template": "server/public/insights/abandoned-carts.html",
+      "scripts": [
+        "server/public/kexo-table-builder.js",
+        "server/public/kexo-table-defs.js",
+        "server/public/kexo-chart-defs.js",
+        "server/public/kexo-chart-builder.js",
+        "server/public/app.js",
+        "server/public/theme-settings.js"
+      ],
+      "tables": [
+        {
+          "tableId": "abandoned-carts-countries-table",
+          "mount": "#abandoned-carts-countries-mount[data-kexo-table=\"abandoned-carts-countries-table\"]",
+          "columns": [
+            { "label": "Country", "responseFields": ["rows[].country"] },
+            { "label": "Abandoned", "responseFields": ["rows[].abandoned"] },
+            { "label": "Checkout", "responseFields": ["rows[].checkout_sessions"] },
+            { "label": "% Abandoned", "responseFields": ["rows[].abandoned_pct"] },
+            { "label": "Value", "responseFields": ["rows[].abandoned_value_gbp"] }
+          ],
+          "api": {
+            "method": "GET",
+            "path": "/api/abandoned-carts/top-countries",
+            "params": [
+              { "name": "range", "source": "getStatsRange() (date picker)", "example": "today|7d|7days|14d|30d|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD" },
+              { "name": "timezone", "source": "tz constant in app.js", "example": "Europe/London" },
+              { "name": "mode", "source": "abandoned mode dropdown", "example": "cart|checkout" },
+              { "name": "limit", "source": "hard-coded", "example": "5" }
+            ],
+            "responsePath": "rows[]",
+            "renderer": { "file": "server/public/app.js", "function": "renderAbandonedCartsTopCountries()", "notes": "Renders native table rows into #abandoned-carts-countries-body." },
+            "handler": { "file": "server/routes/abandonedCarts.js", "export": "router (mounted at /api/abandoned-carts)" }
+          }
+        },
+        {
+          "tableId": "abandoned-carts-country-products-table",
+          "mount": "#abandoned-carts-country-products-mount[data-kexo-table=\"abandoned-carts-country-products-table\"]",
+          "columns": [
+            { "label": "Country + Product", "responseFields": ["rows[].country", "rows[].product_title", "rows[].product_handle"] },
+            { "label": "Abandoned", "responseFields": ["rows[].abandoned"] },
+            { "label": "Checkout", "responseFields": ["rows[].checkout_sessions"] },
+            { "label": "% Abandoned", "responseFields": ["rows[].abandoned_pct"] },
+            { "label": "Value", "responseFields": ["rows[].abandoned_value_gbp"] }
+          ],
+          "api": {
+            "method": "GET",
+            "path": "/api/abandoned-carts/top-country-products",
+            "params": [
+              { "name": "range", "source": "getStatsRange() (date picker)", "example": "today|7d|7days|14d|30d|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD" },
+              { "name": "timezone", "source": "tz constant in app.js", "example": "Europe/London" },
+              { "name": "mode", "source": "abandoned mode dropdown", "example": "cart|checkout" },
+              { "name": "limit", "source": "hard-coded", "example": "5" }
+            ],
+            "responsePath": "rows[]",
+            "renderer": { "file": "server/public/app.js", "function": "renderAbandonedCartsTopCountryProducts()", "notes": "Renders native table rows into #abandoned-carts-country-products-body." },
+            "handler": { "file": "server/routes/abandonedCarts.js", "export": "router (mounted at /api/abandoned-carts)" }
+          }
+        },
+        {
+          "tableId": "sessions-table (abandoned sessions)",
+          "mount": "#sessions-table-mount[data-kexo-table=\"sessions-table\"]",
+          "api": {
+            "method": "GET",
+            "path": "/api/abandoned-carts/sessions",
+            "params": [
+              { "name": "range", "source": "normalizeRangeKeyForApi(dateRange) in app.js", "example": "today|7d|7days|14d|30d|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD" },
+              { "name": "limit", "source": "rowsPerPage", "example": "25" },
+              { "name": "offset", "source": "currentPage", "example": "0" },
+              { "name": "timezone", "source": "tz constant in app.js", "example": "Europe/London" },
+              { "name": "mode", "source": "abandoned mode dropdown", "example": "cart|checkout" }
+            ],
+            "responsePath": "sessions[]",
+            "renderer": { "file": "server/public/app.js", "function": "fetchSessions() + renderTable()", "notes": "Reuses sessions table renderer; abandoned page swaps the endpoint." },
+            "handler": { "file": "server/routes/abandonedCarts.js", "export": "router (mounted at /api/abandoned-carts)" }
+          }
+        }
+      ],
+      "charts": [
+        {
+          "chartKey": "abandoned-carts-chart",
+          "container": "#abandoned-carts-chart",
+          "api": {
+            "method": "GET",
+            "path": "/api/abandoned-carts/series",
+            "params": [
+              { "name": "range", "source": "getStatsRange() (date picker)", "example": "today|7d|7days|14d|30d|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD" },
+              { "name": "timezone", "source": "tz constant in app.js", "example": "Europe/London" },
+              { "name": "mode", "source": "abandoned mode dropdown", "example": "cart|checkout" }
+            ],
+            "responseFields": ["series[].abandoned", "series[].abandoned_value_gbp", "totalAbandonedGbp"]
+          }
+        }
+      ]
+    },
+    {
       "route": "/traffic/channels",
       "dataPage": "channels",
       "template": "server/public/traffic/channels.html",
@@ -649,6 +748,59 @@
       "cache": [{ "layer": "server/reportCache.js", "ttlMs": 300000 }],
       "dbTables": ["orders_shopify_shipping_options", "sessions"],
       "usedByPages": ["/tools/shipping-cr"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/abandoned-carts/series",
+      "handler": { "file": "server/routes/abandonedCarts.js", "export": "router.get('/series')" },
+      "rangeHandling": { "helper": "store.getRangeBounds() via resolveBoundsFromReq()", "timezone": "query.timezone || store.resolveAdminTimeZone()", "bounds": "[start, end)" },
+      "cache": [{ "layer": "route headers", "ttlMs": 30000, "note": "Cache-Control: private, max-age=30" }],
+      "dbTables": ["sessions"],
+      "usedByPages": ["/insights/abandoned-carts"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/abandoned-carts/top-countries",
+      "handler": { "file": "server/routes/abandonedCarts.js", "export": "router.get('/top-countries')" },
+      "rangeHandling": { "helper": "store.getRangeBounds() via resolveBoundsFromReq()", "timezone": "query.timezone || store.resolveAdminTimeZone()", "bounds": "[start, end)" },
+      "cache": [{ "layer": "route headers", "ttlMs": 30000, "note": "Cache-Control: private, max-age=30" }],
+      "dbTables": ["sessions"],
+      "usedByPages": ["/insights/abandoned-carts"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/abandoned-carts/top-country-products",
+      "handler": { "file": "server/routes/abandonedCarts.js", "export": "router.get('/top-country-products')" },
+      "rangeHandling": { "helper": "store.getRangeBounds() via resolveBoundsFromReq()", "timezone": "query.timezone || store.resolveAdminTimeZone()", "bounds": "[start, end)" },
+      "cache": [{ "layer": "route headers", "ttlMs": 30000, "note": "Cache-Control: private, max-age=30" }],
+      "dbTables": ["sessions"],
+      "usedByPages": ["/insights/abandoned-carts"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/abandoned-carts/sessions",
+      "handler": { "file": "server/routes/abandonedCarts.js", "export": "router.get('/sessions')" },
+      "rangeHandling": { "helper": "store.getRangeBounds() via resolveBoundsFromReq()", "timezone": "query.timezone || store.resolveAdminTimeZone()", "bounds": "[start, end)" },
+      "cache": [{ "layer": "route headers", "ttlMs": 0, "note": "Cache-Control: no-store, no-cache, must-revalidate" }],
+      "dbTables": ["sessions", "visitors", "events"],
+      "usedByPages": ["/insights/abandoned-carts"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/asset-overrides",
+      "handler": { "file": "server/routes/assets.js", "export": "getAssetOverrides" },
+      "cache": [{ "layer": "route headers", "ttlMs": 0, "note": "Cache-Control: no-store" }],
+      "dbTables": ["settings"],
+      "usedByPages": ["/settings (Assets tab)"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/assets/upload",
+      "handler": { "file": "server/routes/assets.js", "export": "postUploadAsset (multipart via multer)" },
+      "cache": [{ "layer": "route headers", "ttlMs": 0, "note": "Cache-Control: no-store" }],
+      "dbTables": [],
+      "external": ["Cloudflare R2 (S3-compatible)"],
+      "usedByPages": ["/settings (Assets tab)"]
     }
   ]
 }

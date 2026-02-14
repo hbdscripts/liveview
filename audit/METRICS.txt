@@ -1,5 +1,5 @@
 KEXO metrics definitions (single source of truth)
-Generated: 2026-02-14
+Generated: 2026-02-14 (origin/main@60569dc)
 
 This file captures the agreed semantics for core metrics so UI tables/charts do not diverge.
 
@@ -12,6 +12,8 @@ Time windows
   - Interval is `[startMs, endMs)` (start inclusive, end exclusive).
   - For ranges that include “today” (e.g. `today`, `3d`, `7d`, `month`, or custom ranges ending today), `endMs` is `nowMs`.
   - For fixed past days (e.g. `yesterday`, `d:YYYY-MM-DD` in the past), `endMs` is the next day’s start-of-day in admin timezone.
+- Range key normalization:
+  - Some UI paths send `7days`/`14days`/`30days`; server endpoints should normalize these to `7d`/`14d`/`30d` and treat them equivalently.
 
 Null / divide-by-zero rules
 
@@ -67,4 +69,29 @@ Product landing sessions (for product-level CR%)
 - Product-level CR%:
   - `product_cr_pct = (product_orders_paid / product_landing_sessions_human) * 100`
   - NULL when denominator is 0/unknown.
+
+Abandoned carts / abandoned checkouts
+
+These metrics power the Insights → Abandoned Carts page (`/insights/abandoned-carts`) and `/api/abandoned-carts/*`.
+
+- Abandoned session (numerator):
+  - Sessions row where:
+    - `sessions.has_purchased = 0`
+    - `sessions.is_abandoned = 1`
+    - `sessions.abandoned_at` is within `[startMs, endMs)`
+  - Mode filter:
+    - Cart mode (`mode=cart`): `COALESCE(sessions.cart_qty, 0) > 0`
+    - Checkout mode (`mode=checkout`): `sessions.checkout_started_at IS NOT NULL`
+- Abandoned value (GBP):
+  - `abandoned_value_gbp = SUM(sessions.cart_value)` converted to GBP using `fx` rates at report time.
+  - Rounded to 2 decimal places.
+- Checkout sessions (context metric):
+  - `checkout_sessions = COUNT(*)` of sessions where `checkout_started_at` is within `[startMs, endMs)` (grouped by country / handle as needed).
+- % Abandoned (ratio):
+  - Rounded to 1 decimal place; NULL when denominator is 0/unknown.
+  - As currently implemented:
+    - Cart mode: `abandoned_pct = abandoned / cart_sessions_started_in_range * 100`
+      - `cart_sessions_started_in_range` counts sessions where `started_at` is within `[startMs, endMs)` and `cart_qty > 0`.
+    - Checkout mode: `abandoned_pct = abandoned / checkout_sessions_started_in_range * 100`
+      - `checkout_sessions_started_in_range` counts sessions where `checkout_started_at` is within `[startMs, endMs)`.
 

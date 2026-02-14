@@ -1,5 +1,5 @@
 KEXO reporting audit (end-to-end)
-Generated: 2026-02-14
+Generated: 2026-02-14 (origin/main@60569dc)
 
 This is a living audit report focused on data consistency and metric correctness across the UI (tables/charts/KPIs).
 Companion files:
@@ -11,9 +11,9 @@ Companion files:
 
 Scope (so far)
 
-- Phase 0 (Inventory & mapping): Completed for the primary analytics pages (Dashboard/Insights/Traffic/Integrations/Tools).
+- Phase 0 (Inventory & mapping): Completed for the primary analytics pages (Dashboard/Insights/Traffic/Integrations/Tools) and refreshed to include newer Insights/Settings additions.
 - Phase 1 (Metric definitions): Core metric semantics documented in audit/METRICS.txt.
-- Fixes shipped: Dashboard CR% guardrails + stats caching normalization + shared metric helper + unit tests.
+- Fixes shipped: Dashboard CR% guardrails + stats caching normalization + shared metric helper + unit tests + range-key normalization fixes where needed.
 
 ---
 
@@ -46,6 +46,21 @@ Findings and fixes
   - Added `server/metrics.js` with `percentOrNull()` + `roundTo()`.
   - Added unit tests (`npm test`) to lock in divide-by-zero and rounding behaviour.
 
+4) Insights → Variants range mismatch (“Last 7 days” fell back to Today)
+
+- Symptom:
+  - UI could send `range=7days/14days/30days` but `/api/insights-variants` expected `7d/14d/30d`; unnormalized values fell back to `today`, under-reporting data.
+- Fix (shipped):
+  - `/api/insights-variants` now normalizes `7days→7d`, `14days→14d`, `30days→30d` (mirrors other range normalization patterns).
+
+5) Inventory refresh: Insights → Abandoned Carts + Settings asset endpoints
+
+- Finding:
+  - New page `/insights/abandoned-carts` and API `/api/abandoned-carts/*` exist (plus Settings assets endpoints `GET /api/asset-overrides`, `POST /api/assets/upload`) and must be included in mapping/definitions to keep the audit current.
+- Update (this refresh):
+  - `audit/map.json` and `audit/METRICS_MAP.txt` now include Abandoned Carts tables/chart and the new asset endpoints.
+  - `audit/METRICS.txt` now documents Abandoned Carts/Checkouts metric semantics and range-key normalization expectations.
+
 ---
 
 Open items / next steps
@@ -57,6 +72,6 @@ Open items / next steps
   - performance (avoid N+1/meta fetch hot paths; cache correctness)
 - Integration testing:
   - Added an integration-style test for `/api/dashboard-series` (requires only `npm test`; uses `SQLITE_DB_PATH` to isolate a test DB).
-  - Next: add at least one more integration test for another high-value endpoint/table (e.g. `/api/shopify-best-sellers` or `/api/stats`).
+  - Next: add at least one more integration test for another high-value endpoint/table (target: `/api/abandoned-carts/top-countries` to lock in NULL ratio semantics + range normalization).
 - Add reconciliation harness to reproduce and validate key edge cases (including “orders > 0 but denominator = 0” => CR% undefined).
 
