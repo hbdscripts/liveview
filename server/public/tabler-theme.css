@@ -45,9 +45,6 @@ body {
 }
 
 /* ── Page header (vertical layout — light background) ────────────── */
-.page-header .page-pretitle {
-  color: var(--tblr-secondary, #626976);
-}
 .page-header .page-title {
   color: var(--tblr-body-color, #1e293b);
   letter-spacing: -0.02em;
