@@ -15188,7 +15188,7 @@ const API = '';
             }
           }).catch(function() {});
         }
-        function renderSparkline(elId, dataArr, color, type) {
+        function renderSparkline(elId, dataArr, color, compareDataArr) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
@@ -15200,11 +15200,23 @@ const API = '';
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : 0;
           });
-          var minVal = nums[0];
-          var maxVal = nums[0];
-          for (var i = 1; i < nums.length; i++) {
-            if (nums[i] < minVal) minVal = nums[i];
-            if (nums[i] > maxVal) maxVal = nums[i];
+          var compareNums = Array.isArray(compareDataArr) ? compareDataArr.map(function(v) {
+            var n = (typeof v === 'number') ? v : Number(v);
+            return isFinite(n) ? n : 0;
+          }) : null;
+          if (compareNums && compareNums.length < 2) {
+            compareNums = compareNums.length === 1 ? [compareNums[0], compareNums[0]] : null;
+          }
+          if (compareNums && compareNums.length !== nums.length) {
+            if (compareNums.length > nums.length) compareNums = compareNums.slice(compareNums.length - nums.length);
+            while (compareNums.length < nums.length) compareNums.unshift(compareNums[0]);
+          }
+          var allNums = compareNums && compareNums.length ? nums.concat(compareNums) : nums.slice();
+          var minVal = allNums[0];
+          var maxVal = allNums[0];
+          for (var i = 1; i < allNums.length; i++) {
+            if (allNums[i] < minVal) minVal = allNums[i];
+            if (allNums[i] > maxVal) maxVal = allNums[i];
           }
           if (!isFinite(minVal)) minVal = 0;
           if (!isFinite(maxVal)) maxVal = 0;
@@ -15212,7 +15224,7 @@ const API = '';
           // Flat/near-flat series can render as visually empty at 40px height.
           // Keep a truly zero series flat/neutral; only bump non-zero flat lines.
           var span = Math.abs(maxVal - minVal);
-          var allZero = span < 1e-9 && nums.every(function(v) { return Math.abs(v) < 1e-9; });
+          var allZero = span < 1e-9 && allNums.every(function(v) { return Math.abs(v) < 1e-9; });
           if (span < 1e-9 && !allZero) {
             var bump = (maxVal === 0) ? 1 : Math.max(0.01, Math.abs(maxVal) * 0.02);
             nums[nums.length - 1] = nums[nums.length - 1] + bump;
@@ -15230,14 +15242,22 @@ const API = '';
             yMax = maxVal + pad;
           }
 
-          var chartType = String(type || '').toLowerCase() === 'area' ? 'area' : 'line';
-          var isArea = chartType === 'area';
+          var series = [{ name: 'Current', data: nums }];
+          var colors = [color];
+          var strokeWidths = [2.55];
+          var dashArray = [0];
+          if (compareNums && compareNums.length >= 2) {
+            series.push({ name: 'Compare', data: compareNums });
+            colors.push(kpiDeltaToneColor('flat'));
+            strokeWidths.push(2.05);
+            dashArray.push(4);
+          }
           var chart = new ApexCharts(sparkEl, {
-            chart: { type: chartType, height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
-            series: [{ name: 'Trend', data: nums }],
-            stroke: { width: 2.55, curve: sparkCurve, lineCap: 'butt' },
-            fill: { type: 'solid', opacity: isArea ? 0.28 : 1 },
-            colors: [color],
+            chart: { type: 'line', height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
+            series: series,
+            stroke: { width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
+            fill: { type: 'solid', opacity: 0 },
+            colors: colors,
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
             grid: { padding: { top: 0, right: 0, bottom: -3, left: 0 } },
@@ -15246,7 +15266,7 @@ const API = '';
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = '#0b913d';
+          var GREEN = kpiDeltaToneColor('up');
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var vals = (dataArr || []).map(function(v) {
@@ -15260,7 +15280,7 @@ const API = '';
           return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = '#0b913d';
+          var GREEN = kpiDeltaToneColor('up');
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
@@ -15385,18 +15405,30 @@ const API = '';
         var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
         var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
-        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), 'area');
-        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), 'area');
-        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), 'area');
-        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), 'area');
-        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), 'area');
-        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), 'area');
-        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), 'area');
-        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), 'area');
-        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), 'area');
-        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), 'area');
-        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), 'area');
-        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), 'area');
+        var revenueSparkCompare = sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone);
+        var sessionsSparkCompare = sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone);
+        var ordersSparkCompare = sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone);
+        var returningSparkCompare = sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone);
+        var convSparkCompare = sparkCompareSeries(convSpark, currentConvTone, compareConvTone);
+        var aovSparkCompare = sparkCompareSeries(aovSpark, currentAovTone, compareAovTone);
+        var bounceSparkCompare = sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone);
+        var roasSparkCompare = sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone);
+        var itemsSparkCompare = sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone);
+        var fulfilledSparkCompare = sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone);
+        var returnsSparkCompare = sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone);
+        var cogsSparkCompare = sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone);
+        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare);
+        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare);
+        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare);
+        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare);
+        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare);
+        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare);
+        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
+        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
+        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), itemsSparkCompare);
+        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), fulfilledSparkCompare);
+        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), returnsSparkCompare);
+        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), cogsSparkCompare);
 
         try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
 
