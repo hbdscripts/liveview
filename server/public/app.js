@@ -13879,13 +13879,20 @@ const API = '';
 
             // Ensure the header icon matches the EXACT computed color from the menu icon,
             // even if accents are altered by theme/scripts (no drift).
+            var computedColor = '';
             try {
-              var computedColor = (window.getComputedStyle && iconSrc) ? window.getComputedStyle(iconSrc).color : '';
+              computedColor = (window.getComputedStyle && iconSrc) ? window.getComputedStyle(iconSrc).color : '';
               computedColor = String(computedColor || '').trim();
               if (computedColor) icon.style.color = computedColor;
             } catch (_) {}
 
             pretitle.insertBefore(icon, pretitle.firstChild || null);
+
+            // Expose accent for connector lines (very light tint of same shade).
+            try {
+              var row = pretitle.closest('.row.align-items-center');
+              if (row && computedColor) row.style.setProperty('--kexo-page-header-accent', computedColor);
+            } catch (_) {}
           } catch (_) {}
         }
         function updateNavSelection(tab) {
