@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Map tooltip stuck fix)
+Last updated: 2026-02-14 (Insights Variants 7days→7d fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -275,6 +275,9 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-14 (latest)
+- Insights Variants: fixed "Last 7 days" showing less data than "Yesterday". The header date selector sends 7days/14days/30days but the API expected 7d/14d/30d; unnormalized values fell back to today. Added range normalization (7days→7d, etc.) in insightsVariants route.
+
+2026-02-14 (latest)
 - Map tooltip stuck fix: added mouseleave + scroll listeners on countries/live map containers to hide .jvm-tooltip when cursor leaves the map or page scrolls. Prevents tooltip staying visible when user moves away.
 
 2026-02-14 (latest)
@@ -316,7 +319,7 @@ Ops/reliability:
 - Dashboard sparkline growth tone reverted to the original KEXO mapping (`kpiDeltaToneColor('up')` / accent-2), replacing the temporary hardcoded green override.
 
 2026-02-14 (latest)
-- Mobile main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): full-width fixed positioning with JS-calculated top (--kexo-mobile-nav-dropdown-top from nav bar bottom). Seam hidden (margin-top:-1px; no top border). Caret chevron hidden. Dropdown menu background matches the tab accent (`--kexo-accent`); dropdown items render with white text and no “sticky” highlight/background; active underline (::after) is disabled on mobile. Arrow icons hidden. Close on scroll (sticky header).
+- Main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): Mobile is full-width fixed below the sticky nav using JS-calculated top (`--kexo-mobile-nav-dropdown-top`). Seam hidden (margin-top:-1px; no top border). Caret chevron hidden on mobile. Desktop+mobile: opening/active state uses the tab accent as background (`--kexo-accent`) for both the tab and dropdown menu; dropdown items are white with no “sticky” highlight; active underline (::after) removed; dropdown arrows/icons no longer use the lighter color-mix (inherit item color). Close on scroll (mobile).
 2026-02-14 (latest)
 - Dashboard overview KPI sparklines now render with sharper/angular peaks (`curve: straight`) instead of smooth curves.
 - Dashboard KPI sparkline growth tone now uses `#0b913d` (accent-2 override for sparkline up-tone).

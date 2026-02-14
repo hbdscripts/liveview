@@ -16,10 +16,14 @@ async function getInsightsVariants(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'insights-variants.get', data: { shop: req?.query?.shop, range: req?.query?.range } });
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
-  let range = (req.query.range || 'today').toLowerCase();
+  let range = (req.query.range || 'today').trim().toLowerCase();
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
+  // UI uses 7days/14days/30days; normalize to server keys.
+  if (range === '7days') range = '7d';
+  if (range === '14days') range = '14d';
+  if (range === '30days') range = '30d';
   const isDayKey = /^d:\d{4}-\d{2}-\d{2}$/.test(range);
   const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(range);
   if (!RANGE_KEYS.includes(range) && !isDayKey && !isRangeKey) range = 'today';
