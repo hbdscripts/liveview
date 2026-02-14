@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Map Option B: no series, setStyle after init)
+Last updated: 2026-02-14 (Dashboard sparkline peak/style tuning)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Dashboard overview KPI sparklines now render with sharper/angular peaks (`curve: straight`) instead of smooth curves.
+- Dashboard KPI sparkline growth tone now uses `#0c756e` (accent-2 override for sparkline up-tone).
 
 2026-02-14 (latest)
 - Map getValue crash (Option B): removed series.regions entirely from jsVectorMap config. Region fills are now applied after init via `map.regions[code].element.setStyle('fill', color)`. Fixes "Cannot read properties of undefined (reading 'getValue')" on live map and countries map.

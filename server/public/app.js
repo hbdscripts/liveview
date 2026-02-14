@@ -15190,7 +15190,8 @@ const API = '';
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
-          var sparkCurve = 'smooth';
+          // Dashboard KPI sparklines intentionally use sharper, angular peaks.
+          var sparkCurve = 'straight';
 
           var nums = dataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
@@ -15231,7 +15232,7 @@ const API = '';
           var chart = new ApexCharts(sparkEl, {
             chart: { type: chartType, height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ name: 'Trend', data: nums }],
-            stroke: { width: 2.55, curve: sparkCurve, lineCap: 'round' },
+            stroke: { width: 2.55, curve: sparkCurve, lineCap: 'butt' },
             fill: { type: 'solid', opacity: isArea ? 0.28 : 1 },
             colors: [color],
             yaxis: { min: yMin, max: yMax },
@@ -15242,7 +15243,7 @@ const API = '';
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = kpiDeltaToneColor('up');
+          var GREEN = '#0c756e';
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var vals = (dataArr || []).map(function(v) {
@@ -15256,7 +15257,7 @@ const API = '';
           return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = kpiDeltaToneColor('up');
+          var GREEN = '#0c756e';
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
