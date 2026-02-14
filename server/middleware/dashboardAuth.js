@@ -123,7 +123,7 @@ function isProtectedPath(pathname) {
 const OAUTH_COOKIE_NAME = 'oauth_session';
 
 function requiresAuth(pathname, method) {
-  if (pathname === '/app/login' || pathname === '/app/logout') return false;
+  if (pathname === '/app/login' || pathname === '/app/register' || pathname === '/app/logout') return false;
   if (pathname === '/auth/google' || pathname === '/auth/google/callback') return false;
   if (pathname === '/auth/shopify-login' || pathname === '/auth/shopify-login/callback') return false;
   if (pathname === '/auth/local/register' || pathname === '/auth/local/login') return false;
@@ -145,10 +145,12 @@ function getCookie(req, name) {
   return undefined;
 }
 
-function signOauthSession(payload) {
+function signOauthSession(payload, opts) {
   const secret = config.oauthCookieSecret;
   if (!secret) return null;
-  const t = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
+  const ttlMs = opts && Number.isFinite(Number(opts.ttlMs)) ? Number(opts.ttlMs) : 0;
+  const safeTtlMs = ttlMs > 0 ? Math.min(ttlMs, 365 * 24 * 60 * 60 * 1000) : (SESSION_HOURS * 60 * 60 * 1000);
+  const t = Date.now() + safeTtlMs;
   const parts = ['t=' + t];
   if (payload.email) parts.push('email=' + payload.email);
   if (payload.shop) parts.push('shop=' + payload.shop);

@@ -85,8 +85,10 @@ function normalizeSafeRedirectPath(value) {
   return raw;
 }
 
-function setOauthCookie(res, value) {
-  const maxAge = dashboardAuth.SESSION_HOURS * 60 * 60;
+function setOauthCookie(res, value, maxAgeSecOverride) {
+  const maxAge = Number.isFinite(Number(maxAgeSecOverride)) && Number(maxAgeSecOverride) > 0
+    ? Math.trunc(Number(maxAgeSecOverride))
+    : (dashboardAuth.SESSION_HOURS * 60 * 60);
   let set = `${dashboardAuth.OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
   if (process.env.NODE_ENV === 'production') set += '; Secure';
   res.setHeader('Set-Cookie', set);
@@ -144,7 +146,9 @@ function readForm(req) {
   const email = body.email != null ? String(body.email).trim() : '';
   const password = body.password != null ? String(body.password) : '';
   const redirect = body.redirect != null ? String(body.redirect).trim() : '';
-  return { email, password, redirect };
+  const remember = body.remember != null ? String(body.remember).trim() : '';
+  const terms = body.terms != null ? String(body.terms).trim() : '';
+  return { email, password, redirect, remember, terms };
 }
 
 function buildMetaFromRequest(req) {
@@ -166,24 +170,28 @@ function buildMetaFromRequest(req) {
 async function postRegister(req, res) {
   // Allow disabling local signup in future; for now it is enabled by default.
   void config;
-  const { email, password, redirect } = readForm(req);
+  const { email, password, redirect, terms } = readForm(req);
   const safeRedirect = normalizeSafeRedirectPath(redirect);
+  const acceptedTerms = terms === '1' || terms === 'on' || terms === 'true' || terms === 'yes';
+  if (!acceptedTerms) {
+    return res.redirect(302, '/app/register?error=terms_required&redirect=' + encodeURIComponent(safeRedirect));
+  }
   const e = users.normalizeEmail(email);
-  if (!e) return res.redirect(302, '/app/login?error=invalid_email&redirect=' + encodeURIComponent(safeRedirect));
-  if (!password || String(password).length < 8) return res.redirect(302, '/app/login?error=weak_password&redirect=' + encodeURIComponent(safeRedirect));
+  if (!e) return res.redirect(302, '/app/register?error=invalid_email&redirect=' + encodeURIComponent(safeRedirect));
+  if (!password || String(password).length < 8) return res.redirect(302, '/app/register?error=weak_password&redirect=' + encodeURIComponent(safeRedirect));
 
   const meta = buildMetaFromRequest(req);
   const passwordHash = await hashPassword(password);
   const r = await users.createPendingUser(e, passwordHash, meta, { now: Date.now() });
   if (!r || r.ok !== true) {
     const err = (r && r.error) ? String(r.error) : 'register_failed';
-    return res.redirect(302, '/app/login?error=' + encodeURIComponent(err) + '&redirect=' + encodeURIComponent(safeRedirect));
+    return res.redirect(302, '/app/register?error=' + encodeURIComponent(err) + '&redirect=' + encodeURIComponent(safeRedirect));
   }
   return res.redirect(302, '/app/login?registered=1&redirect=' + encodeURIComponent(safeRedirect));
 }
 
 async function postLogin(req, res) {
-  const { email, password, redirect } = readForm(req);
+  const { email, password, redirect, remember } = readForm(req);
   const safeRedirect = normalizeSafeRedirectPath(redirect);
   const e = users.normalizeEmail(email);
   if (!e || !password) return res.redirect(302, '/app/login?error=invalid_credentials&redirect=' + encodeURIComponent(safeRedirect));
@@ -204,9 +212,12 @@ async function postLogin(req, res) {
   const ok = storedHash ? await verifyPassword(password, storedHash) : false;
   if (!ok) return res.redirect(302, '/app/login?error=invalid_credentials&redirect=' + encodeURIComponent(safeRedirect));
 
-  const token = dashboardAuth.signOauthSession({ email: e });
+  const rememberMe = remember === '1' || remember === 'on' || remember === 'true' || remember === 'yes';
+  const rememberTtlMs = 30 * 24 * 60 * 60 * 1000;
+  const token = dashboardAuth.signOauthSession({ email: e }, rememberMe ? { ttlMs: rememberTtlMs } : undefined);
   if (!token) return res.redirect(302, '/app/login?error=session&redirect=' + encodeURIComponent(safeRedirect));
-  setOauthCookie(res, token);
+  const maxAgeSec = rememberMe ? Math.trunc(rememberTtlMs / 1000) : (dashboardAuth.SESSION_HOURS * 60 * 60);
+  setOauthCookie(res, token, maxAgeSec);
 
   // Track login metadata for Admin -> Users.
   try {

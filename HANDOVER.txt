@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Master accounts + Admin Users approvals)
+Last updated: 2026-02-14 (Tabler-style login + register pages)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -283,6 +283,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Auth pages UI refresh (Tabler templates):
+  - `/app/login` now matches Tabler’s Sign in layout; bottom “social” buttons are **Google** + **Shopify** (neutral Tabler button styling, icons via inline SVG; no custom green/blue button backgrounds).
+  - Added dedicated `/app/register` page matching Tabler’s Sign up layout (local email/password registration); successful signup redirects back to `/app/login?registered=1`.
+  - Login/register pages use logo: `/assets/logos/kexo-color-dark.webp`.
 
 2026-02-14 (latest)
 - Master accounts + approvals:

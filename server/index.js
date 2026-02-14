@@ -205,6 +205,7 @@ app.get('/auth/shopify/callback', (req, res) => auth.handleCallback(req, res));
 
 // Dashboard login (no auth required for these paths)
 app.get('/app/login', login.handleGetLogin);
+app.get('/app/register', login.handleGetRegister);
 app.get('/app/logout', login.handleLogout);
 
 // OAuth login: Google and "Login with Shopify"
