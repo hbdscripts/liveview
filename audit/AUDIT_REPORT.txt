@@ -55,6 +55,8 @@ Open items / next steps
   - consistent time columns (`created_at` vs `processed_at` semantics)
   - attribution parity (sessions → product/country/source)
   - performance (avoid N+1/meta fetch hot paths; cache correctness)
-- Add at least one integration test for a high-value endpoint (start with `/api/dashboard-series`).
+- Integration testing:
+  - Added an integration-style test for `/api/dashboard-series` (requires only `npm test`; uses `SQLITE_DB_PATH` to isolate a test DB).
+  - Next: add at least one more integration test for another high-value endpoint/table (e.g. `/api/shopify-best-sellers` or `/api/stats`).
 - Add reconciliation harness to reproduce and validate key edge cases (including “orders > 0 but denominator = 0” => CR% undefined).
 
