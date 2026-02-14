@@ -292,7 +292,7 @@ Ops/reliability:
 - Dashboard sparkline growth tone reverted to the original KEXO mapping (`kpiDeltaToneColor('up')` / accent-2), replacing the temporary hardcoded green override.
 
 2026-02-14 (latest)
-- Mobile main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): full-width fixed positioning with JS-calculated top (--kexo-mobile-nav-dropdown-top from nav bar bottom). Dropdown items: 16px font, 10px padding, centered. Arrow icons hidden. Close on scroll (sticky header).
+- Mobile main nav dropdown (Dashboard/Insights/Traffic/Integrations/Tools): full-width fixed positioning with JS-calculated top (--kexo-mobile-nav-dropdown-top from nav bar bottom). Seam hidden (margin-top:-1px; no top border). Caret chevron hidden. Focus/open + dropdown-item focus/active now use the menu accent color as background (icon/text white). Dropdown items: 16px font, 10px padding, centered. Arrow icons hidden. Close on scroll (sticky header).
 2026-02-14 (latest)
 - Dashboard overview KPI sparklines now render with sharper/angular peaks (`curve: straight`) instead of smooth curves.
 - Dashboard KPI sparkline growth tone now uses `#0b913d` (accent-2 override for sparkline up-tone).
