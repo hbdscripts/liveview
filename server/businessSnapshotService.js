@@ -1100,6 +1100,7 @@ async function getBusinessSnapshot(options = {}) {
   let previousWindow = null;
   let periodLabel = '';
   let compareLabel = '';
+  let compareYear = null;
 
   if (mode === 'monthly') {
     const m = selectedMonth.match(/^(\d{4})-(\d{2})$/);
@@ -1108,6 +1109,7 @@ async function getBusinessSnapshot(options = {}) {
     const isCurrentMonth = year === nowParts.year && month === nowParts.month;
     currentWindow = buildMonthlyWindow(selectedMonth, nowYmd);
     const prevYear = year - 1;
+    compareYear = prevYear;
     const prevNowDay = isCurrentMonth ? Math.min(nowParts.day, daysInMonth(prevYear, month)) : daysInMonth(prevYear, month);
     const prevNowYmd = formatYmd(prevYear, month, prevNowDay);
     previousWindow = buildMonthlyWindow(`${String(prevYear)}-${pad2(month)}`, prevNowYmd);
@@ -1116,6 +1118,7 @@ async function getBusinessSnapshot(options = {}) {
   } else {
     currentWindow = buildYearlyWindow(selectedYear, nowYmd);
     const prevYear = Number(selectedYear) - 1;
+    compareYear = prevYear;
     const prevNowYmd = formatYmd(prevYear, nowParts.month, Math.min(nowParts.day, daysInMonth(prevYear, nowParts.month)));
     previousWindow = buildYearlyWindow(String(prevYear), prevNowYmd);
     periodLabel = `Yearly Reports · ${selectedYear}`;
@@ -1378,17 +1381,42 @@ async function getBusinessSnapshot(options = {}) {
     conversionRate: convDaily,
   });
 
-  const [distinctCustomers, ltvValue, returningRaw] = await Promise.all([
+  const [distinctCustomers, distinctCustomersPrev, ltvValue, ltvPrevValue, returningRaw, returningPrevRaw] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),
+    readDistinctCustomerCount(shop, compareBounds.start, compareBounds.end),
     mode === 'yearly' ? readLtvForYearCohort(shop, selectedYear) : readLtvForCohortRange(shop, bounds.start, bounds.end),
+    mode === 'yearly'
+      ? readLtvForYearCohort(shop, String(Number.isFinite(compareYear) ? compareYear : (Number(selectedYear) - 1)))
+      : readLtvForCohortRange(shop, compareBounds.start, compareBounds.end),
     readReturningCustomerCountByEnd(shop, bounds.start, bounds.end),
+    readReturningCustomerCountByEnd(shop, compareBounds.start, compareBounds.end),
   ]);
 
   const returningCustomers = toNumber(returningRaw);
+  const returningCustomersPrev = toNumber(returningPrevRaw);
   const newCustomers = (toNumber(distinctCustomers) != null && returningCustomers != null)
     ? Math.max(0, (Number(distinctCustomers) || 0) - (Number(returningCustomers) || 0))
     : null;
+  const newCustomersPrev = (toNumber(distinctCustomersPrev) != null && returningCustomersPrev != null)
+    ? Math.max(0, (Number(distinctCustomersPrev) || 0) - (Number(returningCustomersPrev) || 0))
+    : null;
   const repeatPurchaseRate = safePercent(returningCustomers, distinctCustomers);
+  const repeatPurchaseRatePrev = safePercent(returningCustomersPrev, distinctCustomersPrev);
+
+  const previousPeriodHasData = (
+    ((toNumber(ordersPrev) || 0) > 0) ||
+    ((toNumber(sessionsPrevSafe) || 0) > 0) ||
+    ((toNumber(distinctCustomersPrev) || 0) > 0)
+  );
+  const prevOrNull = previousPeriodHasData
+    ? function keepPrevious(value) { return toNumber(value); }
+    : function clearPrevious() { return null; };
+  const profitPrev = {
+    estimatedProfit: prevOrNull(profitSection && profitSection.estimatedProfit && profitSection.estimatedProfit.previous),
+    netProfit: prevOrNull(profitSection && profitSection.netProfit && profitSection.netProfit.previous),
+    marginPct: prevOrNull(profitSection && profitSection.marginPct && profitSection.marginPct.previous),
+    deductions: prevOrNull(profitSection && profitSection.deductions && profitSection.deductions.previous),
+  };
 
   return {
     ok: true,
@@ -1407,25 +1435,46 @@ async function getBusinessSnapshot(options = {}) {
       end: bounds.end,
     },
     financial: {
-      revenue: metric(revenue, revenuePrev),
+      revenue: metric(revenue, prevOrNull(revenuePrev)),
       cost: metric(costNow, costPrev),
       costBreakdownNow,
-      orders: metric(orders, ordersPrev),
-      aov: metric(aov, aovPrev),
-      conversionRate: metric(conversionRate, conversionRatePrev),
-      profit: profitSection,
+      orders: metric(orders, prevOrNull(ordersPrev)),
+      aov: metric(aov, prevOrNull(aovPrev)),
+      conversionRate: metric(conversionRate, prevOrNull(conversionRatePrev)),
+      profit: {
+        ...profitSection,
+        estimatedProfit: metric(
+          profitSection && profitSection.estimatedProfit && profitSection.estimatedProfit.value,
+          profitPrev.estimatedProfit
+        ),
+        netProfit: metric(
+          profitSection && profitSection.netProfit && profitSection.netProfit.value,
+          profitPrev.netProfit
+        ),
+        marginPct: metric(
+          profitSection && profitSection.marginPct && profitSection.marginPct.value,
+          profitPrev.marginPct
+        ),
+        deductions: metric(
+          profitSection && profitSection.deductions && profitSection.deductions.value,
+          profitPrev.deductions
+        ),
+      },
     },
     performance: {
-      sessions: metric(sessionsSafe, sessionsPrevSafe),
-      orders: metric(orders, ordersPrev),
-      conversionRate: metric(conversionRate, conversionRatePrev),
-      aov: metric(aov, aovPrev),
+      sessions: metric(sessionsSafe, prevOrNull(sessionsPrevSafe)),
+      orders: metric(orders, prevOrNull(ordersPrev)),
+      conversionRate: metric(conversionRate, prevOrNull(conversionRatePrev)),
+      aov: metric(aov, prevOrNull(aovPrev)),
     },
     customers: {
-      newCustomers: metric(newCustomers, null),
-      returningCustomers: metric(returningCustomers, null),
-      repeatPurchaseRate: metric(repeatPurchaseRate, null),
-      ltv: metric(ltvValue, null),
+      newCustomers: metric(newCustomers, prevOrNull(newCustomersPrev)),
+      returningCustomers: metric(returningCustomers, prevOrNull(returningCustomersPrev)),
+      repeatPurchaseRate: metric(repeatPurchaseRate, prevOrNull(repeatPurchaseRatePrev)),
+      ltv: metric(ltvValue, prevOrNull(ltvPrevValue)),
+    },
+    comparison: {
+      previousPeriodHasData,
     },
     sources: {
       sales: 'shopify_orders_api (orders_shopify, checkout_token only)',

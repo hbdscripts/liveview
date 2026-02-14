@@ -99,10 +99,11 @@ const TRACKER_TABLE_DEFINITIONS = [
     columns: [
       { name: 'Financial', value: 'Full-width “Revenue & Cost” line chart + optional Profit section (Estimated Profit / Margin / Deductions)' },
       { name: 'Performance', value: 'Sessions, Orders, Conversion Rate, AOV' },
-      { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate, LTV (cohort-aware)' },
+      { name: 'Customers', value: 'New, Returning, Repeat Purchase Rate cards + header LTV callout (cohort-aware)' },
       { name: 'Profit Rules', value: 'Percent of Revenue, Fixed per Order, Fixed per Period with country targeting' },
       { name: 'Integrations', value: 'Profit Rules → Integrations tab: toggles (e.g. include Google Ads spend in Cost chart)' },
-      { name: 'Charts', value: 'ApexCharts: Revenue & Cost line chart + per-card KPI sparklines (line-only; no area/bar fills)' },
+      { name: 'Charts', value: 'ApexCharts: Revenue & Cost animated trend chart + per-card KPI sparklines + decorative LTV radial header arc' },
+      { name: 'UI mode', value: 'Yearly-only modal UX (current year vs previous year); per-KPI validation tooltips show both periods' },
     ],
     math: [
       { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },

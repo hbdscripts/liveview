@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Dashboard sparkline visibility fix)
+Last updated: 2026-02-14 (KPI palette + compare line color update)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,26 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- KPI palette override applied for dashboard + condensed/small KPIs:
+  - growth/up = `#20a034`
+  - no-change/flat = `#2080a0`
+  - decline/down = `#a02020`
+- Dashboard KPI delta `%` text is now bold.
+- Dashboard KPI sparkline compare line now uses fixed color `#bbc3c3`.
+
+2026-02-14 (latest)
+- Business Snapshot modal (`/api/business-snapshot`, `server/public/app.js`, `server/public/custom.css`) yearly UX overhaul:
+  - Modal is now year-selector free (yearly current-year vs previous-year compare only in UI).
+  - Added isolated server cache for `GET /api/business-snapshot` via endpoint key `business-snapshot` in `report_cache` (+ force bypass); keying remains endpoint-scoped so other pages are unaffected.
+  - Added modal-local client cache (stale-while-revalidate) so repeat opens render instantly from fresh cached payload.
+  - Revenue/Cost headline values in Snapshot now use compact currency (e.g. `£168K`) while tooltip/breakdown keeps detailed values.
+  - KPI cards now include per-card validation tooltips (current period vs previous period) with explicit "No data for this period" messaging when prior data is unavailable.
+  - Customer KPIs now include previous-period values in API payload so deltas/tooltips are consistent across all cards.
+  - LTV moved from Customers cards into a header-right decorative radial callout (small centered label, centered value, delta below).
+  - Snapshot sections now reveal in staged sequence and charts render with animated draw/fill rather than static prefilled output.
+  - Header background art refreshed to a very light multi-colour chart motif using KEXO palette tones.
 
 2026-02-14 (latest)
 - Dashboard KPI sparkline visibility fix: line-only sparklines keep `fill.opacity=1` (ApexCharts 4.x quirk) so current + compare lines do not render with transparent stroke.
