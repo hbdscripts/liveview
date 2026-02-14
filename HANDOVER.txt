@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Test DB override + integration test)
+Last updated: 2026-02-14 (Dashboard-series ratio null handling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -256,6 +256,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Dashboard-series ratios: daily `convRate`, `bounceRate`, and `aov` now return NULL when the denominator is 0 (avoid misleading 0.0% / 0 AOV on days with no sessions/orders).
 
 2026-02-14 (latest)
 - Testability: added `SQLITE_DB_PATH` (optional) to point SQLite at a custom file for local/dev/tests; added an integration-style test for `/api/dashboard-series` (sessions=0 => CR% null; handle attribution via first_path).

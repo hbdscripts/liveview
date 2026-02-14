@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { percentOrNull, roundTo } = require('../server/metrics');
+const { percentOrNull, ratioOrNull, roundTo } = require('../server/metrics');
 
 test('roundTo rounds to requested decimals', () => {
   assert.equal(roundTo(1.234, 2), 1.23);
@@ -26,5 +26,18 @@ test('percentOrNull computes and rounds percentages', () => {
 test('percentOrNull supports optional clamping', () => {
   assert.equal(percentOrNull(2, 1, { clampMax: 100 }), 100);
   assert.equal(percentOrNull(2, 1, { clampMin: 250 }), 250);
+});
+
+test('ratioOrNull returns null when denominator is invalid/<=0', () => {
+  assert.equal(ratioOrNull(1, 0), null);
+  assert.equal(ratioOrNull(1, -1), null);
+  assert.equal(ratioOrNull(1, null), null);
+  assert.equal(ratioOrNull(1, 'nope'), null);
+});
+
+test('ratioOrNull computes and rounds ratios', () => {
+  assert.equal(ratioOrNull(10, 2), 5);
+  assert.equal(ratioOrNull(10, 3, { decimals: 2 }), 3.33);
+  assert.equal(ratioOrNull('10', '4', { decimals: 3 }), 2.5);
 });
 

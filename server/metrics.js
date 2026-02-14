@@ -44,9 +44,26 @@ function percentOrNull(numerator, denominator, options = {}) {
   return roundTo(v, decimals);
 }
 
+/**
+ * Returns a ratio (numerator / denominator) or null when denominator <= 0 / invalid.
+ *
+ * - Numerator invalid -> treated as 0.
+ * - Denominator invalid / <=0 -> null (undefined ratio).
+ */
+function ratioOrNull(numerator, denominator, options = {}) {
+  const n = toFiniteNumberOrNull(numerator);
+  const d = toFiniteNumberOrNull(denominator);
+  if (d == null || d <= 0) return null;
+  const raw = (n == null ? 0 : n) / d;
+  if (!Number.isFinite(raw)) return null;
+  const decimals = options && options.decimals != null ? options.decimals : 2;
+  return roundTo(raw, decimals);
+}
+
 module.exports = {
   toFiniteNumberOrNull,
   roundTo,
   percentOrNull,
+  ratioOrNull,
 };
 

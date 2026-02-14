@@ -7,7 +7,7 @@ const Sentry = require('@sentry/node');
 const { getDb } = require('../db');
 const config = require('../config');
 const store = require('../store');
-const { percentOrNull } = require('../metrics');
+const { percentOrNull, ratioOrNull } = require('../metrics');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
@@ -729,14 +729,12 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     const sessions = sessionsPerDay[db_day.label] || 0;
     const orders = ordersPerDay[db_day.label] || 0;
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
-    const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
-    const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
+    const convRate = percentOrNull(orders, sessions, { decimals: 1 });
     const shopifySessions = shopifySessionsPerDay[db_day.label] || 0;
-    const rawShopifyConv = shopifySessions > 0 ? (orders / shopifySessions) * 100 : null;
-    const shopifyConvRate = rawShopifyConv != null ? Math.round(Math.min(rawShopifyConv, 100) * 10) / 10 : null;
-    const aov = orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0;
+    const shopifyConvRate = percentOrNull(orders, shopifySessions, { decimals: 1 });
+    const aov = ratioOrNull(revenue, orders, { decimals: 2 });
     const bounced = bouncePerDay[db_day.label] || 0;
-    const bounceRate = sessions > 0 ? Math.round((bounced / sessions) * 1000) / 10 : 0;
+    const bounceRate = percentOrNull(bounced, sessions, { decimals: 1, clampMax: 100 });
     return {
       date: db_day.label,
       revenue,
@@ -981,10 +979,10 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     }
   }
   if (!Number.isFinite(aovLow) || aovLow === Infinity) aovLow = 0;
-  const avgConvRate = totalSessions > 0 ? Math.round(Math.min((totalOrders / totalSessions) * 100, 100) * 10) / 10 : 0;
-  const avgAov = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
-  const bounceRate = totalSessions > 0 ? Math.round((totalBounced / totalSessions) * 1000) / 10 : 0;
-  const roas = totalAdSpend > 0 ? Math.round((totalRevenue / totalAdSpend) * 100) / 100 : null;
+  const avgConvRate = percentOrNull(totalOrders, totalSessions, { decimals: 1 });
+  const avgAov = ratioOrNull(totalRevenue, totalOrders, { decimals: 2 });
+  const bounceRate = percentOrNull(totalBounced, totalSessions, { decimals: 1, clampMax: 100 });
+  const roas = ratioOrNull(totalRevenue, totalAdSpend, { decimals: 2 });
 
   return {
     days,
@@ -1219,14 +1217,12 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     const orders = ordersPerDay[db_day.label] || 0;
     const revenue = Math.round((revenuePerDay[db_day.label] || 0) * 100) / 100;
     const units = unitsPerDay[db_day.label] || 0;
-    const rawConv = sessions > 0 ? (orders / sessions) * 100 : 0;
-    const convRate = Math.round(Math.min(rawConv, 100) * 10) / 10;
+    const convRate = percentOrNull(orders, sessions, { decimals: 1 });
     const shopifySessions = bucket === 'day' ? (shopifySessionsPerDay[db_day.label] || 0) : 0;
-    const rawShopifyConv = (bucket === 'day' && shopifySessions > 0) ? (orders / shopifySessions) * 100 : null;
-    const shopifyConvRate = rawShopifyConv != null ? Math.round(Math.min(rawShopifyConv, 100) * 10) / 10 : null;
-    const aov = orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0;
+    const shopifyConvRate = percentOrNull(orders, shopifySessions, { decimals: 1 });
+    const aov = ratioOrNull(revenue, orders, { decimals: 2 });
     const bounced = bouncePerDay[db_day.label] || 0;
-    const bounceRate = sessions > 0 ? Math.round((bounced / sessions) * 1000) / 10 : 0;
+    const bounceRate = percentOrNull(bounced, sessions, { decimals: 1, clampMax: 100 });
     return {
       date: db_day.label,
       revenue,
@@ -1486,10 +1482,10 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     }
   }
   if (!Number.isFinite(aovLow) || aovLow === Infinity) aovLow = 0;
-  const avgConvRate = totalSessions > 0 ? Math.round(Math.min((totalOrders / totalSessions) * 100, 100) * 10) / 10 : 0;
-  const avgAov = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
-  const bounceRate = totalSessions > 0 ? Math.round((totalBounced / totalSessions) * 1000) / 10 : 0;
-  const roas = totalAdSpend > 0 ? Math.round((totalRevenue / totalAdSpend) * 100) / 100 : null;
+  const avgConvRate = percentOrNull(totalOrders, totalSessions, { decimals: 1 });
+  const avgAov = ratioOrNull(totalRevenue, totalOrders, { decimals: 2 });
+  const bounceRate = percentOrNull(totalBounced, totalSessions, { decimals: 1, clampMax: 100 });
+  const roas = ratioOrNull(totalRevenue, totalAdSpend, { decimals: 2 });
 
   return {
     days: dayBounds.length,
