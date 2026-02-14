@@ -7,6 +7,7 @@
 
 const crypto = require('crypto');
 const config = require('../config');
+const users = require('../usersService');
 
 const COOKIE_NAME = 'dashboard_session';
 const SESSION_HOURS = 24;
@@ -79,6 +80,7 @@ function isProtectedPath(pathname) {
       pathname === '/api/business-snapshot' ||
       // Ads tab API (new feature area)
       pathname.startsWith('/api/ads') ||
+      pathname.startsWith('/api/admin') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
       pathname === '/api/latest-sales' ||
       pathname === '/api/available-days') return true;
@@ -100,6 +102,7 @@ function isProtectedPath(pathname) {
     '/tools/ads',
     '/tools/compare-conversion-rate',
     '/settings',
+    '/admin',
     // Legacy flat routes retained as protected redirect endpoints.
     '/overview',
     '/live',
@@ -123,6 +126,7 @@ function requiresAuth(pathname, method) {
   if (pathname === '/app/login' || pathname === '/app/logout') return false;
   if (pathname === '/auth/google' || pathname === '/auth/google/callback') return false;
   if (pathname === '/auth/shopify-login' || pathname === '/auth/shopify-login/callback') return false;
+  if (pathname === '/auth/local/register' || pathname === '/auth/local/login') return false;
   if (pathname === '/api/ads/google/callback') return false;
   // Public: ingest URL the server would push (for scripts / curl to verify before pixel ensure)
   if (pathname === '/api/pixel/config') return false;
@@ -223,6 +227,24 @@ function hostNoPort(host) {
   return h.split(':')[0];
 }
 
+function parseOauthCookie(cookieValue) {
+  if (!cookieValue || typeof cookieValue !== 'string') return null;
+  try {
+    return JSON.parse(Buffer.from(cookieValue, 'base64url').toString('utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function readOauthSession(cookieValue) {
+  if (!cookieValue || typeof cookieValue !== 'string') return null;
+  if (!verifyOauthSession(cookieValue)) return null;
+  const raw = parseOauthCookie(cookieValue) || {};
+  const email = raw.email != null ? String(raw.email).trim().toLowerCase() : '';
+  const shop = raw.shop != null ? String(raw.shop).trim().toLowerCase() : '';
+  return { email, shop, t: raw.t };
+}
+
 /**
  * Embedded app API calls won't have the signed query params, but their Referer will be the
  * signed App URL (/?shop=...&host=...&hmac=...&timestamp=...). Verify that HMAC.
@@ -255,17 +277,30 @@ function isShopifySignedAppUrlReferer(req) {
 }
 
 function allow(req) {
-  const hasGoogle = !!(config.googleClientId && config.googleClientSecret);
+  const now = Date.now();
   // From Shopify admin: always allow (embed / open from Admin)
   if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
   // Embedded app load: allow signed Shopify App URL requests even if Referer/Origin are stripped.
   if (isShopifySignedAppUrlRequest(req)) return true;
   // Embedded app API/XHR/SSE: allow when Referer is a signed Shopify App URL.
   if (isShopifySignedAppUrlReferer(req)) return true;
-  // Direct visit: require Google OAuth session when Google is configured
-  if (hasGoogle) {
-    const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
-    return !!(oauthCookie && verifyOauthSession(oauthCookie));
+
+  // Direct visit: require an oauth_session cookie (Google / local / Shopify-login flow).
+  const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
+  const session = oauthCookie ? readOauthSession(oauthCookie) : null;
+  if (session) {
+    // Email-based sessions participate in approvals/roles.
+    if (session.email) {
+      // Seed master: always active+master.
+      if (users.isBootstrapMasterEmail(session.email)) return true;
+      // If user exists, enforce status gates. If missing, fail closed (pending).
+      // NOTE: we intentionally do not treat a missing user as active; it must be approved.
+      // eslint-disable-next-line no-undef
+      // (async not allowed here; middleware handles pending lookup separately)
+      return true;
+    }
+    // Shop-only sessions (Shopify login) remain allowed, but do not imply master.
+    return true;
   }
   // No Google configured: allow only in non-production (e.g. local dev).
   // In production, fail-closed for direct visits (still allows Shopify Admin embeds above).
@@ -273,16 +308,52 @@ function allow(req) {
   return true;
 }
 
+async function allowWithUserGate(req) {
+  // Fast path: if not using oauth_session, fall back to allow() rules.
+  const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
+  const session = oauthCookie ? readOauthSession(oauthCookie) : null;
+  if (!session || !session.email) return { ok: allow(req), reason: '' };
+
+  const email = users.normalizeEmail(session.email);
+  if (!email) return { ok: false, reason: 'unauthorized' };
+  if (users.isBootstrapMasterEmail(email)) {
+    try { await users.ensureBootstrapMaster(email); } catch (_) {}
+    return { ok: true, reason: '' };
+  }
+  const row = await users.getUserByEmail(email);
+  if (!row) {
+    // Create a pending record so masters can see applicants from email-based logins too.
+    try { await users.createPendingUser(email, null, {}, { now: Date.now() }); } catch (_) {}
+    return { ok: false, reason: 'pending' };
+  }
+  const status = (row.status || '').toString().trim().toLowerCase();
+  if (status === 'denied') return { ok: false, reason: 'denied' };
+  if (status === 'pending') return { ok: false, reason: 'pending' };
+  return { ok: true, reason: '' };
+}
+
 function middleware(req, res, next) {
   if (!requiresAuth(req.path, req.method)) return next();
-  if (allow(req)) return next();
+  allowWithUserGate(req)
+    .then(function(result) {
+      if (result && result.ok) return next();
 
-  const isApi = req.path.startsWith('/api/');
-  if (isApi) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-  res.redirect(302, '/app/login');
+      const isApi = req.path.startsWith('/api/');
+      if (isApi) {
+        res.status(401).json({ error: 'Unauthorized', reason: result && result.reason ? result.reason : 'unauthorized' });
+        return;
+      }
+      const reason = result && result.reason ? String(result.reason) : '';
+      const redirectTarget = String(req.originalUrl || req.path || '/dashboard/overview');
+      let url = '/app/logout?redirect=' + encodeURIComponent(redirectTarget);
+      if (reason) url += '&error=' + encodeURIComponent(reason);
+      res.redirect(302, url);
+    })
+    .catch(function() {
+      const isApi = req.path.startsWith('/api/');
+      if (isApi) return res.status(401).json({ error: 'Unauthorized' });
+      res.redirect(302, '/app/login');
+    });
 }
 
 module.exports = {
@@ -294,4 +365,5 @@ module.exports = {
   verifySession,
   signOauthSession,
   verifyOauthSession,
+  readOauthSession,
 };

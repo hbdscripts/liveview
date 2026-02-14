@@ -87,6 +87,28 @@
     return false;
   }
 
+  function handleUnauthorizedApiResponse(status, urlStr) {
+    if (status !== 401) return;
+    if (!isSameOriginApiUrl(urlStr)) return;
+    if (typeof window === 'undefined' || !window.location) return;
+    var path = String(window.location.pathname || '');
+    if (path.indexOf('/app/login') === 0 || path.indexOf('/auth/') === 0) return;
+    if (window.__kexoUnauthorizedRedirectPending) return;
+    window.__kexoUnauthorizedRedirectPending = true;
+    try {
+      kexoBreadcrumb('auth', 'api 401 -> redirect login', { url: urlStr, path: path });
+    } catch (_) {}
+    var redirect = '/dashboard/overview';
+    try {
+      var full = String(window.location.pathname || '/') + String(window.location.search || '') + String(window.location.hash || '');
+      if (full && full[0] === '/') redirect = full;
+    } catch (_) {}
+    var loginUrl = '/app/logout?error=session_expired&redirect=' + encodeURIComponent(redirect);
+    setTimeout(function() {
+      try { window.location.assign(loginUrl); } catch (_) {}
+    }, 60);
+  }
+
   function kexoFetch(url, opts) {
     var urlStr = typeof url === 'string' ? url : (url && url.url) || '';
     var method = (opts && opts.method) || 'GET';
@@ -96,6 +118,7 @@
       function (r) {
         if (!r || !r.ok) {
           kexoBreadcrumb('fetch', 'error ' + (r ? r.status : 'no-response'), { url: urlStr, status: r ? r.status : 0 });
+          try { handleUnauthorizedApiResponse(r ? r.status : 0, urlStr); } catch (_) {}
         }
         return r;
       },

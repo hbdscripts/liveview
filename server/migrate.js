@@ -49,6 +49,7 @@ const { up: up041 } = require('./migrations/041_orders_shopify_shipping_options'
 const { up: up042 } = require('./migrations/042_orders_shopify_shipping_options_set_and_paid_price');
 const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes');
 const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
+const { up: up045 } = require('./migrations/045_users');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -98,6 +99,7 @@ async function main() {
   await up042();
   await up043();
   await up044();
+  await up045();
 
   try {
     const r = await runAdsMigrations();

@@ -16657,12 +16657,27 @@ const API = '';
       try {
         var avatarEl = document.getElementById('user-avatar');
         var emailEl = document.getElementById('user-email');
-        if (!avatarEl && !emailEl) return;
-        fetch('/api/me').then(function(r) { return r.json(); }).then(function(d) {
-          if (!d || !d.email) return;
-          if (avatarEl && d.initial) avatarEl.textContent = d.initial;
-          if (emailEl) emailEl.textContent = d.email;
-        }).catch(function() {});
+        var masterEls = document.querySelectorAll ? document.querySelectorAll('.kexo-admin-only') : [];
+        function toggleMasterUi(isMaster) {
+          try {
+            if (!masterEls || !masterEls.length) return;
+            masterEls.forEach(function(el) {
+              if (!el || !el.classList) return;
+              if (isMaster) el.classList.remove('d-none');
+              else el.classList.add('d-none');
+            });
+          } catch (_) {}
+        }
+        // We still fetch /api/me even if avatar elements are missing, so we can gate master-only UI.
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            toggleMasterUi(!!(d && d.isMaster));
+            if (!d || !d.email) return;
+            if (avatarEl && d.initial) avatarEl.textContent = d.initial;
+            if (emailEl) emailEl.textContent = d.email;
+          })
+          .catch(function() { toggleMasterUi(false); });
       } catch (_) {}
     })();
 

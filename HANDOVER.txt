@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Nav dropdown accent: JS-driven kexo-dropdown-open + injected style)
+Last updated: 2026-02-14 (Master accounts + Admin Users approvals)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -66,6 +66,9 @@ Tools:
 
 Settings:
 - `/settings` → `server/public/settings.html`
+
+Admin (master-only):
+- `/admin` → `server/public/admin.html`
 
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
@@ -239,6 +242,13 @@ Table checklist:
 
 - `server/index.js`: Express app, canonical page routes, auth middleware, static assets, startup migrations
 - `server/middleware/dashboardAuth.js`: Shopify embed + direct OAuth cookie protection
+- Users/approvals (master accounts; pending blocked everywhere):
+  - Migration: `server/migrations/045_users.js` (`users` table: status/role/tier + last login meta)
+  - `server/usersService.js`: users CRUD + bootstrap master (`smlsites@gmail.com`)
+  - `server/routes/localAuth.js`: `POST /auth/local/register` (pending) + `POST /auth/local/login` (active/master only)
+  - `server/routes/me.js`: `GET /api/me` returns `{ email, status, role, tier, isMaster }` for UI gating
+  - `server/middleware/requireMaster.js`: master-only gate for `/admin` + `/api/admin/**`
+  - `server/routes/adminUsers.js`: Admin APIs (`/api/admin/users`, approve/deny/promote)
 - `server/store.js`: DB access + reporting queries + dedupe guardrails
 - `server/variantInsightsConfig.js`: canonical Variants table/rule defaults + matching/validation helpers
 - `server/variantInsightsService.js`: Variants data aggregation (truth orders + variant sessions) and validation sampling
@@ -273,6 +283,15 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Master accounts + approvals:
+  - Added `users` table (migration 045) with statuses (`pending|active|denied`) + roles (`user|master`) + last login meta (country/city/device/platform).
+  - Pending/denied accounts are blocked everywhere by `dashboardAuth` (pages redirect to `/app/login?error=pending|denied` via logout).
+  - Seed master: `smlsites@gmail.com` (bootstrap to `active/master` on first email-based session).
+  - Added local email/password login + signup on `/app/login` (`/auth/local/register`, `/auth/local/login`).
+  - Added master-only Admin → Users page (`/admin`) with Active/Pending tabs + Approve/Deny/Promote-to-master actions (`/api/admin/...`).
+  - Top settings dropdown now contains **Admin** + **Business Snapshot** items, shown only for masters (client gates `.kexo-admin-only` via `GET /api/me`).
 
 2026-02-14 (latest)
 - Active dropdown item (desktop): font-weight 700 + ::after 3px accent border at bottom when dropdown is open. Uses `var(--kexo-accent)` for icon colour.

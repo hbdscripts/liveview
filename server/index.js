@@ -51,11 +51,15 @@ const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
 const login = require('./routes/login');
 const oauthLogin = require('./routes/oauthLogin');
+const localAuth = require('./routes/localAuth');
+const me = require('./routes/me');
 const settings = require('./routes/settings');
 const assets = require('./routes/assets');
 const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
 const dashboardAuth = require('./middleware/dashboardAuth');
+const requireMaster = require('./middleware/requireMaster');
+const adminUsersApi = require('./routes/adminUsers');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -154,18 +158,9 @@ app.get('/api/business-snapshot', businessSnapshot.getBusinessSnapshot);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
+app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
-app.get('/api/me', (req, res) => {
-  const raw = (req.get('Cookie') || '').split(';').map(s => s.trim());
-  const oauthPart = raw.find(p => p.startsWith(dashboardAuth.OAUTH_COOKIE_NAME + '='));
-  if (!oauthPart) return res.json({ email: null });
-  try {
-    const val = decodeURIComponent(oauthPart.split('=').slice(1).join('=').replace(/^"(.*)"$/, '$1'));
-    const data = JSON.parse(Buffer.from(val, 'base64url').toString('utf8'));
-    const email = (data.email || '').trim();
-    res.json({ email, initial: email ? email[0].toUpperCase() : 'K' });
-  } catch (_) { res.json({ email: null }); }
-});
+app.get('/api/me', me);
 app.get('/api/store-base-url', (req, res) => {
   const domain = (config.shopDomain || '').trim().toLowerCase();
   const baseUrl = !domain ? '' : (domain.startsWith('http') ? domain : 'https://' + domain.replace(/^\.+/, ''));
@@ -217,6 +212,10 @@ app.get('/auth/google', oauthLogin.handleGoogleRedirect);
 app.get('/auth/google/callback', oauthLogin.handleGoogleCallback);
 app.get('/auth/shopify-login', oauthLogin.handleShopifyLoginRedirect);
 app.get('/auth/shopify-login/callback', oauthLogin.handleShopifyLoginCallback);
+
+// Local auth: email/password (pending approvals)
+app.post('/auth/local/register', localAuth.postRegister);
+app.post('/auth/local/login', localAuth.postLogin);
 
 // Allow embedding in Shopify admin (fixes "admin.shopify.com refused to connect"); keep private from search/AI
 app.use((req, res, next) => {
@@ -463,6 +462,7 @@ app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
+app.get('/admin', requireMaster.middleware, (req, res) => sendPage(res, 'admin.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to overview
 app.get('/', async (req, res, next) => {
@@ -542,6 +542,7 @@ const { up: up041 } = require('./migrations/041_orders_shopify_shipping_options'
 const { up: up042 } = require('./migrations/042_orders_shopify_shipping_options_set_and_paid_price');
 const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes');
 const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
+const { up: up045 } = require('./migrations/045_users');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -597,6 +598,7 @@ async function migrateAndStart() {
   await up042();
   await up043();
   await up044();
+  await up045();
 
   try {
     const r = await runAdsMigrations();
