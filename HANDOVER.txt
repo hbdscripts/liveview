@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Charts settings accordion + KPI bundle persistence restored)
+Last updated: 2026-02-14 (Settings chart preview loader fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Fixed Settings -> Layout -> Charts preview blank-on-load regression:
+  - `server/public/kexo-chart-builder.js` now actively loads ApexCharts on demand for Settings preview rendering (instead of only retrying for a global that might not be loaded on `/settings`).
+  - `server/public/settings-page.js` now re-renders preview charts/sparklines when an accordion item is expanded (`shown.bs.collapse`), so hidden panels paint immediately when opened.
 
 2026-02-14 (latest)
 - Restored Settings -> Layout -> Charts to the accordion-based chart/KPI-bundle editor after a regression back to the old flat table UI.

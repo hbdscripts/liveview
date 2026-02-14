@@ -1586,6 +1586,23 @@
     }
     root.addEventListener('input', queuePreview);
     root.addEventListener('change', queuePreview);
+    root.querySelectorAll('.accordion-collapse').forEach(function (collapseEl) {
+      collapseEl.addEventListener('shown.bs.collapse', function () {
+        var chartCard = collapseEl.closest('[data-chart-config-key]');
+        if (chartCard) {
+          var chartCfg = readChartConfigFromCard(chartCard);
+          if (chartCfg) renderChartPreview(chartCard, chartCfg);
+          return;
+        }
+        var bundleCard = collapseEl.closest('[data-kpi-bundle-key]');
+        if (bundleCard) {
+          var bundleKey = String(bundleCard.getAttribute('data-kpi-bundle-key') || '').trim();
+          if (!bundleKey) return;
+          var bundleCfg = readBundleConfigFromCard(bundleCard, bundleKey);
+          renderBundlePreview(bundleCard, bundleKey, bundleCfg);
+        }
+      });
+    });
   }
 
   function buildChartsUiConfigFromDom() {

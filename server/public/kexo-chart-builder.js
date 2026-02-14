@@ -21,6 +21,8 @@
   var APEX_RETRY_MS = 200;
   var DIMENSION_POLL_MS = 50;
   var DIMENSION_MAX_WAIT_MS = 5000;
+  var apexLoading = false;
+  var apexWaiters = [];
 
   function escapeHtml(str) {
     if (str == null) return '';
@@ -45,6 +47,42 @@
       try { cb(); } catch (_) {}
       return;
     }
+    if (typeof cb === 'function') apexWaiters.push(cb);
+    if (apexLoading) return;
+    apexLoading = true;
+    try {
+      var existing = document.querySelector('script[data-kexo-apex-loader="1"]');
+      if (!existing) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js';
+        s.defer = true;
+        s.setAttribute('data-kexo-apex-loader', '1');
+        s.onload = function () {
+          apexLoading = false;
+          var queue = apexWaiters.slice();
+          apexWaiters = [];
+          queue.forEach(function (fn) { try { fn(); } catch (_) {} });
+        };
+        s.onerror = function () {
+          apexLoading = false;
+          apexWaiters = [];
+        };
+        document.head.appendChild(s);
+      } else {
+        existing.addEventListener('load', function () {
+          apexLoading = false;
+          var queue = apexWaiters.slice();
+          apexWaiters = [];
+          queue.forEach(function (fn) { try { fn(); } catch (_) {} });
+        }, { once: true });
+        existing.addEventListener('error', function () {
+          apexLoading = false;
+          apexWaiters = [];
+        }, { once: true });
+      }
+    } catch (_) {
+      apexLoading = false;
+    }
     retries = typeof retries === 'number' ? retries : 0;
     if (retries >= APEX_MAX_RETRIES) {
       try {
@@ -54,7 +92,7 @@
       } catch (_) {}
       return;
     }
-    setTimeout(function () { ensureApexCharts(cb, retries + 1); }, APEX_RETRY_MS);
+    setTimeout(function () { ensureApexCharts(null, retries + 1); }, APEX_RETRY_MS);
   }
 
   /**
