@@ -5952,7 +5952,8 @@ const API = '';
         '</div>';
     }
 
-    function buildMapFillScaleByIso(valuesByIso2, _primaryRgb, _minAlpha, _maxAlpha) {
+    var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, minAlpha, maxAlpha) {
       var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
       var entries = [];
       var keys = Object.keys(src);
@@ -5963,7 +5964,12 @@ const API = '';
         if (!Number.isFinite(n) || n <= 0) continue;
         entries.push({ iso: iso, value: n });
       }
+      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',0.18)';
       var out = {};
+      var idx;
+      for (idx = 0; idx < WORLD_MAP_ISO2.length; idx++) {
+        out[WORLD_MAP_ISO2[idx]] = defaultFill;
+      }
       if (entries.length) {
         var min = Infinity;
         var max = -Infinity;
@@ -5972,24 +5978,21 @@ const API = '';
           if (v < min) min = v;
           if (v > max) max = v;
         }
+        var lo = typeof minAlpha === 'number' ? minAlpha : 0.24;
+        var hi = typeof maxAlpha === 'number' ? maxAlpha : 0.92;
         for (var k = 0; k < entries.length; k++) {
           var row = entries[k];
-          var weight = 1;
+          var alpha = hi;
           if (max > min) {
             var t = (row.value - min) / (max - min);
             if (!Number.isFinite(t)) t = 0;
-            weight = Math.max(0, Math.min(1, t));
+            t = Math.max(0, Math.min(1, t));
+            alpha = lo + t * (hi - lo);
           }
-          out[row.iso] = weight;
+          out[row.iso] = 'rgba(' + (primaryRgb || '62,179,171') + ',' + alpha + ')';
         }
       }
-      return new Proxy(out, {
-        get: function(target, prop) {
-          var v = target[prop];
-          if (v !== undefined && v !== null && Number.isFinite(Number(v))) return v;
-          return 0;
-        }
-      });
+      return out;
     }
 
     function setVectorMapTooltipContent(tooltip, html, text) {
@@ -5997,14 +6000,14 @@ const API = '';
       var htmlContent = html == null ? '' : String(html);
       var textContent = text == null ? '' : String(text);
       try {
-        if (typeof tooltip.html === 'function') {
-          tooltip.html(htmlContent);
+        if (typeof tooltip.text === 'function') {
+          tooltip.text(htmlContent, true);
           return;
         }
       } catch (_) {}
       try {
-        if (typeof tooltip.text === 'function') {
-          tooltip.text(textContent || htmlContent);
+        if (typeof tooltip.html === 'function') {
+          tooltip.html(htmlContent);
           return;
         }
       } catch (_) {}
@@ -6154,15 +6157,10 @@ const API = '';
           },
           series: {
             regions: [
-              {
-                attribute: 'fill',
-                values: regionFillByIso2,
-                scale: ['rgba(' + primaryRgb + ',0.24)', 'rgba(' + primaryRgb + ',0.92)'],
-                normalizeFunction: 'linear',
-              }
+              { attribute: 'fill', values: regionFillByIso2 }
             ]
           },
-          onRegionTooltipShow: function(tooltip, code) {
+          onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
@@ -10213,15 +10211,10 @@ const API = '';
           },
           series: {
             regions: [
-              {
-                attribute: 'fill',
-                values: regionFillByIso2,
-                scale: ['rgba(' + primaryRgb + ',0.24)', 'rgba(' + primaryRgb + ',0.92)'],
-                normalizeFunction: 'linear',
-              }
+              { attribute: 'fill', values: regionFillByIso2 }
             ]
           },
-          onRegionTooltipShow: function(tooltip, code2) {
+          onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
             var name = (liveOnlineMapChartInstance && typeof liveOnlineMapChartInstance.getRegionName === 'function')
               ? (liveOnlineMapChartInstance.getRegionName(iso2) || iso2)

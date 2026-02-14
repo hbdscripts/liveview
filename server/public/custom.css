@@ -212,7 +212,6 @@ a {
 .jvm-container { background: transparent !important; }
 .jvm-tooltip {
   position: fixed !important;
-  display: none;
   pointer-events: none !important;
   z-index: 2000 !important;
   max-width: 260px;

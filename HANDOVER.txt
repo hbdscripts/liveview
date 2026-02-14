@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Dashboard-series ratio null handling)
+Last updated: 2026-02-14 (Map black regions + tooltip fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -256,6 +256,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Map black regions + tooltip: replaced numeric scale/Proxy with deterministic ISO→color mapping so no region gets `fill="undefined"`; fixed `onRegionTooltipShow` callback to `(event, tooltip, code)` for jsVectorMap 1.6; use `tooltip.text(html, true)` for HTML content; removed `.jvm-tooltip { display: none }` so tooltips can show. Applies to countries map and live map.
 
 2026-02-14 (latest)
 - Dashboard-series ratios: daily `convRate`, `bounceRate`, and `aov` now return NULL when the denominator is 0 (avoid misleading 0.0% / 0 AOV on days with no sessions/orders).
