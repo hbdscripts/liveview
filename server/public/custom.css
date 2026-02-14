@@ -724,7 +724,9 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child,
+body:not([data-page="settings"]) .table-responsive table thead th:first-child,
 body:not([data-page="settings"]) .table-responsive table td:first-child {
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -775,6 +777,7 @@ body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .traf
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .traffic-source-cell,
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .last-action-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .last-action-cell {
+  font-size: 13px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -782,6 +785,7 @@ body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .las
 }
 body:not([data-page="settings"]) .table-responsive table td:first-child .product-cell,
 body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell {
+  font-size: 13px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -796,6 +800,7 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   text-overflow: ellipsis;
 }
 .traffic-type-parent .grid-cell:first-child .traffic-type-toggle {
+  font-size: 13px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
