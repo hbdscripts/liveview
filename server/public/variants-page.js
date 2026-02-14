@@ -58,7 +58,9 @@
   }
 
   function rowsStorageKey(tableId) {
-    return 'kexo:table-rows:v1:' + String(tableId || '').trim().toLowerCase();
+    var id = String(tableId || '').trim().toLowerCase();
+    var resolved = (id.indexOf('variants-table-') === 0) ? 'insights-variants-tables' : id;
+    return 'kexo:table-rows:v1:' + resolved;
   }
 
   function rowsPerPageForTable(tableId) {

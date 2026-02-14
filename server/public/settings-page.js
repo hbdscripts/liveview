@@ -801,6 +801,13 @@
           ],
         },
         {
+          key: 'variants',
+          label: 'Insights · Variants',
+          tables: [
+            { id: 'insights-variants-tables', name: 'Variant tables', tableClass: 'product', zone: 'variants-insights', order: 1, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+          ],
+        },
+        {
           key: 'channels',
           label: 'Traffic · Channels',
           tables: [

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Resize icon + hide table scrollbars)
+Last updated: 2026-02-14 (Layout: Insights · Variants accordion)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -95,7 +95,7 @@ Settings tabs:
 - Sources: UTM/source mapping
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
-  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables
+  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables. **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
   - Charts: per-chart enable/type/colors (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 - Diagnostics: config-status + reconcile utilities rendered as a Tabler accordion (no tabs; Settings-first)
@@ -257,6 +257,8 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
+2026-02-14 (latest)
+- Layout → Tables: added **Insights · Variants** accordion (single entry "Variant tables") controlling all tables on /insights/variants. Rows-per-page (5/10) and sticky min/max apply to every user-defined variant table. app.js resolveVariantsTableId maps variants-table-* to insights-variants-tables when on variants page.
 2026-02-14 (latest)
 - Table UX: sticky resize handle icon replaced with chevron/drag SVG (same grey #626976); horizontal scrollbars hidden on all table-scroll-wrap/country-table-wrap/table-responsive (desktop + mobile).
 2026-02-14 (latest)

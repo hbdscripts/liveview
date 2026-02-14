@@ -143,10 +143,16 @@ const API = '';
       return null;
     }
 
+    function resolveVariantsTableId(tableId, pageKey) {
+      var id = String(tableId == null ? '' : tableId).trim().toLowerCase();
+      var pk = normalizeUiPageKey(pageKey || PAGE);
+      if (id.indexOf('variants-table-') === 0 && pk === 'variants') return 'insights-variants-tables';
+      return id;
+    }
     function getTablesUiTableCfg(tableId, pageKey) {
       var p = getTablesUiPageCfg(pageKey || PAGE);
       if (!p || !Array.isArray(p.tables)) return null;
-      var id = normalizeUiTableId(tableId);
+      var id = normalizeUiTableId(resolveVariantsTableId(tableId, pageKey));
       if (!id) return null;
       for (var i = 0; i < p.tables.length; i++) {
         var t = p.tables[i];
@@ -437,18 +443,21 @@ const API = '';
     }
 
     function tableRowsStorageKey(tableId) {
-      return TABLE_ROWS_STORAGE_PREFIX + ':' + String(tableId == null ? '' : tableId).trim().toLowerCase();
+      var id = String(tableId == null ? '' : tableId).trim().toLowerCase();
+      var resolved = resolveVariantsTableId(id, PAGE);
+      return TABLE_ROWS_STORAGE_PREFIX + ':' + (resolved || id);
     }
 
     function getTableRowsPerPage(tableId, fallbackClassKey) {
       var id = String(tableId == null ? '' : tableId).trim();
       if (!id) return tableClassConfig(fallbackClassKey || 'live').defaultRows;
+      var resolved = resolveVariantsTableId(id, PAGE);
       if (Object.prototype.hasOwnProperty.call(tableRowsCache, id)) return tableRowsCache[id];
       var classKey = getTableClassByTableId(id, fallbackClassKey);
-      var cfg = tableRowsConfigForTableId(id, classKey);
+      var cfg = tableRowsConfigForTableId(resolved || id, classKey);
       var raw = null;
       try { raw = localStorage.getItem(tableRowsStorageKey(id)); } catch (_) { raw = null; }
-      var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), id, classKey);
+      var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), resolved || id, classKey);
       tableRowsCache[id] = value;
       return value;
     }
@@ -456,8 +465,9 @@ const API = '';
     function setTableRowsPerPage(tableId, rows, fallbackClassKey) {
       var id = String(tableId == null ? '' : tableId).trim();
       if (!id) return null;
+      var resolved = resolveVariantsTableId(id, PAGE);
       var classKey = getTableClassByTableId(id, fallbackClassKey);
-      var next = clampTableRows(rows, id, classKey);
+      var next = clampTableRows(rows, resolved || id, classKey);
       tableRowsCache[id] = next;
       try { localStorage.setItem(tableRowsStorageKey(id), String(next)); } catch (_) {}
       try {
@@ -1275,7 +1285,7 @@ const API = '';
         var suffix = 'default';
         try {
           var tableId = getWrapTableId(wrap);
-          if (tableId) suffix = tableId;
+          if (tableId) suffix = resolveVariantsTableId(tableId, page || PAGE) || tableId;
           else if (page) suffix = String(page).trim().toLowerCase();
         } catch (_) {}
         return LS_KEY + ':' + suffix + ':' + getViewportBucket();
