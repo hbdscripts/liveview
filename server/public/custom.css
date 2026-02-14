@@ -2611,7 +2611,14 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-settings .nav-link:focus {
   color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
-.kexo-desktop-nav-list .nav-link.dropdown-toggle::after,
+.kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
+  display: none;
+}
+.kexo-desktop-nav-list .nav-link.dropdown-toggle .kexo-nav-dropdown-toggle-icon {
+  margin-left: 0;
+  font-size: 10px;
+  padding-left: 3px;
+}
 .kexo-desktop-nav-settings .nav-link.dropdown-toggle::after {
   margin-left: .4rem;
 }
@@ -2875,6 +2882,17 @@ body[data-page="settings"] .kexo-page-header-date-col {
   font-size: 12px !important;
 }
 
+/* Page header title icon (chevron, desktop only) */
+.kexo-page-header-title-icon {
+  color: var(--kexo-accent, var(--tblr-primary, #3eb3ab));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 4px 0 0;
+  font-size: 12px !important;
+}
+
 @media (max-width: 991.98px) {
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::before,
   .page-header .row.align-items-center.kexo-page-header-layout-triple > .kexo-page-header-title-col::after {
@@ -2889,6 +2907,9 @@ body[data-page="settings"] .kexo-page-header-date-col {
   }
   .kexo-page-header-category-icon {
     display: none;
+  }
+  .kexo-page-header-title-icon {
+    display: none !important;
   }
   .page-header .kexo-page-header-date-col .kexo-date-btn {
     position: absolute;

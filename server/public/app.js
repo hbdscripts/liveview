@@ -13864,6 +13864,20 @@ const API = '';
 
             pretitle.insertBefore(icon, pretitle.firstChild || null);
 
+            // Inject the replaced dropdown chevron into the page title (desktop only via CSS).
+            try {
+              var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
+              if (title) {
+                title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
+                var chevron = document.createElement('i');
+                chevron.className = 'fa-jelly-filled fa-chevron-down kexo-page-header-title-icon';
+                chevron.setAttribute('aria-hidden', 'true');
+                if (idx >= 1 && idx <= 5) chevron.classList.add('kexo-accent-' + String(idx));
+                if (computedColor) chevron.style.color = computedColor;
+                title.insertBefore(chevron, title.firstChild || null);
+              }
+            } catch (_) {}
+
             // Expose accent for connector lines (very light tint of same shade).
             try {
               var row = pretitle.closest('.row.align-items-center');
