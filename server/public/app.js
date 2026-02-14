@@ -536,12 +536,14 @@ const API = '';
     let statsCache = {};
     let trafficCache = null;
     let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
     let pendingCustomRangeEndYmd = null; // modal-only pending selection
     let customCalendarLastPayload = null; // last /api/available-days payload used for rendering
+    const ABANDONED_MODE_LS_KEY = 'kexo:abandoned-mode:v1';
+    let abandonedMode = 'cart'; // cart | checkout
     /** When dateRange is 'live' or 'sales', stats/KPIs use today's data; only the main table shows those special views. */
     function normalizeRangeKeyForApi(key) {
       const k = (key == null ? '' : String(key)).trim().toLowerCase();
@@ -550,6 +552,65 @@ const API = '';
       if (k === '14days') return '14d';
       if (k === '30days') return '30d';
       return k;
+    }
+
+    function normalizeAbandonedMode(value) {
+      var s = value != null ? String(value).trim().toLowerCase() : '';
+      if (s === 'checkout' || s === 'checkouts') return 'checkout';
+      return 'cart';
+    }
+
+    function abandonedModeDisplayLabel(mode) {
+      return normalizeAbandonedMode(mode) === 'checkout' ? 'Abandoned checkouts' : 'Abandoned carts';
+    }
+
+    function loadAbandonedMode() {
+      var raw = '';
+      try { raw = localStorage.getItem(ABANDONED_MODE_LS_KEY) || ''; } catch (_) { raw = ''; }
+      return normalizeAbandonedMode(raw);
+    }
+
+    function saveAbandonedMode(mode) {
+      try { localStorage.setItem(ABANDONED_MODE_LS_KEY, normalizeAbandonedMode(mode)); } catch (_) {}
+    }
+
+    function syncAbandonedModeUi() {
+      if (PAGE !== 'abandoned-carts') return;
+      var labelEl = document.getElementById('abandoned-mode-label');
+      if (labelEl) labelEl.textContent = abandonedModeDisplayLabel(abandonedMode);
+      var tableTitle = document.getElementById('table-title-text');
+      if (tableTitle) tableTitle.textContent = (normalizeAbandonedMode(abandonedMode) === 'checkout') ? 'Abandoned checkout sessions' : 'Abandoned cart sessions';
+    }
+
+    function setAbandonedMode(nextMode, opts) {
+      var next = normalizeAbandonedMode(nextMode);
+      if (next === abandonedMode) {
+        syncAbandonedModeUi();
+        return;
+      }
+      abandonedMode = next;
+      saveAbandonedMode(next);
+      syncAbandonedModeUi();
+      if (PAGE === 'abandoned-carts') {
+        abandonedCartsChartKey = '';
+        abandonedCartsTopCacheKey = '';
+        try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
+      }
+    }
+
+    // Abandoned Carts page: init mode dropdown state + bindings.
+    if (PAGE === 'abandoned-carts') {
+      try { abandonedMode = loadAbandonedMode(); } catch (_) { abandonedMode = 'cart'; }
+      syncAbandonedModeUi();
+      try {
+        document.addEventListener('click', function(e) {
+          var t = e && e.target ? e.target : null;
+          var btn = t && t.closest ? t.closest('[data-abandoned-mode]') : null;
+          if (!btn) return;
+          e.preventDefault();
+          setAbandonedMode(btn.getAttribute('data-abandoned-mode') || 'cart', { source: 'ui' });
+        });
+      } catch (_) {}
     }
 
     function setUpdateAvailable(next, opts) {
@@ -1537,6 +1598,13 @@ const API = '';
     let rangeOverviewChart = null;
     let rangeOverviewChartKey = '';
     let rangeOverviewChartInFlight = null;
+    let abandonedCartsChart = null;
+    let abandonedCartsChartKey = '';
+    let abandonedCartsChartInFlight = null;
+    let abandonedCartsTopCacheKey = '';
+    let abandonedCartsTopCountriesCache = null;
+    let abandonedCartsTopCountryProductsCache = null;
+    let abandonedCartsTopInFlight = null;
     let shopifySalesToday = null;
     let shopifyOrderCountToday = null;
     let shopifySalesTodayLoaded = false; // true once we have attempted to fetch (success or failure)
@@ -6776,6 +6844,8 @@ const API = '';
       chainStylesCache = null;
       bestSellersCache = null;
       bestVariantsCache = null;
+      abandonedCartsChartKey = '';
+      abandonedCartsTopCacheKey = '';
       trafficCache = null;
       lastStatsFetchedAt = 0;
       lastProductsFetchedAt = 0;
@@ -6798,6 +6868,8 @@ const API = '';
         refreshProducts({ force: false });
       } else if (activeMainTab === 'variants') {
         try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
+      } else if (activeMainTab === 'abandoned-carts') {
+        try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); }
       } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
@@ -10574,6 +10646,232 @@ const API = '';
       return Promise.resolve(null);
     }
 
+    function setAbandonedCartsChartTitle(totalGbp) {
+      var titleEl = document.getElementById('abandoned-carts-chart-title');
+      if (!titleEl) return;
+      var n = totalGbp != null ? Number(totalGbp) : NaN;
+      if (!Number.isFinite(n)) {
+        titleEl.textContent = '\u00A3\u2014';
+        return;
+      }
+      titleEl.textContent = formatRevenue(n) || '\u00A3\u2014';
+    }
+
+    function renderAbandonedCartsChart(data, cacheKey) {
+      var el = document.getElementById('abandoned-carts-chart');
+      if (!el) return;
+      var chartKey = 'abandoned-carts-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        try {
+          if (el.__kexoChartInstance) {
+            try { el.__kexoChartInstance.destroy(); } catch (_) {}
+            el.__kexoChartInstance = null;
+          }
+        } catch (_) {}
+        el.innerHTML = '';
+        abandonedCartsChart = null;
+        abandonedCartsChartKey = String(cacheKey || '');
+        setAbandonedCartsChartTitle(null);
+        return;
+      }
+
+      var series = data && Array.isArray(data.series) ? data.series : [];
+      var bucket = (data && data.bucket === 'day') ? 'day' : 'hour';
+      var categories = series.map(function(p) { return bucket === 'day' ? shortDayLabel(p && p.ts) : shortTimeLabel(p && p.ts); });
+      var nums = series.map(function(p) {
+        var n = p && p.abandoned != null ? Number(p.abandoned) : 0;
+        return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+      });
+
+      var rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      var showEndLabels = rawMode === 'multi-line-labels';
+      var mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      var palette = chartColorsFromUiConfig(chartKey, ['#ef4444']);
+      var colors = [palette[0] || '#ef4444'];
+
+      try {
+        abandonedCartsChart = window.kexoRenderApexChart({
+          chartKey: chartKey,
+          containerEl: el,
+          categories: categories,
+          series: [{ name: 'Abandoned', data: nums }],
+          mode: mode,
+          colors: colors,
+          height: 280,
+          showEndLabels: showEndLabels,
+        });
+      } catch (_) {}
+
+      abandonedCartsChartKey = String(cacheKey || '');
+      setAbandonedCartsChartTitle(data && data.totalAbandonedGbp != null ? Number(data.totalAbandonedGbp) : null);
+    }
+
+    function refreshAbandonedCartsChart(options) {
+      var el = document.getElementById('abandoned-carts-chart');
+      if (!el) return Promise.resolve(null);
+      options = options || {};
+      var force = !!options.force;
+      var rangeKey = normalizeRangeKeyForApi(dateRange);
+      var cacheKey = rangeKey + '|' + String(normalizeAbandonedMode(abandonedMode));
+      if (!force && abandonedCartsChartKey === cacheKey && abandonedCartsChart) return Promise.resolve(null);
+      if (abandonedCartsChartInFlight) return abandonedCartsChartInFlight;
+
+      var url =
+        API + '/api/abandoned-carts/series?range=' + encodeURIComponent(rangeKey) +
+        '&timezone=' + encodeURIComponent(tz) +
+        '&mode=' + encodeURIComponent(normalizeAbandonedMode(abandonedMode)) +
+        '&_=' + Date.now();
+
+      abandonedCartsChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          renderAbandonedCartsChart(data || null, cacheKey);
+          return data;
+        })
+        .catch(function() { return null; })
+        .finally(function() { abandonedCartsChartInFlight = null; });
+
+      return abandonedCartsChartInFlight;
+    }
+
+    function setGridTableBodyMessage(tbody, message) {
+      if (!tbody) return;
+      var msg = String(message == null ? '' : message).trim() || '\u2014';
+      tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(msg) + '</div></div>';
+    }
+
+    function renderAbandonedCartsTopCountries(payload) {
+      var tbody = document.getElementById('abandoned-carts-countries-body');
+      if (!tbody) return;
+      var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+      if (!rows.length) {
+        setGridTableBodyMessage(tbody, 'No data');
+        return;
+      }
+      tbody.innerHTML = rows.slice(0, 5).map(function(r) {
+        var code = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
+        var label = countryLabel(code);
+        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
+        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : 0;
+        var pctVal = (r && r.abandoned_pct != null) ? pct(Number(r.abandoned_pct)) : '\u2014';
+        var valueGbp = (r && r.abandoned_value_gbp != null) ? Number(r.abandoned_value_gbp) : null;
+        var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
+        var flag = flagImg(code, label);
+        var labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderAbandonedCartsTopCountryProducts(payload) {
+      var tbody = document.getElementById('abandoned-carts-country-products-body');
+      if (!tbody) return;
+      var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+      if (!rows.length) {
+        setGridTableBodyMessage(tbody, 'No data');
+        return;
+      }
+      tbody.innerHTML = rows.slice(0, 5).map(function(r) {
+        var iso = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
+        var label = countryLabel(iso);
+        var productTitle = (r && r.product_title != null) ? String(r.product_title).trim() : '\u2014';
+        var productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim().toLowerCase() : '';
+        var mainBase = getMainBaseUrl();
+        var productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
+
+        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
+        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : 0;
+        var pctVal = (r && r.abandoned_pct != null) ? pct(Number(r.abandoned_pct)) : '\u2014';
+        var valueGbp = (r && r.abandoned_value_gbp != null) ? Number(r.abandoned_value_gbp) : null;
+        var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
+        var flag = flagImg(iso, label);
+
+        var canOpen = !!productHandle;
+        var titleLink = canOpen
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+              (productHandle ? (' data-product-handle="' + escapeHtml(productHandle) + '"') : '') +
+              (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
+            '>' + escapeHtml(productTitle) + '</a>'
+          : escapeHtml(productTitle);
+
+        var labelHtml =
+          '<span class="country-product-stack">' +
+            '<span class="country-label">' + escapeHtml(label) + '</span>' +
+            '<span class="country-product-label">' + titleLink + '</span>' +
+          '</span>';
+
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function refreshAbandonedCartsTopTables(options) {
+      if (PAGE !== 'abandoned-carts') return Promise.resolve(null);
+      options = options || {};
+      var force = !!options.force;
+      var rangeKey = normalizeRangeKeyForApi(dateRange);
+      var cacheKey = rangeKey + '|' + String(normalizeAbandonedMode(abandonedMode));
+      if (!force && abandonedCartsTopCacheKey === cacheKey && abandonedCartsTopCountriesCache && abandonedCartsTopCountryProductsCache) {
+        renderAbandonedCartsTopCountries(abandonedCartsTopCountriesCache);
+        renderAbandonedCartsTopCountryProducts(abandonedCartsTopCountryProductsCache);
+        return Promise.resolve(null);
+      }
+      if (abandonedCartsTopInFlight) return abandonedCartsTopInFlight;
+
+      var countriesBody = document.getElementById('abandoned-carts-countries-body');
+      var productsBody = document.getElementById('abandoned-carts-country-products-body');
+      setGridTableBodyMessage(countriesBody, 'Loading\u2026');
+      setGridTableBodyMessage(productsBody, 'Loading\u2026');
+
+      var qs =
+        'range=' + encodeURIComponent(rangeKey) +
+        '&timezone=' + encodeURIComponent(tz) +
+        '&mode=' + encodeURIComponent(normalizeAbandonedMode(abandonedMode)) +
+        '&limit=5&_=' + Date.now();
+
+      var urlCountries = API + '/api/abandoned-carts/top-countries?' + qs;
+      var urlCountryProducts = API + '/api/abandoned-carts/top-country-products?' + qs;
+
+      abandonedCartsTopInFlight = Promise.all([
+        fetchWithTimeout(urlCountries, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
+        fetchWithTimeout(urlCountryProducts, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
+      ])
+        .then(function(arr) {
+          var a = arr && arr[0] ? arr[0] : { rows: [] };
+          var b = arr && arr[1] ? arr[1] : { rows: [] };
+          abandonedCartsTopCacheKey = cacheKey;
+          abandonedCartsTopCountriesCache = a;
+          abandonedCartsTopCountryProductsCache = b;
+          renderAbandonedCartsTopCountries(a);
+          renderAbandonedCartsTopCountryProducts(b);
+          return { countries: a, countryProducts: b };
+        })
+        .finally(function() { abandonedCartsTopInFlight = null; });
+
+      return abandonedCartsTopInFlight;
+    }
+
+    function refreshAbandonedCarts(options) {
+      if (PAGE !== 'abandoned-carts') return Promise.resolve(null);
+      options = options || {};
+      syncAbandonedModeUi();
+      return Promise.all([
+        refreshAbandonedCartsChart(options),
+        refreshAbandonedCartsTopTables(options),
+        fetchSessions(),
+      ]);
+    }
+
     function fetchSessions() {
       if (liveRefreshInFlight) return liveRefreshInFlight;
       var isLive = dateRange === 'live';
@@ -10589,7 +10887,11 @@ const API = '';
       } else {
         var limit = rowsPerPage;
         var offset = (currentPage - 1) * rowsPerPage;
-        url = API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
+        if (PAGE === 'abandoned-carts') {
+          url = API + '/api/abandoned-carts/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&mode=' + encodeURIComponent(normalizeAbandonedMode(abandonedMode)) + '&_=' + Date.now();
+        } else {
+          url = API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
+        }
       }
       if (_fetchAbortControllers.sessions) { try { _fetchAbortControllers.sessions.abort(); } catch (_) {} }
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -13816,10 +14118,26 @@ const API = '';
           countries: 'fa-globe',
           products: 'fa-box-open',
           variants: 'fa-bezier-curve',
+          'abandoned-carts': 'fa-cart-shopping',
           channels: 'fa-diagram-project',
           type: 'fa-table-cells',
           ads: 'fa-rectangle-ad',
           tools: 'fa-toolbox'
+        };
+        var NAV_TO_ICON_KEY = {
+          overview: 'nav-item-overview',
+          dashboard: 'nav-item-overview',
+          live: 'nav-item-live',
+          sales: 'nav-item-sales',
+          date: 'nav-item-table',
+          countries: 'nav-item-countries',
+          products: 'nav-item-products',
+          variants: 'nav-item-variants',
+          'abandoned-carts': 'nav-item-sales',
+          channels: 'nav-item-channels',
+          type: 'nav-item-type',
+          ads: 'nav-item-ads',
+          tools: 'nav-item-tools'
         };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
@@ -13879,20 +14197,27 @@ const API = '';
             pretitle.insertBefore(icon, pretitle.firstChild || null);
 
             // Inject the current page icon into the page title (desktop only via CSS).
+            // Use data-icon-key so fontawesome-icons.js applies theme (same as menu icons).
             try {
               var dropdownMenu = activeCat.querySelector('.dropdown-menu');
               var activeLink = dropdownMenu ? dropdownMenu.querySelector('a.dropdown-item[aria-current="page"]') : null;
               var navKey = activeLink ? (activeLink.getAttribute('data-nav') || '').trim().toLowerCase() : '';
-              var iconClass = navKey ? (NAV_TO_ICON[navKey] || null) : null;
+              var iconKey = navKey ? (NAV_TO_ICON_KEY[navKey] || null) : null;
               var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
-              if (title && iconClass) {
+              if (title && iconKey) {
                 title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
                 var pageIcon = document.createElement('i');
-                pageIcon.className = 'fa-jelly ' + iconClass + ' kexo-page-header-title-icon';
+                pageIcon.className = 'fa-jelly fa-circle kexo-page-header-title-icon';
                 pageIcon.setAttribute('aria-hidden', 'true');
+                pageIcon.setAttribute('data-icon-key', iconKey);
                 if (idx >= 1 && idx <= 5) pageIcon.classList.add('kexo-accent-' + String(idx));
                 if (computedColor) pageIcon.style.color = computedColor;
                 title.insertBefore(pageIcon, title.firstChild || null);
+                try {
+                  if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
+                    window.KexoIconTheme.applyElement(pageIcon);
+                  }
+                } catch (_) {}
               }
             } catch (_) {}
 
@@ -13936,7 +14261,7 @@ const API = '';
             else dashboardDropdownItem.classList.remove('active');
           }
           // Insights dropdown (Countries + Products + Variants)
-          var isInsightsChild = (tab === 'stats' || tab === 'products' || tab === 'variants');
+          var isInsightsChild = (tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts');
           var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
           var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
           if (insightsToggle) {
@@ -14023,6 +14348,9 @@ const API = '';
             ensureKpis();
           } else if (tab === 'variants') {
             try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: false }); } catch (_) {}
+            ensureKpis();
+          } else if (tab === 'abandoned-carts') {
+            try { refreshAbandonedCarts({ force: false }); } catch (_) { fetchSessions(); }
             ensureKpis();
           } else if (tab === 'channels' || tab === 'type') {
             refreshTraffic({ force: false });
@@ -14202,6 +14530,7 @@ const API = '';
             else if (activeMainTab === 'stats') refreshStats({ force: true });
             else if (activeMainTab === 'products') refreshProducts({ force: true });
             else if (activeMainTab === 'variants') { try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {} }
+            else if (activeMainTab === 'abandoned-carts') { try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); } }
             else if (activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
             else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
             else fetchSessions();

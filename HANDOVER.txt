@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Nav dropdown arrow icon fix)
+Last updated: 2026-02-14 (Side panel + page title icon fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -51,6 +51,7 @@ Insights:
 - `/insights/countries` → `server/public/insights/countries.html`
 - `/insights/products` → `server/public/insights/products.html`
 - `/insights/variants` → `server/public/insights/variants.html`
+- `/insights/abandoned-carts` → `server/public/insights/abandoned-carts.html`
 
 Traffic:
 - `/traffic/channels` → `server/public/traffic/channels.html`
@@ -69,7 +70,7 @@ Settings:
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
 - `/date` → `/dashboard/table`
-- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/channels`, `/type`, `/compare-conversion-rate`, `/shipping-cr` → canonical folder routes
+- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/abandoned-carts`, `/channels`, `/type`, `/compare-conversion-rate`, `/shipping-cr` → canonical folder routes
 
 Root `/`:
 - Shopify embedded app URL. `auth.handleAppUrl()` decides:
@@ -255,11 +256,21 @@ Ops/reliability:
 - Never delete/truncate core data tables (`purchases`, `purchase_events`, `orders_shopify`, `sessions`) to “fix numbers”.
 - Handle over-reporting via dedupe in stats queries (see `server/store.js` helpers).
 - Sales product mapping: keep Product Insights links truth-stable (open by `product_id` when handle is missing). Avoid reintroducing handle-only linking or session-handle authority for sales widgets (see `server/store.js` `listLatestSales()` + `server/public/app.js` product links).
+- Abandoned carts data: do not reintroduce Postgres upsert behaviour that overwrites `sessions.is_abandoned/abandoned_at/recovered_at`. Abandonment is marked asynchronously by the cleanup loop in `server/cleanup.js` based on inactivity beyond `ABANDONED_WINDOW_MINUTES`.
 - When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
 
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode dropdown (Abandoned carts vs Abandoned checkouts).
+- Backend: added `/api/abandoned-carts/*` endpoints and a cleanup marker pass to set `is_abandoned/abandoned_at` reliably; fixed Postgres `upsertSession` to preserve abandonment markers.
+- Settings/Diagnostics: new chart + table defaults added in `server/routes/settings.js`; definitions added in `server/trackerDefinitions.js`.
+
+2026-02-14 (latest)
+- Side panel: padding changed to `0 1.05rem 1.05rem` (no top padding).
+- Page title icon: fixed icons not showing next to page title. Icons now use `data-icon-key` (NAV_TO_ICON_KEY) and `KexoIconTheme.applyElement()` so they get the same theme treatment as menu icons.
 
 2026-02-14 (latest)
 - Nav dropdown arrow: fixed icon not showing (was fa-sharp-duotone; now fa-solid fa-arrow-turn-down-right). Added nav-dropdown-arrow to theme-settings icon picker and ICON_GLYPH_META.
