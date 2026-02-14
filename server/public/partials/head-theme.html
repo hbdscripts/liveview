@@ -80,9 +80,41 @@
         try {
           var hideCharts = true;
           var rawCharts = localStorage.getItem('kexo:charts-ui-config:v1');
+          function cleanHex(value, fallback) {
+            var raw = value == null ? '' : String(value).trim().toLowerCase();
+            return /^#[0-9a-f]{6}$/.test(raw) ? raw : fallback;
+          }
+          function applyKpiBundleVars(prefix, bundleCfg, fallbackPalette) {
+            var src = bundleCfg && typeof bundleCfg === 'object' ? bundleCfg : {};
+            var palette = src.palette && typeof src.palette === 'object' ? src.palette : {};
+            var deltaStyle = src.deltaStyle && typeof src.deltaStyle === 'object' ? src.deltaStyle : {};
+            var up = cleanHex(palette.up, fallbackPalette.up);
+            var down = cleanHex(palette.down, fallbackPalette.down);
+            var same = cleanHex(palette.same, fallbackPalette.same);
+            var compare = cleanHex(palette.compareLine, fallbackPalette.compareLine);
+            root.style.setProperty('--kexo-' + prefix + '-kpi-up', up);
+            root.style.setProperty('--kexo-' + prefix + '-kpi-down', down);
+            root.style.setProperty('--kexo-' + prefix + '-kpi-same', same);
+            root.style.setProperty('--kexo-' + prefix + '-kpi-compare-line', compare);
+            if (deltaStyle.fontSize != null) root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-size', String(deltaStyle.fontSize) + 'px');
+            if (deltaStyle.fontWeight != null) root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-weight', String(deltaStyle.fontWeight));
+            if (deltaStyle.iconSize != null) root.style.setProperty('--kexo-' + prefix + '-kpi-delta-icon-size', String(deltaStyle.iconSize) + 'px');
+            return { up: up, down: down, same: same, compareLine: compare };
+          }
           if (rawCharts) {
             var parsedCharts = JSON.parse(String(rawCharts));
             if (parsedCharts && parsedCharts.v === 1 && parsedCharts.hideOnMobile === false) hideCharts = false;
+            var kpiBundles = parsedCharts && parsedCharts.kpiBundles && typeof parsedCharts.kpiBundles === 'object'
+              ? parsedCharts.kpiBundles
+              : {};
+            var defaults = { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
+            var dashPalette = applyKpiBundleVars('dashboard', kpiBundles.dashboardCards, defaults);
+            applyKpiBundleVars('header', kpiBundles.headerStrip, defaults);
+            applyKpiBundleVars('snapshot', kpiBundles.yearlySnapshot, defaults);
+            // Backward-compatible global vars used by legacy KPI selectors.
+            root.style.setProperty('--kexo-kpi-delta-up', dashPalette.up);
+            root.style.setProperty('--kexo-kpi-delta-down', dashPalette.down);
+            root.style.setProperty('--kexo-kpi-delta-same', dashPalette.same);
           }
           var isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
           if (hideCharts && isMobile) root.classList.add('kexo-hide-charts-mobile');

@@ -286,10 +286,142 @@
     return instance;
   }
 
+  function demoCategories() {
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  }
+
+  function buildDemoSeriesForChart(chartKey, mode, pieMetric) {
+    var key = String(chartKey || '').trim().toLowerCase();
+    var metric = String(pieMetric || 'sessions').trim().toLowerCase();
+    if (mode === 'pie') {
+      if (key === 'channels-chart') {
+        var channels = ['Direct', 'Email', 'Paid', 'Social', 'Organic'];
+        var valuesByMetric = {
+          sessions: [230, 180, 120, 90, 75],
+          orders: [34, 28, 19, 13, 10],
+          revenue: [6400, 5300, 4200, 2700, 2100],
+        };
+        var arr = valuesByMetric[metric] || valuesByMetric.sessions;
+        return channels.map(function (name, idx) {
+          return { name: name, data: [Number(arr[idx] || 0)] };
+        });
+      }
+      if (key === 'type-chart') {
+        var device = ['Mobile', 'Desktop', 'Tablet'];
+        var deviceByMetric = {
+          sessions: [320, 170, 55],
+          orders: [42, 25, 7],
+          revenue: [8600, 5900, 1300],
+        };
+        var vals = deviceByMetric[metric] || deviceByMetric.sessions;
+        return device.map(function (name, idx) {
+          return { name: name, data: [Number(vals[idx] || 0)] };
+        });
+      }
+      if (key === 'products-chart') {
+        return [
+          { name: 'Charms', data: [5200] },
+          { name: 'Necklaces', data: [4300] },
+          { name: 'Bracelets', data: [3100] },
+          { name: 'Earrings', data: [2500] }
+        ];
+      }
+    }
+
+    var categories = demoCategories();
+    var base = [9, 12, 11, 14, 16, 15, 18];
+    var scale = 1;
+    if (key.indexOf('revenue') >= 0 || key.indexOf('adspend') >= 0 || key === 'sales-overview-chart') scale = 420;
+    else if (key.indexOf('orders') >= 0) scale = 9;
+    else if (key.indexOf('sessions') >= 0 || key === 'live-online-chart') scale = 36;
+    else if (key.indexOf('conv') >= 0) scale = 0.8;
+
+    var meta = (window.KEXO_CHART_DEFS && window.KEXO_CHART_DEFS[key]) || {};
+    var names = Array.isArray(meta.series) && meta.series.length ? meta.series.slice(0, 6) : ['Series 1'];
+    return names.map(function (name, idx) {
+      var idxScale = 1 + (idx * 0.12);
+      return {
+        name: String(name || ('Series ' + String(idx + 1))),
+        data: categories.map(function (seed, pointIdx) {
+          void seed;
+          var wobble = ((pointIdx % 2 === 0) ? 0.9 : 1.05);
+          var raw = base[pointIdx] * idxScale * wobble * scale;
+          if (scale <= 1) return Number((raw).toFixed(2));
+          return Math.round(raw);
+        })
+      };
+    });
+  }
+
+  function renderMapPreviewPlaceholder(containerEl, mode, color) {
+    if (!containerEl) return;
+    try {
+      if (containerEl.__kexoChartInstance) {
+        try { containerEl.__kexoChartInstance.destroy(); } catch (_) {}
+        containerEl.__kexoChartInstance = null;
+      }
+    } catch (_) {}
+    var accent = String(color || '#3eb3ab');
+    var isAnimated = String(mode || '').trim().toLowerCase() === 'map-animated';
+    containerEl.innerHTML = '' +
+      '<div style="height:100%;min-height:150px;border:1px dashed #d7dde5;border-radius:6px;background:linear-gradient(180deg,#f8fbfe,#f3f7fb);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">' +
+        '<div style="position:absolute;inset:0;opacity:' + (isAnimated ? '0.22' : '0.12') + ';background:radial-gradient(circle at 20% 35%, ' + accent + ' 0 4px, transparent 5px),radial-gradient(circle at 36% 58%, ' + accent + ' 0 4px, transparent 5px),radial-gradient(circle at 57% 42%, ' + accent + ' 0 4px, transparent 5px),radial-gradient(circle at 74% 60%, ' + accent + ' 0 4px, transparent 5px);"></div>' +
+        '<div style="font-size:12px;color:#5b6472;padding:0 10px;text-align:center;">Map preview (' + escapeHtml(isAnimated ? 'animated' : 'flat') + ')</div>' +
+      '</div>';
+  }
+
+  function renderKexoChartPreview(config) {
+    var c = config || {};
+    var containerEl = c.containerEl;
+    if (!containerEl) return null;
+    var chartKey = String(c.chartKey || '').trim().toLowerCase();
+    var mode = String(c.mode || '').trim().toLowerCase() || 'line';
+    var colors = Array.isArray(c.colors) && c.colors.length ? c.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6'];
+    if (mode === 'map-animated' || mode === 'map-flat') {
+      renderMapPreviewPlaceholder(containerEl, mode, colors[0] || '#3eb3ab');
+      return null;
+    }
+    var categories = demoCategories();
+    var series = buildDemoSeriesForChart(chartKey, mode, c.pieMetric);
+    return renderKexoApexChart({
+      chartKey: chartKey,
+      containerEl: containerEl,
+      categories: categories,
+      series: series,
+      mode: mode,
+      colors: colors,
+      height: Number.isFinite(Number(c.height)) ? Number(c.height) : 220,
+      advancedApexOverride: c.advancedApexOverride
+    });
+  }
+
+  function renderKexoKpiSparklinePreview(config) {
+    var c = config || {};
+    var spark = c.sparkline && typeof c.sparkline === 'object' ? c.sparkline : {};
+    var palette = c.palette && typeof c.palette === 'object' ? c.palette : {};
+    var data = [8, 10, 9, 11, 14, 13, 16];
+    var compare = [7, 8, 8, 9, 11, 11, 12];
+    return renderKexoSparkline({
+      containerEl: c.containerEl,
+      data: data,
+      compareData: compare,
+      showCompare: !!spark.showCompare,
+      color: palette.up || '#2fb344',
+      compareColor: palette.compareLine || '#cccccc',
+      mode: spark.mode || 'line',
+      curve: spark.curve || 'smooth',
+      strokeWidth: spark.strokeWidth,
+      height: spark.height,
+      advancedApexOverride: spark.advancedApexOverride
+    });
+  }
+
   window.kexoEnsureApexCharts = ensureApexCharts;
   window.kexoWaitForContainerDimensions = waitForContainerDimensions;
   window.kexoRenderApexChart = renderKexoApexChart;
   window.kexoRenderSparkline = renderKexoSparkline;
+  window.kexoRenderChartPreview = renderKexoChartPreview;
+  window.kexoRenderKpiSparklinePreview = renderKexoKpiSparklinePreview;
   window.kexoNormalizeChartType = normalizeChartType;
   window.kexoChartBuilderEscapeHtml = escapeHtml;
 })();

@@ -115,10 +115,22 @@ i[class*="fa-"] {
 .kexo-accent-5 { --kexo-accent: var(--kexo-accent-5, #ef4444); }
 
 :root {
-  --kexo-kpi-delta-up: #20a034;
-  --kexo-kpi-delta-same: #2080a0;
-  --kexo-kpi-delta-down: #a02020;
-  --kexo-kpi-compare-line: #bbc3c3;
+  --kexo-kpi-delta-up: #2fb344;
+  --kexo-kpi-delta-same: #66bdb7;
+  --kexo-kpi-delta-down: #d63939;
+  --kexo-kpi-compare-line: #cccccc;
+  --kexo-dashboard-kpi-up: #2fb344;
+  --kexo-dashboard-kpi-same: #66bdb7;
+  --kexo-dashboard-kpi-down: #d63939;
+  --kexo-dashboard-kpi-compare-line: #cccccc;
+  --kexo-header-kpi-up: #2fb344;
+  --kexo-header-kpi-same: #66bdb7;
+  --kexo-header-kpi-down: #d63939;
+  --kexo-header-kpi-compare-line: #cccccc;
+  --kexo-snapshot-kpi-up: #2fb344;
+  --kexo-snapshot-kpi-same: #66bdb7;
+  --kexo-snapshot-kpi-down: #d63939;
+  --kexo-snapshot-kpi-compare-line: #cccccc;
 }
 
 .kexo-5color > :nth-child(5n + 1) { --kexo-accent: var(--kexo-accent-1, #4b94e4); }

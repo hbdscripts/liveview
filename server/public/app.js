@@ -7086,7 +7086,8 @@ const API = '';
       }
     }
 
-    function kpiDeltaToneColor(dir) {
+    function kpiDeltaToneColor(dir, bundleKey) {
+      if (bundleKey) return chartsKpiToneColor(bundleKey, dir);
       const d = String(dir || '').toLowerCase();
       if (d === 'up') {
         return cssVarColor('--kexo-kpi-delta-up', cssVarColor('--kexo-accent-2', '#3eb3ab'));
@@ -7203,6 +7204,18 @@ const API = '';
         else if (dir === 'down') deltaEl.classList.add('is-down');
         else if (dir === 'flat') deltaEl.classList.add('is-flat');
         deltaEl.setAttribute('data-dir', dir);
+        try {
+          var styleCfg = getChartsKpiBundle('headerStrip').deltaStyle;
+          var toneColor = chartsKpiToneColor('headerStrip', dir === 'none' ? 'same' : dir);
+          deltaEl.style.fontSize = String(styleCfg.fontSize) + 'px';
+          deltaEl.style.fontWeight = String(styleCfg.fontWeight);
+          deltaEl.style.color = styleCfg.fontColor || toneColor;
+          var iconEl = deltaEl.querySelector('i');
+          if (iconEl) {
+            iconEl.style.fontSize = String(styleCfg.iconSize) + 'px';
+            iconEl.style.color = styleCfg.iconColor || toneColor;
+          }
+        } catch (_) {}
         if (textEl) textEl.textContent = text;
         else deltaEl.textContent = text;
       }
@@ -7288,9 +7301,11 @@ const API = '';
       if (typeof ApexCharts === 'undefined') return;
       var sourceSeries = getSparklineSeries(series);
       if (!sourceSeries || !sourceSeries.length) return;
-      var GREEN = kpiDeltaToneColor('up');
-      var RED = kpiDeltaToneColor('down');
-      var NEUTRAL = kpiDeltaToneColor('flat');
+      var bundleCfg = getChartsKpiBundle('headerStrip');
+      var sparkCfg = bundleCfg.sparkline || defaultChartsKpiSparklineConfig('headerStrip');
+      var GREEN = bundleCfg.palette && bundleCfg.palette.up ? bundleCfg.palette.up : kpiDeltaToneColor('up');
+      var RED = bundleCfg.palette && bundleCfg.palette.down ? bundleCfg.palette.down : kpiDeltaToneColor('down');
+      var NEUTRAL = bundleCfg.palette && bundleCfg.palette.same ? bundleCfg.palette.same : kpiDeltaToneColor('flat');
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
@@ -7321,11 +7336,27 @@ const API = '';
         }
         var sparkColor = tone === 'down' ? RED : (tone === 'up' ? GREEN : NEUTRAL);
         el.innerHTML = '';
+        if (typeof window.kexoRenderSparkline === 'function') {
+          try {
+            window.kexoRenderSparkline({
+              containerEl: el,
+              data: dataArr,
+              color: sparkColor,
+              height: Number(sparkCfg.height) || 30,
+              mode: sparkCfg.mode || 'line',
+              curve: sparkCfg.curve || 'smooth',
+              strokeWidth: sparkCfg.strokeWidth,
+              showCompare: false,
+              advancedApexOverride: sparkCfg.advancedApexOverride || {}
+            });
+            return;
+          } catch (_) {}
+        }
         try {
           var chart = new ApexCharts(el, {
-            chart: { type: 'line', height: 30, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: sparkCfg.mode || 'line', height: Number(sparkCfg.height) || 30, sparkline: { enabled: true }, animations: { enabled: false } },
             series: [{ data: dataArr }],
-            stroke: { show: true, width: 2.15, curve: 'smooth', lineCap: 'round' },
+            stroke: { show: true, width: Number(sparkCfg.strokeWidth) || 2.15, curve: sparkCfg.curve || 'smooth', lineCap: 'round' },
             // NOTE: ApexCharts 4.x can incorrectly apply fill opacity to line stroke color.
             // Keep fill opacity at 1 for visible strokes; line charts still render line-only.
             fill: { type: 'solid', opacity: 1 },
@@ -7469,12 +7500,25 @@ const API = '';
       }
       function applyTopbarDelta(deltaWrap, deltaTextEl, pctVal) {
         if (!deltaWrap || !deltaTextEl) return;
+        var headerDeltaStyle = getChartsKpiBundle('headerStrip').deltaStyle;
+        function applyHeaderTone(dir) {
+          var tone = chartsKpiToneColor('headerStrip', dir);
+          deltaWrap.style.fontSize = String(headerDeltaStyle.fontSize) + 'px';
+          deltaWrap.style.fontWeight = String(headerDeltaStyle.fontWeight);
+          deltaWrap.style.color = headerDeltaStyle.fontColor || tone;
+          var iconEl = deltaWrap.querySelector('i');
+          if (iconEl) {
+            iconEl.style.fontSize = String(headerDeltaStyle.iconSize) + 'px';
+            iconEl.style.color = headerDeltaStyle.iconColor || tone;
+          }
+        }
         if (pctVal == null || !Number.isFinite(pctVal)) {
           if (pctVal === Infinity) {
             deltaWrap.classList.remove('is-hidden');
             deltaWrap.classList.add('is-up');
             deltaWrap.classList.remove('is-down', 'is-flat');
             deltaTextEl.textContent = 'new';
+            applyHeaderTone('up');
             return;
           }
           deltaWrap.classList.add('is-hidden');
@@ -7488,6 +7532,7 @@ const API = '';
         deltaWrap.classList.toggle('is-up', up);
         deltaWrap.classList.toggle('is-down', down);
         deltaWrap.classList.toggle('is-flat', !up && !down);
+        applyHeaderTone(up ? 'up' : (down ? 'down' : 'same'));
         deltaTextEl.textContent = Math.abs(p).toFixed(1).replace(/\.0$/, '') + '%';
       }
 
@@ -7719,6 +7764,13 @@ const API = '';
         else if (dir === 'flat') wrap.classList.add('is-flat');
         wrap.setAttribute('data-dir', dir);
         textEl.textContent = text;
+        try {
+          var dashDeltaStyle = getChartsKpiBundle('dashboardCards').deltaStyle;
+          var dashTone = chartsKpiToneColor('dashboardCards', dir === 'none' ? 'same' : dir);
+          wrap.style.fontSize = String(dashDeltaStyle.fontSize) + 'px';
+          wrap.style.fontWeight = String(dashDeltaStyle.fontWeight);
+          wrap.style.color = dashDeltaStyle.fontColor || dashTone;
+        } catch (_) {}
 
         var icon = wrap.querySelector ? wrap.querySelector('i') : null;
         if (icon) {
@@ -7730,6 +7782,12 @@ const API = '';
           if (dir === 'down') icon.classList.add('fa-arrow-trend-down');
           else if (dir === 'flat') icon.classList.add('fa-minus');
           else icon.classList.add('fa-arrow-trend-up');
+          try {
+            var dashDeltaStyleIcon = getChartsKpiBundle('dashboardCards').deltaStyle;
+            var dashToneIcon = chartsKpiToneColor('dashboardCards', dir === 'none' ? 'same' : dir);
+            icon.style.fontSize = String(dashDeltaStyleIcon.iconSize) + 'px';
+            icon.style.color = dashDeltaStyleIcon.iconColor || dashToneIcon;
+          } catch (_) {}
           try {
             if (window.KexoIconTheme && typeof window.KexoIconTheme.applyElement === 'function') {
               window.KexoIconTheme.applyElement(icon);
@@ -7911,6 +7969,141 @@ const API = '';
     var chartsUiConfigV1 = null;
     var KPI_UI_CFG_LS_KEY = 'kexo:kpi-ui-config:v1';
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
+    var CHARTS_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
+
+    function defaultChartsKpiBundlePalette() {
+      return { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
+    }
+
+    function defaultChartsKpiSparklineConfig(bundleKey) {
+      if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
+      if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
+      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} };
+    }
+
+    function defaultChartsKpiDeltaStyle(bundleKey) {
+      if (bundleKey === 'headerStrip') return { fontSize: 11, fontWeight: 500, iconSize: 10, fontColor: '', iconColor: '' };
+      if (bundleKey === 'yearlySnapshot') return { fontSize: 12, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' };
+      return { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' };
+    }
+
+    function defaultChartsKpiBundle(bundleKey) {
+      return {
+        sparkline: defaultChartsKpiSparklineConfig(bundleKey),
+        deltaStyle: defaultChartsKpiDeltaStyle(bundleKey),
+        palette: defaultChartsKpiBundlePalette(),
+      };
+    }
+
+    function isPlainObject(value) {
+      return !!value && Object.prototype.toString.call(value) === '[object Object]';
+    }
+
+    function deepMergeOptions(base, override) {
+      if (!isPlainObject(base) || !isPlainObject(override)) return base;
+      Object.keys(override).forEach(function (key) {
+        var next = override[key];
+        if (Array.isArray(next)) {
+          base[key] = next.slice();
+          return;
+        }
+        if (isPlainObject(next)) {
+          var cur = isPlainObject(base[key]) ? base[key] : {};
+          base[key] = deepMergeOptions(cur, next);
+          return;
+        }
+        base[key] = next;
+      });
+      return base;
+    }
+
+    function normalizeHexColorStrict(v, fallback) {
+      var raw = v == null ? '' : String(v).trim().toLowerCase();
+      if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
+      return fallback;
+    }
+
+    function normalizeOptionalHexColorStrict(v) {
+      var raw = v == null ? '' : String(v).trim().toLowerCase();
+      if (!raw) return '';
+      if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
+      return '';
+    }
+
+    function normalizeChartsKpiBundle(bundleKey, rawBundle) {
+      var src = rawBundle && typeof rawBundle === 'object' ? rawBundle : {};
+      var def = defaultChartsKpiBundle(bundleKey);
+      var spark = src.sparkline && typeof src.sparkline === 'object' ? src.sparkline : {};
+      var delta = src.deltaStyle && typeof src.deltaStyle === 'object' ? src.deltaStyle : {};
+      var palette = src.palette && typeof src.palette === 'object' ? src.palette : {};
+      var mode = String(spark.mode || def.sparkline.mode).trim().toLowerCase();
+      if (['line', 'area', 'bar'].indexOf(mode) < 0) mode = def.sparkline.mode;
+      var curve = String(spark.curve || def.sparkline.curve).trim().toLowerCase();
+      if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = def.sparkline.curve;
+      var strokeWidth = Number(spark.strokeWidth);
+      if (!Number.isFinite(strokeWidth)) strokeWidth = Number(def.sparkline.strokeWidth);
+      strokeWidth = Math.max(0.5, Math.min(6, strokeWidth));
+      var height = Number(spark.height);
+      if (!Number.isFinite(height)) height = Number(def.sparkline.height);
+      height = Math.max(18, Math.min(120, Math.round(height)));
+      var fontSize = Number(delta.fontSize);
+      if (!Number.isFinite(fontSize)) fontSize = Number(def.deltaStyle.fontSize);
+      fontSize = Math.max(9, Math.min(24, Math.round(fontSize)));
+      var iconSize = Number(delta.iconSize);
+      if (!Number.isFinite(iconSize)) iconSize = Number(def.deltaStyle.iconSize);
+      iconSize = Math.max(8, Math.min(24, Math.round(iconSize)));
+      var fontWeight = parseInt(String(delta.fontWeight != null ? delta.fontWeight : def.deltaStyle.fontWeight), 10);
+      if (fontWeight !== 400 && fontWeight !== 500) fontWeight = def.deltaStyle.fontWeight;
+      var supportsCompare = bundleKey === 'dashboardCards';
+      return {
+        sparkline: {
+          mode: mode,
+          curve: curve,
+          strokeWidth: strokeWidth,
+          height: height,
+          showCompare: supportsCompare ? !(spark.showCompare === false) : false,
+          advancedApexOverride: isPlainObject(spark.advancedApexOverride) ? spark.advancedApexOverride : {},
+        },
+        deltaStyle: {
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          iconSize: iconSize,
+          fontColor: normalizeOptionalHexColorStrict(delta.fontColor || ''),
+          iconColor: normalizeOptionalHexColorStrict(delta.iconColor || ''),
+        },
+        palette: {
+          up: normalizeHexColorStrict(palette.up, def.palette.up),
+          down: normalizeHexColorStrict(palette.down, def.palette.down),
+          same: normalizeHexColorStrict(palette.same, def.palette.same),
+          compareLine: normalizeHexColorStrict(palette.compareLine, def.palette.compareLine),
+        },
+      };
+    }
+
+    function getChartsKpiBundle(bundleKey) {
+      var key = String(bundleKey || '').trim();
+      if (CHARTS_KPI_BUNDLE_KEYS.indexOf(key) < 0) key = 'dashboardCards';
+      var cfg = chartsUiConfigV1;
+      var raw = (cfg && cfg.v === 1 && cfg.kpiBundles && typeof cfg.kpiBundles === 'object')
+        ? cfg.kpiBundles[key]
+        : null;
+      // Guardrail: KPI sparkline/palette/delta style is user-managed in Settings → Layout → Charts.
+      // Keep runtime reading from charts_ui_config_v1; do not hardcode replacement colors/sizes here.
+      return normalizeChartsKpiBundle(key, raw);
+    }
+
+    function chartsKpiToneColor(bundleKey, dir) {
+      var bundle = getChartsKpiBundle(bundleKey);
+      var d = String(dir || '').toLowerCase();
+      if (d === 'up') return bundle.palette.up;
+      if (d === 'down') return bundle.palette.down;
+      return bundle.palette.same;
+    }
+
+    function chartsKpiCompareLineColor(bundleKey) {
+      var bundle = getChartsKpiBundle(bundleKey);
+      return bundle.palette.compareLine || '#cccccc';
+    }
 
     // Hydrate KPI prefs from localStorage so disabled KPIs are hidden on first paint.
     try {
@@ -7956,6 +8149,7 @@ const API = '';
 
     try {
       applyHideChartsOnMobileClass();
+      try { applyKpiBundleCssVars(); } catch (_) {}
       window.addEventListener('resize', function() {
         try { applyHideChartsOnMobileClass(); } catch (_) {}
       });
@@ -7988,7 +8182,7 @@ const API = '';
       var m = it && it.mode != null ? String(it.mode).trim().toLowerCase() : '';
       if (k === 'live-online-chart') {
         if (m === 'map-animated' || m === 'map-flat') return m;
-        return 'map-animated';
+        return 'map-flat';
       }
       if (k === 'countries-map-chart') {
         if (m === 'map-animated' || m === 'map-flat') return m;
@@ -8014,8 +8208,39 @@ const API = '';
       return 'sessions';
     }
 
+    function chartAdvancedOverrideFromUiConfig(key) {
+      var it = getChartsUiItem(key);
+      var raw = it && it.advancedApexOverride && typeof it.advancedApexOverride === 'object'
+        ? it.advancedApexOverride
+        : null;
+      return isPlainObject(raw) ? raw : null;
+    }
+
     function chartUiConfigSignature(cfg) {
       try { return JSON.stringify(cfg || null); } catch (_) { return ''; }
+    }
+
+    function applyKpiBundleCssVars() {
+      var root = document && document.documentElement ? document.documentElement : null;
+      if (!root || !root.style) return;
+      function applyBundleVars(bundleKey, prefix) {
+        var bundle = getChartsKpiBundle(bundleKey);
+        root.style.setProperty('--kexo-' + prefix + '-kpi-up', bundle.palette.up);
+        root.style.setProperty('--kexo-' + prefix + '-kpi-down', bundle.palette.down);
+        root.style.setProperty('--kexo-' + prefix + '-kpi-same', bundle.palette.same);
+        root.style.setProperty('--kexo-' + prefix + '-kpi-compare-line', bundle.palette.compareLine);
+        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-size', String(bundle.deltaStyle.fontSize) + 'px');
+        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-weight', String(bundle.deltaStyle.fontWeight));
+        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-icon-size', String(bundle.deltaStyle.iconSize) + 'px');
+      }
+      applyBundleVars('dashboardCards', 'dashboard');
+      applyBundleVars('headerStrip', 'header');
+      applyBundleVars('yearlySnapshot', 'snapshot');
+      var dash = getChartsKpiBundle('dashboardCards');
+      root.style.setProperty('--kexo-kpi-delta-up', dash.palette.up);
+      root.style.setProperty('--kexo-kpi-delta-down', dash.palette.down);
+      root.style.setProperty('--kexo-kpi-delta-same', dash.palette.same);
+      root.style.setProperty('--kexo-kpi-compare-line', dash.palette.compareLine);
     }
 
     function applyChartsUiConfigV1(cfg) {
@@ -8026,6 +8251,7 @@ const API = '';
       try { window.__kexoChartsUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(CHARTS_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try { applyHideChartsOnMobileClass(); } catch (_) {}
+      try { applyKpiBundleCssVars(); } catch (_) {}
       return prevSig !== nextSig;
     }
 
@@ -10162,7 +10388,7 @@ const API = '';
         el.__kexoJvmSizeWaitTries = 0;
       } catch (_) {}
 
-      var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+      var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
       rawMode = String(rawMode || '').trim().toLowerCase();
       var isAnimated = rawMode !== 'map-flat';
 
@@ -10483,7 +10709,7 @@ const API = '';
 
     function refreshLiveOnlineChart(options) {
       var chartKey = 'live-online-chart';
-      var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
+      var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
       rawMode = String(rawMode || '').trim().toLowerCase();
       if (rawMode.indexOf('map-') === 0) {
         try { renderLiveOnlineMapChartFromSessions(Array.isArray(sessions) ? sessions : []); } catch (_) {}
@@ -12865,6 +13091,11 @@ const API = '';
         if (!delta || !delta.short) return '';
         const options = opts && typeof opts === 'object' ? opts : {};
         const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
+        const bundle = getChartsKpiBundle('yearlySnapshot');
+        const deltaStyle = bundle.deltaStyle || defaultChartsKpiDeltaStyle('yearlySnapshot');
+        const tone = chartsKpiToneColor('yearlySnapshot', dir);
+        const textColor = deltaStyle.fontColor || tone;
+        const iconColor = deltaStyle.iconColor || tone;
         const iconKey = deltaIconKey(dir);
         const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
         const iconCls = delta.noData
@@ -12872,9 +13103,11 @@ const API = '';
           : (dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus'));
         const wrapClass = options.compact ? 'business-snapshot-delta-inline' : 'business-snapshot-card-delta';
         const titleText = delta.noData ? 'No data for this period' : 'vs previous period';
+        const wrapStyle = 'font-size:' + String(deltaStyle.fontSize) + 'px;font-weight:' + String(deltaStyle.fontWeight) + ';color:' + String(textColor) + ';';
+        const iconStyle = 'font-size:' + String(deltaStyle.iconSize) + 'px;color:' + String(iconColor) + ';';
         return '' +
-          '<div class="' + wrapClass + ' business-snapshot-delta ' + cls + '" title="' + escapeHtml(titleText) + '">' +
-            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' +
+          '<div class="' + wrapClass + ' business-snapshot-delta ' + cls + '" title="' + escapeHtml(titleText) + '" style="' + escapeHtml(wrapStyle) + '">' +
+            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true" style="' + escapeHtml(iconStyle) + '"></i>' +
             '<span class="business-snapshot-delta-text">' + escapeHtml(delta.short) + '</span>' +
           '</div>';
       }
@@ -12964,10 +13197,18 @@ const API = '';
         const el = document.getElementById(elId);
         if (!el) return;
         const options = opts && typeof opts === 'object' ? opts : {};
-        // Snapshot sparklines are line-only (no bar/area fill).
-        const chartType = 'line';
+        const bundle = getChartsKpiBundle('yearlySnapshot');
+        const sparkCfg = bundle.sparkline || defaultChartsKpiSparklineConfig('yearlySnapshot');
+        let chartType = String(options.type || sparkCfg.mode || 'line').toLowerCase();
+        if (chartType !== 'line' && chartType !== 'area' && chartType !== 'bar') chartType = 'line';
         const color = options.color || snapshotPrimaryColor();
-        const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 56;
+        const height = Number.isFinite(Number(options.height))
+          ? Number(options.height)
+          : (Number.isFinite(Number(sparkCfg.height)) ? Number(sparkCfg.height) : 56);
+        let curve = String(sparkCfg.curve || 'smooth').toLowerCase();
+        if (curve !== 'smooth' && curve !== 'straight' && curve !== 'stepline') curve = 'smooth';
+        if (chartType === 'bar') curve = 'straight';
+        const strokeWidth = Number.isFinite(Number(sparkCfg.strokeWidth)) ? Number(sparkCfg.strokeWidth) : 2.55;
 
         let nums = normalizeSeriesNumbers(dataArr);
         if (!nums.length) return;
@@ -13000,11 +13241,20 @@ const API = '';
         };
 
         const apexOpts = Object.assign({}, base, {
-          stroke: { show: true, width: 2.55, curve: 'smooth', lineCap: 'round' },
+          stroke: { show: true, width: chartType === 'bar' ? 0 : strokeWidth, curve: curve, lineCap: 'round' },
           // ApexCharts 4.x can hide line strokes when fill opacity is 0.
-          fill: { type: 'solid', opacity: 1 },
+          fill: chartType === 'area'
+            ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.26, opacityTo: 0.04, stops: [0, 100] } }
+            : { type: 'solid', opacity: 1 },
+          plotOptions: chartType === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
           markers: { size: 0 },
         });
+        try {
+          const override = sparkCfg.advancedApexOverride;
+          if (isPlainObject(override) && Object.keys(override).length) {
+            deepMergeOptions(apexOpts, override);
+          }
+        } catch (_) {}
 
         function doRender() {
           try {
@@ -13110,7 +13360,7 @@ const API = '';
         }) : [];
 
         function snapshotTrendColor(dir) {
-          return kpiDeltaToneColor(dir);
+          return chartsKpiToneColor('yearlySnapshot', dir);
         }
 
         function trendColorForDelta(delta) {
@@ -15489,6 +15739,12 @@ const API = '';
             markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
+          try {
+            var chartOverride = chartAdvancedOverrideFromUiConfig(chartId);
+            if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) {
+              apexOpts = deepMergeOptions(apexOpts, chartOverride);
+            }
+          } catch (_) {}
 
           var chart = new ApexCharts(el, apexOpts);
           chart.render();
@@ -15539,8 +15795,18 @@ const API = '';
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
           sparkEl.innerHTML = '';
-          // Dashboard KPI sparklines intentionally use sharper, angular peaks.
-          var sparkCurve = 'straight';
+          var dashBundle = getChartsKpiBundle('dashboardCards');
+          var sparkCfg = dashBundle.sparkline || defaultChartsKpiSparklineConfig('dashboardCards');
+          var sparkMode = String(sparkCfg.mode || 'line').toLowerCase();
+          if (sparkMode !== 'line' && sparkMode !== 'area' && sparkMode !== 'bar') sparkMode = 'line';
+          var sparkCurve = String(sparkCfg.curve || 'straight').toLowerCase();
+          if (sparkCurve !== 'smooth' && sparkCurve !== 'straight' && sparkCurve !== 'stepline') sparkCurve = 'straight';
+          if (sparkMode === 'bar') sparkCurve = 'straight';
+          var sparkHeight = Number(sparkCfg.height);
+          if (!Number.isFinite(sparkHeight)) sparkHeight = 50;
+          var sparkStrokeWidth = Number(sparkCfg.strokeWidth);
+          if (!Number.isFinite(sparkStrokeWidth)) sparkStrokeWidth = 2.55;
+          var showCompare = sparkCfg.showCompare !== false;
 
           var nums = dataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
@@ -15553,6 +15819,7 @@ const API = '';
           if (compareNums && compareNums.length < 2) {
             compareNums = compareNums.length === 1 ? [compareNums[0], compareNums[0]] : null;
           }
+          if (!showCompare) compareNums = null;
           if (compareNums && compareNums.length !== nums.length) {
             if (compareNums.length > nums.length) compareNums = compareNums.slice(compareNums.length - nums.length);
             while (compareNums.length < nums.length) compareNums.unshift(compareNums[0]);
@@ -15590,33 +15857,41 @@ const API = '';
 
           var series = [{ name: 'Current', data: nums }];
           var colors = [color];
-          var strokeWidths = [2.55];
+          var strokeWidths = [sparkMode === 'bar' ? 0 : sparkStrokeWidth];
           var dashArray = [0];
           if (compareNums && compareNums.length >= 2) {
             series.push({ name: 'Compare', data: compareNums });
-            colors.push(kpiDeltaToneColor('flat'));
-            strokeWidths.push(2.05);
+            colors.push(chartsKpiCompareLineColor('dashboardCards'));
+            strokeWidths.push(sparkMode === 'bar' ? 0 : Math.max(1, sparkStrokeWidth - 0.5));
             dashArray.push(4);
           }
-          var chart = new ApexCharts(sparkEl, {
-            chart: { type: 'line', height: 50, sparkline: { enabled: true }, animations: { enabled: false } },
+          var apexOpts = {
+            chart: { type: sparkMode, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
             series: series,
             stroke: { show: true, width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
-            // ApexCharts 4.x can zero out stroke alpha when line fill opacity is 0.
-            // Keep opacity at 1 for visible lines; line charts still render without area fill.
-            fill: { type: 'solid', opacity: 1 },
+            fill: sparkMode === 'area'
+              ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.26, opacityTo: 0.04, stops: [0, 100] } }
+              : { type: 'solid', opacity: 1 },
             colors: colors,
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
+            plotOptions: sparkMode === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             grid: { padding: { top: 0, right: 0, bottom: -3, left: 0 } },
             tooltip: { enabled: false }
-          });
+          };
+          try {
+            var override = sparkCfg.advancedApexOverride;
+            if (isPlainObject(override) && Object.keys(override).length) {
+              apexOpts = deepMergeOptions(apexOpts, override);
+            }
+          } catch (_) {}
+          var chart = new ApexCharts(sparkEl, apexOpts);
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = kpiDeltaToneColor('up');
-          var RED = kpiDeltaToneColor('down');
-          var NEUTRAL = kpiDeltaToneColor('flat');
+          var GREEN = chartsKpiToneColor('dashboardCards', 'up');
+          var RED = chartsKpiToneColor('dashboardCards', 'down');
+          var NEUTRAL = chartsKpiToneColor('dashboardCards', 'flat');
           var vals = (dataArr || []).map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : null;
@@ -15628,9 +15903,9 @@ const API = '';
           return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = kpiDeltaToneColor('up');
-          var RED = kpiDeltaToneColor('down');
-          var NEUTRAL = kpiDeltaToneColor('flat');
+          var GREEN = chartsKpiToneColor('dashboardCards', 'up');
+          var RED = chartsKpiToneColor('dashboardCards', 'down');
+          var NEUTRAL = chartsKpiToneColor('dashboardCards', 'flat');
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
           var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
           if (cur == null || base == null) return NEUTRAL;

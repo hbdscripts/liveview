@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Mobile nav dropdown accent styling)
+Last updated: 2026-02-14 (Charts accordion + settings-driven KPI bundle styling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -97,7 +97,7 @@ Settings tabs:
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
   - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables. **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
-  - Charts: per-chart enable/type/colors (see Charts section)
+  - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 - Diagnostics: config-status + reconcile utilities rendered as a Tabler accordion (no tabs; Settings-first)
 
@@ -147,16 +147,25 @@ Charts are centrally configurable in Settings → Layout → Charts:
 - DB key: `charts_ui_config_v1`
 - Served by: `GET /api/settings` as `chartsUiConfig`
 - Saved by: `POST /api/settings` (`chartsUiConfig` payload)
-- Settings-side charts table rendering is lazy-on-tab-open (render when Layout → Charts is active) to avoid hidden-panel select/input rendering glitches.
+- Settings-side chart/KPI bundle accordion rendering is lazy-on-tab-open (render when Layout → Charts is active) to avoid hidden-panel select/input rendering glitches.
+- `charts_ui_config_v1.kpiBundles` now controls three runtime KPI bundles:
+  - `dashboardCards`
+  - `headerStrip`
+  - `yearlySnapshot`
+  Each bundle carries `palette`, `sparkline`, and `deltaStyle` settings.
 
 Chart builder (mirrors table builder pattern):
 - `server/public/kexo-chart-defs.js`: KEXO_CHART_DEFS keyed by chartKey (modes, series, height, pieMetric)
-- `server/public/kexo-chart-builder.js`: kexoEnsureApexCharts, kexoWaitForContainerDimensions, kexoRenderApexChart, kexoRenderSparkline
+- `server/public/kexo-chart-builder.js`: kexoEnsureApexCharts, kexoWaitForContainerDimensions, kexoRenderApexChart, kexoRenderSparkline, preview helpers
 - Chart defs used by Settings → Layout → Charts; builder waits for container dimensions before render (fixes "data with no visuals" in modals).
 
 Runtime apply:
 - `server/public/app.js`: dashboard/insights/traffic charts + map behavior
 - `server/public/ads.js`: Google Ads overview chart
+- `server/public/app.js` now applies `kpiBundles` palette/sparkline/delta style to dashboard KPI cards, header strip KPI chips, and Business Snapshot yearly cards/sparklines.
+
+Guardrail:
+- Do not hardcode KPI sparkline colors, compare-line color, delta font/icon sizes, or delta font/icon colors in runtime paths; these are user-managed via `charts_ui_config_v1`.
 
 Chart hiding (no flicker):
 - Chart wrappers/cards in HTML carry `data-kexo-chart-key="<chartKey>"`.
@@ -179,6 +188,7 @@ KPI/date-range UI config:
   - condensed KPI strip show/hide per page (settings-managed)
   - dashboard KPI card order/labels/visibility
   - date range menu labels/availability
+- KPI visual styling (sparkline type/curve/width/height, delta typography/icon sizing/colors, up/down/same/compare colors) is now sourced from `charts_ui_config_v1.kpiBundles` rather than fixed CSS values.
 - First-paint behavior:
   - `app.js` hydrates KPI UI config from localStorage (`kexo:kpi-ui-config:v1`) and applies it before `/api/settings` resolves.
   - `/theme-vars.css` also injects CSS to pre-hide disabled condensed KPI chips and disabled Dashboard KPI cards (`#dash-kpi-grid`) to reduce refresh flicker.
@@ -263,6 +273,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Settings → Layout → Charts was rebuilt as a Tables-style accordion with one item per chart/KPI bundle and live demo-data previews for every item.
+- Added settings-managed KPI bundle styling across runtime:
+  - `dashboardCards`, `headerStrip`, `yearlySnapshot` each support palette (`up/down/same/compareLine`), sparkline controls (mode/curve/stroke/height/compare), and delta typography/icon controls.
+  - Runtime now applies saved bundle styling to dashboard KPI cards, top-strip KPI chips, and Business Snapshot yearly KPI cards.
+- Added advanced Apex override support in chart config with normalization/sanitization and runtime merge in chart rendering paths.
+- Consistency cleanup: chart defaults/allowed modes aligned across defs + settings UI + server validators (notably `live-online-chart` default `map-flat`, `ads-overview-chart` includes `bar` and defaults `bar`).
 
 2026-02-14 (latest)
 - KPI palette override applied for dashboard + condensed/small KPIs:

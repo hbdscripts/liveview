@@ -92,7 +92,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
-  'ads-overview-chart': ['combo', 'line', 'area', 'multi-line-labels'],
+  'ads-overview-chart': ['bar', 'combo', 'line', 'area', 'multi-line-labels'],
   'channels-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'type-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'products-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
@@ -176,16 +176,18 @@ function defaultChartsUiConfigV1() {
   return {
     v: 1,
     hideOnMobile: true,
+    // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
+    // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
       { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'] },
       { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'] },
       { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'] },
       { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'] },
       { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'] },
-      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'] },
+      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'] },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'] },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'] },
-      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'combo', colors: ['#3eb3ab', '#ef4444', '#4b94e4'] },
+      { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'] },
       { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
       { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions' },
       { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'] },
