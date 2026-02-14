@@ -414,7 +414,7 @@ Ops/reliability:
 - Page title icon: fixed icons not showing next to page title. Icons now use `data-icon-key` (NAV_TO_ICON_KEY) and `KexoIconTheme.applyElement()` so they get the same theme treatment as menu icons.
 
 2026-02-14 (latest)
-- Nav dropdown arrow: fixed icon not showing (was fa-sharp-duotone; now fa-solid fa-arrow-turn-down-right). Added nav-dropdown-arrow to theme-settings icon picker and ICON_GLYPH_META.
+- Nav dropdown arrow: fa-solid fa-angle-right (was fa-arrow-turn-down-right). Added nav-dropdown-arrow to theme-settings icon picker and ICON_GLYPH_META.
 - Top menu: arrow icon moved from top-level toggle to dropdown items (Countries, Products, etc.); Bootstrap caret restored on toggles. Page title now shows the current page icon (globe, folder, etc.) via NAV_TO_ICON mapping (desktop only).
 
 2026-02-14 (latest)

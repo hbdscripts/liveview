@@ -33,7 +33,7 @@
     'nav-toggle-tools': 'fa-screwdriver-wrench',
     'nav-toggle-settings': 'fa-gear',
     'header-business-snapshot': 'fa-sterling-sign',
-    'nav-dropdown-arrow': 'fa-solid fa-arrow-turn-down-right',
+    'nav-dropdown-arrow': 'fa-solid fa-angle-right',
     'nav-item-overview': 'fa-house',
     'nav-item-live': 'fa-satellite-dish',
     'nav-item-sales': 'fa-cart-shopping',
