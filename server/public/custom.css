@@ -2862,12 +2862,10 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   opacity: 1;
   color: inherit;
 }
-/* Active category (dropdown closed): use kexo accent per nth-child (e.g. first = blue) */
+/* Active category (dropdown closed): NO accent — match nav background (transparent) */
 .kexo-desktop-nav-list .nav-item.active:not(.show) > .nav-link {
-  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+  background: transparent !important;
   color: #fff !important;
-  height: -webkit-fill-available;
-  border-radius: 0;
 }
 /* Open only (aria-expanded): full opacity, accent background, full height, no radius, no hover when open */
 .kexo-desktop-nav-list .nav-link[aria-expanded="true"] {
@@ -2876,11 +2874,10 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   height: -webkit-fill-available;
   border-radius: 0;
 }
-/* Active category (dropdown closed): icon white for contrast on accent background */
+/* Active category (dropdown closed): icon same as inactive (opacity 0.3 white) */
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > .kexo-nav-svg,
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > i[class*="fa-"] {
-  opacity: 1;
-  color: #fff !important;
+  opacity: 0.3;
 }
 /* Dropdown open: icon white for contrast on accent background */
 .kexo-desktop-nav-list .nav-link[aria-expanded="true"] > .kexo-nav-svg,
@@ -2927,9 +2924,12 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
-/* When open/active: tab + dropdown same accent (kexo icon logic per nth-child) */
-.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu {
+/* When open: tab + dropdown same bright accent (kexo icon logic per nth-child) */
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu,
+.kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu.show {
+  --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
   background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+  background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
   color: #fff !important;
 }
 .kexo-desktop-nav-settings .nav-item.dropdown .dropdown-menu {
@@ -3356,6 +3356,12 @@ body[data-page="dashboard"] .page-body > .container-fluid {
 @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .refresh-spinning i { animation: spin-once .6s ease-in-out; }
 
+/* ── Dark mode: main nav open dropdown stays accent (not Tabler dark bg) ── */
+html[data-bs-theme="dark"] .kexo-desktop-nav-list .nav-item.dropdown.show .dropdown-menu {
+  --tblr-dropdown-bg: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+  background: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+  background-color: var(--kexo-accent, var(--tblr-primary, #3eb3ab)) !important;
+}
 /* ── Dark mode: link color matches body text ── */
 html[data-bs-theme="dark"] a:not(.btn):not(.nav-link):not(.dropdown-item) {
   color: var(--tblr-body-color, #e2e8f0);
