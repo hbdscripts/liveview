@@ -280,7 +280,7 @@
     'theme-header-main-dropdown-link-color': '#1f2937',
     'theme-header-main-dropdown-icon-color': '#1f2937',
     'theme-header-main-border': 'show',
-    'theme-header-main-border-color': '#e6e7e9',
+    'theme-header-main-border-color': 'transparent',
     'theme-header-main-shadow': '2px 2px 2px #eee',
     'theme-header-settings-label': 'show',
     'theme-header-settings-bg': '#ffffff',
@@ -709,7 +709,6 @@
         root.style.setProperty('--kexo-header-online-bg', derived);
         root.style.setProperty('--kexo-header-main-bg', derived);
         root.style.setProperty('--kexo-top-menu-bg', derived);
-        root.style.setProperty('--kexo-top-menu-border-color', derived);
         root.style.setProperty('--kexo-top-menu-dropdown-bg', derived);
       }
     } else if (key === 'theme-strip-opacity-filter') {

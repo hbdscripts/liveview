@@ -1671,7 +1671,7 @@ async function getThemeVarsCss(req, res) {
     `--kexo-top-menu-dropdown-link-color:${normalizeCssColor(ddLink, FALLBACKS.theme_header_main_dropdown_link_color)};`,
     `--kexo-top-menu-dropdown-icon-color:${normalizeCssColor(ddIcon, FALLBACKS.theme_header_main_dropdown_icon_color)};`,
     `--kexo-top-menu-border-width:${mainBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-top-menu-border-color:${accent1Hex};`,
+    `--kexo-top-menu-border-color:transparent;`,
     `--kexo-top-menu-shadow:${normalizeCssShadow(mainShadow, FALLBACKS.theme_header_main_shadow)};`,
 
     `--kexo-header-settings-bg:${accent1Hex};`,

@@ -2350,7 +2350,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
   color: var(--kexo-header-top-text-color, #1f2937);
   box-shadow: 2px 2px 2px #eee;
-  border-bottom: var(--kexo-header-strip-border-width, 0) solid var(--kexo-top-menu-border-color, #e6e7e9);
+  border-bottom: var(--kexo-header-strip-border-width, 0) solid var(--kexo-top-menu-border-color, transparent);
 }
 .kexo-desktop-top-strip-container {
   width: 100%;
@@ -2526,7 +2526,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   min-height: 2.5rem;
   width: 100%;
   padding: 0;
-  border-bottom: var(--kexo-top-menu-border-width, 1px) solid var(--kexo-top-menu-border-color, #e6e7e9) !important;
+  border-bottom: var(--kexo-top-menu-border-width, 1px) solid var(--kexo-top-menu-border-color, transparent) !important;
   box-shadow: var(--kexo-top-menu-shadow, 2px 2px 2px #eee) !important;
 }
 .kexo-desktop-nav .row {
