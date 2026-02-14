@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Latest sales product_id mapping + Settings asset uploads to R2)
+Last updated: 2026-02-14 (Top menu dropdown icons fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -260,6 +260,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Top menu: arrow icon moved from top-level toggle to dropdown items (Countries, Products, etc.); Bootstrap caret restored on toggles. Page title now shows the current page icon (globe, folder, etc.) via NAV_TO_ICON mapping (desktop only).
 
 2026-02-14 (latest)
 - Settings → Assets now supports uploading branding images to Cloudflare R2 (server-side upload) and applying favicon/footer/login/header logo overrides at runtime.

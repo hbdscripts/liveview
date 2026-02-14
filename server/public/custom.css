@@ -2611,14 +2611,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-desktop-nav-settings .nav-link:focus {
   color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
-.kexo-desktop-nav-list .nav-link.dropdown-toggle::after {
-  display: none;
-}
-.kexo-desktop-nav-list .nav-link.dropdown-toggle .kexo-nav-dropdown-toggle-icon {
-  margin-left: 0;
-  font-size: 10px;
-  padding-left: 3px;
-}
+.kexo-desktop-nav-list .nav-link.dropdown-toggle::after,
 .kexo-desktop-nav-settings .nav-link.dropdown-toggle::after {
   margin-left: .4rem;
 }
@@ -2699,10 +2692,18 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   background: var(--kexo-menu-hover-bg, rgba(0,0,0,.08)) !important;
 }
 /* Main-menu dropdown icons: lighter shade of parent accent (no opacity). */
-.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg {
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg,
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-dropdown-item-icon {
   color: color-mix(in srgb, var(--kexo-accent, var(--tblr-primary, #3eb3ab)) 55%, white) !important;
+}
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-svg {
   font-size: 11px;
   padding-left: 1px;
+}
+.kexo-desktop-nav-list .dropdown-item .kexo-nav-dropdown-item-icon {
+  margin-left: 0;
+  font-size: 10px;
+  padding-left: 3px;
 }
 /* Settings/date dropdown icons (in nav row) keep theme-configured color. */
 .kexo-desktop-nav-settings .dropdown-item .kexo-nav-svg {

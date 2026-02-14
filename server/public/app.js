@@ -13807,6 +13807,20 @@ const API = '';
         }
 
         var TAB_TO_NAV = { spy: 'live', stats: 'countries' };
+        var NAV_TO_ICON = {
+          overview: 'fa-house',
+          dashboard: 'fa-house',
+          live: 'fa-satellite-dish',
+          sales: 'fa-cart-shopping',
+          date: 'fa-table',
+          countries: 'fa-globe',
+          products: 'fa-box-open',
+          variants: 'fa-bezier-curve',
+          channels: 'fa-diagram-project',
+          type: 'fa-table-cells',
+          ads: 'fa-rectangle-ad',
+          tools: 'fa-toolbox'
+        };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
           // using the same icon + accent as the active dropdown toggle.
@@ -13864,17 +13878,21 @@ const API = '';
 
             pretitle.insertBefore(icon, pretitle.firstChild || null);
 
-            // Inject the replaced dropdown chevron into the page title (desktop only via CSS).
+            // Inject the current page icon into the page title (desktop only via CSS).
             try {
+              var dropdownMenu = activeCat.querySelector('.dropdown-menu');
+              var activeLink = dropdownMenu ? dropdownMenu.querySelector('a.dropdown-item[aria-current="page"]') : null;
+              var navKey = activeLink ? (activeLink.getAttribute('data-nav') || '').trim().toLowerCase() : '';
+              var iconClass = navKey ? (NAV_TO_ICON[navKey] || null) : null;
               var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
-              if (title) {
+              if (title && iconClass) {
                 title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
-                var chevron = document.createElement('i');
-                chevron.className = 'fa-jelly-filled fa-chevron-down kexo-page-header-title-icon';
-                chevron.setAttribute('aria-hidden', 'true');
-                if (idx >= 1 && idx <= 5) chevron.classList.add('kexo-accent-' + String(idx));
-                if (computedColor) chevron.style.color = computedColor;
-                title.insertBefore(chevron, title.firstChild || null);
+                var pageIcon = document.createElement('i');
+                pageIcon.className = 'fa-jelly ' + iconClass + ' kexo-page-header-title-icon';
+                pageIcon.setAttribute('aria-hidden', 'true');
+                if (idx >= 1 && idx <= 5) pageIcon.classList.add('kexo-accent-' + String(idx));
+                if (computedColor) pageIcon.style.color = computedColor;
+                title.insertBefore(pageIcon, title.firstChild || null);
               }
             } catch (_) {}
 
