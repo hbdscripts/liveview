@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Charts accordion + settings-driven KPI bundle styling)
+Last updated: 2026-02-14 (Product Insights modal chevrons restored)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -273,6 +273,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Product Insights modal: restored collapse chevrons on Revenue and Demand chart cards (left column). These were removed during chart-card gear-icon cleanup; modal cards now excluded from chart-only treatment so they keep expand/collapse chevrons.
 
 2026-02-14 (latest)
 - Settings → Layout → Charts was rebuilt as a Tables-style accordion with one item per chart/KPI bundle and live demo-data previews for every item.

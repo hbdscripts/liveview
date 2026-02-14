@@ -935,6 +935,8 @@ const API = '';
       function isChartOnlyCard(card) {
         if (!card) return false;
         if (card.dataset && card.dataset.tableId) return false;
+        // Product Insights modal Revenue/Demand cards keep collapse chevrons (not gear)
+        if (card.dataset && card.dataset.collapseId && String(card.dataset.collapseId).indexOf('product-insights-') === 0) return false;
         var wrap = card.closest ? card.closest('[data-kexo-chart-key]') : null;
         if (wrap) return true;
         return hasChartContent(card) && !card.querySelector(TABLE_CONTENT_SELECTOR);
