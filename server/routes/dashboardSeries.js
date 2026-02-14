@@ -7,6 +7,7 @@ const Sentry = require('@sentry/node');
 const { getDb } = require('../db');
 const config = require('../config');
 const store = require('../store');
+const { percentOrNull } = require('../metrics');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
@@ -89,14 +90,7 @@ function inPlaceholders(count, startIndex) {
 }
 
 function crPct(orders, sessions) {
-  const o = typeof orders === 'number' && Number.isFinite(orders) ? orders : 0;
-  const s = typeof sessions === 'number' && Number.isFinite(sessions) ? sessions : null;
-  if (s == null) return null;
-  // Guardrail: when there is no denominator, CR% is undefined (never coerce to 0.0%).
-  if (s <= 0) return null;
-  const raw = (o / s) * 100;
-  if (!Number.isFinite(raw) || raw < 0) return null;
-  return Math.round(Math.min(raw, 100) * 10) / 10;
+  return percentOrNull(orders, sessions, { decimals: 1 });
 }
 
 async function fetchSessionCountsByProductHandle(db, startMs, endMs, handles, filter) {

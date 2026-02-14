@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Stats caching: normalize range bounds)
+Last updated: 2026-02-14 (Metrics helper + tests)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -256,6 +256,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Metrics helper: added `server/metrics.js` (shared percent/rate rounding) + basic unit tests (`npm test`). Dashboard CR% now uses the shared helper (no 100% clamp).
 
 2026-02-14 (latest)
 - Stats caching: `/api/stats` now normalizes `range` keys and uses that range’s bounds for `report_cache` keys/metadata (more stable caching for custom day/range keys).
