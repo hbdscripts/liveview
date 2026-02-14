@@ -7067,6 +7067,26 @@ const API = '';
       return diff / base;
     }
 
+    function cssVarColor(name, fallback) {
+      try {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function kpiDeltaToneColor(dir) {
+      const d = String(dir || '').toLowerCase();
+      if (d === 'up') {
+        return cssVarColor('--kexo-kpi-delta-up', cssVarColor('--kexo-accent-2', '#3eb3ab'));
+      }
+      if (d === 'down') {
+        return cssVarColor('--kexo-kpi-delta-down', cssVarColor('--kexo-accent-4', '#e4644b'));
+      }
+      return cssVarColor('--kexo-kpi-delta-same', cssVarColor('--kexo-accent-1', '#4b94e4'));
+    }
+
     function normalizeIconStyleClass(value, fallback) {
       const raw = value == null ? '' : String(value).trim().toLowerCase();
       if (!raw) return fallback;
@@ -7164,13 +7184,8 @@ const API = '';
         let dir = 'none';
 
         if (rawDelta != null) {
-          if (isNew) {
-            text = 'new';
-            dir = isDown ? 'down' : 'up';
-          } else {
-            text = formatSignedPercentOneDecimalFromRatio(rawDelta);
-            dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
-          }
+          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
+          dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
         deltaEl.classList.remove('is-up', 'is-down', 'is-flat');
@@ -7263,9 +7278,9 @@ const API = '';
       if (typeof ApexCharts === 'undefined') return;
       var sourceSeries = getSparklineSeries(series);
       if (!sourceSeries || !sourceSeries.length) return;
-      var GREEN = '#16a34a';
-      var RED = '#dc2626';
-      var NEUTRAL = '#3eb3ab';
+      var GREEN = kpiDeltaToneColor('up');
+      var RED = kpiDeltaToneColor('down');
+      var NEUTRAL = kpiDeltaToneColor('flat');
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
@@ -7669,7 +7684,6 @@ const API = '';
         var base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
         var rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
         var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
-        var isNew = cur != null && base === 0 && cur !== 0;
         var isUp = toneDelta != null && toneDelta > 0.005;
         var isDown = toneDelta != null && toneDelta < -0.005;
         var isFlat = toneDelta != null && !isUp && !isDown;
@@ -7677,13 +7691,8 @@ const API = '';
         var dir = 'none';
         var text = '\u2014';
         if (rawDelta != null) {
-          if (isNew) {
-            text = 'new';
-            dir = isDown ? 'down' : 'up';
-          } else {
-            text = formatSignedPercentOneDecimalFromRatio(rawDelta);
-            dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
-          }
+          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
+          dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
         wrap.classList.remove('is-up', 'is-down', 'is-flat');
@@ -12910,23 +12919,7 @@ const API = '';
         }) : [];
 
         function snapshotTrendColor(dir) {
-          const d = String(dir || '').toLowerCase();
-          function cssVar(name, fallback) {
-            try {
-              const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-              return v || fallback;
-            } catch (_) {
-              return fallback;
-            }
-          }
-          // Only use the KEXO accent scheme for KPI colors.
-          // Mapping:
-          // - up/growth:   accent-3
-          // - down/loss:   accent-4
-          // - flat/stable: accent-2
-          if (d === 'up') return cssVar('--kexo-accent-3', '#f59e34');
-          if (d === 'down') return cssVar('--kexo-accent-4', '#e4644b');
-          return cssVar('--kexo-accent-2', '#3eb3ab');
+          return kpiDeltaToneColor(dir);
         }
 
         function trendColorForDelta(delta) {
@@ -15210,9 +15203,9 @@ const API = '';
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = '#16a34a';
-          var RED = '#dc2626';
-          var NEUTRAL = '#3eb3ab';
+          var GREEN = kpiDeltaToneColor('up');
+          var RED = kpiDeltaToneColor('down');
+          var NEUTRAL = kpiDeltaToneColor('flat');
           var vals = (dataArr || []).map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : null;
@@ -15224,9 +15217,9 @@ const API = '';
           return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = '#16a34a';
-          var RED = '#dc2626';
-          var NEUTRAL = '#3eb3ab';
+          var GREEN = kpiDeltaToneColor('up');
+          var RED = kpiDeltaToneColor('down');
+          var NEUTRAL = kpiDeltaToneColor('flat');
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
           var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
           if (cur == null || base == null) return NEUTRAL;

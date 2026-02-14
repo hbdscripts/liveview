@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Side panel + page title icon fix)
+Last updated: 2026-02-14 (KPI delta colors + zero-baseline percent)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- KPI delta semantics are now unified across condensed header KPIs, dashboard KPI cards, and Business Snapshot KPI cards:
+  - up/growth = `--kexo-accent-2` (teal)
+  - same/flat = `--kexo-accent-1` (blue)
+  - down/decline = `--kexo-accent-4` (fallback `#e4644b`)
+- Business Snapshot deltas now color both icon and text using the same semantic mapping; snapshot KPI sparkline trend colors now match these semantics.
+- Zero-baseline KPI delta labels in condensed/dashboard cards no longer show `new`; they now show signed percentages (e.g. `+100%` when previous is 0 and current is >0).
 
 2026-02-14 (latest)
 - Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode dropdown (Abandoned carts vs Abandoned checkouts).
