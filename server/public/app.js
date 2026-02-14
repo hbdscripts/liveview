@@ -15638,6 +15638,16 @@ const API = '';
       updateNextUpdateUi();
     }
 
+    // On mobile, post-login redirect can restore the dashboard from bfcache; DOMContentLoaded
+    // does not fire again, so data fetches never run. Refresh when page is shown from bfcache.
+    window.addEventListener('pageshow', function(ev) {
+      if (!ev.persisted) return;
+      if (PAGE === 'dashboard') {
+        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true }); } catch (_) {}
+      }
+      try { refreshKpis({ force: true }); } catch (_) {}
+    });
+
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') {
         _lastHiddenAt = Date.now();
@@ -15645,6 +15655,12 @@ const API = '';
       }
 
       var idleMs = _lastHiddenAt ? (Date.now() - _lastHiddenAt) : 0;
+      // After returning from OAuth (e.g. mobile: switch to Google app and back), dashboard may be
+      // blank if fetches ran while hidden or failed. Refresh when visible again within ~2 min.
+      if (idleMs < 2 * 60 * 1000 && PAGE === 'dashboard') {
+        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true }); } catch (_) {}
+        try { refreshKpis({ force: true }); } catch (_) {}
+      }
       if (idleMs < RESUME_RELOAD_IDLE_MS) return onBecameVisible();
 
       fetchVersionSig()
