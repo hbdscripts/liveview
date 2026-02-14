@@ -1893,6 +1893,55 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .footer-settings-audio.muted .sound-icon-off { display: inline; }
 #back-to-top-btn { cursor: pointer; }
 
+/* Footer diagnostics strip: status tags below main bar */
+.kexo-footer-diagnostics {
+  display: block;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.5rem 0 0.75rem;
+}
+.kexo-footer-diagnostics-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+}
+.kexo-footer-diagnostics-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--tblr-body-color, #1e293b);
+  cursor: pointer;
+  text-decoration: none;
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+.kexo-footer-diagnostics-tag:hover {
+  opacity: 0.85;
+}
+.kexo-footer-diagnostics-tag .kexo-footer-diagnostics-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.kexo-footer-diagnostics-tag.is-online .kexo-footer-diagnostics-dot {
+  background: #22c55e;
+}
+.kexo-footer-diagnostics-tag.is-offline .kexo-footer-diagnostics-dot {
+  background: #ef4444;
+}
+@media (max-width: 575.98px) {
+  .kexo-footer-diagnostics-tags {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    justify-items: center;
+    gap: 0.4rem;
+  }
+}
+
 /* ── Layout: keep content pinned to top (avoid vertical centering on short pages) ── */
 .page-body {
   flex: 1 0 auto;

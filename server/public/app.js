@@ -1815,9 +1815,12 @@ const API = '';
       const n = toMs(ms);
       if (n == null) return '';
       const s = Math.floor((Date.now() - n) / 1000);
+      if (s < 0) return 'now';
       if (s < 60) return s + 's ago';
       if (s < 3600) return Math.floor(s / 60) + 'm ago';
-      return Math.floor(s / 3600) + 'h ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      var d = Math.floor(s / 86400);
+      return d + (d === 1 ? ' day' : ' days') + ' ago';
     }
 
     function formatSaleTime(ms) {
@@ -15374,6 +15377,54 @@ const API = '';
           requestAnimationFrame(scrollToTop);
         });
       }
+    })();
+
+    // ── Footer diagnostics strip (status tags from config-status) ───────
+    (function initFooterDiagnostics() {
+      var wrap = document.getElementById('kexo-footer-diagnostics');
+      var tagsEl = document.getElementById('kexo-footer-diagnostics-tags');
+      if (!wrap || !tagsEl) return;
+      var url = API + '/api/config-status';
+      try {
+        var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
+        if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
+      } catch (_) {}
+      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(c) {
+          if (!c) return;
+          var items = [];
+          var sh = c.shopify;
+          var px = c.pixel;
+          var db = c.db;
+          var ing = c.ingest;
+          if (sh && typeof sh.hasToken === 'boolean') {
+            items.push({ key: 'token', label: 'Token', ok: sh.hasToken });
+          }
+          if (px && typeof px.installed === 'boolean') {
+            items.push({ key: 'pixel', label: 'Pixel', ok: px.installed });
+          }
+          if (db && db.tables && typeof db.tables === 'object') {
+            var core = ['sessions', 'purchases', 'events'];
+            var ok = core.every(function(t) { return db.tables[t] === true; });
+            items.push({ key: 'db', label: 'DB', ok: ok });
+          }
+          if (ing && typeof ing.effectiveIngestUrl === 'string' && ing.effectiveIngestUrl) {
+            items.push({ key: 'ingest', label: 'Ingest', ok: true });
+          }
+          if (items.length === 0) return;
+          var html = '';
+          items.forEach(function(it) {
+            var cls = it.ok ? 'is-online' : 'is-offline';
+            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag ' + cls + '" title="' + (it.ok ? 'OK' : 'Issue') + ' – click for diagnostics">';
+            html += '<span class="kexo-footer-diagnostics-dot" aria-hidden="true"></span>';
+            html += '<span>' + String(it.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') + '</span>';
+            html += '</a>';
+          });
+          tagsEl.innerHTML = html;
+          wrap.style.display = 'block';
+        })
+        .catch(function() {});
     })();
 
     // ── Shared Product Insights modal ───────────────────────────────────
