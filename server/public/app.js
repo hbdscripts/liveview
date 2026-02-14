@@ -3811,6 +3811,8 @@ const API = '';
       const totalGbpRaw = r.order_total_gbp != null ? (typeof r.order_total_gbp === 'number' ? r.order_total_gbp : parseFloat(String(r.order_total_gbp))) : null;
       const totalGbp = (typeof totalGbpRaw === 'number' && Number.isFinite(totalGbpRaw)) ? totalGbpRaw : null;
       if (totalGbp != null) out.order_total_gbp = totalGbp;
+      const pidRaw = r.product_id != null ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+      if (pidRaw && /^\d+$/.test(pidRaw)) out.product_id = pidRaw;
       const titleRaw = r.product_title != null ? String(r.product_title).trim() : '';
       if (titleRaw) out.product_title = titleRaw;
       return out;
@@ -3830,20 +3832,24 @@ const API = '';
       const pageSize = getTableRowsPerPage('latest-sales-table', 'dashboard');
       tbody.innerHTML = list.slice(0, pageSize).map(function(s) {
         const cc = (s && s.country_code ? String(s.country_code) : 'XX').toUpperCase().slice(0, 2) || 'XX';
+        const productId = (s && s.product_id != null) ? String(s.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+        const pid = (productId && /^\d+$/.test(productId)) ? productId : '';
         const handle = (s && s.last_product_handle) ? String(s.last_product_handle).trim()
           : (s && s.first_product_handle) ? String(s.first_product_handle).trim()
           : '';
         const explicitTitle = (s && s.product_title != null) ? String(s.product_title).trim() : '';
-        const title = explicitTitle || (handle ? (titleCaseFromHandle(handle) || '') : '');
-        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
-        const titleHtml = handle
+        const title = explicitTitle || (handle ? (titleCaseFromHandle(handle) || '') : '') || 'Unknown product';
+        const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+        const canOpen = !!(handle || pid);
+        const titleHtml = canOpen
           ? (
               '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (pid ? (' data-product-id="' + escapeHtml(pid) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
-              '>' + escapeHtml(title || handle) + '</a>'
+              '>' + escapeHtml(title) + '</a>'
             )
-          : escapeHtml(title || '\u2014');
+          : escapeHtml(title || 'Unknown product');
         const ago = (s && s.purchased_at != null) ? arrivedAgo(s.purchased_at) : '\u2014';
         const money = (s && typeof s.order_total_gbp === 'number')
           ? (formatMoney(s.order_total_gbp, 'GBP') || '\u2014')

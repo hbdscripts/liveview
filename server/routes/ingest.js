@@ -228,14 +228,15 @@ function ingestRouter(req, res, next) {
           payload.checkout_started === true ||
           payload.checkout_started === 1 ||
           payload.checkout_started === '1');
-      const hasPurchaseLinkKey = !!(payload && (payload.checkout_token || payload.order_id));
-      if (!hasPurchaseLinkKey || (!isCheckoutCompleted && !isCheckoutStarted)) return null;
+      if (!isCheckoutCompleted && !isCheckoutStarted) return null;
+      const receivedAtMs = Date.now();
 
       if (!isCheckoutCompleted) {
-        return salesEvidence.insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext });
+        return salesEvidence.insertPurchaseEvent(payload, { receivedAtMs, cfContext }).catch(() => null);
       }
       return salesEvidence
-        .insertPurchaseEvent(payload, { receivedAtMs: Date.now(), cfContext })
+        .insertPurchaseEvent(payload, { receivedAtMs, cfContext })
+        .catch(() => null)
         .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'));
     })
     .then(() => store.insertEvent(sessionId, payload))

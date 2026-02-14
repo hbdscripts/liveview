@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Landing titles from Shopify)
+Last updated: 2026-02-14 (Latest sales product_id mapping)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -259,6 +259,10 @@ Ops/reliability:
 
 2026-02-14 (latest)
 - Landing column (sessions tables): removed path→label mapping (Home, Collection, All, Cart, Viewed Order). Sticky cell now uses Shopify product title, collection title, or meta title fallback via `server/shopifyLandingMeta.js`. Non-product paths show path as-is (e.g. `/`, `/cart`). Sessions enriched with `landing_title` in `listSessions` and `listSessionsByRange`.
+
+2026-02-14 (latest)
+- Live View Latest sales: `/api/latest-sales` now resolves a truth top line item (`product_id` + `product_title`) and the table opens Product Insights by `product_id` when handle is missing (reduces phantom/unclickable rows and prevents wrong-handle clicks).
+- Ingest: `checkout_started` / `checkout_completed` always write `purchase_events`, and `checkout_completed` always writes `purchases` (even when `order_id` / `checkout_token` are missing) for better observability + dedupe.
 
 2026-02-14 (latest)
 - Map getValue crash: removed `attribute: 'fill'` from jsVectorMap series.regions config so the library treats values as direct colors (ISO→color) instead of expecting a scale with getValue. Fixes "Cannot read properties of undefined (reading 'getValue')" on live map and countries map.

@@ -1854,6 +1854,10 @@ async function listLatestSales(limit = 5) {
   const shop = salesTruth.resolveShopForSales('');
   let ratesToGbp = null;
   try { ratesToGbp = await fx.getRatesToGbp(); } catch (_) { ratesToGbp = null; }
+  let accessToken = '';
+  try { accessToken = shop ? await salesTruth.getAccessToken(shop) : ''; } catch (_) { accessToken = ''; }
+  if (typeof accessToken !== 'string') accessToken = '';
+  accessToken = accessToken.trim();
 
   function safeJsonParse(str) {
     if (!str || typeof str !== 'string') return null;
@@ -1865,6 +1869,24 @@ async function listLatestSales(limit = 5) {
     const s = String(v).trim();
     if (!s) return '';
     return s.length > maxLen ? s.slice(0, maxLen) : s;
+  }
+
+  function safeNonJunkStr(v, maxLen = 256) {
+    const s = safeStr(v, maxLen);
+    if (!s) return '';
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return '';
+    return s;
+  }
+
+  function normalizeProductId(v) {
+    const extracted = salesTruth.extractNumericId(v);
+    const s = safeNonJunkStr(extracted, 64);
+    if (!s) return null;
+    if (/^\d+$/.test(s)) return s;
+    const m = s.match(/gid:\/\/shopify\/Product\/(\d+)/i);
+    if (m && m[1]) return m[1];
+    return null;
   }
 
   function numOrNull(v) {
@@ -1909,7 +1931,9 @@ async function listLatestSales(limit = 5) {
   }
 
   const purchaseLinkCache = new Map(); // session_id -> { order_id, checkout_token, order_total, order_currency } | null
+  const purchaseEvidenceCache = new Map(); // session_id -> { linked_order_id, order_id, checkout_token, currency, total_price, occurred_at, received_at } | null
   const truthOrderCache = new Map(); // key -> order row | null
+  const topProductCache = new Map(); // order_id -> { title, productId } | null
 
   async function getLatestPurchaseLink(sessionId) {
     const sid = String(sessionId || '').trim();
@@ -1940,6 +1964,50 @@ async function listLatestSales(limit = 5) {
     }
     purchaseLinkCache.set(sid, row || null);
     return row || null;
+  }
+
+  async function getLatestPurchaseEvidence(sessionId) {
+    const sid = String(sessionId || '').trim();
+    if (!shop || !sid) return null;
+    if (purchaseEvidenceCache.has(sid)) return purchaseEvidenceCache.get(sid);
+    let best = null;
+    try {
+      const rows = await db.all(
+        `
+          SELECT linked_order_id, order_id, checkout_token, currency, total_price, occurred_at, received_at
+          FROM purchase_events
+          WHERE shop = ? AND session_id = ?
+            AND event_type IN ('checkout_completed', 'checkout_started')
+          ORDER BY occurred_at DESC, received_at DESC
+          LIMIT 10
+        `,
+        [shop, sid]
+      );
+      let bestAny = null;
+      let bestLinked = null;
+      let bestOrder = null;
+      let bestToken = null;
+      for (const r of (rows || [])) {
+        const cand = {
+          linked_order_id: safeNonJunkStr(r && r.linked_order_id, 64) || null,
+          order_id: safeNonJunkStr(r && r.order_id, 64) || null,
+          checkout_token: safeNonJunkStr(r && r.checkout_token, 128) || null,
+          currency: safeNonJunkStr(r && r.currency, 16) || null,
+          total_price: numOrNull(r && r.total_price),
+          occurred_at: numOrNull(r && r.occurred_at),
+          received_at: numOrNull(r && r.received_at),
+        };
+        if (!bestAny) bestAny = cand;
+        if (!bestLinked && cand.linked_order_id) bestLinked = cand;
+        if (!bestOrder && cand.order_id) bestOrder = cand;
+        if (!bestToken && cand.checkout_token) bestToken = cand;
+      }
+      best = bestLinked || bestOrder || bestToken || bestAny || null;
+    } catch (_) {
+      best = null;
+    }
+    purchaseEvidenceCache.set(sid, best || null);
+    return best || null;
   }
 
   async function getTruthOrderByOrderId(orderId) {
@@ -1976,6 +2044,57 @@ async function listLatestSales(limit = 5) {
     }
     truthOrderCache.set(key, row || null);
     return row || null;
+  }
+
+  async function getTopProductForTruthOrder(truthOrder) {
+    const oid = safeNonJunkStr(truthOrder && truthOrder.order_id, 64);
+    if (!shop || !oid) return { title: '', productId: null };
+    if (topProductCache.has(oid)) return topProductCache.get(oid) || { title: '', productId: null };
+    let out = null;
+    // Prefer persisted truth line items (has stable product_id), fall back to orders_shopify.raw_json.
+    try {
+      const rows = await db.all(
+        `
+          SELECT
+            TRIM(li.product_id) AS product_id,
+            NULLIF(TRIM(li.title), '') AS title,
+            li.quantity AS quantity,
+            li.unit_price AS unit_price,
+            li.line_revenue AS line_revenue
+          FROM orders_shopify_line_items li
+          WHERE li.shop = ? AND li.order_id = ?
+            AND (li.order_test IS NULL OR li.order_test = 0)
+            AND li.order_cancelled_at IS NULL
+            AND li.order_financial_status = 'paid'
+          ORDER BY COALESCE(li.line_revenue, 0) DESC, COALESCE(li.unit_price, 0) DESC, COALESCE(li.quantity, 0) DESC
+          LIMIT 10
+        `,
+        [shop, oid]
+      );
+      let best = null;
+      for (const r of (rows || [])) {
+        const title = safeStr(r && r.title, 256);
+        const productId = normalizeProductId(r && r.product_id);
+        if (productId && title) { best = { title, productId }; break; }
+        if (!best && title) best = { title, productId: productId || null };
+      }
+      if (best) out = { title: best.title || '', productId: best.productId || null };
+    } catch (_) {
+      out = null;
+    }
+    if (!out) {
+      try {
+        const raw = truthOrder && truthOrder.raw_json != null ? String(truthOrder.raw_json) : '';
+        const top = parseTopProductFromOrderRawJson(raw);
+        const pid = normalizeProductId(top && top.productId != null ? top.productId : null);
+        const title = top && top.title ? String(top.title) : '';
+        out = { title: title || '', productId: pid || null };
+      } catch (_) {
+        out = { title: '', productId: null };
+      }
+    }
+    topProductCache.set(oid, out || null);
+    return out || { title: '', productId: null };
   }
 
   async function getTruthOrderByCheckoutToken(checkoutToken) {
@@ -2028,6 +2147,24 @@ async function listLatestSales(limit = 5) {
     if (directToken) {
       const byToken = await getTruthOrderByCheckoutToken(directToken);
       if (byToken) return byToken;
+    }
+
+    // Evidence-based lookup: more reliable than heuristics when available.
+    const evidence = await getLatestPurchaseEvidence(sessionId);
+    const linkedOrderId = safeNonJunkStr(evidence && evidence.linked_order_id, 64);
+    const evOrderId = safeNonJunkStr(evidence && evidence.order_id, 64);
+    const evToken = safeNonJunkStr(evidence && evidence.checkout_token, 128);
+    if (linkedOrderId) {
+      const byLinked = await getTruthOrderByOrderId(linkedOrderId);
+      if (byLinked) return byLinked;
+    }
+    if (evOrderId) {
+      const byEvId = await getTruthOrderByOrderId(evOrderId);
+      if (byEvId) return byEvId;
+    }
+    if (evToken) {
+      const byEvToken = await getTruthOrderByCheckoutToken(evToken);
+      if (byEvToken) return byEvToken;
     }
 
     // Heuristic match: nearest paid truth order around purchased_at with matching currency + total.
@@ -2095,31 +2232,36 @@ async function listLatestSales(limit = 5) {
     const firstHandle = (r && r.first_product_handle != null) ? String(r.first_product_handle).trim() : '';
 
     const purchaseLink = await getLatestPurchaseLink(sessionId);
+    const evidence = await getLatestPurchaseEvidence(sessionId);
     const purchaseTotal = numOrNull(purchaseLink && purchaseLink.order_total);
-    const baseTotal = total != null ? total : purchaseTotal;
-    const baseCur = fx.normalizeCurrency(cur) || fx.normalizeCurrency(purchaseLink && purchaseLink.order_currency) || null;
+    const evidenceTotal = numOrNull(evidence && evidence.total_price);
+    const baseTotal = total != null ? total : (purchaseTotal != null ? purchaseTotal : evidenceTotal);
+    const baseCur =
+      fx.normalizeCurrency(cur) ||
+      fx.normalizeCurrency(purchaseLink && purchaseLink.order_currency) ||
+      fx.normalizeCurrency(evidence && evidence.currency) ||
+      null;
 
     // Prefer truth order enrichment when available.
     let productTitle = null;
     let orderTotalGbp = null;
-    let resolvedHandle = lastHandle || firstHandle || null;
+    let productId = null;
+    let resolvedHandle = null;
     const truth = await findTruthOrderForSession(sessionId, purchasedAt, baseTotal, baseCur);
     if (truth) {
-      try {
-        const top = parseTopProductFromOrderRawJson(truth && truth.raw_json != null ? String(truth.raw_json) : '');
-        productTitle = top && top.title ? top.title : null;
-        // When session lacks product handle, derive from order line item product_id via Shopify meta.
-        if (!resolvedHandle && top && top.productId && shop) {
-          try {
-            const token = await salesTruth.getAccessToken(shop);
-            if (token) {
-              const meta = await productMetaCache.getProductMeta(shop, token, top.productId);
-              if (meta && meta.ok && meta.handle) resolvedHandle = String(meta.handle).trim() || null;
-            }
-          } catch (_) {}
-        }
-      } catch (_) {
-        productTitle = null;
+      const top = await getTopProductForTruthOrder(truth);
+      productTitle = top && top.title ? String(top.title) : null;
+      productId = top && top.productId ? String(top.productId) : null;
+      if (productId && accessToken) {
+        try {
+          const meta = await productMetaCache.getProductMeta(shop, accessToken, productId);
+          const h = meta && meta.ok && meta.handle ? safeNonJunkStr(meta.handle, 128) : '';
+          if (h) resolvedHandle = h;
+          if ((!productTitle || productTitle === 'Unknown') && meta && meta.ok && meta.title) {
+            const t = safeStr(meta.title, 256);
+            if (t) productTitle = t;
+          }
+        } catch (_) {}
       }
       const truthTotal = numOrNull(truth && truth.total_price);
       const truthCur = fx.normalizeCurrency(truth && truth.currency) || 'GBP';
@@ -2128,18 +2270,29 @@ async function listLatestSales(limit = 5) {
     } else if (baseTotal != null) {
       const gbp = fx.convertToGbp(baseTotal, baseCur || 'GBP', ratesToGbp);
       orderTotalGbp = round2(gbp);
+      resolvedHandle = lastHandle || firstHandle || null;
     }
+
+    const outTotal = truth
+      ? (numOrNull(truth && truth.total_price) != null ? numOrNull(truth && truth.total_price) : baseTotal)
+      : baseTotal;
+    const outCur = truth
+      ? (fx.normalizeCurrency(truth && truth.currency) || baseCur || 'GBP')
+      : (baseCur || null);
+    const outLastHandle = truth ? (resolvedHandle || null) : (resolvedHandle || null);
+    const outFirstHandle = truth ? (resolvedHandle || null) : (firstHandle || resolvedHandle || null);
 
     out.push({
       session_id: sessionId,
       country_code: cc,
       purchased_at: purchasedAt,
-      order_total: baseTotal,
-      order_currency: baseCur || null,
+      order_total: outTotal,
+      order_currency: outCur,
       order_total_gbp: orderTotalGbp,
       product_title: productTitle,
-      last_product_handle: resolvedHandle || lastHandle || null,
-      first_product_handle: firstHandle || resolvedHandle || null,
+      product_id: productId,
+      last_product_handle: outLastHandle,
+      first_product_handle: outFirstHandle,
     });
   }
   return out;
