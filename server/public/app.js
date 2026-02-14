@@ -10245,11 +10245,6 @@ const API = '';
             hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
             selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
           },
-          series: {
-            regions: [
-              { values: regionFillByIso2 }
-            ]
-          },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
             var name = (liveOnlineMapChartInstance && typeof liveOnlineMapChartInstance.getRegionName === 'function')

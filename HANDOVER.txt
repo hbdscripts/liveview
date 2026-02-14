@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Mobile nav labels + dropdown viewport)
+Last updated: 2026-02-14 (Map Option B: no series, setStyle after init)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -262,6 +262,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-14 (latest)
+- Map getValue crash (Option B): removed series.regions entirely from jsVectorMap config. Region fills are now applied after init via `map.regions[code].element.setStyle('fill', color)`. Fixes "Cannot read properties of undefined (reading 'getValue')" on live map and countries map.
 
 2026-02-14 (latest)
 - Mobile main nav: labels (Dashboard, Insights, etc.) wrapped in span.kexo-nav-label and hidden via display:none on mobile (foolproof; no font-size:0 white spec). Main nav dropdowns constrained to viewport via constrainNavDropdownToViewport on shown.bs.dropdown + resize.
