@@ -1921,17 +1921,21 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 .kexo-footer-diagnostics-tag:hover {
   opacity: 0.85;
 }
-.kexo-footer-diagnostics-tag .kexo-footer-diagnostics-dot {
+/* Reusable status indicator (matches header Online/Offline dot) */
+.kexo-status-indicator {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.kexo-footer-diagnostics-tag.is-online .kexo-footer-diagnostics-dot {
-  background: #22c55e;
+.kexo-status-indicator--online {
+  background: var(--tblr-success, #22c55e) !important;
 }
-.kexo-footer-diagnostics-tag.is-offline .kexo-footer-diagnostics-dot {
-  background: #ef4444;
+.kexo-status-indicator--offline {
+  background: rgba(148, 163, 184, 0.95) !important;
+}
+.kexo-footer-diagnostics-tag .kexo-status-indicator {
+  margin-right: 0.35rem;
 }
 @media (max-width: 575.98px) {
   .kexo-footer-diagnostics-tags {

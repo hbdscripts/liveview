@@ -15394,31 +15394,19 @@ const API = '';
         .then(function(c) {
           if (!c) return;
           var items = [];
-          var sh = c.shopify;
           var px = c.pixel;
-          var db = c.db;
-          var ing = c.ingest;
-          if (sh && typeof sh.hasToken === 'boolean') {
-            items.push({ key: 'token', label: 'Token', ok: sh.hasToken });
-          }
-          if (px && typeof px.installed === 'boolean') {
-            items.push({ key: 'pixel', label: 'Pixel', ok: px.installed });
-          }
-          if (db && db.tables && typeof db.tables === 'object') {
-            var core = ['sessions', 'purchases', 'events'];
-            var ok = core.every(function(t) { return db.tables[t] === true; });
-            items.push({ key: 'db', label: 'DB', ok: ok });
-          }
-          if (ing && typeof ing.effectiveIngestUrl === 'string' && ing.effectiveIngestUrl) {
-            items.push({ key: 'ingest', label: 'Ingest', ok: true });
-          }
-          if (items.length === 0) return;
+          var ads = c.ads && c.ads.status ? c.ads.status : null;
+          var gaProvider = ads && Array.isArray(ads.providers) ? ads.providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) : null;
+          var gaConnected = !!(gaProvider && gaProvider.connected);
+          items.push({ key: 'pixel', label: 'Kexo Pixel', status: (px && px.installed === true) ? 'Online' : 'Offline', ok: !!(px && px.installed === true) });
+          items.push({ key: 'google_ads', label: 'Google Ads', status: gaConnected ? 'Connected' : 'Offline', ok: gaConnected });
           var html = '';
           items.forEach(function(it) {
-            var cls = it.ok ? 'is-online' : 'is-offline';
-            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag ' + cls + '" title="' + (it.ok ? 'OK' : 'Issue') + ' – click for diagnostics">';
-            html += '<span class="kexo-footer-diagnostics-dot" aria-hidden="true"></span>';
-            html += '<span>' + String(it.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') + '</span>';
+            var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
+            var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
+            html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>';
+            html += '<span>' + esc(it.label) + ' ' + esc(it.status) + '</span>';
             html += '</a>';
           });
           tagsEl.innerHTML = html;
