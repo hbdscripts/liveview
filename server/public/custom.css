@@ -2320,6 +2320,27 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
   .kexo-desktop-nav-settings .nav-link {
     padding: 0;
   }
+  /* Mobile: full-width fixed dropdown below nav bar (top set by JS) */
+  .kexo-desktop-nav .navbar-nav .dropdown-menu {
+    position: fixed !important;
+    top: var(--kexo-mobile-nav-dropdown-top, 0);
+    width: 100% !important;
+    left: 0 !important;
+  }
+  .kexo-desktop-nav-list .dropdown-item,
+  .kexo-desktop-nav-settings .dropdown-item {
+    font-size: 16px;
+    font-weight: 400;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
+    text-align: center;
+    width: 100%;
+    display: block;
+  }
+  .kexo-desktop-nav-list .dropdown-menu .kexo-nav-dropdown-item-icon {
+    display: none !important;
+  }
   .kexo-date-btn {
     width: auto;
     max-width: none;

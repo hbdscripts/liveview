@@ -14465,6 +14465,34 @@ const API = '';
           try { navLeft.scrollLeft = 0; } catch (_) {}
         }
 
+        function updateMobileNavDropdownTop() {
+          if (!isMobileViewport()) return;
+          const nav = document.querySelector('.kexo-desktop-nav');
+          if (!nav) return;
+          const rect = nav.getBoundingClientRect();
+          document.documentElement.style.setProperty('--kexo-mobile-nav-dropdown-top', rect.bottom + 'px');
+        }
+
+        function closeOpenNavDropdowns() {
+          if (!isMobileViewport()) return;
+          navLeft.querySelectorAll('.dropdown-menu.show').forEach(function (menu) {
+            const toggle = menu.closest('.dropdown') && menu.closest('.dropdown').querySelector('[data-bs-toggle="dropdown"]');
+            if (toggle && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+              try {
+                const instance = bootstrap.Dropdown.getOrCreateInstance(toggle);
+                if (instance) instance.hide();
+              } catch (_) {}
+            }
+          });
+        }
+
+        navLeft.querySelectorAll('.dropdown').forEach(function (dropdownEl) {
+          dropdownEl.addEventListener('shown.bs.dropdown', function () {
+            if (!isMobileViewport()) return;
+            updateMobileNavDropdownTop();
+          });
+        });
+
         navLeft.addEventListener('show.bs.dropdown', function() {
           if (!isMobileViewport()) return;
           navLeft.classList.add('is-dropdown-open');
@@ -14477,10 +14505,15 @@ const API = '';
 
         window.addEventListener('resize', function() {
           syncDropdownOverflowState();
+          updateMobileNavDropdownTop();
         }, { passive: true });
+        window.addEventListener('scroll', function() {
+          closeOpenNavDropdowns();
+        }, { passive: false });
         window.addEventListener('orientationchange', function() {
           resetNavStartPosition();
           syncDropdownOverflowState();
+          updateMobileNavDropdownTop();
         });
         window.addEventListener('pageshow', function() {
           resetNavStartPosition();
@@ -14489,6 +14522,7 @@ const API = '';
 
         resetNavStartPosition();
         syncDropdownOverflowState();
+        updateMobileNavDropdownTop();
       })();
       (function initStripDropdownAlign() {
         function positionStripDropdown(menu) {
