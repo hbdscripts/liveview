@@ -2338,7 +2338,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
     padding: .25rem;
   }
   .kexo-desktop-brand-link img {
-    max-height: 20px;
+    max-height: 32px;
     width: auto;
   }
   .kexo-top-strip-online {
@@ -2595,7 +2595,7 @@ html[data-bs-theme="dark"] .business-snapshot-info-popover {
 }
 .kexo-desktop-brand-link img {
   display: block;
-  height: 20px;
+  height: 32px;
 }
 .kexo-top-strip-settings-toggle {
   display: inline-flex;
