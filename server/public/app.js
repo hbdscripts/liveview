@@ -15212,7 +15212,7 @@ const API = '';
           chart.render();
         }
         function sparkToneColor(dataArr) {
-          var GREEN = '#0c756e';
+          var GREEN = '#0b913d';
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var vals = (dataArr || []).map(function(v) {
@@ -15226,7 +15226,7 @@ const API = '';
           return last > prev ? GREEN : RED;
         }
         function sparkToneFromCompare(current, baseline, invert, fallbackDataArr) {
-          var GREEN = '#0c756e';
+          var GREEN = '#0b913d';
           var RED = kpiDeltaToneColor('down');
           var NEUTRAL = kpiDeltaToneColor('flat');
           var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
