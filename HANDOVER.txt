@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-14 (Nav: accent only when dropdown open; tab+dropdown same colour)
+Last updated: 2026-02-14 (Nav dropdown accent: JS-driven kexo-dropdown-open + injected style)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -275,7 +275,7 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-14 (latest)
-- Top menu: accent only when dropdown is open. When closed, active tab uses transparent background (no bright blue). When open, tab + dropdown share same bright accent. Added `data-bs-popper="static"` to main nav dropdowns so they stay in DOM and inherit `--kexo-accent`. Dark-theme override ensures open dropdown stays accent.
+- Nav dropdown accent: JS-driven. `initNavDropdownAccent()` listens for `show.bs.dropdown`/`hide.bs.dropdown` on `.kexo-desktop-nav-list`, adds/removes class `kexo-dropdown-open` on the nav-item, and injects a `<style id="kexo-nav-dropdown-accent">` block that forces accent on tab + dropdown when open. Fixes CSS conflicts where darker colour overrode accent. When closed, active tab uses transparent background (no bright blue). When open, tab + dropdown share same bright accent. Added `data-bs-popper="static"` to main nav dropdowns so they stay in DOM and inherit `--kexo-accent`. Dark-theme override ensures open dropdown stays accent.
 - Page loader: disabled on settings page (`PAGE_LOADER_ENABLED.settings: false` in `app.js`). Horizontal page loader overlay never shows on `/settings`.
 - Top menu (`custom.css`): active tab (dropdown closed) uses kexo accent background per nth-child (e.g. first = blue); when open, tab + dropdown share same accent. Dropdown items use `background: none`. Mobile open tab gets `height: -webkit-fill-available` and `border-radius: 0`.
 - Login page refresh (`server/routes/login.js`):
