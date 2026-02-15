@@ -2061,17 +2061,22 @@
       });
     }
 
-    var previewBtn = document.getElementById('settings-sale-sound-preview');
-    if (previewBtn) {
-      previewBtn.addEventListener('click', function () {
-        var url = getEffectiveSaleSoundUrl();
-        if (!url) return;
-        try {
-          var a = new Audio(url);
-          a.play().catch(function () {});
-        } catch (_) {}
-      });
-    }
+    document.body.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('#settings-sale-sound-preview') : null;
+      if (!btn) return;
+      e.preventDefault();
+      var url = getEffectiveSaleSoundUrl();
+      if (!url) return;
+      if (url.charAt(0) === '/') {
+        var base = '';
+        try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+        url = (base || window.location.origin || '') + url;
+      }
+      try {
+        var a = new Audio(url);
+        a.play().catch(function () {});
+      } catch (_) {}
+    });
 
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
