@@ -1582,48 +1582,44 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: var(--kexo-loader-accent, var(--kexo-accent-1, #4b94e4));
+  background: var(--tblr-body-bg, #f5f7fb);
   padding: 1rem;
   pointer-events: auto;
 }
 
-/* Page-specific loader block colour + icon (matches nav accent) */
-body[data-page="dashboard"] .page-body-loader-overlay,
-body[data-page="live"] .page-body-loader-overlay,
-body[data-page="sales"] .page-body-loader-overlay,
-body[data-page="date"] .page-body-loader-overlay {
-  background: var(--kexo-accent-1, #4b94e4);
+/* Animated progress bar: page-specific accent (block colour, same as page icon) */
+body[data-page="dashboard"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="live"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="sales"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="date"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-1, #4b94e4) !important;
+  background-image: none !important;
 }
-body[data-page="countries"] .page-body-loader-overlay,
-body[data-page="products"] .page-body-loader-overlay,
-body[data-page="variants"] .page-body-loader-overlay,
-body[data-page="abandoned-carts"] .page-body-loader-overlay {
-  background: var(--kexo-accent-2, #3eb3ab);
+body[data-page="countries"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="products"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="variants"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="abandoned-carts"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-2, #3eb3ab) !important;
+  background-image: none !important;
 }
-body[data-page="channels"] .page-body-loader-overlay,
-body[data-page="type"] .page-body-loader-overlay {
-  background: var(--kexo-accent-3, #f59e34);
+body[data-page="channels"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="type"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-3, #f59e34) !important;
+  background-image: none !important;
 }
-body[data-page="ads"] .page-body-loader-overlay {
-  background: var(--kexo-accent-4, #8b5cf6);
+body[data-page="ads"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-4, #8b5cf6) !important;
+  background-image: none !important;
 }
-body[data-page="compare-conversion-rate"] .page-body-loader-overlay,
-body[data-page="shipping-cr"] .page-body-loader-overlay,
-body[data-page="click-order-lookup"] .page-body-loader-overlay {
-  background: var(--kexo-accent-5, #ef4444);
+body[data-page="compare-conversion-rate"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="shipping-cr"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="click-order-lookup"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-5, #ef4444) !important;
+  background-image: none !important;
 }
-body[data-page="settings"] .page-body-loader-overlay,
-body[data-page="admin"] .page-body-loader-overlay {
-  background: var(--kexo-accent-1, #4b94e4);
-}
-
-/* Icon/progress bar: white on block colour for contrast */
-.page-body-loader-overlay .report-build-step {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-.page-body-loader-overlay .page-loader-progress .progress-bar,
-.page-body-loader-overlay .page-loader-progress .progress-bar.progress-bar-indeterminate {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+body[data-page="settings"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="admin"] .page-body-loader-overlay .page-loader-progress .progress-bar {
+  background-color: var(--kexo-accent-1, #4b94e4) !important;
   background-image: none !important;
 }
 
