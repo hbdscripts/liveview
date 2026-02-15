@@ -5,6 +5,7 @@
  * derive from client IP (geoip-lite). Shopify Web Pixels API does not expose visitor country.
  */
 
+const Sentry = require('@sentry/node');
 const config = require('../config');
 const store = require('../store');
 const salesEvidence = require('../salesEvidence');
@@ -12,6 +13,27 @@ const rateLimit = require('../rateLimit');
 const sse = require('../sse');
 const affiliateAttribution = require('../fraud/affiliateAttribution');
 const fraudService = require('../fraud/service');
+
+let _lastIngestAuthCaptureAt = 0;
+let _lastIngestErrorCaptureAt = 0;
+
+function captureIngestAuthMisconfigOnce(msg, extra) {
+  const now = Date.now();
+  if (_lastIngestAuthCaptureAt && (now - _lastIngestAuthCaptureAt) < 5 * 60 * 1000) return;
+  _lastIngestAuthCaptureAt = now;
+  try {
+    Sentry.captureMessage(msg, { level: 'error', extra: extra && typeof extra === 'object' ? extra : {} });
+  } catch (_) {}
+}
+
+function captureIngestErrorOnce(err, extra) {
+  const now = Date.now();
+  if (_lastIngestErrorCaptureAt && (now - _lastIngestErrorCaptureAt) < 30 * 1000) return;
+  _lastIngestErrorCaptureAt = now;
+  try {
+    Sentry.captureException(err, { extra: extra && typeof extra === 'object' ? extra : {} });
+  } catch (_) {}
+}
 
 let geoip;
 try {
@@ -156,6 +178,12 @@ function ingestRouter(req, res, next) {
 
   const secret = req.headers['x-ingest-secret'] || (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.slice(7) : '');
   if (!config.ingestSecret || secret !== config.ingestSecret) {
+    if (!config.ingestSecret) {
+      captureIngestAuthMisconfigOnce('Ingest misconfigured: INGEST_SECRET missing', {
+        route: 'ingest',
+        path: req && req.path ? String(req.path) : '',
+      });
+    }
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -302,6 +330,14 @@ function ingestRouter(req, res, next) {
     })
     .catch(err => {
       console.error('Ingest error:', err);
+      captureIngestErrorOnce(err, {
+        route: 'ingest',
+        sessionId,
+        visitorId,
+        eventType: payload && payload.event_type ? String(payload.event_type) : '',
+        hasEntryUrl: !!(payload && payload.entry_url),
+        hasReferrer: !!(payload && payload.referrer),
+      });
       res.status(500).json({ error: 'Internal error' });
     });
 }

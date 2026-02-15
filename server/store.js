@@ -25,6 +25,37 @@ const ALLOWED_EVENT_TYPES = new Set([
   'cart_updated', 'cart_viewed', 'checkout_started', 'checkout_completed', 'heartbeat',
 ]);
 
+let _sessionsHasBsNetworkColumn = null;
+let _sessionsHasBsNetworkColumnInFlight = null;
+
+async function sessionsHasBsNetworkColumn(db) {
+  if (_sessionsHasBsNetworkColumn === true) return true;
+  if (_sessionsHasBsNetworkColumn === false) return false;
+  if (_sessionsHasBsNetworkColumnInFlight) return _sessionsHasBsNetworkColumnInFlight;
+
+  _sessionsHasBsNetworkColumnInFlight = Promise.resolve()
+    .then(() => db.get('SELECT bs_network FROM sessions LIMIT 1'))
+    .then(() => {
+      _sessionsHasBsNetworkColumn = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "bs_network" does not exist
+      // SQLite: no such column: bs_network
+      if (/bs_network/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _sessionsHasBsNetworkColumn = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _sessionsHasBsNetworkColumnInFlight = null;
+    });
+
+  return _sessionsHasBsNetworkColumnInFlight;
+}
+
 const WHITELIST = new Set([
   'visitor_id', 'session_id', 'event_type', 'path', 'product_handle', 'product_title',
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
@@ -1070,66 +1101,124 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const cfColo = cf.cfColo;
   const cfAsn = cf.cfAsn;
   const isReturningSession = visitorIsReturning ? 1 : 0;
+  const supportsBsNetwork = await sessionsHasBsNetworkColumn(db);
 
   if (!existing) {
     if (config.dbUrl) {
-      await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
-        ON CONFLICT (session_id) DO UPDATE SET
-          visitor_id = EXCLUDED.visitor_id,
-          started_at = EXCLUDED.started_at,
-          last_seen = EXCLUDED.last_seen,
-          last_path = EXCLUDED.last_path,
-          last_product_handle = EXCLUDED.last_product_handle,
-          first_path = EXCLUDED.first_path,
-          first_product_handle = EXCLUDED.first_product_handle,
-          cart_qty = EXCLUDED.cart_qty,
-          cart_value = EXCLUDED.cart_value,
-          cart_currency = EXCLUDED.cart_currency,
-          order_total = EXCLUDED.order_total,
-          order_currency = EXCLUDED.order_currency,
-          country_code = EXCLUDED.country_code,
-          utm_campaign = EXCLUDED.utm_campaign,
-          utm_source = EXCLUDED.utm_source,
-          utm_medium = EXCLUDED.utm_medium,
-          utm_content = EXCLUDED.utm_content,
-          referrer = EXCLUDED.referrer,
-          entry_url = EXCLUDED.entry_url,
-          is_checking_out = EXCLUDED.is_checking_out,
-          checkout_started_at = EXCLUDED.checkout_started_at,
-          has_purchased = EXCLUDED.has_purchased,
-          purchased_at = EXCLUDED.purchased_at,
-          -- Do not overwrite abandonment markers during upserts.
-          -- These are derived asynchronously (cleanup marker pass) and should remain stable once set.
-          is_abandoned = sessions.is_abandoned,
-          abandoned_at = sessions.abandoned_at,
-          recovered_at = sessions.recovered_at,
-          cf_known_bot = EXCLUDED.cf_known_bot,
-          cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
-          cf_country = EXCLUDED.cf_country,
-          cf_colo = EXCLUDED.cf_colo,
-          cf_asn = EXCLUDED.cf_asn,
-          traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
-          ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
-          ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
-          ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
-          bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
-          bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
-          bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
-          bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id),
-          bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+      if (supportsBsNetwork) {
+        await db.run(`
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+          VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
+          ON CONFLICT (session_id) DO UPDATE SET
+            visitor_id = EXCLUDED.visitor_id,
+            started_at = EXCLUDED.started_at,
+            last_seen = EXCLUDED.last_seen,
+            last_path = EXCLUDED.last_path,
+            last_product_handle = EXCLUDED.last_product_handle,
+            first_path = EXCLUDED.first_path,
+            first_product_handle = EXCLUDED.first_product_handle,
+            cart_qty = EXCLUDED.cart_qty,
+            cart_value = EXCLUDED.cart_value,
+            cart_currency = EXCLUDED.cart_currency,
+            order_total = EXCLUDED.order_total,
+            order_currency = EXCLUDED.order_currency,
+            country_code = EXCLUDED.country_code,
+            utm_campaign = EXCLUDED.utm_campaign,
+            utm_source = EXCLUDED.utm_source,
+            utm_medium = EXCLUDED.utm_medium,
+            utm_content = EXCLUDED.utm_content,
+            referrer = EXCLUDED.referrer,
+            entry_url = EXCLUDED.entry_url,
+            is_checking_out = EXCLUDED.is_checking_out,
+            checkout_started_at = EXCLUDED.checkout_started_at,
+            has_purchased = EXCLUDED.has_purchased,
+            purchased_at = EXCLUDED.purchased_at,
+            -- Do not overwrite abandonment markers during upserts.
+            -- These are derived asynchronously (cleanup marker pass) and should remain stable once set.
+            is_abandoned = sessions.is_abandoned,
+            abandoned_at = sessions.abandoned_at,
+            recovered_at = sessions.recovered_at,
+            cf_known_bot = EXCLUDED.cf_known_bot,
+            cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
+            cf_country = EXCLUDED.cf_country,
+            cf_colo = EXCLUDED.cf_colo,
+            cf_asn = EXCLUDED.cf_asn,
+            traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
+            ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
+            ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
+            ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
+            bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
+            bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
+            bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
+            bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id),
+            bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+      } else {
+        await db.run(`
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
+          VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+          ON CONFLICT (session_id) DO UPDATE SET
+            visitor_id = EXCLUDED.visitor_id,
+            started_at = EXCLUDED.started_at,
+            last_seen = EXCLUDED.last_seen,
+            last_path = EXCLUDED.last_path,
+            last_product_handle = EXCLUDED.last_product_handle,
+            first_path = EXCLUDED.first_path,
+            first_product_handle = EXCLUDED.first_product_handle,
+            cart_qty = EXCLUDED.cart_qty,
+            cart_value = EXCLUDED.cart_value,
+            cart_currency = EXCLUDED.cart_currency,
+            order_total = EXCLUDED.order_total,
+            order_currency = EXCLUDED.order_currency,
+            country_code = EXCLUDED.country_code,
+            utm_campaign = EXCLUDED.utm_campaign,
+            utm_source = EXCLUDED.utm_source,
+            utm_medium = EXCLUDED.utm_medium,
+            utm_content = EXCLUDED.utm_content,
+            referrer = EXCLUDED.referrer,
+            entry_url = EXCLUDED.entry_url,
+            is_checking_out = EXCLUDED.is_checking_out,
+            checkout_started_at = EXCLUDED.checkout_started_at,
+            has_purchased = EXCLUDED.has_purchased,
+            purchased_at = EXCLUDED.purchased_at,
+            -- Do not overwrite abandonment markers during upserts.
+            -- These are derived asynchronously (cleanup marker pass) and should remain stable once set.
+            is_abandoned = sessions.is_abandoned,
+            abandoned_at = sessions.abandoned_at,
+            recovered_at = sessions.recovered_at,
+            cf_known_bot = EXCLUDED.cf_known_bot,
+            cf_verified_bot_category = EXCLUDED.cf_verified_bot_category,
+            cf_country = EXCLUDED.cf_country,
+            cf_colo = EXCLUDED.cf_colo,
+            cf_asn = EXCLUDED.cf_asn,
+            traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
+            ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
+            ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
+            ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
+            bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
+            bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
+            bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
+            bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+      }
     } else {
-      await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+      if (supportsBsNetwork) {
+        await db.run(`
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+      } else {
+        await db.run(`
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+      }
     }
   } else {
     const cfUpdates = [];
     const cfParams = [];
-    let p = config.dbUrl ? 28 : 0;
+    const baseParamCount = config.dbUrl ? (supportsBsNetwork ? 28 : 27) : 0;
+    let p = config.dbUrl ? baseParamCount : 0;
     if (cfKnownBot != null) {
       cfUpdates.push(config.dbUrl ? `cf_known_bot = $${++p}` : 'cf_known_bot = ?');
       cfParams.push(cfKnownBot);
@@ -1151,8 +1240,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       cfParams.push(cfAsn);
     }
     const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
-    const sessionIdPlaceholder = config.dbUrl ? '$' + (29 + cfParams.length) : '?';
+    const sessionIdPlaceholder = config.dbUrl ? '$' + (baseParamCount + 1 + cfParams.length) : '?';
+    const bsNetworkSetSql = supportsBsNetwork
+      ? (config.dbUrl ? `,\n        bs_network = COALESCE($${baseParamCount}, bs_network)` : `,\n        bs_network = COALESCE(?, bs_network)`)
+      : '';
     if (config.dbUrl) {
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId];
+      if (supportsBsNetwork) placeholders.push(updateBsNetwork);
+      placeholders.push(...cfParams, payload.session_id);
       await db.run(`
         UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
         cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
@@ -1168,13 +1263,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         bs_source = COALESCE($24, bs_source),
         bs_campaign_id = COALESCE($25, bs_campaign_id),
         bs_adgroup_id = COALESCE($26, bs_adgroup_id),
-        bs_ad_id = COALESCE($27, bs_ad_id),
-        bs_network = COALESCE($28, bs_network)
+        bs_ad_id = COALESCE($27, bs_ad_id)${bsNetworkSetSql}
         ${cfSet}
         WHERE session_id = ${sessionIdPlaceholder}
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, updateBsNetwork, ...cfParams, payload.session_id]);
+      `, placeholders);
     } else {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, updateBsNetwork, ...cfParams, payload.session_id];
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId];
+      if (supportsBsNetwork) placeholders.push(updateBsNetwork);
+      placeholders.push(...cfParams, payload.session_id);
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
@@ -1190,8 +1286,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         bs_source = COALESCE(?, bs_source),
         bs_campaign_id = COALESCE(?, bs_campaign_id),
         bs_adgroup_id = COALESCE(?, bs_adgroup_id),
-        bs_ad_id = COALESCE(?, bs_ad_id),
-        bs_network = COALESCE(?, bs_network)
+        bs_ad_id = COALESCE(?, bs_ad_id)${bsNetworkSetSql}
         ${cfSet}
         WHERE session_id = ?
       `, placeholders);
