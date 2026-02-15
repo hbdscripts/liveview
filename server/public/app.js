@@ -8015,7 +8015,7 @@ const API = '';
     function defaultChartsKpiSparklineConfig(bundleKey) {
       if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
       if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
-      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} };
+      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} };
     }
 
     function defaultChartsKpiDeltaStyle(bundleKey) {
@@ -8092,6 +8092,10 @@ const API = '';
       var fontWeight = parseInt(String(delta.fontWeight != null ? delta.fontWeight : def.deltaStyle.fontWeight), 10);
       if (fontWeight !== 400 && fontWeight !== 500) fontWeight = def.deltaStyle.fontWeight;
       var supportsCompare = bundleKey === 'dashboardCards';
+      var compareUsePrimaryColor = supportsCompare ? (spark.compareUsePrimaryColor !== false) : false;
+      var compareOpacity = Number(spark.compareOpacity);
+      if (!Number.isFinite(compareOpacity)) compareOpacity = 50;
+      compareOpacity = Math.max(0, Math.min(100, Math.round(compareOpacity)));
       return {
         sparkline: {
           mode: mode,
@@ -8099,6 +8103,8 @@ const API = '';
           strokeWidth: strokeWidth,
           height: height,
           showCompare: supportsCompare ? !(spark.showCompare === false) : false,
+          compareUsePrimaryColor: compareUsePrimaryColor,
+          compareOpacity: compareOpacity,
           advancedApexOverride: isPlainObject(spark.advancedApexOverride) ? spark.advancedApexOverride : {},
         },
         deltaStyle: {
@@ -11781,6 +11787,13 @@ const API = '';
         if (!shop && typeof shopForSalesFallback === 'string' && shopForSalesFallback) shop = shopForSalesFallback;
         if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
       } catch (_) {}
+      try {
+        var rangeSel = document.getElementById('diagnostics-overview-range');
+        if (rangeSel && rangeSel.value) {
+          var rk = normalizeRangeKeyForApi(String(rangeSel.value || '').trim().toLowerCase());
+          if (rk) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'range=' + encodeURIComponent(rk);
+        }
+      } catch (_) {}
       if (options && options.force) {
         url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       }
@@ -11992,6 +12005,25 @@ const API = '';
           const botsBlockedToday = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdge === 'number') ? traffic.today.botsBlockedAtEdge : null;
           const botsBlockedUpdatedAt = (traffic && traffic.today && typeof traffic.today.botsBlockedAtEdgeUpdatedAt === 'number') ? traffic.today.botsBlockedAtEdgeUpdatedAt : null;
 
+          const overview = (c && c.overview && typeof c.overview === 'object') ? c.overview : null;
+          const overviewRangeKey = (overview && typeof overview.rangeKey === 'string')
+            ? String(overview.rangeKey).trim().toLowerCase()
+            : 'today';
+          function overviewRangeLabel(key) {
+            const k = key ? String(key).trim().toLowerCase() : '';
+            if (k === 'yesterday') return 'yesterday';
+            if (k === '7d') return 'last 7 days';
+            if (k === '14d') return 'last 14 days';
+            if (k === '30d') return 'last 30 days';
+            return 'today';
+          }
+          const overviewLabel = overviewRangeLabel(overviewRangeKey);
+          const overviewTruthOrders = (overview && typeof overview.truthOrders === 'number') ? overview.truthOrders : truthOrders;
+          const overviewTruthRevenue = (overview && typeof overview.truthRevenueGbp === 'number') ? overview.truthRevenueGbp : truthRevenue;
+          const overviewShopifySessions = (overview && typeof overview.shopifySessions === 'number') ? overview.shopifySessions : shopifySessionsToday;
+          const overviewKexoSessions = (overview && typeof overview.kexoSessionsHuman === 'number') ? overview.kexoSessionsHuman : kexoSessionsToday;
+          const overviewBotsBlocked = (overview && typeof overview.botsBlockedAtEdge === 'number') ? overview.botsBlockedAtEdge : botsBlockedToday;
+
           // Conversion rate used across Kexo tables: truth orders / sessions.
           // Prefer checkout-token truth orders (online-store proxy) when available.
           const convertedOrdersForCr = (truthCheckoutOrders != null ? truthCheckoutOrders : truthOrders);
@@ -12004,6 +12036,11 @@ const API = '';
           const shopifyCrSource = (shopifyConversionRateToday != null)
             ? 'traffic.shopifyConversionRateToday (ShopifyQL conversion_rate)'
             : 'computed: truth orders / Shopify sessions (fallback)';
+
+          const overviewShopifyCr = (overview && typeof overview.shopifyCr === 'number') ? overview.shopifyCr : shopifyCr;
+          const overviewKexoCr = (overview && typeof overview.kexoCr === 'number') ? overview.kexoCr : kexoCr;
+          const overviewShopifyCrSource = (overview && typeof overview.shopifyCrSource === 'string') ? String(overview.shopifyCrSource) : shopifyCrSource;
+          const overviewShopifySessionsNote = (overview && typeof overview.shopifySessionsNote === 'string') ? String(overview.shopifySessionsNote) : '';
 
           const driftPixelCheckoutOrders = (truthCheckoutOrders != null && pixelDerivedOrders != null) ? (pixelDerivedOrders - truthCheckoutOrders) : null;
           const driftPixelCheckoutRevenue = (truthCheckoutRevenue != null && pixelDerivedRevenue != null)
@@ -12436,27 +12473,29 @@ const API = '';
           overviewBody +=   '<div class="col-12 col-xl-6">' + cardSm(
             '<span class="d-flex align-items-center gap-2"><img src="' + escapeHtml(SHOPIFY_LOGO_URL) + '" width="20" height="20" alt="" aria-hidden="true" decoding="async" /><span>Shopify</span></span>',
             kvTable([
-              ['Sessions (today)', fmtSessions(shopifySessionsToday)],
-              ['CR% (today)', fmtPct(shopifyCr)],
-              ['Orders (paid, today)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014'],
-              ['Revenue (paid, today)', fmtRevenue(truthRevenue)],
+              ['Sessions (' + overviewLabel + ')', fmtSessions(overviewShopifySessions)],
+              ['CR% (' + overviewLabel + ')', fmtPct(overviewShopifyCr)],
+              ['Orders (paid, ' + overviewLabel + ')', overviewTruthOrders != null ? escapeHtml(String(overviewTruthOrders)) : '\u2014'],
+              ['Revenue (paid, ' + overviewLabel + ')', fmtRevenue(overviewTruthRevenue)],
             ])
           ) + '</div>';
           overviewBody +=   '<div class="col-12 col-xl-6">' + cardSm(
             '<span class="d-flex align-items-center gap-2"><img src="' + escapeHtml(KEXO_LOGO_URL) + '" width="20" height="20" alt="" aria-hidden="true" decoding="async" /><span>Kexo</span></span>',
             kvTable([
-              ['Sessions (human, today)', fmtSessions(kexoSessionsToday)],
-              ['CR% (truth, today)', fmtPct(kexoCr)],
-              ['Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014'],
-              ['Orders (paid, today)', truthOrders != null ? escapeHtml(String(truthOrders)) : '\u2014'],
-              ['Revenue (paid, today)', fmtRevenue(truthRevenue)],
+              ['Sessions (human, ' + overviewLabel + ')', fmtSessions(overviewKexoSessions)],
+              ['CR% (truth, ' + overviewLabel + ')', fmtPct(overviewKexoCr)],
+              ['Bots blocked (' + overviewLabel + ')', overviewBotsBlocked != null ? fmtSessions(overviewBotsBlocked) : '\u2014'],
+              ['Orders (paid, ' + overviewLabel + ')', overviewTruthOrders != null ? escapeHtml(String(overviewTruthOrders)) : '\u2014'],
+              ['Revenue (paid, ' + overviewLabel + ')', fmtRevenue(overviewTruthRevenue)],
             ])
           ) + '</div>';
           overviewBody += '</div>';
-          if (shopifyCrSource) {
-            overviewBody += '<div class="text-secondary small mt-3">Shopify CR source: ' + escapeHtml(shopifyCrSource) + '</div>';
+          if (overviewShopifyCrSource) {
+            overviewBody += '<div class="text-secondary small mt-3">Shopify CR source: ' + escapeHtml(overviewShopifyCrSource) + '</div>';
           }
-          if (shopifyConversionRateNote) {
+          if (overviewShopifySessionsNote) {
+            overviewBody += '<div class="text-secondary small mt-2">' + escapeHtml(overviewShopifySessionsNote) + '</div>';
+          } else if (shopifyConversionRateNote) {
             overviewBody += '<div class="text-secondary small mt-2">' + escapeHtml(shopifyConversionRateNote) + '</div>';
           }
 
@@ -13109,6 +13148,11 @@ const API = '';
       const openBtn = document.getElementById('config-open-btn');
       const refreshBtn = document.getElementById('config-refresh-btn');
       const reconcileBtn = document.getElementById('config-reconcile-btn');
+      const rangeSel = document.getElementById('diagnostics-overview-range');
+      if (rangeSel) rangeSel.addEventListener('change', function() {
+        setDiagnosticsActionMsg('Loading overview…', true);
+        try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
+      });
       if (refreshBtn) refreshBtn.addEventListener('click', function() {
         setDiagnosticsActionMsg('Refreshing diagnostics…', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
@@ -16121,6 +16165,16 @@ const API = '';
             }
           }).catch(function() {});
         }
+        function hexToRgba(hex, alpha) {
+          if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,0.5)';
+          var h = hex.replace(/^#/, '');
+          if (h.length !== 6) return 'rgba(0,0,0,0.5)';
+          var r = parseInt(h.slice(0, 2), 16);
+          var g = parseInt(h.slice(2, 4), 16);
+          var b = parseInt(h.slice(4, 6), 16);
+          var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0.5;
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+        }
         function renderSparkline(elId, dataArr, color, compareDataArr) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
@@ -16192,9 +16246,14 @@ const API = '';
           var dashArray = [0];
           if (compareNums && compareNums.length >= 2) {
             series.push({ name: 'Compare', data: compareNums });
-            colors.push(chartsKpiCompareLineColor('dashboardCards'));
+            var usePrimary = sparkCfg.compareUsePrimaryColor !== false;
+            var opacityPct = Number(sparkCfg.compareOpacity);
+            if (!Number.isFinite(opacityPct)) opacityPct = 50;
+            opacityPct = Math.max(0, Math.min(100, opacityPct));
+            var compareColor = usePrimary ? hexToRgba(color, opacityPct / 100) : (chartsKpiCompareLineColor('dashboardCards') || '#cccccc');
+            colors.push(compareColor);
             strokeWidths.push(sparkMode === 'bar' ? 0 : Math.max(1, sparkStrokeWidth - 0.5));
-            dashArray.push(4);
+            dashArray.push(usePrimary ? 0 : 4);
           }
           var apexOpts = {
             chart: { type: sparkMode, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
@@ -16359,32 +16418,69 @@ const API = '';
         var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
         var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
-        var revenueSparkCompare = sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone);
-        var sessionsSparkCompare = sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone);
-        var ordersSparkCompare = sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone);
-        var returningSparkCompare = sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone);
-        var convSparkCompare = sparkCompareSeries(convSpark, currentConvTone, compareConvTone);
-        var aovSparkCompare = sparkCompareSeries(aovSpark, currentAovTone, compareAovTone);
-        var bounceSparkCompare = sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone);
-        var roasSparkCompare = sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone);
-        var itemsSparkCompare = sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone);
-        var fulfilledSparkCompare = sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone);
-        var returnsSparkCompare = sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone);
-        var cogsSparkCompare = sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone);
-        renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare);
-        renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare);
-        renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare);
-        renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare);
-        renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare);
-        renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare);
-        renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
-        renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
-        renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), itemsSparkCompare);
-        renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), fulfilledSparkCompare);
-        renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), returnsSparkCompare);
-        renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), cogsSparkCompare);
-
-        try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
+        function alignCompareToPrimary(compareArr, primaryLen) {
+          if (!Array.isArray(compareArr) || compareArr.length < 2) return null;
+          var arr = compareArr.map(function(v) {
+            var n = (typeof v === 'number') ? v : Number(v);
+            return Number.isFinite(n) ? n : 0;
+          });
+          if (arr.length === primaryLen) return arr;
+          if (arr.length > primaryLen) return arr.slice(arr.length - primaryLen);
+          var first = arr[0];
+          while (arr.length < primaryLen) arr.unshift(first);
+          return arr;
+        }
+        function compareFromCache(cache, primaryLen, extract) {
+          if (!cache || !Array.isArray(cache) || cache.length < 2) return null;
+          var extracted = cache.map(extract);
+          return alignCompareToPrimary(extracted, primaryLen);
+        }
+        var primaryLen = revenueSpark.length;
+        ensureDashboardCompareSeries(getKpiData()).then(function(compareSeries) {
+          var cmp = compareSeries;
+          var revenueSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.revenue || 0; })
+            || sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone);
+          var sessionsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.sessions || 0; })
+            || sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone);
+          var ordersSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.orders || 0; })
+            || sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone);
+          var returningSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.returningCustomerOrders || 0; })
+            || sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone);
+          var convSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.convRate != null ? d.convRate : 0; })
+            || sparkCompareSeries(convSpark, currentConvTone, compareConvTone);
+          var aovSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.aov != null ? d.aov : 0; })
+            || sparkCompareSeries(aovSpark, currentAovTone, compareAovTone);
+          var bounceSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.bounceRate != null ? d.bounceRate : 0; })
+            || sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone);
+          var roasSparkCompare = null;
+          if (cmp && cmp.length >= 2) {
+            var roasExtracted = cmp.map(function(d) {
+              var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
+              var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+              return (spend > 0) ? (rev / spend) : 0;
+            });
+            roasSparkCompare = alignCompareToPrimary(roasExtracted, primaryLen);
+          }
+          if (!roasSparkCompare) roasSparkCompare = sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone);
+          var itemsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.units || 0; })
+            || sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone);
+          var fulfilledSparkCompare = sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone);
+          var returnsSparkCompare = sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone);
+          var cogsSparkCompare = sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone);
+          renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare);
+          renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare);
+          renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare);
+          renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare);
+          renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare);
+          renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare);
+          renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
+          renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
+          renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), itemsSparkCompare);
+          renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), fulfilledSparkCompare);
+          renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), returnsSparkCompare);
+          renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), cogsSparkCompare);
+          try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
+        });
 
         var bucket = data && data.bucket ? String(data.bucket) : 'day';
         var labels = chartSeries.map(function(d) {

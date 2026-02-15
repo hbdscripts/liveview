@@ -1202,7 +1202,7 @@
   function defaultKpiBundleSparkline(bundleKey) {
     if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
     if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
-    return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} };
+    return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} };
   }
 
   function defaultKpiBundleDeltaStyle(bundleKey) {
@@ -1258,6 +1258,8 @@
         strokeWidth: safeNumber(spark.strokeWidth, def.sparkline.strokeWidth, 0.5, 6),
         height: Math.round(safeNumber(spark.height, def.sparkline.height, 18, 120)),
         showCompare: supportsCompare ? !(spark.showCompare === false) : false,
+        compareUsePrimaryColor: supportsCompare ? (spark.compareUsePrimaryColor !== false) : false,
+        compareOpacity: Math.round(safeNumber(spark.compareOpacity, 50, 0, 100)),
         advancedApexOverride: parseApexOverride(spark.advancedApexOverride, def.sparkline.advancedApexOverride),
       },
       deltaStyle: {
@@ -1414,6 +1416,7 @@
           '<div class="col-12 col-md-6 col-xl-2"><label class="form-label mb-1">Height</label><input type="number" class="form-control form-control-sm" min="18" max="120" step="1" data-bundle-field="sparkline.height" value="' + escapeHtml(String(spark.height)) + '"></div>' +
           '<div class="col-12 col-md-6 col-xl-2"><label class="form-label mb-1">Stroke width</label><input type="number" class="form-control form-control-sm" min="0.5" max="6" step="0.05" data-bundle-field="sparkline.strokeWidth" value="' + escapeHtml(String(spark.strokeWidth)) + '"></div>' +
           '<div class="col-12 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-bundle-field="sparkline.showCompare"' + (spark.showCompare ? ' checked' : '') + (meta.supportsCompare ? '' : ' disabled') + '><span class="form-check-label ms-2">Compare line</span></label></div>' +
+          (meta.supportsCompare ? '<div class="col-12 col-md-6 col-xl-3 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-bundle-field="sparkline.compareUsePrimaryColor"' + (spark.compareUsePrimaryColor !== false ? ' checked' : '') + '><span class="form-check-label ms-2">Use primary color at opacity</span></label></div><div class="col-12 col-md-6 col-xl-2"><label class="form-label mb-1">Compare opacity (%)</label><input type="number" class="form-control form-control-sm" min="0" max="100" step="1" data-bundle-field="sparkline.compareOpacity" value="' + escapeHtml(String(spark.compareOpacity != null ? spark.compareOpacity : 50)) + '"></div>' : '') +
           '<div class="col-12"><label class="form-label mb-1">Palette (hex)</label><div class="settings-charts-color-grid">' + renderBundleColorInput('palette.up', palette.up, 'Up / positive') + renderBundleColorInput('palette.down', palette.down, 'Down / negative') + renderBundleColorInput('palette.same', palette.same, 'Even / flat') + renderBundleColorInput('palette.compareLine', palette.compareLine, 'Compare line') + '</div></div>' +
           '<div class="col-12"><label class="form-label mb-1">Delta text + icon style</label><div class="row g-2">' +
             '<div class="col-12 col-sm-6 col-xl-2"><label class="form-label mb-1">Font size</label><input type="number" class="form-control form-control-sm" min="9" max="24" step="1" data-bundle-field="deltaStyle.fontSize" value="' + escapeHtml(String(delta.fontSize)) + '"></div>' +
@@ -1528,6 +1531,8 @@
         strokeWidth: safeNumber(v('sparkline.strokeWidth'), def.sparkline.strokeWidth, 0.5, 6),
         height: Math.round(safeNumber(v('sparkline.height'), def.sparkline.height, 18, 120)),
         showCompare: (KPI_BUNDLE_META[bundleKey] && KPI_BUNDLE_META[bundleKey].supportsCompare) ? !!v('sparkline.showCompare') : false,
+        compareUsePrimaryColor: (KPI_BUNDLE_META[bundleKey] && KPI_BUNDLE_META[bundleKey].supportsCompare) ? !!v('sparkline.compareUsePrimaryColor') : false,
+        compareOpacity: Math.round(safeNumber(v('sparkline.compareOpacity'), 50, 0, 100)),
         advancedApexOverride: adv.value,
       },
       deltaStyle: {

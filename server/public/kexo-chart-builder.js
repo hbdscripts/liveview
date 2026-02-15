@@ -430,10 +430,11 @@
           el.__kexoChartInstance = null;
         }
         el.innerHTML = '';
+        var compareDash = (c.compareUsePrimaryColor !== false) ? 0 : 5;
         var opts = {
           chart: { type: mode, height: height, sparkline: { enabled: true }, animations: { enabled: false } },
           series: showCompare ? [{ name: 'Current', data: data }, { name: 'Compare', data: compareData }] : [{ name: 'Current', data: data }],
-          stroke: { width: showCompare ? [strokeWidth, Math.max(1, strokeWidth - 0.8)] : strokeWidth, curve: curve, lineCap: 'round', dashArray: showCompare ? [0, 5] : 0 },
+          stroke: { width: showCompare ? [strokeWidth, Math.max(1, strokeWidth - 0.8)] : strokeWidth, curve: curve, lineCap: 'round', dashArray: showCompare ? [0, compareDash] : 0 },
           fill: mode === 'area' ? { type: 'solid', opacity: showCompare ? [0.22, 0] : 0.2 } : { type: 'solid', opacity: 1 },
           colors: showCompare ? [color, compareColor] : [color],
           markers: { size: 0 },
@@ -568,10 +569,27 @@
     });
   }
 
+  function hexToRgba(hex, alpha) {
+    if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,0.5)';
+    var h = String(hex).replace(/^#/, '');
+    if (h.length !== 6) return 'rgba(0,0,0,0.5)';
+    var r = parseInt(h.slice(0, 2), 16);
+    var g = parseInt(h.slice(2, 4), 16);
+    var b = parseInt(h.slice(4, 6), 16);
+    var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0.5;
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+
   function renderKexoKpiSparklinePreview(config) {
     var c = config || {};
     var spark = c.sparkline && typeof c.sparkline === 'object' ? c.sparkline : {};
     var palette = c.palette && typeof c.palette === 'object' ? c.palette : {};
+    var primaryColor = palette.up || '#2fb344';
+    var usePrimary = spark.compareUsePrimaryColor !== false;
+    var opacityPct = Number(spark.compareOpacity);
+    if (!Number.isFinite(opacityPct)) opacityPct = 50;
+    opacityPct = Math.max(0, Math.min(100, opacityPct));
+    var compareColor = usePrimary ? hexToRgba(primaryColor, opacityPct / 100) : (palette.compareLine || '#cccccc');
     var data = [8, 10, 9, 11, 14, 13, 16];
     var compare = [7, 8, 8, 9, 11, 11, 12];
     return renderKexoSparkline({
@@ -579,8 +597,9 @@
       data: data,
       compareData: compare,
       showCompare: !!spark.showCompare,
-      color: palette.up || '#2fb344',
-      compareColor: palette.compareLine || '#cccccc',
+      color: primaryColor,
+      compareColor: compareColor,
+      compareUsePrimaryColor: usePrimary,
       mode: spark.mode || 'line',
       curve: spark.curve || 'smooth',
       strokeWidth: spark.strokeWidth,

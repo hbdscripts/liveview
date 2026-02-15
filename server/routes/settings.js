@@ -213,7 +213,7 @@ function defaultChartsUiConfigV1() {
     ],
     kpiBundles: {
       dashboardCards: {
-        sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, advancedApexOverride: {} },
+        sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} },
         deltaStyle: { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
         palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
       },
@@ -917,6 +917,8 @@ function normalizeChartsKpiBundle(bundleKey, raw, fallback) {
       strokeWidth: parseBoundedNumber(sparkSrc.strokeWidth, sparkDef.strokeWidth != null ? sparkDef.strokeWidth : 2.55, 0.5, 6),
       height: Math.round(parseBoundedNumber(sparkSrc.height, sparkDef.height != null ? sparkDef.height : 50, 18, 120)),
       showCompare: supportsCompare ? normalizeBool(sparkSrc.showCompare, sparkDef.showCompare !== false) : false,
+      compareUsePrimaryColor: supportsCompare ? normalizeBool(sparkSrc.compareUsePrimaryColor, sparkDef.compareUsePrimaryColor !== false) : false,
+      compareOpacity: Math.round(parseBoundedNumber(sparkSrc.compareOpacity, sparkDef.compareOpacity != null ? sparkDef.compareOpacity : 50, 0, 100)),
       advancedApexOverride: normalizeApexOverrideObject(sparkSrc.advancedApexOverride, sparkDef.advancedApexOverride || {}),
     },
     deltaStyle: {

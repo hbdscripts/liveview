@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Logo consolidation: /assets/logos/new/)
+Last updated: 2026-02-15 (Diagnostics range selector for Shopify vs Kexo)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -285,11 +285,18 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- KPI compare line fixes and Settings:
+  - Dashboard sparkline compare line now shows actual comparison-period data from `/api/dashboard-series?range=<compareRangeKey>` instead of scaled current-period shape. `ensureDashboardCompareSeries` is wired into `renderDashboard` and compare arrays are built from the fetched compare series (revenue, sessions, orders, returning, conv, aov, bounce, roas, items); fulfilled/returns/cogs fall back to scaled baseline (no series in dashboard-series).
+  - Settings → Layout → Charts → Dashboard Cards: added "Use primary color at opacity" checkbox and "Compare opacity (%)" input. When enabled, compare line uses primary KPI color at specified opacity (default 50%) and is not dashed. When disabled, uses palette.compareLine (hex) with dashed stroke.
+  - `charts_ui_config_v1.kpiBundles.dashboardCards.sparkline`: new `compareUsePrimaryColor` (bool), `compareOpacity` (0–100). Defaults: true, 50.
+
+2026-02-15 (latest)
 - Long-range report responsiveness + “no more silent waiting”:
   - Shopify truth reconciliation scopes unified across reports to avoid duplicate backfills (`range_<rangeKey>` via `salesTruth.scopeForRangeKey()`).
   - Non-today report reconciles are now non-blocking (fire-and-forget) so pages don’t hang for minutes on Shopify Orders API pagination.
   - Truth reconcile throttling is higher for historical scopes (min 15 min) to avoid refetching 30d/month ranges on every refresh.
   - Added an always-visible header date-range spinner while reports are building (`body.kexo-report-loading` toggled by `app.js`; Variants page participates too).
+  - Settings → Diagnostics: Overview now has a Range selector (Today/Yesterday/7d/14d/30d) to compare Shopify sessions vs Kexo human sessions against truth orders; served by `GET /api/config-status?range=...` and backfills `shopify_sessions_snapshots` via ShopifyQL timeseries.
 
 2026-02-14 (latest)
 - Auth pages UI refresh (Tabler templates):
