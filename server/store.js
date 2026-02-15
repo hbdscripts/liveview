@@ -127,11 +127,14 @@ function extractBsAdsIdsFromEntryUrl(entryUrl) {
   }
   const bsSourceRaw = trimParam('bs_source', 32);
   const bsSource = bsSourceRaw ? bsSourceRaw.toLowerCase() : null;
+  const bsNetworkRaw = trimParam('bs_network', 16);
+  const bsNetwork = bsNetworkRaw ? bsNetworkRaw.toLowerCase() : null;
   return {
     bsSource,
     bsCampaignId: trimParam('bs_campaign_id', 64),
     bsAdgroupId: trimParam('bs_adgroup_id', 64),
     bsAdId: trimParam('bs_ad_id', 64),
+    bsNetwork,
   };
 }
 
@@ -1029,15 +1032,18 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const bsExistingCampaignId = existing?.bs_campaign_id != null && String(existing.bs_campaign_id).trim() !== '' ? String(existing.bs_campaign_id).trim() : null;
   const bsExistingAdgroupId = existing?.bs_adgroup_id != null && String(existing.bs_adgroup_id).trim() !== '' ? String(existing.bs_adgroup_id).trim() : null;
   const bsExistingAdId = existing?.bs_ad_id != null && String(existing.bs_ad_id).trim() !== '' ? String(existing.bs_ad_id).trim() : null;
+  const bsExistingNetwork = existing?.bs_network != null && String(existing.bs_network).trim() !== '' ? String(existing.bs_network).trim() : null;
   const bsFromUrl = extractBsAdsIdsFromEntryUrl(updateEntryUrl || entryUrl || '');
   const bsSource = bsExistingSource || bsFromUrl.bsSource || null;
   const bsCampaignId = bsExistingCampaignId || bsFromUrl.bsCampaignId || null;
   const bsAdgroupId = bsExistingAdgroupId || bsFromUrl.bsAdgroupId || null;
   const bsAdId = bsExistingAdId || bsFromUrl.bsAdId || null;
+  const bsNetwork = bsExistingNetwork || bsFromUrl.bsNetwork || null;
   const updateBsSource = bsExistingSource ? null : (bsFromUrl.bsSource || null);
   const updateBsCampaignId = bsExistingCampaignId ? null : (bsFromUrl.bsCampaignId || null);
   const updateBsAdgroupId = bsExistingAdgroupId ? null : (bsFromUrl.bsAdgroupId || null);
   const updateBsAdId = bsExistingAdId ? null : (bsFromUrl.bsAdId || null);
+  const updateBsNetwork = bsExistingNetwork ? null : (bsFromUrl.bsNetwork || null);
 
   // Capture UTM tokens once per session (when we first record entry_url) so the admin UI can surface "unmapped" sources.
   if (updateEntryUrl) {
@@ -1068,8 +1074,8 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   if (!existing) {
     if (config.dbUrl) {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+        VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
         ON CONFLICT (session_id) DO UPDATE SET
           visitor_id = EXCLUDED.visitor_id,
           started_at = EXCLUDED.started_at,
@@ -1111,18 +1117,19 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
           bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
           bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
-          bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+          bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id),
+          bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
     } else {
       await db.run(`
-        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+        INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
     }
   } else {
     const cfUpdates = [];
     const cfParams = [];
-    let p = config.dbUrl ? 27 : 0;
+    let p = config.dbUrl ? 28 : 0;
     if (cfKnownBot != null) {
       cfUpdates.push(config.dbUrl ? `cf_known_bot = $${++p}` : 'cf_known_bot = ?');
       cfParams.push(cfKnownBot);
@@ -1144,7 +1151,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       cfParams.push(cfAsn);
     }
     const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
-    const sessionIdPlaceholder = config.dbUrl ? '$' + (28 + cfParams.length) : '?';
+    const sessionIdPlaceholder = config.dbUrl ? '$' + (29 + cfParams.length) : '?';
     if (config.dbUrl) {
       await db.run(`
         UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
@@ -1161,12 +1168,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         bs_source = COALESCE($24, bs_source),
         bs_campaign_id = COALESCE($25, bs_campaign_id),
         bs_adgroup_id = COALESCE($26, bs_adgroup_id),
-        bs_ad_id = COALESCE($27, bs_ad_id)
+        bs_ad_id = COALESCE($27, bs_ad_id),
+        bs_network = COALESCE($28, bs_network)
         ${cfSet}
         WHERE session_id = ${sessionIdPlaceholder}
-      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, ...cfParams, payload.session_id]);
+      `, [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, updateBsNetwork, ...cfParams, payload.session_id]);
     } else {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, ...cfParams, payload.session_id];
+      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId, updateBsNetwork, ...cfParams, payload.session_id];
       await db.run(`
         UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
         cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
@@ -1182,7 +1190,8 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
         bs_source = COALESCE(?, bs_source),
         bs_campaign_id = COALESCE(?, bs_campaign_id),
         bs_adgroup_id = COALESCE(?, bs_adgroup_id),
-        bs_ad_id = COALESCE(?, bs_ad_id)
+        bs_ad_id = COALESCE(?, bs_ad_id),
+        bs_network = COALESCE(?, bs_network)
         ${cfSet}
         WHERE session_id = ?
       `, placeholders);

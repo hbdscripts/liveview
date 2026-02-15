@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Ads modal device + day-parting + modal range)
+Last updated: 2026-02-15 (Google Ads bs_network capture)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -372,6 +372,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Google Ads network tracking (ValueTrack `{network}`):
+  - Ingest now captures `bs_network` from `entry_url` into `sessions.bs_network` (migrate `048_sessions_bs_network`).
+  - Intended for account-level Final URL suffix usage: `bs_network={network}` (avoid unsupported placeholders like `{campaignname}` and avoid duplicating auto-tagging click IDs).
 
 2026-02-15 (latest)
 - Google Ads campaign modal enhancements:
