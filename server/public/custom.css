@@ -1071,6 +1071,7 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle i {
   color: #144c88;
   opacity: 0.7;
   transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
+  margin-right: 5px;
 }
 body:not([data-page="settings"]) .kexo-sticky-resize-handle:hover i,
 body:not([data-page="settings"]) .is-resizing-first-col .kexo-sticky-resize-handle i {
