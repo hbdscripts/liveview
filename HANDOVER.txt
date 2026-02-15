@@ -375,6 +375,14 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Sticky column + tools UX:
+  - Sticky cells: new gradient bg (linear-gradient 90deg #fff→#f8fafc), border-right 1px #f8fafc, box-shadow removed, swipe/drag-scroll cursor removed.
+  - CR% overflow: min-width 52px for dashboard 4-col tables (dash-top-products, dash-top-countries, dash-trending-up/down).
+  - Mobile: country name hidden in sticky first column (flag only).
+  - Sticky resize: added .tools-table-wrap to WRAP_SELECTOR so tools tables get resize handle.
+  - Tool pages (compare-conversion-rate, shipping-cr, click-order-lookup): date range picker hidden in nav.
+
+2026-02-15 (latest)
 - Page loader animation: restored indeterminate progress bar animation (sliding bar) — custom KEXO gradient override had no animation; added pageLoaderIndeterminate keyframes.
 
 2026-02-15 (latest)

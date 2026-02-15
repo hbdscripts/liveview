@@ -991,7 +991,7 @@ const API = '';
     })();
 
     (function initHorizontalDragScroll() {
-      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
+      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .tools-table-wrap';
 
       function shouldIgnoreTarget(target) {
         if (!target || !target.closest) return false;
@@ -1442,7 +1442,7 @@ const API = '';
       var page = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
       if (String(page || '').toLowerCase() === 'settings') return;
-      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive';
+      var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .tools-table-wrap';
       var ABS_MIN_WIDTH = 72;
       var ABS_MAX_WIDTH = 420;
       var LS_KEY = 'kexo-sticky-col-width';

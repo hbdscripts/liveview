@@ -843,7 +843,8 @@ body.side-panel-open {
 /* Universal sticky first column for table/grid cards (except Settings page). */
 body:not([data-page="settings"]) .table-scroll-wrap,
 body:not([data-page="settings"]) .country-table-wrap,
-body:not([data-page="settings"]) .table-responsive {
+body:not([data-page="settings"]) .table-responsive,
+body:not([data-page="settings"]) .tools-table-wrap {
   --kexo-sticky-col-width: 120px;
   --kexo-sticky-col-min-width: 72px;
   --kexo-sticky-col-max-width: 360px;
@@ -856,7 +857,8 @@ body:not([data-page="settings"]) .table-responsive {
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
-body:not([data-page="settings"]) .table-responsive table thead th:first-child {
+body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child {
   position: sticky;
   left: 0;
   z-index: 6;
@@ -867,16 +869,17 @@ body:not([data-page="settings"]) .table-responsive table thead th:first-child {
   overflow: hidden !important;
   text-overflow: ellipsis;
   padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
-  border-right: 0 !important;
-  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.22);
-  transition: width 0.08s ease-out, box-shadow 0.2s ease-out;
+  border-right: 1px solid #f8fafc;
+  background: linear-gradient(90deg, #fff 0%, #fff 95%, #f8fafc 100%) !important;
+  box-shadow: none;
+  transition: width 0.08s ease-out;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
-body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
+body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
+body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child {
   position: sticky;
   left: 0;
   z-index: 5;
@@ -884,10 +887,10 @@ body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
   padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
-  border-right: 0 !important;
-  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.2);
-  transition: width 0.08s ease-out, box-shadow 0.2s ease-out;
+  border-right: 1px solid #f8fafc;
+  background: linear-gradient(90deg, #fff 0%, #fff 95%, #f8fafc 100%) !important;
+  box-shadow: none;
+  transition: width 0.08s ease-out;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
@@ -935,16 +938,19 @@ body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cel
 body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
 }
-/* When horizontally scrolled: stronger shadow on right edge only (no top/left/bottom bleed) */
-body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled .grid-row--header .grid-cell:first-child,
-body:not([data-page="settings"]) .country-table-wrap.kexo-sticky-scrolled .grid-row--header .grid-cell:first-child,
-body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table thead th:first-child {
-  box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.28) !important;
-}
-body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
-body:not([data-page="settings"]) .country-table-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
-body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table tbody td:first-child {
-  box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
+/* Sticky: no box-shadow when scrolled (removed per design) */
+
+/* Dark mode: sticky gradient uses dark theme colors */
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child {
+  border-right-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(90deg, var(--tblr-body-bg, #111827) 0%, var(--tblr-body-bg, #111827) 95%, rgba(255, 255, 255, 0.04) 100%) !important;
 }
 
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell,
@@ -970,6 +976,17 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Mobile: hide country name in sticky first column, show only flag */
+@media (max-width: 991.98px) {
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell .country-label,
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell .country-name,
+  body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell .country-label,
+  body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell .country-name,
+  body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell .country-label,
+  body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell .country-name {
+    display: none !important;
+  }
 }
 .traffic-source-cell .source-icons {
   margin-inline-end: 0.5rem;
@@ -1050,17 +1067,18 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
   max-width: 124px !important;
   text-align: center !important;
 }
-.table-scroll-wrap.is-drag-scroll,
-.country-table-wrap.is-drag-scroll,
-.table-responsive.is-drag-scroll {
-  cursor: grab;
+/* Dashboard 4-col tables: prevent CR% (col 4) from overflowing */
+body[data-page="dashboard"] #dash-top-products thead th:nth-child(4),
+body[data-page="dashboard"] #dash-top-products tbody td:nth-child(4),
+body[data-page="dashboard"] #dash-top-countries thead th:nth-child(4),
+body[data-page="dashboard"] #dash-top-countries tbody td:nth-child(4),
+body[data-page="dashboard"] #dash-trending-up thead th:nth-child(4),
+body[data-page="dashboard"] #dash-trending-up tbody td:nth-child(4),
+body[data-page="dashboard"] #dash-trending-down thead th:nth-child(4),
+body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(4) {
+  min-width: 52px !important;
 }
-.table-scroll-wrap.is-drag-scroll.is-dragging,
-.country-table-wrap.is-drag-scroll.is-dragging,
-.table-responsive.is-drag-scroll.is-dragging {
-  cursor: grabbing;
-  user-select: none;
-}
+/* Drag-scroll cursor removed; native scroll/touch used */
 .table-scroll-wrap.is-resizing-first-col,
 .country-table-wrap.is-resizing-first-col,
 .table-responsive.is-resizing-first-col {
@@ -3481,42 +3499,20 @@ body[data-page="settings"] .kexo-page-header-date-col {
     font-size: 15px !important;
   }
 
-  /* Sticky min/max/width controlled by JS; no hard lock so resize handle works on mobile */
-  body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
-  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
-  body:not([data-page="settings"]) .table-responsive table thead th:first-child,
-  body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
-  body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
-  body:not([data-page="settings"]) .table-responsive table tbody td:first-child {
-    box-shadow: 0 0 0 0 !important;
-  }
-  body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell,
-  body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell.landing-cell {
-    box-shadow: 0 0 0 0 !important;
-  }
-  /* When scrolled: restore right-edge-only shadow so sticky cells read as "moving with you" */
-  body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled .grid-row--header .grid-cell:first-child,
-  body:not([data-page="settings"]) .country-table-wrap.kexo-sticky-scrolled .grid-row--header .grid-cell:first-child,
-  body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table thead th:first-child {
-    box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.28) !important;
-  }
-  body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell {
-    box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.28) !important;
-  }
-  body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
-  body:not([data-page="settings"]) .country-table-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
-  body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table tbody td:first-child {
-    box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
-  }
-  body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled #sessions-table.grid-table .grid-body .grid-row .grid-cell.landing-cell {
-    box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
-  }
+  /* Sticky: no box-shadow (reduced motion; design uses border instead) */
 }
 
 body[data-page="shipping-cr"] .page-header .page-title,
 body[data-page="compare-conversion-rate"] .page-header .page-title {
   font-size: 1rem;
   line-height: 1.25;
+}
+
+/* Tool pages: hide date range picker (tools use their own date inputs) */
+body[data-page="compare-conversion-rate"] .kexo-nav-date-slot,
+body[data-page="shipping-cr"] .kexo-nav-date-slot,
+body[data-page="click-order-lookup"] .kexo-nav-date-slot {
+  display: none !important;
 }
 
 @media (max-width: 1199.98px) {
