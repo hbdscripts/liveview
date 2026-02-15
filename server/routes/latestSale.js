@@ -97,8 +97,9 @@ async function getLatestSale(req, res) {
     const nowMs = Date.now();
     const bounds = store.getRangeBounds('today', nowMs, tz);
 
-    // Always use chronologically latest order (truth) so footer "last sale" time and toast content match.
-    // Session link can lag; if we preferred "latest with purchase_events" we could return 2nd-latest.
+    // Prefer today's chronologically latest paid order (truth) for sale toast cadence.
+    // If there are no paid orders today, fall back to latest paid order overall so
+    // the footer "Last sale" does not stay blank all day.
     let row = null;
     let source = null;
     if (shop) {
@@ -125,7 +126,31 @@ async function getLatestSale(req, res) {
         [shop, bounds.start, bounds.end]
       );
       if (row) {
-        source = 'orders_shopify';
+        source = 'orders_shopify_today';
+      }
+      if (!row) {
+        row = await db.get(
+          `
+          SELECT
+            order_id AS order_id,
+            order_name AS order_name,
+            created_at AS created_at,
+            COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+            total_price AS total_price,
+            raw_json AS raw_json
+          FROM orders_shopify
+          WHERE shop = ?
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+          ORDER BY created_at DESC
+          LIMIT 1
+          `,
+          [shop]
+        );
+        if (row) source = 'orders_shopify_latest';
+      }
+      if (row) {
         // Enrich country from purchase_events + sessions when evidence exists (may lag for newest order).
         const linkRow = await db.get(
           `
@@ -187,7 +212,10 @@ async function getLatestSale(req, res) {
       }
     }
 
-    res.json({ ok: true, sale, shop, range: { key: 'today', start: bounds.start, end: bounds.end, timeZone: tz } });
+    var rangeMeta = source === 'orders_shopify_latest'
+      ? { key: 'latest_paid', start: null, end: null, timeZone: tz }
+      : { key: 'today', start: bounds.start, end: bounds.end, timeZone: tz };
+    res.json({ ok: true, sale, shop, range: rangeMeta });
   } catch (err) {
     console.error('[latest-sale]', err);
     res.setHeader('Cache-Control', 'no-store');

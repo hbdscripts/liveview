@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Google Ads audit + geo per-country modal + date-range fixes)
+Last updated: 2026-02-15 (No-data block mode + footer last-sale hydration/fallback)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -306,6 +306,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Abandoned carts tables + footer last-sale reliability:
+  - Added no-data block mode for abandoned carts top tables: when empty, headers/cells are hidden and a full-width centered padded message block is shown in-table.
+  - Footer "Last sale" now hydrates from `/api/latest-sale` at startup (so non-admin/restricted diagnostics users still get a baseline timestamp).
+  - `GET /api/latest-sale` now falls back to latest paid order overall when there is no paid order today (prevents persistent `Last sale: —` on low-volume days).
 
 2026-02-15 (latest)
 - Google Ads integration accuracy + audit:

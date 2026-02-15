@@ -272,6 +272,18 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* No-data block mode: hide headers/cells and show a full-width message block. */
+.grid-table.kexo-grid-empty-state-active .grid-header,
+.grid-table.kexo-grid-empty-state-active .grid-body {
+  display: none !important;
+}
+.grid-table .kexo-grid-empty-state {
+  width: 100%;
+  padding: 15px;
+  text-align: center;
+  color: var(--tblr-secondary, #626976);
+}
+
 /* jsVectorMap tooltip should match Tabler theme (avoid white tooltip in dark mode). */
 .jvm-container { background: transparent !important; }
 .jvm-tooltip {

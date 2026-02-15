@@ -4143,6 +4143,17 @@ const API = '';
       return p;
     }
 
+    function hydrateLastSaleFooterFromApi(options = {}) {
+      var forceNew = !!(options && options.forceNew);
+      return fetchLatestSaleForToast({ forceNew: forceNew })
+        .then(function(sale) {
+          if (!sale || sale.createdAt == null) return null;
+          setLastSaleAt(sale.createdAt);
+          return sale;
+        })
+        .catch(function() { return null; });
+    }
+
     // Latest sales table (/dashboard/live): last 5 converted sessions (desktop only).
     let latestSalesFetchInFlight = null;
     let latestSalesCache = null; // array of normalized rows
@@ -11624,9 +11635,35 @@ const API = '';
       return p;
     }
 
-    function setGridTableBodyMessage(tbody, message) {
+    function clearGridTableBodyMessageState(tbody) {
+      if (!tbody || !tbody.closest) return;
+      var table = tbody.closest('.grid-table');
+      if (!table) return;
+      table.classList.remove('kexo-grid-empty-state-active');
+      try {
+        var block = table.querySelector('.kexo-grid-empty-state');
+        if (block && block.parentNode) block.parentNode.removeChild(block);
+      } catch (_) {}
+    }
+
+    function setGridTableBodyMessage(tbody, message, options) {
       if (!tbody) return;
       var msg = String(message == null ? '' : message).trim() || '\u2014';
+      var opts = options && typeof options === 'object' ? options : {};
+      var useBlock = !!opts.useBlock;
+      clearGridTableBodyMessageState(tbody);
+      if (useBlock && tbody.closest) {
+        var table = tbody.closest('.grid-table');
+        if (table) {
+          tbody.innerHTML = '';
+          table.classList.add('kexo-grid-empty-state-active');
+          var emptyBlock = document.createElement('div');
+          emptyBlock.className = 'kexo-grid-empty-state';
+          emptyBlock.textContent = msg;
+          table.appendChild(emptyBlock);
+          return;
+        }
+      }
       tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(msg) + '</div></div>';
     }
 
@@ -11635,9 +11672,10 @@ const API = '';
       if (!tbody) return;
       var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
       if (!rows.length) {
-        setGridTableBodyMessage(tbody, 'No data');
+        setGridTableBodyMessage(tbody, 'No data', { useBlock: true });
         return;
       }
+      clearGridTableBodyMessageState(tbody);
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var code = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
         var label = countryLabel(code);
@@ -11663,9 +11701,10 @@ const API = '';
       if (!tbody) return;
       var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
       if (!rows.length) {
-        setGridTableBodyMessage(tbody, 'No data');
+        setGridTableBodyMessage(tbody, 'No data', { useBlock: true });
         return;
       }
+      clearGridTableBodyMessageState(tbody);
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var iso = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
         var label = countryLabel(iso);
@@ -13475,6 +13514,7 @@ const API = '';
     try { window.initTrafficSourceMapping = function(opts) { initTrafficSourceMappingPanel(opts || {}); }; } catch (_) {}
 
     updateLastSaleAgo();
+    hydrateLastSaleFooterFromApi({ forceNew: false });
     _intervals.push(setInterval(updateLastSaleAgo, 10000));
 
     (function initDiagnosticsActions() {
