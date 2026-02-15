@@ -687,6 +687,23 @@ body.side-panel-open {
   cursor: pointer;
 }
 
+/* Sessions table: device cell now uses icons (platform + device type) */
+#sessions-table.grid-table .grid-cell.device-cell {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+#sessions-table.grid-table .kexo-device-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  width: 100%;
+}
+#sessions-table.grid-table .kexo-device-icons i {
+  font-size: .95rem;
+  opacity: .92;
+}
+
 /* Fraud detail modal */
 #fraud-detail-modal .fraud-detail-grid {
   display: grid;
@@ -1021,8 +1038,8 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle {
   justify-content: center;
 }
 body:not([data-page="settings"]) .kexo-sticky-resize-handle i {
-  font-size: 14px;
-  color: #626976;
+  font-size: 10px;
+  color: #999;
   opacity: 0.75;
   transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
 }
