@@ -1403,10 +1403,28 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 
 .page-progress-bar {
   height: 100%;
-  background: var(--tblr-primary, #206bc4);
+  background: linear-gradient(90deg,
+    var(--kexo-accent-1, #4b94e4) 0% 20%,
+    var(--kexo-accent-2, #3eb3ab) 20% 40%,
+    var(--kexo-accent-3, #f59e34) 40% 60%,
+    var(--kexo-accent-4, #8b5cf6) 60% 80%,
+    var(--kexo-accent-5, #ef4444) 80% 100%
+  );
   width: 0%;
   border-radius: 0 1px 1px 0;
   transition: width 0.5s ease;
+}
+
+.page-loader-progress .progress-bar,
+.page-loader-progress .progress-bar.progress-bar-indeterminate {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg,
+    var(--kexo-accent-1, #4b94e4) 0% 20%,
+    var(--kexo-accent-2, #3eb3ab) 20% 40%,
+    var(--kexo-accent-3, #f59e34) 40% 60%,
+    var(--kexo-accent-4, #8b5cf6) 60% 80%,
+    var(--kexo-accent-5, #ef4444) 80% 100%
+  ) !important;
 }
 
 /* Unified report/page loaders (content-centered, not viewport-centered) */
@@ -1512,7 +1530,13 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #4592e9, #32bdb0, #fa9f2e, #4592e9);
+  background: conic-gradient(from 0deg,
+    var(--kexo-accent-1, #4b94e4) 0deg 72deg,
+    var(--kexo-accent-2, #3eb3ab) 72deg 144deg,
+    var(--kexo-accent-3, #f59e34) 144deg 216deg,
+    var(--kexo-accent-4, #8b5cf6) 216deg 288deg,
+    var(--kexo-accent-5, #ef4444) 288deg 360deg
+  );
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
   animation: kexoLoaderSpin 0.9s linear infinite;

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Neutral dashboard extras + lower KPI row)
+Last updated: 2026-02-15 (Loader 5-color segmented blocks)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -306,6 +306,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Loader color update:
+  - Unified page/report loaders now use KEXO 5-color segmented blocks (20% each) instead of blended gradients.
+  - Updated shared loader progress bars (`.page-loader-progress`) and loader rings (`.report-build-spinner`, Ads loader spinner) to use accent colors 1→5 in order.
 
 2026-02-15 (latest)
 - Abandoned carts tables + footer last-sale reliability:

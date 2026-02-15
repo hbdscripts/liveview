@@ -649,7 +649,13 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: conic-gradient(from 0deg, #4592e9, #32bdb0, #fa9f2e, #4592e9);
+      background: conic-gradient(from 0deg,
+        var(--kexo-accent-1, #4b94e4) 0deg 72deg,
+        var(--kexo-accent-2, #3eb3ab) 72deg 144deg,
+        var(--kexo-accent-3, #f59e34) 144deg 216deg,
+        var(--kexo-accent-4, #8b5cf6) 216deg 288deg,
+        var(--kexo-accent-5, #ef4444) 288deg 360deg
+      );
       -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
       mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
       animation: modern-spin 0.9s linear infinite;
