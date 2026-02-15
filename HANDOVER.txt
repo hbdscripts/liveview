@@ -290,6 +290,11 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Sparkline data and compare-line alignment fixes:
+  - FULFILLED, RETURNS, COGS: no longer use orders/revenue shape as fallback; use simple [baseline, current] two-point line when no per-bucket data (dashboard-series has no fulfilled/returns per bucket).
+  - Compare-line alignment: use first N buckets of compare (same time-of-day) instead of last N; pad at end when compare has fewer buckets. Fixes RETURNING compare flat when activity was in early hours, and yesterday vs day-before compare alignment.
+
+2026-02-15 (earlier)
 - Adaptive today buckets + KPI fixes:
   - Dashboard sparklines for "today" now use adaptive bucket sizing: 15-min buckets when &lt;4h elapsed, 30-min when 4–8h, hourly when 8h+. Produces more data points early in the day (less flat sparklines).
   - KPI delta: when baseline is 0 and current is non-zero, show "new" instead of "+100%" (avoids misleading division-by-zero semantics).

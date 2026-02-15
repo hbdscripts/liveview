@@ -29,18 +29,90 @@ const API = '';
         window.kexoCaptureMessage(String(message || ''), payload, level || 'error');
       } catch (_) {}
     }
-    const PAGE_LOADER_ENABLED = Object.freeze({
-      dashboard: true,
-      live: true,
-      sales: true,
-      date: true,
-      countries: true,
-      products: true,
-      channels: true,
-      type: true,
-      ads: true,
-      settings: false, /* never show horizontal page loader on settings */
-    });
+    const PAGE_LOADER_ENABLED_LS_KEY = 'kexo:page-loader-enabled:v1';
+
+    function defaultPageLoaderEnabledV1() {
+      return {
+        v: 1,
+        pages: {
+          dashboard: true,
+          live: true,
+          sales: true,
+          date: true,
+          countries: true,
+          products: true,
+          variants: true,
+          'abandoned-carts': true,
+          channels: true,
+          type: true,
+          ads: true,
+          'compare-conversion-rate': true,
+          'shipping-cr': true,
+          // Settings should behave like other pages (configurable via Admin → Controls).
+          settings: true,
+          // Admin must never show the overlay loader.
+          admin: false,
+        },
+      };
+    }
+
+    function normalizePageLoaderEnabledV1(cfg) {
+      const base = defaultPageLoaderEnabledV1();
+      const out = { v: 1, pages: Object.assign({}, base.pages) };
+      if (!cfg || typeof cfg !== 'object') return out;
+      if (Number(cfg.v) !== 1) return out;
+      const pages = cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+      if (!pages) return out;
+      Object.keys(out.pages).forEach(function (key) {
+        if (!Object.prototype.hasOwnProperty.call(pages, key)) return;
+        out.pages[key] = pages[key] === false ? false : true;
+      });
+      out.pages.admin = false;
+      return out;
+    }
+
+    var pageLoaderEnabledV1 = null;
+    try {
+      var cachedLoaderCfg = safeReadLocalStorageJson(PAGE_LOADER_ENABLED_LS_KEY);
+      if (cachedLoaderCfg && cachedLoaderCfg.v === 1) {
+        pageLoaderEnabledV1 = normalizePageLoaderEnabledV1(cachedLoaderCfg);
+      }
+    } catch (_) {}
+    if (!pageLoaderEnabledV1) pageLoaderEnabledV1 = defaultPageLoaderEnabledV1();
+
+    function applyPageLoaderEnabledV1(cfg) {
+      pageLoaderEnabledV1 = normalizePageLoaderEnabledV1(cfg);
+      try { window.__kexoPageLoaderEnabledV1 = pageLoaderEnabledV1; } catch (_) {}
+      try { safeWriteLocalStorageJson(PAGE_LOADER_ENABLED_LS_KEY, pageLoaderEnabledV1); } catch (_) {}
+      return pageLoaderEnabledV1;
+    }
+
+    function isPageLoaderEnabled(pageKey) {
+      var k = String(pageKey == null ? '' : pageKey).trim().toLowerCase();
+      if (!k) k = String(PAGE || '').trim().toLowerCase();
+      if (!k) return true;
+      if (k === 'admin') return false;
+      var cfg = pageLoaderEnabledV1;
+      var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+      if (!pages) return true;
+      if (!Object.prototype.hasOwnProperty.call(pages, k)) return true;
+      return pages[k] !== false;
+    }
+
+    try { window.__kexoIsPageLoaderEnabled = isPageLoaderEnabled; } catch (_) {}
+    try { window.__kexoApplyPageLoaderEnabledV1 = applyPageLoaderEnabledV1; } catch (_) {}
+
+    var _silentOverlayDepth = 0;
+    function kexoWithSilentOverlay(fn) {
+      _silentOverlayDepth = Math.max(0, Number(_silentOverlayDepth || 0)) + 1;
+      try { return fn(); }
+      finally { _silentOverlayDepth = Math.max(0, Number(_silentOverlayDepth || 0) - 1); }
+    }
+    function kexoSilentOverlayActive() {
+      return Number(_silentOverlayDepth || 0) > 0;
+    }
+    try { window.__kexoWithSilentOverlay = kexoWithSilentOverlay; } catch (_) {}
+    try { window.__kexoSilentOverlayActive = kexoSilentOverlayActive; } catch (_) {}
     const TABLE_CLASS_CONFIG = Object.freeze({
       dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
       product: Object.freeze({ defaultRows: 10, rowOptions: Object.freeze([10, 15, 20]) }),
@@ -269,7 +341,7 @@ const API = '';
     }
 
     (function primePageBodyLoader() {
-      if (!PAGE_LOADER_ENABLED[PAGE]) return;
+      if (!isPageLoaderEnabled(PAGE)) return;
       var pageBody = document.querySelector('.page-body');
       var overlay = document.getElementById('page-body-loader');
       if (!pageBody || !overlay) return;
@@ -8694,6 +8766,9 @@ const API = '';
           try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
           try { scheduleTablesUiApply(); } catch (_) {}
         }
+        if (options.apply && uiSettingsCache.pageLoaderEnabled) {
+          try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
+        }
         return Promise.resolve(uiSettingsCache);
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
@@ -8711,6 +8786,9 @@ const API = '';
           if (options.apply && uiSettingsCache && uiSettingsCache.tablesUiConfig) {
             try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
             try { scheduleTablesUiApply(); } catch (_) {}
+          }
+          if (options.apply && uiSettingsCache && uiSettingsCache.pageLoaderEnabled) {
+            try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
           }
           return uiSettingsCache;
         })
@@ -9057,6 +9135,25 @@ const API = '';
       const key = opts.key ? String(opts.key) : '';
       if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
         return { step: function() {}, title: function() {}, finish: function() {} };
+      }
+
+      // Silent mode: keep the page visible, but still show the header date-range spinner.
+      // Also respect per-page loader enable (Admin → Controls). Admin is always disabled.
+      var allowOverlay = true;
+      try { allowOverlay = isPageLoaderEnabled(PAGE); } catch (_) { allowOverlay = true; }
+      try { if (kexoSilentOverlayActive && typeof kexoSilentOverlayActive === 'function' && kexoSilentOverlayActive()) allowOverlay = false; } catch (_) {}
+      if (!allowOverlay) {
+        beginGlobalReportLoading();
+        var finished = false;
+        return {
+          step: function() {},
+          title: function() {},
+          finish: function() {
+            if (finished) return;
+            finished = true;
+            endGlobalReportLoading();
+          }
+        };
       }
 
       reportBuildTokens[key] = (reportBuildTokens[key] || 0) + 1;
@@ -16207,8 +16304,8 @@ const API = '';
           }
           if (!showCompare) compareNums = null;
           if (compareNums && compareNums.length !== nums.length) {
-            if (compareNums.length > nums.length) compareNums = compareNums.slice(compareNums.length - nums.length);
-            while (compareNums.length < nums.length) compareNums.unshift(compareNums[0]);
+            if (compareNums.length > nums.length) compareNums = compareNums.slice(0, nums.length);
+            while (compareNums.length < nums.length) compareNums.push(compareNums[compareNums.length - 1] || 0);
           }
           var allNums = compareNums && compareNums.length ? nums.concat(compareNums) : nums.slice();
           var minVal = allNums[0];
@@ -16415,9 +16512,9 @@ const API = '';
         var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
-        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, ordersHistorySpark);
-        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, revenueHistorySpark);
-        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, revenueHistorySpark);
+        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, null);
+        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, null);
+        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, null);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
         function alignCompareToPrimary(compareArr, primaryLen) {
           if (!Array.isArray(compareArr) || compareArr.length < 2) return null;
@@ -16426,9 +16523,9 @@ const API = '';
             return Number.isFinite(n) ? n : 0;
           });
           if (arr.length === primaryLen) return arr;
-          if (arr.length > primaryLen) return arr.slice(arr.length - primaryLen);
-          var first = arr[0];
-          while (arr.length < primaryLen) arr.unshift(first);
+          if (arr.length > primaryLen) return arr.slice(0, primaryLen);
+          var last = arr.length ? (arr[arr.length - 1] || 0) : 0;
+          while (arr.length < primaryLen) arr.push(last);
           return arr;
         }
         function compareFromCache(cache, primaryLen, extract) {
