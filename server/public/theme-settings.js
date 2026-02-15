@@ -696,7 +696,7 @@
           '<div class="modal-content">' +
             '<div class="modal-header">' +
               '<h3 class="modal-title h5">Edit icon overrides</h3>' +
-              '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+              '<button type="button" class="btn-close" data-bs-dismiss="modal" data-theme-icon-edit-close aria-label="Close"></button>' +
             '</div>' +
             '<div class="modal-body">' +
               '<div class="text-secondary small mb-3" id="theme-icon-edit-target">Set optional size and color overrides for this icon. Leave blank to use global defaults.</div>' +
@@ -1452,7 +1452,9 @@
       var colorInput = modalEl.querySelector('#theme-icon-edit-color');
       var saveBtn = modalEl.querySelector('#theme-icon-edit-save');
       var clearBtn = modalEl.querySelector('#theme-icon-edit-clear');
+      var closeBtn = modalEl.querySelector('[data-theme-icon-edit-close]');
       if (!keyInput || !sizeInput || !colorInput || !saveBtn || !clearBtn) return;
+      var fallbackBackdropEl = null;
 
       function getModal() {
         try {
@@ -1467,10 +1469,20 @@
         var modal = getModal();
         if (modal) {
           modal.hide();
+          try {
+            if (fallbackBackdropEl && fallbackBackdropEl.parentNode) fallbackBackdropEl.parentNode.removeChild(fallbackBackdropEl);
+            fallbackBackdropEl = null;
+          } catch (_) {}
           return;
         }
         modalEl.classList.remove('show');
         modalEl.style.display = 'none';
+        modalEl.setAttribute('aria-hidden', 'true');
+        try {
+          document.body.classList.remove('modal-open');
+          if (fallbackBackdropEl && fallbackBackdropEl.parentNode) fallbackBackdropEl.parentNode.removeChild(fallbackBackdropEl);
+          fallbackBackdropEl = null;
+        } catch (_) {}
       }
 
       function openModal(themeKey) {
@@ -1488,8 +1500,19 @@
           modal.show();
           return;
         }
+        if (!fallbackBackdropEl || !fallbackBackdropEl.parentNode) {
+          fallbackBackdropEl = document.createElement('div');
+          fallbackBackdropEl.className = 'modal-backdrop fade show kexo-theme-icon-edit-backdrop';
+          fallbackBackdropEl.setAttribute('aria-hidden', 'true');
+          fallbackBackdropEl.addEventListener('click', function () {
+            closeModal();
+          });
+          document.body.appendChild(fallbackBackdropEl);
+        }
         modalEl.style.display = 'block';
         modalEl.classList.add('show');
+        modalEl.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
       }
 
       function persistIconEdit(clearValues) {
@@ -1521,6 +1544,21 @@
       });
       clearBtn.addEventListener('click', function () {
         persistIconEdit(true);
+      });
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          closeModal();
+        });
+      }
+      modalEl.addEventListener('click', function (e) {
+        if (e.target === modalEl) closeModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        var visible = modalEl.classList.contains('show') && modalEl.style.display !== 'none' && modalEl.getAttribute('aria-hidden') !== 'true';
+        if (!visible) return;
+        closeModal();
       });
     }
 

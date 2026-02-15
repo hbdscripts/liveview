@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Theme Icons visual editor live)
+Last updated: 2026-02-15 (Dark overlay modal standard)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -8,6 +8,7 @@ IMPORTANT (for future agents)
 - Keep this file accurate. If you change core paths (routes/auth/dashboard UX/deploy), update this file in the SAME commit.
 - This repo avoids new markdown docs; this handover is intentionally `HANDOVER.txt`.
 - UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
+- Modal convention: use dark overlays by default (`.modal-backdrop` black with strong opacity); custom/fallback modals must include equivalent dark backdrop behavior.
 - Diagnostics guardrail: when adding/moving/removing dashboard sections, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate.
 - Live-status quick check (before saying "it's live"): run `git status -sb` and `git log --oneline --decorate -n 1`.
 
@@ -305,6 +306,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Modal/backdrop consistency:
+  - Theme Icon Edit modal now always renders a dark backdrop (including fallback path when Bootstrap modal APIs are unavailable).
+  - Theme Icon Edit modal close behavior fixed: header X, outside-click, and Escape now close reliably.
+  - Business Snapshot modal backdrop darkened to match default modal overlay standard.
+  - Global modal overlay default in `custom.css` is now dark (`.modal-backdrop` black, higher opacity) unless a modal explicitly overrides it.
 
 2026-02-15 (latest)
 - Theme Icons visual editor shipped:

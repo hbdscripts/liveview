@@ -126,6 +126,12 @@ All colors are defined as CSS variables in `server/public/app.css` at the `:root
 
 The project runs **Shopify CLI directly** from scripts (like theme check in another project). Set `SHOPIFY_API_KEY` in `.env`, run `shopify auth login` once, then `npm run config:link` and `npm run deploy` from this repo.
 
+## UI modal overlay standard
+
+- Default overlay for modals is dark (`.modal-backdrop` uses black background with strong opacity).
+- Custom/fallback modal implementations must add an equivalent dark backdrop (click-to-close where appropriate) and support close via header X + Escape.
+- If a modal needs a different overlay intensity, use a more specific modal-scoped class override (do not weaken the global default).
+
 ## Main files and folders
 
 - `server/` – Config, DB, migrations, ingest, SSE, cleanup, API routes, static admin UI.
