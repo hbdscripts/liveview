@@ -1229,7 +1229,7 @@
       '.ads-campaign-table .grid-cell:nth-child(7){width:80px;}' +
       '.ads-campaign-table .grid-cell:nth-child(8){width:110px;}' +
       '@media (max-width:768px){' +
-        '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;min-width:var(--kexo-sticky-col-min-width,72px);width:var(--kexo-sticky-col-width,120px);max-width:var(--kexo-sticky-col-max-width,250px);background:inherit;box-shadow:inset -1px 0 0 rgba(15,23,42,.16),16px 0 20px -16px rgba(15,23,42,.5);}' +
+        '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;min-width:var(--kexo-sticky-col-min-width,72px);width:var(--kexo-sticky-col-width,120px);max-width:var(--kexo-sticky-col-max-width,250px);}' +
         '.ads-campaign-table .grid-row--header .grid-cell:first-child{z-index:3;}' +
         '.ads-campaign-table .ads-totals-row .grid-cell:first-child{z-index:3;}' +
       '}' +

@@ -869,9 +869,6 @@ body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child {
   overflow: hidden !important;
   text-overflow: ellipsis;
   padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  border-right: 1px solid #f8fafc;
-  background: linear-gradient(90deg, #fff 0%, #fff 95%, #f8fafc 100%) !important;
-  box-shadow: none;
   transition: width 0.08s ease-out;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -887,9 +884,6 @@ body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child {
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
   padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  border-right: 1px solid #f8fafc;
-  background: linear-gradient(90deg, #fff 0%, #fff 95%, #f8fafc 100%) !important;
-  box-shadow: none;
   transition: width 0.08s ease-out;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -933,14 +927,45 @@ body[data-page="live"] #latest-sales-table .latest-sales-fraud-slot .fraud-alert
   height: auto;
   font-size: .8rem;
 }
-body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:nth-child(2),
-body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
-  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
+/* Sticky cells + table header/footer: unified surface-secondary background with gradient */
+body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
+body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child,
+body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
+body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
+body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
+body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
+body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
+body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
+body:not([data-page="settings"]) .table-responsive table thead th,
+body:not([data-page="settings"]) .tools-table-wrap table thead th,
+.ads-totals-row .grid-cell {
+  background: var(--tblr-bg-surface-secondary, #f8fafc) !important;
+  border-right-width: var(--tblr-border-width);
+  box-shadow: inset 0 0 0 9999px var(--tblr-table-bg-state, var(--tblr-table-bg-type, var(--tblr-table-accent-bg)));
 }
-/* Sticky: no box-shadow when scrolled (removed per design) */
+@supports (background: linear-gradient(90deg,color-mix(in srgb,#fff 80%,#000) 0%,#fff 100%)) {
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
+  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+  body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+  body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child,
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
+  body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
+  body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
+  body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
+  body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
+  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
+  body:not([data-page="settings"]) .table-responsive table thead th,
+  body:not([data-page="settings"]) .tools-table-wrap table thead th,
+  .ads-totals-row .grid-cell {
+    --hbd-surface-secondary: var(--tblr-bg-surface-secondary, #f8fafc);
+    --hbd-surface-secondary-dark: color-mix(in srgb, var(--hbd-surface-secondary) 80%, #000);
+    background: linear-gradient(90deg,var(--hbd-surface-secondary) 0%,var(--hbd-surface-secondary) 95%,var(--hbd-surface-secondary-dark) 100%) !important;
+  }
+}
 
-/* Dark mode: sticky gradient uses dark theme colors */
+/* Dark mode: sticky/header/footer use dark theme colors */
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table thead th:first-child,
@@ -948,9 +973,32 @@ html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap ta
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
-html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child {
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table thead th,
+html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table thead th,
+html[data-bs-theme="dark"] .ads-totals-row .grid-cell {
   border-right-color: rgba(255, 255, 255, 0.08);
-  background: linear-gradient(90deg, var(--tblr-body-bg, #111827) 0%, var(--tblr-body-bg, #111827) 95%, rgba(255, 255, 255, 0.04) 100%) !important;
+}
+@supports (background: linear-gradient(90deg,color-mix(in srgb,#fff 80%,#000) 0%,#fff 100%)) {
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table thead th:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table thead th,
+  html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table thead th,
+  html[data-bs-theme="dark"] .ads-totals-row .grid-cell {
+    --hbd-surface-secondary: var(--tblr-body-bg, #111827);
+    --hbd-surface-secondary-dark: color-mix(in srgb, var(--hbd-surface-secondary) 80%, #fff);
+    background: linear-gradient(90deg,var(--hbd-surface-secondary) 0%,var(--hbd-surface-secondary) 95%,var(--hbd-surface-secondary-dark) 100%) !important;
+  }
 }
 
 body:not([data-page="settings"]) .table-scroll-wrap .grid-cell:first-child .country-cell,
@@ -3986,7 +4034,6 @@ html[data-bs-theme="dark"] .landing-thumb {
 .stats-card .grid-row--header .grid-cell {
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   height: 40px;
-  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
   color: var(--tblr-secondary, #626976) !important;
 }
 

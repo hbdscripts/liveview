@@ -44,7 +44,7 @@
     #tab-panel-products .stats-row { grid-template-columns: 1fr 1fr; }
     #tab-panel-ads .stats-row { grid-template-columns: 1fr; }
     .ads-campaign-table { --grid-cols: minmax(160px, 2fr) repeat(6, minmax(64px, 0.7fr)); }
-    .ads-campaign-table .ads-totals-row { background: #f8fafb; font-weight: 600; }
+    .ads-campaign-table .ads-totals-row { font-weight: 600; }
     .ads-campaign-table .ads-totals-row .grid-cell { border-bottom: 2px solid #f0f0f0; }
     #products-type-tables-row { grid-template-columns: 1fr 1fr; }
     .traffic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--table-gap); margin-bottom: 1.5rem; align-items: start; }
