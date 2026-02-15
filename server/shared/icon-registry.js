@@ -42,6 +42,7 @@ const REQUIRED_ACTIVE_ICON_KEYS = Object.freeze([
   'nav-dropdown-arrow',
   'chart-builder-icon',
   'table-icon-converted-sale',
+  'table-sticky-resize-handle',
   'fraud-alert',
 ]);
 
@@ -163,6 +164,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-short-consent': 'fa-circle-info',
   'table-builder-icon': 'fa-light fa-gear',
   'chart-builder-icon': 'fa-light fa-gear',
+  'table-sticky-resize-handle': 'fa-solid fa-left-right',
   'card-title-online': 'fa-jelly-filled fa-users',
   'card-title-revenue': 'fa-jelly-filled fa-sterling-sign',
   'card-title-orders': 'fa-jelly-filled fa-box-open',

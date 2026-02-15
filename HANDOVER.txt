@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Affiliate fraud alerts + scoring)
+Last updated: 2026-02-15 (Sticky resize handle → Theme Icons)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -307,6 +307,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Sticky column resize handle: replaced broken inline SVG with Font Awesome icon (`fa-solid fa-left-right`). New icon key `table-sticky-resize-handle` in Settings → Theme → Icons (Tables group); configurable like other table icons.
 
 2026-02-15 (latest)
 - Fraud alert system (affiliate abuse detection):

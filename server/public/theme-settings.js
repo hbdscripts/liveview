@@ -33,6 +33,7 @@
     'table-icon-variants-cr': { title: 'Variants Table CR Icon', help: 'Short header icon for the CR% column in Insights → Variants.' },
     'table-icon-variants-revenue': { title: 'Variants Table Revenue Icon', help: 'Short header icon for the Rev column in Insights → Variants.' },
     'table-icon-converted-sale': { title: 'Converted Row Sale Icon', help: 'Icon shown at the start of converted sale rows in sessions/live tables.' },
+    'table-sticky-resize-handle': { title: 'Sticky Column Resize Handle', help: 'Icon shown on the sticky column resize handle in sessions tables (Live, Sales, Table views).' },
     'table-builder-icon': { title: 'Table Layout Icon', help: 'Icon shown at the top of table cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
     'chart-builder-icon': { title: 'Chart Layout Icon', help: 'Icon shown at the top of chart cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
     'dash-kpi-delta-up': { title: 'Overview KPI Delta Up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
@@ -595,7 +596,7 @@
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
     if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'header-business-snapshot' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
-    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0 || key === 'table-builder-icon') return 'tables';
+    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0 || key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
     if (key.indexOf('card-title-') === 0 || key.indexOf('card-collapse-') === 0 || key.indexOf('dash-kpi-delta-') === 0 || key.indexOf('chart-type-') === 0 || key === 'chart-builder-icon') return 'cards';
     if (key.indexOf('side-panel-') === 0 || key.indexOf('kpi-compare-') === 0 || key.indexOf('pagination-') === 0 || key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0 || key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('ads-') === 0 || key === 'diag-copy') return 'runtime';
     return 'misc';

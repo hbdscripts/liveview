@@ -40,7 +40,7 @@
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
-    if (key.indexOf('table-short-') === 0) return 'fa-solid';
+    if (key.indexOf('table-short-') === 0 || key === 'table-sticky-resize-handle') return 'fa-solid';
     if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('footer-') === 0) return 'fa-jelly-filled';
     if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';

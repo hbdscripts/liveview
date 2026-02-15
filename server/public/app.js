@@ -1748,6 +1748,10 @@ const API = '';
           handle.className = 'kexo-sticky-resize-handle';
           handle.setAttribute('aria-hidden', 'true');
           handle.setAttribute('data-no-drag-scroll', '1');
+          var iconEl = document.createElement('i');
+          iconEl.setAttribute('data-icon-key', 'table-sticky-resize-handle');
+          iconEl.setAttribute('aria-hidden', 'true');
+          handle.appendChild(iconEl);
           cell.appendChild(handle);
         }
         bindHandle(wrap, handle);
