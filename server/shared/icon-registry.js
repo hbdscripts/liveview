@@ -143,6 +143,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'ads-status-connected': 'fa-circle-check',
   'ads-status-disconnected': 'fa-circle-xmark',
   'ads-actions-refresh': 'fa-rotate-right',
+  'ads-actions-audit': 'fa-circle-info',
   'chart-type-area': 'fa-chart-area',
   'chart-type-bar': 'fa-chart-column',
   'chart-type-line': 'fa-chart-line',

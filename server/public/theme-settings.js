@@ -562,7 +562,7 @@
     if (key.indexOf('type-device-') === 0) return 'Device type icon. Shows in the Device table on /traffic/device.';
     if (key.indexOf('type-platform-') === 0) return 'Platform icon. Shows in the Device table on /traffic/device.';
     if (key === 'diag-copy') return 'Diagnostics copy icon. Shows in the diagnostics panel on /settings.';
-    if (key.indexOf('ads-status-') === 0 || key === 'ads-actions-refresh') return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
+    if (key.indexOf('ads-status-') === 0 || key.indexOf('ads-actions-') === 0) return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
     if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, traffic, integrations, tools, and settings pages.';
     if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';

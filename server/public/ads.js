@@ -168,16 +168,16 @@
   /* ── sort state ──────────────────────────────────────────── */
 
   // Column definitions: key, label, getter, format
-  // Order: Campaign, Spend, Impr, Clicks, Conv, Profit, ROAS, Sales
+  // Order: Campaign, Clicks, Impr, Conv, Revenue, Spend, ROAS, Gross
   var COL_DEFS = [
     { key: 'campaign', label: 'Campaign', get: function (c) { return (c.campaignName || c.campaignId || '').toLowerCase(); }, fmt: null },
-    { key: 'spend',    label: 'Spend',    get: function (c) { return c.spend || 0; },        fmt: function (v, cur) { return fmtMoney(v, cur); } },
-    { key: 'impr',     label: 'Impr',     get: function (c) { return c.impressions || 0; },  fmt: function (v) { return fmtNum(v); } },
     { key: 'clicks',   label: 'Clicks',   get: function (c) { return c.clicks || 0; },       fmt: function (v) { return fmtNum(v); } },
+    { key: 'impr',     label: 'Impr',     get: function (c) { return c.impressions || 0; },  fmt: function (v) { return fmtNum(v); } },
     { key: 'conv',     label: 'Conv',     get: function (c) { return c.orders || 0; },       fmt: function (v) { return fmtNum(v); } },
-    { key: 'profit',   label: 'Profit',   get: function (c) { return c.profit || 0; },       fmt: function (v, cur) { return fmtMoney(v, cur); } },
+    { key: 'sales',    label: 'Revenue',  get: function (c) { return c.revenue || 0; },      fmt: function (v, cur) { return fmtMoney(v, cur); } },
+    { key: 'spend',    label: 'Spend',    get: function (c) { return c.spend || 0; },        fmt: function (v, cur) { return fmtMoney(v, cur); } },
     { key: 'roas',     label: 'ROAS',     get: function (c) { return c.roas != null ? c.roas : -Infinity; }, fmt: function (v) { return fmtRoas(v === -Infinity ? null : v); } },
-    { key: 'sales',    label: 'Sales',    get: function (c) { return c.revenue || 0; },      fmt: function (v, cur) { return fmtMoney(v, cur); } },
+    { key: 'profit',   label: 'Gross',    get: function (c) { return c.profit || 0; },       fmt: function (v, cur) { return fmtMoney(v, cur); } },
   ];
 
   var sortKey = 'sales';
@@ -1221,10 +1221,10 @@
       '.ads-spin{animation:adsSpin 1s linear infinite;transform-origin:50% 50%;}' +
       '.ads-campaign-table{table-layout:fixed;min-width:640px;}' +
       '#ads-footer{overflow-x:auto;-webkit-overflow-scrolling:touch;}' +
-      '.ads-campaign-table .grid-cell:nth-child(2){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(2){width:80px;}' +
       '.ads-campaign-table .grid-cell:nth-child(3){width:90px;}' +
       '.ads-campaign-table .grid-cell:nth-child(4){width:80px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(5){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(5){width:110px;}' +
       '.ads-campaign-table .grid-cell:nth-child(6){width:110px;}' +
       '.ads-campaign-table .grid-cell:nth-child(7){width:80px;}' +
       '.ads-campaign-table .grid-cell:nth-child(8){width:110px;}' +
@@ -1359,17 +1359,16 @@
       var cells = row.querySelectorAll('.grid-cell');
       if (!cells || cells.length < 8) return false;
 
-      patchText(cells[1], fmtMoney(c2.spend, currency));
+      patchText(cells[1], fmtNum(c2.clicks));
       patchText(cells[2], fmtNum(c2.impressions));
-      patchText(cells[3], fmtNum(c2.clicks));
-      patchText(cells[4], fmtNum(c2.orders));
+      patchText(cells[3], fmtNum(c2.orders));
+      patchText(cells[4], fmtMoney(c2.revenue, currency));
+      patchText(cells[5], fmtMoney(c2.spend, currency));
+      patchText(cells[6], fmtRoas(c2.roas));
 
       var pr = c2.profit != null ? Number(c2.profit) : 0;
-      patchText(cells[5], fmtMoney(pr, currency));
-      setProfitCellClass(cells[5], pr);
-
-      patchText(cells[6], fmtRoas(c2.roas));
-      patchText(cells[7], fmtMoney(c2.revenue, currency));
+      patchText(cells[7], fmtMoney(pr, currency));
+      setProfitCellClass(cells[7], pr);
     }
 
     var totals = summary && summary.totals ? summary.totals : null;
@@ -1378,15 +1377,15 @@
     if (totals && tRow) {
       var tCells = tRow.querySelectorAll('.grid-cell');
       if (!tCells || tCells.length < 8) return false;
-      patchText(tCells[1], fmtMoney(totals.spend, currency));
+      patchText(tCells[1], fmtNum(totals.clicks));
       patchText(tCells[2], fmtNum(totals.impressions));
-      patchText(tCells[3], fmtNum(totals.clicks));
-      patchText(tCells[4], fmtNum(totals.conversions != null ? totals.conversions : totals.orders));
-      var tProfit = totals.profit != null ? Number(totals.profit) : 0;
-      patchText(tCells[5], fmtMoney(tProfit, currency));
-      setProfitCellClass(tCells[5], tProfit);
+      patchText(tCells[3], fmtNum(totals.conversions != null ? totals.conversions : totals.orders));
+      patchText(tCells[4], fmtMoney(totals.revenue, currency));
+      patchText(tCells[5], fmtMoney(totals.spend, currency));
       patchText(tCells[6], fmtRoas(totals.roas));
-      patchText(tCells[7], fmtMoney(totals.revenue, currency));
+      var tProfit = totals.profit != null ? Number(totals.profit) : 0;
+      patchText(tCells[7], fmtMoney(tProfit, currency));
+      setProfitCellClass(tCells[7], tProfit);
     }
 
     return true;
@@ -1450,7 +1449,7 @@
         refreshSvg(_isRefreshing ? 'ads-spin' : '', 'ads-refresh-icon') +
       '</button>' +
       '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-audit-btn" title="Audit coverage" aria-label="Audit coverage">' +
-        '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
+        '<i class="fa-light fa-circle-info" data-icon-key="ads-actions-audit" aria-hidden="true"></i>' +
       '</button>';
 
     var rbtn = document.getElementById('ads-refresh-btn');
@@ -1590,13 +1589,13 @@
     var tProfit = totals.profit != null ? Number(totals.profit) : 0;
     var totalsRowHtml = gridRow([
       { html: '<strong>Total</strong>' },
-      { html: esc(fmtMoney(totals.spend, currency)), cls: ' text-end' },
-      { html: esc(fmtNum(totals.impressions)), cls: ' text-end' },
       { html: esc(fmtNum(totals.clicks)), cls: ' text-end' },
+      { html: esc(fmtNum(totals.impressions)), cls: ' text-end' },
       { html: esc(fmtNum(totals.conversions != null ? totals.conversions : totals.orders)), cls: ' text-end' },
-      { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
-      { html: esc(fmtRoas(totals.roas)), cls: ' text-end' },
       { html: esc(fmtMoney(totals.revenue, currency)), cls: ' text-end' },
+      { html: esc(fmtMoney(totals.spend, currency)), cls: ' text-end' },
+      { html: esc(fmtRoas(totals.roas)), cls: ' text-end' },
+      { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
     ], false, 'ads-totals-row');
 
     // Campaign rows
@@ -1609,13 +1608,13 @@
 
       bodyHtml += gridRow([
         { html: '<span class="ads-campaign-name">' + esc(cName) + '</span>' },
-        { html: esc(fmtMoney(c.spend, currency)), cls: ' text-end' },
-        { html: esc(fmtNum(c.impressions)), cls: ' text-end' },
         { html: esc(fmtNum(c.clicks)), cls: ' text-end' },
+        { html: esc(fmtNum(c.impressions)), cls: ' text-end' },
         { html: esc(fmtNum(c.orders)), cls: ' text-end' },
-        { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
-        { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
         { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-end' },
+        { html: esc(fmtMoney(c.spend, currency)), cls: ' text-end' },
+        { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
+        { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
       ], false, 'ads-campaign-row', ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
     }
 

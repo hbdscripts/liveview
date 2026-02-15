@@ -1570,6 +1570,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 12px;
 }
 
+/* Ads integration: bottom action bar icon alignment */
+#ads-actions .btn.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#ads-actions .btn.btn-icon > i,
+#ads-actions .btn.btn-icon > svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 /* Config/settings modal */
 .config-modal {
   position: fixed;

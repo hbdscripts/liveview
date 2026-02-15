@@ -219,13 +219,13 @@
       bodyId: 'ads-campaigns-body',
       columns: [
         { key: 'campaign', label: 'Campaign', cellClass: '' },
-        { key: 'spend', label: 'Spend', cellClass: ' text-end' },
-        { key: 'impr', label: 'Impr', cellClass: ' text-end' },
         { key: 'clicks', label: 'Clicks', cellClass: ' text-end' },
+        { key: 'impr', label: 'Impr', cellClass: ' text-end' },
         { key: 'conv', label: 'Conv', cellClass: ' text-end' },
-        { key: 'profit', label: 'Profit', cellClass: ' text-end' },
+        { key: 'sales', label: 'Revenue', cellClass: ' text-end' },
+        { key: 'spend', label: 'Spend', cellClass: ' text-end' },
         { key: 'roas', label: 'ROAS', cellClass: ' text-end' },
-        { key: 'sales', label: 'Sales', cellClass: ' text-end' }
+        { key: 'profit', label: 'Gross', cellClass: ' text-end' }
       ]
     }
   };
