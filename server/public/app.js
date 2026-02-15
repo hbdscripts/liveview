@@ -2331,7 +2331,8 @@ const API = '';
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
-    // Sale toast chime: prefer assetOverrides.saleSound, then assets base, else Shopify CDN.
+    // Sale toast chime: prefer assetOverrides.saleSound, then assets base, else local default.
+    var DEFAULT_SALE_SOUND = '/assets/ui-alert/1.mp3';
     var CASH_REGISTER_MP3_CDN = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
     function getCashRegisterMp3Url() {
       try {
@@ -2347,11 +2348,10 @@ const API = '';
         assetsBase = '';
       }
       // Only use a custom assets host/path when it is explicitly configured.
-      // The default local /assets path may not include this MP3 in all environments.
       if (assetsBase && assetsBase !== defaultAssetsBase) {
-        return assetsBase.replace(/\/+$/, '') + '/cash-register.mp3';
+        return assetsBase.replace(/\/+$/, '') + '/ui-alert/1.mp3';
       }
-      return CASH_REGISTER_MP3_CDN;
+      return DEFAULT_SALE_SOUND;
     }
 
     function bindSaleAudioFallback() {
@@ -2363,10 +2363,10 @@ const API = '';
         }
         a.__kexoSaleAudioOnError = function() {
           try {
-            if (!a || !CASH_REGISTER_MP3_CDN) return;
+            if (!a || !DEFAULT_SALE_SOUND) return;
             var cur = String(a.currentSrc || a.src || '');
-            if (cur && cur.indexOf(CASH_REGISTER_MP3_CDN) >= 0) return;
-            a.src = CASH_REGISTER_MP3_CDN;
+            if (cur && cur.indexOf(DEFAULT_SALE_SOUND) >= 0) return;
+            a.src = DEFAULT_SALE_SOUND;
             try { a.load(); } catch (_) {}
           } catch (_) {}
         };

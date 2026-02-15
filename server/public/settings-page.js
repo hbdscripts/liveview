@@ -948,10 +948,10 @@
   }
 
   var SALE_SOUND_PRESETS = {
-    'cash-register': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
-    'bell': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
-    'chime': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
-    'success': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
+    'cash-register': '/assets/ui-alert/1.mp3',
+    'bell': '/assets/ui-alert/2.wav',
+    'chime': '/assets/ui-alert/3.wav',
+    'success': '/assets/ui-alert/4.mp3',
   };
 
   function populateSaleNotificationPanel(overrides) {
