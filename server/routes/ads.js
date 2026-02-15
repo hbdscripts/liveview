@@ -4,7 +4,7 @@ const adsService = require('../ads/adsService');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
-const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
+const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
 const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
 
 const router = express.Router();
@@ -212,6 +212,14 @@ router.post('/refresh', async (req, res) => {
       geo = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'geo_sync_failed' };
     }
 
+    // 1c. Sync device metrics from Google Ads API
+    let device = null;
+    try {
+      device = await syncGoogleAdsDeviceDaily({ rangeStartTs: bounds.start, rangeEndTs: bounds.end });
+    } catch (e) {
+      device = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'device_sync_failed' };
+    }
+
     // 2. Backfill campaign IDs on sessions via gclid → click_view mapping
     let gclidBackfill = null;
     try {
@@ -237,7 +245,7 @@ router.post('/refresh', async (req, res) => {
       orderAttribution = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'order_attribution_failed' };
     }
 
-    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, geo, gclidBackfill, orderAttribution });
+    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, geo, device, gclidBackfill, orderAttribution });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.refresh' } });
     console.error('[ads.refresh]', err);

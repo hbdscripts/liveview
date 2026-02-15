@@ -623,6 +623,168 @@ async function syncGoogleAdsGeoDaily(options = {}) {
   }
 }
 
+async function syncGoogleAdsDeviceDaily(options = {}) {
+  try {
+    const rangeStartTs = options.rangeStartTs != null ? Number(options.rangeStartTs) : null;
+    const rangeEndTs = options.rangeEndTs != null ? Number(options.rangeEndTs) : null;
+
+    if (!rangeStartTs || !rangeEndTs || !Number.isFinite(rangeStartTs) || !Number.isFinite(rangeEndTs)) {
+      return { ok: false, error: 'Missing rangeStartTs/rangeEndTs' };
+    }
+
+    const adsDb = getAdsDb();
+    if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+
+    const developerToken = (config.googleAdsDeveloperToken || '').trim();
+    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
+    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
+    if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
+
+    if (!config.googleClientId || !config.googleClientSecret) {
+      return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
+    }
+
+    const cfg = await getGoogleAdsConfig();
+    const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
+    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+
+    const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
+
+    const meta = await fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken });
+    if (!meta || !meta.ok) {
+      return {
+        ok: false,
+        stage: 'customer_meta',
+        error: meta && meta.error ? String(meta.error) : 'Google Ads customer meta query failed',
+        attempts: meta && meta.attempts ? meta.attempts : [],
+      };
+    }
+
+    const accountTz = meta.timeZone || 'UTC';
+    const accountCur = fx.normalizeCurrency(meta.currencyCode) || 'GBP';
+
+    const startYmd = fmtYmdInTz(rangeStartTs, accountTz);
+    const endYmd = fmtYmdInTz(rangeEndTs - 1, accountTz);
+    if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
+
+    const query =
+      "SELECT segments.date, segments.device, campaign.id, campaign.name, metrics.cost_micros, metrics.clicks, metrics.impressions " +
+      "FROM campaign " +
+      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
+
+    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint: meta.apiVersion || '' });
+    if (!out || !out.ok) {
+      return {
+        ok: false,
+        stage: 'device_query',
+        error: out && out.error ? String(out.error) : 'Google Ads device query failed',
+        attempts: out && out.attempts ? out.attempts : [],
+      };
+    }
+
+    const rows = out.results || [];
+    const ratesToGbp = await fx.getRatesToGbp();
+
+    const grouped = new Map();
+    for (const r of rows || []) {
+      const seg = r && r.segments ? r.segments : null;
+      const dayYmd = seg && seg.date ? String(seg.date) : '';
+      const device = seg && seg.device ? String(seg.device) : '';
+
+      const camp = r && r.campaign ? r.campaign : null;
+      const metrics = r && r.metrics ? r.metrics : null;
+
+      const campaignId = camp && camp.id != null ? String(camp.id) : '';
+      const campaignName = camp && camp.name != null ? String(camp.name) : '';
+      if (!dayYmd || !campaignId || !device) continue;
+
+      const costMicros = metrics && metrics.costMicros != null ? Number(metrics.costMicros) : 0;
+      const clicks = metrics && metrics.clicks != null ? Number(metrics.clicks) : 0;
+      const impressions = metrics && metrics.impressions != null ? Number(metrics.impressions) : 0;
+
+      const cost = Number.isFinite(costMicros) ? costMicros : 0;
+      const cl = Number.isFinite(clicks) ? clicks : 0;
+      const im = Number.isFinite(impressions) ? impressions : 0;
+
+      const key = dayYmd + '\0' + campaignId + '\0' + device;
+      const cur = grouped.get(key) || {
+        dayYmd,
+        campaignId,
+        campaignName: '',
+        device,
+        costMicros: 0,
+        clicks: 0,
+        impressions: 0,
+      };
+      if (campaignName && !cur.campaignName) cur.campaignName = campaignName;
+      cur.costMicros += cost;
+      cur.clicks += cl;
+      cur.impressions += im;
+      grouped.set(key, cur);
+    }
+
+    const now = Date.now();
+    let upserts = 0;
+    for (const v of grouped.values()) {
+      const spend = (Number(v.costMicros) || 0) / 1_000_000;
+      const spendGbp = fx.convertToGbp(spend, accountCur, ratesToGbp);
+      const spendGbpRounded = (typeof spendGbp === 'number' && Number.isFinite(spendGbp)) ? Math.round(spendGbp * 100) / 100 : 0;
+      const clicks = Math.max(0, Math.floor(Number(v.clicks) || 0));
+      const impressions = Math.max(0, Math.floor(Number(v.impressions) || 0));
+      const costMicros = Math.max(0, Math.floor(Number(v.costMicros) || 0));
+
+      await adsDb.run(
+        `
+          INSERT INTO google_ads_device_daily
+            (provider, day_ymd, customer_id, campaign_id, campaign_name, device, cost_micros, spend_gbp, clicks, impressions, updated_at)
+          VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (provider, day_ymd, campaign_id, device) DO UPDATE SET
+            customer_id = EXCLUDED.customer_id,
+            campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_device_daily.campaign_name),
+            cost_micros = EXCLUDED.cost_micros,
+            spend_gbp = EXCLUDED.spend_gbp,
+            clicks = EXCLUDED.clicks,
+            impressions = EXCLUDED.impressions,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [
+          'google_ads',
+          v.dayYmd,
+          customerId,
+          v.campaignId,
+          v.campaignName || '',
+          v.device,
+          costMicros,
+          spendGbpRounded,
+          clicks,
+          impressions,
+          now,
+        ]
+      );
+      upserts++;
+    }
+
+    return {
+      ok: true,
+      rangeStartTs,
+      rangeEndTs,
+      provider: 'google_ads',
+      apiVersion: out.apiVersion || meta.apiVersion || null,
+      customerId,
+      loginCustomerId: loginCustomerId || null,
+      accountTimeZone: accountTz,
+      accountCurrency: accountCur,
+      scannedRows: Array.isArray(rows) ? rows.length : 0,
+      scannedGroups: grouped.size,
+      upserts,
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 380) : 'device_sync_failed' };
+  }
+}
+
 function extractGclid(url) {
   if (!url) return null;
   try {
@@ -933,5 +1095,6 @@ async function backfillCampaignIdsFromGclid(options = {}) {
 module.exports = {
   syncGoogleAdsSpendHourly,
   syncGoogleAdsGeoDaily,
+  syncGoogleAdsDeviceDaily,
   backfillCampaignIdsFromGclid,
 };

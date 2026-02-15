@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dashboard extras KPI sparklines)
+Last updated: 2026-02-15 (Ads modal device + day-parting + modal range)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -372,6 +372,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Google Ads campaign modal enhancements:
+  - Modal now has its own range selector (presets + custom `r:YYYY-MM-DD:YYYY-MM-DD`) independent of the global date filter.
+  - Campaign detail modal adds **Device performance** + **Day parting** sections (Recent sales remains last), and hardens modal table header styling.
+  - Backend: new Ads DB table `google_ads_device_daily` (Google segments.device) + persisted `ads_orders_attributed.visitor_device_type` so device ROAS can be computed without cross-DB joins.
 
 2026-02-15 (latest)
 - Dashboard extras KPI sparklines (COGS / Fulfilled / Returns):

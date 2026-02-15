@@ -731,18 +731,20 @@ setInterval(() => {
   if (process.env.DISABLE_SCHEDULED_ADS_SYNC === '1' || process.env.DISABLE_SCHEDULED_ADS_SYNC === 'true') return;
 
   const store = require('./store');
-  const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
+  const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
   const { syncAttributedOrdersToAdsDb } = require('./ads/adsOrderAttributionSync');
   const { getAdsDb } = require('./ads/adsDb');
 
   const SPEND_SYNC_MS = 5 * 60 * 1000;
   const GEO_SYNC_MS = 60 * 60 * 1000;
+  const DEVICE_SYNC_MS = 60 * 60 * 1000;
   const GCLID_BACKFILL_MS = 30 * 60 * 1000;
   const ATTR_SYNC_MS = 5 * 60 * 1000;
   const ATTR_BACKFILL_MS = 30 * 60 * 1000;
 
   let spendInFlight = false;
   let geoInFlight = false;
+  let deviceInFlight = false;
   let gclidInFlight = false;
   let attrInFlight = false;
 
@@ -784,6 +786,23 @@ setInterval(() => {
       console.error('[ads-sync] geo error:', err && err.message ? err.message : err);
     } finally {
       geoInFlight = false;
+    }
+  }
+
+  async function runDeviceSync(rangeKey) {
+    if (deviceInFlight) return;
+    deviceInFlight = true;
+    try {
+      const adsDb = getAdsDb();
+      if (!adsDb) return; // ADS_DB_URL not set — skip silently
+      const { rangeStartTs, rangeEndTs } = resolveBounds(rangeKey);
+      const out = await syncGoogleAdsDeviceDaily({ rangeStartTs, rangeEndTs });
+      if (out && out.ok) console.log('[ads-sync] device:', out.upserts || 0, 'upserts', out.apiVersion ? '(' + out.apiVersion + ')' : '');
+      else console.warn('[ads-sync] device failed:', out && out.error ? out.error : 'failed');
+    } catch (err) {
+      console.error('[ads-sync] device error:', err && err.message ? err.message : err);
+    } finally {
+      deviceInFlight = false;
     }
   }
 
@@ -840,6 +859,10 @@ setInterval(() => {
   // Geo (country) metrics: less frequent; keep recent window fresh.
   setTimeout(() => { runGeoSync('7d').catch(() => {}); }, 60 * 1000);
   setInterval(() => { runGeoSync('7d').catch(() => {}); }, GEO_SYNC_MS);
+
+  // Device metrics: less frequent; keep recent window fresh.
+  setTimeout(() => { runDeviceSync('7d').catch(() => {}); }, 70 * 1000);
+  setInterval(() => { runDeviceSync('7d').catch(() => {}); }, DEVICE_SYNC_MS);
 
   // GCLID → campaign cache: less frequent (used for attribution fallbacks).
   setTimeout(() => { runGclidBackfill('7d').catch(() => {}); }, 45 * 1000);

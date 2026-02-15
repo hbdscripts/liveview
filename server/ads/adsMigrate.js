@@ -171,6 +171,41 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_country ON ads_orders_attributed(campaign_id, visitor_country_code)');
       },
     },
+    {
+      id: '008_google_ads_device_daily',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_device_daily (
+            provider TEXT NOT NULL,
+            day_ymd TEXT NOT NULL,
+            customer_id TEXT,
+            campaign_id TEXT NOT NULL,
+            campaign_name TEXT,
+            device TEXT NOT NULL,
+            cost_micros BIGINT NOT NULL DEFAULT 0,
+            spend_gbp DOUBLE PRECISION NOT NULL DEFAULT 0,
+            clicks INTEGER NOT NULL DEFAULT 0,
+            impressions INTEGER NOT NULL DEFAULT 0,
+            updated_at BIGINT,
+            PRIMARY KEY (provider, day_ymd, campaign_id, device)
+          )
+        `);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gadd_day ON google_ads_device_daily(day_ymd)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gadd_campaign ON google_ads_device_daily(campaign_id)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gadd_device ON google_ads_device_daily(device)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gadd_campaign_day ON google_ads_device_daily(campaign_id, day_ymd)');
+      },
+    },
+    {
+      id: '009_ads_orders_attributed_visitor_device_type',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS visitor_device_type TEXT`);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_visitor_device_type ON ads_orders_attributed(visitor_device_type)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_device_type ON ads_orders_attributed(campaign_id, visitor_device_type)');
+      },
+    },
   ];
 
   let applied = 0;

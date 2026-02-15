@@ -271,6 +271,165 @@
   var adsOverviewChart = null;
   var modalChart = null;
   var chartJsLoading = null;
+  var _modalCampaignId = null;
+  var _modalCampaignName = null;
+  var _modalCustomRangeKey = null;
+  var _modalCampaignReqId = 0;
+  var _modalRangePicker = null;
+
+  function setModalCustomRangeVisible(show) {
+    var inp = document.getElementById('ads-modal-range-custom');
+    if (!inp) return;
+    inp.style.display = show ? '' : 'none';
+  }
+
+  function parseModalCustomRangeKey() {
+    var inp = document.getElementById('ads-modal-range-custom');
+    var s = inp ? String(inp.value || '').trim() : '';
+    if (!s) return null;
+    var m = s.match(/(\d{4}-\d{2}-\d{2}).*?(\d{4}-\d{2}-\d{2})/);
+    if (!m) return null;
+    return 'r:' + m[1] + ':' + m[2];
+  }
+
+  function getModalRangeKey() {
+    var sel = document.getElementById('ads-modal-range-select');
+    var v = sel && sel.value != null ? String(sel.value).trim() : 'page';
+    if (!v || v === 'page') return computeRangeKey();
+    if (v === 'custom') return _modalCustomRangeKey || parseModalCustomRangeKey() || computeRangeKey();
+    return normalizeRangeKeyForApi(v);
+  }
+
+  function resetModalRangeUi() {
+    var sel = document.getElementById('ads-modal-range-select');
+    if (sel) sel.value = 'page';
+    var inp = document.getElementById('ads-modal-range-custom');
+    if (inp) { inp.value = ''; inp.style.display = 'none'; }
+    _modalCustomRangeKey = null;
+  }
+
+  function ensureModalRangePicker() {
+    var inp = document.getElementById('ads-modal-range-custom');
+    if (!inp) return null;
+    if (_modalRangePicker) return _modalRangePicker;
+    try {
+      if (typeof flatpickr === 'undefined') return null;
+      _modalRangePicker = flatpickr(inp, {
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        maxDate: new Date(),
+        onClose: function () {
+          var key = parseModalCustomRangeKey();
+          if (key) {
+            _modalCustomRangeKey = key;
+            refreshCampaignModal();
+          }
+        },
+      });
+      return _modalRangePicker;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function bindModalRangeControls() {
+    var sel = document.getElementById('ads-modal-range-select');
+    var inp = document.getElementById('ads-modal-range-custom');
+    if (sel && sel.getAttribute('data-bound') !== '1') {
+      sel.setAttribute('data-bound', '1');
+      sel.addEventListener('change', function () {
+        var v = sel.value != null ? String(sel.value).trim() : '';
+        if (v === 'custom') {
+          setModalCustomRangeVisible(true);
+          var picker = ensureModalRangePicker();
+          try { if (picker && typeof picker.open === 'function') picker.open(); } catch (_) {}
+          var key = parseModalCustomRangeKey();
+          if (key) {
+            _modalCustomRangeKey = key;
+            refreshCampaignModal();
+          }
+          return;
+        }
+        setModalCustomRangeVisible(false);
+        refreshCampaignModal();
+      });
+    }
+    if (inp && inp.getAttribute('data-bound') !== '1') {
+      inp.setAttribute('data-bound', '1');
+      inp.addEventListener('change', function () {
+        var key = parseModalCustomRangeKey();
+        if (key) {
+          _modalCustomRangeKey = key;
+          refreshCampaignModal();
+        }
+      });
+    }
+  }
+
+  function refreshCampaignModal() {
+    var modal = document.getElementById('ads-campaign-modal');
+    if (!modal || !modal.classList.contains('open')) return;
+    if (!_modalCampaignId) return;
+
+    var salesEl = document.getElementById('ads-modal-sales');
+    if (salesEl) salesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var countriesEl = document.getElementById('ads-modal-countries');
+    if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var devicesEl = document.getElementById('ads-modal-devices');
+    if (devicesEl) devicesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var dayEl = document.getElementById('ads-modal-dayparting');
+    if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+
+    var countryNoteEl = document.getElementById('ads-modal-country-note');
+    if (countryNoteEl) countryNoteEl.textContent = '';
+    var deviceNoteEl = document.getElementById('ads-modal-device-note');
+    if (deviceNoteEl) deviceNoteEl.textContent = '';
+    var dayNoteEl = document.getElementById('ads-modal-dayparting-note');
+    if (dayNoteEl) dayNoteEl.textContent = '';
+
+    if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
+
+    var rangeKey = getModalRangeKey();
+    var reqId = ++_modalCampaignReqId;
+    var campaignId = _modalCampaignId;
+    fetchJson('/api/ads/campaign-detail?range=' + encodeURIComponent(rangeKey) + '&campaignId=' + encodeURIComponent(campaignId))
+      .then(function (data) {
+        // If another request started, ignore stale results.
+        if (reqId !== _modalCampaignReqId) return;
+        // If the modal was closed while loading, skip rendering.
+        try {
+          var m = document.getElementById('ads-campaign-modal');
+          if (!m || !m.classList.contains('open')) return;
+        } catch (_) {}
+
+        if (!data || !data.ok) {
+          if (salesEl) salesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          if (devicesEl) devicesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          return;
+        }
+
+        var currency = data.currency || 'GBP';
+        ensureChartJs().then(function(ok) {
+          try {
+            var m2 = document.getElementById('ads-campaign-modal');
+            if (!m2 || !m2.classList.contains('open')) return;
+          } catch (_) {}
+          if (!ok) {
+            captureChartMessage('Chart.js failed to load for campaign modal.', 'adsModalChartJsLoad', { chartKey: 'ads-campaign-modal' }, 'error');
+            return;
+          }
+          renderModalChart(data.chart || {}, currency);
+        });
+
+        renderModalCountries(data.countries || null, currency);
+        renderModalDevices(data.devices || null, currency);
+        renderModalDayParting(data.dayParting || null, currency);
+        renderModalSales(data.recentSales || [], currency);
+      });
+  }
 
   function getChartsUiItem(key) {
     var cfg = null;
@@ -683,17 +842,38 @@
           '<button type="button" class="ads-modal-close" aria-label="Close">&times;</button>' +
         '</div>' +
         '<div class="ads-modal-body">' +
+          '<div class="ads-modal-range-row">' +
+            '<div class="ads-modal-range-label">Range</div>' +
+            '<select id="ads-modal-range-select" class="form-select form-select-sm ads-modal-range-select" aria-label="Campaign range">' +
+              '<option value="page">Same as page</option>' +
+              '<option value="today">Today</option>' +
+              '<option value="yesterday">Yesterday</option>' +
+              '<option value="7d">Last 7 days</option>' +
+              '<option value="14d">Last 14 days</option>' +
+              '<option value="30d">Last 30 days</option>' +
+              '<option value="month">This month</option>' +
+              '<option value="custom">Custom…</option>' +
+            '</select>' +
+            '<input id="ads-modal-range-custom" class="form-control form-control-sm ads-modal-range-custom" placeholder="YYYY-MM-DD to YYYY-MM-DD" style="display:none" />' +
+          '</div>' +
           '<div class="ads-modal-chart-wrap"><canvas id="ads-modal-chart" height="200"></canvas></div>' +
           '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Country performance</h4>' +
           '<div class="text-muted small" id="ads-modal-country-note" style="margin:-4px 0 8px;"></div>' +
           '<div id="ads-modal-countries"></div>' +
-          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Recent Sales</h4>' +
+          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Device performance</h4>' +
+          '<div class="text-muted small" id="ads-modal-device-note" style="margin:-4px 0 8px;"></div>' +
+          '<div id="ads-modal-devices"></div>' +
+          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Day parting</h4>' +
+          '<div class="text-muted small" id="ads-modal-dayparting-note" style="margin:-4px 0 8px;"></div>' +
+          '<div id="ads-modal-dayparting"></div>' +
+          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Recent sales</h4>' +
           '<div id="ads-modal-sales"></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
     overlay.querySelector('.ads-modal-close').addEventListener('click', closeModal);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    bindModalRangeControls();
   }
 
   function ensureChartJs() {
@@ -735,6 +915,10 @@
     var el = document.getElementById('ads-campaign-modal');
     if (el) el.classList.remove('open');
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
+    _modalCampaignId = null;
+    _modalCampaignName = null;
+    _modalCampaignReqId++;
+    resetModalRangeUi();
   }
 
   function ensureErrorsModalDom() {
@@ -971,38 +1155,15 @@
   function openCampaignModal(campaignId, campaignName) {
     ensureModalDom();
     var modal = document.getElementById('ads-campaign-modal');
-    modal.querySelector('.ads-modal-title').textContent = campaignName || campaignId || 'Campaign';
-    document.getElementById('ads-modal-sales').innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
-    var countriesEl = document.getElementById('ads-modal-countries');
-    if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
-    var countryNoteEl = document.getElementById('ads-modal-country-note');
-    if (countryNoteEl) countryNoteEl.textContent = '';
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
-    modal.classList.add('open');
+    _modalCampaignId = campaignId != null ? String(campaignId).trim() : '';
+    _modalCampaignName = campaignName != null ? String(campaignName) : '';
+    if (!_modalCampaignId) return;
 
-    var rangeKey = computeRangeKey();
-    fetchJson('/api/ads/campaign-detail?range=' + encodeURIComponent(rangeKey) + '&campaignId=' + encodeURIComponent(campaignId))
-      .then(function (data) {
-        if (!data || !data.ok) {
-          document.getElementById('ads-modal-sales').innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
-          return;
-        }
-        var currency = data.currency || 'GBP';
-        ensureChartJs().then(function(ok) {
-          // If the modal was closed while loading, skip rendering.
-          try {
-            var m = document.getElementById('ads-campaign-modal');
-            if (!m || !m.classList.contains('open')) return;
-          } catch (_) {}
-          if (!ok) {
-            captureChartMessage('Chart.js failed to load for campaign modal.', 'adsModalChartJsLoad', { chartKey: 'ads-campaign-modal' }, 'error');
-            return;
-          }
-          renderModalChart(data.chart || {}, currency);
-        });
-        renderModalCountries(data.countries || null, currency);
-        renderModalSales(data.recentSales || [], currency);
-      });
+    resetModalRangeUi();
+    modal.querySelector('.ads-modal-title').textContent = _modalCampaignName || _modalCampaignId || 'Campaign';
+    modal.classList.add('open');
+    refreshCampaignModal();
   }
 
   function renderModalChart(chart, currency) {
@@ -1149,6 +1310,167 @@
     el.innerHTML = tableHtml;
   }
 
+  function renderModalDevices(payload, currency) {
+    var el = document.getElementById('ads-modal-devices');
+    if (!el) return;
+    var noteEl = document.getElementById('ads-modal-device-note');
+
+    var data = (payload && typeof payload === 'object') ? payload : null;
+    var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+    var meta = (data && data.meta) ? data.meta : null;
+
+    if (noteEl) {
+      var parts = [];
+      if (meta && meta.visitorDeviceCoverage != null && meta.ordersTotal != null) {
+        var cov = fmtPct(meta.visitorDeviceCoverage, 0);
+        var known = meta.ordersWithVisitorDeviceType != null ? fmtNum(meta.ordersWithVisitorDeviceType) : '—';
+        var total = meta.ordersTotal != null ? fmtNum(meta.ordersTotal) : '—';
+        parts.push('Revenue device coverage: ' + cov + ' (' + known + '/' + total + ' orders)');
+      }
+      noteEl.textContent = parts.join(' • ');
+    }
+
+    if (!data) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No device breakdown available.</div>';
+      return;
+    }
+    if (data.ok === false) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Device breakdown unavailable.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No device breakdown in this period.</div>';
+      return;
+    }
+
+    var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['ads-modal-devices-table']) || {};
+    var tableHtml = typeof buildKexoSettingsTable === 'function'
+      ? buildKexoSettingsTable({
+          tableClass: (def.tableClass || 'ads-modal-devices-table'),
+          columns: (def.columns || []).length ? def.columns : [
+            { header: 'Device', headerClass: '' },
+            { header: 'Clicks', headerClass: 'text-end' },
+            { header: 'Spend', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'CR%', headerClass: 'text-end' },
+            { header: 'Revenue', headerClass: 'text-end' },
+            { header: 'ROAS', headerClass: 'text-end' }
+          ],
+          rows: rows,
+          renderRow: function (r) {
+            var device = r && r.device ? String(r.device).trim() : '';
+            return (
+              '<tr>' +
+                '<td>' + esc(device || '—') + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
+              '</tr>'
+            );
+          }
+        })
+      : (function () {
+          var h = '<table class="ads-modal-devices-table"><thead><tr><th>Device</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i] || {};
+            var device = r.device ? String(r.device).trim() : '';
+            h += '<tr><td>' + esc(device || '—') + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
+          }
+          return h + '</tbody></table>';
+        })();
+
+    el.innerHTML = tableHtml;
+  }
+
+  function renderModalDayParting(payload, currency) {
+    var el = document.getElementById('ads-modal-dayparting');
+    if (!el) return;
+    var noteEl = document.getElementById('ads-modal-dayparting-note');
+
+    var data = (payload && typeof payload === 'object') ? payload : null;
+    var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+    var meta = (data && data.meta) ? data.meta : null;
+
+    if (noteEl) {
+      var parts = [];
+      if (meta && meta.timeZone) parts.push('Timezone: ' + String(meta.timeZone));
+      if (meta && meta.bestHour != null && meta.bestRoas != null) {
+        var hh = String(meta.bestHour).padStart(2, '0') + ':00';
+        parts.push('Best ROAS: ' + hh + ' (' + fmtRoas(meta.bestRoas) + ')');
+      }
+      noteEl.textContent = parts.join(' • ');
+    }
+
+    if (!data) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No day-parting breakdown available.</div>';
+      return;
+    }
+    if (data.ok === false) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Day-parting breakdown unavailable.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No day-parting data in this period.</div>';
+      return;
+    }
+
+    var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['ads-modal-dayparting-table']) || {};
+    var tableHtml = typeof buildKexoSettingsTable === 'function'
+      ? buildKexoSettingsTable({
+          tableClass: (def.tableClass || 'ads-modal-dayparting-table'),
+          columns: (def.columns || []).length ? def.columns : [
+            { header: 'Hour', headerClass: '' },
+            { header: 'Clicks', headerClass: 'text-end' },
+            { header: 'Spend', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'CR%', headerClass: 'text-end' },
+            { header: 'Revenue', headerClass: 'text-end' },
+            { header: 'ROAS', headerClass: 'text-end' }
+          ],
+          rows: rows,
+          renderRow: function (r) {
+            var label = r && r.label != null ? String(r.label) : (r && r.hour != null ? (String(r.hour).padStart(2, '0') + ':00') : '');
+            return (
+              '<tr>' +
+                '<td>' + esc(label || '—') + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
+              '</tr>'
+            );
+          }
+        })
+      : (function () {
+          var h = '<table class="ads-modal-dayparting-table"><thead><tr><th>Hour</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i] || {};
+            var label = r.label != null ? String(r.label) : (r.hour != null ? (String(r.hour).padStart(2, '0') + ':00') : '');
+            h += '<tr><td>' + esc(label || '—') + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
+          }
+          return h + '</tbody></table>';
+        })();
+
+    el.innerHTML = tableHtml;
+  }
+
   function renderModalSales(sales, currency) {
     var el = document.getElementById('ads-modal-sales');
     if (!el) return;
@@ -1201,13 +1523,19 @@
       '.ads-modal-close{border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted,#555);padding:0 4px;line-height:1;}' +
       '.ads-modal-close:hover{color:var(--text,#333);}' +
       '.ads-modal-body{padding:18px;}' +
+      '.ads-modal-range-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;}' +
+      '.ads-modal-range-label{font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#555);}' +
+      '.ads-modal-range-select{min-width:170px;max-width:240px;}' +
+      '.ads-modal-range-custom{min-width:210px;max-width:260px;}' +
       '.ads-modal-chart-wrap{position:relative;height:220px;margin-bottom:8px;}' +
-      '.ads-modal-sales-table,.ads-modal-countries-table{width:100%;border-collapse:collapse;font-size:12px;}' +
-      '.ads-modal-sales-table th,.ads-modal-countries-table th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#555);border-bottom:1px solid var(--border,#e5e5e5);background:var(--th-bg,#f8f8f8);}' +
-      '.ads-modal-sales-table td,.ads-modal-countries-table td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
-      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td{border-bottom:none;}' +
+      '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-dayparting-table{width:100%;border-collapse:collapse;font-size:12px;}' +
+      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-dayparting-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
+      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-dayparting-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
+      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td{border-bottom:none;}' +
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
       '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:right;}' +
+      '.ads-modal-devices-table th:not(:first-child),.ads-modal-devices-table td:not(:first-child){text-align:right;}' +
+      '.ads-modal-dayparting-table th:not(:first-child),.ads-modal-dayparting-table td:not(:first-child){text-align:right;}' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +

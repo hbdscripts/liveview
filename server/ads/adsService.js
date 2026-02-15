@@ -675,6 +675,221 @@ async function getCampaignDetail(options = {}) {
     countries = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'countries_failed', rows: [], meta: { locationType: 'LOCATION_OF_PRESENCE', startYmd, endYmd } };
   }
 
+  // Device performance: Google Ads clicks/spend by segments.device + KEXO-attributed orders/revenue by visitor_device_type.
+  let devices = { ok: true, rows: [], meta: { startYmd, endYmd, ordersTotal: 0, ordersWithVisitorDeviceType: 0, visitorDeviceCoverage: null } };
+  try {
+    function normalizeDeviceKey(raw) {
+      const v = raw != null ? String(raw).trim().toUpperCase() : '';
+      if (!v) return 'other';
+      if (v === 'DESKTOP') return 'desktop';
+      if (v === 'MOBILE') return 'mobile';
+      if (v === 'TABLET') return 'tablet';
+      return 'other';
+    }
+    function normalizeVisitorDeviceKey(raw) {
+      const v = raw != null ? String(raw).trim().toLowerCase() : '';
+      if (v === 'desktop' || v === 'mobile' || v === 'tablet') return v;
+      return 'other';
+    }
+    function labelFor(key) {
+      if (key === 'desktop') return 'Desktop';
+      if (key === 'mobile') return 'Mobile';
+      if (key === 'tablet') return 'Tablet';
+      return 'Other';
+    }
+
+    const byDevice = new Map();
+    function ensure(key) {
+      const k = key || 'other';
+      if (!byDevice.has(k)) {
+        byDevice.set(k, { deviceKey: k, clicks: 0, impressions: 0, spend: 0, orders: 0, revenue: 0, cr: null, roas: null });
+      }
+      return byDevice.get(k);
+    }
+
+    // Google Ads clicks/spend by device (segments.device)
+    let devRows = [];
+    if (startYmd && endYmd) {
+      devRows = await adsDb.all(
+        `
+          SELECT
+            COALESCE(NULLIF(TRIM(device), ''), '_unknown_') AS device,
+            COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+            COALESCE(SUM(clicks), 0) AS clicks,
+            COALESCE(SUM(impressions), 0) AS impressions
+          FROM google_ads_device_daily
+          WHERE provider = ?
+            AND campaign_id = ?
+            AND day_ymd >= ? AND day_ymd <= ?
+          GROUP BY COALESCE(NULLIF(TRIM(device), ''), '_unknown_')
+        `,
+        ['google_ads', campaignId, startYmd, endYmd]
+      );
+    }
+    for (const r of devRows || []) {
+      const key = normalizeDeviceKey(r && r.device != null ? r.device : null);
+      const it = ensure(key);
+      it.spend += r && r.spend_gbp != null ? Number(r.spend_gbp) || 0 : 0;
+      it.clicks += r && r.clicks != null ? Number(r.clicks) || 0 : 0;
+      it.impressions += r && r.impressions != null ? Number(r.impressions) || 0 : 0;
+    }
+
+    // Revenue/orders by visitor device type (from linked sessions)
+    const revRows = await adsDb.all(
+      `
+        SELECT
+          COALESCE(NULLIF(TRIM(visitor_device_type), ''), '_unknown_') AS device,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?
+          AND source = ?
+          AND campaign_id = ?
+        GROUP BY COALESCE(NULLIF(TRIM(visitor_device_type), ''), '_unknown_')
+      `,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+    let ordersTotal = 0;
+    let ordersWithVisitorDeviceType = 0;
+    for (const r of revRows || []) {
+      const raw = r && r.device != null ? String(r.device).trim().toLowerCase() : '';
+      const key = normalizeVisitorDeviceKey(raw);
+      const it = ensure(key);
+      const ord = r && r.orders != null ? Number(r.orders) || 0 : 0;
+      const rev = r && r.revenue_gbp != null ? Number(r.revenue_gbp) || 0 : 0;
+      it.orders += ord;
+      it.revenue += rev;
+      ordersTotal += ord;
+      if (raw && raw !== '_unknown_') ordersWithVisitorDeviceType += ord;
+    }
+
+    const rows = Array.from(byDevice.values()).map((it) => {
+      const clicks = Number(it.clicks) || 0;
+      const spend = Number(it.spend) || 0;
+      const orders = Number(it.orders) || 0;
+      const revenue = Number(it.revenue) || 0;
+      const cr = clicks > 0 ? (orders / clicks) : null;
+      const roas = spend > 0 ? (revenue / spend) : null;
+      return {
+        device: labelFor(it.deviceKey),
+        deviceKey: it.deviceKey,
+        clicks: Math.floor(clicks),
+        impressions: Math.floor(Number(it.impressions) || 0),
+        spend: Math.round(spend * 100) / 100,
+        orders: Math.floor(orders),
+        revenue: Math.round(revenue * 100) / 100,
+        cr,
+        roas,
+      };
+    });
+    rows.sort((a, b) => (b.revenue || 0) - (a.revenue || 0) || (b.spend || 0) - (a.spend || 0) || (b.clicks || 0) - (a.clicks || 0));
+
+    devices = {
+      ok: true,
+      rows,
+      meta: {
+        startYmd,
+        endYmd,
+        ordersTotal: Math.floor(ordersTotal || 0),
+        ordersWithVisitorDeviceType: Math.floor(ordersWithVisitorDeviceType || 0),
+        visitorDeviceCoverage: ordersTotal > 0 ? (ordersWithVisitorDeviceType / ordersTotal) : null,
+      },
+    };
+  } catch (e) {
+    devices = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'devices_failed', rows: [], meta: { startYmd, endYmd } };
+  }
+
+  // Day parting: group by hour-of-day in admin/store timezone.
+  let dayParting = { ok: true, rows: [], meta: { timeZone, bestHour: null, bestRoas: null } };
+  try {
+    const spendRows = await adsDb.all(
+      `
+        SELECT
+          EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?))::int AS hour,
+          COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+          COALESCE(SUM(clicks), 0) AS clicks,
+          COALESCE(SUM(impressions), 0) AS impressions
+        FROM google_ads_spend_hourly
+        WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+          AND campaign_id = ?
+        GROUP BY EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?))
+        ORDER BY hour ASC
+      `,
+      [timeZone, bounds.start, bounds.end, campaignId, timeZone]
+    );
+    const revRows = await adsDb.all(
+      `
+        SELECT
+          EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?))::int AS hour,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?
+          AND source = ?
+          AND campaign_id = ?
+        GROUP BY EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?))
+        ORDER BY hour ASC
+      `,
+      [timeZone, bounds.start, bounds.end, source, campaignId, timeZone]
+    );
+
+    const byHour = new Map();
+    for (let h = 0; h < 24; h++) {
+      byHour.set(h, { hour: h, clicks: 0, impressions: 0, spend: 0, orders: 0, revenue: 0, cr: null, roas: null });
+    }
+    for (const r of spendRows || []) {
+      const h = r && r.hour != null ? Number(r.hour) : null;
+      if (h == null || !Number.isFinite(h) || h < 0 || h > 23) continue;
+      const it = byHour.get(h);
+      it.spend += r && r.spend_gbp != null ? Number(r.spend_gbp) || 0 : 0;
+      it.clicks += r && r.clicks != null ? Number(r.clicks) || 0 : 0;
+      it.impressions += r && r.impressions != null ? Number(r.impressions) || 0 : 0;
+    }
+    for (const r of revRows || []) {
+      const h = r && r.hour != null ? Number(r.hour) : null;
+      if (h == null || !Number.isFinite(h) || h < 0 || h > 23) continue;
+      const it = byHour.get(h);
+      it.revenue += r && r.revenue_gbp != null ? Number(r.revenue_gbp) || 0 : 0;
+      it.orders += r && r.orders != null ? Number(r.orders) || 0 : 0;
+    }
+
+    let bestHour = null;
+    let bestRoas = null;
+    const rows = Array.from(byHour.values()).map((it) => {
+      const clicks = Number(it.clicks) || 0;
+      const spend = Number(it.spend) || 0;
+      const orders = Number(it.orders) || 0;
+      const revenue = Number(it.revenue) || 0;
+      const cr = clicks > 0 ? (orders / clicks) : null;
+      const roas = spend > 0 ? (revenue / spend) : null;
+      if (roas != null) {
+        if (bestRoas == null || roas > bestRoas) {
+          bestRoas = roas;
+          bestHour = it.hour;
+        }
+      }
+      return {
+        hour: it.hour,
+        label: String(it.hour).padStart(2, '0') + ':00',
+        clicks: Math.floor(clicks),
+        impressions: Math.floor(Number(it.impressions) || 0),
+        spend: Math.round(spend * 100) / 100,
+        orders: Math.floor(orders),
+        revenue: Math.round(revenue * 100) / 100,
+        cr,
+        roas,
+      };
+    });
+
+    dayParting = {
+      ok: true,
+      rows,
+      meta: { timeZone, bestHour, bestRoas },
+    };
+  } catch (e) {
+    dayParting = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'day_parting_failed', rows: [], meta: { timeZone } };
+  }
+
   return {
     ok: true,
     campaignId,
@@ -682,6 +897,8 @@ async function getCampaignDetail(options = {}) {
     currency,
     chart,
     countries,
+    devices,
+    dayParting,
     recentSales: recentSales.slice(0, 10),
   };
 }

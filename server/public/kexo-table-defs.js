@@ -434,6 +434,30 @@
         { header: 'Revenue', headerClass: 'text-end' },
         { header: 'ROAS', headerClass: 'text-end' }
       ]
+    },
+    'ads-modal-devices-table': {
+      tableClass: 'ads-modal-devices-table',
+      columns: [
+        { header: 'Device', headerClass: '' },
+        { header: 'Clicks', headerClass: 'text-end' },
+        { header: 'Spend', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: 'text-end' },
+        { header: 'Revenue', headerClass: 'text-end' },
+        { header: 'ROAS', headerClass: 'text-end' }
+      ]
+    },
+    'ads-modal-dayparting-table': {
+      tableClass: 'ads-modal-dayparting-table',
+      columns: [
+        { header: 'Hour', headerClass: '' },
+        { header: 'Clicks', headerClass: 'text-end' },
+        { header: 'Spend', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: 'text-end' },
+        { header: 'Revenue', headerClass: 'text-end' },
+        { header: 'ROAS', headerClass: 'text-end' }
+      ]
     }
   };
 
