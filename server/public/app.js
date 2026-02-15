@@ -15309,7 +15309,7 @@ const API = '';
           const nav = document.querySelector('.kexo-desktop-nav');
           if (!nav) return;
           const rect = nav.getBoundingClientRect();
-          document.documentElement.style.setProperty('--kexo-mobile-nav-dropdown-top', (rect.bottom - 3) + 'px');
+          document.documentElement.style.setProperty('--kexo-mobile-nav-dropdown-top', (rect.bottom - 4) + 'px');
         }
 
         function closeOpenNavDropdowns() {
