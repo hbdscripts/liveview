@@ -744,7 +744,7 @@ const API = '';
     const KPI_REFRESH_MS = 120000; // 2 min: reduce repeated KPI queries during fast nav
     const KPI_CACHE_TTL_MS = KPI_REFRESH_MS;
     const KPI_CACHE_STALE_OK_MS = 30 * 60 * 1000; // paint stale values while revalidating
-    const KPI_EXTRAS_CACHE_TTL_MS = 10 * 60 * 1000;
+    const KPI_EXTRAS_CACHE_TTL_MS = 30 * 60 * 1000;
     const KPI_EXTRAS_CACHE_STALE_OK_MS = 60 * 60 * 1000;
     const KPI_CACHE_LS_KEY = 'kexo-kpis-cache-v1';
     const KPI_EXTRAS_CACHE_LS_KEY = 'kexo-kpis-expanded-extra-cache-v1';
@@ -9784,7 +9784,8 @@ const API = '';
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
       kpiExpandedExtrasRange = rangeKey;
-      kpiExpandedExtrasInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
+      // Extras KPIs can be expensive (Shopify updated-orders scan); allow longer to avoid aborting on cold cache.
+      kpiExpandedExtrasInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 60000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(extras) {
           kpiExpandedExtrasCache = extras || null;

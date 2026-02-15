@@ -4,8 +4,8 @@
  * Extra KPIs that are only needed when the expanded KPI grid is shown.
  *
  * - itemsSold: from orders_shopify_line_items (DB) for reliable historical data
- * - ordersFulfilled, returns: from Shopify Orders API
- * - cogs: from Shopify Orders API + variant costs
+ * - ordersFulfilled, returns: from Shopify Orders API (orders updated in range)
+ * - cogs: from local line items + cached variant costs (independent of the Shopify updated-orders scan)
  */
 const { getDb } = require('../db');
 const config = require('../config');
@@ -221,7 +221,8 @@ function ordersUpdatedApiUrl(shop, updatedMinIso, updatedMaxIso) {
   params.set('updated_at_min', updatedMinIso);
   params.set('updated_at_max', updatedMaxIso);
   // Pull only what we need (still includes nested data under these keys).
-  params.set('fields', 'id,created_at,cancelled_at,test,line_items,fulfillments,refunds,currency');
+  // NOTE: Items ordered is DB-derived; avoid fetching `line_items` (huge payload) here.
+  params.set('fields', 'id,cancelled_at,test,fulfillments,refunds');
   return `https://${shop}/admin/api/${SHOPIFY_API_VERSION}/orders.json?` + params.toString();
 }
 
@@ -250,7 +251,7 @@ function sumRefundAmount(refund) {
   return total;
 }
 
-async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, endMs) {
+async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   if (!safeShop) return { ok: false, error: 'missing_shop' };
   if (!accessToken) return { ok: false, error: 'missing_token' };
@@ -263,7 +264,6 @@ async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, e
 
   let nextUrl = ordersUpdatedApiUrl(safeShop, updatedMinIso, updatedMaxIso);
   let fetched = 0;
-  let itemsSold = 0;
   let returnsAmount = 0;
   const fulfilledOrderIds = new Set();
 
@@ -283,13 +283,9 @@ async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, e
       const isTest = !!(order && (order.test === true || order.test === 1));
       if (isTest) continue;
 
-      // Items ordered: sum line-item quantities for orders CREATED within the selected range.
-      const createdMs = parseMs(order && order.created_at);
       const cancelledAt = order && order.cancelled_at != null ? String(order.cancelled_at).trim() : '';
       const isCancelled = !!cancelledAt;
-      if (!isCancelled && createdMs != null && createdMs >= start && createdMs < end) {
-        itemsSold += sumLineItemQuantity(order && order.line_items);
-      }
+      if (isCancelled) continue;
 
       // Orders fulfilled: count DISTINCT orders that had a fulfillment created in the selected range.
       const fulfills = Array.isArray(order && order.fulfillments) ? order.fulfillments : [];
@@ -314,21 +310,16 @@ async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, e
     nextUrl = parseNextPageUrl(res.headers.get('link'));
   }
 
-  if (!Number.isFinite(itemsSold)) itemsSold = 0;
   if (!Number.isFinite(returnsAmount)) returnsAmount = 0;
 
   // Shopify UI shows Returns as negative currency; return positive amount so the UI can render "-£X".
   const returns = Math.round(Math.abs(returnsAmount) * 100) / 100;
 
-  const cogs = await computeCogsFromLineItems(db, safeShop, accessToken, start, end);
-
   return {
     ok: true,
     fetched,
-    itemsSold: Math.trunc(itemsSold),
     ordersFulfilled: fulfilledOrderIds.size,
     returns,
-    cogs: (typeof cogs === 'number' && Number.isFinite(cogs)) ? cogs : null,
   };
 }
 
@@ -367,17 +358,24 @@ async function computeExpandedExtras(bounds, shop, accessToken) {
   }
 
   const db = getDb();
-  const itemsSold = shop ? await getItemsSoldFromDb(db, shop, start, end) : null;
-
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const itemsSold = safeShop ? await getItemsSoldFromDb(db, safeShop, start, end) : null;
+  // Compute COGS independently so it can still populate even if the Shopify updated-orders scan is slow/fails.
+  let cogs = null;
   try {
-    const r = await fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, start, end);
+    const v = safeShop ? await computeCogsFromLineItems(db, safeShop, accessToken, start, end) : null;
+    cogs = (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+  } catch (_) {
+    cogs = null;
+  }
+
+  let ordersFulfilled = null;
+  let returns = null;
+  try {
+    const r = await fetchExtrasFromShopifyOrdersApi(safeShop, accessToken, start, end);
     if (r && r.ok) {
-      return {
-        itemsSold: typeof itemsSold === 'number' ? itemsSold : (typeof r.itemsSold === 'number' ? r.itemsSold : null),
-        ordersFulfilled: typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null,
-        returns: typeof r.returns === 'number' ? r.returns : null,
-        cogs: typeof r.cogs === 'number' ? r.cogs : null,
-      };
+      ordersFulfilled = typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null;
+      returns = typeof r.returns === 'number' ? r.returns : null;
     }
   } catch (err) {
     console.warn('[kpisExpandedExtra] Shopify fetch failed:', err && err.message ? String(err.message) : 'error');
@@ -385,15 +383,15 @@ async function computeExpandedExtras(bounds, shop, accessToken) {
 
   return {
     itemsSold: typeof itemsSold === 'number' ? itemsSold : null,
-    ordersFulfilled: null,
-    returns: null,
-    cogs: null,
+    ordersFulfilled,
+    returns,
+    cogs,
   };
 }
 
 async function getKpisExpandedExtra(req, res) {
   // Not polled frequently; OK to keep cached longer.
-  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.setHeader('Cache-Control', 'private, max-age=1800');
   res.setHeader('Vary', 'Cookie');
 
   const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '');
@@ -422,7 +420,7 @@ async function getKpisExpandedExtra(req, res) {
         rangeStartTs: bounds.start,
         rangeEndTs: bounds.end,
         params: { rangeKey, timeZone, shop: shop || '' },
-        ttlMs: 10 * 60 * 1000,
+        ttlMs: 30 * 60 * 1000,
         force,
       },
       async () => {

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Devices icons + Sources v2 rollout)
+Last updated: 2026-02-15 (Dashboard extras KPIs: cache + reliability)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -308,6 +308,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Dashboard extras KPIs performance:
+  - `/api/kpis-expanded-extra` (COGS/Fulfilled/Returns/Items) is cached for 30 minutes (server + client) to reduce slow/empty KPI cards.
+  - Shopify updated-orders scan no longer fetches `line_items` (items ordered is DB-derived), reducing payload and improving reliability.
+  - COGS is computed independently of the Shopify updated-orders scan, so it can populate even when Fulfilled/Returns are slow/limited.
 
 2026-02-15 (latest)
 - Devices icons + Sources v2 groundwork:
