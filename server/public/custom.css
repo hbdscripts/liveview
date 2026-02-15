@@ -4333,6 +4333,7 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 }
 .source-icons img {
   width: 16px;
+  margin: 0 2px;
 }
 .source-icons .source-icon-svg svg {
   width: 20px;
