@@ -1389,6 +1389,7 @@
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="header" aria-selected="false">Header</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="color" aria-selected="false">Color</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="fonts" aria-selected="false">Fonts</button></li>' +
+        '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="sale-notification" aria-selected="false">Sale Notification</button></li>' +
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
@@ -1471,6 +1472,38 @@
             radioCard('theme-font', 'comic', 'Comic') +
           '</div>' +
         '</div>' +
+      '</div>' +
+
+      '<div class="theme-subpanel" data-theme-subpanel="sale-notification" hidden>' +
+        '<div class="text-secondary mb-3">Choose the sound played when a new sale is detected. Use a preset or upload your own MP3.</div>' +
+        '<form id="settings-sale-notification-form">' +
+          '<div class="mb-3">' +
+            '<label class="form-label" for="settings-sale-sound-preset">Sound preset</label>' +
+            '<select class="form-select" id="settings-sale-sound-preset">' +
+              '<option value="kexo1">Kexo 1</option>' +
+              '<option value="kexo2">Kexo 2</option>' +
+              '<option value="kexo3">Kexo 3</option>' +
+              '<option value="kexo4">Kexo 4</option>' +
+              '<option value="custom">Custom URL or upload</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="mb-3" id="settings-sale-sound-custom-wrap" style="display:none">' +
+            '<label class="form-label" for="settings-asset-sale-sound">Custom sound URL</label>' +
+            '<input type="url" class="form-control" id="settings-asset-sale-sound" placeholder="https://… or upload below" />' +
+            '<div class="input-group mt-2">' +
+              '<input type="file" class="form-control" id="settings-upload-sale-sound" accept="audio/mpeg,audio/mp3" />' +
+              '<button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="sale_sound" data-kexo-file="settings-upload-sale-sound" data-kexo-url="settings-asset-sale-sound">Upload</button>' +
+            '</div>' +
+            '<div class="form-hint">MP3 only. Max 2MB.</div>' +
+          '</div>' +
+          '<div class="mb-3">' +
+            '<button type="button" class="btn btn-outline-secondary" id="settings-sale-sound-preview">Preview</button>' +
+          '</div>' +
+          '<div class="mt-3">' +
+            '<button type="submit" class="btn btn-primary">Save</button>' +
+            '<span id="settings-sale-notification-msg" class="form-hint ms-2"></span>' +
+          '</div>' +
+        '</form>' +
       '</div>' +
     '</form>' +
     buildIconEditModalHtml() +
@@ -1828,6 +1861,7 @@
     });
 
     wireThemeSubTabs(root);
+    wireSaleNotificationPanel();
     syncUI();
     hydrateDetectedDevicesIconGroup(root);
   }
@@ -1960,8 +1994,111 @@
           try { stored = String(localStorage.getItem('theme-header-logo-url') || '').trim(); } catch (_) { stored = ''; }
           if (!stored) applyHeaderLogoOverride(legacyHeaderLogo);
         }
+        try { populateSaleNotificationPanel(overrides); } catch (_) {}
       })
       .catch(function () {});
+  }
+
+  var SALE_SOUND_PRESETS = {
+    kexo1: '/assets/ui-alert/1.mp3',
+    kexo2: '/assets/ui-alert/2.wav',
+    kexo3: '/assets/ui-alert/3.wav',
+    kexo4: '/assets/ui-alert/4.mp3',
+  };
+
+  function populateSaleNotificationPanel(overrides) {
+    var url = ((overrides && overrides.saleSound) || (overrides && overrides.sale_sound) || '').trim();
+    var presetSel = document.getElementById('settings-sale-sound-preset');
+    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
+    var urlInput = document.getElementById('settings-asset-sale-sound');
+    if (!presetSel) return;
+    var presetKeys = Object.keys(SALE_SOUND_PRESETS);
+    var matched = '';
+    if (url) {
+      for (var i = 0; i < presetKeys.length; i++) {
+        if (SALE_SOUND_PRESETS[presetKeys[i]] === url) {
+          matched = presetKeys[i];
+          break;
+        }
+      }
+      if (!matched) {
+        matched = 'custom';
+        if (urlInput) urlInput.value = url;
+      }
+    } else {
+      matched = 'kexo1';
+    }
+    presetSel.value = matched;
+    if (customWrap) customWrap.style.display = matched === 'custom' ? 'block' : 'none';
+  }
+
+  function wireSaleNotificationPanel() {
+    var form = document.getElementById('settings-sale-notification-form');
+    if (!form) return;
+
+    function setSaleMsg(text, ok) {
+      var el = document.getElementById('settings-sale-notification-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      if (ok === true) el.className = 'form-hint ms-2 text-success';
+      else if (ok === false) el.className = 'form-hint ms-2 text-danger';
+      else el.className = 'form-hint ms-2 text-secondary';
+    }
+
+    function getEffectiveSaleSoundUrl() {
+      var preset = (document.getElementById('settings-sale-sound-preset') || {}).value || 'kexo1';
+      if (preset !== 'custom') return SALE_SOUND_PRESETS[preset] || SALE_SOUND_PRESETS.kexo1;
+      var raw = (document.getElementById('settings-asset-sale-sound') || {}).value || '';
+      return raw.trim() || '';
+    }
+
+    var presetSel = document.getElementById('settings-sale-sound-preset');
+    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
+    if (presetSel) {
+      presetSel.addEventListener('change', function () {
+        var v = (this.value || '').trim();
+        if (customWrap) customWrap.style.display = v === 'custom' ? 'block' : 'none';
+      });
+    }
+
+    var previewBtn = document.getElementById('settings-sale-sound-preview');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', function () {
+        var url = getEffectiveSaleSoundUrl();
+        if (!url) return;
+        try {
+          var a = new Audio(url);
+          a.play().catch(function () {});
+        } catch (_) {}
+      });
+    }
+
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var url = getEffectiveSaleSoundUrl();
+      setSaleMsg('Saving…', null);
+      fetch(base + '/api/settings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetOverrides: { saleSound: url || '' } }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (!r || !r.ok) {
+            setSaleMsg((r && r.error) ? r.error : 'Save failed', false);
+            return;
+          }
+          setSaleMsg('Saved.', true);
+          try { window.__kexoSaleSoundOverrideUrl = url || ''; } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: url } })); } catch (_) {}
+        })
+        .catch(function () {
+          setSaleMsg('Save failed', false);
+        });
+    });
   }
 
   // Init
@@ -1971,13 +2108,13 @@
     document.addEventListener('DOMContentLoaded', function () {
       bindThemeButtons();
       fetchDefaults();
-      fetchAssetOverridesAndApply();
       if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
+      fetchAssetOverridesAndApply();
     });
   } else {
     bindThemeButtons();
     fetchDefaults();
-    fetchAssetOverridesAndApply();
     if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
+    fetchAssetOverridesAndApply();
   }
 })();

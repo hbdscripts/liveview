@@ -73,7 +73,6 @@
     general: 'settings-panel-general',
     theme: 'settings-panel-theme',
     assets: 'settings-panel-assets',
-    'sale-notification': 'settings-panel-sale-notification',
     integrations: 'settings-panel-integrations',
     sources: 'settings-panel-sources',
     insights: 'settings-panel-insights',
@@ -602,7 +601,6 @@
         document.querySelectorAll('#settings-asset-logo').forEach(function (el) {
           el.value = overrides.logo || '';
         });
-        try { populateSaleNotificationPanel(overrides || {}); } catch (_) {}
         try { loadThemeDefaultsAndPopulateAssets(overrides || {}); } catch (_) {}
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
@@ -860,45 +858,46 @@
     }
 
     function wireUploadButtons() {
-      document.querySelectorAll('[data-kexo-asset-upload="1"]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var slot = btn.getAttribute('data-kexo-slot') || '';
-          var fileId = btn.getAttribute('data-kexo-file') || '';
-          var urlId = btn.getAttribute('data-kexo-url') || '';
-          var fileEl = fileId ? document.getElementById(fileId) : null;
-          var urlEl = urlId ? document.getElementById(urlId) : null;
-          var file = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
-          if (!slot) { setMsgForSlot(slot, 'Missing upload slot', false); return; }
-          if (!file) { setMsgForSlot(slot, 'Choose a file first', false); return; }
+      document.body.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-kexo-asset-upload="1"]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        var slot = btn.getAttribute('data-kexo-slot') || '';
+        var fileId = btn.getAttribute('data-kexo-file') || '';
+        var urlId = btn.getAttribute('data-kexo-url') || '';
+        var fileEl = fileId ? document.getElementById(fileId) : null;
+        var urlEl = urlId ? document.getElementById(urlId) : null;
+        var file = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
+        if (!slot) { setMsgForSlot(slot, 'Missing upload slot', false); return; }
+        if (!file) { setMsgForSlot(slot, 'Choose a file first', false); return; }
 
-          setMsgForSlot(slot, 'Uploading…', null);
-          try { btn.disabled = true; } catch (_) {}
+        setMsgForSlot(slot, 'Uploading…', null);
+        try { btn.disabled = true; } catch (_) {}
 
-          var fd = new FormData();
-          fd.append('file', file);
-          fd.append('slot', slot);
-          fetch(API + '/api/assets/upload?slot=' + encodeURIComponent(slot), {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: fd,
+        var fd = new FormData();
+        fd.append('file', file);
+        fd.append('slot', slot);
+        fetch(API + '/api/assets/upload?slot=' + encodeURIComponent(slot), {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: fd,
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) {
+              throw new Error((data && data.error) ? String(data.error) : 'Upload failed');
+            }
+            var url = data.url || '';
+            if (urlEl) urlEl.value = url;
+            try { if (fileEl) fileEl.value = ''; } catch (_) {}
+            persistSlot(slot, url);
           })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-              if (!data || !data.ok) {
-                throw new Error((data && data.error) ? String(data.error) : 'Upload failed');
-              }
-              var url = data.url || '';
-              if (urlEl) urlEl.value = url;
-              try { if (fileEl) fileEl.value = ''; } catch (_) {}
-              persistSlot(slot, url);
-            })
-            .catch(function (err) {
-              setMsgForSlot(slot, err && err.message ? String(err.message) : 'Upload failed', false);
-            })
-            .finally(function () {
-              try { btn.disabled = false; } catch (_) {}
-            });
-        });
+          .catch(function (err) {
+            setMsgForSlot(slot, err && err.message ? String(err.message) : 'Upload failed', false);
+          })
+          .finally(function () {
+            try { btn.disabled = false; } catch (_) {}
+          });
       });
     }
 
@@ -943,99 +942,6 @@
         })
         .catch(function () {
           setMsg('Save failed', false);
-        });
-    });
-  }
-
-  var SALE_SOUND_PRESETS = {
-    'cash-register': '/assets/ui-alert/1.mp3',
-    'bell': '/assets/ui-alert/2.wav',
-    'chime': '/assets/ui-alert/3.wav',
-    'success': '/assets/ui-alert/4.mp3',
-  };
-
-  function populateSaleNotificationPanel(overrides) {
-    var url = (overrides.saleSound || overrides.sale_sound || '').trim();
-    var presetSel = document.getElementById('settings-sale-sound-preset');
-    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
-    var urlInput = document.getElementById('settings-asset-sale-sound');
-    if (!presetSel) return;
-    var presetKeys = Object.keys(SALE_SOUND_PRESETS);
-    var matched = '';
-    if (url) {
-      for (var i = 0; i < presetKeys.length; i++) {
-        if (SALE_SOUND_PRESETS[presetKeys[i]] === url) {
-          matched = presetKeys[i];
-          break;
-        }
-      }
-      if (!matched) {
-        matched = 'custom';
-        if (urlInput) urlInput.value = url;
-      }
-    } else {
-      matched = 'cash-register';
-    }
-    presetSel.value = matched;
-    if (customWrap) customWrap.style.display = matched === 'custom' ? 'block' : 'none';
-  }
-
-  function wireSaleNotificationPanel() {
-    var form = document.getElementById('settings-sale-notification-form');
-    if (!form) return;
-
-    function setSaleMsg(text, ok) {
-      var el = document.getElementById('settings-sale-notification-msg');
-      if (!el) return;
-      el.textContent = text || '';
-      if (ok === true) el.className = 'form-hint ms-2 text-success';
-      else if (ok === false) el.className = 'form-hint ms-2 text-danger';
-      else el.className = 'form-hint ms-2 text-secondary';
-    }
-
-    function getEffectiveSaleSoundUrl() {
-      var preset = (document.getElementById('settings-sale-sound-preset') || {}).value || 'cash-register';
-      if (preset !== 'custom') return SALE_SOUND_PRESETS[preset] || SALE_SOUND_PRESETS['cash-register'];
-      var raw = (document.getElementById('settings-asset-sale-sound') || {}).value || '';
-      return raw.trim() || '';
-    }
-
-    var presetSel = document.getElementById('settings-sale-sound-preset');
-    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
-    if (presetSel) {
-      presetSel.addEventListener('change', function () {
-        var v = (this.value || '').trim();
-        if (customWrap) customWrap.style.display = v === 'custom' ? 'block' : 'none';
-      });
-    }
-
-    var previewBtn = document.getElementById('settings-sale-sound-preview');
-    if (previewBtn) {
-      previewBtn.addEventListener('click', function () {
-        var url = getEffectiveSaleSoundUrl();
-        if (!url) return;
-        try {
-          var a = new Audio(url);
-          a.play().catch(function () {});
-        } catch (_) {}
-      });
-    }
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var url = getEffectiveSaleSoundUrl();
-      setSaleMsg('Saving…', null);
-      saveSettings({ assetOverrides: { saleSound: url || '' } })
-        .then(function (r) {
-          if (!r || !r.ok) {
-            setSaleMsg((r && r.error) ? r.error : 'Save failed', false);
-            return;
-          }
-          setSaleMsg('Saved.', true);
-          try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: url } })); } catch (_) {}
-        })
-        .catch(function () {
-          setSaleMsg('Save failed', false);
         });
     });
   }
@@ -4015,7 +3921,6 @@
 
     wirePlanBasedBrandingLocks();
     wireAssets();
-    wireSaleNotificationPanel();
     wireIntegrationsSubTabs();
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
