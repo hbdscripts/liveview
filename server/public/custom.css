@@ -1085,38 +1085,35 @@ body[data-page="dashboard"] .table-responsive table {
   table-layout: fixed;
 }
 
-/* Dashboard 3-col tables: prevent `w-1` columns collapsing too far */
+/* Dashboard tables: equal width for data cols after sticky (Revenue, Orders, CR%) */
 body[data-page="dashboard"] #dash-top-products thead th:nth-child(2),
 body[data-page="dashboard"] #dash-top-products thead th:nth-child(3),
+body[data-page="dashboard"] #dash-top-products thead th:nth-child(4),
 body[data-page="dashboard"] #dash-top-products tbody td:nth-child(2),
 body[data-page="dashboard"] #dash-top-products tbody td:nth-child(3),
+body[data-page="dashboard"] #dash-top-products tbody td:nth-child(4),
 body[data-page="dashboard"] #dash-top-countries thead th:nth-child(2),
 body[data-page="dashboard"] #dash-top-countries thead th:nth-child(3),
+body[data-page="dashboard"] #dash-top-countries thead th:nth-child(4),
 body[data-page="dashboard"] #dash-top-countries tbody td:nth-child(2),
 body[data-page="dashboard"] #dash-top-countries tbody td:nth-child(3),
+body[data-page="dashboard"] #dash-top-countries tbody td:nth-child(4),
 body[data-page="dashboard"] #dash-trending-up thead th:nth-child(2),
 body[data-page="dashboard"] #dash-trending-up thead th:nth-child(3),
+body[data-page="dashboard"] #dash-trending-up thead th:nth-child(4),
 body[data-page="dashboard"] #dash-trending-up tbody td:nth-child(2),
 body[data-page="dashboard"] #dash-trending-up tbody td:nth-child(3),
+body[data-page="dashboard"] #dash-trending-up tbody td:nth-child(4),
 body[data-page="dashboard"] #dash-trending-down thead th:nth-child(2),
 body[data-page="dashboard"] #dash-trending-down thead th:nth-child(3),
+body[data-page="dashboard"] #dash-trending-down thead th:nth-child(4),
 body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(2),
-body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3) {
+body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(3),
+body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(4) {
   width: 124px !important;
   min-width: 124px !important;
   max-width: 124px !important;
   text-align: center !important;
-}
-/* Dashboard 4-col tables: prevent CR% (col 4) from overflowing */
-body[data-page="dashboard"] #dash-top-products thead th:nth-child(4),
-body[data-page="dashboard"] #dash-top-products tbody td:nth-child(4),
-body[data-page="dashboard"] #dash-top-countries thead th:nth-child(4),
-body[data-page="dashboard"] #dash-top-countries tbody td:nth-child(4),
-body[data-page="dashboard"] #dash-trending-up thead th:nth-child(4),
-body[data-page="dashboard"] #dash-trending-up tbody td:nth-child(4),
-body[data-page="dashboard"] #dash-trending-down thead th:nth-child(4),
-body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(4) {
-  min-width: 52px !important;
 }
 /* Drag-scroll cursor removed; native scroll/touch used */
 .table-scroll-wrap.is-resizing-first-col,
