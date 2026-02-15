@@ -635,6 +635,33 @@ async function migrateAndStart() {
       } catch (_) {}
     }, 1000);
 
+    // Warm long-range Shopify truth in the background so 7/14/30d reports are instant from our DB.
+    (function warmSalesTruthRanges() {
+      if (process.env.DISABLE_SCHEDULED_TRUTH_SYNC === '1' || process.env.DISABLE_SCHEDULED_TRUTH_SYNC === 'true') return;
+      let inFlight = false;
+      async function runOnce(rangeKey) {
+        if (inFlight) return;
+        inFlight = true;
+        try {
+          const store = require('./store');
+          const salesTruth = require('./salesTruth');
+          const shop = salesTruth.resolveShopForSales('');
+          if (!shop) return;
+          const tz = store.resolveAdminTimeZone();
+          const nowMs = Date.now();
+          const bounds = store.getRangeBounds(rangeKey, nowMs, tz);
+          const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
+          await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, scopeKey);
+        } catch (err) {
+          try { console.warn('[truth-sync] warmup failed:', err && err.message ? String(err.message).slice(0, 220) : err); } catch (_) {}
+        } finally {
+          inFlight = false;
+        }
+      }
+      // Backfill a wider window shortly after boot (throttled inside salesTruth).
+      setTimeout(() => { runOnce('30d').catch(() => {}); }, 20 * 1000);
+    })();
+
     // Daily backups (fail-open). Retain last 7.
     (function scheduleDailyBackups() {
       if (process.env.DISABLE_SCHEDULED_BACKUPS === '1' || process.env.DISABLE_SCHEDULED_BACKUPS === 'true') return;

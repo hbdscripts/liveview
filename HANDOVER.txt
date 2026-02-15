@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Diagnostics range selector for Shopify vs Kexo)
+Last updated: 2026-02-15 (Diagnostics range selector + truth warmup)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -297,6 +297,7 @@ Ops/reliability:
   - Truth reconcile throttling is higher for historical scopes (min 15 min) to avoid refetching 30d/month ranges on every refresh.
   - Added an always-visible header date-range spinner while reports are building (`body.kexo-report-loading` toggled by `app.js`; Variants page participates too).
   - Settings → Diagnostics: Overview now has a Range selector (Today/Yesterday/7d/14d/30d) to compare Shopify sessions vs Kexo human sessions against truth orders; served by `GET /api/config-status?range=...` and backfills `shopify_sessions_snapshots` via ShopifyQL timeseries.
+  - Server warms Shopify truth for `30d` shortly after boot (`server/index.js`) so long-range reports can read from our DB without first-hit Shopify pagination.
 
 2026-02-14 (latest)
 - Auth pages UI refresh (Tabler templates):
