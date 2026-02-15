@@ -931,10 +931,13 @@ body:not([data-page="settings"]) .table-scroll-wrap .grid-body .grid-row .grid-c
 body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
 body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
 body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
-.ads-totals-row .grid-cell {
+.ads-totals-row .grid-cell:first-child {
   background: var(--tblr-bg-surface-secondary, #f8fafc) !important;
   border-right-width: var(--tblr-border-width);
   box-shadow: inset 0 0 0 9999px var(--tblr-table-bg-state, var(--tblr-table-bg-type, var(--tblr-table-accent-bg)));
+}
+.ads-totals-row .grid-cell:not(:first-child) {
+  background: var(--tblr-bg-surface-secondary, #f8fafc) !important;
 }
 @supports (background: linear-gradient(90deg,color-mix(in srgb,#fff 80%,#000) 0%,#fff 100%)) {
   body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
@@ -945,7 +948,7 @@ body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
   body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
   body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
   body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
-  .ads-totals-row .grid-cell {
+  .ads-totals-row .grid-cell:first-child {
     --hbd-surface-secondary: var(--tblr-bg-surface-secondary, #f8fafc);
     --hbd-surface-secondary-dark: color-mix(in srgb, var(--hbd-surface-secondary) 96%, #000);
     background: linear-gradient(90deg,var(--hbd-surface-secondary) 0%,var(--hbd-surface-secondary) 95%,var(--hbd-surface-secondary-dark) 100%) !important;
@@ -961,7 +964,7 @@ html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-scroll-wrap .
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
 html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
-html[data-bs-theme="dark"] .ads-totals-row .grid-cell {
+html[data-bs-theme="dark"] .ads-totals-row .grid-cell:first-child {
   border-right-color: rgba(255, 255, 255, 0.08);
 }
 @supports (background: linear-gradient(90deg,color-mix(in srgb,#fff 80%,#000) 0%,#fff 100%)) {
@@ -973,7 +976,7 @@ html[data-bs-theme="dark"] .ads-totals-row .grid-cell {
   html[data-bs-theme="dark"] body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child,
   html[data-bs-theme="dark"] body:not([data-page="settings"]) .table-responsive table tbody td:first-child,
   html[data-bs-theme="dark"] body:not([data-page="settings"]) .tools-table-wrap table tbody td:first-child,
-  html[data-bs-theme="dark"] .ads-totals-row .grid-cell {
+  html[data-bs-theme="dark"] .ads-totals-row .grid-cell:first-child {
     --hbd-surface-secondary: var(--tblr-body-bg, #111827);
     --hbd-surface-secondary-dark: color-mix(in srgb, var(--hbd-surface-secondary) 96%, #fff);
     background: linear-gradient(90deg,var(--hbd-surface-secondary) 0%,var(--hbd-surface-secondary) 95%,var(--hbd-surface-secondary-dark) 100%) !important;
