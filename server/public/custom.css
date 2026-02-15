@@ -661,20 +661,12 @@ body.side-panel-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: .35rem;
   width: 100%;
   height: 100%;
   text-decoration: none;
 }
-#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-sale-icon {
-  color: var(--tblr-success, #2fb344);
-  font-size: .85rem;
-}
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon {
   font-size: .85rem;
-}
-#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-ok {
-  color: var(--tblr-success, #2fb344);
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-warn {
   color: var(--tblr-danger, #d63939);
@@ -1462,6 +1454,10 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   background: #3eb3ab;
   border-radius: 4px;
   padding: 2px 5px;
+}
+.flag-xs {
+  height: 1rem;
+  border-radius: 3px;
 }
 .kexo-sale-banner .flag-xs {
   height: 1.1rem;
@@ -4332,8 +4328,11 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
   vertical-align: middle;
 }
 .source-icons .source-icon-fa {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
+}
+.source-icons img {
+  width: 16px;
 }
 .source-icons .source-icon-svg svg {
   width: 20px;
