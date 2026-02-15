@@ -2326,9 +2326,14 @@ const API = '';
 
     var HICON_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/hicon.webp?v=1770084894');
     var DOLLAR_URL = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/dollar.png?v=1770085223');
-    // Sale toast chime: try assets/cash-register.mp3 first, fall back to Shopify CDN.
+    // Sale toast chime: prefer assetOverrides.saleSound, then assets base, else Shopify CDN.
     var CASH_REGISTER_MP3_CDN = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264';
     function getCashRegisterMp3Url() {
+      try {
+        var override = (typeof window !== 'undefined' && window.__kexoSaleSoundOverrideUrl) ? String(window.__kexoSaleSoundOverrideUrl).trim() : '';
+        if (override && /^https?:\/\//i.test(override)) return override;
+        if (override && override.charAt(0) === '/') return override;
+      } catch (_) {}
       var defaultAssetsBase = (API || '') + '/assets';
       var assetsBase = '';
       try {
@@ -9682,6 +9687,13 @@ const API = '';
         if (options.apply && uiSettingsCache.pageLoaderEnabled) {
           try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
         }
+        if (options.apply && uiSettingsCache.assetOverrides) {
+          var cachedUrl = (uiSettingsCache.assetOverrides.saleSound || uiSettingsCache.assetOverrides.sale_sound || '').trim();
+          try { window.__kexoSaleSoundOverrideUrl = cachedUrl || ''; } catch (_) {}
+          if (typeof window.__kexoApplySaleSoundOverride === 'function') {
+            try { window.__kexoApplySaleSoundOverride(cachedUrl ? cachedUrl : null); } catch (_) {}
+          }
+        }
         return Promise.resolve(uiSettingsCache);
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
@@ -9702,6 +9714,13 @@ const API = '';
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.pageLoaderEnabled) {
             try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
+          }
+          if (options.apply && uiSettingsCache && uiSettingsCache.assetOverrides) {
+            var url = (uiSettingsCache.assetOverrides.saleSound || uiSettingsCache.assetOverrides.sale_sound || '').trim();
+            try { window.__kexoSaleSoundOverrideUrl = url || ''; } catch (_) {}
+            if (typeof window.__kexoApplySaleSoundOverride === 'function') {
+              try { window.__kexoApplySaleSoundOverride(url ? url : null); } catch (_) {}
+            }
           }
           return uiSettingsCache;
         })
@@ -15962,6 +15981,14 @@ const API = '';
       try { saleAudio = new Audio(); } catch (_) { saleAudio = null; }
       if (saleAudio) {
         try { saleAudio.preload = 'auto'; } catch (_) {}
+        try {
+          window.__kexoApplySaleSoundOverride = function(url) {
+            try { window.__kexoSaleSoundOverrideUrl = (url && String(url).trim()) || ''; } catch (_) {}
+            if (typeof setSaleAudioSrc === 'function') {
+              setSaleAudioSrc(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3');
+            }
+          };
+        } catch (_) {}
         try { setSaleAudioSrc(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3'); } catch (_) {}
         // Prime/unlock audio on the first user interaction so sale sounds can play later.
         (function primeOnFirstGesture() {
@@ -16002,6 +16029,14 @@ const API = '';
           }
         });
       }
+      try {
+        window.addEventListener('kexo:sale-sound-updated', function(e) {
+          var url = (e && e.detail && e.detail.url) ? String(e.detail.url).trim() : '';
+          if (typeof window.__kexoApplySaleSoundOverride === 'function') {
+            window.__kexoApplySaleSoundOverride(url || null);
+          }
+        });
+      } catch (_) {}
       // Test sale sound: add ?cha=ching to the URL. Plays once when sound is on; if autoplay blocked, plays on first click.
       (function testChaChing() {
         if (new URLSearchParams(window.location.search).get('cha') !== 'ching' || !saleAudio) return;

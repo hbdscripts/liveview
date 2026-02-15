@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Compliance column + Click & Order Lookup tool)
+Last updated: 2026-02-15 (Kexo UI rename + Sale Notification tab)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -161,7 +161,8 @@ Settings UI:
 
 Settings tabs:
 - General: current config display (read-only)
-- Theme: theme editor (colors/fonts/icons/header)
+- Kexo UI: theme editor (colors/fonts/icons/header) — formerly Theme
+- Sale Notification: choose sale sound (presets: cash-register default, bell, chime, success; or custom URL/upload). Stored in `asset_overrides.saleSound`.
 - Assets: upload/override favicon + logos (R2-backed) — plan-gated for normal accounts (Upgrade required)
 - Integrations: Pixel + Google Ads status/actions
 - Sources: Sources v2 rule editor (UTMs + entry params + referrer + affiliate attribution) with FA/SVG/upload icons + legacy v1 mapping (collapsible)
@@ -386,6 +387,9 @@ Ops/reliability:
   - Sources v2 APIs: `GET /api/traffic-sources-v2/suggestions`, `POST /api/traffic-sources-v2/suggestions/apply`, `GET /api/traffic-sources-v2/diagnostics`.
   - Settings → Sources rebuilt (new `server/public/traffic-sources-v2-settings.js`) and legacy v1 mapping kept under a collapsible panel.
   - Runtime: sessions API enriches rows with `traffic_source_v2_*` fields; sessions Source column now prefers v2 iconSpec (FA/SVG/URL) when available.
+
+2026-02-15 (latest)
+- Settings: Theme renamed to Kexo UI. New Sale Notification tab (preset sounds + custom URL/upload). Sale sound configurable via `asset_overrides.saleSound`; runtime uses it in `getCashRegisterMp3Url()`.
 
 2026-02-15 (latest)
 - Sticky column resize handle: replaced broken inline SVG with Font Awesome icon (`fa-solid fa-left-right`). New icon key `table-sticky-resize-handle` in Settings → Theme → Icons (Tables group); configurable like other table icons.

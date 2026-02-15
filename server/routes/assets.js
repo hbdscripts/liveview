@@ -39,6 +39,7 @@ function extFromMime(mime) {
   if (m === 'image/webp') return 'webp';
   if (m === 'image/jpeg' || m === 'image/jpg') return 'jpg';
   if (m === 'image/x-icon' || m === 'image/vnd.microsoft.icon') return 'ico';
+  if (m === 'audio/mpeg' || m === 'audio/mp3') return 'mp3';
   return '';
 }
 
@@ -50,6 +51,7 @@ function normalizeUploadSlot(rawSlot) {
     'footer_logo',
     'login_logo',
     'kexo_logo_fullcolor',
+    'sale_sound',
     'other',
   ]);
   if (!slot) return null;
@@ -127,9 +129,17 @@ async function postUploadAsset(req, res) {
   }
 
   const contentType = (file.mimetype || '').toLowerCase();
-  const allowedTypes = new Set(['image/png', 'image/webp', 'image/jpeg', 'image/jpg', 'image/x-icon', 'image/vnd.microsoft.icon']);
+  const allowedTypes = new Set([
+    'image/png', 'image/webp', 'image/jpeg', 'image/jpg', 'image/x-icon', 'image/vnd.microsoft.icon',
+    'audio/mpeg', 'audio/mp3',
+  ]);
+  const isImage = /^image\//.test(contentType);
+  const isAudio = /^audio\/(mpeg|mp3)$/i.test(contentType);
   if (!allowedTypes.has(contentType)) {
-    return res.status(400).json({ ok: false, error: 'Unsupported file type (use PNG/WebP/JPG/ICO)' });
+    return res.status(400).json({ ok: false, error: 'Unsupported file type (use PNG/WebP/JPG/ICO for images, MP3 for audio)' });
+  }
+  if (slot === 'sale_sound' && !isAudio) {
+    return res.status(400).json({ ok: false, error: 'Sale sound must be an MP3 file' });
   }
 
   const ext = extFromMime(contentType) || 'bin';

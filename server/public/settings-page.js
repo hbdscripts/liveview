@@ -73,6 +73,7 @@
     general: 'settings-panel-general',
     theme: 'settings-panel-theme',
     assets: 'settings-panel-assets',
+    'sale-notification': 'settings-panel-sale-notification',
     integrations: 'settings-panel-integrations',
     sources: 'settings-panel-sources',
     insights: 'settings-panel-insights',
@@ -601,6 +602,7 @@
         document.querySelectorAll('#settings-asset-logo').forEach(function (el) {
           el.value = overrides.logo || '';
         });
+        try { populateSaleNotificationPanel(overrides || {}); } catch (_) {}
         try { loadThemeDefaultsAndPopulateAssets(overrides || {}); } catch (_) {}
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
@@ -807,6 +809,24 @@
         return;
       }
 
+      if (slot === 'sale_sound') {
+        var saleMsgEl = document.getElementById('settings-sale-notification-msg');
+        if (saleMsgEl) { saleMsgEl.textContent = 'Saving…'; saleMsgEl.className = 'form-hint ms-2 text-secondary'; }
+        persistAssetOverrides({ saleSound: safeUrl }, function (err, r) {
+          if (saleMsgEl) {
+            if (err || !(r && r.ok)) {
+              saleMsgEl.textContent = (r && r.error) ? r.error : 'Save failed';
+              saleMsgEl.className = 'form-hint ms-2 text-danger';
+            } else {
+              saleMsgEl.textContent = 'Uploaded & saved.';
+              saleMsgEl.className = 'form-hint ms-2 text-success';
+            }
+          }
+          try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: safeUrl } })); } catch (_) {}
+        });
+        return;
+      }
+
       var patch = {};
       if (slot === 'favicon') patch.favicon = safeUrl;
       else if (slot === 'footer_logo') patch.footerLogo = safeUrl;
@@ -826,6 +846,19 @@
       });
     }
 
+    function setMsgForSlot(slot, text, ok) {
+      if (slot === 'sale_sound') {
+        var el = document.getElementById('settings-sale-notification-msg');
+        if (!el) return;
+        el.textContent = text || '';
+        if (ok === true) el.className = 'form-hint ms-2 text-success';
+        else if (ok === false) el.className = 'form-hint ms-2 text-danger';
+        else el.className = 'form-hint ms-2 text-secondary';
+      } else {
+        setMsg(text, ok);
+      }
+    }
+
     function wireUploadButtons() {
       document.querySelectorAll('[data-kexo-asset-upload="1"]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -835,10 +868,10 @@
           var fileEl = fileId ? document.getElementById(fileId) : null;
           var urlEl = urlId ? document.getElementById(urlId) : null;
           var file = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
-          if (!slot) { setMsg('Missing upload slot', false); return; }
-          if (!file) { setMsg('Choose a file first', false); return; }
+          if (!slot) { setMsgForSlot(slot, 'Missing upload slot', false); return; }
+          if (!file) { setMsgForSlot(slot, 'Choose a file first', false); return; }
 
-          setMsg('Uploading…', null);
+          setMsgForSlot(slot, 'Uploading…', null);
           try { btn.disabled = true; } catch (_) {}
 
           var fd = new FormData();
@@ -860,7 +893,7 @@
               persistSlot(slot, url);
             })
             .catch(function (err) {
-              setMsg(err && err.message ? String(err.message) : 'Upload failed', false);
+              setMsgForSlot(slot, err && err.message ? String(err.message) : 'Upload failed', false);
             })
             .finally(function () {
               try { btn.disabled = false; } catch (_) {}
@@ -910,6 +943,99 @@
         })
         .catch(function () {
           setMsg('Save failed', false);
+        });
+    });
+  }
+
+  var SALE_SOUND_PRESETS = {
+    'cash-register': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
+    'bell': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
+    'chime': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
+    'success': 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/cash-register.mp3?v=1770171264',
+  };
+
+  function populateSaleNotificationPanel(overrides) {
+    var url = (overrides.saleSound || overrides.sale_sound || '').trim();
+    var presetSel = document.getElementById('settings-sale-sound-preset');
+    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
+    var urlInput = document.getElementById('settings-asset-sale-sound');
+    if (!presetSel) return;
+    var presetKeys = Object.keys(SALE_SOUND_PRESETS);
+    var matched = '';
+    if (url) {
+      for (var i = 0; i < presetKeys.length; i++) {
+        if (SALE_SOUND_PRESETS[presetKeys[i]] === url) {
+          matched = presetKeys[i];
+          break;
+        }
+      }
+      if (!matched) {
+        matched = 'custom';
+        if (urlInput) urlInput.value = url;
+      }
+    } else {
+      matched = 'cash-register';
+    }
+    presetSel.value = matched;
+    if (customWrap) customWrap.style.display = matched === 'custom' ? 'block' : 'none';
+  }
+
+  function wireSaleNotificationPanel() {
+    var form = document.getElementById('settings-sale-notification-form');
+    if (!form) return;
+
+    function setSaleMsg(text, ok) {
+      var el = document.getElementById('settings-sale-notification-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      if (ok === true) el.className = 'form-hint ms-2 text-success';
+      else if (ok === false) el.className = 'form-hint ms-2 text-danger';
+      else el.className = 'form-hint ms-2 text-secondary';
+    }
+
+    function getEffectiveSaleSoundUrl() {
+      var preset = (document.getElementById('settings-sale-sound-preset') || {}).value || 'cash-register';
+      if (preset !== 'custom') return SALE_SOUND_PRESETS[preset] || SALE_SOUND_PRESETS['cash-register'];
+      var raw = (document.getElementById('settings-asset-sale-sound') || {}).value || '';
+      return raw.trim() || '';
+    }
+
+    var presetSel = document.getElementById('settings-sale-sound-preset');
+    var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
+    if (presetSel) {
+      presetSel.addEventListener('change', function () {
+        var v = (this.value || '').trim();
+        if (customWrap) customWrap.style.display = v === 'custom' ? 'block' : 'none';
+      });
+    }
+
+    var previewBtn = document.getElementById('settings-sale-sound-preview');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', function () {
+        var url = getEffectiveSaleSoundUrl();
+        if (!url) return;
+        try {
+          var a = new Audio(url);
+          a.play().catch(function () {});
+        } catch (_) {}
+      });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var url = getEffectiveSaleSoundUrl();
+      setSaleMsg('Saving…', null);
+      saveSettings({ assetOverrides: { saleSound: url || '' } })
+        .then(function (r) {
+          if (!r || !r.ok) {
+            setSaleMsg((r && r.error) ? r.error : 'Save failed', false);
+            return;
+          }
+          setSaleMsg('Saved.', true);
+          try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: url } })); } catch (_) {}
+        })
+        .catch(function () {
+          setSaleMsg('Save failed', false);
         });
     });
   }
@@ -3889,6 +4015,7 @@
 
     wirePlanBasedBrandingLocks();
     wireAssets();
+    wireSaleNotificationPanel();
     wireIntegrationsSubTabs();
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
