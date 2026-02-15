@@ -9868,6 +9868,13 @@ const API = '';
           kpiExpandedExtrasCache = extras || null;
           kpiExpandedExtrasFetchedAt = Date.now();
           try { setRangeCacheEntry(KPI_EXTRAS_CACHE_LS_KEY, rangeKey, kpiExpandedExtrasCache, 12); } catch (_) {}
+          // Dashboard KPI cards use extras spark series for COGS/Fulfilled/Returns.
+          // Once extras arrive, silently re-render the cached dashboard so sparklines appear without a refetch.
+          try {
+            if (PAGE === 'dashboard' && dashCache && typeof window.refreshDashboard === 'function') {
+              window.refreshDashboard({ force: false, silent: true });
+            }
+          } catch (_) {}
           return kpiExpandedExtrasCache;
         })
         .catch(function() { return null; })
@@ -17666,11 +17673,28 @@ const API = '';
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
           renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare);
-          // COGS / Fulfilled / Returns do not currently have real per-bucket series; avoid rendering synthetic diagonals.
+          // COGS / Fulfilled / Returns sparklines come from `/api/kpis-expanded-extra` (bucketed per range).
           try {
-            var fs = el('dash-fulfilled-sparkline'); if (fs) fs.innerHTML = '';
-            var rs = el('dash-returns-sparkline'); if (rs) rs.innerHTML = '';
-            var cs = el('dash-cogs-sparkline'); if (cs) cs.innerHTML = '';
+            var extraSpark = extrasTone && extrasTone.spark && typeof extrasTone.spark === 'object' ? extrasTone.spark : null;
+            var extraCmpSpark = extrasTone && extrasTone.compare && extrasTone.compare.spark && typeof extrasTone.compare.spark === 'object'
+              ? extrasTone.compare.spark
+              : null;
+
+            var cogsArr = extraSpark && Array.isArray(extraSpark.cogs) ? extraSpark.cogs : null;
+            var fulfilledArr = extraSpark && Array.isArray(extraSpark.fulfilled) ? extraSpark.fulfilled : null;
+            var returnsArr = extraSpark && Array.isArray(extraSpark.returns) ? extraSpark.returns : null;
+            var cogsCmpArr = extraCmpSpark && Array.isArray(extraCmpSpark.cogs) ? extraCmpSpark.cogs : null;
+            var fulfilledCmpArr = extraCmpSpark && Array.isArray(extraCmpSpark.fulfilled) ? extraCmpSpark.fulfilled : null;
+            var returnsCmpArr = extraCmpSpark && Array.isArray(extraCmpSpark.returns) ? extraCmpSpark.returns : null;
+
+            if (cogsArr && cogsArr.length) renderSparkline('dash-cogs-sparkline', cogsArr, DASHBOARD_NEUTRAL_TONE_HEX, cogsCmpArr);
+            else { var cs = el('dash-cogs-sparkline'); if (cs) cs.innerHTML = ''; }
+
+            if (fulfilledArr && fulfilledArr.length) renderSparkline('dash-fulfilled-sparkline', fulfilledArr, DASHBOARD_NEUTRAL_TONE_HEX, fulfilledCmpArr);
+            else { var fs = el('dash-fulfilled-sparkline'); if (fs) fs.innerHTML = ''; }
+
+            if (returnsArr && returnsArr.length) renderSparkline('dash-returns-sparkline', returnsArr, DASHBOARD_NEUTRAL_TONE_HEX, returnsCmpArr);
+            else { var rs = el('dash-returns-sparkline'); if (rs) rs.innerHTML = ''; }
           } catch (_) {}
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });

@@ -73,6 +73,150 @@ function parseLegacyVariantId(v) {
   return m && m[1] ? m[1] : '';
 }
 
+function ymdFromMsInTz(ms, timeZone) {
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return '';
+  try {
+    // en-CA yields YYYY-MM-DD.
+    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n));
+  } catch (_) {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(n));
+    } catch (_) {
+      return '';
+    }
+  }
+}
+
+function ymdAddDays(ymd, deltaDays) {
+  const s = String(ymd || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  const y = parseInt(s.slice(0, 4), 10);
+  const m = parseInt(s.slice(5, 7), 10);
+  const d = parseInt(s.slice(8, 10), 10);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return '';
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  dt.setUTCDate(dt.getUTCDate() + (Number(deltaDays) || 0));
+  return dt.toISOString().slice(0, 10);
+}
+
+function buildDayBounds(bounds, nowMs, timeZone) {
+  const start = bounds && bounds.start != null ? Number(bounds.start) : NaN;
+  const end = bounds && bounds.end != null ? Number(bounds.end) : NaN;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+
+  const startYmd = ymdFromMsInTz(start, timeZone);
+  const endYmd = ymdFromMsInTz(Math.max(start, end - 1), timeZone);
+  if (!startYmd || !endYmd) return [];
+
+  const out = [];
+  let cur = startYmd;
+  let guard = 0;
+  while (cur && cur <= endYmd) {
+    guard += 1;
+    if (guard > 120) break; // safety guard
+    let day = null;
+    try { day = store.getRangeBounds('d:' + cur, nowMs, timeZone); } catch (_) { day = null; }
+    if (day && Number.isFinite(Number(day.start)) && Number.isFinite(Number(day.end))) {
+      const s = Math.max(Number(day.start), start);
+      const e = Math.min(Number(day.end), end);
+      if (e > s) out.push({ start: s, end: e });
+    }
+    if (cur === endYmd) break;
+    cur = ymdAddDays(cur, 1);
+  }
+  return out;
+}
+
+function buildWeekBounds(dayBounds) {
+  const days = Array.isArray(dayBounds) ? dayBounds : [];
+  const out = [];
+  for (let i = 0; i < days.length; i += 7) {
+    const first = days[i];
+    const last = days[Math.min(days.length - 1, i + 6)];
+    const s = first && first.start != null ? Number(first.start) : NaN;
+    const e = last && last.end != null ? Number(last.end) : NaN;
+    if (Number.isFinite(s) && Number.isFinite(e) && e > s) out.push({ start: s, end: e });
+  }
+  return out;
+}
+
+function buildHourBounds(startMs, endMs, bucketMinutes) {
+  const start = Number(startMs);
+  const end = Number(endMs);
+  const mins = Math.max(1, Math.trunc(Number(bucketMinutes) || 60));
+  const step = mins * 60 * 1000;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || !Number.isFinite(step) || step <= 0) return [];
+  const out = [];
+  let t = start;
+  let guard = 0;
+  while (t < end) {
+    guard += 1;
+    if (guard > 400) break; // safety guard
+    const next = Math.min(end, t + step);
+    if (next > t) out.push({ start: t, end: next });
+    t = next;
+  }
+  return out;
+}
+
+function bucketMinutesForSingleDay(startMs, endMs) {
+  const start = Number(startMs);
+  const end = Number(endMs);
+  const elapsedHours = (Number.isFinite(start) && Number.isFinite(end) && end > start) ? ((end - start) / (60 * 60 * 1000)) : 0;
+  if (elapsedHours > 0 && elapsedHours < 4) return 15;
+  if (elapsedHours >= 4 && elapsedHours < 8) return 30;
+  return 60;
+}
+
+function buildBucketBounds(bounds, nowMs, timeZone) {
+  const days = buildDayBounds(bounds, nowMs, timeZone);
+  if (!days.length) return { bucket: 'day', bucketBounds: [] };
+
+  const start = bounds && bounds.start != null ? Number(bounds.start) : NaN;
+  const end = bounds && bounds.end != null ? Number(bounds.end) : NaN;
+  const singleDay = days.length === 1 && Number.isFinite(start) && Number.isFinite(end) && end > start;
+
+  let bucket = singleDay ? 'hour' : 'day';
+  if (bucket === 'day' && days.length >= 56) bucket = 'week';
+
+  let bucketBounds = days.slice();
+  if (bucket === 'hour') {
+    const mins = bucketMinutesForSingleDay(start, end);
+    const hours = buildHourBounds(start, end, mins);
+    if (hours.length >= 2) bucketBounds = hours;
+    else bucketBounds = days.slice();
+  } else if (bucket === 'week') {
+    const weeks = buildWeekBounds(days);
+    if (weeks.length >= 2) bucketBounds = weeks;
+    else {
+      bucket = 'day';
+      bucketBounds = days.slice();
+    }
+  }
+
+  return { bucket, bucketBounds };
+}
+
+function bucketIndexForMs(ms, bucketBounds) {
+  const n = Number(ms);
+  const arr = Array.isArray(bucketBounds) ? bucketBounds : [];
+  if (!Number.isFinite(n) || !arr.length) return -1;
+  let lo = 0;
+  let hi = arr.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const b = arr[mid];
+    const s = b && b.start != null ? Number(b.start) : NaN;
+    const e = b && b.end != null ? Number(b.end) : NaN;
+    if (!Number.isFinite(s) || !Number.isFinite(e)) return -1;
+    if (n < s) hi = mid - 1;
+    else if (n >= e) lo = mid + 1;
+    else return mid;
+  }
+  return -1;
+}
+
 async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6 } = {}) {
   const url = `https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
   let attempt = 0;
@@ -161,43 +305,60 @@ async function fetchVariantUnitCosts(shop, accessToken, variantIds) {
   return result;
 }
 
-async function computeCogsFromLineItems(db, shop, accessToken, startMs, endMs) {
+async function computeCogsSeriesFromLineItems(db, shop, accessToken, bucketBounds) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
-  const start = Number(startMs);
-  const end = Number(endMs);
-  if (!safeShop || !accessToken || !Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+  const buckets = Array.isArray(bucketBounds) ? bucketBounds : [];
+  if (!safeShop || !accessToken || !buckets.length) return { series: [], total: null };
+  const n = buckets.length;
+  const overallStart = Number(buckets[0] && buckets[0].start);
+  const overallEnd = Number(buckets[n - 1] && buckets[n - 1].end);
+  if (!Number.isFinite(overallStart) || !Number.isFinite(overallEnd) || overallEnd <= overallStart) {
+    return { series: new Array(n).fill(0), total: null };
+  }
+
+  // Assign line items to a bucket index via CASE and group by (bucket_idx, variant_id, currency).
+  const whens = buckets.map(function(b, idx) {
+    return 'WHEN li.order_created_at >= ? AND li.order_created_at < ? THEN ' + String(idx);
+  }).join(' ');
+  const sql =
+    'SELECT ' +
+      '(CASE ' + whens + ' ELSE NULL END) AS bucket_idx, ' +
+      'TRIM(COALESCE(li.variant_id, \'\')) AS variant_id, ' +
+      'UPPER(COALESCE(li.currency, \'GBP\')) AS currency, ' +
+      'COALESCE(SUM(li.quantity), 0) AS qty ' +
+    'FROM orders_shopify_line_items li ' +
+    'WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ? ' +
+      'AND (li.order_test IS NULL OR li.order_test = 0) ' +
+      'AND li.order_cancelled_at IS NULL ' +
+      'AND li.order_financial_status = \'paid\' ' +
+      'AND li.variant_id IS NOT NULL AND TRIM(li.variant_id) != \'\' ' +
+    'GROUP BY 1, 2, 3';
+
+  const params = [];
+  for (const b of buckets) {
+    params.push(Number(b.start), Number(b.end));
+  }
+  params.push(safeShop, overallStart, overallEnd);
+
   let rows = [];
   try {
-    rows = await db.all(
-      config.dbUrl
-        ? `SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
-                  UPPER(COALESCE(currency, 'GBP')) AS currency,
-                  COALESCE(SUM(quantity), 0) AS qty
-           FROM orders_shopify_line_items
-           WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
-             AND (order_test IS NULL OR order_test = 0) AND order_cancelled_at IS NULL AND order_financial_status = 'paid'
-             AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-           GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))`
-        : `SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
-                  UPPER(COALESCE(currency, 'GBP')) AS currency,
-                  COALESCE(SUM(quantity), 0) AS qty
-           FROM orders_shopify_line_items
-           WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
-             AND (order_test IS NULL OR order_test = 0) AND order_cancelled_at IS NULL AND order_financial_status = 'paid'
-             AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-           GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))`,
-      [safeShop, start, end]
-    );
+    rows = await db.all(sql, params);
   } catch (_) {
-    return null;
+    return { series: new Array(n).fill(0), total: null };
   }
-  const variantIds = Array.from(new Set((rows || []).map((r) => parseLegacyVariantId(r && r.variant_id)).filter(Boolean)));
-  if (!variantIds.length) return 0;
+
+  const variantIds = Array.from(new Set((rows || []).map(function(r) { return parseLegacyVariantId(r && r.variant_id); }).filter(Boolean)));
+  if (!variantIds.length) return { series: new Array(n).fill(0), total: 0 };
+
   const ratesToGbp = await fx.getRatesToGbp();
   const costMap = await fetchVariantUnitCosts(safeShop, accessToken, variantIds);
+  const series = new Array(n).fill(0);
   let total = 0;
   let matchedQty = 0;
+
   for (const row of (rows || [])) {
+    const bucketIdx = row && row.bucket_idx != null ? parseInt(String(row.bucket_idx), 10) : NaN;
+    if (!Number.isFinite(bucketIdx) || bucketIdx < 0 || bucketIdx >= n) continue;
     const vid = parseLegacyVariantId(row && row.variant_id);
     const qty = row && row.qty != null ? Number(row.qty) : NaN;
     if (!vid || !Number.isFinite(qty) || qty <= 0) continue;
@@ -207,11 +368,16 @@ async function computeCogsFromLineItems(db, shop, accessToken, startMs, endMs) {
     const currency = fx.normalizeCurrency(cost.currency) || fx.normalizeCurrency(row && row.currency) || 'GBP';
     const gbp = fx.convertToGbp(raw, currency, ratesToGbp);
     if (!Number.isFinite(gbp)) continue;
+    series[bucketIdx] += gbp;
     total += gbp;
     matchedQty += qty;
   }
-  if (matchedQty <= 0) return null;
-  return Math.round(total * 100) / 100;
+
+  // Keep the same semantics as the KPI total: if we couldn't match any unit costs, return null.
+  if (matchedQty <= 0) return { series: series.map(() => 0), total: null };
+  const seriesRounded = series.map(function(v) { return Math.round((Number(v) || 0) * 100) / 100; });
+  const totalRounded = Math.round(total * 100) / 100;
+  return { series: seriesRounded, total: totalRounded };
 }
 
 function ordersUpdatedApiUrl(shop, updatedMinIso, updatedMaxIso) {
@@ -251,7 +417,7 @@ function sumRefundAmount(refund) {
   return total;
 }
 
-async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs) {
+async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs, bucketBounds) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   if (!safeShop) return { ok: false, error: 'missing_shop' };
   if (!accessToken) return { ok: false, error: 'missing_token' };
@@ -266,6 +432,9 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
   let fetched = 0;
   let returnsAmount = 0;
   const fulfilledOrderIds = new Set();
+  const useBuckets = Array.isArray(bucketBounds) && bucketBounds.length > 0;
+  const fulfilledSpark = useBuckets ? new Array(bucketBounds.length).fill(0) : null;
+  const returnsSpark = useBuckets ? new Array(bucketBounds.length).fill(0) : null;
 
   while (nextUrl) {
     const res = await shopifyFetchWithRetry(nextUrl, accessToken, { maxRetries: 6 });
@@ -289,13 +458,23 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
 
       // Orders fulfilled: count DISTINCT orders that had a fulfillment created in the selected range.
       const fulfills = Array.isArray(order && order.fulfillments) ? order.fulfillments : [];
+      let firstFulfillMs = null;
       for (const f of fulfills) {
         const fCreated = parseMs(f && f.created_at);
         if (fCreated == null || fCreated < start || fCreated >= end) continue;
         const fStatus = f && f.status != null ? String(f.status).trim().toLowerCase() : '';
         if (fStatus === 'cancelled') continue;
-        if (order && order.id != null) fulfilledOrderIds.add(String(order.id));
-        break;
+        if (firstFulfillMs == null || fCreated < firstFulfillMs) firstFulfillMs = fCreated;
+      }
+      if (firstFulfillMs != null && order && order.id != null) {
+        const oid = String(order.id);
+        if (!fulfilledOrderIds.has(oid)) {
+          fulfilledOrderIds.add(oid);
+          if (fulfilledSpark) {
+            const idx = bucketIndexForMs(firstFulfillMs, bucketBounds);
+            if (idx >= 0) fulfilledSpark[idx] += 1;
+          }
+        }
       }
 
       // Returns value: sum refund amounts for refunds CREATED in the selected range.
@@ -303,7 +482,12 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
       for (const refund of refunds) {
         const rCreated = parseMs(refund && refund.created_at);
         if (rCreated == null || rCreated < start || rCreated >= end) continue;
-        returnsAmount += sumRefundAmount(refund);
+        const amt = sumRefundAmount(refund);
+        returnsAmount += amt;
+        if (returnsSpark) {
+          const idx = bucketIndexForMs(rCreated, bucketBounds);
+          if (idx >= 0) returnsSpark[idx] += amt;
+        }
       }
     }
 
@@ -314,12 +498,17 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
 
   // Shopify UI shows Returns as negative currency; return positive amount so the UI can render "-£X".
   const returns = Math.round(Math.abs(returnsAmount) * 100) / 100;
+  const returnsSparkOut = returnsSpark
+    ? returnsSpark.map(function(v) { return Math.round(Math.abs(Number(v) || 0) * 100) / 100; })
+    : null;
 
   return {
     ok: true,
     fetched,
     ordersFulfilled: fulfilledOrderIds.size,
     returns,
+    fulfilledSpark: fulfilledSpark,
+    returnsSpark: returnsSparkOut,
   };
 }
 
@@ -350,42 +539,64 @@ async function getItemsSoldFromDb(db, shop, startMs, endMs) {
   }
 }
 
-async function computeExpandedExtras(bounds, shop, accessToken) {
+async function computeExpandedExtras(bounds, shop, accessToken, options = {}) {
   const start = bounds && bounds.start != null ? Number(bounds.start) : NaN;
   const end = bounds && bounds.end != null ? Number(bounds.end) : NaN;
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-    return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null };
+    return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null, spark: null };
   }
 
   const db = getDb();
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   const itemsSold = safeShop ? await getItemsSoldFromDb(db, safeShop, start, end) : null;
-  // Compute COGS independently so it can still populate even if the Shopify updated-orders scan is slow/fails.
+  const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
+  const timeZone = options && typeof options.timeZone === 'string' && options.timeZone ? options.timeZone : store.resolveAdminTimeZone();
+  const bucketInfo = buildBucketBounds({ start, end }, nowMs, timeZone);
+  const bucketBounds = bucketInfo && Array.isArray(bucketInfo.bucketBounds) ? bucketInfo.bucketBounds : [];
+
+  // COGS sparkline + total from local line items (independent of Shopify updated-orders scan).
   let cogs = null;
+  let cogsSpark = null;
   try {
-    const v = safeShop ? await computeCogsFromLineItems(db, safeShop, accessToken, start, end) : null;
-    cogs = (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+    const r = (safeShop && bucketBounds.length) ? await computeCogsSeriesFromLineItems(db, safeShop, accessToken, bucketBounds) : { series: [], total: null };
+    cogs = (typeof r.total === 'number' && Number.isFinite(r.total)) ? r.total : null;
+    cogsSpark = Array.isArray(r.series) ? r.series : null;
   } catch (_) {
     cogs = null;
+    cogsSpark = null;
   }
 
   let ordersFulfilled = null;
   let returns = null;
+  let fulfilledSpark = null;
+  let returnsSpark = null;
   try {
-    const r = await fetchExtrasFromShopifyOrdersApi(safeShop, accessToken, start, end);
+    const r = await fetchExtrasFromShopifyOrdersApi(safeShop, accessToken, start, end, bucketBounds);
     if (r && r.ok) {
       ordersFulfilled = typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null;
       returns = typeof r.returns === 'number' ? r.returns : null;
+      fulfilledSpark = Array.isArray(r.fulfilledSpark) ? r.fulfilledSpark : null;
+      returnsSpark = Array.isArray(r.returnsSpark) ? r.returnsSpark : null;
     }
   } catch (err) {
     console.warn('[kpisExpandedExtra] Shopify fetch failed:', err && err.message ? String(err.message) : 'error');
   }
+
+  const spark = bucketBounds.length
+    ? {
+        bucket: bucketInfo && bucketInfo.bucket ? String(bucketInfo.bucket) : 'day',
+        cogs: Array.isArray(cogsSpark) ? cogsSpark : null,
+        fulfilled: Array.isArray(fulfilledSpark) ? fulfilledSpark : null,
+        returns: Array.isArray(returnsSpark) ? returnsSpark : null,
+      }
+    : null;
 
   return {
     itemsSold: typeof itemsSold === 'number' ? itemsSold : null,
     ordersFulfilled,
     returns,
     cogs,
+    spark,
   };
 }
 
@@ -436,9 +647,9 @@ async function getKpisExpandedExtra(req, res) {
         if (compareStart < 0) compareStart = 0;
         if (compareEnd < 0) compareEnd = 0;
 
-        const current = await computeExpandedExtras(bounds, shop, accessToken);
+        const current = await computeExpandedExtras(bounds, shop, accessToken, { nowMs: now, timeZone });
         const compare = (compareEnd > compareStart)
-          ? await computeExpandedExtras({ start: compareStart, end: compareEnd }, shop, accessToken)
+          ? await computeExpandedExtras({ start: compareStart, end: compareEnd }, shop, accessToken, { nowMs: now, timeZone })
           : null;
 
         return {
@@ -448,6 +659,7 @@ async function getKpisExpandedExtra(req, res) {
             ordersFulfilled: typeof compare.ordersFulfilled === 'number' ? compare.ordersFulfilled : null,
             returns: typeof compare.returns === 'number' ? compare.returns : null,
             cogs: typeof compare.cogs === 'number' ? compare.cogs : null,
+            spark: compare && compare.spark && typeof compare.spark === 'object' ? compare.spark : null,
           } : null,
         };
       }

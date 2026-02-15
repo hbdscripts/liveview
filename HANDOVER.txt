@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Sale Notification moved to Kexo UI subtab; presets renamed Kexo 1–4)
+Last updated: 2026-02-15 (Dashboard extras KPI sparklines)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -372,6 +372,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Dashboard extras KPI sparklines (COGS / Fulfilled / Returns):
+  - `/api/kpis-expanded-extra` now returns per-bucket spark series under `spark` (and compare under `compare.spark`), so these KPI cards have real charts behind them.
+  - Dashboard KPI cards render these sparklines with a dashed compare overlay once extras load (silent re-render from cached dashboard).
 
 2026-02-15 (latest)
 - Sticky column + tools UX:
