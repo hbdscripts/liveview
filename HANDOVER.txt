@@ -376,6 +376,7 @@ Ops/reliability:
   - KPI deltas + sparkline tones treat ±5% as stable/blue (reduces noisy up/down flips on small changes).
   - `/api/dashboard-series` supports `endMs` clipping; dashboard compare series passes compare-end (rounded to 1 min) so Today compare uses the same 15/30/60-min buckets as Today.
   - Dashboard auto-refreshes dashboard-series every 60s for Today/1h (silent).
+  - Dashboard compare label for `today` is now explicit: **Yesterday (same time)** (avoids confusion with full-day Yesterday values).
 
 2026-02-15 (earlier)
 - Sparkline data and compare-line alignment fixes:

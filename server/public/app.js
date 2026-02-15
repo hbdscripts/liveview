@@ -898,7 +898,7 @@ const API = '';
     }
     function getCompareDisplayLabel(rangeKey) {
       const rk = normalizeRangeKeyForApi(rangeKey);
-      if (rk === 'today') return 'Yesterday';
+      if (rk === 'today') return 'Yesterday (same time)';
       if (rk === 'yesterday') return 'Day before';
       if (rk === '3d') return 'Previous 3 days';
       if (rk === '7d') return 'Previous 7 days';
