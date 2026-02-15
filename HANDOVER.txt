@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dashboard extras KPIs: cache + reliability)
+Last updated: 2026-02-15 (Compliance column + Click & Order Lookup tool)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -13,6 +13,68 @@ IMPORTANT (for future agents)
 - Live-status quick check (before saying "it's live"): run `git status -sb` and `git log --oneline --decorate -n 1`.
 
 ---
+
+## STICKY: Fraud + Compliance + Click & Order Lookup (affiliate abuse detection)
+
+Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to run in production:
+- Additive-only (no deletes); never blocks dashboards/ingest (fail-open).
+- Never stores raw IP; IP + UA are HMAC-hashed using `FRAUD_IP_SALT`.
+- Produces a deterministic **Fraud Score (0–100)** + **flags** + **safe evidence snapshot**, with optional AI narrative (feature-flagged).
+
+### Data capture (ingest → attribution session row)
+
+- Ingest route: `POST /api/ingest` (`server/index.js` → `server/store.js`).
+- Attribution capture table: `affiliate_attribution_sessions` (migration `047_affiliate_attribution_and_fraud`).
+- What we store (high level):
+  - UTMs (source/medium/campaign/content)
+  - Paid click IDs (e.g. `gclid`, `msclkid`, etc.)
+  - Affiliate click IDs (generic `clickid`, `aff_id`, etc.)
+  - Referrer + entry URL (for suspicious referrer and late injection signals)
+  - Cloudflare bot/geo headers (e.g. `cf_country`, `cf_asn`, known/verified bot markers)
+  - IP + UA hashes (HMAC; never raw)
+- First-touch fields are immutable; only `last_seen_json` is updated in a rate-limited manner.
+
+### Scoring (checkout_completed → fraud evaluation rows)
+
+- Trigger point: checkout completion evidence (`checkout_completed`) writes/updates evaluations.
+- Storage table: `fraud_evaluations` (one row per `(entity_type, entity_id)`; update-in-place with preserved `created_at`).
+- Key fields:
+  - `score` (0–100) + `triggered` boolean (score >= threshold)
+  - `flags_json` (deterministic signals: conflicts, late injection, low engagement, suspicious referrer, duplicate patterns, missing evidence, etc.)
+  - `evidence_json` (safe snapshot: attribution + engagement + derived signals; no raw IP)
+  - `resolved_status/resolved_by/resolved_note` (admin-only resolution metadata)
+- Config: `fraud_config` stores weights/thresholds (read via `server/fraud/config.js`).
+
+### APIs (fail-open)
+
+- Markers (batch): `GET /api/fraud/markers?entityType=session&ids=<csv>` (`server/routes/fraud.js`)
+  - Used to render warnings quickly in tables with minimal DB load (server-side TTL cache).
+- Detail (single): `GET /api/fraud/detail?entityType=session|order&entityId=...`
+  - Returns evaluation + deterministic/AI narrative + safe evidence snapshot.
+- Admin:
+  - `GET/PUT /api/admin/fraud-config` (weights/threshold)
+  - `POST /api/admin/fraud-resolution` (resolve/ignore with note)
+- Click & Order Lookup:
+  - Page: `/tools/click-order-lookup` (`server/public/tools/click-order-lookup.html`)
+  - API: `GET /api/tools/click-order-lookup?q=...&shop=...` (`server/routes/tools.js` → `server/tools/clickOrderLookup.js`)
+  - Search accepts: Kexo Click ID (session_id), Shopify order ID, checkout token, or Kexo order key (`token:`/`order:`/`h:`).
+
+### UI surfaces
+
+- Sessions tables (`/dashboard/live`, `/dashboard/sales`, `/dashboard/table`):
+  - Added a narrow **Compliance** column immediately after the sticky Landing column.
+  - It always shows a check (passed) or warning (triggered) based on `/api/fraud/markers`.
+  - If the row is a sale, it also shows the sale (£) icon alongside check/warn.
+  - These icons are links to **Tools → Click & Order Lookup** for the session.
+  - Icon keys: `table-icon-compliance-header`, `table-icon-compliance-check`, `table-icon-compliance-warning`, `table-icon-converted-sale`.
+- Right-hand session side panel:
+  - Now shows a top “Lookup” block with IDs (Click ID / Shopify order ID / checkout token / Kexo order key) + Copy buttons + “Open in Lookup”.
+
+### Optional AI narrative (feature-flagged)
+
+- Controlled by `FRAUD_AI_ENABLED` (and model settings).
+- Runs asynchronously; never blocks ingest or UI.
+- Prompt is PII-safe (no raw IP); output is cached back into `fraud_evaluations.ai_summary`.
 
 ## What KEXO looks like today (UX)
 
@@ -65,6 +127,7 @@ Integrations:
 Tools:
 - `/tools/compare-conversion-rate` → `server/public/tools/compare-conversion-rate.html`
 - `/tools/shipping-cr` → `server/public/tools/shipping-cr.html`
+- `/tools/click-order-lookup` → `server/public/tools/click-order-lookup.html`
 
 Settings:
 - `/settings` → `server/public/settings.html`
@@ -79,7 +142,7 @@ Admin (admin-only):
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
 - `/date` → `/dashboard/table`
-- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/abandoned-carts`, `/channels`, `/type`, `/compare-conversion-rate`, `/shipping-cr` → canonical folder routes
+- `/overview`, `/live`, `/sales`, `/countries`, `/products`, `/variants`, `/abandoned-carts`, `/channels`, `/type`, `/compare-conversion-rate`, `/shipping-cr`, `/click-order-lookup` → canonical folder routes
 
 Root `/`:
 - Shopify embedded app URL. `auth.handleAppUrl()` decides:
@@ -104,7 +167,7 @@ Settings tabs:
 - Sources: Sources v2 rule editor (UTMs + entry params + referrer + affiliate attribution) with FA/SVG/upload icons + legacy v1 mapping (collapsible)
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
-  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row colors modal for Live/Table/Sales sessions tables (sale icon + sticky). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
+- Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
   - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 
@@ -254,6 +317,7 @@ Table checklist:
 - `server/public/sentry-helpers.js`: Sentry browser helpers (breadcrumbs, capture, fetch wrapper); loaded in head-theme.html
 - `server/public/ads.js`: Google Ads page logic
 - `server/public/tools.js`: Conversion Rate Compare tool logic
+- `server/public/tools-click-order-lookup.js`: Click & Order Lookup tool logic
 
 ---
 
@@ -331,8 +395,9 @@ Ops/reliability:
   - New tables/migration: `047_affiliate_attribution_and_fraud` adds `affiliate_attribution_sessions`, `fraud_evaluations`, `fraud_config`.
   - Ingest captures attribution signals (UTMs + paid/affiliate click IDs) with immutable first-touch + rate-limited `last_seen` updates; IP/UA are hashed (no raw IP storage).
   - Checkout-completed writes deterministic fraud evaluations (score 0–100 + flags + safe evidence snapshot); optional AI narrative is feature-flagged.
-  - UI: sessions tables + Live “Latest sales” show a Fraud Alert icon only when triggered; click opens a Tabler modal with score, analysis, flags, and evidence.
-  - APIs: `GET /api/fraud/markers`, `GET /api/fraud/detail`, admin config/resolution under `/api/admin`.
+  - UI: sessions tables now show a narrow Compliance column (check/warn + optional sale icon) immediately after the sticky Landing column; icons link to Tools → Click & Order Lookup for deep inspection.
+  - Tools: new `/tools/click-order-lookup` page + `GET /api/tools/click-order-lookup` search API to resolve click/order/token keys and print all captured info (fraud, attribution, geo, device, timing, truth links).
+  - APIs: `GET /api/fraud/markers`, `GET /api/fraud/detail`, `GET /api/tools/click-order-lookup`, admin config/resolution under `/api/admin`.
 
 2026-02-15 (latest)
 - Sale sound reliability: (1) SSE first-sale no longer skipped when lastSaleAt is null — now fires toast+sound if sale is within 2 min (avoids race with hydrateLastSaleFooterFromApi). (2) Added touchstart to audio prime listeners and explicit prime on eye/footer last-sale toggle pointerdown/touchstart so sale sounds unlock on first footer interaction.
@@ -374,8 +439,8 @@ Ops/reliability:
 
 2026-02-15 (latest)
 - Sessions tables + settings polish:
-  - Converted sale icon moved to a dedicated leading sessions-table column (~35px) before the sticky landing column (sticky resize still targets landing).
-  - Removed the “Converted background” table color setting (keeps only icon + sticky colors).
+  - Sessions tables: replaced the old leading sale/fraud icon columns with a single Compliance column after the sticky Landing column (check/warn + optional sale icon).
+  - Settings: removed converted-row color configuration from Layout → Tables (runtime no longer applies converted-row CSS variables).
   - Recent Sales: removed the “Next update” header block (polling continues; updates auto-apply when safe).
   - Abandoned Carts: replaced the mode dropdown with an inline “Switch to …” link under the page title.
 

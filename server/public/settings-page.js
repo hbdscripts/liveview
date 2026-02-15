@@ -66,8 +66,6 @@
   var insightsWarningsModalBackdropEl = null;
   var insightsMergeModalBackdropEl = null;
   var insightsMergeContext = null;
-  var layoutTablesColorsModalBackdropEl = null;
-  var tablesConvertedColorsDraft = null;
   var initialLayoutSubTab = null;
   var activeLayoutSubTab = 'tables';
 
@@ -1159,35 +1157,9 @@
     };
   }
 
-  function defaultConvertedRowColors() {
-    return {
-      iconColor: '#2f7d50',
-      iconBackground: '#f0f8f1',
-      stickyBackground: '#ffffff',
-    };
-  }
-
-  function normalizeConvertedRowColors(raw) {
-    var src = raw && typeof raw === 'object' ? raw : {};
-    var def = defaultConvertedRowColors();
-    function normalizeHex(value, fallback) {
-      var s = value == null ? '' : String(value).trim();
-      if (/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
-      return fallback;
-    }
-    return {
-      iconColor: normalizeHex(src.iconColor, def.iconColor),
-      iconBackground: normalizeHex(src.iconBackground, def.iconBackground),
-      stickyBackground: normalizeHex(src.stickyBackground, def.stickyBackground),
-    };
-  }
-
   function defaultTablesUiConfigV1() {
     return {
       v: 1,
-      shared: {
-        convertedRowColors: defaultConvertedRowColors(),
-      },
       pages: [
         {
           key: 'dashboard',
@@ -1989,7 +1961,6 @@
     var root = document.getElementById('settings-layout-tables-root');
     if (!root) return;
     var c = cfg && typeof cfg === 'object' ? cfg : defaultTablesUiConfigV1();
-    tablesConvertedColorsDraft = normalizeConvertedRowColors(c && c.shared && c.shared.convertedRowColors);
     var pages = Array.isArray(c.pages) ? c.pages.slice() : [];
     pages.sort(function (a, b) {
       var al = a && a.label ? String(a.label).toLowerCase() : '';
@@ -2041,10 +2012,6 @@
         var defaultOptsHtml = (rowOptions.length ? rowOptions : [defaultRows]).map(function (n) {
           return '<option value="' + String(n) + '"' + (Number(n) === Number(defaultRows) ? ' selected' : '') + '>' + String(n) + '</option>';
         }).join('');
-        var hasSharedColorsBtn = tableId.toLowerCase() === 'sessions-table' && (pageKey === 'live' || pageKey === 'sales' || pageKey === 'date');
-        var colorsButtonHtml = hasSharedColorsBtn
-          ? '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="table-colors" data-colors-target-label="' + escapeHtml(label) + '"><i class="fa-solid fa-palette me-1" aria-hidden="true"></i>Colors</button>'
-          : '';
 
         rowsHtml += '' +
           '<div class="card card-sm mb-3 settings-layout-table-card" data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
@@ -2058,7 +2025,6 @@
                 '</div>' +
               '</div>' +
               '<div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">' +
-                colorsButtonHtml +
                 '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
                   '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
                   '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
@@ -2156,9 +2122,6 @@
     var root = document.getElementById('settings-layout-tables-root');
     var out = {
       v: 1,
-      shared: {
-        convertedRowColors: normalizeConvertedRowColors(tablesConvertedColorsDraft),
-      },
       pages: [],
     };
     if (!root) return out;
@@ -2218,106 +2181,6 @@
     if (!msgEl) return;
     msgEl.textContent = text || '';
     msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
-  }
-
-  function ensureLayoutTablesColorsBackdrop() {
-    if (layoutTablesColorsModalBackdropEl && document.body.contains(layoutTablesColorsModalBackdropEl)) return;
-    var el = document.createElement('div');
-    el.className = 'modal-backdrop fade show';
-    document.body.appendChild(el);
-    layoutTablesColorsModalBackdropEl = el;
-  }
-
-  function removeLayoutTablesColorsBackdrop() {
-    if (!layoutTablesColorsModalBackdropEl) return;
-    try { layoutTablesColorsModalBackdropEl.remove(); } catch (_) {}
-    layoutTablesColorsModalBackdropEl = null;
-  }
-
-  function closeLayoutTablesColorsModal() {
-    var modal = document.getElementById('settings-layout-colors-modal');
-    if (!modal) return;
-    modal.classList.remove('show');
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    try { document.body.classList.remove('modal-open'); } catch (_) {}
-    removeLayoutTablesColorsBackdrop();
-  }
-
-  function openLayoutTablesColorsModal(sourceLabel) {
-    var modal = document.getElementById('settings-layout-colors-modal');
-    if (!modal) return;
-    var colors = normalizeConvertedRowColors(tablesConvertedColorsDraft);
-    tablesConvertedColorsDraft = colors;
-
-    var sourceEl = document.getElementById('settings-layout-colors-source');
-    if (sourceEl) sourceEl.textContent = sourceLabel ? String(sourceLabel) : 'Dashboard sessions tables';
-
-    var iconColor = modal.querySelector('input[data-layout-color="iconColor"]');
-    var iconBg = modal.querySelector('input[data-layout-color="iconBackground"]');
-    var stickyBg = modal.querySelector('input[data-layout-color="stickyBackground"]');
-    if (iconColor) iconColor.value = colors.iconColor;
-    if (iconBg) iconBg.value = colors.iconBackground;
-    if (stickyBg) stickyBg.value = colors.stickyBackground;
-
-    var msgEl = document.getElementById('settings-layout-colors-msg');
-    if (msgEl) msgEl.textContent = '';
-
-    modal.style.display = 'block';
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-    try { document.body.classList.add('modal-open'); } catch (_) {}
-    ensureLayoutTablesColorsBackdrop();
-  }
-
-  function wireLayoutTablesColorsModal() {
-    var root = document.getElementById('settings-layout-tables-root');
-    var modal = document.getElementById('settings-layout-colors-modal');
-    var saveBtn = document.getElementById('settings-layout-colors-save-btn');
-    if (!root || !modal || !saveBtn) return;
-
-    if (root.getAttribute('data-layout-colors-wired') !== '1') {
-      root.setAttribute('data-layout-colors-wired', '1');
-      root.addEventListener('click', function (e) {
-        var target = e && e.target ? e.target : null;
-        var btn = target && target.closest ? target.closest('button[data-action="table-colors"]') : null;
-        if (!btn) return;
-        e.preventDefault();
-        openLayoutTablesColorsModal(btn.getAttribute('data-colors-target-label') || '');
-      });
-    }
-
-    if (modal.getAttribute('data-layout-colors-modal-wired') === '1') return;
-    modal.setAttribute('data-layout-colors-modal-wired', '1');
-
-    modal.addEventListener('click', function (e) {
-      var target = e && e.target ? e.target : null;
-      if (!target) return;
-      if (target === modal) {
-        closeLayoutTablesColorsModal();
-        return;
-      }
-      if (target.closest && target.closest('[data-close-layout-colors]')) {
-        closeLayoutTablesColorsModal();
-      }
-    });
-
-    saveBtn.addEventListener('click', function () {
-      var next = normalizeConvertedRowColors({
-        iconColor: (modal.querySelector('input[data-layout-color="iconColor"]') || {}).value,
-        iconBackground: (modal.querySelector('input[data-layout-color="iconBackground"]') || {}).value,
-        stickyBackground: (modal.querySelector('input[data-layout-color="stickyBackground"]') || {}).value,
-      });
-      tablesConvertedColorsDraft = next;
-      setLayoutTablesMsg('Colors updated. Click Save to persist.', true);
-      closeLayoutTablesColorsModal();
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (!e || e.key !== 'Escape') return;
-      if (!modal.classList.contains('show')) return;
-      closeLayoutTablesColorsModal();
-    });
   }
 
   function wireLayoutTablesSaveReset() {
@@ -4038,7 +3901,6 @@
     wireInsightsVariantsMergeModal();
     wireInsightsVariantsWarningsModal();
     wireChartsSaveReset();
-    wireLayoutTablesColorsModal();
     wireLayoutTablesSaveReset();
   }
 

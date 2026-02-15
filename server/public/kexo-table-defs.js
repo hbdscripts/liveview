@@ -20,9 +20,8 @@
       ariaLabel: 'Sessions',
       bodyId: 'table-body',
       columns: [
-        { key: 'sale', label: '', sortable: false, cellClass: 'sale-icon-cell' },
-        { key: 'fraud', label: '', sortable: false, cellClass: 'fraud-icon-cell' },
         { key: 'landing', label: 'Landing Page', cellClass: 'landing-cell', iconKey: 'table-short-landing' },
+        { key: 'compliance', label: '', ariaLabel: 'Compliance', sortable: false, cellClass: 'compliance-cell' },
         { key: 'from', label: 'GEO', iconKey: 'table-short-geo' },
         { key: 'source', label: 'Source', cellClass: 'source-cell', iconKey: 'table-short-source' },
         { key: 'device', label: 'Device', iconKey: 'table-short-device' },

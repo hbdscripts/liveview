@@ -71,6 +71,7 @@ const HEADER_KPI_STRIP_PAGE_KEYS = [
   'ads',
   'compare-conversion-rate',
   'shipping-cr',
+  'click-order-lookup',
   'settings',
 ];
 const HEADER_KPI_STRIP_PAGE_KEY_SET = new Set(HEADER_KPI_STRIP_PAGE_KEYS);
@@ -154,6 +155,7 @@ function defaultKpiUiConfigV1() {
         ads: true,
         'compare-conversion-rate': true,
         'shipping-cr': true,
+        'click-order-lookup': true,
         settings: false,
       },
     },
@@ -244,13 +246,6 @@ function defaultChartsUiConfigV1() {
 function defaultTablesUiConfigV1() {
   return {
     v: 1,
-    shared: {
-      convertedRowColors: {
-        iconColor: '#2f7d50',
-        iconBackground: '#f0f8f1',
-        stickyBackground: '#ffffff',
-      },
-    },
     pages: [
       {
         key: 'dashboard',
@@ -691,26 +686,6 @@ function normalizeTablesUiConfigV1(raw) {
     if (!Number.isFinite(n)) return null;
     return Math.max(ABS_MIN, Math.min(ABS_MAX, n));
   }
-
-  const defColors = (
-    def &&
-    def.shared &&
-    def.shared.convertedRowColors &&
-    typeof def.shared.convertedRowColors === 'object'
-  ) ? def.shared.convertedRowColors : {};
-  const rawColors = (
-    obj &&
-    obj.shared &&
-    obj.shared.convertedRowColors &&
-    typeof obj.shared.convertedRowColors === 'object'
-  ) ? obj.shared.convertedRowColors : {};
-  out.shared = {
-    convertedRowColors: {
-      iconColor: normalizeCssColor(rawColors.iconColor, defColors.iconColor || '#2f7d50'),
-      iconBackground: normalizeCssColor(rawColors.iconBackground, defColors.iconBackground || '#f0f8f1'),
-      stickyBackground: normalizeCssColor(rawColors.stickyBackground, defColors.stickyBackground || '#ffffff'),
-    },
-  };
 
   if (Array.isArray(obj.pages)) {
     for (const rawPage of obj.pages) {

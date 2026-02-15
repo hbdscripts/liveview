@@ -450,6 +450,7 @@ integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrat
 const toolsPagesRouter = express.Router();
 toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
 toolsPagesRouter.get('/shipping-cr', (req, res) => sendPage(res, 'tools/shipping-cr.html'));
+toolsPagesRouter.get('/click-order-lookup', (req, res) => sendPage(res, 'tools/click-order-lookup.html'));
 
 // Base folder routes should canonicalize to leaf pages (avoid automatic /path -> /path/ redirects).
 app.get('/dashboard', redirectWithQuery(301, '/dashboard/overview'));
@@ -484,6 +485,7 @@ app.get('/type', redirectWithQuery(301, '/traffic/device'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
+app.get('/click-order-lookup', redirectWithQuery(301, '/tools/click-order-lookup'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
 app.get('/admin', requireMaster.middleware, (req, res) => sendPage(res, 'admin.html'));

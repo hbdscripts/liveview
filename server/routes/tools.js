@@ -4,6 +4,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
 const shippingCr = require('../tools/shippingCr');
+const clickOrderLookup = require('../tools/clickOrderLookup');
 
 const router = express.Router();
 
@@ -107,6 +108,21 @@ router.get('/catalog-search', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.catalog-search' } });
     console.error('[tools.catalog-search]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/click-order-lookup', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const shop = safeShopParam(req);
+    const q = req && req.query && req.query.q != null ? String(req.query.q) : '';
+    const out = await clickOrderLookup.lookup({ shop, q });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.click-order-lookup' } });
+    console.error('[tools.click-order-lookup]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });

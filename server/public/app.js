@@ -48,6 +48,7 @@ const API = '';
           ads: true,
           'compare-conversion-rate': true,
           'shipping-cr': true,
+          'click-order-lookup': true,
           // Settings should behave like other pages (configurable via Admin → Controls).
           settings: true,
           // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
@@ -336,11 +337,6 @@ const API = '';
 
     const tableRowsCache = {};
     const TABLES_UI_CFG_LS_KEY = 'kexo:tables-ui-config:v1';
-    const TABLES_CONVERTED_COLOR_DEFAULTS = Object.freeze({
-      iconColor: '#2f7d50',
-      iconBackground: '#f0f8f1',
-      stickyBackground: '#ffffff',
-    });
     var tablesUiConfigV1 = null;
 
     // Hydrate table layout/pagination prefs from localStorage for first paint.
@@ -399,42 +395,11 @@ const API = '';
       try { return JSON.stringify(cfg || null); } catch (_) { return ''; }
     }
 
-    function normalizeTablesUiHexColor(value, fallback) {
-      var raw = value == null ? '' : String(value).trim();
-      if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
-      return fallback;
-    }
-
-    function getTablesUiConvertedRowColors(cfg) {
-      var defaults = TABLES_CONVERTED_COLOR_DEFAULTS;
-      var raw = (
-        cfg &&
-        cfg.shared &&
-        cfg.shared.convertedRowColors &&
-        typeof cfg.shared.convertedRowColors === 'object'
-      ) ? cfg.shared.convertedRowColors : {};
-      return {
-        iconColor: normalizeTablesUiHexColor(raw.iconColor, defaults.iconColor),
-        iconBackground: normalizeTablesUiHexColor(raw.iconBackground, defaults.iconBackground),
-        stickyBackground: normalizeTablesUiHexColor(raw.stickyBackground, defaults.stickyBackground),
-      };
-    }
-
-    function applyTablesUiConvertedRowColors(cfg) {
-      var root = document && document.documentElement ? document.documentElement : null;
-      if (!root || !root.style || !root.style.setProperty) return;
-      var colors = getTablesUiConvertedRowColors(cfg);
-      root.style.setProperty('--kexo-converted-icon-color', colors.iconColor);
-      root.style.setProperty('--kexo-converted-icon-bg', colors.iconBackground);
-      root.style.setProperty('--kexo-sticky-cell-bg', colors.stickyBackground);
-    }
-
     function applyTablesUiConfigV1(cfg) {
       if (!cfg || typeof cfg !== 'object' || cfg.v !== 1 || !Array.isArray(cfg.pages)) return false;
       var prevSig = tablesUiConfigSignature(tablesUiConfigV1);
       var nextSig = tablesUiConfigSignature(cfg);
       tablesUiConfigV1 = cfg;
-      try { applyTablesUiConvertedRowColors(cfg); } catch (_) {}
       try { window.__kexoTablesUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(TABLES_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try {
@@ -442,8 +407,6 @@ const API = '';
       } catch (_) {}
       return prevSig !== nextSig;
     }
-
-    try { applyTablesUiConvertedRowColors(tablesUiConfigV1); } catch (_) {}
 
     function tableRowsConfigForTableId(tableId, classKey) {
       var cfg = tableClassConfig(classKey);
@@ -1574,16 +1537,6 @@ const API = '';
           if (colCount > 1) {
             var minOtherColWidth = classKey === 'live' ? 72 : 64;
             var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
-            // Sessions table now has a narrow leading icon column (~35px). Avoid over-capping
-            // the sticky landing width as if that icon column were a full normal column.
-            try {
-              var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
-              if (tid === 'sessions-table' && colCount > 3) {
-                // Sessions table has two narrow leading icon columns (~35px each).
-                var iconW = 70;
-                byRemainingCols = wrapW - iconW - (minOtherColWidth * (colCount - 3));
-              }
-            } catch (_) {}
             /* Only cap by remaining cols when table fits; when scrollable, skip so sticky can expand */
             if (byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
           }
@@ -1603,12 +1556,6 @@ const API = '';
 
       function getHeaderStickyCell(wrap) {
         if (!wrap || !wrap.querySelector) return null;
-        try {
-          var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
-          if (tid === 'sessions-table') {
-            return wrap.querySelector('.grid-row--header .grid-cell:nth-child(3), table thead th:nth-child(3)');
-          }
-        } catch (_) {}
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
       }
 
@@ -3688,9 +3635,29 @@ const API = '';
       const cartOrSaleCell = s.has_purchased
         ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
         : cartVal;
-      const convertedLeadIcon = s.has_purchased
-        ? '<i class="fa-solid fa-sterling-sign converted-row-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
+      const saleIcon = s.has_purchased
+        ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
+      const lookupHref = (function () {
+        const sid = s && s.session_id != null ? String(s.session_id) : '';
+        if (!sid) return '/tools/click-order-lookup';
+        try {
+          // Preserve shop when available so tools can resolve Shopify truth links reliably.
+          var shop = null;
+          try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
+          var qs = new URLSearchParams();
+          if (shop) qs.set('shop', shop);
+          qs.set('q', sid);
+          return '/tools/click-order-lookup?' + qs.toString();
+        } catch (_) {
+          return '/tools/click-order-lookup?q=' + encodeURIComponent(sid);
+        }
+      })();
+      const complianceCellHtml =
+        '<a class="compliance-link" href="' + escapeHtml(lookupHref) + '" data-compliance-link="1" title="Click &amp; Order Lookup">' +
+          saleIcon +
+          '<i class="fa-light fa-circle-check compliance-status-icon" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>' +
+        '</a>';
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -3700,9 +3667,8 @@ const API = '';
         } catch (_) {}
       }
       return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
-        <div class="grid-cell sale-icon-cell ${s.has_purchased ? 'converted-sale-cell' : ''}" role="cell">${convertedLeadIcon}</div>
-        <div class="grid-cell fraud-icon-cell" role="cell"></div>
         <div class="grid-cell landing-cell" role="cell">${landingPageCell(s)}</div>
+        <div class="grid-cell compliance-cell" role="cell">${complianceCellHtml}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
         <div class="grid-cell device-cell" role="cell">${deviceCell(s)}</div>
@@ -3888,8 +3854,8 @@ const API = '';
             // Clicking interactive elements inside a row should not open the side panel.
             // Product links open the Product Insights modal only.
             if (target && target.closest && target.closest('a.js-product-modal-link')) return;
-            // Fraud alert icon opens its own modal only.
-            if (target && target.closest && target.closest('[data-fraud-open]')) return;
+            // Compliance icons are links to Click & Order Lookup.
+            if (target && target.closest && target.closest('[data-compliance-link="1"]')) return;
             const row = target && target.closest ? target.closest('.grid-row.clickable[data-session-id]') : null;
             if (!row || !tbody.contains(row)) return;
             selectedSessionId = row.getAttribute('data-session-id');
@@ -3922,7 +3888,7 @@ const API = '';
       updateSortHeaders();
       syncSessionsTableTightMode();
       tickTimeOnSite();
-      try { refreshFraudMarkersForSessionsTable(); } catch (_) {}
+      try { refreshComplianceMarkersForSessionsTable(); } catch (_) {}
     }
 
     // Fraud markers + modal (fail-open; markers fetched in batches).
@@ -3968,7 +3934,89 @@ const API = '';
       return p;
     }
 
-    function refreshFraudMarkersForSessionsTable() {
+    var complianceHelpGlobalBound = false;
+    function ensureComplianceHeaderUi() {
+      var table = document.getElementById('sessions-table');
+      if (!table || !table.querySelector) return;
+      var th = table.querySelector('.grid-row--header .grid-cell.compliance-cell');
+      if (!th) return;
+      if (th.getAttribute('data-compliance-header') === '1') return;
+      th.setAttribute('data-compliance-header', '1');
+      th.innerHTML = '' +
+        '<button type="button" class="compliance-header-btn" data-compliance-help-toggle="1" aria-label="Compliance help" title="Compliance help">' +
+          '<i class="fa-light fa-shield-check" data-icon-key="table-icon-compliance-header" aria-hidden="true"></i>' +
+        '</button>' +
+        '<div class="compliance-help-popover" data-compliance-help-popover="1" role="tooltip" aria-hidden="true">' +
+          'Sales & compliance checks will show up below. Click the icons below for more details' +
+        '</div>';
+      try {
+        th.addEventListener('click', function(e) {
+          var target = e && e.target ? e.target : null;
+          var btn = target && target.closest ? target.closest('[data-compliance-help-toggle="1"]') : null;
+          if (!btn) return;
+          try { e.preventDefault(); } catch (_) {}
+          try { e.stopPropagation(); } catch (_) {}
+          var pop = th.querySelector('[data-compliance-help-popover="1"]');
+          if (!pop) return;
+          var open = pop.classList.contains('is-open');
+          pop.classList.toggle('is-open', !open);
+          pop.setAttribute('aria-hidden', open ? 'true' : 'false');
+        });
+      } catch (_) {}
+      if (!complianceHelpGlobalBound) {
+        complianceHelpGlobalBound = true;
+        try {
+          document.addEventListener('click', function(e) {
+            var pop = document.querySelector('#sessions-table .grid-row--header .grid-cell.compliance-cell [data-compliance-help-popover="1"]');
+            if (!pop || !pop.classList.contains('is-open')) return;
+            var cell = pop.closest ? pop.closest('.grid-cell.compliance-cell') : null;
+            if (cell && e && e.target && cell.contains(e.target)) return;
+            try { pop.classList.remove('is-open'); } catch (_) {}
+            try { pop.setAttribute('aria-hidden', 'true'); } catch (_) {}
+          }, true);
+        } catch (_) {}
+      }
+    }
+
+    function complianceCellHtml(sessionId, options) {
+      var sid = sessionId != null ? String(sessionId) : '';
+      if (!sid) return '';
+      var opts = options && typeof options === 'object' ? options : {};
+      var hasSale = !!opts.hasSale;
+      var triggered = !!opts.triggered;
+      var score = opts.score != null ? Number(opts.score) : null;
+      var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
+      var title = triggered
+        ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+        : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : ''));
+      var href = opts.href ? String(opts.href) : '';
+      if (!href) {
+        try {
+          var shop = null;
+          try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
+          var qs = new URLSearchParams();
+          if (shop) qs.set('shop', shop);
+          qs.set('q', sid);
+          href = '/tools/click-order-lookup?' + qs.toString();
+        } catch (_) {
+          href = '/tools/click-order-lookup?q=' + encodeURIComponent(sid);
+        }
+      }
+      var saleIcon = hasSale
+        ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
+        : '';
+      var statusIcon = triggered
+        ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
+        : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+      return '' +
+        '<a class="compliance-link" href="' + escapeHtml(href) + '" data-compliance-link="1" title="' + escapeHtml(title) + '">' +
+          saleIcon +
+          statusIcon +
+        '</a>';
+    }
+
+    function refreshComplianceMarkersForSessionsTable() {
+      ensureComplianceHeaderUi();
       var tbody = document.getElementById('table-body');
       if (!tbody) return;
       var rows = Array.from(tbody.querySelectorAll('.grid-row[data-session-id]'));
@@ -3985,17 +4033,22 @@ const API = '';
         rows.forEach(function(row) {
           if (!row || !row.querySelector) return;
           var sid = row.getAttribute('data-session-id') || '';
-          var cell = row.querySelector('.grid-cell.fraud-icon-cell');
+          var cell = row.querySelector('.grid-cell.compliance-cell');
           if (!cell) return;
           var m = markers && markers[sid] ? markers[sid] : null;
           var triggered = !!(m && m.triggered === true);
-          if (triggered) {
-            try { cell.classList.add('fraud-alert-cell'); } catch (_) {}
-            cell.innerHTML = buildFraudAlertIconHtml('session', sid, m);
-          } else {
-            try { cell.classList.remove('fraud-alert-cell'); } catch (_) {}
-            cell.innerHTML = '';
-          }
+          var score = m && m.score != null ? Number(m.score) : null;
+          var href = '';
+          try {
+            var a = cell.querySelector('a.compliance-link');
+            href = a && a.getAttribute ? (a.getAttribute('href') || '') : '';
+          } catch (_) { href = ''; }
+          var hasSale = false;
+          try { hasSale = row.classList && row.classList.contains('converted'); } catch (_) { hasSale = false; }
+          var sig = (hasSale ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
+          if (cell.getAttribute('data-compliance-sig') === sig) return;
+          try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
+          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, triggered: triggered, score: score, href: href });
         });
       }).catch(function() {});
     }
@@ -12658,9 +12711,89 @@ const API = '';
       document.body.classList.remove('side-panel-open');
     }
 
+    function sideLookupHref(q) {
+      var qq = q != null ? String(q).trim() : '';
+      if (!qq) return '/tools/click-order-lookup';
+      try {
+        var shop = getShopParam() || shopForSalesFallback || '';
+        var p = new URLSearchParams();
+        if (shop) p.set('shop', shop);
+        p.set('q', qq);
+        return '/tools/click-order-lookup?' + p.toString();
+      } catch (_) {
+        return '/tools/click-order-lookup?q=' + encodeURIComponent(qq);
+      }
+    }
+
+    function buildSideLookupIdsHtml(resolved, sessionId, options) {
+      var r = resolved && typeof resolved === 'object' ? resolved : {};
+      var sid = sessionId != null ? String(sessionId) : '';
+      var opts = options && typeof options === 'object' ? options : {};
+      var loading = !!opts.loading;
+      var out = '';
+
+      function addRow(label, value) {
+        var v = value != null ? String(value).trim() : '';
+        if (!v) return;
+        out += '' +
+          '<div class="side-panel-detail-row side-panel-lookup-id-row">' +
+            '<span class="side-panel-label">' + escapeHtml(label) + '</span>' +
+            '<span class="side-panel-value"><code>' + escapeHtml(v) + '</code>' +
+              '<button type="button" class="btn btn-sm btn-outline-secondary ms-2 side-panel-copy-btn" data-side-copy="' + escapeHtml(v) + '">Copy</button>' +
+            '</span>' +
+          '</div>';
+      }
+
+      var clickId = sid || (r.session_id != null ? String(r.session_id) : '');
+      var openQ = clickId || (r.order_id != null ? String(r.order_id) : '') || (r.checkout_token != null ? String(r.checkout_token) : '') || '';
+      var href = sideLookupHref(openQ);
+      out = '' +
+        '<div class="side-panel-detail-row side-panel-lookup-open-row">' +
+          '<span class="side-panel-label">Lookup</span>' +
+          '<span class="side-panel-value">' +
+            '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">Open in Lookup</a>' +
+            (loading ? '<span class="muted ms-2">Loading IDs…</span>' : '') +
+          '</span>' +
+        '</div>';
+
+      addRow('Click ID', clickId);
+      addRow('Shopify order ID', r.order_id);
+      addRow('Checkout token', r.checkout_token);
+      addRow('Kexo order key', r.purchase_key);
+      addRow('Visitor', r.visitor_id);
+      return out;
+    }
+
+    function copyTextToClipboard(text) {
+      var value = String(text == null ? '' : text);
+      if (!value) return Promise.resolve(false);
+      try {
+        if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          return navigator.clipboard.writeText(value).then(function () { return true; }).catch(function () { return false; });
+        }
+      } catch (_) {}
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', 'readonly');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return Promise.resolve(!!ok);
+      } catch (_) {
+        return Promise.resolve(false);
+      }
+    }
+
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
       if (!panel) return;
+      try { selectedSessionId = sessionId; } catch (_) {}
       const backdrop = ensureSidePanelBackdrop();
       panel.classList.remove('is-hidden');
       if (backdrop) backdrop.classList.remove('is-hidden');
@@ -12690,9 +12823,8 @@ const API = '';
             return '<li>' + thumb + '<span>' + text + '</span></li>';
           }).join('');
           document.getElementById('side-events').innerHTML = eventsHtml || '<li class="muted">No events</li>';
+          var idsSlot = '<div id="side-lookup-ids">' + buildSideLookupIdsHtml({ session_id: sessionId, visitor_id: session.visitor_id || null }, sessionId, { loading: true }) + '</div>';
           const metaRows = [
-            ['Session', sessionId],
-            ['Visitor', session.visitor_id || '\u2014'],
             ['Started', formatTs(session.started_at)],
             ['Seen', formatTs(session.last_seen)],
             ['Cart qty', String(session.cart_qty ?? 0)]
@@ -12701,9 +12833,49 @@ const API = '';
           var seenMs = session.last_seen != null ? Number(session.last_seen) : 0;
           var gapHours = (seenMs - startedMs) / (60 * 60 * 1000);
           var openTabHint = (gapHours >= 1) ? '<div class="side-panel-detail-row muted side-panel-hint">If Started and Seen are many hours apart, the visitor likely left the tab open; we receive a heartbeat every 30s which updates Seen.</div>' : '';
-          document.getElementById('side-meta').innerHTML = metaRows + openTabHint + (saleBlock ? saleBlock : '');
+          const metaEl = document.getElementById('side-meta');
+          metaEl.innerHTML = idsSlot + metaRows + openTabHint + (saleBlock ? saleBlock : '');
+
+          // Bind copy buttons once.
+          if (metaEl && metaEl.getAttribute('data-side-copy-bound') !== '1') {
+            try {
+              metaEl.setAttribute('data-side-copy-bound', '1');
+              metaEl.addEventListener('click', function (e) {
+                var target = e && e.target ? e.target : null;
+                var btn = target && target.closest ? target.closest('[data-side-copy]') : null;
+                if (!btn) return;
+                e.preventDefault();
+                var txt = btn.getAttribute('data-side-copy') || '';
+                copyTextToClipboard(txt).then(function (ok) {
+                  try { btn.textContent = ok ? 'Copied' : 'Copy'; } catch (_) {}
+                  setTimeout(function () { try { btn.textContent = 'Copy'; } catch (_) {} }, 900);
+                });
+              });
+            } catch (_) {}
+          }
+
           if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session);
           document.getElementById('side-cf').innerHTML = buildSidePanelCf(session);
+
+          // Fetch lookup IDs (fail-open) so users can copy order/token keys.
+          (function fetchLookupIds() {
+            var slot = document.getElementById('side-lookup-ids');
+            if (!slot) return;
+            var shop = '';
+            try { shop = getShopParam() || shopForSalesFallback || ''; } catch (_) { shop = ''; }
+            var url = API + '/api/tools/click-order-lookup?q=' + encodeURIComponent(String(sessionId || ''));
+            if (shop) url += '&shop=' + encodeURIComponent(shop);
+            url += '&_=' + Date.now();
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+              .then(function (r) { return r && r.ok ? r.json() : null; })
+              .then(function (payload) {
+                if (!payload || payload.ok !== true) return;
+                if (selectedSessionId !== sessionId) return;
+                var resolved = payload.resolved && typeof payload.resolved === 'object' ? payload.resolved : {};
+                slot.innerHTML = buildSideLookupIdsHtml(resolved, sessionId, { loading: false });
+              })
+              .catch(function () {});
+          })();
         })
         .catch(() => {
           document.getElementById('side-events').innerHTML = '<li class="muted">Failed to load.</li>';
@@ -16309,7 +16481,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr') ? 'tools' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools' : PAGE;
           setTab(pageTab);
           return;
         }

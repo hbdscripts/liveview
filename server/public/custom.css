@@ -648,43 +648,74 @@ body.side-panel-open {
     border-left: 0;
   }
 }
-/* Sessions table: converted sale icon lives in a dedicated leading column */
-#sessions-table.grid-table .grid-cell.sale-icon-cell {
-  padding: 0 !important;
+/* Sessions table: Compliance column (check/warn + optional sale icon) */
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell,
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell {
+  min-width: 25px !important;
+  width: 42px !important;
+  max-width: 50px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
   text-align: center !important;
   vertical-align: middle !important;
 }
-#sessions-table.grid-table .grid-cell.sale-icon-cell.converted-sale-cell {
-  background: var(--kexo-converted-icon-bg, #f0f8f1) !important;
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell {
+  position: relative;
 }
-#sessions-table.grid-table .grid-cell.sale-icon-cell .converted-row-sale-icon {
-  color: var(--kexo-converted-icon-color, #2f7d50);
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: .35rem;
   width: 100%;
   height: 100%;
+  text-decoration: none;
+}
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-sale-icon {
+  color: var(--tblr-success, #2fb344);
   font-size: .85rem;
+}
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon {
+  font-size: .85rem;
+}
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-ok {
+  color: var(--tblr-success, #2fb344);
+}
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-warn {
+  color: var(--tblr-danger, #d63939);
 }
 
-/* Sessions table: fraud alert icon (renders only when triggered) */
-#sessions-table.grid-table .grid-cell.fraud-icon-cell {
-  padding: 0 !important;
-  text-align: center !important;
-  vertical-align: middle !important;
-}
-#sessions-table.grid-table .grid-cell.fraud-icon-cell.fraud-alert-cell {
-  background: var(--kexo-fraud-icon-bg, rgba(239, 68, 68, 0.10)) !important;
-}
-#sessions-table.grid-table .grid-cell.fraud-icon-cell .fraud-alert-icon {
-  color: var(--kexo-fraud-icon-color, #b42318);
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-header-btn {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  height: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: .85rem;
+  padding: 0;
+  color: var(--tblr-secondary, #626976);
   cursor: pointer;
+}
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-help-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: 320px;
+  padding: .5rem .6rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
+  z-index: 50;
+  display: none;
+}
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-help-popover.is-open {
+  display: block;
 }
 
 /* Sessions table: device cell now uses icons (platform + device type) */
@@ -913,74 +944,6 @@ body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table th
 body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap.kexo-sticky-scrolled .grid-body .grid-row .grid-cell:first-child,
 body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table tbody td:first-child {
-  box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
-}
-
-/* Sessions table: leading sale + fraud icon columns (2 × 35px) + sticky/resizable landing as column 3 */
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:first-child,
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:first-child,
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:nth-child(2),
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:nth-child(2) {
-  min-width: 35px !important;
-  width: 35px !important;
-  max-width: 35px !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  text-align: center !important;
-  box-shadow: none !important;
-}
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:nth-child(2) {
-  position: sticky;
-  left: 35px;
-  z-index: 6;
-  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
-}
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:nth-child(2) {
-  position: sticky;
-  left: 35px;
-  z-index: 5;
-  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
-}
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell {
-  position: sticky;
-  left: 70px;
-  z-index: 6;
-  min-width: var(--kexo-sticky-col-min-width, 72px) !important;
-  width: var(--kexo-sticky-col-width, 120px) !important;
-  max-width: var(--kexo-sticky-col-max-width, 360px) !important;
-  white-space: nowrap;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
-  border-right: 0 !important;
-  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.22);
-  transition: width 0.08s ease-out, box-shadow 0.2s ease-out;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  text-align: left !important;
-}
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell.landing-cell {
-  position: sticky;
-  left: 70px;
-  z-index: 5;
-  min-width: var(--kexo-sticky-col-min-width, 72px) !important;
-  width: var(--kexo-sticky-col-width, 120px) !important;
-  max-width: var(--kexo-sticky-col-max-width, 360px) !important;
-  padding-right: var(--kexo-sticky-firstcol-safe-padding-right, 28px) !important;
-  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
-  border-right: 0 !important;
-  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.2);
-  transition: width 0.08s ease-out, box-shadow 0.2s ease-out;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  text-align: left !important;
-}
-/* When horizontally scrolled: apply the stronger right-edge shadow to the sticky landing column */
-body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell {
-  box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.28) !important;
-}
-body:not([data-page="settings"]) .table-scroll-wrap.kexo-sticky-scrolled #sessions-table.grid-table .grid-body .grid-row .grid-cell.landing-cell {
   box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
 }
 

@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 36;
+const DEFINITIONS_VERSION = 37;
 const LAST_UPDATED = '2026-02-15';
 
 /**
@@ -34,6 +34,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     columns: [
       { name: 'Landing Page', value: 'sessions.first_path / sessions.first_product_handle (set on first event)' },
+      { name: 'Compliance', value: 'Always shows check/warn (from /api/fraud/markers) + optional sale icon when sessions.has_purchased=1; links to /tools/click-order-lookup' },
       { name: 'GEO', value: 'sessions.country_code (or visitors.last_country fallback in API)' },
       { name: 'Source', value: 'sessions.traffic_source_key (mapped from UTMs/referrer rules)' },
       { name: 'Device', value: 'sessions.ua_device_type + ua_platform (derived from ingest User-Agent)' },
@@ -49,8 +50,8 @@ const TRACKER_TABLE_DEFINITIONS = [
   {
     id: 'home_fraud_markers',
     page: 'Home',
-    name: 'Fraud alert markers (sessions + latest sales)',
-    ui: { elementIds: ['sessions-table', 'latest-sales-table', 'fraud-detail-modal'] },
+    name: 'Compliance / fraud markers (sessions + latest sales)',
+    ui: { elementIds: ['sessions-table', 'latest-sales-table'] },
     endpoint: {
       method: 'GET',
       path: '/api/fraud/markers',
@@ -61,12 +62,12 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'pixel', note: 'Evaluations are created on checkout_completed ingest (never blocks dashboards)' },
     ],
     columns: [
-      { name: 'Triggered', value: 'fraud_evaluations.triggered (score >= threshold OR hard flags)' },
+      { name: 'Triggered', value: 'fraud_evaluations.triggered (score >= threshold)' },
       { name: 'Score', value: 'fraud_evaluations.score (0-100)' },
       { name: 'Flags', value: 'fraud_evaluations.flags_json (deterministic signals)' },
     ],
     math: [
-      { name: 'Fail-open', value: 'If fraud tables/config are missing or API fails, UI omits the icon' },
+      { name: 'Fail-open', value: 'If fraud tables/config are missing or API fails, sessions tables show the default “passed” check; latest sales omits the warning icon' },
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['fraud_evaluations'], shopifyToken: false },
@@ -74,7 +75,7 @@ const TRACKER_TABLE_DEFINITIONS = [
   {
     id: 'home_fraud_detail',
     page: 'Home',
-    name: 'Fraud detail modal',
+    name: 'Fraud detail modal (legacy quick view)',
     ui: { elementIds: ['fraud-detail-modal'] },
     endpoint: {
       method: 'GET',
@@ -781,6 +782,39 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['orders_shopify_shipping_options', 'sessions'], shopifyToken: false },
+  },
+  {
+    id: 'tools_click_order_lookup',
+    page: 'Tools',
+    name: 'Click & Order Lookup tool',
+    ui: { elementIds: ['tool-click-order-lookup', 'lookup-results'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/tools/click-order-lookup',
+      params: ['q=session_id|order_id|checkout_token|purchase_key', 'shop=... (optional)'],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions', 'visitors'], note: 'Session + visitor context for click ID' },
+      { kind: 'db', tables: ['purchases', 'purchase_events'], note: 'Evidence keys and purchase linkage (order_id / checkout_token / purchase_key)' },
+      { kind: 'db', tables: ['orders_shopify'], note: 'Shopify truth order lookup (when shop is known)' },
+      { kind: 'db', tables: ['affiliate_attribution_sessions'], note: 'Captured attribution signals for the session (UTMs + click IDs)' },
+      { kind: 'db', tables: ['fraud_evaluations', 'fraud_config'], note: 'Fraud bundle (session/purchase/order evaluations + threshold) + resolution metadata' },
+      { kind: 'ai', note: 'Optional: AI narrative generation for triggered evals (feature-flagged; async; cached)' },
+    ],
+    columns: [
+      { name: 'Resolved IDs', value: 'Click ID (session_id), Visitor ID, Checkout token, Shopify order ID, Kexo order key' },
+      { name: 'Session', value: 'Geo/device/source/UTMs/entry/referrer + timestamps' },
+      { name: 'Purchases', value: 'Purchases for the resolved session (most recent first)' },
+      { name: 'Fraud', value: 'Fraud evaluations + deterministic/AI narrative + safe evidence snapshot' },
+      { name: 'Attribution', value: 'affiliate_attribution_sessions row + JSON fields (paid_click_ids / affiliate_click_ids / last_seen)' },
+      { name: 'Truth order', value: 'orders_shopify row when shop is provided/resolved' },
+      { name: 'Purchase events', value: 'purchase_events rows for order_id/checkout_token when shop is provided' },
+    ],
+    math: [
+      { name: 'Resolution strategy', value: 'Lookup prefers indexed fraud_evaluations links first; falls back to limited purchases lookups to avoid heavy scans (order_id/checkout_token are not indexed in purchases).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions', 'purchases'], shopifyToken: false },
   },
   {
     id: 'settings_charts_panel',
