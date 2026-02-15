@@ -1031,6 +1031,15 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell {
     justify-content: center;
   }
+  /* Sessions table (live/sales/table): smaller sticky min-width on mobile */
+  body[data-page="live"] .table-scroll-wrap #sessions-table .grid-row--header .grid-cell:first-child,
+  body[data-page="live"] .table-scroll-wrap #sessions-table .grid-body .grid-row .grid-cell:first-child,
+  body[data-page="sales"] .table-scroll-wrap #sessions-table .grid-row--header .grid-cell:first-child,
+  body[data-page="sales"] .table-scroll-wrap #sessions-table .grid-body .grid-row .grid-cell:first-child,
+  body[data-page="date"] .table-scroll-wrap #sessions-table .grid-row--header .grid-cell:first-child,
+  body[data-page="date"] .table-scroll-wrap #sessions-table .grid-body .grid-row .grid-cell:first-child {
+    min-width: 56px !important;
+  }
 }
 .traffic-source-cell .source-icons {
   margin-inline-end: 0.5rem;
