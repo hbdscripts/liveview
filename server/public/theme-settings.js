@@ -171,7 +171,10 @@
   var ICON_GLYPH_ALL_KEYS = Object.keys(ICON_GLYPH_DEFAULTS).map(function (k) { return 'theme-icon-glyph-' + k; });
   var LOCKED_GLYPH_THEME_KEYS = Object.keys(LOCKED_SETTINGS_ICON_KEYS).map(function (k) { return 'theme-icon-glyph-' + k; });
   var ICON_GLYPH_KEYS = ICON_GLYPH_ALL_KEYS.filter(function (k) {
-    return LOCKED_GLYPH_THEME_KEYS.indexOf(k) < 0;
+    if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
+    var name = glyphNameFromThemeKey(k);
+    if (LEGACY_THEME_ICON_KEYS[name]) return false;
+    return true;
   });
   var KEYS = Object.keys(DEFAULTS).filter(function (k) {
     if (k === 'theme') return false;
@@ -589,7 +592,6 @@
   function iconGroupIdForName(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
-    if (LEGACY_THEME_ICON_KEYS[key]) return 'legacy';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
     if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'header-business-snapshot' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
@@ -606,7 +608,6 @@
     if (groupId === 'cards') return 'Cards & Charts';
     if (groupId === 'runtime') return 'Panels, Modals & Runtime';
     if (groupId === 'admin') return 'Admin';
-    if (groupId === 'legacy') return 'Legacy / Removed';
     return 'Misc';
   }
 
@@ -616,10 +617,8 @@
     registryKeys.forEach(function (name) { registrySet[name] = true; });
     var requiredKeys = REQUIRED_ACTIVE_ICON_KEYS.slice().sort();
     var missingFromSettings = requiredKeys.filter(function (name) { return !registrySet[name]; });
-    var removedFromTheme = registryKeys.filter(function (name) { return !!LEGACY_THEME_ICON_KEYS[name]; });
     return {
       missingFromSettings: missingFromSettings,
-      removedFromTheme: removedFromTheme,
     };
   }
 
@@ -636,10 +635,8 @@
         '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
           '<strong>Icon audit</strong>' +
           '<span class="badge ' + (audit.missingFromSettings.length ? 'bg-danger-lt text-danger' : 'bg-success-lt text-success') + '">Missing in settings: ' + String(audit.missingFromSettings.length) + '</span>' +
-          '<span class="badge ' + (audit.removedFromTheme.length ? 'bg-warning-lt text-warning' : 'bg-success-lt text-success') + '">Removed from theme: ' + String(audit.removedFromTheme.length) + '</span>' +
         '</div>' +
-        '<div class="small mb-2"><strong>Used in theme but missing from settings:</strong> ' + renderIconAuditCodeList(audit.missingFromSettings) + '</div>' +
-        '<div class="small"><strong>In settings but currently removed from theme:</strong> ' + renderIconAuditCodeList(audit.removedFromTheme) + '</div>' +
+        '<div class="small"><strong>Used in theme but missing from settings:</strong> ' + renderIconAuditCodeList(audit.missingFromSettings) + '</div>' +
       '</div>';
   }
 
@@ -658,7 +655,7 @@
       groups[groupId].push(glyphInputCard(themeKey));
     });
 
-    var order = ['header-nav', 'footer', 'tables', 'cards', 'runtime', 'admin', 'legacy', 'misc'];
+    var order = ['header-nav', 'footer', 'tables', 'cards', 'runtime', 'admin', 'misc'];
     var accordionId = 'theme-icons-accordion';
     var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
     var itemIdx = 0;
@@ -1058,14 +1055,12 @@
     var name = glyphNameFromThemeKey(key);
     var meta = glyphMetaFor(name);
     var inputId = 'theme-input-' + key;
-    var legacy = !!LEGACY_THEME_ICON_KEYS[name];
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
             '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
             '<strong class="me-auto">' + meta.title + '</strong>' +
-            (legacy ? '<span class="badge bg-warning-lt text-warning">Legacy</span>' : '') +
           '</div>' +
           '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
           '<div class="d-flex align-items-start gap-2">' +
