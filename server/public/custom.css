@@ -1499,6 +1499,16 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   ) !important;
 }
 
+.page-loader-progress .progress-bar.progress-bar-indeterminate {
+  width: 30% !important;
+  animation: pageLoaderIndeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes pageLoaderIndeterminate {
+  0% { margin-left: 0; }
+  100% { margin-left: 70%; }
+}
+
 /* Unified report/page loaders (content-centered, not viewport-centered) */
 .page-body {
   position: relative;

@@ -375,6 +375,9 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Page loader animation: restored indeterminate progress bar animation (sliding bar) — custom KEXO gradient override had no animation; added pageLoaderIndeterminate keyframes.
+
+2026-02-15 (latest)
 - Tool pages loader fix: compare-conversion-rate, shipping-cr, click-order-lookup no longer show the page-body loader on init (they don't use the report build system and never called finish(), so the loader covered content indefinitely).
 
 2026-02-15 (latest)
