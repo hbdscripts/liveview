@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Adaptive today buckets + KPI fixes)
+Last updated: 2026-02-15 (Multi-tenant scaling notes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -279,6 +279,11 @@ Ops/reliability:
 - Abandoned carts data: do not reintroduce Postgres upsert behaviour that overwrites `sessions.is_abandoned/abandoned_at/recovered_at`. Abandonment is marked asynchronously by the cleanup loop in `server/cleanup.js` based on inactivity beyond `ABANDONED_WINDOW_MINUTES`.
 - ApexCharts 4.x line visibility: line charts must keep `stroke.show=true` and avoid `fill.opacity=0` (can render markers without connecting strokes). See `server/public/kexo-chart-builder.js` + `server/public/app.js` chart configs.
 - When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
+- Multi-tenant scaling guardrail (FUTURE): do not run one deployment for multiple Shopify stores until tenant isolation is implemented:
+  - Add `shop_id` (or `shop`) to core tracking tables (`sessions`, `events`, `visitors`, `purchases`) and index by `(shop_id, started_at/ts/last_seen)` so queries never scan other stores.
+  - Ingest must validate/store the shop on every row; APIs + `report_cache` keys must be shop-scoped (avoid `shop: ''` cache collisions).
+  - Background jobs (cleanup, ads attribution sync, truth warmups) must iterate shops safely (concurrency-limited) — no single-shop config fallbacks.
+  - Prefer Shopify webhooks + bulk import for orders so `orders_shopify` stays mirrored without report-time Shopify pagination; add daily rollups + retention for raw events to keep reports fast at scale.
 
 ---
 
@@ -304,6 +309,7 @@ Ops/reliability:
   - Added an always-visible header date-range spinner while reports are building (`body.kexo-report-loading` toggled by `app.js`; Variants page participates too).
   - Settings → Diagnostics: Overview now has a Range selector (Today/Yesterday/7d/14d/30d) to compare Shopify sessions vs Kexo human sessions against truth orders; served by `GET /api/config-status?range=...` and backfills `shopify_sessions_snapshots` via ShopifyQL timeseries.
   - Server warms Shopify truth for `30d` shortly after boot (`server/index.js`) so long-range reports can read from our DB without first-hit Shopify pagination.
+  - Multi-tenant readiness note: core tracking tables are currently global in places; future rollout to many stores requires tenant-scoped schemas/queries/caches and per-shop background jobs (see Guardrails).
 
 2026-02-14 (latest)
 - Auth pages UI refresh (Tabler templates):
