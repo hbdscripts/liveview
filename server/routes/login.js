@@ -138,7 +138,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo-color-dark-text.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/login.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -218,7 +218,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo-color-dark-text.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/login.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -303,7 +303,7 @@ async function handleGetLogin(req, res) {
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
 
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo-color-dark-text.webp';
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/login.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
@@ -323,7 +323,7 @@ async function handleGetRegister(req, res) {
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo-color-dark-text.webp';
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/login.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));

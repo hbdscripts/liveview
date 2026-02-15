@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Ads table headings/order + audit icon mapping)
+Last updated: 2026-02-15 (Login page logo swap to login.webp)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -306,6 +306,15 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Login page logo: swapped default from `kexo-color-dark-text.webp` to `login.webp` on `/app/login` and `/app/register`.
+
+2026-02-15 (latest)
+- Dashboard KPI sparklines + compare labels:
+  - Dashboard KPI card sparklines now render the raw per-bucket series from `/api/dashboard-series` (no rescaling to end at KPI totals), fixing flat/inactive Yesterday/Day-before lines.
+  - Compare labels now show explicit dates/date-ranges (e.g. `Feb 13`, `Feb 8 – Feb 14`) instead of generic “Day before” / “Previous 7 days”.
+  - COGS / Fulfilled / Returns KPI cards no longer render synthetic diagonal sparklines (sparkline slots are cleared until real per-bucket series exists).
 
 2026-02-15 (latest)
 - Loader color update:
