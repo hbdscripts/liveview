@@ -42,6 +42,7 @@ const REQUIRED_ACTIVE_ICON_KEYS = Object.freeze([
   'nav-dropdown-arrow',
   'chart-builder-icon',
   'table-icon-converted-sale',
+  'fraud-alert',
 ]);
 
 const ICON_GLYPH_DEFAULTS = Object.freeze({
@@ -79,6 +80,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-icon-sessions': 'fa-users',
   'table-icon-revenue': 'fa-sterling-sign',
   'table-icon-converted-sale': 'fa-solid fa-sterling-sign',
+  'fraud-alert': 'fa-jelly-filled fa-triangle-exclamation',
   'table-icon-clicks': 'fa-hand-pointer',
   'table-icon-variants-variant': 'fa-shapes',
   'table-icon-variants-sessions': 'fa-users',

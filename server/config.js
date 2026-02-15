@@ -81,6 +81,12 @@ const config = {
   maxEventPayloadBytes: getInt('MAX_EVENT_PAYLOAD_BYTES', 8192),
   rateLimitEventsPerMinute: getInt('RATE_LIMIT_EVENTS_PER_MINUTE', 120),
   sentryDsn: getEnv('SENTRY_DSN', ''),
+  /** Fraud: used to HMAC-hash IP/UA (never store raw IP). */
+  fraudIpSalt: (getEnv('FRAUD_IP_SALT', '') || '').trim(),
+  /** Fraud: enable optional AI narrative generation (never blocks UI). */
+  fraudAiEnabled: getBool('FRAUD_AI_ENABLED', false),
+  /** Fraud AI provider secret (do not store in DB). */
+  openaiApiKey: (getEnv('OPENAI_API_KEY', '') || '').trim(),
   dashboardSecret: getEnv('DASHBOARD_SECRET', ''),
   /** If set, dashboard is allowed without password only when Referer starts with this (e.g. https://admin.shopify.com/store/943925-c1) */
   allowedAdminRefererPrefix: getEnv('ALLOWED_ADMIN_REFERER_PREFIX', ''),

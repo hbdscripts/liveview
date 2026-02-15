@@ -10,6 +10,8 @@ const store = require('../store');
 const salesEvidence = require('../salesEvidence');
 const rateLimit = require('../rateLimit');
 const sse = require('../sse');
+const affiliateAttribution = require('../fraud/affiliateAttribution');
+const fraudService = require('../fraud/service');
 
 let geoip;
 try {
@@ -212,6 +214,39 @@ function ingestRouter(req, res, next) {
   store.upsertVisitor(payload)
     .then(({ isReturning } = {}) => store.upsertSession(payload, isReturning, cfContext))
     .then(() => {
+      // Capture affiliate/paid attribution evidence (fail-open, rate-limited updates).
+      const type = payload && typeof payload.event_type === 'string' ? payload.event_type : '';
+      const isPageViewed = type === 'page_viewed';
+      const isCheckoutCompleted =
+        payload &&
+        (payload.event_type === 'checkout_completed' ||
+          payload.checkout_completed === true ||
+          payload.checkout_completed === 1 ||
+          payload.checkout_completed === '1');
+      const isCheckoutStarted =
+        payload &&
+        (payload.event_type === 'checkout_started' ||
+          payload.checkout_started === true ||
+          payload.checkout_started === 1 ||
+          payload.checkout_started === '1');
+      const shouldCapture = isPageViewed || isCheckoutStarted || isCheckoutCompleted;
+      if (!shouldCapture) return null;
+      const clientIp = getClientIp(req);
+      const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
+      affiliateAttribution
+        .upsertFromIngest({
+          sessionId,
+          visitorId,
+          payload,
+          requestUrl: requestReferer,
+          clientIp,
+          userAgent: ua,
+          nowMs: Date.now(),
+        })
+        .catch(() => null);
+      return null;
+    })
+    .then(() => {
       // On checkout_* events we write purchase_events (append-only evidence) so Shopify truth orders
       // can be attributed to sessions even when checkout_completed is missed.
       //
@@ -237,7 +272,12 @@ function ingestRouter(req, res, next) {
       return salesEvidence
         .insertPurchaseEvent(payload, { receivedAtMs, cfContext })
         .catch(() => null)
-        .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'));
+        .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'))
+        .then(() => {
+          // Fraud evaluation (fail-open; never blocks ingest response).
+          fraudService.evaluateCheckoutCompleted({ sessionId, payload, receivedAtMs }).catch(() => null);
+          return null;
+        });
     })
     .then(() => store.insertEvent(sessionId, payload))
     .then(() => Promise.all([store.getSession(sessionId), store.getVisitor(visitorId)]))

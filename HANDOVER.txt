@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Sale sound reliability fixes)
+Last updated: 2026-02-15 (Affiliate fraud alerts + scoring)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -297,6 +297,7 @@ Ops/reliability:
 - Abandoned carts data: do not reintroduce Postgres upsert behaviour that overwrites `sessions.is_abandoned/abandoned_at/recovered_at`. Abandonment is marked asynchronously by the cleanup loop in `server/cleanup.js` based on inactivity beyond `ABANDONED_WINDOW_MINUTES`.
 - ApexCharts 4.x line visibility: line charts must keep `stroke.show=true` and avoid `fill.opacity=0` (can render markers without connecting strokes). See `server/public/kexo-chart-builder.js` + `server/public/app.js` chart configs.
 - When changing dashboard sections/definitions, update `server/trackerDefinitions.js`.
+- Fraud/affiliate abuse detection: never store raw IP; IP/UA are HMAC-hashed using `FRAUD_IP_SALT`. Fraud tables are additive-only; dashboards must fail-open (no blocking if fraud APIs fail or tables missing).
 - Multi-tenant scaling guardrail (FUTURE): do not run one deployment for multiple Shopify stores until tenant isolation is implemented:
   - Add `shop_id` (or `shop`) to core tracking tables (`sessions`, `events`, `visitors`, `purchases`) and index by `(shop_id, started_at/ts/last_seen)` so queries never scan other stores.
   - Ingest must validate/store the shop on every row; APIs + `report_cache` keys must be shop-scoped (avoid `shop: ''` cache collisions).
@@ -306,6 +307,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Fraud alert system (affiliate abuse detection):
+  - New tables/migration: `047_affiliate_attribution_and_fraud` adds `affiliate_attribution_sessions`, `fraud_evaluations`, `fraud_config`.
+  - Ingest captures attribution signals (UTMs + paid/affiliate click IDs) with immutable first-touch + rate-limited `last_seen` updates; IP/UA are hashed (no raw IP storage).
+  - Checkout-completed writes deterministic fraud evaluations (score 0–100 + flags + safe evidence snapshot); optional AI narrative is feature-flagged.
+  - UI: sessions tables + Live “Latest sales” show a Fraud Alert icon only when triggered; click opens a Tabler modal with score, analysis, flags, and evidence.
+  - APIs: `GET /api/fraud/markers`, `GET /api/fraud/detail`, admin config/resolution under `/api/admin`.
 
 2026-02-15 (latest)
 - Sale sound reliability: (1) SSE first-sale no longer skipped when lastSaleAt is null — now fires toast+sound if sale is within 2 min (avoids race with hydrateLastSaleFooterFromApi). (2) Added touchstart to audio prime listeners and explicit prime on eye/footer last-sale toggle pointerdown/touchstart so sale sounds unlock on first footer interaction.

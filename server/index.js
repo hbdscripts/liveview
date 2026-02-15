@@ -46,6 +46,7 @@ const pageInsights = require('./routes/pageInsights');
 const abandonedCarts = require('./routes/abandonedCarts');
 const adsRouter = require('./routes/ads');
 const toolsRouter = require('./routes/tools');
+const fraudRouter = require('./routes/fraud');
 const ogThumb = require('./routes/ogThumb');
 const availableDays = require('./routes/availableDays');
 const auth = require('./routes/auth');
@@ -61,6 +62,7 @@ const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
 const adminUsersApi = require('./routes/adminUsers');
 const adminControlsApi = require('./routes/adminControls');
+const adminFraudApi = require('./routes/adminFraud');
 const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 
 const app = express();
@@ -105,6 +107,7 @@ app.get('/api/sessions', sessionsRouter.list);
 app.get('/api/sessions/online-series', sessionsRouter.onlineSeries);
 app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/latest-sales', sessionsRouter.latestSales);
+app.use('/api/fraud', fraudRouter);
 app.get('/api/config-status', configStatus);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
@@ -171,6 +174,7 @@ app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 app.use('/api/admin', requireMaster.middleware, adminControlsApi);
+app.use('/api/admin', requireMaster.middleware, adminFraudApi);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/me', me);
 app.get('/api/store-base-url', (req, res) => {
@@ -558,6 +562,7 @@ const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes')
 const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
 const { up: up045 } = require('./migrations/045_users');
 const { up: up046 } = require('./migrations/046_rename_master_to_admin');
+const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -615,6 +620,7 @@ async function migrateAndStart() {
   await up044();
   await up045();
   await up046();
+  await up047();
 
   try {
     const r = await runAdsMigrations();

@@ -667,6 +667,78 @@ body.side-panel-open {
   font-size: .85rem;
 }
 
+/* Sessions table: fraud alert icon (renders only when triggered) */
+#sessions-table.grid-table .grid-cell.fraud-icon-cell {
+  padding: 0 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+#sessions-table.grid-table .grid-cell.fraud-icon-cell.fraud-alert-cell {
+  background: var(--kexo-fraud-icon-bg, rgba(239, 68, 68, 0.10)) !important;
+}
+#sessions-table.grid-table .grid-cell.fraud-icon-cell .fraud-alert-icon {
+  color: var(--kexo-fraud-icon-color, #b42318);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+/* Fraud detail modal */
+#fraud-detail-modal .fraud-detail-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+#fraud-detail-modal .fraud-score-num {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 500;
+}
+#fraud-detail-modal .fraud-flag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .5rem;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+#fraud-detail-modal .fraud-flag-list li {
+  margin: 0;
+}
+#fraud-detail-modal .fraud-flag-lines {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+#fraud-detail-modal .fraud-flag-lines li {
+  margin: .25rem 0;
+}
+#fraud-detail-modal .fraud-flag-lines .badge {
+  margin-right: .35rem;
+}
+#fraud-detail-modal .fraud-flag-desc {
+  color: var(--tblr-secondary);
+}
+#fraud-detail-modal .fraud-reasons {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--tblr-secondary);
+}
+#fraud-detail-modal .fraud-evidence-pre {
+  max-height: 280px;
+  overflow: auto;
+  background: var(--tblr-bg-surface-secondary, #fafafa);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: .5rem;
+  padding: .75rem;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
 .grid-cell.sortable {
   cursor: pointer;
   user-select: none;
@@ -800,6 +872,16 @@ body[data-page="live"] #latest-sales-table tbody td:first-child {
 body[data-page="live"] #latest-sales-table .kexo-sticky-resize-handle {
   display: none !important;
 }
+body[data-page="live"] #latest-sales-table .latest-sales-fraud-slot {
+  display: inline-flex;
+  margin-left: .35rem;
+  vertical-align: middle;
+}
+body[data-page="live"] #latest-sales-table .latest-sales-fraud-slot .fraud-alert-icon {
+  width: auto;
+  height: auto;
+  font-size: .8rem;
+}
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:nth-child(2),
 body:not([data-page="settings"]) .table-responsive table thead th:nth-child(2) {
@@ -817,9 +899,11 @@ body:not([data-page="settings"]) .table-responsive.kexo-sticky-scrolled table tb
   box-shadow: 4px 0 10px -4px rgba(15, 23, 42, 0.24) !important;
 }
 
-/* Sessions table: leading sale icon column (35px) + sticky/resizable landing as column 2 */
+/* Sessions table: leading sale + fraud icon columns (2 × 35px) + sticky/resizable landing as column 3 */
 body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:first-child,
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:first-child {
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:first-child,
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:nth-child(2),
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:nth-child(2) {
   min-width: 35px !important;
   width: 35px !important;
   max-width: 35px !important;
@@ -828,9 +912,21 @@ body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row
   text-align: center !important;
   box-shadow: none !important;
 }
-body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell {
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell:nth-child(2) {
   position: sticky;
   left: 35px;
+  z-index: 6;
+  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
+}
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell:nth-child(2) {
+  position: sticky;
+  left: 35px;
+  z-index: 5;
+  background: var(--kexo-sticky-cell-bg, var(--tblr-bg-surface, #fff));
+}
+body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .grid-cell.landing-cell {
+  position: sticky;
+  left: 70px;
   z-index: 6;
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
@@ -849,7 +945,7 @@ body:not([data-page="settings"]) #sessions-table.grid-table .grid-row--header .g
 }
 body:not([data-page="settings"]) #sessions-table.grid-table .grid-body .grid-row .grid-cell.landing-cell {
   position: sticky;
-  left: 35px;
+  left: 70px;
   z-index: 5;
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
@@ -922,14 +1018,14 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle {
 body:not([data-page="settings"]) .kexo-sticky-resize-handle::before {
   content: "";
   position: absolute;
-  right: 2px;
+  right: 0;
   top: 50%;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   transform: translateY(-50%);
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 24px 24px;
+  background-size: 18px 18px;
   background-image: url(data:image/svg+xml,%3Csvg fill='%23626976' viewBox='0 0 1024 1024' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M743.3 512L598.5 656.8l-36.2-36.2L670.9 512 562.3 403.4l36.2-36.2L743.3 512zM425.5 656.8l36.2-36.2L353.1 512l108.6-108.6-36.2-36.2L280.7 512l144.8 144.8z'/%3E%3C/svg%3E);
   opacity: 0.75;
   transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;

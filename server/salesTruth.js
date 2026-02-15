@@ -9,6 +9,7 @@ const fx = require('./fx');
 const { getDb, isPostgres } = require('./db');
 const { writeAudit } = require('./audit');
 const backup = require('./backup');
+const fraudLinker = require('./fraud/linker');
 
 const API_VERSION = '2024-01';
 const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
@@ -1027,6 +1028,10 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
           // Fail-open: shipping option facts are an optimization; do not block reconciliation.
         }
         evidenceLinked += await backfillEvidenceLinksForOrder(safeShop, row.order_id, row.checkout_token);
+        try {
+          // Link truth order_id -> existing fraud evaluations via checkout_token (best-effort).
+          await fraudLinker.linkOrderFromTruthOrder({ orderId: row.order_id, checkoutToken: row.checkout_token });
+        } catch (_) {}
       }
       nextUrl = parseNextPageUrl(res.headers.get('link'));
     }

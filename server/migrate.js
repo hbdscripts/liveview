@@ -50,6 +50,8 @@ const { up: up042 } = require('./migrations/042_orders_shopify_shipping_options_
 const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes');
 const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
 const { up: up045 } = require('./migrations/045_users');
+const { up: up046 } = require('./migrations/046_rename_master_to_admin');
+const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -100,6 +102,8 @@ async function main() {
   await up043();
   await up044();
   await up045();
+  await up046();
+  await up047();
 
   try {
     const r = await runAdsMigrations();

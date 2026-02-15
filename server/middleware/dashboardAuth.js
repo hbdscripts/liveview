@@ -80,6 +80,7 @@ function isProtectedPath(pathname) {
       pathname === '/api/business-snapshot' ||
       // Ads tab API (new feature area)
       pathname.startsWith('/api/ads') ||
+      pathname.startsWith('/api/fraud') ||
       pathname.startsWith('/api/admin') ||
       pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
       pathname === '/api/latest-sales' ||

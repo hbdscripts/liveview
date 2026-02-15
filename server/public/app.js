@@ -3792,6 +3792,379 @@ const API = '';
       try { refreshFraudMarkersForSessionsTable(); } catch (_) {}
     }
 
+    // Fraud markers + modal (fail-open; markers fetched in batches).
+    var fraudUiBound = false;
+    var fraudMarkersFetchInFlight = null; // { key, p }
+    var fraudMarkersLastKey = '';
+    var fraudMarkersLastAt = 0;
+
+    function buildFraudAlertIconHtml(entityType, entityId, marker) {
+      var et = entityType ? String(entityType) : 'session';
+      var eid = entityId != null ? String(entityId) : '';
+      if (!eid) return '';
+      var score = marker && marker.score != null ? Number(marker.score) : null;
+      var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
+      var title = scoreText ? ('Fraud alert (score ' + scoreText + ')') : 'Fraud alert';
+      return (
+        '<i class="fa-light fa-triangle-exclamation fraud-alert-icon"' +
+          ' data-icon-key="fraud-alert"' +
+          ' data-fraud-open="1"' +
+          ' data-fraud-entity-type="' + escapeHtml(et) + '"' +
+          ' data-fraud-entity-id="' + escapeHtml(eid) + '"' +
+          ' aria-label="' + escapeHtml(title) + '"' +
+          ' title="' + escapeHtml(title) + '"' +
+        '></i>'
+      );
+    }
+
+    function fetchFraudMarkers(entityType, ids) {
+      var et = entityType ? String(entityType).trim().toLowerCase() : '';
+      if (et !== 'session' && et !== 'order') return Promise.resolve({});
+      var list = Array.isArray(ids) ? ids.map(function(x) { return x != null ? String(x).trim() : ''; }).filter(Boolean) : [];
+      if (!list.length) return Promise.resolve({});
+      if (list.length > 200) list = list.slice(0, 200);
+      var key = et + ':' + list.join(',');
+      if (fraudMarkersFetchInFlight && fraudMarkersFetchInFlight.key === key) return fraudMarkersFetchInFlight.p;
+      var url = API + '/api/fraud/markers?entityType=' + encodeURIComponent(et) + '&ids=' + encodeURIComponent(list.join(',')) + '&_=' + Date.now();
+      var p = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) { return (json && typeof json === 'object') ? json : {}; })
+        .catch(function() { return {}; })
+        .finally(function() { if (fraudMarkersFetchInFlight && fraudMarkersFetchInFlight.key === key) fraudMarkersFetchInFlight = null; });
+      fraudMarkersFetchInFlight = { key: key, p: p };
+      return p;
+    }
+
+    function refreshFraudMarkersForSessionsTable() {
+      var tbody = document.getElementById('table-body');
+      if (!tbody) return;
+      var rows = Array.from(tbody.querySelectorAll('.grid-row[data-session-id]'));
+      if (!rows.length) return;
+      var ids = rows.map(function(r) { return r.getAttribute('data-session-id') || ''; }).filter(Boolean);
+      if (!ids.length) return;
+      // Avoid spamming when renderTable is called repeatedly in quick succession.
+      var key = ids.join(',');
+      var now = Date.now();
+      if (key === fraudMarkersLastKey && (now - fraudMarkersLastAt) >= 0 && (now - fraudMarkersLastAt) < 600) return;
+      fraudMarkersLastKey = key;
+      fraudMarkersLastAt = now;
+      fetchFraudMarkers('session', ids).then(function(markers) {
+        rows.forEach(function(row) {
+          if (!row || !row.querySelector) return;
+          var sid = row.getAttribute('data-session-id') || '';
+          var cell = row.querySelector('.grid-cell.fraud-icon-cell');
+          if (!cell) return;
+          var m = markers && markers[sid] ? markers[sid] : null;
+          var triggered = !!(m && m.triggered === true);
+          if (triggered) {
+            try { cell.classList.add('fraud-alert-cell'); } catch (_) {}
+            cell.innerHTML = buildFraudAlertIconHtml('session', sid, m);
+          } else {
+            try { cell.classList.remove('fraud-alert-cell'); } catch (_) {}
+            cell.innerHTML = '';
+          }
+        });
+      }).catch(function() {});
+    }
+
+    function refreshFraudMarkersForLatestSalesTable() {
+      var table = document.getElementById('latest-sales-table');
+      if (!table) return;
+      var rows = Array.from(table.querySelectorAll('tbody tr[data-session-id]'));
+      if (!rows.length) return;
+      var ids = rows.map(function(tr) { return tr.getAttribute('data-session-id') || ''; }).filter(Boolean);
+      if (!ids.length) return;
+      fetchFraudMarkers('session', ids).then(function(markers) {
+        rows.forEach(function(tr) {
+          if (!tr || !tr.querySelector) return;
+          var sid = tr.getAttribute('data-session-id') || '';
+          var slot = tr.querySelector('.latest-sales-fraud-slot');
+          if (!slot) return;
+          var m = markers && markers[sid] ? markers[sid] : null;
+          var triggered = !!(m && m.triggered === true);
+          slot.innerHTML = triggered ? buildFraudAlertIconHtml('session', sid, m) : '';
+        });
+      }).catch(function() {});
+    }
+
+    function ensureFraudModal() {
+      var existing = document.getElementById('fraud-detail-modal');
+      if (existing) return existing;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = (
+        '<div class="modal modal-blur" id="fraud-detail-modal" tabindex="-1" role="dialog" aria-hidden="true">' +
+          '<div class="modal-dialog modal-lg modal-dialog-centered" role="document">' +
+            '<div class="modal-content">' +
+              '<div class="modal-header">' +
+                '<h5 class="modal-title">Fraud alert</h5>' +
+                '<button type="button" class="btn-close" aria-label="Close" data-fraud-close="1"></button>' +
+              '</div>' +
+              '<div class="modal-body" id="fraud-detail-body"></div>' +
+              '<div class="modal-footer">' +
+                '<button type="button" class="btn btn-outline-secondary" data-fraud-open-session="1" style="display:none">Open session</button>' +
+                '<a class="btn btn-outline-secondary" data-fraud-shopify-order="1" target="_blank" rel="noopener" style="display:none">Open order (Shopify)</a>' +
+                '<button type="button" class="btn btn-primary" data-fraud-close="1">Close</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+      var el = wrap.firstChild;
+      document.body.appendChild(el);
+      return el;
+    }
+
+    function showFraudModal() {
+      var el = ensureFraudModal();
+      try {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          var inst = window.bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+          inst.show();
+          return;
+        }
+      } catch (_) {}
+      // Minimal fallback (should rarely be used).
+      try { el.style.display = 'block'; } catch (_) {}
+      try { el.classList.add('show'); } catch (_) {}
+      try {
+        var bd = document.createElement('div');
+        bd.className = 'modal-backdrop fade show';
+        bd.setAttribute('data-fraud-backdrop', '1');
+        document.body.appendChild(bd);
+      } catch (_) {}
+    }
+
+    function hideFraudModal() {
+      var el = document.getElementById('fraud-detail-modal');
+      if (!el) return;
+      try {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          var inst = window.bootstrap.Modal.getOrCreateInstance(el);
+          inst.hide();
+        }
+      } catch (_) {}
+      try { el.classList.remove('show'); } catch (_) {}
+      try { el.style.display = 'none'; } catch (_) {}
+      try {
+        Array.from(document.querySelectorAll('[data-fraud-backdrop="1"]')).forEach(function(n) { n.remove(); });
+      } catch (_) {}
+    }
+
+    function shopifyAdminOrderUrl(orderId) {
+      var oid = orderId != null ? String(orderId).trim() : '';
+      if (!oid || !/^\d+$/.test(oid)) return null;
+      var shop = null;
+      try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
+      if (!shop) return null;
+      return 'https://' + shop + '/admin/orders/' + encodeURIComponent(oid);
+    }
+
+    function renderFraudDetailBody(detail) {
+      var d = detail && detail.evaluation ? detail : { evaluation: null };
+      var ev = d && d.evaluation ? d.evaluation : null;
+      if (!ev) return '<div class="text-muted">Unavailable.</div>';
+      var score = ev.score != null ? Number(ev.score) : null;
+      var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '\u2014';
+      var risk = d && d.analysis && d.analysis.risk_level ? String(d.analysis.risk_level) : 'Unknown';
+      var summary = d && d.analysis && d.analysis.summary ? String(d.analysis.summary) : '';
+      var rec = d && d.analysis && d.analysis.recommended_action ? String(d.analysis.recommended_action) : '';
+      var reasons = d && d.analysis && Array.isArray(d.analysis.key_reasons) ? d.analysis.key_reasons : [];
+      var flags = ev.flags && Array.isArray(ev.flags) ? ev.flags : [];
+      var evidence = ev.evidence && typeof ev.evidence === 'object' ? ev.evidence : {};
+      var badge = (risk === 'High') ? 'bg-red-lt text-red' : (risk === 'Medium') ? 'bg-yellow-lt text-yellow' : 'bg-green-lt text-green';
+      function listKeys(obj) {
+        try {
+          if (!obj || typeof obj !== 'object') return [];
+          return Object.keys(obj).filter(function(k) { return obj[k] != null && String(obj[k]).trim() !== ''; }).slice(0, 8);
+        } catch (_) { return []; }
+      }
+      function flagDetail(flagKey) {
+        var k = String(flagKey || '').trim().toLowerCase();
+        var attr = evidence && evidence.attribution ? evidence.attribution : {};
+        var eng = evidence && evidence.engagement ? evidence.engagement : {};
+        var sig = evidence && evidence.signals ? evidence.signals : {};
+        if (k === 'google_ads_conflict') {
+          var paid = attr && attr.paid_click_ids ? attr.paid_click_ids : {};
+          var aff = attr && attr.affiliate_click_ids ? attr.affiliate_click_ids : {};
+          var pk = listKeys(paid);
+          var ak = listKeys(aff);
+          return 'Paid click IDs (' + (pk.length ? pk.join(', ') : 'none') + ') and affiliate click IDs (' + (ak.length ? ak.join(', ') : 'none') + ') both detected.';
+        }
+        if (k === 'late_injection') {
+          var late = attr && attr.late ? attr.late : null;
+          var affLate = late && late.affiliate_click_ids ? late.affiliate_click_ids : {};
+          var ak = listKeys(affLate);
+          var seenAt = late && late.seen_at != null ? Number(late.seen_at) : null;
+          var when = (seenAt && Number.isFinite(seenAt)) ? ('seen_at ' + new Date(seenAt).toLocaleString()) : 'seen late';
+          return 'Affiliate click IDs appeared late (' + (ak.length ? ak.join(', ') : 'unknown') + '), ' + when + '.';
+        }
+        if (k === 'low_engagement') {
+          var pv = eng && eng.page_views != null ? Number(eng.page_views) : null;
+          var te = eng && eng.total_events != null ? Number(eng.total_events) : null;
+          return 'Very few interactions before checkout (page_views: ' + (pv != null && Number.isFinite(pv) ? pv : '\u2014') + ', total_events: ' + (te != null && Number.isFinite(te) ? te : '\u2014') + ').';
+        }
+        if (k === 'suspicious_referrer') {
+          var ref = attr && attr.referrer ? String(attr.referrer) : '';
+          return ref ? ('Referrer matches coupon/deal patterns: ' + ref) : 'Referrer matches coupon/deal patterns.';
+        }
+        if (k === 'duplicate_ip_pattern') {
+          var n = sig && sig.duplicate_ip_triggered_recent != null ? Number(sig.duplicate_ip_triggered_recent) : null;
+          var h = sig && sig.duplicate_ip_window_hours != null ? Number(sig.duplicate_ip_window_hours) : null;
+          if (n != null && Number.isFinite(n) && h != null && Number.isFinite(h)) {
+            return 'Triggered evaluations from the same IP hash in last ' + h + 'h: ' + n + '.';
+          }
+          if (n != null && Number.isFinite(n)) return 'Multiple triggered evaluations share the same IP hash (count: ' + n + ').';
+          return 'Multiple triggered evaluations share the same IP hash in a short window.';
+        }
+        if (k === 'no_affiliate_evidence') {
+          var net = attr && attr.affiliate_network_hint ? String(attr.affiliate_network_hint) : '';
+          var idh = attr && attr.affiliate_id_hint ? String(attr.affiliate_id_hint) : '';
+          var um = attr && attr.utm_medium ? String(attr.utm_medium) : '';
+          var parts = [];
+          if (net) parts.push('network: ' + net);
+          if (idh) parts.push('affiliate_id: ' + idh);
+          if (um) parts.push('utm_medium: ' + um);
+          return 'Affiliate attribution hints present but no reliable click ID evidence' + (parts.length ? (' (' + parts.join(', ') + ')') : '') + '.';
+        }
+        return '';
+      }
+      var flagsHtml = flags.length
+        ? (
+            '<ul class="fraud-flag-lines">' +
+              flags.map(function(f) {
+                var desc = flagDetail(f);
+                return '<li><span class="badge bg-azure-lt">' + escapeHtml(String(f)) + '</span>' + (desc ? ('<span class="fraud-flag-desc">' + escapeHtml(desc) + '</span>') : '') + '</li>';
+              }).join('') +
+            '</ul>'
+          )
+        : '<div class="text-muted">No flags recorded.</div>';
+      var reasonsHtml = reasons.length
+        ? ('<ul class="fraud-reasons">' + reasons.map(function(r) { return '<li>' + escapeHtml(String(r)) + '</li>'; }).join('') + '</ul>')
+        : '';
+      var evidenceJson = '';
+      try { evidenceJson = JSON.stringify(evidence, null, 2); } catch (_) { evidenceJson = ''; }
+      return (
+        '<div class="fraud-detail-grid">' +
+          '<div class="fraud-score">' +
+            '<div class="fraud-score-num">' + escapeHtml(scoreText) + '</div>' +
+            '<div class="fraud-score-meta">' +
+              '<span class="badge ' + escapeHtml(badge) + '" style="font-weight:500">' + escapeHtml(risk) + '</span>' +
+              '<div class="text-muted" style="margin-top:.25rem">Fraud score (0\u2013100)</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="fraud-analysis">' +
+            '<div class="mb-2" style="font-weight:500">Analysis</div>' +
+            '<div class="fraud-summary">' + escapeHtml(summary || '—') + '</div>' +
+            (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
+            (rec ? ('<div class="mt-2 text-muted"><span style="font-weight:500">Suggested action:</span> ' + escapeHtml(rec) + '</div>') : '') +
+          '</div>' +
+        '</div>' +
+        '<hr class="my-3" />' +
+        '<div class="mb-2" style="font-weight:500">Flags</div>' +
+        flagsHtml +
+        '<hr class="my-3" />' +
+        '<div class="mb-2 d-flex align-items-center justify-content-between">' +
+          '<div style="font-weight:500">Evidence (safe snapshot)</div>' +
+          '<button type="button" class="btn btn-sm btn-outline-secondary" data-fraud-copy-evidence="1">Copy</button>' +
+        '</div>' +
+        '<pre class="fraud-evidence-pre" data-fraud-evidence-pre="1">' + escapeHtml(evidenceJson || '{}') + '</pre>'
+      );
+    }
+
+    function openFraudDetailModal(entityType, entityId) {
+      var et = entityType ? String(entityType).trim().toLowerCase() : 'session';
+      var eid = entityId != null ? String(entityId).trim() : '';
+      if (!eid) return;
+      var modal = ensureFraudModal();
+      var body = modal.querySelector('#fraud-detail-body');
+      if (body) body.innerHTML = '<div class="text-muted">Loading\u2026</div>';
+      // Hide action buttons until we have links.
+      try {
+        var btnSession = modal.querySelector('[data-fraud-open-session]');
+        var btnOrder = modal.querySelector('[data-fraud-shopify-order]');
+        if (btnSession) btnSession.style.display = 'none';
+        if (btnOrder) btnOrder.style.display = 'none';
+      } catch (_) {}
+      showFraudModal();
+      var url = API + '/api/fraud/detail?entityType=' + encodeURIComponent(et) + '&entityId=' + encodeURIComponent(eid) + '&_=' + Date.now();
+      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(json) {
+          if (!json || !json.ok || !json.evaluation) {
+            if (body) body.innerHTML = '<div class="text-muted">Unavailable.</div>';
+            return null;
+          }
+          if (body) body.innerHTML = renderFraudDetailBody(json);
+          try {
+            var links = json.links || {};
+            var sid = links && links.session_id ? String(links.session_id) : '';
+            var oid = links && links.order_id ? String(links.order_id) : '';
+            var btnSession = modal.querySelector('[data-fraud-open-session]');
+            if (btnSession && sid) {
+              btnSession.style.display = '';
+              btnSession.setAttribute('data-fraud-open-session', sid);
+            }
+            var btnOrder = modal.querySelector('[data-fraud-shopify-order]');
+            var orderUrl = shopifyAdminOrderUrl(oid);
+            if (btnOrder && orderUrl) {
+              btnOrder.style.display = '';
+              btnOrder.setAttribute('href', orderUrl);
+            }
+          } catch (_) {}
+          return json;
+        })
+        .catch(function() {
+          if (body) body.innerHTML = '<div class="text-muted">Unavailable.</div>';
+          return null;
+        });
+    }
+
+    (function initFraudUi() {
+      if (fraudUiBound) return;
+      fraudUiBound = true;
+      try {
+        document.addEventListener('click', function(e) {
+          var target = e && e.target ? e.target : null;
+          var openEl = target && target.closest ? target.closest('[data-fraud-open]') : null;
+          if (openEl) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            var et = openEl.getAttribute('data-fraud-entity-type') || 'session';
+            var eid = openEl.getAttribute('data-fraud-entity-id') || '';
+            openFraudDetailModal(et, eid);
+            return;
+          }
+          var closeEl = target && target.closest ? target.closest('[data-fraud-close]') : null;
+          if (closeEl) {
+            try { e.preventDefault(); } catch (_) {}
+            hideFraudModal();
+            return;
+          }
+          var openSessionEl = target && target.closest ? target.closest('[data-fraud-open-session]') : null;
+          if (openSessionEl) {
+            var sid = openSessionEl.getAttribute('data-fraud-open-session') || '';
+            if (sid) {
+              try { e.preventDefault(); } catch (_) {}
+              hideFraudModal();
+              try { openSidePanel(sid); } catch (_) {}
+            }
+            return;
+          }
+          var copyEl = target && target.closest ? target.closest('[data-fraud-copy-evidence]') : null;
+          if (copyEl) {
+            try { e.preventDefault(); } catch (_) {}
+            try {
+              var pre = document.querySelector('#fraud-detail-modal [data-fraud-evidence-pre="1"]');
+              var txt = pre ? (pre.textContent || '') : '';
+              if (txt && navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(txt).catch(function() {});
+              }
+            } catch (_) {}
+          }
+        }, true);
+      } catch (_) {}
+    })();
+
     function syncSessionsTableTightMode() {
       const wrap = document.querySelector('.table-scroll-wrap');
       const table = document.getElementById('sessions-table');

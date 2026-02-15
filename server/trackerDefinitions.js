@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 35;
-const LAST_UPDATED = '2026-02-14';
+const DEFINITIONS_VERSION = 36;
+const LAST_UPDATED = '2026-02-15';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -45,6 +45,54 @@ const TRACKER_TABLE_DEFINITIONS = [
     math: [],
     respectsReporting: { ordersSource: false, sessionsSource: false },
     requires: { dbTables: ['sessions', 'visitors', 'events'], shopifyToken: false },
+  },
+  {
+    id: 'home_fraud_markers',
+    page: 'Home',
+    name: 'Fraud alert markers (sessions + latest sales)',
+    ui: { elementIds: ['sessions-table', 'latest-sales-table', 'fraud-detail-modal'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/fraud/markers',
+      params: ['entityType=session', 'ids=session_id,... (batched)'],
+    },
+    sources: [
+      { kind: 'db', tables: ['fraud_evaluations'], note: 'Indexed marker lookup (cached; fail-open)' },
+      { kind: 'pixel', note: 'Evaluations are created on checkout_completed ingest (never blocks dashboards)' },
+    ],
+    columns: [
+      { name: 'Triggered', value: 'fraud_evaluations.triggered (score >= threshold OR hard flags)' },
+      { name: 'Score', value: 'fraud_evaluations.score (0-100)' },
+      { name: 'Flags', value: 'fraud_evaluations.flags_json (deterministic signals)' },
+    ],
+    math: [
+      { name: 'Fail-open', value: 'If fraud tables/config are missing or API fails, UI omits the icon' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['fraud_evaluations'], shopifyToken: false },
+  },
+  {
+    id: 'home_fraud_detail',
+    page: 'Home',
+    name: 'Fraud detail modal',
+    ui: { elementIds: ['fraud-detail-modal'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/fraud/detail',
+      params: ['entityType=session|order', 'entityId=...'],
+    },
+    sources: [
+      { kind: 'db', tables: ['fraud_evaluations'], note: 'Safe evidence snapshot + flags + optional AI narrative' },
+      { kind: 'db', tables: ['affiliate_attribution_sessions'], note: 'First-touch/late attribution capture feeding the evidence snapshot' },
+      { kind: 'ai', note: 'Optional: OpenAI narrative (feature-flagged; never blocks ingest/UI)' },
+    ],
+    columns: [
+      { name: 'Evidence', value: 'fraud_evaluations.evidence_json (safe snapshot; no raw IP)' },
+      { name: 'Resolution', value: 'fraud_evaluations.resolved_status/resolved_by/resolved_note' },
+    ],
+    math: [],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['fraud_evaluations'], shopifyToken: false },
   },
   {
     id: 'kpi_grid',
