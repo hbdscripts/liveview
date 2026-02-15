@@ -1027,6 +1027,15 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell .country-name {
     display: none !important;
   }
+  /* Sticky cells with flag only: reduce min-width, center align like header */
+  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
+  body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child {
+    min-width: 56px !important;
+    text-align: center !important;
+  }
+  body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell {
+    justify-content: center;
+  }
 }
 .traffic-source-cell .source-icons {
   margin-inline-end: 0.5rem;
