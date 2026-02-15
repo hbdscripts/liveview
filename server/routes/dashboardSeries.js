@@ -1044,6 +1044,13 @@ function hourLabelFromParts(parts, hour) {
   return `${ymd} ${hh}:00`;
 }
 
+function hourMinuteLabelFromParts(parts, hour, minute) {
+  const ymd = ymdFromParts(parts);
+  const hh = String(Math.max(0, Math.min(23, Number(hour) || 0))).padStart(2, '0');
+  const mm = String(Math.max(0, Math.min(59, Number(minute) || 0))).padStart(2, '0');
+  return `${ymd} ${hh}:${mm}`;
+}
+
 async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey) {
   const db = getDb();
   const shop = salesTruth.resolveShopForSales('');
@@ -1083,15 +1090,26 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   let bucket = (bucketHint === 'hour') ? 'hour' : (bucketHint === 'week' ? 'week' : 'day');
   let bucketBounds = dayBounds;
   if (bucket === 'hour' && dayBounds.length === 1) {
-    const only = dayBounds[0];
+    const elapsedHours = (end - start) / (60 * 60 * 1000);
+    let bucketMinutes = 60;
+    if (elapsedHours < 4) bucketMinutes = 15;
+    else if (elapsedHours < 8) bucketMinutes = 30;
+
+    const minuteSteps = bucketMinutes === 15 ? [0, 15, 30, 45] : bucketMinutes === 30 ? [0, 30] : [0];
     const hourBounds = [];
     for (let h = 0; h < 24; h++) {
-      const hStartFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, h, 0, 0, timeZone);
-      const hEndFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, h + 1, 0, 0, timeZone);
-      const hStart = Math.max(hStartFull, start);
-      const hEnd = Math.min(hEndFull, end);
-      if (hEnd > hStart) {
-        hourBounds.push({ label: hourLabelFromParts(startParts, h), start: hStart, end: hEnd });
+      for (const m of minuteSteps) {
+        const mEnd = m + bucketMinutes;
+        const hEnd = mEnd >= 60 ? h + 1 : h;
+        const mEndNorm = mEnd >= 60 ? mEnd - 60 : mEnd;
+        const hStartFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, h, m, 0, timeZone);
+        const hEndFull = zonedTimeToUtcMs(startParts.year, startParts.month, startParts.day, hEnd, mEndNorm, 0, timeZone);
+        const hStart = Math.max(hStartFull, start);
+        const hEndClamped = Math.min(hEndFull, end);
+        if (hEndClamped > hStart) {
+          const label = bucketMinutes === 60 ? hourLabelFromParts(startParts, h) : hourMinuteLabelFromParts(startParts, h, m);
+          hourBounds.push({ label, start: hStart, end: hEndClamped });
+        }
       }
     }
     if (hourBounds.length >= 2) {

@@ -3,10 +3,9 @@
  *
  * Extra KPIs that are only needed when the expanded KPI grid is shown.
  *
- * IMPORTANT: These map directly to Shopify truth (Orders API), not KEXO tables:
- * - itemsSold: Shopify "Items ordered" (sum of line-item quantities for orders CREATED in range)
- * - ordersFulfilled: Shopify "Orders fulfilled" (distinct orders with fulfillments CREATED in range)
- * - returns: Shopify "Returns" value (refund transactions CREATED in range; returned as positive amount)
+ * - itemsSold: from orders_shopify_line_items (DB) for reliable historical data
+ * - ordersFulfilled, returns: from Shopify Orders API
+ * - cogs: from Shopify Orders API + variant costs
  */
 const { getDb } = require('../db');
 const config = require('../config');
@@ -333,6 +332,33 @@ async function fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, startMs, e
   };
 }
 
+async function getItemsSoldFromDb(db, shop, startMs, endMs) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return null;
+  try {
+    const row = await db.get(
+      config.dbUrl
+        ? `SELECT COALESCE(SUM(li.quantity), 0) AS total
+           FROM orders_shopify_line_items li
+           WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+             AND (li.order_test IS NULL OR li.order_test = 0)
+             AND li.order_cancelled_at IS NULL
+             AND li.order_financial_status = 'paid'`
+        : `SELECT COALESCE(SUM(li.quantity), 0) AS total
+           FROM orders_shopify_line_items li
+           WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+             AND (li.order_test IS NULL OR li.order_test = 0)
+             AND li.order_cancelled_at IS NULL
+             AND li.order_financial_status = 'paid'`,
+      config.dbUrl ? [safeShop, startMs, endMs] : [safeShop, startMs, endMs]
+    );
+    const v = row ? Number(row.total) : 0;
+    return Number.isFinite(v) ? Math.trunc(v) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function computeExpandedExtras(bounds, shop, accessToken) {
   const start = bounds && bounds.start != null ? Number(bounds.start) : NaN;
   const end = bounds && bounds.end != null ? Number(bounds.end) : NaN;
@@ -340,23 +366,29 @@ async function computeExpandedExtras(bounds, shop, accessToken) {
     return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null };
   }
 
+  const db = getDb();
+  const itemsSold = shop ? await getItemsSoldFromDb(db, shop, start, end) : null;
+
   try {
-    const r = await fetchExtrasFromShopifyOrdersApi(getDb(), shop, accessToken, start, end);
+    const r = await fetchExtrasFromShopifyOrdersApi(db, shop, accessToken, start, end);
     if (r && r.ok) {
       return {
-        itemsSold: typeof r.itemsSold === 'number' ? r.itemsSold : null,
+        itemsSold: typeof itemsSold === 'number' ? itemsSold : (typeof r.itemsSold === 'number' ? r.itemsSold : null),
         ordersFulfilled: typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null,
         returns: typeof r.returns === 'number' ? r.returns : null,
         cogs: typeof r.cogs === 'number' ? r.cogs : null,
       };
     }
   } catch (err) {
-    // Keep logs short; callers already cache and retry.
     console.warn('[kpisExpandedExtra] Shopify fetch failed:', err && err.message ? String(err.message) : 'error');
   }
 
-  // Fail-open: show "—" rather than misleading zeros.
-  return { itemsSold: null, ordersFulfilled: null, returns: null, cogs: null };
+  return {
+    itemsSold: typeof itemsSold === 'number' ? itemsSold : null,
+    ordersFulfilled: null,
+    returns: null,
+    cogs: null,
+  };
 }
 
 async function getKpisExpandedExtra(req, res) {

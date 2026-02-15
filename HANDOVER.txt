@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Diagnostics range selector + truth warmup)
+Last updated: 2026-02-15 (Adaptive today buckets + KPI fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -285,6 +285,12 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Adaptive today buckets + KPI fixes:
+  - Dashboard sparklines for "today" now use adaptive bucket sizing: 15-min buckets when &lt;4h elapsed, 30-min when 4–8h, hourly when 8h+. Produces more data points early in the day (less flat sparklines).
+  - KPI delta: when baseline is 0 and current is non-zero, show "new" instead of "+100%" (avoids misleading division-by-zero semantics).
+  - Items Ordered: now sourced from `orders_shopify_line_items` (DB) instead of Shopify Orders API, so "Day before" and "Previous 7 days" show data reliably.
+
+2026-02-15 (earlier)
 - KPI compare line fixes and Settings:
   - Dashboard sparkline compare line now shows actual comparison-period data from `/api/dashboard-series?range=<compareRangeKey>` instead of scaled current-period shape. `ensureDashboardCompareSeries` is wired into `renderDashboard` and compare arrays are built from the fetched compare series (revenue, sessions, orders, returning, conv, aov, bounce, roas, items); fulfilled/returns/cogs fall back to scaled baseline (no series in dashboard-series).
   - Settings → Layout → Charts → Dashboard Cards: added "Use primary color at opacity" checkbox and "Compare opacity (%)" input. When enabled, compare line uses primary KPI color at specified opacity (default 50%) and is not dashed. When disabled, uses palette.compareLine (hex) with dashed stroke.

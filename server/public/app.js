@@ -7232,7 +7232,7 @@ const API = '';
         let dir = 'none';
 
         if (rawDelta != null) {
-          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = isNew ? 'new' : formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
@@ -7776,14 +7776,15 @@ const API = '';
         var base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
         var rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
         var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
-        var isUp = toneDelta != null && toneDelta > 0.005;
-        var isDown = toneDelta != null && toneDelta < -0.005;
-        var isFlat = toneDelta != null && !isUp && !isDown;
+        var isNew = base === 0 && cur != null && cur !== 0;
+        var isUp = isNew || (toneDelta != null && toneDelta > 0.005);
+        var isDown = !isNew && toneDelta != null && toneDelta < -0.005;
+        var isFlat = !isNew && toneDelta != null && !isUp && !isDown;
 
         var dir = 'none';
         var text = '\u2014';
         if (rawDelta != null) {
-          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = isNew ? 'new' : formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
