@@ -7989,6 +7989,66 @@ const API = '';
       });
     }
 
+    // Dashboard compare labels: use explicit date/date-range strings (avoid "Day before", "Previous 7 days").
+    function formatYmdMonthDay(ymd, includeYear) {
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return String(ymd || '');
+      var y = parseInt(String(ymd).slice(0, 4), 10);
+      var m = parseInt(String(ymd).slice(5, 7), 10);
+      var d = parseInt(String(ymd).slice(8, 10), 10);
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(ymd || '');
+      var dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      try {
+        return new Intl.DateTimeFormat('en-US', includeYear ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' }).format(dt);
+      } catch (_) {
+        return String(ymd || '');
+      }
+    }
+
+    function formatYmdRangeMonthDay(startYmd, endYmd) {
+      if (!startYmd || !endYmd) return '';
+      if (startYmd === endYmd) return formatYmdMonthDay(startYmd, false);
+      var includeYear = String(startYmd).slice(0, 4) !== String(endYmd).slice(0, 4);
+      return formatYmdMonthDay(startYmd, includeYear) + ' \u2013 ' + formatYmdMonthDay(endYmd, includeYear);
+    }
+
+    function ymdAddDays(ymd, deltaDays) {
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return null;
+      var y = parseInt(String(ymd).slice(0, 4), 10);
+      var m = parseInt(String(ymd).slice(5, 7), 10);
+      var d = parseInt(String(ymd).slice(8, 10), 10);
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+      var dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      dt.setUTCDate(dt.getUTCDate() + (Number(deltaDays) || 0));
+      return dt.toISOString().slice(0, 10);
+    }
+
+    function rollingRangeYmdBounds(rangeKey) {
+      var rk = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+      if (!rk) return null;
+      var endYmd = null;
+      try { endYmd = ymdNowInTz(); } catch (_) { endYmd = null; }
+      if (!endYmd || !/^\d{4}-\d{2}-\d{2}$/.test(String(endYmd))) return null;
+      if (rk === '3d') return { startYmd: ymdAddDays(endYmd, -2), endYmd: endYmd };
+      if (rk === '7d') return { startYmd: ymdAddDays(endYmd, -6), endYmd: endYmd };
+      if (rk === '14d') return { startYmd: ymdAddDays(endYmd, -13), endYmd: endYmd };
+      if (rk === '30d') return { startYmd: ymdAddDays(endYmd, -29), endYmd: endYmd };
+      if (rk === 'month') return { startYmd: String(endYmd).slice(0, 7) + '-01', endYmd: endYmd };
+      return null;
+    }
+
+    function compareLabelFromRange(rangeObj, opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var startMs = rangeObj && rangeObj.start != null ? Number(rangeObj.start) : NaN;
+      var endMs = rangeObj && rangeObj.end != null ? Number(rangeObj.end) : NaN;
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || !(endMs > startMs)) return '';
+      var startYmd = ymdInAdminTzFromMs(startMs);
+      var endYmd = ymdInAdminTzFromMs(Math.max(startMs, endMs - 1));
+      if (!startYmd || !endYmd) return '';
+      var label = formatYmdRangeMonthDay(startYmd, endYmd);
+      if (opts && opts.sameTime) label += ' (same time)';
+      return label;
+    }
+
     function renderDashboardKpisFromApi(primaryData) {
       if (!primaryData || PAGE !== 'dashboard') return;
       var el = function(id) { return document.getElementById(id); };
@@ -8197,11 +8257,27 @@ const API = '';
         cogs: cogsBase,
       });
 
-      setDashboardCompareLabels(
-        getCompareDisplayLabel(kpiRange),
-        'Previous 7 days',
-        showSecondary
-      );
+      var primaryCompareLabel = '';
+      try {
+        var rkNorm = normalizeRangeKeyForApi(kpiRange);
+        primaryCompareLabel = compareLabelFromRange(primaryCompare && primaryCompare.range ? primaryCompare.range : null, { sameTime: rkNorm === 'today' });
+      } catch (_) {
+        primaryCompareLabel = '';
+      }
+      if (!primaryCompareLabel) {
+        try { primaryCompareLabel = getCompareDisplayLabel(kpiRange); } catch (_) { primaryCompareLabel = 'Previous period'; }
+      }
+
+      var secondaryCompareLabel = '';
+      try {
+        var sec = rollingRangeYmdBounds('7d');
+        if (sec && sec.startYmd && sec.endYmd) secondaryCompareLabel = formatYmdRangeMonthDay(sec.startYmd, sec.endYmd);
+      } catch (_) {
+        secondaryCompareLabel = '';
+      }
+      if (!secondaryCompareLabel) secondaryCompareLabel = 'Previous 7 days';
+
+      setDashboardCompareLabels(primaryCompareLabel, secondaryCompareLabel, showSecondary);
 
       if (showSecondary) {
         var secondary = _dashKpisSecondary;
@@ -16772,51 +16848,14 @@ const API = '';
         var compareReturnsTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.returns === 'number' ? extrasTone.compare.returns : null;
         var currentCogsTone = extrasTone && typeof extrasTone.cogs === 'number' ? extrasTone.cogs : null;
         var compareCogsTone = extrasTone && extrasTone.compare && typeof extrasTone.compare.cogs === 'number' ? extrasTone.compare.cogs : null;
-        function sparkSeriesFromCompare(current, baseline, fallbackDataArr) {
-          var cur = (typeof current === 'number' && Number.isFinite(current)) ? current : null;
-          var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
-          if (Array.isArray(fallbackDataArr) && fallbackDataArr.length >= 2) {
-            var hist = fallbackDataArr.map(function(v) {
-              var n = (typeof v === 'number') ? v : Number(v);
-              return Number.isFinite(n) ? n : 0;
-            });
-            if (cur != null) {
-              var lastVal = hist[hist.length - 1];
-              if (Math.abs(lastVal) < 1e-9) {
-                var offset = cur - lastVal;
-                hist = hist.map(function(v) { return v + offset; });
-              } else {
-                var ratio = cur / lastVal;
-                if (!Number.isFinite(ratio)) ratio = 1;
-                ratio = Math.max(-6, Math.min(6, ratio));
-                hist = hist.map(function(v) { return v * ratio; });
-              }
-              hist[hist.length - 1] = cur;
-            }
-            return hist;
-          }
-          if (cur != null && base != null) return [base, cur];
-          return Array.isArray(fallbackDataArr) ? fallbackDataArr : [];
-        }
-        function sparkCompareSeries(primaryDataArr, current, baseline) {
-          var base = (typeof baseline === 'number' && Number.isFinite(baseline)) ? baseline : null;
-          if (base == null || !Array.isArray(primaryDataArr) || primaryDataArr.length < 2) return null;
-          var arr = primaryDataArr.map(function(v) {
+        // KPI card sparklines should reflect the real per-bucket series returned by `/api/dashboard-series`.
+        // Do NOT rescale the series to end at the headline KPI totals; that flattens yesterday/day-before views.
+        function sparkSeriesFromCompare(_current, _baseline, fallbackDataArr) {
+          if (!Array.isArray(fallbackDataArr)) return [];
+          return fallbackDataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return Number.isFinite(n) ? n : 0;
           });
-          var lastVal = arr[arr.length - 1];
-          if (Math.abs(lastVal) < 1e-9) {
-            var offset = base - lastVal;
-            arr = arr.map(function(v) { return v + offset; });
-          } else {
-            var ratio = base / lastVal;
-            if (!Number.isFinite(ratio)) ratio = 1;
-            ratio = Math.max(-6, Math.min(6, ratio));
-            arr = arr.map(function(v) { return v * ratio; });
-          }
-          arr[arr.length - 1] = base;
-          return arr;
         }
         var revenueHistorySpark = sparklineSeries.map(function(d) { return d.revenue; });
         var sessionsHistorySpark = sparklineSeries.map(function(d) { return d.sessions; });
@@ -16839,9 +16878,6 @@ const API = '';
         var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
-        var fulfilledSpark = sparkSeriesFromCompare(currentFulfilledTone, compareFulfilledTone, null);
-        var returnsSpark = sparkSeriesFromCompare(currentReturnsTone, compareReturnsTone, null);
-        var cogsSpark = sparkSeriesFromCompare(currentCogsTone, compareCogsTone, null);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
         function alignCompareToPrimary(compareArr, primaryLen) {
           if (!Array.isArray(compareArr) || compareArr.length < 2) return null;
@@ -16863,20 +16899,13 @@ const API = '';
         var primaryLen = revenueSpark.length;
         ensureDashboardCompareSeries(getKpiData()).then(function(compareSeries) {
           var cmp = compareSeries;
-          var revenueSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.revenue || 0; })
-            || sparkCompareSeries(revenueSpark, currentRevenueTone, compareRevenueTone);
-          var sessionsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.sessions || 0; })
-            || sparkCompareSeries(sessionsSpark, currentSessionsTone, compareSessionsTone);
-          var ordersSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.orders || 0; })
-            || sparkCompareSeries(ordersSpark, currentOrdersTone, compareOrdersTone);
-          var returningSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.returningCustomerOrders || 0; })
-            || sparkCompareSeries(returningSpark, currentReturningTone, compareReturningTone);
-          var convSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.convRate != null ? d.convRate : 0; })
-            || sparkCompareSeries(convSpark, currentConvTone, compareConvTone);
-          var aovSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.aov != null ? d.aov : 0; })
-            || sparkCompareSeries(aovSpark, currentAovTone, compareAovTone);
-          var bounceSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.bounceRate != null ? d.bounceRate : 0; })
-            || sparkCompareSeries(bounceSpark, currentBounceTone, compareBounceTone);
+          var revenueSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.revenue || 0; });
+          var sessionsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.sessions || 0; });
+          var ordersSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.orders || 0; });
+          var returningSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.returningCustomerOrders || 0; });
+          var convSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.convRate != null ? d.convRate : 0; });
+          var aovSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.aov != null ? d.aov : 0; });
+          var bounceSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.bounceRate != null ? d.bounceRate : 0; });
           var roasSparkCompare = null;
           if (cmp && cmp.length >= 2) {
             var roasExtracted = cmp.map(function(d) {
@@ -16886,12 +16915,7 @@ const API = '';
             });
             roasSparkCompare = alignCompareToPrimary(roasExtracted, primaryLen);
           }
-          if (!roasSparkCompare) roasSparkCompare = sparkCompareSeries(roasSpark, currentRoasTone, compareRoasTone);
-          var itemsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.units || 0; })
-            || sparkCompareSeries(itemsSpark, currentItemsTone, compareItemsTone);
-          var fulfilledSparkCompare = sparkCompareSeries(fulfilledSpark, currentFulfilledTone, compareFulfilledTone);
-          var returnsSparkCompare = sparkCompareSeries(returnsSpark, currentReturnsTone, compareReturnsTone);
-          var cogsSparkCompare = sparkCompareSeries(cogsSpark, currentCogsTone, compareCogsTone);
+          var itemsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.units || 0; });
           renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare);
           renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare);
           renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare);
@@ -16901,9 +16925,12 @@ const API = '';
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
           renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare);
-          renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, DASHBOARD_NEUTRAL_TONE_HEX, fulfilledSparkCompare);
-          renderSparkline('dash-returns-sparkline', returnsSpark, DASHBOARD_NEUTRAL_TONE_HEX, returnsSparkCompare);
-          renderSparkline('dash-cogs-sparkline', cogsSpark, DASHBOARD_NEUTRAL_TONE_HEX, cogsSparkCompare);
+          // COGS / Fulfilled / Returns do not currently have real per-bucket series; avoid rendering synthetic diagonals.
+          try {
+            var fs = el('dash-fulfilled-sparkline'); if (fs) fs.innerHTML = '';
+            var rs = el('dash-returns-sparkline'); if (rs) rs.innerHTML = '';
+            var cs = el('dash-cogs-sparkline'); if (cs) cs.innerHTML = '';
+          } catch (_) {}
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });
 
