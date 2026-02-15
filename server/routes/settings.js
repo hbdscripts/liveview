@@ -242,7 +242,6 @@ function defaultTablesUiConfigV1() {
         iconColor: '#2f7d50',
         iconBackground: '#f0f8f1',
         stickyBackground: '#ffffff',
-        convertedBackground: '#f9fcfa',
       },
     },
     pages: [
@@ -703,7 +702,6 @@ function normalizeTablesUiConfigV1(raw) {
       iconColor: normalizeCssColor(rawColors.iconColor, defColors.iconColor || '#2f7d50'),
       iconBackground: normalizeCssColor(rawColors.iconBackground, defColors.iconBackground || '#f0f8f1'),
       stickyBackground: normalizeCssColor(rawColors.stickyBackground, defColors.stickyBackground || '#ffffff'),
-      convertedBackground: normalizeCssColor(rawColors.convertedBackground, defColors.convertedBackground || '#f9fcfa'),
     },
   };
 

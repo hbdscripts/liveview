@@ -20,7 +20,8 @@
       ariaLabel: 'Sessions',
       bodyId: 'table-body',
       columns: [
-        { key: 'landing', label: 'Landing Page', iconKey: 'table-short-landing' },
+        { key: 'sale', label: '', sortable: false, cellClass: 'sale-icon-cell' },
+        { key: 'landing', label: 'Landing Page', cellClass: 'landing-cell', iconKey: 'table-short-landing' },
         { key: 'from', label: 'GEO', iconKey: 'table-short-geo' },
         { key: 'source', label: 'Source', cellClass: 'source-cell', iconKey: 'table-short-source' },
         { key: 'device', label: 'Device', iconKey: 'table-short-device' },

@@ -28,18 +28,15 @@
                 <div class="page-pretitle">Insights</div>
               </div>
               <div class="col kexo-page-header-title-col">
-                <h2 class="page-title">Abandoned Carts</h2>
-                <div class="d-flex align-items-center justify-content-center gap-2 mt-2 kexo-abandoned-mode-header-row">
-                  <div class="dropdown">
-                    <button type="button" class="btn btn-sm btn-ghost-secondary dropdown-toggle" id="abandoned-mode-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="abandoned-mode-menu">
-                      <span id="abandoned-mode-label">Abandoned Carts</span>
-                    </button>
-                    <div class="dropdown-menu" id="abandoned-mode-menu" aria-labelledby="abandoned-mode-btn">
-                      <button class="dropdown-item" type="button" data-abandoned-mode="cart">Abandoned Carts</button>
-                      <button class="dropdown-item" type="button" data-abandoned-mode="checkout">Abandoned Checkouts</button>
-                    </div>
-                  </div>
-                </div>
+                <h2 class="page-title">
+                  <span id="abandoned-page-title-text">Abandoned Carts</span><span
+                    id="abandoned-mode-switch"
+                    class="kexo-abandoned-mode-switch"
+                    role="button"
+                    tabindex="0"
+                    data-abandoned-mode="checkout"
+                  >Switch to Abandoned Checkouts</span>
+                </h2>
               </div>
             </div>
           </div>

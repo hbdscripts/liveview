@@ -340,7 +340,6 @@ const API = '';
       iconColor: '#2f7d50',
       iconBackground: '#f0f8f1',
       stickyBackground: '#ffffff',
-      convertedBackground: '#f9fcfa',
     });
     var tablesUiConfigV1 = null;
 
@@ -418,7 +417,6 @@ const API = '';
         iconColor: normalizeTablesUiHexColor(raw.iconColor, defaults.iconColor),
         iconBackground: normalizeTablesUiHexColor(raw.iconBackground, defaults.iconBackground),
         stickyBackground: normalizeTablesUiHexColor(raw.stickyBackground, defaults.stickyBackground),
-        convertedBackground: normalizeTablesUiHexColor(raw.convertedBackground, defaults.convertedBackground),
       };
     }
 
@@ -429,7 +427,6 @@ const API = '';
       root.style.setProperty('--kexo-converted-icon-color', colors.iconColor);
       root.style.setProperty('--kexo-converted-icon-bg', colors.iconBackground);
       root.style.setProperty('--kexo-sticky-cell-bg', colors.stickyBackground);
-      root.style.setProperty('--kexo-converted-cell-bg', colors.convertedBackground);
     }
 
     function applyTablesUiConfigV1(cfg) {
@@ -809,8 +806,16 @@ const API = '';
 
     function syncAbandonedModeUi() {
       if (PAGE !== 'abandoned-carts') return;
-      var labelEl = document.getElementById('abandoned-mode-label');
-      if (labelEl) labelEl.textContent = abandonedModeDisplayLabel(abandonedMode);
+      var titleTextEl = document.getElementById('abandoned-page-title-text');
+      if (titleTextEl) titleTextEl.textContent = abandonedModeDisplayLabel(abandonedMode);
+
+      var switchEl = document.getElementById('abandoned-mode-switch');
+      if (switchEl) {
+        var next = normalizeAbandonedMode(abandonedMode) === 'checkout' ? 'cart' : 'checkout';
+        switchEl.textContent = 'Switch to ' + abandonedModeDisplayLabel(next);
+        switchEl.setAttribute('data-abandoned-mode', next);
+        switchEl.setAttribute('aria-label', 'Switch to ' + abandonedModeDisplayLabel(next));
+      }
       var tableTitle = document.getElementById('table-title-text');
       if (tableTitle) tableTitle.textContent = abandonedModeDisplayLabel(abandonedMode);
     }
@@ -835,6 +840,18 @@ const API = '';
     if (PAGE === 'abandoned-carts') {
       try { abandonedMode = loadAbandonedMode(); } catch (_) { abandonedMode = 'cart'; }
       syncAbandonedModeUi();
+      try {
+        var switchEl = document.getElementById('abandoned-mode-switch');
+        if (switchEl && switchEl.getAttribute('data-kexo-bound') !== '1') {
+          switchEl.setAttribute('data-kexo-bound', '1');
+          switchEl.addEventListener('keydown', function(e) {
+            if (!e) return;
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            try { switchEl.click(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
       try {
         document.addEventListener('click', function(e) {
           var t = e && e.target ? e.target : null;
@@ -1046,7 +1063,9 @@ const API = '';
         var moved = false;
 
         wrap.addEventListener('pointerdown', function(e) {
-          if (!e || e.button !== 0) return;
+          if (!e) return;
+          var pt = String(e.pointerType || '').toLowerCase();
+          if (pt === 'mouse' && e.button !== 0) return;
           var scrollbarHidden = (getComputedStyle(wrap).getPropertyValue('scrollbar-width') || '').trim() === 'none';
           if ((e.pointerType || '') === 'touch' && !scrollbarHidden) return; // native swipe when scrollbar visible; when hidden (mobile/emulation), run our drag
           if (!wrap.classList.contains('is-drag-scroll')) return;
@@ -1252,7 +1271,7 @@ const API = '';
           if (header.querySelector('.kexo-builder-icon-link')) return;
           var link = document.createElement('a');
           link.href = 'https://app.kexo.io/settings?tab=layout';
-          link.className = 'btn btn-icon btn-ghost-secondary kexo-builder-icon-link';
+          link.className = 'kexo-builder-icon-link';
           link.title = 'Layout settings';
           link.setAttribute('aria-label', 'Layout settings');
           link.innerHTML = '<i class="fa-light fa-gear" data-icon-key="table-builder-icon" style="color:#999" aria-hidden="true"></i>';
@@ -1273,7 +1292,7 @@ const API = '';
           if (existingChartLink) return;
           var chartLink = document.createElement('a');
           chartLink.href = 'https://app.kexo.io/settings?tab=layout';
-          chartLink.className = 'btn btn-icon btn-ghost-secondary kexo-builder-icon-link';
+          chartLink.className = 'kexo-builder-icon-link';
           chartLink.title = 'Layout settings';
           chartLink.setAttribute('aria-label', 'Layout settings');
           chartLink.innerHTML = '<i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>';
@@ -1555,6 +1574,15 @@ const API = '';
           if (colCount > 1) {
             var minOtherColWidth = classKey === 'live' ? 72 : 64;
             var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
+            // Sessions table now has a narrow leading icon column (~35px). Avoid over-capping
+            // the sticky landing width as if that icon column were a full normal column.
+            try {
+              var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
+              if (tid === 'sessions-table' && colCount > 2) {
+                var iconW = 35;
+                byRemainingCols = wrapW - iconW - (minOtherColWidth * (colCount - 2));
+              }
+            } catch (_) {}
             /* Only cap by remaining cols when table fits; when scrollable, skip so sticky can expand */
             if (byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
           }
@@ -1572,8 +1600,14 @@ const API = '';
         return Math.max(bounds.min, Math.min(bounds.max, Math.round(x)));
       }
 
-      function getHeaderFirstCell(wrap) {
+      function getHeaderStickyCell(wrap) {
         if (!wrap || !wrap.querySelector) return null;
+        try {
+          var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
+          if (tid === 'sessions-table') {
+            return wrap.querySelector('.grid-row--header .grid-cell:nth-child(2), table thead th:nth-child(2)');
+          }
+        } catch (_) {}
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
       }
 
@@ -1608,7 +1642,7 @@ const API = '';
         var raw = style ? style.getPropertyValue('--kexo-sticky-col-width') : '';
         var n = parseFloat(String(raw || '').trim());
         if (!Number.isFinite(n)) {
-          var cell = getHeaderFirstCell(wrap);
+          var cell = getHeaderStickyCell(wrap);
           if (cell) {
             try { n = parseFloat(getComputedStyle(cell).width); } catch (_) { n = NaN; }
           }
@@ -1677,7 +1711,9 @@ const API = '';
         }
 
         handle.addEventListener('pointerdown', function(e) {
-          if (!e || e.button !== 0) return;
+          if (!e) return;
+          var pt = String(e.pointerType || '').toLowerCase();
+          if (pt === 'mouse' && e.button !== 0) return;
           e.preventDefault();
           e.stopPropagation();
           resizing = true;
@@ -1703,7 +1739,7 @@ const API = '';
       }
 
       function ensureHandle(wrap) {
-        var cell = getHeaderFirstCell(wrap);
+        var cell = getHeaderStickyCell(wrap);
         if (!cell) return;
         var handle = cell.querySelector('.kexo-sticky-resize-handle');
         if (!handle) {
@@ -2064,7 +2100,15 @@ const API = '';
 
     function updateNextUpdateUi() {
       const block = document.querySelector('#tab-panel-spy .next-update-block');
-      if (!block) return;
+      if (!block) {
+        // Recent Sales no longer shows the next-update UI; don't let queued payloads get stuck.
+        try {
+          if (liveSalesPendingPayload && typeof liveSalesCanAutoApply === 'function' && liveSalesCanAutoApply()) {
+            applyLiveSalesPending();
+          }
+        } catch (_) {}
+        return;
+      }
       const labelEl = document.getElementById('next-update-label');
       const timerWrap = document.getElementById('next-update-timer-wrap');
       const isSales = PAGE === 'sales';
@@ -3522,7 +3566,8 @@ const API = '';
         } catch (_) {}
       }
       return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
-        <div class="grid-cell ${s.has_purchased ? 'converted-row' : ''}" role="cell">${convertedLeadIcon}${landingPageCell(s)}</div>
+        <div class="grid-cell sale-icon-cell ${s.has_purchased ? 'converted-sale-cell' : ''}" role="cell">${convertedLeadIcon}</div>
+        <div class="grid-cell landing-cell" role="cell">${landingPageCell(s)}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
         <div class="grid-cell" role="cell">${escapeHtml(s.device || '')}</div>
@@ -10121,7 +10166,7 @@ const API = '';
             stroke: chartType === 'bar' ? { width: 0 } : { width: 2.6, curve: 'smooth' },
             fill: chartType === 'area'
               ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.05, stops: [0, 100] } }
-              : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+              : { type: 'solid', opacity: 1 },
             plotOptions: chartType === 'bar' ? { bar: { horizontal: false, columnWidth: '62%', borderRadius: 3 } } : {},
             markers: { size: 0, hover: { size: 4 } },
             dataLabels: (showEndLabels && chartType === 'line') ? {
@@ -10264,7 +10309,7 @@ const API = '';
           stroke: chartType === 'bar' ? { width: 0 } : { width: [3, 2.4, 2.4], curve: 'smooth' },
           fill: chartType === 'area'
             ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.22, opacityTo: 0.06, stops: [0, 100] } }
-            : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+            : { type: 'solid', opacity: 1 },
           plotOptions: chartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
           markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
           dataLabels: (showEndLabels && chartType === 'line') ? {
@@ -10490,7 +10535,7 @@ const API = '';
             stroke: chartType === 'bar' ? { width: 0 } : { width: 2.6, curve: 'smooth' },
             fill: chartType === 'area'
               ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.18, opacityTo: 0.05, stops: [0, 100] } }
-              : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+              : { type: 'solid', opacity: 1 },
             plotOptions: chartType === 'bar' ? { bar: { horizontal: false, columnWidth: '62%', borderRadius: 3 } } : {},
             markers: { size: 0, hover: { size: 4 } },
             dataLabels: (showEndLabels && chartType === 'line') ? {
@@ -10633,7 +10678,7 @@ const API = '';
           stroke: chartType === 'bar' ? { width: 0 } : { width: [3, 2.4, 2.4], curve: 'smooth' },
           fill: chartType === 'area'
             ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.22, opacityTo: 0.06, stops: [0, 100] } }
-            : { type: 'solid', opacity: chartType === 'line' ? 0 : 1 },
+            : { type: 'solid', opacity: 1 },
           plotOptions: chartType === 'bar' ? { bar: { columnWidth: '56%', borderRadius: 3 } } : {},
           markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
           dataLabels: (showEndLabels && chartType === 'line') ? {

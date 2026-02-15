@@ -1158,7 +1158,6 @@
       iconColor: '#2f7d50',
       iconBackground: '#f0f8f1',
       stickyBackground: '#ffffff',
-      convertedBackground: '#f9fcfa',
     };
   }
 
@@ -1174,7 +1173,6 @@
       iconColor: normalizeHex(src.iconColor, def.iconColor),
       iconBackground: normalizeHex(src.iconBackground, def.iconBackground),
       stickyBackground: normalizeHex(src.stickyBackground, def.stickyBackground),
-      convertedBackground: normalizeHex(src.convertedBackground, def.convertedBackground),
     };
   }
 
@@ -2252,11 +2250,9 @@
     var iconColor = modal.querySelector('input[data-layout-color="iconColor"]');
     var iconBg = modal.querySelector('input[data-layout-color="iconBackground"]');
     var stickyBg = modal.querySelector('input[data-layout-color="stickyBackground"]');
-    var convertedBg = modal.querySelector('input[data-layout-color="convertedBackground"]');
     if (iconColor) iconColor.value = colors.iconColor;
     if (iconBg) iconBg.value = colors.iconBackground;
     if (stickyBg) stickyBg.value = colors.stickyBackground;
-    if (convertedBg) convertedBg.value = colors.convertedBackground;
 
     var msgEl = document.getElementById('settings-layout-colors-msg');
     if (msgEl) msgEl.textContent = '';
@@ -2305,7 +2301,6 @@
         iconColor: (modal.querySelector('input[data-layout-color="iconColor"]') || {}).value,
         iconBackground: (modal.querySelector('input[data-layout-color="iconBackground"]') || {}).value,
         stickyBackground: (modal.querySelector('input[data-layout-color="stickyBackground"]') || {}).value,
-        convertedBackground: (modal.querySelector('input[data-layout-color="convertedBackground"]') || {}).value,
       });
       tablesConvertedColorsDraft = next;
       setLayoutTablesMsg('Colors updated. Click Save to persist.', true);

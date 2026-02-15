@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dark overlay modal standard)
+Last updated: 2026-02-15 (Abandoned mode switch + converted sale icon column + remove converted background)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -104,7 +104,7 @@ Settings tabs:
 - Sources: UTM/source mapping
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
-  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables. **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
+  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row colors modal for Live/Table/Sales sessions tables (sale icon + sticky). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
   - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 
@@ -313,6 +313,13 @@ Ops/reliability:
   - Theme Icon Edit modal close behavior fixed: header X, outside-click, and Escape now close reliably.
   - Business Snapshot modal backdrop darkened to match default modal overlay standard.
   - Global modal overlay default in `custom.css` is now dark (`.modal-backdrop` black, higher opacity) unless a modal explicitly overrides it.
+
+2026-02-15 (latest)
+- Sessions tables + settings polish:
+  - Converted sale icon moved to a dedicated leading sessions-table column (~35px) before the sticky landing column (sticky resize still targets landing).
+  - Removed the “Converted background” table color setting (keeps only icon + sticky colors).
+  - Recent Sales: removed the “Next update” header block (polling continues; updates auto-apply when safe).
+  - Abandoned Carts: replaced the mode dropdown with an inline “Switch to …” link under the page title.
 
 2026-02-15 (latest)
 - Theme Icons visual editor shipped:
@@ -532,7 +539,7 @@ Ops/reliability:
 - Zero-baseline KPI delta labels in condensed/dashboard cards no longer show `new`; they now show signed percentages (e.g. `+100%` when previous is 0 and current is >0).
 
 2026-02-14 (latest)
-- Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode dropdown (Abandoned Carts / Abandoned Checkouts) centered under the page title (drives the whole page).
+- Insights: added `/insights/abandoned-carts` page (abandoned revenue line chart + top countries + top country+product + abandoned sessions table) with a mode switch (Abandoned Carts / Abandoned Checkouts) under the page title (drives the whole page).
 - Backend: added `/api/abandoned-carts/*` endpoints and a cleanup marker pass to set `is_abandoned/abandoned_at` reliably; fixed Postgres `upsertSession` to preserve abandonment markers.
 - Settings/Diagnostics: new chart + table defaults added in `server/routes/settings.js`; definitions added in `server/trackerDefinitions.js`.
 - Charts: fixed “dots but no line” by enforcing visible strokes for line charts (`stroke.show=true` and line `fill.opacity=1`).
@@ -858,7 +865,7 @@ Ops/reliability:
   - Sticky first-column width persistence is now split by viewport bucket (mobile/desktop) and constrained by remaining column count, preventing oversized first columns that caused very tall session rows ("10 secs ago" wrapping vertically).
   - Session age/history cells on Live/Sales/Table are now forced single-line in `custom.css`.
 - `/dashboard/live` cleanup:
-  - Removed the "Next update" markup from `server/public/dashboard/live.html` and limited next-update timer styling to Sales only.
+  - Removed the "Next update" markup from `server/public/dashboard/live.html` and `server/public/dashboard/sales.html` (polling still runs; UI no longer shows the timer/CTA).
 - Sticky header behavior:
   - Explicitly set `.page` / `.page-wrapper` overflow to visible in `custom.css` to keep the sticky header stack tracking consistently while scrolling through page body content.
 
@@ -898,11 +905,11 @@ Ops/reliability:
   - Dashboard · Recent Sales
   - Each row now has a far-right Colors button opening one shared modal that edits/saves the same values.
 - Extended `tables_ui_config_v1` with shared converted-row color fields:
-  - `iconColor`, `iconBackground`, `stickyBackground`, `convertedBackground`
+  - `iconColor`, `iconBackground`, `stickyBackground`
   - Normalized in `server/routes/settings.js` and persisted via existing `/api/settings` tables config path.
 - Runtime application + CSS updates:
-  - `server/public/app.js` now applies the shared colors to CSS vars (`--kexo-converted-icon-color`, `--kexo-converted-icon-bg`, `--kexo-sticky-cell-bg`, `--kexo-converted-cell-bg`) from `tablesUiConfig`.
-  - Updated converted-row styling in `server/public/custom.css` (+ parity updates in `server/public/app.css`) for icon block positioning, converted backgrounds, sticky background variable support, and converted-row hover consistency.
+  - `server/public/app.js` now applies the shared colors to CSS vars (`--kexo-converted-icon-color`, `--kexo-converted-icon-bg`, `--kexo-sticky-cell-bg`) from `tablesUiConfig`.
+  - Updated converted-row styling in `server/public/custom.css` (+ parity updates in `server/public/app.css`) for the sale icon column + sticky background variable support.
   - Fixed darker adjacent hover tint on converted rows by overriding second-cell hover styling for converted rows.
 
 2026-02-12 (latest)
@@ -920,9 +927,9 @@ Ops/reliability:
 
 2026-02-12 (latest)
 - Converted sale row styling/icons:
-  - Live/session converted rows now prepend a configurable sale icon in the first converted cell (`data-icon-key="table-icon-converted-sale"`) via `server/public/app.js`.
+  - Live/session converted rows now show a configurable sale icon in its own dedicated leading sessions-table column (`data-icon-key="table-icon-converted-sale"`) via `server/public/app.js`.
   - Added new icon key default to both icon registries (`server/public/fontawesome-icons.js`, `server/public/theme-settings.js`) so it is editable in Settings → Theme → Icons.
-  - Updated converted-row cell styling to a gradient background `#d8ecdb` (left) → `#f3f9f4` (right) in `server/public/custom.css` (and mirrored in `server/public/app.css` for legacy parity).
+  - Converted-row visuals now rely on the dedicated icon column + converted row tint, not a per-row “converted background” setting.
 
 2026-02-12 (latest)
 - Header/footer polish:

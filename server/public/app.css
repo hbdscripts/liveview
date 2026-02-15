@@ -396,27 +396,22 @@
     .grid-row.returning { background: var(--returning-bg); }
     .grid-row.converted { background: var(--converted-hover); }
     .grid-row.converted:hover { background: var(--converted-hover); }
-    .grid-row.converted .grid-cell { font-weight: 500; background: var(--kexo-converted-cell-bg, #f9fcfa) !important; border-color: var(--kexo-converted-icon-bg, #f0f8f1) !important; }
-    .grid-row.converted .grid-cell:first-child { box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
-    .grid-row .grid-cell.converted-row {
-      position: relative;
-      padding-left: 40px !important;
-      border-left: 3px solid color-mix(in srgb, var(--tblr-success) calc(var(--tblr-bg-opacity, 1) * 100%), transparent) !important;
-      background: var(--kexo-converted-cell-bg, #f9fcfa) !important;
-    }
-    .grid-row .grid-cell.converted-row .converted-row-sale-icon {
-      color: var(--kexo-converted-icon-color, #2f7d50);
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 30px;
-      height: -webkit-fill-available;
-      background: var(--kexo-converted-icon-bg, #f0f8f1);
-      display: grid;
-      place-items: center;
-      vertical-align: middle;
-      align-content: center;
+    .grid-row.converted .grid-cell:nth-child(2) { box-shadow: inset 3px 0 0 #0d9488, inset 4px 0 0 #fff; }
+    #sessions-table.grid-table .grid-cell.sale-icon-cell {
+      padding: 0 !important;
       text-align: center;
+      vertical-align: middle !important;
+    }
+    #sessions-table.grid-table .grid-cell.sale-icon-cell.converted-sale-cell {
+      background: var(--kexo-converted-icon-bg, #f0f8f1) !important;
+    }
+    #sessions-table.grid-table .grid-cell.sale-icon-cell .converted-row-sale-icon {
+      color: var(--kexo-converted-icon-color, #2f7d50);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
       font-size: .85rem;
     }
     .table-scroll-wrap .grid-body .grid-row .grid-cell:first-child { background: var(--kexo-sticky-cell-bg, #fff) !important; }
