@@ -912,82 +912,133 @@
 
   // ── Plan-based gating (master vs normal for now) ──────────────────────────
   function wirePlanBasedBrandingLocks() {
-    function lockBrandingOverrides() {
-      var groups = [
-        { urlId: 'settings-asset-favicon', fileId: 'settings-upload-favicon', slot: 'favicon' },
-        { urlId: 'settings-asset-logo', fileId: 'settings-upload-header-logo', slot: 'header_logo' },
-        { urlId: 'settings-asset-footer-logo', fileId: 'settings-upload-footer-logo', slot: 'footer_logo' },
-        { urlId: 'settings-asset-login-logo', fileId: 'settings-upload-login-logo', slot: 'login_logo' },
-        { urlId: 'settings-asset-kexo-fullcolor-logo', fileId: 'settings-upload-kexo-fullcolor-logo', slot: 'kexo_logo_fullcolor' },
-      ];
+    var groups = [
+      { urlId: 'settings-asset-favicon', fileId: 'settings-upload-favicon', slot: 'favicon' },
+      { urlId: 'settings-asset-logo', fileId: 'settings-upload-header-logo', slot: 'header_logo' },
+      { urlId: 'settings-asset-footer-logo', fileId: 'settings-upload-footer-logo', slot: 'footer_logo' },
+      { urlId: 'settings-asset-login-logo', fileId: 'settings-upload-login-logo', slot: 'login_logo' },
+      { urlId: 'settings-asset-kexo-fullcolor-logo', fileId: 'settings-upload-kexo-fullcolor-logo', slot: 'kexo_logo_fullcolor' },
+    ];
 
-      groups.forEach(function (g) {
-        var urlEl = document.getElementById(g.urlId);
-        if (!urlEl) return;
-        var col = urlEl.closest ? (urlEl.closest('.col-12') || urlEl.closest('.col')) : null;
-        if (!col) col = urlEl.parentElement;
-        if (!col) return;
+    var brandingLocked = null; // null = unknown, boolean afterwards
 
-        try { col.classList.add('kexo-upgrade-locked'); } catch (_) {}
-        try { col.setAttribute('data-kexo-upgrade-locked', '1'); } catch (_) {}
+    function lockGroup(g) {
+      var urlEl = document.getElementById(g.urlId);
+      if (!urlEl) return;
+      var col = urlEl.closest ? (urlEl.closest('.col-12') || urlEl.closest('.col')) : null;
+      if (!col) col = urlEl.parentElement;
+      if (!col) return;
 
-        try { urlEl.disabled = true; } catch (_) {}
-        var fileEl = document.getElementById(g.fileId);
-        if (fileEl) { try { fileEl.disabled = true; } catch (_) {} }
+      try { col.classList.add('kexo-upgrade-locked'); } catch (_) {}
+      try { col.setAttribute('data-kexo-upgrade-locked', '1'); } catch (_) {}
 
-        var btn = document.querySelector('button[data-kexo-asset-upload="1"][data-kexo-slot="' + g.slot + '"]');
-        if (btn) {
-          try { if (!btn.getAttribute('data-kexo-orig-text')) btn.setAttribute('data-kexo-orig-text', String(btn.textContent || 'Upload')); } catch (_) {}
-          try { btn.textContent = 'Upgrade required'; } catch (_) {}
-          try { btn.disabled = true; } catch (_) {}
-          try {
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-outline-secondary');
-          } catch (_) {}
-        }
+      try { urlEl.disabled = true; } catch (_) {}
+      var fileEl = document.getElementById(g.fileId);
+      if (fileEl) { try { fileEl.disabled = true; } catch (_) {} }
 
-        if (!col.querySelector('.kexo-upgrade-lock-overlay')) {
-          var overlay = document.createElement('a');
-          overlay.href = '/upgrade';
-          overlay.className = 'kexo-upgrade-lock-overlay';
-          overlay.setAttribute('role', 'button');
-          overlay.setAttribute('aria-label', 'Upgrade required');
-          overlay.setAttribute('title', 'Upgrade required');
-          overlay.innerHTML = '<span>Upgrade required</span><span class="badge bg-primary-lt">View plans</span>';
-          col.appendChild(overlay);
-        }
-      });
+      var btn = document.querySelector('button[data-kexo-asset-upload="1"][data-kexo-slot="' + g.slot + '"]');
+      if (btn) {
+        try { if (!btn.getAttribute('data-kexo-orig-text')) btn.setAttribute('data-kexo-orig-text', String(btn.textContent || 'Upload')); } catch (_) {}
+        try { btn.textContent = 'Upgrade required'; } catch (_) {}
+        try { btn.disabled = true; } catch (_) {}
+        try {
+          btn.classList.remove('btn-outline-primary');
+          btn.classList.add('btn-outline-secondary');
+        } catch (_) {}
+      }
 
-      // Also intercept the Assets form submit so it routes to /upgrade rather than failing an API call.
-      var form = document.getElementById('settings-assets-form');
-      if (form && form.getAttribute('data-kexo-upgrade-lock-wired') !== '1') {
-        form.setAttribute('data-kexo-upgrade-lock-wired', '1');
-        form.addEventListener('submit', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          try { window.location.href = '/upgrade'; } catch (_) {}
-        }, true);
+      if (!col.querySelector('.kexo-upgrade-lock-overlay')) {
+        var overlay = document.createElement('a');
+        overlay.href = '/upgrade';
+        overlay.className = 'kexo-upgrade-lock-overlay';
+        overlay.setAttribute('role', 'button');
+        overlay.setAttribute('aria-label', 'Upgrade required');
+        overlay.setAttribute('title', 'Upgrade required');
+        overlay.innerHTML = '<span>Upgrade required</span><span class="badge bg-primary-lt">View plans</span>';
+        col.appendChild(overlay);
+      }
+    }
+
+    function unlockGroup(g) {
+      var urlEl = document.getElementById(g.urlId);
+      if (!urlEl) return;
+      var col = urlEl.closest ? (urlEl.closest('.col-12') || urlEl.closest('.col')) : null;
+      if (!col) col = urlEl.parentElement;
+      if (!col) return;
+
+      try { col.classList.remove('kexo-upgrade-locked'); } catch (_) {}
+      try { col.removeAttribute('data-kexo-upgrade-locked'); } catch (_) {}
+
+      try { urlEl.disabled = false; } catch (_) {}
+      var fileEl = document.getElementById(g.fileId);
+      if (fileEl) { try { fileEl.disabled = false; } catch (_) {} }
+
+      var btn = document.querySelector('button[data-kexo-asset-upload="1"][data-kexo-slot="' + g.slot + '"]');
+      if (btn) {
+        try {
+          var orig = btn.getAttribute('data-kexo-orig-text');
+          btn.textContent = orig ? String(orig) : 'Upload';
+        } catch (_) { try { btn.textContent = 'Upload'; } catch (_) {} }
+        try { btn.disabled = false; } catch (_) {}
+        try {
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-outline-primary');
+        } catch (_) {}
       }
 
       try {
-        var msg = document.getElementById('settings-assets-msg');
-        if (msg) msg.textContent = 'Upgrade required';
+        var overlay = col.querySelector('.kexo-upgrade-lock-overlay');
+        if (overlay) overlay.remove();
       } catch (_) {}
     }
 
-    function apply(isMaster) {
-      if (isMaster) return;
-      lockBrandingOverrides();
+    function setLocked(nextLocked) {
+      var n = !!nextLocked;
+      if (brandingLocked === n) return;
+      brandingLocked = n;
+      groups.forEach(function (g) {
+        if (brandingLocked) lockGroup(g);
+        else unlockGroup(g);
+      });
+      try {
+        var msg = document.getElementById('settings-assets-msg');
+        if (!msg) return;
+        if (brandingLocked) msg.textContent = 'Upgrade required';
+        else if (String(msg.textContent || '').trim() === 'Upgrade required') msg.textContent = '';
+      } catch (_) {}
     }
 
-    try {
-      if (window.__kexoIsMasterUser === true) return;
-      if (window.__kexoIsMasterUser === false) { apply(false); return; }
-    } catch (_) {}
+    // Intercept Assets form submit only when locked.
+    (function wireSubmitGuard() {
+      var form = document.getElementById('settings-assets-form');
+      if (!form) return;
+      if (form.getAttribute('data-kexo-upgrade-lock-wired') === '1') return;
+      form.setAttribute('data-kexo-upgrade-lock-wired', '1');
+      form.addEventListener('submit', function (e) {
+        if (!brandingLocked) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { window.location.href = '/upgrade'; } catch (_) {}
+      }, true);
+    })();
 
-    window.addEventListener('kexo:me-loaded', function (ev) {
-      try { apply(!!(ev && ev.detail && ev.detail.isMaster)); } catch (_) {}
-    }, { once: true });
+    function applyFromViewer(viewer) {
+      var isAdmin = !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true));
+      setLocked(!isAdmin);
+    }
+
+    // Initial: be pessimistic until viewer loads.
+    try {
+      if (typeof window.__kexoGetEffectiveViewer === 'function') applyFromViewer(window.__kexoGetEffectiveViewer());
+      else if (window.__kexoIsMasterUser === true) applyFromViewer({ isAdmin: true, isMaster: true });
+      else applyFromViewer({ isAdmin: false, isMaster: false });
+    } catch (_) {
+      applyFromViewer({ isAdmin: false, isMaster: false });
+    }
+
+    window.addEventListener('kexo:viewer-changed', function (ev) {
+      try { applyFromViewer(ev && ev.detail ? ev.detail : null); } catch (_) {}
+    });
   }
 
   function defaultKpiUiConfigV1() {

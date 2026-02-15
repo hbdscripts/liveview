@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Admin Controls + plan gating + silent loader)
+Last updated: 2026-02-15 (Preview mode + Admin role rename)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -70,7 +70,7 @@ Settings:
 Upgrade:
 - `/upgrade` → `server/public/upgrade.html` (`data-page="upgrade"`) — TODO pricing page used by plan-gated Settings controls
 
-Admin (master-only):
+Admin (admin-only):
 - `/admin` → `server/public/admin.html`
   - Left menu now includes: Controls, Diagnostics, Users
 
@@ -108,6 +108,7 @@ Settings tabs:
 
 Admin-only (moved out of `/settings`):
 - Admin → Controls: per-page loader toggles + Data & Reporting + Settings scope (read-only global for now)
+  - Preview mode: “Preview as tier” is UI-only (does not change server auth). Stored in localStorage `kexo:preview:v1` and shows a “Preview: X (Exit)” item in the Settings dropdown.
 - Admin → Diagnostics: config-status + reconcile utilities
 
 Settings API:
@@ -118,13 +119,13 @@ Settings API:
   - `GET /api/asset-overrides` (read `asset_overrides`)
   - `POST /api/assets/upload` (multipart → Cloudflare R2, returns public URL; URLs are persisted via `/api/settings` and `/api/theme-defaults`)
 
-Admin Controls API (master-only):
+Admin Controls API (admin-only):
 - `GET/PUT /api/admin/controls` in `server/routes/adminControls.js` (persists `page_loader_enabled_v1`)
 
 Diagnostics access:
-- `GET /api/config-status` is now **restricted for non-masters** (returns a minimal payload for Settings/Integrations/footer tags).
-- Full diagnostics payload is only returned to master requests (OAuth cookie + users.role=master).
-- `POST /api/reconcile-sales` is master-only (gated in `server/index.js`).
+- `GET /api/config-status` is now **restricted for non-admins** (returns a minimal payload for Settings/Integrations/footer tags).
+- Full diagnostics payload is only returned to admin requests (OAuth cookie + users.role=admin; legacy: master).
+- `POST /api/reconcile-sales` is admin-only (gated in `server/index.js`).
 
 ---
 
@@ -305,6 +306,19 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Theme Icons audit + editor overhaul:
+  - Settings -> Theme -> Icons now includes an audit summary for icon-key drift:
+    - used in theme but missing from settings
+    - in settings but removed from theme (legacy list)
+  - Icon fields now accept either Font Awesome classes or pasted `<svg>...</svg>`.
+  - Added per-icon **Edit** modal for optional size/color overrides (shared persistence key: `theme_icon_overrides_json`), applied in runtime for both FA and SVG output.
+  - SVG rendering now ignores pasted intrinsic width/height and defaults to icon size unless override size is set.
+  - Icons UI is grouped into accordion sections (Header/Nav, Footer, Tables, Cards/Charts, Runtime, Admin, Legacy, Misc).
+  - Icon-key alignment fixes:
+    - Added missing active keys: `nav-item-admin`, `admin-tab-controls`, `admin-tab-diagnostics`, `admin-tab-users`
+    - Backend theme whitelist now includes `nav-dropdown-arrow`, `chart-builder-icon`, `table-icon-converted-sale`, admin keys, and removes stale backend-only keys (`sale_toast_time`, legacy `diag_tab_*`).
+
+2026-02-15 (latest)
 - Admin controls + loader UX + plan gating:
   - Admin now has Controls + Diagnostics panels; moved Settings scope + Data & Reporting + Diagnostics out of `/settings`.
   - Page loader overlay is now configurable per page (persisted `page_loader_enabled_v1`); Admin is always disabled; refresh/resume refreshes are silent (no overlay).
@@ -331,6 +345,9 @@ Ops/reliability:
   - `charts_ui_config_v1.kpiBundles.dashboardCards.sparkline`: new `compareUsePrimaryColor` (bool), `compareOpacity` (0–100). Defaults: true, 50.
 
 2026-02-15 (latest)
+- Preview mode + Admin role rename:
+  - Admin → Controls includes “Preview as tier” (UI-only) so admins can simulate what customers see.
+  - Role is now `admin` (legacy `master` accepted during rollout). Migration 046 updates existing `users.role` values.
 - Long-range report responsiveness + “no more silent waiting”:
   - Shopify truth reconciliation scopes unified across reports to avoid duplicate backfills (`range_<rangeKey>` via `salesTruth.scopeForRangeKey()`).
   - Non-today report reconciles are now non-blocking (fire-and-forget) so pages don’t hang for minutes on Shopify Orders API pagination.
@@ -347,13 +364,13 @@ Ops/reliability:
   - Login/register pages use logo: `/assets/logos/new/kexo-color-dark-text.webp`.
 
 2026-02-14 (latest)
-- Master accounts + approvals:
-  - Added `users` table (migration 045) with statuses (`pending|active|denied`) + roles (`user|master`) + last login meta (country/city/device/platform).
+- Admin accounts + approvals:
+  - Added `users` table (migration 045) with statuses (`pending|active|denied`) + roles (`user|admin`) + last login meta (country/city/device/platform).
   - Pending/denied accounts are blocked everywhere by `dashboardAuth` (pages redirect to `/app/login?error=pending|denied` via logout).
-  - Seed master: `smlsites@gmail.com` (bootstrap to `active/master` on first email-based session).
+  - Seed admin: `smlsites@gmail.com` (bootstrap to `active/admin` on first email-based session).
   - Added local email/password login + signup on `/app/login` (`/auth/local/register`, `/auth/local/login`).
-  - Added master-only Admin → Users page (`/admin`) with Active/Pending tabs + Approve/Deny/Promote-to-master actions (`/api/admin/...`).
-  - Top settings dropdown now contains **Admin** + **Business Snapshot** items, shown only for masters (client gates `.kexo-admin-only` via `GET /api/me`; server gates `GET /api/business-snapshot` via `requireMaster`).
+  - Added admin-only Admin → Users page (`/admin`) with Active/Pending tabs + Approve/Deny/Promote-to-admin actions (`/api/admin/...`).
+  - Top settings dropdown now contains **Admin** + **Business Snapshot** items, shown only for admins (client gates `.kexo-admin-only` via `GET /api/me`; server gates `GET /api/business-snapshot` via `requireMaster`).
 
 2026-02-14 (latest)
 - Active dropdown item (desktop): font-weight 700 + ::after 3px accent border at bottom when dropdown is open. Uses `var(--kexo-accent)` for icon colour.

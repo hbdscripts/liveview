@@ -60,6 +60,30 @@
 
             <div class="row g-3">
               <div class="col-12">
+                <h4 class="mb-2">Preview</h4>
+                <div class="text-secondary small mb-2">
+                  Preview affects UI only; server access remains your real account.
+                </div>
+                <div class="row g-3 align-items-end">
+                  <div class="col-12 col-lg-6">
+                    <label class="form-label" for="admin-preview-tier">Preview as tier</label>
+                    <select class="form-select" id="admin-preview-tier" aria-label="Preview as tier">
+                      <option value="" selected>Off</option>
+                      <option value="starter">Starter</option>
+                      <option value="growth">Growth</option>
+                      <option value="scale">Scale</option>
+                      <option value="max">Max</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-6 d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="admin-preview-exit-btn">Exit preview</button>
+                  </div>
+                </div>
+                <div class="form-hint mt-2" id="admin-preview-msg"></div>
+              </div>
+
+              <div class="col-12">
                 <h4 class="mb-2">Loader</h4>
                 <div class="text-secondary small mb-2">
                   Enable or disable the page loader overlay per page.

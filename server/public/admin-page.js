@@ -134,13 +134,14 @@
       var lastLogin = row && row.last_login_at != null ? Number(row.last_login_at) : 0;
 
       var actions = '';
-      if (role === 'master') {
-        actions = makeBadge('Master', 'primary');
+      var isAdmin = (role === 'admin' || role === 'master');
+      if (isAdmin) {
+        actions = makeBadge('Admin', 'primary');
       } else {
         actions =
           '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' +
           escapeHtml(row.id) +
-          '">Promote to master</button>';
+          '">Promote to admin</button>';
       }
 
       if (status && status !== 'active') {
@@ -183,7 +184,7 @@
         '">Deny</button>' +
         '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' +
         escapeHtml(row.id) +
-        '">Promote to master</button>';
+        '">Promote to admin</button>';
 
       h +=
         '<tr>' +
@@ -216,7 +217,7 @@
     var url = '';
     if (action === 'approve') url = '/api/admin/users/' + encodeURIComponent(id) + '/approve';
     else if (action === 'deny') url = '/api/admin/users/' + encodeURIComponent(id) + '/deny';
-    else if (action === 'promote') url = '/api/admin/users/' + encodeURIComponent(id) + '/promote-master';
+    else if (action === 'promote') url = '/api/admin/users/' + encodeURIComponent(id) + '/promote-admin';
     else return Promise.resolve(null);
 
     return kfetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
@@ -254,6 +255,8 @@
 
   var _loaderSaveTimer = null;
   var _loaderSaving = false;
+  var _previewWired = false;
+  var PREVIEW_LS_KEY = 'kexo:preview:v1';
 
   function setHint(id, text, tone) {
     var el = document.getElementById(id);
@@ -263,6 +266,96 @@
     else if (tone === 'ok') el.className = 'form-hint text-success';
     else if (tone === 'bad') el.className = 'form-hint text-danger';
     else el.className = 'form-hint text-secondary';
+  }
+
+  function normalizePreviewTier(raw) {
+    var t = raw == null ? '' : String(raw).trim().toLowerCase();
+    if (!t) return '';
+    var allowed = new Set(['starter', 'growth', 'scale', 'max', 'admin']);
+    return allowed.has(t) ? t : '';
+  }
+
+  function previewTierLabel(tier) {
+    var t = normalizePreviewTier(tier);
+    if (t === 'starter') return 'Starter';
+    if (t === 'growth') return 'Growth';
+    if (t === 'scale') return 'Scale';
+    if (t === 'max') return 'Max';
+    if (t === 'admin') return 'Admin';
+    return '';
+  }
+
+  function readPreviewConfig() {
+    try {
+      var raw = localStorage.getItem(PREVIEW_LS_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (Number(parsed.v) !== 1) return null;
+      if (parsed.enabled !== true) return null;
+      var tier = normalizePreviewTier(parsed.tier);
+      if (!tier) return null;
+      return { v: 1, enabled: true, tier: tier };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writePreviewConfig(tier) {
+    var t = normalizePreviewTier(tier);
+    if (!t) {
+      try { localStorage.removeItem(PREVIEW_LS_KEY); } catch (_) {}
+      return '';
+    }
+    try { localStorage.setItem(PREVIEW_LS_KEY, JSON.stringify({ v: 1, enabled: true, tier: t })); } catch (_) {}
+    return t;
+  }
+
+  function applyPreviewUi() {
+    var sel = document.getElementById('admin-preview-tier');
+    var exitBtn = document.getElementById('admin-preview-exit-btn');
+    if (!sel) return;
+    var cfg = readPreviewConfig();
+    var tier = cfg && cfg.tier ? cfg.tier : '';
+    try { sel.value = tier || ''; } catch (_) {}
+    if (exitBtn) {
+      try { exitBtn.disabled = !tier; } catch (_) {}
+    }
+    if (!tier) setHint('admin-preview-msg', 'Preview is off.', 'muted');
+    else setHint('admin-preview-msg', 'Preview active: ' + previewTierLabel(tier) + '.', 'ok');
+  }
+
+  function bindPreviewControls() {
+    if (_previewWired) return;
+    _previewWired = true;
+    var sel = document.getElementById('admin-preview-tier');
+    var exitBtn = document.getElementById('admin-preview-exit-btn');
+    if (!sel) return;
+
+    function applyTier(tierOrOff) {
+      var t = writePreviewConfig(tierOrOff);
+      applyPreviewUi();
+      try {
+        if (typeof window.__kexoSetPreviewTier === 'function') {
+          window.__kexoSetPreviewTier(t || '');
+          return;
+        }
+      } catch (_) {}
+      // Fallback: reload so other pages pick up preview changes.
+      try { window.location.reload(); } catch (_) {}
+    }
+
+    sel.addEventListener('change', function () {
+      applyTier(sel.value || '');
+    });
+
+    if (exitBtn) {
+      exitBtn.addEventListener('click', function () {
+        applyTier('');
+      });
+    }
+
+    applyPreviewUi();
   }
 
   function defaultPageLoaderEnabled() {
@@ -471,18 +564,12 @@
         setHint('admin-reporting-msg', 'Failed to load settings.', 'bad');
       });
 
+    bindPreviewControls();
     bindLoaderToggles();
     bindReportingControls();
   }
 
   function init() {
-    // This page is master-only (server-gated). Show master-only dropdown items without waiting.
-    try {
-      var masterEls = document.querySelectorAll ? document.querySelectorAll('.kexo-admin-only') : [];
-      masterEls.forEach(function(el) {
-        try { if (el && el.classList) el.classList.remove('d-none'); } catch (_) {}
-      });
-    } catch (_) {}
     bindTabClicks();
     bindActions();
 

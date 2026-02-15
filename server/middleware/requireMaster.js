@@ -1,7 +1,7 @@
 /**
- * Master-only gate for Admin pages and APIs.
+ * Admin-only gate for Admin pages and APIs.
  *
- * Master accounts are stored in `users.role = 'master'` (plus a bootstrap seed master).
+ * Admin accounts are stored in `users.role = 'admin'` (legacy: 'master') plus a bootstrap seed admin.
  */
 const dashboardAuth = require('./dashboardAuth');
 const users = require('../usersService');
@@ -53,7 +53,7 @@ async function middleware(req, res, next) {
   const row = await users.getUserByEmail(email);
   const role = row && row.role != null ? String(row.role).trim().toLowerCase() : '';
   const status = row && row.status != null ? String(row.status).trim().toLowerCase() : '';
-  if (role === 'master' && status === 'active') return next();
+  if ((role === 'admin' || role === 'master') && status === 'active') return next();
 
   if (isApi(req)) return res.status(403).json({ error: 'Forbidden' });
   return res.redirect(302, '/dashboard/overview');

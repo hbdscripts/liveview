@@ -3,7 +3,9 @@
  *
  * Purpose:
  * - Power local signup + approvals workflow (pending/active/denied).
- * - Provide roles (user/master) + future tiers (free/pro/...) for feature gating.
+ * - Provide roles (user/admin) + future tiers (free/pro/...) for feature gating.
+ *
+ * NOTE: `role='master'` is legacy and treated as admin for backwards compatibility.
  *
  * NOTE: This is intentionally lightweight and uses epoch ms timestamps.
  */
@@ -27,7 +29,7 @@ function normalizeUserStatus(raw) {
 
 function normalizeUserRole(raw) {
   const s = raw != null ? String(raw).trim().toLowerCase() : '';
-  if (s === 'master' || s === 'user') return s;
+  if (s === 'admin' || s === 'master' || s === 'user') return s;
   return '';
 }
 
@@ -79,13 +81,13 @@ async function ensureBootstrapMaster(email, { now = Date.now() } = {}) {
       const nextTier = existing.tier ? normalizeUserTier(existing.tier) : 'free';
       await db.run(
         'UPDATE users SET status = ?, role = ?, tier = ?, approved_at = COALESCE(approved_at, ?) WHERE email = ?',
-        ['active', 'master', nextTier, now, e]
+        ['active', 'admin', nextTier, now, e]
       );
       return await db.get('SELECT * FROM users WHERE email = ? LIMIT 1', [e]);
     }
     await db.run(
       'INSERT INTO users (email, password_hash, status, role, tier, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [e, null, 'active', 'master', 'free', now, now]
+      [e, null, 'active', 'admin', 'free', now, now]
     );
     return await db.get('SELECT * FROM users WHERE email = ? LIMIT 1', [e]);
   } catch (_) {
@@ -186,7 +188,7 @@ async function denyUser(id, actorEmail, { now = Date.now() } = {}) {
   }
 }
 
-async function promoteToMaster(id, actorEmail, { now = Date.now() } = {}) {
+async function promoteToAdmin(id, actorEmail, { now = Date.now() } = {}) {
   const actor = normalizeEmail(actorEmail);
   const db = getDb();
   const u = await getUserById(id);
@@ -195,13 +197,18 @@ async function promoteToMaster(id, actorEmail, { now = Date.now() } = {}) {
     const nextTier = normalizeUserTier(u.tier);
     await db.run(
       'UPDATE users SET role = ?, status = ?, tier = ?, approved_at = COALESCE(approved_at, ?) WHERE id = ?',
-      ['master', 'active', nextTier, now, u.id]
+      ['admin', 'active', nextTier, now, u.id]
     );
     void actor;
     return { ok: true };
   } catch (_) {
     return { ok: false, error: 'db_error' };
   }
+}
+
+// Backwards-compatible alias (legacy name + legacy callers).
+async function promoteToMaster(id, actorEmail, { now = Date.now() } = {}) {
+  return promoteToAdmin(id, actorEmail, { now });
 }
 
 async function updateLoginMeta(email, meta = {}, { now = Date.now() } = {}) {
@@ -246,6 +253,7 @@ module.exports = {
   listUsers,
   approveUser,
   denyUser,
+  promoteToAdmin,
   promoteToMaster,
   updateLoginMeta,
 };

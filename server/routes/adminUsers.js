@@ -34,12 +34,16 @@ router.post('/users/:id/deny', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/users/:id/promote-master', async (req, res) => {
+async function promoteAdmin(req, res) {
   const id = req.params && req.params.id;
-  const r = await users.promoteToMaster(id, null, { now: Date.now() });
+  const r = await users.promoteToAdmin(id, null, { now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'promote_failed' });
   res.json({ ok: true });
-});
+}
+
+router.post('/users/:id/promote-admin', promoteAdmin);
+// Backwards-compatible alias
+router.post('/users/:id/promote-master', promoteAdmin);
 
 module.exports = router;
 

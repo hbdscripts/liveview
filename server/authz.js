@@ -2,7 +2,7 @@
  * Shared authorization helpers.
  *
  * IMPORTANT: This app supports both Shopify-embedded access (dashboardAuth) and direct visits
- * via OAuth cookie. "Master" checks should ONLY rely on the OAuth cookie + users table so
+ * via OAuth cookie. "Admin" checks should ONLY rely on the OAuth cookie + users table so
  * customers in Shopify admin do not get elevated access by default.
  */
 const dashboardAuth = require('./middleware/dashboardAuth');
@@ -45,7 +45,7 @@ async function isMasterRequest(req) {
   const row = await users.getUserByEmail(email);
   const role = row && row.role != null ? String(row.role).trim().toLowerCase() : '';
   const status = row && row.status != null ? String(row.status).trim().toLowerCase() : '';
-  return role === 'master' && status === 'active';
+  return (role === 'admin' || role === 'master') && status === 'active';
 }
 
 module.exports = {

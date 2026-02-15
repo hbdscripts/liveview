@@ -115,6 +115,164 @@ const API = '';
     }
     try { window.__kexoWithSilentOverlay = kexoWithSilentOverlay; } catch (_) {}
     try { window.__kexoSilentOverlayActive = kexoSilentOverlayActive; } catch (_) {}
+
+    // ── Admin preview mode (UI-only) ────────────────────────────────────────
+    // Preview is an admin tool: it affects client UI gating only and cannot bypass server auth.
+    const PREVIEW_LS_KEY = 'kexo:preview:v1';
+    function normalizePreviewTier(raw) {
+      var t = raw == null ? '' : String(raw).trim().toLowerCase();
+      if (!t) return '';
+      var allowed = new Set(['starter', 'growth', 'scale', 'max', 'admin']);
+      return allowed.has(t) ? t : '';
+    }
+    function previewTierLabel(tier) {
+      var t = normalizePreviewTier(tier);
+      if (t === 'starter') return 'Starter';
+      if (t === 'growth') return 'Growth';
+      if (t === 'scale') return 'Scale';
+      if (t === 'max') return 'Max';
+      if (t === 'admin') return 'Admin';
+      return '';
+    }
+    function readPreviewConfig() {
+      try {
+        var raw = localStorage.getItem(PREVIEW_LS_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (Number(parsed.v) !== 1) return null;
+        if (parsed.enabled !== true) return null;
+        var tier = normalizePreviewTier(parsed.tier);
+        if (!tier) return null;
+        return { v: 1, enabled: true, tier: tier };
+      } catch (_) {
+        return null;
+      }
+    }
+    function writePreviewConfig(tierOrOff) {
+      var tier = normalizePreviewTier(tierOrOff);
+      if (!tier) {
+        try { localStorage.removeItem(PREVIEW_LS_KEY); } catch (_) {}
+        return '';
+      }
+      try { localStorage.setItem(PREVIEW_LS_KEY, JSON.stringify({ v: 1, enabled: true, tier: tier })); } catch (_) {}
+      return tier;
+    }
+    function clearPreviewConfig() {
+      try { localStorage.removeItem(PREVIEW_LS_KEY); } catch (_) {}
+    }
+    function isAdminLikeRole(raw) {
+      var r = raw == null ? '' : String(raw).trim().toLowerCase();
+      // Backwards-compatible while Master→Admin migration rolls out.
+      return r === 'admin' || r === 'master';
+    }
+    function isRealAdminViewer(me) {
+      if (!me || typeof me !== 'object') return false;
+      if (me.isMaster === true) return true;
+      return isAdminLikeRole(me.role);
+    }
+    function getEffectiveViewer(realMe) {
+      var me = (realMe && typeof realMe === 'object') ? realMe : (window.__kexoMe && typeof window.__kexoMe === 'object' ? window.__kexoMe : null);
+      var realIsAdmin = isRealAdminViewer(me);
+      var previewStored = readPreviewConfig();
+      var preview = null;
+      if (realIsAdmin) preview = previewStored;
+      else if (me && previewStored) {
+        // Safety: preview should not leak into normal user sessions.
+        clearPreviewConfig();
+      }
+      var previewTier = preview && preview.tier ? String(preview.tier) : '';
+      var previewEnabled = !!previewTier;
+      var effectiveIsAdmin = realIsAdmin;
+      if (previewEnabled) effectiveIsAdmin = previewTier === 'admin';
+      var tier = previewEnabled
+        ? previewTier
+        : (me && me.tier != null ? String(me.tier).trim().toLowerCase() : '');
+      return {
+        email: me && me.email ? String(me.email) : null,
+        role: effectiveIsAdmin ? 'admin' : 'user',
+        tier: tier || null,
+        isAdmin: effectiveIsAdmin,
+        // Keep legacy name for existing code paths.
+        isMaster: effectiveIsAdmin,
+        preview: { enabled: previewEnabled, tier: previewTier || '' },
+        real: {
+          role: me && me.role != null ? String(me.role) : null,
+          tier: me && me.tier != null ? String(me.tier) : null,
+          isAdmin: realIsAdmin,
+        },
+      };
+    }
+    function applyAdminOnlyVisibility(isAdmin) {
+      try {
+        var els = document.querySelectorAll ? document.querySelectorAll('.kexo-admin-only') : [];
+        if (!els || !els.length) return;
+        els.forEach(function (el) {
+          if (!el || !el.classList) return;
+          if (isAdmin) el.classList.remove('d-none');
+          else el.classList.add('d-none');
+        });
+      } catch (_) {}
+    }
+    function ensurePreviewExitMenuItem(viewer) {
+      var menu = document.getElementById('navbar-settings-menu');
+      if (!menu) return;
+      var btn = menu.querySelector('[data-kexo-preview-exit="1"]');
+      var div = menu.querySelector('[data-kexo-preview-divider="1"]');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dropdown-item kexo-top-strip-settings-item';
+        btn.setAttribute('data-kexo-preview-exit', '1');
+        btn.innerHTML = '<i class="fa-jelly fa-eye kexo-top-strip-settings-item-icon" aria-hidden="true"></i><span data-kexo-preview-exit-label>Preview</span>';
+        btn.addEventListener('click', function () {
+          try { clearPreviewConfig(); } catch (_) {}
+          try { window.location.reload(); } catch (_) {}
+        });
+        menu.insertBefore(btn, menu.firstChild);
+      }
+      if (!div) {
+        div = document.createElement('div');
+        div.className = 'dropdown-divider';
+        div.setAttribute('data-kexo-preview-divider', '1');
+        if (btn.nextSibling) menu.insertBefore(div, btn.nextSibling);
+        else menu.appendChild(div);
+      }
+
+      var enabled = !!(viewer && viewer.preview && viewer.preview.enabled);
+      if (!enabled) {
+        btn.style.display = 'none';
+        div.style.display = 'none';
+        return;
+      }
+      var label = previewTierLabel(viewer.preview.tier) || 'Preview';
+      var text = 'Preview: ' + label + ' (Exit)';
+      var span = btn.querySelector('[data-kexo-preview-exit-label]');
+      if (span) span.textContent = text;
+      else btn.textContent = text;
+      btn.style.display = '';
+      div.style.display = '';
+    }
+    var _effectiveViewerCache = null;
+    function applyEffectiveViewer() {
+      var v = getEffectiveViewer(window.__kexoMe);
+      _effectiveViewerCache = v;
+      try { window.__kexoEffectiveViewer = v; } catch (_) {}
+      try { window.__kexoEffectiveIsAdmin = !!v.isAdmin; } catch (_) {}
+      try { applyAdminOnlyVisibility(!!v.isAdmin); } catch (_) {}
+      try { ensurePreviewExitMenuItem(v); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent('kexo:viewer-changed', { detail: v })); } catch (_) {}
+      return v;
+    }
+    try { window.__kexoGetEffectiveViewer = function() { return getEffectiveViewer(window.__kexoMe); }; } catch (_) {}
+    try { window.__kexoApplyEffectiveViewer = applyEffectiveViewer; } catch (_) {}
+    try {
+      window.__kexoSetPreviewTier = function(tierOrOff) {
+        writePreviewConfig(tierOrOff);
+        applyEffectiveViewer();
+      };
+    } catch (_) {}
+
     const TABLE_CLASS_CONFIG = Object.freeze({
       dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
       product: Object.freeze({ defaultRows: 10, rowOptions: Object.freeze([10, 15, 20]) }),
@@ -16904,35 +17062,24 @@ const API = '';
       try {
         var avatarEl = document.getElementById('user-avatar');
         var emailEl = document.getElementById('user-email');
-        var masterEls = document.querySelectorAll ? document.querySelectorAll('.kexo-admin-only') : [];
-        function toggleMasterUi(isMaster) {
-          try {
-            if (!masterEls || !masterEls.length) return;
-            masterEls.forEach(function(el) {
-              if (!el || !el.classList) return;
-              if (isMaster) el.classList.remove('d-none');
-              else el.classList.add('d-none');
-            });
-          } catch (_) {}
-        }
         // We still fetch /api/me even if avatar elements are missing, so we can gate master-only UI.
         fetch('/api/me', { credentials: 'same-origin' })
           .then(function(r) { return r.json(); })
           .then(function(d) {
             var isMaster = !!(d && d.isMaster);
-            toggleMasterUi(isMaster);
             try { window.__kexoMe = d || null; } catch (_) {}
             try { window.__kexoIsMasterUser = isMaster; } catch (_) {}
             try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: isMaster, email: d && d.email ? String(d.email) : '' } })); } catch (_) {}
+            try { if (typeof window.__kexoApplyEffectiveViewer === 'function') window.__kexoApplyEffectiveViewer(); } catch (_) {}
             if (!d || !d.email) return;
             if (avatarEl && d.initial) avatarEl.textContent = d.initial;
             if (emailEl) emailEl.textContent = d.email;
           })
           .catch(function() {
-            toggleMasterUi(false);
             try { window.__kexoMe = null; } catch (_) {}
             try { window.__kexoIsMasterUser = false; } catch (_) {}
             try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: false, email: '' } })); } catch (_) {}
+            try { if (typeof window.__kexoApplyEffectiveViewer === 'function') window.__kexoApplyEffectiveViewer(); } catch (_) {}
           });
       } catch (_) {}
     })();
@@ -16991,10 +17138,18 @@ const API = '';
       var wrap = document.getElementById('kexo-footer-diagnostics');
       var tagsEl = document.getElementById('kexo-footer-diagnostics-tags');
       if (!wrap || !tagsEl) return;
-      var started = false;
+      var active = false;
+      var token = 0;
+      function stop() {
+        token += 1;
+        active = false;
+        try { wrap.style.display = 'none'; } catch (_) {}
+        try { tagsEl.innerHTML = ''; } catch (_) {}
+      }
       function render() {
-        if (started) return;
-        started = true;
+        if (active) return;
+        active = true;
+        var myToken = (token += 1);
         var url = API + '/api/config-status';
         try {
           var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
@@ -17003,6 +17158,7 @@ const API = '';
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
           .then(function(r) { return r.ok ? r.json() : null; })
           .then(function(c) {
+            if (myToken !== token) return;
             if (!c) return;
             var items = [];
             var px = c.pixel;
@@ -17030,23 +17186,21 @@ const API = '';
           .catch(function() {});
       }
 
-      function maybeStart(isMaster) {
-        if (!isMaster) return;
+      function applyFromViewer(viewer) {
+        var isAdmin = !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true));
+        if (!isAdmin) return stop();
         render();
       }
 
-      // Footer diagnostics are master-only.
       try {
-        if (window.__kexoIsMasterUser === true) return maybeStart(true);
-        if (window.__kexoIsMasterUser === false) return;
+        if (typeof window.__kexoGetEffectiveViewer === 'function') {
+          applyFromViewer(window.__kexoGetEffectiveViewer());
+        }
       } catch (_) {}
 
-      window.addEventListener('kexo:me-loaded', function(ev) {
-        try {
-          var isMaster = !!(ev && ev.detail && ev.detail.isMaster);
-          maybeStart(isMaster);
-        } catch (_) {}
-      }, { once: true });
+      window.addEventListener('kexo:viewer-changed', function(ev) {
+        try { applyFromViewer(ev && ev.detail ? ev.detail : null); } catch (_) {}
+      });
     })();
 
     // ── Shared Product Insights modal ───────────────────────────────────

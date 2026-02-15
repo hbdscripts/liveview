@@ -34,7 +34,7 @@ function parseOauthCookie(cookieValue) {
 async function me(req, res) {
   const cookieValue = getCookie(req, OAUTH_COOKIE_NAME);
   if (!cookieValue || !dashboardAuth.verifyOauthSession(cookieValue)) {
-    res.json({ email: null, initial: 'K', status: null, role: null, tier: null, isMaster: false });
+    res.json({ email: null, initial: 'K', status: null, role: null, tier: null, isMaster: false, isAdmin: false });
     return;
   }
 
@@ -54,7 +54,8 @@ async function me(req, res) {
   const status = user && user.status != null ? String(user.status) : null;
   const role = user && user.role != null ? String(user.role) : null;
   const tier = user && user.tier != null ? String(user.tier) : null;
-  const isMaster = (role === 'master') || users.isBootstrapMasterEmail(email);
+  const isAdmin = (role === 'admin' || role === 'master') || users.isBootstrapMasterEmail(email);
+  const isMaster = isAdmin; // legacy name; treat as admin
 
   res.json({
     email: email || null,
@@ -63,6 +64,7 @@ async function me(req, res) {
     role,
     tier,
     isMaster,
+    isAdmin,
   });
 }
 

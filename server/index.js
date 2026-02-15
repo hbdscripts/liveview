@@ -547,6 +547,7 @@ const { up: up042 } = require('./migrations/042_orders_shopify_shipping_options_
 const { up: up043 } = require('./migrations/043_business_snapshot_perf_indexes');
 const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
 const { up: up045 } = require('./migrations/045_users');
+const { up: up046 } = require('./migrations/046_rename_master_to_admin');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -603,6 +604,7 @@ async function migrateAndStart() {
   await up043();
   await up044();
   await up045();
+  await up046();
 
   try {
     const r = await runAdsMigrations();
