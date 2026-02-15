@@ -1472,7 +1472,6 @@ const THEME_KEYS = [
   'theme_menu_opacity_filter',
   'theme_menu_hover_opacity',
   'theme_menu_hover_color',
-  'theme_header_strip_border',
   'theme_header_strip_padding',
   'theme_custom_css',
   'theme_icon_default',
@@ -1735,7 +1734,6 @@ async function getThemeVarsCss(req, res) {
     theme_menu_opacity_filter: '0',
     theme_menu_hover_opacity: '8',
     theme_menu_hover_color: 'black',
-    theme_header_strip_border: 'show',
     theme_header_strip_padding: '0 5px',
   };
 
@@ -1774,7 +1772,6 @@ async function getThemeVarsCss(req, res) {
     onlineBorderColor,
     stripOpacity,
     menuOpacity,
-    stripBorderMode,
     stripPadding,
   ] = await Promise.all([
     Promise.resolve(accent1),
@@ -1798,7 +1795,6 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_header_online_border_color', FALLBACKS.theme_header_online_border_color),
     getThemeKey('theme_strip_opacity_filter', FALLBACKS.theme_strip_opacity_filter),
     getThemeKey('theme_menu_opacity_filter', FALLBACKS.theme_menu_opacity_filter),
-    getThemeKey('theme_header_strip_border', FALLBACKS.theme_header_strip_border),
     getThemeKey('theme_header_strip_padding', FALLBACKS.theme_header_strip_padding),
   ]);
 
@@ -1807,7 +1803,6 @@ async function getThemeVarsCss(req, res) {
   const mainBorder = normalizeCssToggle(mainBorderMode, 'show');
   const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
   const onlineBorder = normalizeCssToggle(onlineBorderMode, 'show');
-  const stripBorder = normalizeCssToggle(stripBorderMode, 'show');
   const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
 
   const stripOpacityVal = Math.min(100, Math.max(0, parseFloat(stripOpacity) || 0)) / 100;
@@ -1830,7 +1825,6 @@ async function getThemeVarsCss(req, res) {
     `--kexo-accent-5:${normalizeCssColor(a5, '#ef4444')};`,
     `--kexo-strip-opacity-filter:${stripOpacityVal.toFixed(2)};`,
     `--kexo-menu-opacity-filter:${menuOpacityVal.toFixed(2)};`,
-    `--kexo-header-strip-border-width:${stripBorder === 'hide' ? '0px' : '1px'};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
     `--kexo-header-top-bg:${accent1Hex};`,
     `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,

@@ -303,7 +303,6 @@
     'theme-menu-opacity-filter': '0',
     'theme-menu-hover-opacity': '8',
     'theme-menu-hover-color': 'black',
-    'theme-header-strip-border': 'show',
     'theme-header-strip-padding': '0 5px',
     'theme-custom-css': [
       '.kexo-product-link {',
@@ -351,7 +350,6 @@
     'theme-header-settings-label',
     'theme-header-settings-border',
     'theme-header-online-border',
-    'theme-header-strip-border',
   ];
   var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter', 'theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
@@ -717,9 +715,6 @@
     } else if (key === 'theme-menu-opacity-filter') {
       var pct = normalizeOpacityFilter(value, DEFAULTS[key]);
       root.style.setProperty('--kexo-menu-opacity-filter', (parseFloat(pct) / 100).toFixed(2));
-    } else if (key === 'theme-header-strip-border') {
-      var stripBorderMode = normalizeHeaderToggle(value, DEFAULTS[key]);
-      root.style.setProperty('--kexo-header-strip-border-width', stripBorderMode === 'hide' ? '0px' : '1px');
     } else if (key === 'theme-header-strip-padding') {
       root.style.setProperty('--kexo-header-strip-padding', normalizeStripPadding(value, DEFAULTS[key]));
     } else if (key === 'theme-radius') {
@@ -1242,12 +1237,6 @@
           '<div class="row g-3">' + colorRemainingGrid + '</div>' +
         '</div>' +
         customCssFieldset +
-        '<div class="mb-4">' +
-          '<label class="form-label">Strip border & padding</label>' +
-          '<div class="row g-3">' +
-            headerToggleCardNoIcon('theme-header-strip-border', 'Strip border-bottom', 'Show or hide the bottom border on the top strip.') +
-          '</div>' +
-        '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Theme base</label>' +
           '<div class="form-selectgroup">' +
