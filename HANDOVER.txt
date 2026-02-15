@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Preview mode + Admin role rename)
+Last updated: 2026-02-15 (Icon registry guardrails + live check)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -9,6 +9,7 @@ IMPORTANT (for future agents)
 - This repo avoids new markdown docs; this handover is intentionally `HANDOVER.txt`.
 - UI convention: cap font-weight at 500 (avoid heavier weights) for new dashboard UI.
 - Diagnostics guardrail: when adding/moving/removing dashboard sections, update `server/trackerDefinitions.js` so Diagnostics → Definitions stays accurate.
+- Live-status quick check (before saying "it's live"): run `git status -sb` and `git log --oneline --decorate -n 1`.
 
 ---
 
@@ -304,6 +305,15 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Icon registry guardrails + drift prevention:
+  - Added canonical icon registry at `server/shared/icon-registry.js` (defaults + locked keys + legacy keys + required active keys).
+  - Frontend icon consumers now hydrate from `/icon-registry.js` (served by `server/index.js`) instead of maintaining duplicate hardcoded icon key maps.
+  - Theme defaults whitelist in `server/routes/settings.js` now derives all `theme_icon_glyph_*` keys from canonical registry (`getThemeIconGlyphSettingKeys()`), preventing stale/missing whitelist drift.
+  - Added `test/icon-registry-sync.test.js` to hard-fail drift between canonical registry, backend whitelist, and frontend consumers.
+  - CI now runs `npm test` in `.github/workflows/ci.yml`, so icon drift is caught in automation.
+  - Added Cursor rule `.cursor/rules/icon-registry-guardrails.mdc` to enforce canonical icon mapping workflow for future agents.
 
 2026-02-15 (latest)
 - Theme Icons audit + editor overhaul:

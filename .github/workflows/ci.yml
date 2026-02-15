@@ -25,3 +25,6 @@ jobs:
         env:
           NODE_ENV: development
           # No DB_URL in CI: uses SQLite in cwd so migrations can run
+
+      - name: Test
+        run: npm test

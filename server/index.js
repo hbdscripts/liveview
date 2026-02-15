@@ -61,6 +61,7 @@ const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
 const adminUsersApi = require('./routes/adminUsers');
 const adminControlsApi = require('./routes/adminControls');
+const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -115,6 +116,15 @@ app.get('/api/asset-overrides', assets.getAssetOverrides);
 app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);
+app.get('/icon-registry.js', (req, res) => {
+  const payload = getBrowserRegistryPayload();
+  const js =
+    '(function(){' +
+    'window.KexoIconRegistry={registry:' + JSON.stringify(payload) + '};' +
+    '})();';
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('application/javascript').send(js);
+});
 app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);
