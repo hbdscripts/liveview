@@ -269,7 +269,111 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6">
+        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
+          </div>
+          <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>
+          </div>
+          <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts + tables (wired to /api/dashboard-series via app.js) -->
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6" data-kexo-chart-key="dash-chart-revenue">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Revenue</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-revenue" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6" data-kexo-chart-key="dash-chart-orders">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Orders</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-orders" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6" data-kexo-chart-key="dash-chart-conv">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Conversion Rate</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-conv" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6" data-kexo-chart-key="dash-chart-sessions">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Sessions</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-sessions" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3" id="dash-adspend-row" style="display:none" data-kexo-chart-key="dash-chart-adspend">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Revenue vs Ad Spend</h3>
+          </div>
+          <div class="card-body">
+            <div id="dash-chart-adspend" style="height:200px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6">
+        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-up" data-table-id="dash-trending-up">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Trending Up</h3>
+          </div>
+          <div id="dash-trending-up-mount" data-kexo-table="dash-trending-up"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-up-pagination" aria-label="Trending up pagination"></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-down" data-table-id="dash-trending-down">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Trending Down</h3>
+          </div>
+          <div id="dash-trending-down-mount" data-kexo-table="dash-trending-down"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-down-pagination" aria-label="Trending down pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3" id="dash-kpi-grid-lower">
       <div class="col-sm-6 col-lg-3">
         <div class="card">
           <div class="card-body">
@@ -379,108 +483,6 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
-          </div>
-          <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>
-          </div>
-          <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Charts + tables (wired to /api/dashboard-series via app.js) -->
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-revenue">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Revenue</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-revenue" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-orders">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Orders</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-orders" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-conv">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Conversion Rate</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-conv" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-sessions">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Sessions</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-sessions" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3" id="dash-adspend-row" style="display:none" data-kexo-chart-key="dash-chart-adspend">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Revenue vs Ad Spend</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-adspend" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-up" data-table-id="dash-trending-up">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Trending Up</h3>
-          </div>
-          <div id="dash-trending-up-mount" data-kexo-table="dash-trending-up"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-up-pagination" aria-label="Trending up pagination"></div>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-down" data-table-id="dash-trending-down">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Trending Down</h3>
-          </div>
-          <div id="dash-trending-down-mount" data-kexo-table="dash-trending-down"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-down-pagination" aria-label="Trending down pagination"></div>
         </div>
       </div>
     </div>

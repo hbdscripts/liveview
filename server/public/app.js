@@ -7406,6 +7406,8 @@ const API = '';
     // KPI deltas often jitter in short windows (Today/1h), so we use a deadband.
     const KPI_STABLE_RATIO = 0.05; // ±5% relative change
     const KPI_STABLE_PCT = 5; // ±5 percentage points (already-percent deltas)
+    const DASHBOARD_NEUTRAL_DELTA_KEYS = new Set(['cogs', 'fulfilled', 'returns', 'items']);
+    const DASHBOARD_NEUTRAL_TONE_HEX = '#999';
 
     function cssVarColor(name, fallback) {
       try {
@@ -8100,6 +8102,8 @@ const API = '';
           text = isNew ? 'new' : formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
+        var forceNeutralTone = DASHBOARD_NEUTRAL_DELTA_KEYS.has(String(key || '').toLowerCase());
+        var visualDir = (forceNeutralTone && dir !== 'none') ? 'flat' : dir;
 
         wrap.classList.remove('is-up', 'is-down', 'is-flat');
         if (rawDelta == null) {
@@ -8110,37 +8114,41 @@ const API = '';
         }
 
         wrap.classList.remove('is-hidden');
-        if (dir === 'up') wrap.classList.add('is-up');
-        else if (dir === 'down') wrap.classList.add('is-down');
-        else if (dir === 'flat') wrap.classList.add('is-flat');
-        wrap.setAttribute('data-dir', dir);
+        if (visualDir === 'up') wrap.classList.add('is-up');
+        else if (visualDir === 'down') wrap.classList.add('is-down');
+        else if (visualDir === 'flat') wrap.classList.add('is-flat');
+        wrap.setAttribute('data-dir', visualDir);
         textEl.textContent = text;
         try {
           var dashDeltaStyle = getChartsKpiBundle('dashboardCards').deltaStyle;
-          var dashTone = chartsKpiToneColor('dashboardCards', dir === 'none' ? 'same' : dir);
+          var dashTone = forceNeutralTone
+            ? DASHBOARD_NEUTRAL_TONE_HEX
+            : chartsKpiToneColor('dashboardCards', visualDir === 'none' ? 'same' : visualDir);
           wrap.style.fontSize = String(dashDeltaStyle.fontSize) + 'px';
           wrap.style.fontWeight = String(dashDeltaStyle.fontWeight);
-          wrap.style.color = dashDeltaStyle.fontColor || dashTone;
+          wrap.style.color = forceNeutralTone ? DASHBOARD_NEUTRAL_TONE_HEX : (dashDeltaStyle.fontColor || dashTone);
         } catch (_) {}
 
         var icon = wrap.querySelector ? wrap.querySelector('i') : null;
         if (icon) {
           var iconKey = 'dash-kpi-delta-up';
-          if (dir === 'down') iconKey = 'dash-kpi-delta-down';
-          else if (dir === 'flat') iconKey = 'dash-kpi-delta-flat';
+          if (visualDir === 'down') iconKey = 'dash-kpi-delta-down';
+          else if (visualDir === 'flat') iconKey = 'dash-kpi-delta-flat';
           icon.setAttribute('data-icon-key', iconKey);
           icon.classList.remove('fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus');
-          if (dir === 'down') icon.classList.add('fa-arrow-trend-down');
-          else if (dir === 'flat') icon.classList.add('fa-minus');
+          if (visualDir === 'down') icon.classList.add('fa-arrow-trend-down');
+          else if (visualDir === 'flat') icon.classList.add('fa-minus');
           else icon.classList.add('fa-arrow-trend-up');
           try {
             var dashDeltaStyleIcon = getChartsKpiBundle('dashboardCards').deltaStyle;
-            var dashToneIcon = chartsKpiToneColor('dashboardCards', dir === 'none' ? 'same' : dir);
+            var dashToneIcon = forceNeutralTone
+              ? DASHBOARD_NEUTRAL_TONE_HEX
+              : chartsKpiToneColor('dashboardCards', visualDir === 'none' ? 'same' : visualDir);
             icon.style.fontSize = String(dashDeltaStyleIcon.iconSize) + 'px';
-            icon.style.color = dashDeltaStyleIcon.iconColor || dashToneIcon;
+            icon.style.color = forceNeutralTone ? DASHBOARD_NEUTRAL_TONE_HEX : (dashDeltaStyleIcon.iconColor || dashToneIcon);
           } catch (_) {}
           try {
-            if (window.KexoIconTheme && typeof window.KexoIconTheme.applyElement === 'function') {
+            if (!forceNeutralTone && window.KexoIconTheme && typeof window.KexoIconTheme.applyElement === 'function') {
               window.KexoIconTheme.applyElement(icon);
             }
           } catch (_) {}
@@ -8898,9 +8906,11 @@ const API = '';
 
     function applyDashboardKpiUiConfig(cfg) {
       var grid = document.getElementById('dash-kpi-grid');
+      var lowerGrid = document.getElementById('dash-kpi-grid-lower');
       if (!grid || !cfg || cfg.v !== 1) return;
       var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       if (!list) return;
+      var lowerKeys = new Set(['cogs', 'fulfilled', 'returns', 'items']);
 
       var idByKey = {
         revenue: 'dash-kpi-revenue',
@@ -8917,17 +8927,26 @@ const API = '';
         items: 'dash-kpi-items',
       };
       var colByKey = {};
+      var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {
         var valueEl = document.getElementById(idByKey[key]);
         var col = valueEl && valueEl.closest ? valueEl.closest('.col-sm-6') : null;
-        if (col) colByKey[key] = col;
+        if (col) {
+          colByKey[key] = col;
+          keyByCol.set(col, key);
+        }
       });
 
-      var allCols = Array.prototype.slice.call(grid.children || []).filter(function(el) {
+      var allColsPrimary = Array.prototype.slice.call(grid.children || []).filter(function(el) {
         return el && el.classList && el.classList.contains('col-sm-6');
       });
+      var allColsLower = lowerGrid ? Array.prototype.slice.call(lowerGrid.children || []).filter(function(el) {
+        return el && el.classList && el.classList.contains('col-sm-6');
+      }) : [];
+      var allCols = allColsPrimary.concat(allColsLower);
       var seen = new Set();
-      var frag = document.createDocumentFragment();
+      var fragPrimary = document.createDocumentFragment();
+      var fragLower = document.createDocumentFragment();
 
       list.forEach(function(item) {
         if (!item || typeof item !== 'object') return;
@@ -8942,18 +8961,24 @@ const API = '';
         }
         var enabled = item.enabled !== false;
         col.classList.toggle('is-user-disabled', !enabled);
-        frag.appendChild(col);
+        if (lowerGrid && lowerKeys.has(key)) fragLower.appendChild(col);
+        else fragPrimary.appendChild(col);
         seen.add(col);
       });
       allCols.forEach(function(col) {
         if (!col || seen.has(col)) return;
         col.classList.remove('is-user-disabled');
-        frag.appendChild(col);
+        var key = keyByCol.get(col) || '';
+        if (lowerGrid && lowerKeys.has(key)) fragLower.appendChild(col);
+        else fragPrimary.appendChild(col);
       });
-      grid.appendChild(frag);
+      grid.appendChild(fragPrimary);
+      if (lowerGrid) lowerGrid.appendChild(fragLower);
 
       var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
-      grid.querySelectorAll('.dash-kpi-delta').forEach(function(el) {
+      var deltaEls = Array.prototype.slice.call(grid.querySelectorAll('.dash-kpi-delta'));
+      if (lowerGrid) deltaEls = deltaEls.concat(Array.prototype.slice.call(lowerGrid.querySelectorAll('.dash-kpi-delta')));
+      deltaEls.forEach(function(el) {
         if (!el) return;
         el.style.display = showDelta ? '' : 'none';
       });
@@ -16875,10 +16900,10 @@ const API = '';
           renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare);
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
-          renderSparkline('dash-items-sparkline', itemsSpark, sparkToneFromCompare(currentItemsTone, compareItemsTone, false, itemsSpark), itemsSparkCompare);
-          renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, sparkToneFromCompare(currentFulfilledTone, compareFulfilledTone, false, fulfilledSpark), fulfilledSparkCompare);
-          renderSparkline('dash-returns-sparkline', returnsSpark, sparkToneFromCompare(currentReturnsTone, compareReturnsTone, true, returnsSpark), returnsSparkCompare);
-          renderSparkline('dash-cogs-sparkline', cogsSpark, sparkToneFromCompare(currentCogsTone, compareCogsTone, true, cogsSpark), cogsSparkCompare);
+          renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare);
+          renderSparkline('dash-fulfilled-sparkline', fulfilledSpark, DASHBOARD_NEUTRAL_TONE_HEX, fulfilledSparkCompare);
+          renderSparkline('dash-returns-sparkline', returnsSpark, DASHBOARD_NEUTRAL_TONE_HEX, returnsSparkCompare);
+          renderSparkline('dash-cogs-sparkline', cogsSpark, DASHBOARD_NEUTRAL_TONE_HEX, cogsSparkCompare);
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });
 
