@@ -35,11 +35,6 @@ html, body {
   height: 1em;
   vertical-align: -0.125em;
 }
-i.fa,
-i[class*="fa-"] {
-  font-size: var(--kexo-theme-icon-size, 1em);
-  color: var(--kexo-theme-icon-color, currentColor);
-}
 .card-header .card-title {
   display: flex;
   align-items: center;
