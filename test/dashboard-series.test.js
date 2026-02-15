@@ -146,6 +146,19 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   assert.equal(r2.body.topProducts[0].orders, 1);
   assert.equal(r2.body.topProducts[0].sessions, 1);
   assert.equal(r2.body.topProducts[0].cr, 100);
+
+  // 3) endMs clip: single-day range clipped to 3h => 15-min buckets (12 points).
+  const store = require('../server/store');
+  const tz = store.resolveAdminTimeZone();
+  const clipBounds = store.getRangeBounds('d:2025-02-02', now, tz);
+  assert.ok(Number.isFinite(clipBounds?.start));
+  const clipEndMs = Number(clipBounds.start) + 3 * 60 * 60 * 1000;
+  const r3 = await callDashboardSeries({ range: 'd:2025-02-02', endMs: String(clipEndMs), force: '1' });
+  assert.equal(r3.status, 200);
+  assert.equal(r3.body.bucket, 'hour');
+  assert.ok(Array.isArray(r3.body.series));
+  assert.equal(r3.body.series.length, 12);
+  assert.ok(String(r3.body.series[1]?.date || '').includes(':15'));
   } finally {
     try { db && db.close && db.close(); } catch (_) {}
     global.fetch = originalFetch;

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Icon registry guardrails + live check)
+Last updated: 2026-02-15 (Dashboard KPI stability + exact compare + auto-refresh)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -336,6 +336,10 @@ Ops/reliability:
   - `/api/config-status` returns a restricted payload for non-masters; reconcile endpoint is master-only.
 - Dashboard-series cache fix for "today" adaptive buckets:
   - Cache key now includes rangeEndTs (rounded to 1 min) for today/yesterday so the first request of the day does not serve stale data all day. Adaptive 15/30/60-min bucket logic was correct but cache was returning the first computed result regardless of current time.
+- Dashboard KPI stability + exact Today compare + auto-refresh:
+  - KPI deltas + sparkline tones treat ±5% as stable/blue (reduces noisy up/down flips on small changes).
+  - `/api/dashboard-series` supports `endMs` clipping; dashboard compare series passes compare-end (rounded to 1 min) so Today compare uses the same 15/30/60-min buckets as Today.
+  - Dashboard auto-refreshes dashboard-series every 60s for Today/1h (silent).
 
 2026-02-15 (earlier)
 - Sparkline data and compare-line alignment fixes:

@@ -328,7 +328,20 @@ async function getDashboardSeries(req, res) {
   const now = Date.now();
   const timeZone = store.resolveAdminTimeZone();
   const todayBounds = store.getRangeBounds('today', now, timeZone);
-  const bounds = rangeKey ? store.getRangeBounds(rangeKey, now, timeZone) : null;
+  let bounds = rangeKey ? store.getRangeBounds(rangeKey, now, timeZone) : null;
+
+  // Optional clip for partial-day compare (e.g. yesterday up to same time-of-day as today).
+  // `endMs` is inclusive-exclusive, same as bounds.end semantics.
+  const endMsRaw = req.query.endMs;
+  const endMsParsed = (typeof endMsRaw === 'string' || typeof endMsRaw === 'number') ? Number(endMsRaw) : NaN;
+  const endMs = Number.isFinite(endMsParsed) ? endMsParsed : null;
+  if (rangeKey && bounds && endMs != null && Number.isFinite(Number(bounds.start)) && Number.isFinite(Number(bounds.end))) {
+    const start = Number(bounds.start);
+    const end = Number(bounds.end);
+    const maxEnd = Math.min(end, now);
+    const clampedEnd = Math.max(start, Math.min(endMs, maxEnd));
+    bounds = { ...bounds, end: clampedEnd };
+  }
 
   if (rangeKey && bucketHint === 'day' && bounds && Number.isFinite(Number(bounds.start)) && Number.isFinite(Number(bounds.end))) {
     const spanMs = Number(bounds.end) - Number(bounds.start);
@@ -338,7 +351,7 @@ async function getDashboardSeries(req, res) {
 
   try {
     const rangeEnd = rangeKey ? bounds.end : now;
-    const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday') && Number.isFinite(rangeEnd)
+    const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday' || endMs != null) && Number.isFinite(rangeEnd)
       ? Math.floor(rangeEnd / (60 * 1000)) * (60 * 1000)
       : rangeEnd;
     const cached = await reportCache.getOrComputeJson(
@@ -358,7 +371,7 @@ async function getDashboardSeries(req, res) {
     );
     res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [] });
   } catch (err) {
-    Sentry.captureException(err, { extra: { route: 'dashboard-series', days, rangeKey } });
+    Sentry.captureException(err, { extra: { route: 'dashboard-series', days, rangeKey, endMs } });
     console.error('[dashboard-series]', err);
     res.status(500).json({ error: 'Internal error' });
   }

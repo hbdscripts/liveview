@@ -7346,6 +7346,11 @@ const API = '';
       return diff / base;
     }
 
+    // Treat small changes as "stable" (blue/flat) instead of flipping colors.
+    // KPI deltas often jitter in short windows (Today/1h), so we use a deadband.
+    const KPI_STABLE_RATIO = 0.05; // ±5% relative change
+    const KPI_STABLE_PCT = 5; // ±5 percentage points (already-percent deltas)
+
     function cssVarColor(name, fallback) {
       try {
         const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -7452,11 +7457,17 @@ const API = '';
       const cur = typeof current === 'number' && Number.isFinite(current) ? current : null;
       const base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
       const rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
-      const toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
+      let toneDelta = null;
+      if (cur != null && base != null) {
+        const diff = cur - base;
+        const denom = Math.abs(base);
+        toneDelta = denom > 1e-9 ? (diff / denom) : (diff === 0 ? 0 : (diff > 0 ? 1 : -1));
+        if (invert) toneDelta = -toneDelta;
+      }
       const isNew = cur != null && base === 0 && cur !== 0;
-      const isUp = toneDelta != null && toneDelta > 0.005;
-      const isDown = toneDelta != null && toneDelta < -0.005;
-      const isFlat = toneDelta != null && !isUp && !isDown;
+      const isUp = isNew || (toneDelta != null && toneDelta > KPI_STABLE_RATIO);
+      const isDown = !isNew && toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
+      const isFlat = !isNew && toneDelta != null && !isUp && !isDown;
 
       if (deltaEl) {
         const textEl = deltaEl.querySelector('.kexo-kpi-chip-delta-text');
@@ -7725,6 +7736,14 @@ const API = '';
           sparkEl.removeAttribute('data-tone');
           return;
         }
+        const denom = Math.abs(base);
+        if (denom > 1e-9) {
+          const ratio = delta / denom;
+          if (Math.abs(ratio) <= KPI_STABLE_RATIO) {
+            sparkEl.removeAttribute('data-tone');
+            return;
+          }
+        }
         sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
       }
 
@@ -7795,8 +7814,8 @@ const API = '';
           return;
         }
         const p = Math.round(pctVal * 10) / 10;
-        const up = p > 0.05;
-        const down = p < -0.05;
+        const up = p > KPI_STABLE_PCT;
+        const down = p < -KPI_STABLE_PCT;
         deltaWrap.classList.remove('is-hidden');
         deltaWrap.classList.toggle('is-up', up);
         deltaWrap.classList.toggle('is-down', down);
@@ -8007,10 +8026,16 @@ const API = '';
         var cur = typeof current === 'number' && Number.isFinite(current) ? current : null;
         var base = typeof baseline === 'number' && Number.isFinite(baseline) ? baseline : null;
         var rawDelta = (cur != null && base != null) ? kpiDelta(cur, base) : null;
-        var toneDelta = rawDelta == null ? null : (invert ? -rawDelta : rawDelta);
+        var toneDelta = null;
+        if (cur != null && base != null) {
+          var diff = cur - base;
+          var denom = Math.abs(base);
+          toneDelta = denom > 1e-9 ? (diff / denom) : (diff === 0 ? 0 : (diff > 0 ? 1 : -1));
+          if (invert) toneDelta = -toneDelta;
+        }
         var isNew = base === 0 && cur != null && cur !== 0;
-        var isUp = isNew || (toneDelta != null && toneDelta > 0.005);
-        var isDown = !isNew && toneDelta != null && toneDelta < -0.005;
+        var isUp = isNew || (toneDelta != null && toneDelta > KPI_STABLE_RATIO);
+        var isDown = !isNew && toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
         var isFlat = !isNew && toneDelta != null && !isUp && !isDown;
 
         var dir = 'none';
@@ -9031,6 +9056,14 @@ const API = '';
         if (Math.abs(delta) < 1e-9) {
           sparkEl.removeAttribute('data-tone');
           return;
+        }
+        const denom = Math.abs(base);
+        if (denom > 1e-9) {
+          const ratio = delta / denom;
+          if (Math.abs(ratio) <= KPI_STABLE_RATIO) {
+            sparkEl.removeAttribute('data-tone');
+            return;
+          }
         }
         sparkEl.setAttribute('data-tone', delta < 0 ? 'down' : 'up');
       }
@@ -13635,7 +13668,7 @@ const API = '';
           return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
         }
         const rounded = Math.round(pct * 10) / 10;
-        const dir = rounded > 0 ? 'up' : (rounded < 0 ? 'down' : 'flat');
+        const dir = Math.abs(rounded) <= KPI_STABLE_PCT ? 'flat' : (rounded > 0 ? 'up' : 'down');
         const sign = rounded > 0 ? '+' : '';
         const short = sign + rounded.toFixed(1).replace(/\.0$/, '') + '%';
         return {
@@ -16207,15 +16240,20 @@ const API = '';
       function ensureDashboardCompareSeries(kpiObj) {
         var compareRangeKey = compareRangeKeyFromKpiPayload(kpiObj);
         if (!compareRangeKey) return Promise.resolve(null);
-        var fresh = dashCompareRangeKey === compareRangeKey &&
+        var cmp = kpiObj && kpiObj.compare && kpiObj.compare.range ? kpiObj.compare.range : null;
+        var endMs = cmp && cmp.end != null ? Number(cmp.end) : NaN;
+        var endMsRounded = Number.isFinite(endMs) ? (Math.floor(endMs / (60 * 1000)) * (60 * 1000)) : null;
+        var cacheKey = endMsRounded != null ? (compareRangeKey + '|endMs:' + String(endMsRounded)) : compareRangeKey;
+        var fresh = dashCompareRangeKey === cacheKey &&
           Array.isArray(dashCompareSeriesCache) &&
           dashCompareSeriesCache.length >= 2 &&
           dashCompareFetchedAt &&
           (Date.now() - dashCompareFetchedAt) < KPI_CACHE_TTL_MS;
         if (fresh) return Promise.resolve(dashCompareSeriesCache);
-        if (dashCompareSeriesInFlight && dashCompareRangeKey === compareRangeKey) return dashCompareSeriesInFlight;
-        dashCompareRangeKey = compareRangeKey;
+        if (dashCompareSeriesInFlight && dashCompareRangeKey === cacheKey) return dashCompareSeriesInFlight;
+        dashCompareRangeKey = cacheKey;
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey);
+        if (endMsRounded != null) url += '&endMs=' + encodeURIComponent(String(endMsRounded));
         dashCompareSeriesInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 20000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -16574,6 +16612,11 @@ const API = '';
           var delta = cur - base;
           if (invert) delta = -delta;
           if (Math.abs(delta) < 1e-9) return NEUTRAL;
+          var denom = Math.abs(base);
+          if (denom > 1e-9) {
+            var ratio = delta / denom;
+            if (Math.abs(ratio) <= KPI_STABLE_RATIO) return NEUTRAL;
+          }
           return delta >= 0 ? GREEN : RED;
         }
         function numFromRangeMap(dataObj, keyName, rangeKey) {
@@ -17055,6 +17098,20 @@ const API = '';
           } catch (_) {}
         }, 1200);
       }
+
+      // Auto-refresh dynamic ranges so "Today"/"1h" stays live without manual refresh.
+      _intervals.push(setInterval(function() {
+        try {
+          if (document && document.visibilityState && document.visibilityState !== 'visible') return;
+          var rk = dashRangeKeyFromDateRange();
+          if (rk !== 'today' && rk !== '1h') return;
+          var p = document.getElementById('tab-panel-dashboard');
+          if (!p) return;
+          if (!(p.classList.contains('active') || PAGE === 'dashboard')) return;
+          if (dashLoading) return;
+          if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+        } catch (_) {}
+      }, 60000));
     })();
 
     // ── User avatar: fetch /api/me and populate ────────────────────────
