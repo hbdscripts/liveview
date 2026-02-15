@@ -118,7 +118,7 @@ function renderCommonHead({ title, faviconHref }) {
   <link rel="stylesheet" href="/tabler-theme.css">
   <title>${escapeHtml(safeTitle)}</title>
   <style>
-    .kexo-auth-logo { height: 36px; width: auto; }
+    .kexo-auth-logo { height: 50px !important; width: auto; }
     .kexo-auth-social .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; }
     .kexo-auth-icon { width: 18px; height: 18px; flex: 0 0 auto; display: inline-block; }
   </style>
@@ -138,7 +138,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color-dark.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -149,8 +149,8 @@ function getSignInHtml(queryError, opts) {
 
   const shopifyButtonHtml = hasShopifyOAuth
     ? (shopDomain
-      ? `<a href="${shopifyLoginHref}" class="btn btn-outline-secondary w-100" aria-label="Login with Shopify">${getShopifySvg()}Login with Shopify</a>`
-      : `<a href="#" class="btn btn-outline-secondary w-100 disabled" aria-disabled="true" tabindex="-1">${getShopifySvg()}Login with Shopify</a>`)
+      ? `<a href="${shopifyLoginHref}" class="btn w-100" aria-label="Login with Shopify">${getShopifySvg()}Login with Shopify</a>`
+      : `<a href="#" class="btn w-100 disabled" aria-disabled="true" tabindex="-1">${getShopifySvg()}Login with Shopify</a>`)
     : '';
 
   return `<!DOCTYPE html>
@@ -201,7 +201,7 @@ function getSignInHtml(queryError, opts) {
       <div class="hr-text">or</div>
       <div class="row g-2 kexo-auth-social">
         ${hasGoogle ? `<div class="col">
-          <a href="${googleLoginHref}" class="btn btn-outline-secondary w-100" aria-label="Login with Google">${getGoogleSvg()}Login with Google</a>
+          <a href="${googleLoginHref}" class="btn w-100" aria-label="Login with Google">${getGoogleSvg()}Login with Google</a>
         </div>` : ''}
         ${shopifyButtonHtml ? `<div class="col">${shopifyButtonHtml}</div>` : ''}
       </div>
@@ -219,7 +219,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color-dark.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -305,7 +305,7 @@ async function handleGetLogin(req, res) {
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
 
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color-dark.webp';
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
@@ -325,7 +325,7 @@ async function handleGetRegister(req, res) {
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color-dark.webp';
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));
