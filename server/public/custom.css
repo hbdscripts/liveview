@@ -1059,8 +1059,8 @@ body:not([data-page="settings"]) .kexo-sticky-resize-handle {
 }
 body:not([data-page="settings"]) .kexo-sticky-resize-handle i {
   font-size: 10px;
-  color: #999;
-  opacity: 0.75;
+  color: #144c88;
+  opacity: 0.7;
   transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
 }
 body:not([data-page="settings"]) .kexo-sticky-resize-handle:hover i,
