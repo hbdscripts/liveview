@@ -644,11 +644,12 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const overallStart = dayBounds[0].start;
   const overallEnd = dayBounds[dayBounds.length - 1].end;
 
-  // Best-effort guardrail: ensure truth cache is fresh for this range so dashboard-series
-  // doesn't drift from /api/kpis (which reconciles before reporting).
+  // Keep Shopify truth "today" warm in the background (non-blocking).
+  // Full-range reconciliation can be slow; reports should remain responsive.
   if (shop) {
     try {
-      await salesTruth.ensureReconciled(shop, overallStart, overallEnd, 'dashboard_series');
+      const today = store.getRangeBounds('today', Date.now(), timeZone);
+      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(() => {});
     } catch (_) {}
   }
 
@@ -1130,14 +1131,12 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const overallStart = start;
   const overallEnd = end;
 
-  // Best-effort guardrail: ensure truth cache is fresh for this range so dashboard-series
-  // doesn't drift from /api/kpis (which reconciles before reporting).
+  // Keep Shopify truth "today" warm in the background (non-blocking).
+  // Full-range reconciliation can be slow; reports should remain responsive.
   if (shop) {
     try {
-      const scopeKey = (String(rangeKey || '').trim().toLowerCase() === 'today')
-        ? 'today'
-        : (('dashboard_series_' + String(bounds && bounds.key ? bounds.key : '')).slice(0, 64) || 'dashboard_series');
-      await salesTruth.ensureReconciled(shop, overallStart, overallEnd, scopeKey);
+      const today = store.getRangeBounds('today', Date.now(), timeZone);
+      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(() => {});
     } catch (_) {}
   }
 

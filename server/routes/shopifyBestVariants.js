@@ -91,7 +91,12 @@ async function getShopifyBestVariants(req, res) {
         let msMeta = 0;
         // Ensure Shopify truth cache is populated for this range (throttled).
         const tReconcile0 = Date.now();
-        await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
+        const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+        if (range === 'today') {
+          await salesTruth.ensureReconciled(shop, start, end, truthScope);
+        } else {
+          salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
+        }
         msReconcile = Date.now() - tReconcile0;
 
         const tAgg0 = Date.now();

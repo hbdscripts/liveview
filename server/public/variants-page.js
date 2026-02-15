@@ -822,12 +822,58 @@
       .catch(function () { return ''; });
   }
 
+  // Make long-running range changes feel responsive: show a topbar spinner after a short delay.
+  var _globalReportLoadingCount = 0;
+  var _globalReportLoadingTimer = null;
+  var _globalReportLoadingShown = false;
+  function beginGlobalReportLoadingDelayed(delayMs) {
+    _globalReportLoadingCount = Math.max(0, _globalReportLoadingCount) + 1;
+    if (_globalReportLoadingCount !== 1) return;
+    _globalReportLoadingShown = false;
+    if (_globalReportLoadingTimer) {
+      try { clearTimeout(_globalReportLoadingTimer); } catch (_) {}
+      _globalReportLoadingTimer = null;
+    }
+    var ms = typeof delayMs === 'number' && delayMs >= 0 ? delayMs : 250;
+    _globalReportLoadingTimer = setTimeout(function () {
+      _globalReportLoadingTimer = null;
+      if (_globalReportLoadingCount <= 0) return;
+      try {
+        if (typeof window.__kexoBeginGlobalReportLoading === 'function') {
+          window.__kexoBeginGlobalReportLoading();
+          _globalReportLoadingShown = true;
+          return;
+        }
+      } catch (_) {}
+      try { document.body.classList.add('kexo-report-loading'); _globalReportLoadingShown = true; } catch (_) {}
+    }, ms);
+  }
+  function endGlobalReportLoading() {
+    _globalReportLoadingCount = Math.max(0, _globalReportLoadingCount - 1);
+    if (_globalReportLoadingCount > 0) return;
+    _globalReportLoadingCount = 0;
+    if (_globalReportLoadingTimer) {
+      try { clearTimeout(_globalReportLoadingTimer); } catch (_) {}
+      _globalReportLoadingTimer = null;
+    }
+    if (!_globalReportLoadingShown) return;
+    _globalReportLoadingShown = false;
+    try {
+      if (typeof window.__kexoEndGlobalReportLoading === 'function') {
+        window.__kexoEndGlobalReportLoading();
+        return;
+      }
+    } catch (_) {}
+    try { document.body.classList.remove('kexo-report-loading'); } catch (_) {}
+  }
+
   function refreshVariants(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var force = !!opts.force;
     if (state.loading) return Promise.resolve(null);
     state.loading = true;
     setLoadingUi(true);
+    beginGlobalReportLoadingDelayed(250);
 
     var ensureShop = state.shop
       ? Promise.resolve(state.shop)
@@ -862,6 +908,7 @@
       .finally(function () {
         state.loading = false;
         dismissGlobalPageLoader();
+        endGlobalReportLoading();
       });
   }
 

@@ -81,7 +81,7 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   // Throttle truth reconcile so it won’t fetch orders during this test.
   await db.run(
     'INSERT OR REPLACE INTO reconcile_state (shop, scope, last_success_at, last_attempt_at, last_error, cursor_json) VALUES (?, ?, ?, ?, ?, ?)',
-    [shop, 'dashboard_series', now, now, null, null]
+    [shop, 'today', now, now, null, null]
   );
 
   // Minimal truth rows for Top Products (line items) + per-day orders/revenue (orders_shopify).

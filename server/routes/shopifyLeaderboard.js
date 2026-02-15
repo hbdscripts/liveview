@@ -144,7 +144,12 @@ async function getShopifyLeaderboard(req, res) {
       },
       async () => {
         try {
-          await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
+          const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+          if (range === 'today') {
+            await salesTruth.ensureReconciled(shop, start, end, truthScope);
+          } else {
+            salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
+          }
         } catch (_) {}
 
         let token = null;

@@ -405,7 +405,12 @@ async function getTraffic(req, res) {
       let salesByPairTruth = new Map(); // pair_key ("device|platform") -> { orders, revenueGbp }
       if (shop) {
         // Keep truth cache warm for this range (throttled inside salesTruth).
-        try { await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, `traffic_${rangeKey}`); } catch (_) {}
+        const truthScope = salesTruth.scopeForRangeKey(rangeKey, 'range');
+        if (rangeKey === 'today') {
+          try { await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, truthScope); } catch (_) {}
+        } else {
+          salesTruth.ensureReconciled(shop, bounds.start, bounds.end, truthScope).catch(() => {});
+        }
 
         function safeJsonParse(str) {
           if (!str || typeof str !== 'string') return null;

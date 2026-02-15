@@ -92,7 +92,12 @@ async function getShopifyBestSellers(req, res) {
         // Keep the truth cache warm for this range (throttled inside salesTruth).
         if (resolvedShop) {
           const tReconcile0 = Date.now();
-          try { await salesTruth.ensureReconciled(resolvedShop, start, end, `products_${range}`); } catch (_) {}
+          const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+          if (range === 'today') {
+            try { await salesTruth.ensureReconciled(resolvedShop, start, end, truthScope); } catch (_) {}
+          } else {
+            salesTruth.ensureReconciled(resolvedShop, start, end, truthScope).catch(() => {});
+          }
           msReconcile = Date.now() - tReconcile0;
         }
         const token = resolvedShop ? await salesTruth.getAccessToken(resolvedShop) : null;

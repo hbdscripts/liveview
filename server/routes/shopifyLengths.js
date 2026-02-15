@@ -100,9 +100,12 @@ async function getShopifyLengths(req, res) {
         force,
       },
       async () => {
-        try {
-          await salesTruth.ensureReconciled(shop, start, end, `products_${range}`);
-        } catch (_) {}
+        const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+        if (range === 'today') {
+          try { await salesTruth.ensureReconciled(shop, start, end, truthScope); } catch (_) {}
+        } else {
+          salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
+        }
 
         const sessions = await getProductLandingSessionsCount(db, start, end);
         const rows = config.dbUrl

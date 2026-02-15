@@ -890,11 +890,26 @@ async function getReconcileState(shop, scope) {
   }
 }
 
-function reconcileMinIntervalMs() {
+function reconcileMinIntervalMs(scope) {
   const v = process.env.SALES_TRUTH_RECONCILE_MIN_INTERVAL_SECONDS;
   const n = v != null ? parseInt(String(v), 10) : NaN;
-  const seconds = Number.isFinite(n) && n > 0 ? n : 90;
-  return seconds * 1000;
+  const baseSeconds = Number.isFinite(n) && n > 0 ? n : 90;
+  const baseMs = baseSeconds * 1000;
+
+  const s = scope != null ? String(scope).trim().toLowerCase() : '';
+  // "today" scopes are used for near-real-time correctness.
+  const isTodayScope =
+    s === 'today' ||
+    s === 'orders_today' ||
+    s === 'dashboard_series' ||
+    s.endsWith('_today');
+
+  // Historical/range scopes should not refetch large Shopify ranges frequently.
+  // Their "freshness" is generally protected by the periodic/interactive today sync.
+  if (!isTodayScope) {
+    return Math.max(baseMs, 15 * 60 * 1000);
+  }
+  return baseMs;
 }
 
 async function shouldReconcile(shop, scope) {
@@ -904,7 +919,7 @@ async function shouldReconcile(shop, scope) {
   const lastAttempt = state?.last_attempt_at != null ? Number(state.last_attempt_at) : null;
   if (lastSuccess != null && Number.isFinite(lastSuccess)) {
     const age = now - lastSuccess;
-    if (age >= 0 && age < reconcileMinIntervalMs()) {
+    if (age >= 0 && age < reconcileMinIntervalMs(scope)) {
       return { ok: false, reason: 'throttled', state };
     }
   }
@@ -912,13 +927,20 @@ async function shouldReconcile(shop, scope) {
   // If an attempt started recently and we don't have a newer success yet, treat as in-flight.
   if (lastAttempt != null && Number.isFinite(lastAttempt)) {
     const attemptAge = now - lastAttempt;
-    const inFlightWindow = Math.max(30 * 1000, reconcileMinIntervalMs());
+    const inFlightWindow = Math.max(30 * 1000, reconcileMinIntervalMs(scope));
     const successIsNewer = (lastSuccess != null && Number.isFinite(lastSuccess) && lastSuccess >= lastAttempt);
     if (!successIsNewer && attemptAge >= 0 && attemptAge < inFlightWindow) {
       return { ok: false, reason: 'in_flight', state };
     }
   }
   return { ok: true, reason: 'stale_or_missing', state };
+}
+
+function scopeForRangeKey(rangeKey, prefix = 'range') {
+  const rk = rangeKey != null ? String(rangeKey).trim().toLowerCase() : '';
+  const p = prefix != null ? String(prefix).trim() : 'range';
+  if (!rk || rk === 'today') return 'today';
+  return (p + '_' + rk).slice(0, 64);
 }
 
 async function reconcileRange(shop, startMs, endMs, scope = 'range') {
@@ -1663,6 +1685,7 @@ module.exports = {
   getAccessToken,
   ensureReconciled,
   reconcileRange,
+  scopeForRangeKey,
   fetchShopifyOrdersSummary,
   fetchShopifyFulfillmentAndReturnsCounts,
   shouldReconcile,

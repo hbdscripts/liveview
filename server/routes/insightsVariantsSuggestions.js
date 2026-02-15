@@ -214,7 +214,12 @@ async function getInsightsVariantsSuggestions(req, res) {
       async () => {
         if (refresh) {
           try {
-            await salesTruth.ensureReconciled(shop, start, end, `insights_variants_suggest_${range}`);
+            const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+            if (range === 'today') {
+              await salesTruth.ensureReconciled(shop, start, end, truthScope);
+            } else {
+              salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
+            }
           } catch (_) {}
         }
 

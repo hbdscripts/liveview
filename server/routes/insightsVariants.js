@@ -49,9 +49,12 @@ async function getInsightsVariants(req, res) {
         force,
       },
       async () => {
-        try {
-          await salesTruth.ensureReconciled(shop, start, end, `insights_variants_${range}`);
-        } catch (_) {}
+        const truthScope = salesTruth.scopeForRangeKey(range, 'range');
+        if (range === 'today') {
+          try { await salesTruth.ensureReconciled(shop, start, end, truthScope); } catch (_) {}
+        } else {
+          salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
+        }
 
         const payload = await buildVariantsInsightTables({
           shop,

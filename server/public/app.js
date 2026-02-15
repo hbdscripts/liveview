@@ -8982,6 +8982,24 @@ const API = '';
     }
 
     const reportBuildScopeState = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+    let reportBuildGlobalActive = 0;
+    function beginGlobalReportLoading() {
+      reportBuildGlobalActive = Math.max(0, reportBuildGlobalActive) + 1;
+      if (reportBuildGlobalActive === 1) {
+        try { document.body.classList.add('kexo-report-loading'); } catch (_) {}
+      }
+    }
+    function endGlobalReportLoading() {
+      reportBuildGlobalActive = Math.max(0, reportBuildGlobalActive - 1);
+      if (reportBuildGlobalActive <= 0) {
+        reportBuildGlobalActive = 0;
+        try { document.body.classList.remove('kexo-report-loading'); } catch (_) {}
+      }
+    }
+    try {
+      window.__kexoBeginGlobalReportLoading = beginGlobalReportLoading;
+      window.__kexoEndGlobalReportLoading = endGlobalReportLoading;
+    } catch (_) {}
     function beginReportBuildScope(scope) {
       if (!scope) return;
       if (!reportBuildScopeState) {
@@ -9004,6 +9022,7 @@ const API = '';
       }
       state.count += 1;
       reportBuildScopeState.set(scope, state);
+      beginGlobalReportLoading();
     }
 
     function endReportBuildScope(scope) {
@@ -9019,9 +9038,11 @@ const API = '';
         scope.classList.remove('report-building');
         scope.style.minHeight = state.prevMinHeight || '';
         reportBuildScopeState.delete(scope);
+        endGlobalReportLoading();
         return;
       }
       reportBuildScopeState.set(scope, state);
+      endGlobalReportLoading();
     }
 
     function startReportBuild(opts) {

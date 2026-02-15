@@ -73,7 +73,7 @@ test('GET /api/shopify-best-sellers: 30days normalizes; sessions counted from fi
     // Throttle truth reconcile so it won’t fetch during this test.
     await db.run(
       'INSERT OR REPLACE INTO reconcile_state (shop, scope, last_success_at, last_attempt_at, last_error, cursor_json) VALUES (?, ?, ?, ?, ?, ?)',
-      [shop, 'products_30d', now, now, null, null]
+      [shop, 'range_30d', now, now, null, null]
     );
 
     // Sessions: one product landing for the resolved handle.

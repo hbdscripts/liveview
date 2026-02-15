@@ -3236,8 +3236,10 @@ async function getStats(options = {}) {
       if (!contained) needed.push(r);
     }
     for (const r of needed) {
-      const scopeKey = ('stats_' + String(r.key || 'range')).slice(0, 64);
-      try { await salesTruth.ensureReconciled(salesShop, r.start, r.end, scopeKey); } catch (_) {}
+      // Avoid blocking report responses on potentially slow Shopify reconciliation.
+      // Long-range backfills are handled opportunistically in the background.
+      const scopeKey = salesTruth.scopeForRangeKey(r.key || 'range', 'range');
+      salesTruth.ensureReconciled(salesShop, r.start, r.end, scopeKey).catch(() => {});
     }
   }
   // Run all stats queries in one parallel batch to avoid N+1 (many sequential DB round-trips). Fixes NODE-1.
@@ -3389,7 +3391,7 @@ async function getKpis(options = {}) {
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthSync = null;
   if (salesShop) {
-    const scopeKey = rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'range')).slice(0, 64);
+    const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
     if (rangeKey === 'today') {
       try {
         salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
@@ -3442,7 +3444,7 @@ async function getKpis(options = {}) {
       () => getAdSpendGbp(bounds.start, bounds.end)
     ),
     rangeHasSessions(yesterdayBounds.start, yesterdayBounds.end, opts),
-    (salesShop ? salesTruth.getTruthHealth(salesShop || '', rangeKey === 'today' ? 'today' : ('kpis_' + String(rangeKey || 'r')).slice(0, 64)) : Promise.resolve(null)),
+    (salesShop ? salesTruth.getTruthHealth(salesShop || '', salesTruth.scopeForRangeKey(rangeKey, 'range')) : Promise.resolve(null)),
   ]);
 
   // Avoid duplicate work: conversion rate is derived from already-fetched orders + session counts.
