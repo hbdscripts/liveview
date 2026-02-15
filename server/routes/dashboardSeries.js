@@ -337,14 +337,18 @@ async function getDashboardSeries(req, res) {
   }
 
   try {
+    const rangeEnd = rangeKey ? bounds.end : now;
+    const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday') && Number.isFinite(rangeEnd)
+      ? Math.floor(rangeEnd / (60 * 1000)) * (60 * 1000)
+      : rangeEnd;
     const cached = await reportCache.getOrComputeJson(
       {
         shop: '',
         endpoint: 'dashboard-series',
         rangeKey: rangeKey ? ('range_' + rangeKey + '_' + bucketHint) : ('days_' + days),
         rangeStartTs: rangeKey ? bounds.start : todayBounds.start,
-        rangeEndTs: rangeKey ? bounds.end : now,
-        params: rangeKey ? { trafficMode, rangeKey, bucket: bucketHint } : { trafficMode, days, bucket: 'day' },
+        rangeEndTs: rangeEnd,
+        params: rangeKey ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache } : { trafficMode, days, bucket: 'day' },
         ttlMs: 5 * 60 * 1000,
         force,
       },

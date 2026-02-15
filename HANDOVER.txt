@@ -290,6 +290,10 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Dashboard-series cache fix for "today" adaptive buckets:
+  - Cache key now includes rangeEndTs (rounded to 1 min) for today/yesterday so the first request of the day does not serve stale data all day. Adaptive 15/30/60-min bucket logic was correct but cache was returning the first computed result regardless of current time.
+
+2026-02-15 (earlier)
 - Sparkline data and compare-line alignment fixes:
   - FULFILLED, RETURNS, COGS: no longer use orders/revenue shape as fallback; use simple [baseline, current] two-point line when no per-bucket data (dashboard-series has no fulfilled/returns per bucket).
   - Compare-line alignment: use first N buckets of compare (same time-of-day) instead of last N; pad at end when compare has fewer buckets. Fixes RETURNING compare flat when activity was in early hours, and yesterday vs day-before compare alignment.
