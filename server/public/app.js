@@ -1986,6 +1986,11 @@ const API = '';
     let saleMuted = false;
     let saleAudioPrimed = false;
     let saleSoundDeferredOnce = false;
+    let saleSoundDeferredHandler = null;
+    let saleSoundLastOrigin = '';
+    let saleSoundLastKey = '';
+    let saleSoundLastAt = 0;
+    const SALE_SOUND_DEDUPE_WINDOW_MS = 8000;
     let saleToastActive = false;
     let saleToastToken = 0; // increments per toast trigger; prevents stale latest-sale fetch overwriting newer toasts
     let saleToastSessionId = null; // best-effort: session_id that opened the current toast (used to avoid double plays)
@@ -4923,16 +4928,79 @@ const API = '';
       if (p && typeof p.catch === 'function') {
         p.catch(function() {
           if (!deferOnClick) return;
-          if (saleSoundDeferredOnce) return;
+          if (saleSoundDeferredOnce || saleSoundDeferredHandler) return;
           saleSoundDeferredOnce = true;
-          document.addEventListener('click', function once() {
+          saleSoundDeferredHandler = function deferredSaleSoundPlay() {
+            ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(function(evt) {
+              try { document.removeEventListener(evt, saleSoundDeferredHandler, true); } catch (_) {}
+            });
+            saleSoundDeferredHandler = null;
             saleSoundDeferredOnce = false;
             if (saleMuted || !saleAudio) return;
+            try { primeSaleAudio(); } catch (_) {}
             try { saleAudio.currentTime = 0; } catch (_) {}
             saleAudio.play().catch(function() {});
-          }, { once: true });
+          };
+          ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(function(evt) {
+            try { document.addEventListener(evt, saleSoundDeferredHandler, { once: true, capture: true }); } catch (_) {}
+          });
         });
       }
+    }
+
+    function buildSaleSoundDedupeKey(opts) {
+      const inOpts = opts && typeof opts === 'object' ? opts : {};
+      const explicit = inOpts.soundDedupeKey != null ? String(inOpts.soundDedupeKey).trim() : '';
+      if (explicit) return explicit;
+      const session = inOpts.session && typeof inOpts.session === 'object' ? inOpts.session : null;
+      if (session) {
+        const orderId = session.order_id != null
+          ? String(session.order_id).trim()
+          : (session.orderId != null ? String(session.orderId).trim() : '');
+        if (orderId) return 'order:' + orderId;
+        const sid = session.session_id != null ? String(session.session_id).trim() : '';
+        const purchasedAt = session.purchased_at != null ? toMs(session.purchased_at) : null;
+        if (sid && purchasedAt != null) return 'session-sale:' + sid + ':' + String(purchasedAt);
+        if (sid) return 'session:' + sid;
+        if (purchasedAt != null) return 'purchased:' + String(purchasedAt);
+      }
+      const payload = inOpts.payload && typeof inOpts.payload === 'object' ? inOpts.payload : null;
+      if (payload && payload.createdAt != null) {
+        const createdAt = toMs(payload.createdAt);
+        if (createdAt != null) return 'payload:' + String(createdAt);
+      }
+      const latest = lastSaleAt != null ? toMs(lastSaleAt) : null;
+      if (latest != null) return 'last-sale:' + String(latest);
+      return '';
+    }
+
+    function shouldPlaySaleSoundForToast(opts) {
+      const inOpts = opts && typeof opts === 'object' ? opts : {};
+      const origin = inOpts.origin != null ? String(inOpts.origin).trim().toLowerCase() : '';
+      // Keep manual test/toggle behavior unchanged (always audible).
+      if (origin === 'manual') return true;
+      const now = Date.now();
+      if (
+        origin === 'stats' &&
+        saleSoundLastOrigin === 'sse' &&
+        saleSoundLastAt > 0 &&
+        (now - saleSoundLastAt) < SALE_SOUND_DEDUPE_WINDOW_MS
+      ) {
+        return false;
+      }
+      const dedupeKey = buildSaleSoundDedupeKey(inOpts);
+      if (
+        dedupeKey &&
+        saleSoundLastKey === dedupeKey &&
+        saleSoundLastAt > 0 &&
+        (now - saleSoundLastAt) < SALE_SOUND_DEDUPE_WINDOW_MS
+      ) {
+        return false;
+      }
+      if (dedupeKey) saleSoundLastKey = dedupeKey;
+      saleSoundLastOrigin = origin || 'unknown';
+      saleSoundLastAt = now;
+      return true;
     }
 
     function triggerSaleToast(opts) {
@@ -4989,7 +5057,7 @@ const API = '';
         } catch (_) {}
       }
 
-      if (playSound) {
+      if (playSound && shouldPlaySaleSoundForToast(opts)) {
         try { primeSaleAudio(); } catch (_) {}
         playSaleSound({ deferOnClick: true });
       }
@@ -7912,7 +7980,7 @@ const API = '';
 
       const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
       if (increased) {
-        triggerSaleToast({ origin: 'stats', playSound: true });
+        triggerSaleToast({ origin: 'stats', playSound: true, soundDedupeKey: 'stats:today:' + String(conv.today) });
         // Keep Home tables in sync when a toast fires outside SSE (Today/Sales/Live).
         if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === 'sales' || dateRange === 'live' || dateRange === '1h')) {
           try { fetchSessions(); } catch (_) {}

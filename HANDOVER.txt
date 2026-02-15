@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (ingest error visibility + bs_network fail-open)
+Last updated: 2026-02-15 (iOS sale sound dedupe + settings preview audio fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -372,6 +372,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- iOS sale notification sound + settings preview hardening:
+  - Runtime sale toast sound now dedupes across SSE/stats overlap in `server/public/app.js` to prevent repeated chimes for the same sale (most visible on `/dashboard/sales`).
+  - Stats-origin toast triggers now include a stable dedupe key (`stats:today:<convertedCount>`) and are suppressed when they immediately follow an SSE-origin trigger for the same moment.
+  - iOS retry fallback no longer stacks repeated deferred listeners; it uses a single one-shot recovery listener across pointer/touch/click/keydown.
+  - Settings → Kexo UI → Sale Notification Preview now reuses one persistent `Audio` instance in `server/public/theme-settings.js`, primes from first gesture, and shows user-visible failure feedback instead of silent catch-all failures.
 
 2026-02-15 (latest)
 - Google Ads network tracking (ValueTrack `{network}`):

@@ -2035,6 +2035,11 @@
   function wireSaleNotificationPanel() {
     var form = document.getElementById('settings-sale-notification-form');
     if (!form) return;
+    if (form.dataset.saleNotificationBound === '1') return;
+    form.dataset.saleNotificationBound = '1';
+    var previewAudio = null;
+    var previewAudioPrimed = false;
+    var previewMsgTimer = null;
 
     function setSaleMsg(text, ok) {
       var el = document.getElementById('settings-sale-notification-msg');
@@ -2045,12 +2050,85 @@
       else el.className = 'form-hint ms-2 text-secondary';
     }
 
+    function setSaleMsgTemporary(text, ok, ms) {
+      if (previewMsgTimer) {
+        clearTimeout(previewMsgTimer);
+        previewMsgTimer = null;
+      }
+      setSaleMsg(text, ok);
+      if (!ms || ms <= 0) return;
+      previewMsgTimer = setTimeout(function () {
+        setSaleMsg('', null);
+        previewMsgTimer = null;
+      }, ms);
+    }
+
     function getEffectiveSaleSoundUrl() {
       var preset = (document.getElementById('settings-sale-sound-preset') || {}).value || 'kexo1';
       if (preset !== 'custom') return SALE_SOUND_PRESETS[preset] || SALE_SOUND_PRESETS.kexo1;
       var raw = (document.getElementById('settings-asset-sale-sound') || {}).value || '';
       return raw.trim() || '';
     }
+
+    function resolveSaleSoundUrl(url) {
+      var out = url != null ? String(url).trim() : '';
+      if (!out) return '';
+      if (out.charAt(0) === '/') {
+        var base = '';
+        try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+        out = (base || window.location.origin || '') + out;
+      }
+      return out;
+    }
+
+    function ensurePreviewAudio() {
+      if (previewAudio) return previewAudio;
+      try {
+        previewAudio = new Audio();
+        previewAudio.preload = 'auto';
+      } catch (_) {
+        previewAudio = null;
+      }
+      return previewAudio;
+    }
+
+    function primePreviewAudio() {
+      var a = ensurePreviewAudio();
+      if (!a || previewAudioPrimed) return;
+      previewAudioPrimed = true;
+      var prevMuted = !!a.muted;
+      var prevVol = (typeof a.volume === 'number' && isFinite(a.volume)) ? a.volume : 1;
+      try { a.muted = true; } catch (_) {}
+      try { a.volume = 0; } catch (_) {}
+      try { a.load(); } catch (_) {}
+      try {
+        var p = a.play();
+        if (p && typeof p.then === 'function') {
+          p.then(function () {
+            try { a.pause(); } catch (_) {}
+            try { a.currentTime = 0; } catch (_) {}
+          }).catch(function () {
+            previewAudioPrimed = false;
+          }).finally(function () {
+            try { a.pause(); } catch (_) {}
+            try { a.currentTime = 0; } catch (_) {}
+            try { a.muted = prevMuted; } catch (_) {}
+            try { a.volume = prevVol; } catch (_) {}
+          });
+          return;
+        }
+      } catch (_) {
+        previewAudioPrimed = false;
+      }
+      try { a.pause(); } catch (_) {}
+      try { a.currentTime = 0; } catch (_) {}
+      try { a.muted = prevMuted; } catch (_) {}
+      try { a.volume = prevVol; } catch (_) {}
+    }
+
+    ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(function (evt) {
+      try { document.addEventListener(evt, primePreviewAudio, { once: true, capture: true }); } catch (_) {}
+    });
 
     var presetSel = document.getElementById('settings-sale-sound-preset');
     var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
@@ -2065,17 +2143,34 @@
       var btn = e.target && e.target.closest ? e.target.closest('#settings-sale-sound-preview') : null;
       if (!btn) return;
       e.preventDefault();
-      var url = getEffectiveSaleSoundUrl();
-      if (!url) return;
-      if (url.charAt(0) === '/') {
-        var base = '';
-        try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
-        url = (base || window.location.origin || '') + url;
+      var url = resolveSaleSoundUrl(getEffectiveSaleSoundUrl());
+      if (!url) {
+        setSaleMsgTemporary('Select a sale sound first.', false, 2200);
+        return;
       }
       try {
-        var a = new Audio(url);
-        a.play().catch(function () {});
-      } catch (_) {}
+        var a = ensurePreviewAudio();
+        if (!a) {
+          setSaleMsgTemporary('Preview failed. Audio is unavailable.', false, 2600);
+          return;
+        }
+        if (String(a.src || '') !== url) {
+          a.src = url;
+        }
+        try { a.load(); } catch (_) {}
+        try { a.currentTime = 0; } catch (_) {}
+        var p = a.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(function (err) {
+            previewAudioPrimed = false;
+            console.warn('[KEXO] Sale sound preview failed', err);
+            setSaleMsgTemporary('Preview failed. Tap once then try again.', false, 2800);
+          });
+        }
+      } catch (err) {
+        console.warn('[KEXO] Sale sound preview error', err);
+        setSaleMsgTemporary('Preview failed. Check sound URL/format.', false, 2800);
+      }
     });
 
     var base = '';
