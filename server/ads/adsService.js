@@ -566,12 +566,122 @@ async function getCampaignDetail(options = {}) {
     revenue: sortedTs.map(function (ts) { return Math.round((revenueHourly.get(ts) || 0) * 100) / 100; }),
   };
 
+  // Country performance: Google Ads geo clicks/spend + KEXO-attributed orders/revenue.
+  const startYmd = fmtYmdInTz(bounds.start, timeZone);
+  const endYmd = fmtYmdInTz(Math.max(bounds.start, bounds.end - 1), timeZone);
+
+  let countries = { ok: true, rows: [], meta: { locationType: 'LOCATION_OF_PRESENCE', startYmd, endYmd, ordersTotal: 0, ordersWithVisitorCountry: 0, visitorCountryCoverage: null } };
+  try {
+    const byCode = new Map();
+    function ensure(code) {
+      const key = code != null ? String(code).trim().toUpperCase() : '';
+      const safe = key && key !== '_UNKNOWN_' ? key : '_unknown_';
+      if (!byCode.has(safe)) {
+        byCode.set(safe, { country: safe, clicks: 0, impressions: 0, spend: 0, orders: 0, revenue: 0, cr: null, roas: null });
+      }
+      return byCode.get(safe);
+    }
+
+    // Geo clicks/spend by country (default: location of presence).
+    let geoRows = [];
+    if (startYmd && endYmd) {
+      geoRows = await adsDb.all(
+        `
+          SELECT
+            COALESCE(NULLIF(TRIM(country_code), ''), '_unknown_') AS country_code,
+            COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+            COALESCE(SUM(clicks), 0) AS clicks,
+            COALESCE(SUM(impressions), 0) AS impressions
+          FROM google_ads_geo_daily
+          WHERE provider = ?
+            AND campaign_id = ?
+            AND day_ymd >= ? AND day_ymd <= ?
+            AND location_type = ?
+          GROUP BY COALESCE(NULLIF(TRIM(country_code), ''), '_unknown_')
+        `,
+        ['google_ads', campaignId, startYmd, endYmd, 'LOCATION_OF_PRESENCE']
+      );
+    }
+    for (const r of geoRows || []) {
+      const code = r && r.country_code != null ? String(r.country_code).trim().toUpperCase() : '_unknown_';
+      const it = ensure(code);
+      it.spend += r && r.spend_gbp != null ? Number(r.spend_gbp) || 0 : 0;
+      it.clicks += r && r.clicks != null ? Number(r.clicks) || 0 : 0;
+      it.impressions += r && r.impressions != null ? Number(r.impressions) || 0 : 0;
+    }
+
+    // Revenue/orders by visitor (session) country.
+    const revRows = await adsDb.all(
+      `
+        SELECT
+          COALESCE(NULLIF(TRIM(visitor_country_code), ''), '_unknown_') AS country_code,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?
+          AND source = ?
+          AND campaign_id = ?
+        GROUP BY COALESCE(NULLIF(TRIM(visitor_country_code), ''), '_unknown_')
+      `,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+    let ordersTotal = 0;
+    let ordersWithVisitorCountry = 0;
+    for (const r of revRows || []) {
+      const code = r && r.country_code != null ? String(r.country_code).trim().toUpperCase() : '_unknown_';
+      const it = ensure(code);
+      const ord = r && r.orders != null ? Number(r.orders) || 0 : 0;
+      const rev = r && r.revenue_gbp != null ? Number(r.revenue_gbp) || 0 : 0;
+      it.orders += ord;
+      it.revenue += rev;
+      ordersTotal += ord;
+      if (code && code !== '_UNKNOWN_' && code !== '_unknown_') ordersWithVisitorCountry += ord;
+    }
+
+    // Finalize derived metrics
+    const rows = Array.from(byCode.values()).map((it) => {
+      const clicks = Number(it.clicks) || 0;
+      const spend = Number(it.spend) || 0;
+      const orders = Number(it.orders) || 0;
+      const revenue = Number(it.revenue) || 0;
+      const cr = clicks > 0 ? (orders / clicks) : null;
+      const roas = spend > 0 ? (revenue / spend) : null;
+      return {
+        country: it.country === '_unknown_' ? '' : it.country,
+        clicks: Math.floor(clicks),
+        impressions: Math.floor(Number(it.impressions) || 0),
+        spend: Math.round(spend * 100) / 100,
+        orders: Math.floor(orders),
+        revenue: Math.round(revenue * 100) / 100,
+        cr,
+        roas,
+      };
+    });
+    rows.sort((a, b) => (b.revenue || 0) - (a.revenue || 0) || (b.spend || 0) - (a.spend || 0) || (b.clicks || 0) - (a.clicks || 0));
+
+    countries = {
+      ok: true,
+      rows,
+      meta: {
+        locationType: 'LOCATION_OF_PRESENCE',
+        startYmd,
+        endYmd,
+        ordersTotal: Math.floor(ordersTotal || 0),
+        ordersWithVisitorCountry: Math.floor(ordersWithVisitorCountry || 0),
+        visitorCountryCoverage: ordersTotal > 0 ? (ordersWithVisitorCountry / ordersTotal) : null,
+      }
+    };
+  } catch (e) {
+    countries = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'countries_failed', rows: [], meta: { locationType: 'LOCATION_OF_PRESENCE', startYmd, endYmd } };
+  }
+
   return {
     ok: true,
     campaignId,
     rangeKey,
     currency,
     chart,
+    countries,
     recentSales: recentSales.slice(0, 10),
   };
 }

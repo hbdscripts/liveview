@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Abandoned mode switch + converted sale icon column + remove converted background)
+Last updated: 2026-02-15 (Google Ads audit + geo per-country modal + date-range fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -306,6 +306,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Google Ads integration accuracy + audit:
+  - Ads page now reads the global date picker correctly (Yesterday/14d/30d now work end-to-end).
+  - New Audit modal on `/integrations/google-ads` with `GET /api/ads/audit?range=...` to show click→session coverage + mapping coverage.
+  - Added geo-by-country sync into Ads DB (`google_ads_geo_daily`) using Google Ads `geographic_view`, wired into scheduled jobs and `POST /api/ads/refresh`.
+  - Campaign modal now includes per-country clicks/spend/revenue/CR/ROAS; revenue groups by visitor session country via `ads_orders_attributed.session_id` + `visitor_country_code`.
 
 2026-02-15 (latest)
 - Modal/backdrop consistency:

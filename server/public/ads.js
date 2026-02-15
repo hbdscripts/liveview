@@ -684,6 +684,9 @@
         '</div>' +
         '<div class="ads-modal-body">' +
           '<div class="ads-modal-chart-wrap"><canvas id="ads-modal-chart" height="200"></canvas></div>' +
+          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Country performance</h4>' +
+          '<div class="text-muted small" id="ads-modal-country-note" style="margin:-4px 0 8px;"></div>' +
+          '<div id="ads-modal-countries"></div>' +
           '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Recent Sales</h4>' +
           '<div id="ads-modal-sales"></div>' +
         '</div>' +
@@ -970,6 +973,10 @@
     var modal = document.getElementById('ads-campaign-modal');
     modal.querySelector('.ads-modal-title').textContent = campaignName || campaignId || 'Campaign';
     document.getElementById('ads-modal-sales').innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var countriesEl = document.getElementById('ads-modal-countries');
+    if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var countryNoteEl = document.getElementById('ads-modal-country-note');
+    if (countryNoteEl) countryNoteEl.textContent = '';
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
     modal.classList.add('open');
 
@@ -993,6 +1000,7 @@
           }
           renderModalChart(data.chart || {}, currency);
         });
+        renderModalCountries(data.countries || null, currency);
         renderModalSales(data.recentSales || [], currency);
       });
   }
@@ -1055,6 +1063,92 @@
     }
   }
 
+  function renderModalCountries(payload, currency) {
+    var el = document.getElementById('ads-modal-countries');
+    if (!el) return;
+    var noteEl = document.getElementById('ads-modal-country-note');
+
+    var data = (payload && typeof payload === 'object') ? payload : null;
+    var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+    var meta = (data && data.meta) ? data.meta : null;
+
+    if (noteEl) {
+      var parts = [];
+      if (meta && meta.locationType) parts.push('Clicks/spend: ' + String(meta.locationType).replace(/_/g, ' ').toLowerCase());
+      if (meta && meta.visitorCountryCoverage != null && meta.ordersTotal != null) {
+        var cov = fmtPct(meta.visitorCountryCoverage, 0);
+        var known = meta.ordersWithVisitorCountry != null ? fmtNum(meta.ordersWithVisitorCountry) : '—';
+        var total = meta.ordersTotal != null ? fmtNum(meta.ordersTotal) : '—';
+        parts.push('Revenue country coverage: ' + cov + ' (' + known + '/' + total + ' orders)');
+      }
+      noteEl.textContent = parts.join(' • ');
+    }
+
+    if (!data) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No country breakdown available.</div>';
+      return;
+    }
+    if (data.ok === false) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Country breakdown unavailable.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No country breakdown in this period.</div>';
+      return;
+    }
+
+    var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['ads-modal-countries-table']) || {};
+    var tableHtml = typeof buildKexoSettingsTable === 'function'
+      ? buildKexoSettingsTable({
+          tableClass: (def.tableClass || 'ads-modal-countries-table'),
+          columns: (def.columns || []).length ? def.columns : [
+            { header: 'Country', headerClass: '' },
+            { header: 'Clicks', headerClass: 'text-end' },
+            { header: 'Spend', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'CR%', headerClass: 'text-end' },
+            { header: 'Revenue', headerClass: 'text-end' },
+            { header: 'ROAS', headerClass: 'text-end' }
+          ],
+          rows: rows,
+          renderRow: function (r) {
+            var code = r && r.country ? String(r.country).trim().toUpperCase() : '';
+            var cc = code ? code.toLowerCase() : '';
+            var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            return (
+              '<tr>' +
+                '<td>' + flag + esc(code || '—') + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
+              '</tr>'
+            );
+          }
+        })
+      : (function () {
+          var h = '<table class="ads-modal-countries-table"><thead><tr><th>Country</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i] || {};
+            var code = r.country ? String(r.country).trim().toUpperCase() : '';
+            var cc = code ? code.toLowerCase() : '';
+            var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            h += '<tr><td>' + flag + esc(code || '—') + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
+              '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
+          }
+          return h + '</tbody></table>';
+        })();
+
+    el.innerHTML = tableHtml;
+  }
+
   function renderModalSales(sales, currency) {
     var el = document.getElementById('ads-modal-sales');
     if (!el) return;
@@ -1108,11 +1202,12 @@
       '.ads-modal-close:hover{color:var(--text,#333);}' +
       '.ads-modal-body{padding:18px;}' +
       '.ads-modal-chart-wrap{position:relative;height:220px;margin-bottom:8px;}' +
-      '.ads-modal-sales-table{width:100%;border-collapse:collapse;font-size:12px;}' +
-      '.ads-modal-sales-table th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#555);border-bottom:1px solid var(--border,#e5e5e5);background:var(--th-bg,#f8f8f8);}' +
-      '.ads-modal-sales-table td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
-      '.ads-modal-sales-table tr:last-child td{border-bottom:none;}' +
+      '.ads-modal-sales-table,.ads-modal-countries-table{width:100%;border-collapse:collapse;font-size:12px;}' +
+      '.ads-modal-sales-table th,.ads-modal-countries-table th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#555);border-bottom:1px solid var(--border,#e5e5e5);background:var(--th-bg,#f8f8f8);}' +
+      '.ads-modal-sales-table td,.ads-modal-countries-table td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
+      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td{border-bottom:none;}' +
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:right;}' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +

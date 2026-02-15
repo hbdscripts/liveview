@@ -422,6 +422,18 @@
         { header: 'Value', headerClass: '' },
         { header: 'Time', headerClass: '' }
       ]
+    },
+    'ads-modal-countries-table': {
+      tableClass: 'ads-modal-countries-table',
+      columns: [
+        { header: 'Country', headerClass: '' },
+        { header: 'Clicks', headerClass: 'text-end' },
+        { header: 'Spend', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: 'text-end' },
+        { header: 'Revenue', headerClass: 'text-end' },
+        { header: 'ROAS', headerClass: 'text-end' }
+      ]
     }
   };
 
