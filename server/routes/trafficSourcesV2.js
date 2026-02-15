@@ -432,8 +432,29 @@ async function getTrafficSourcesV2Diagnostics(req, res) {
         [sinceMs, limitSessions]
       );
     } catch (e2) {
-      Sentry.captureException(e2, { extra: { route: 'trafficSourcesV2.diagnostics' } });
-      rows = [];
+      // Fail-open if utm_term column missing (pre-migration); retry without utm_term.
+      if (/utm_term|column.*does not exist/i.test(e2 && e2.message)) {
+        try {
+          rows = await db.all(
+            `
+              SELECT s.session_id, s.last_seen, s.utm_source, s.utm_medium, s.utm_campaign, s.utm_content,
+                     s.entry_url, s.referrer, s.traffic_source_key, s.has_purchased
+              FROM sessions s
+              WHERE s.last_seen >= ?
+              ORDER BY s.last_seen DESC
+              LIMIT ?
+            `,
+            [sinceMs, limitSessions]
+          );
+          if (rows && rows.length) rows = rows.map(r => ({ ...r, utm_term: null }));
+        } catch (e3) {
+          Sentry.captureException(e3, { extra: { route: 'trafficSourcesV2.diagnostics' } });
+          rows = [];
+        }
+      } else {
+        Sentry.captureException(e2, { extra: { route: 'trafficSourcesV2.diagnostics' } });
+        rows = [];
+      }
     }
   }
 

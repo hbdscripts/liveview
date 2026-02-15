@@ -571,6 +571,8 @@ const { up: up044 } = require('./migrations/044_backfill_first_product_handle');
 const { up: up045 } = require('./migrations/045_users');
 const { up: up046 } = require('./migrations/046_rename_master_to_admin');
 const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud');
+const { up: up048 } = require('./migrations/048_sessions_bs_network');
+const { up: up049 } = require('./migrations/049_sessions_utm_term');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -629,6 +631,8 @@ async function migrateAndStart() {
   await up045();
   await up046();
   await up047();
+  await up048();
+  await up049();
 
   try {
     const r = await runAdsMigrations();

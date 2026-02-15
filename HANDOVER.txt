@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Ads modal network breakdown)
+Last updated: 2026-02-15 (utm_term migration + traffic diagnostics fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -1202,3 +1202,4 @@ Ops/reliability:
 - Variants mapping-issue badge is now clickable and opens a modal with unmapped/ambiguous variant examples plus mapped coverage summary (sessions/orders/revenue) to help diagnose unusually high CR%.
 - Added dedicated icon keys for Insights → Variants table headers (`table-icon-variants-*`) so each column icon is individually configurable in Settings → Theme → Icons.
 - Sticky table cells, header row, and footer row (e.g. ads-totals-row) now use unified surface-secondary background with color-mix gradient; removed conflicting background overrides from custom.css, app.css, ads.js.
+- Migration 049: add sessions.utm_term (fixes NODE-1R traffic-sources-v2 diagnostics). trafficSourcesV2 fallback when column missing.
