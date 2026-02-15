@@ -927,7 +927,15 @@ body[data-page="live"] #latest-sales-table .latest-sales-fraud-slot .fraud-alert
   height: auto;
   font-size: .8rem;
 }
-/* Sticky cells + table footer: unified surface-secondary background with gradient (only sticky TH, not other header cells) */
+/* Table header row: surface-secondary background (all THs) */
+body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
+body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
+body:not([data-page="settings"]) .table-responsive table thead th,
+body:not([data-page="settings"]) .tools-table-wrap table thead th {
+  background: var(--tblr-bg-surface-secondary, #fafafa) !important;
+}
+
+/* Sticky cells + table footer: surface-secondary + gradient (only sticky TH gets gradient, not other header cells) */
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
 body:not([data-page="settings"]) .table-responsive table thead th:first-child,
