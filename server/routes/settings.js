@@ -7,6 +7,7 @@
 const store = require('../store');
 const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
+const { isMasterRequest } = require('../authz');
 const {
   VARIANTS_CONFIG_KEY,
   defaultVariantsConfigV1,
@@ -29,6 +30,7 @@ const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ran
 const CHARTS_UI_CONFIG_V1_KEY = 'charts_ui_config_v1'; // JSON object (chart type/colors/visibility)
 const TABLES_UI_CONFIG_V1_KEY = 'tables_ui_config_v1'; // JSON object (table rows + layout + sticky column sizing)
 const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
+const PAGE_LOADER_ENABLED_V1_KEY = 'page_loader_enabled_v1'; // JSON object (per-page loader overlay enable)
 
 const KPI_UI_KEYS = [
   'orders',
@@ -1079,6 +1081,53 @@ function normalizeSettingsScopeMode(v) {
   return 'global';
 }
 
+function defaultPageLoaderEnabledV1() {
+  return {
+    v: 1,
+    pages: {
+      dashboard: true,
+      live: true,
+      sales: true,
+      date: true,
+      countries: true,
+      products: true,
+      variants: true,
+      'abandoned-carts': true,
+      channels: true,
+      type: true,
+      ads: true,
+      'compare-conversion-rate': true,
+      'shipping-cr': true,
+      settings: true,
+      upgrade: false,
+      // Always disabled (admin should never show the overlay loader).
+      admin: false,
+    },
+  };
+}
+
+function normalizePageLoaderEnabledV1(raw) {
+  const base = defaultPageLoaderEnabledV1();
+  const out = { v: 1, pages: { ...base.pages } };
+  if (!raw) return out;
+  let parsed = null;
+  try {
+    parsed = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+  } catch (_) {
+    parsed = null;
+  }
+  if (!parsed || typeof parsed !== 'object') return out;
+  if (Number(parsed.v) !== 1) return out;
+  const pages = parsed.pages && typeof parsed.pages === 'object' ? parsed.pages : null;
+  if (!pages) return out;
+  for (const key of Object.keys(out.pages)) {
+    if (!Object.prototype.hasOwnProperty.call(pages, key)) continue;
+    out.pages[key] = pages[key] === false ? false : true;
+  }
+  out.pages.admin = false;
+  return out;
+}
+
 async function readSettingsKeyMap(keys) {
   const list = Array.isArray(keys) ? keys.map((k) => (k == null ? '' : String(k))).filter(Boolean) : [];
   if (!list.length) return {};
@@ -1106,11 +1155,13 @@ async function readSettingsPayload() {
   let profitRules = defaultProfitRulesConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
+  let pageLoaderEnabled = defaultPageLoaderEnabledV1();
   let rawMap = {};
   try {
     rawMap = await readSettingsKeyMap([
       PIXEL_SESSION_MODE_KEY,
       SETTINGS_SCOPE_MODE_KEY,
+      PAGE_LOADER_ENABLED_V1_KEY,
       ASSET_OVERRIDES_KEY,
       KPI_UI_CONFIG_V1_KEY,
       CHARTS_UI_CONFIG_V1_KEY,
@@ -1159,6 +1210,10 @@ async function readSettingsPayload() {
     const raw = rawMap[VARIANTS_CONFIG_KEY];
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
+  try {
+    const raw = rawMap[PAGE_LOADER_ENABLED_V1_KEY];
+    pageLoaderEnabled = normalizePageLoaderEnabledV1(raw);
+  } catch (_) { pageLoaderEnabled = defaultPageLoaderEnabledV1(); }
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
@@ -1172,6 +1227,7 @@ async function readSettingsPayload() {
     tablesUiConfig,
     profitRules,
     insightsVariantsConfig,
+    pageLoaderEnabled,
   };
 }
 
@@ -1186,6 +1242,35 @@ async function postSettings(req, res) {
   }
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   let insightsVariantsWarnings = null;
+  const wantsAdminOnlyWrite =
+    Object.prototype.hasOwnProperty.call(body, 'settingsScopeMode') ||
+    Object.prototype.hasOwnProperty.call(body, 'pixelSessionMode') ||
+    Object.prototype.hasOwnProperty.call(body, 'reporting');
+  const wantsPlanLockedAssetsWrite = (() => {
+    const patch = body.assetOverrides && typeof body.assetOverrides === 'object' ? body.assetOverrides : null;
+    if (!patch) return false;
+    const keys = Object.keys(patch || {});
+    if (!keys.length) return false;
+    const locked = new Set([
+      'favicon',
+      'logo',
+      'footerlogo',
+      'footer_logo',
+      'loginlogo',
+      'login_logo',
+      'kexologofullcolor',
+      'kexo_logo_fullcolor',
+    ]);
+    return keys.some((k) => locked.has(String(k || '').trim().toLowerCase()));
+  })();
+  if (wantsAdminOnlyWrite || wantsPlanLockedAssetsWrite) {
+    let isMaster = false;
+    try { isMaster = await isMasterRequest(req); } catch (_) { isMaster = false; }
+    if (!isMaster) {
+      if (wantsAdminOnlyWrite) return res.status(403).json({ ok: false, error: 'Forbidden' });
+      if (wantsPlanLockedAssetsWrite) return res.status(402).json({ ok: false, error: 'upgrade_required', upgradeUrl: '/upgrade' });
+    }
+  }
 
   // Settings scope (global/shared only for now)
   if (Object.prototype.hasOwnProperty.call(body, 'settingsScopeMode')) {
@@ -1663,6 +1748,11 @@ async function getThemeDefaults(req, res) {
 
 async function postThemeDefaults(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  if (Object.prototype.hasOwnProperty.call(body, 'theme_header_logo_url')) {
+    let isMaster = false;
+    try { isMaster = await isMasterRequest(req); } catch (_) { isMaster = false; }
+    if (!isMaster) return res.status(402).json({ ok: false, error: 'upgrade_required', upgradeUrl: '/upgrade' });
+  }
   try {
     // Patch semantics: only update provided keys (prevents large payload requirements
     // and avoids wiping other keys when partial payloads are sent).

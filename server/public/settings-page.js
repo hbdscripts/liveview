@@ -14,6 +14,41 @@
     if (typeof window !== 'undefined' && window.API) API = String(window.API || '');
   } catch (_) {}
 
+  function isSettingsPageLoaderEnabled() {
+    try {
+      if (typeof window.__kexoIsPageLoaderEnabled === 'function') {
+        return !!window.__kexoIsPageLoaderEnabled('settings');
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  function getGlobalPageLoaderEls() {
+    var pageBody = document.querySelector('.page-body');
+    var overlay = document.getElementById('page-body-loader');
+    if (!pageBody || !overlay) return null;
+    var titleEl = overlay.querySelector('.report-build-title');
+    var stepEl = document.getElementById('page-body-build-step') || overlay.querySelector('.report-build-step');
+    return { pageBody: pageBody, overlay: overlay, titleEl: titleEl, stepEl: stepEl };
+  }
+
+  function showGlobalPageLoader(title, step) {
+    var st = getGlobalPageLoaderEls();
+    if (!st) return;
+    try { st.pageBody.classList.add('report-building'); } catch (_) {}
+    try { st.overlay.classList.remove('is-hidden'); } catch (_) {}
+    if (title != null && st.titleEl) st.titleEl.textContent = String(title);
+    if (step != null && st.stepEl) st.stepEl.textContent = String(step);
+  }
+
+  function dismissGlobalPageLoader() {
+    var st = getGlobalPageLoaderEls();
+    if (!st) return;
+    try { st.overlay.classList.add('is-hidden'); } catch (_) {}
+    try { st.pageBody.classList.remove('report-building'); } catch (_) {}
+    try { st.pageBody.style.minHeight = ''; } catch (_) {}
+  }
+
   var kpiUiConfigCache = null;
   var chartsUiConfigCache = null;
   var tablesUiConfigCache = null;
@@ -39,12 +74,10 @@
     general: 'settings-panel-general',
     theme: 'settings-panel-theme',
     assets: 'settings-panel-assets',
-    'data-reporting': 'settings-panel-data-reporting',
     integrations: 'settings-panel-integrations',
     sources: 'settings-panel-sources',
     insights: 'settings-panel-insights',
     layout: 'settings-panel-layout',
-    diagnostics: 'settings-panel-diagnostics',
   };
 
   function getTabFromQuery() {
@@ -118,9 +151,6 @@
       el.classList.toggle('active', panelKey === key);
     });
     updateUrl(key);
-    if (key === 'diagnostics') {
-      try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
-    }
     if (key === 'sources') {
       try { if (typeof window.initTrafficSourceMapping === 'function') window.initTrafficSourceMapping({ rootId: 'settings-traffic-source-mapping-root' }); } catch (_) {}
     }
@@ -493,7 +523,7 @@
     var url = API + '/api/config-status';
     if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
 
-    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+    return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (c) {
         var cd = c && c.configDisplay ? c.configDisplay : {};
@@ -521,11 +551,11 @@
 
         renderIntegrationsFromConfig(c || {});
       })
-      .catch(function () {});
+      .catch(function () { return null; });
   }
 
   function loadSettingsAndPopulate() {
-    fetch(API + '/api/settings', { credentials: 'same-origin', cache: 'no-store' })
+    return fetch(API + '/api/settings', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || !data.ok) return;
@@ -581,7 +611,7 @@
           }
         } catch (_) {}
       })
-      .catch(function () {});
+      .catch(function () { return null; });
   }
 
   function loadThemeDefaultsAndPopulateAssets(fallbackOverrides) {
@@ -878,6 +908,86 @@
           setMsg('Save failed', false);
         });
     });
+  }
+
+  // ── Plan-based gating (master vs normal for now) ──────────────────────────
+  function wirePlanBasedBrandingLocks() {
+    function lockBrandingOverrides() {
+      var groups = [
+        { urlId: 'settings-asset-favicon', fileId: 'settings-upload-favicon', slot: 'favicon' },
+        { urlId: 'settings-asset-logo', fileId: 'settings-upload-header-logo', slot: 'header_logo' },
+        { urlId: 'settings-asset-footer-logo', fileId: 'settings-upload-footer-logo', slot: 'footer_logo' },
+        { urlId: 'settings-asset-login-logo', fileId: 'settings-upload-login-logo', slot: 'login_logo' },
+        { urlId: 'settings-asset-kexo-fullcolor-logo', fileId: 'settings-upload-kexo-fullcolor-logo', slot: 'kexo_logo_fullcolor' },
+      ];
+
+      groups.forEach(function (g) {
+        var urlEl = document.getElementById(g.urlId);
+        if (!urlEl) return;
+        var col = urlEl.closest ? (urlEl.closest('.col-12') || urlEl.closest('.col')) : null;
+        if (!col) col = urlEl.parentElement;
+        if (!col) return;
+
+        try { col.classList.add('kexo-upgrade-locked'); } catch (_) {}
+        try { col.setAttribute('data-kexo-upgrade-locked', '1'); } catch (_) {}
+
+        try { urlEl.disabled = true; } catch (_) {}
+        var fileEl = document.getElementById(g.fileId);
+        if (fileEl) { try { fileEl.disabled = true; } catch (_) {} }
+
+        var btn = document.querySelector('button[data-kexo-asset-upload="1"][data-kexo-slot="' + g.slot + '"]');
+        if (btn) {
+          try { if (!btn.getAttribute('data-kexo-orig-text')) btn.setAttribute('data-kexo-orig-text', String(btn.textContent || 'Upload')); } catch (_) {}
+          try { btn.textContent = 'Upgrade required'; } catch (_) {}
+          try { btn.disabled = true; } catch (_) {}
+          try {
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-outline-secondary');
+          } catch (_) {}
+        }
+
+        if (!col.querySelector('.kexo-upgrade-lock-overlay')) {
+          var overlay = document.createElement('a');
+          overlay.href = '/upgrade';
+          overlay.className = 'kexo-upgrade-lock-overlay';
+          overlay.setAttribute('role', 'button');
+          overlay.setAttribute('aria-label', 'Upgrade required');
+          overlay.setAttribute('title', 'Upgrade required');
+          overlay.innerHTML = '<span>Upgrade required</span><span class="badge bg-primary-lt">View plans</span>';
+          col.appendChild(overlay);
+        }
+      });
+
+      // Also intercept the Assets form submit so it routes to /upgrade rather than failing an API call.
+      var form = document.getElementById('settings-assets-form');
+      if (form && form.getAttribute('data-kexo-upgrade-lock-wired') !== '1') {
+        form.setAttribute('data-kexo-upgrade-lock-wired', '1');
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          try { window.location.href = '/upgrade'; } catch (_) {}
+        }, true);
+      }
+
+      try {
+        var msg = document.getElementById('settings-assets-msg');
+        if (msg) msg.textContent = 'Upgrade required';
+      } catch (_) {}
+    }
+
+    function apply(isMaster) {
+      if (isMaster) return;
+      lockBrandingOverrides();
+    }
+
+    try {
+      if (window.__kexoIsMasterUser === true) return;
+      if (window.__kexoIsMasterUser === false) { apply(false); return; }
+    } catch (_) {}
+
+    window.addEventListener('kexo:me-loaded', function (ev) {
+      try { apply(!!(ev && ev.detail && ev.detail.isMaster)); } catch (_) {}
+    }, { once: true });
   }
 
   function defaultKpiUiConfigV1() {
@@ -3849,9 +3959,20 @@
       activateTab(getTabFromQuery() || getTabFromHash() || 'general');
     });
 
-    loadConfigAndPopulate();
-    loadSettingsAndPopulate();
-    wireDataReporting();
+    var loaderEnabled = isSettingsPageLoaderEnabled();
+    if (loaderEnabled) {
+      try { showGlobalPageLoader('Preparing settings', 'Loading settings\u2026'); } catch (_) {}
+    } else {
+      try { dismissGlobalPageLoader(); } catch (_) {}
+    }
+
+    var pConfig = loadConfigAndPopulate();
+    var pSettings = loadSettingsAndPopulate();
+    Promise.all([pConfig, pSettings]).finally(function () {
+      try { dismissGlobalPageLoader(); } catch (_) {}
+    });
+
+    wirePlanBasedBrandingLocks();
     wireAssets();
     wireIntegrationsSubTabs();
     wireGoogleAdsActions();

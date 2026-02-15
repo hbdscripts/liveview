@@ -3938,3 +3938,38 @@ body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child
 .kexo-nowrap {
   white-space: nowrap !important;
 }
+
+/* Plan-gated controls: "Upgrade required" lock overlay. */
+.kexo-upgrade-locked {
+  position: relative;
+  opacity: 0.9;
+}
+.kexo-upgrade-locked .kexo-upgrade-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--tblr-border-radius, .375rem);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px dashed rgba(32, 107, 196, 0.35);
+  color: var(--tblr-primary, #206bc4);
+  font-weight: 600;
+  text-decoration: none;
+}
+.kexo-upgrade-locked .kexo-upgrade-lock-overlay:hover {
+  background: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+}
+.kexo-upgrade-locked input,
+.kexo-upgrade-locked button,
+.kexo-upgrade-locked select,
+.kexo-upgrade-locked textarea {
+  pointer-events: none;
+}
+body.theme-dark .kexo-upgrade-locked .kexo-upgrade-lock-overlay,
+body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
+  background: rgba(0, 0, 0, 0.46);
+  border-color: rgba(255, 255, 255, 0.18);
+}

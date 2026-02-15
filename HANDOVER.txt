@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Multi-tenant scaling notes)
+Last updated: 2026-02-15 (Admin Controls + plan gating + silent loader)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -67,8 +67,12 @@ Tools:
 Settings:
 - `/settings` → `server/public/settings.html`
 
+Upgrade:
+- `/upgrade` → `server/public/upgrade.html` (`data-page="upgrade"`) — TODO pricing page used by plan-gated Settings controls
+
 Admin (master-only):
 - `/admin` → `server/public/admin.html`
+  - Left menu now includes: Controls, Diagnostics, Users
 
 Legacy redirects (kept, query preserved):
 - `/tools/ads` and `/ads` → `/integrations/google-ads`
@@ -91,10 +95,9 @@ Settings UI:
 - `server/public/settings-page.js`: tab switching, saving, and Settings panel wiring
 
 Settings tabs:
-- General: current config display + Settings scope (locked global)
+- General: current config display (read-only)
 - Theme: theme editor (colors/fonts/icons/header)
-- Assets: upload/override favicon + logos (R2-backed)
-- Data & Reporting: reporting source toggles (orders/sessions) + pixel session mode
+- Assets: upload/override favicon + logos (R2-backed) — plan-gated for normal accounts (Upgrade required)
 - Integrations: Pixel + Google Ads status/actions
 - Sources: UTM/source mapping
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
@@ -102,14 +105,26 @@ Settings tabs:
   - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row color modal for Live/Table/Sales sessions tables. **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
   - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
   - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
-- Diagnostics: config-status + reconcile utilities rendered as a Tabler accordion (no tabs; Settings-first)
+
+Admin-only (moved out of `/settings`):
+- Admin → Controls: per-page loader toggles + Data & Reporting + Settings scope (read-only global for now)
+- Admin → Diagnostics: config-status + reconcile utilities
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
 - Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`
+- New: `pageLoaderEnabled` (per-page loader overlay toggles; stored under `page_loader_enabled_v1`)
 - Assets helpers:
   - `GET /api/asset-overrides` (read `asset_overrides`)
   - `POST /api/assets/upload` (multipart → Cloudflare R2, returns public URL; URLs are persisted via `/api/settings` and `/api/theme-defaults`)
+
+Admin Controls API (master-only):
+- `GET/PUT /api/admin/controls` in `server/routes/adminControls.js` (persists `page_loader_enabled_v1`)
+
+Diagnostics access:
+- `GET /api/config-status` is now **restricted for non-masters** (returns a minimal payload for Settings/Integrations/footer tags).
+- Full diagnostics payload is only returned to master requests (OAuth cookie + users.role=master).
+- `POST /api/reconcile-sales` is master-only (gated in `server/index.js`).
 
 ---
 
@@ -290,6 +305,11 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Admin controls + loader UX + plan gating:
+  - Admin now has Controls + Diagnostics panels; moved Settings scope + Data & Reporting + Diagnostics out of `/settings`.
+  - Page loader overlay is now configurable per page (persisted `page_loader_enabled_v1`); Admin is always disabled; refresh/resume refreshes are silent (no overlay).
+  - Branding overrides (favicon + logos) are plan-gated for normal accounts with an in-app `/upgrade` TODO pricing page; backend enforces `upgrade_required` for uploads/saves.
+  - `/api/config-status` returns a restricted payload for non-masters; reconcile endpoint is master-only.
 - Dashboard-series cache fix for "today" adaptive buckets:
   - Cache key now includes rangeEndTs (rounded to 1 min) for today/yesterday so the first request of the day does not serve stale data all day. Adaptive 15/30/60-min bucket logic was correct but cache was returning the first computed result regardless of current time.
 

@@ -87,10 +87,6 @@
           <i class="fa-thin fa-image me-2" data-icon-key="settings-tab-assets"></i>
           Assets
         </a>
-        <a href="/settings?tab=data-reporting" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="data-reporting">
-          <i class="fa-thin fa-chart-column me-2" data-icon-key="settings-tab-data-reporting"></i>
-          Data &amp; Reporting
-        </a>
         <a href="/settings?tab=integrations" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="integrations">
           <i class="fa-thin fa-plug me-2" data-icon-key="settings-tab-integrations"></i>
           Integrations
@@ -106,10 +102,6 @@
         <a href="/settings?tab=layout" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="layout">
           <i class="fa-thin fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>
           Layout
-        </a>
-        <a href="/settings?tab=diagnostics" class="list-group-item list-group-item-action d-flex align-items-center" data-settings-tab="diagnostics">
-          <i class="fa-thin fa-chart-line me-2" data-icon-key="settings-tab-diagnostics"></i>
-          Diagnostics
         </a>
       </div>
     </div>
@@ -151,29 +143,6 @@
               <label class="form-label">Traffic mode / DB</label>
               <input type="text" class="form-control" id="settings-general-traffic-mode" value="—" readonly />
             </div>
-          </div>
-        </div>
-        <div class="card mt-3">
-          <div class="card-header">
-            <h3 class="card-title">Settings scope</h3>
-          </div>
-          <div class="card-body">
-            <p class="text-secondary mb-3">All Settings currently apply globally to all users. Per-user settings are coming later.</p>
-            <div class="form-selectgroup" role="group" aria-label="Settings scope">
-              <label class="form-selectgroup-item flex-fill">
-                <input type="radio" name="settings-scope-mode" value="global" class="form-selectgroup-input" id="settings-scope-global" checked>
-                <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
-                  <span class="form-selectgroup-label-content">Global (shared)</span>
-                </div>
-              </label>
-              <label class="form-selectgroup-item flex-fill">
-                <input type="radio" name="settings-scope-mode" value="user" class="form-selectgroup-input" id="settings-scope-user" disabled>
-                <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
-                  <span class="form-selectgroup-label-content">User-selected</span>
-                </div>
-              </label>
-            </div>
-            <div class="text-secondary small mt-2">User-selected scope is disabled for now.</div>
           </div>
         </div>
       </div>
@@ -251,37 +220,6 @@
               </div>
             </form>
             <p class="text-muted small mt-2 mb-0">Uploads are stored in Cloudflare R2.</p>
-          </div>
-        </div>
-      </div>
-
-      <div id="settings-panel-data-reporting" class="settings-panel">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-chart-column me-2" data-icon-key="settings-tab-data-reporting" aria-hidden="true"></i>Data &amp; Reporting</h3>
-          </div>
-          <div class="card-body">
-            <p class="text-secondary">Orders source, sessions source, pixel session mode. Auto-saves on change.</p>
-            <div class="mb-3">
-              <label class="form-label" for="settings-orders-source">Orders source</label>
-              <select class="form-select" id="settings-orders-source">
-                <option value="orders_shopify">orders_shopify</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label" for="settings-sessions-source">Sessions source</label>
-              <select class="form-select" id="settings-sessions-source">
-                <option value="sessions">sessions</option>
-                <option value="shopify_sessions">shopify_sessions</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Pixel session mode</label>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="settings-pixel-session-mode" />
-                <label class="form-check-label" for="settings-pixel-session-mode">Share session across tabs (30m inactivity)</label>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -743,43 +681,6 @@
         </div>
       </div>
 
-      <div id="settings-panel-diagnostics" class="settings-panel">
-        <div class="card">
-          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <h3 class="card-title mb-0"><i class="fa-thin fa-chart-line me-2" data-icon-key="settings-tab-diagnostics" aria-hidden="true"></i>Diagnostics</h3>
-            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                <div class="d-flex align-items-center gap-2">
-                  <span class="text-secondary small">Range</span>
-                  <select id="diagnostics-overview-range" class="form-select form-select-sm" aria-label="Diagnostics overview range" style="width:auto; min-width: 140px;">
-                    <option value="today" selected>Today</option>
-                    <option value="yesterday">Yesterday</option>
-                    <option value="7d">Last 7 days</option>
-                    <option value="14d">Last 14 days</option>
-                    <option value="30d">Last 30 days</option>
-                  </select>
-                </div>
-              <button type="button" class="btn btn-sm btn-outline-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
-                <i class="fa-thin fa-rotate-right" data-icon-key="settings-diagnostics-refresh" aria-hidden="true"></i> Refresh
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="config-reconcile-btn" aria-label="Reconcile sales">
-                <i class="fa-thin fa-sliders" data-icon-key="settings-diagnostics-reconcile" aria-hidden="true"></i> Reconcile
-              </button>
-              <span id="config-action-msg" class="form-hint"></span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="text-secondary small mb-3">
-              <strong>Refresh</strong> re-reads diagnostics only. <strong>Reconcile</strong> runs a manual Shopify truth sync for the last 7 days, then refreshes diagnostics.
-            </div>
-            <div id="diagnostics-content">
-              <div class="d-flex align-items-center gap-2 text-secondary">
-                <div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>
-                <div>Loading diagnostics…</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 

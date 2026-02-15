@@ -13,6 +13,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 const config = require('../config');
 const store = require('../store');
+const { isMasterRequest } = require('../authz');
 
 const ASSET_OVERRIDES_KEY = 'asset_overrides';
 
@@ -112,6 +113,12 @@ async function postUploadAsset(req, res) {
   const slot = normalizeUploadSlot(rawSlot);
   if (!slot) {
     return res.status(400).json({ ok: false, error: 'Invalid slot' });
+  }
+  // Plan-based lock: normal (non-master) accounts cannot upload branding overrides yet.
+  if (slot === 'favicon' || slot === 'header_logo' || slot === 'footer_logo' || slot === 'login_logo' || slot === 'kexo_logo_fullcolor') {
+    let isMaster = false;
+    try { isMaster = await isMasterRequest(req); } catch (_) { isMaster = false; }
+    if (!isMaster) return res.status(402).json({ ok: false, error: 'upgrade_required', upgradeUrl: '/upgrade' });
   }
 
   const file = req.file;

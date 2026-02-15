@@ -60,6 +60,7 @@ const businessSnapshot = require('./routes/businessSnapshot');
 const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
 const adminUsersApi = require('./routes/adminUsers');
+const adminControlsApi = require('./routes/adminControls');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,8 +107,8 @@ app.get('/api/latest-sales', sessionsRouter.latestSales);
 app.get('/api/config-status', configStatus);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
-app.get('/api/settings/profit-rules', settings.getProfitRules);
-app.put('/api/settings/profit-rules', settings.putProfitRules);
+app.get('/api/settings/profit-rules', requireMaster.middleware, settings.getProfitRules);
+app.put('/api/settings/profit-rules', requireMaster.middleware, settings.putProfitRules);
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.get('/api/asset-overrides', assets.getAssetOverrides);
@@ -126,8 +127,8 @@ app.post('/api/traffic-source-maps/map', trafficSourceMaps.mapTokenToSource);
 app.post('/api/traffic-source-maps/meta', trafficSourceMaps.upsertSourceMeta);
 app.post('/api/traffic-source-maps/backfill', trafficSourceMaps.backfillTokens);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
-app.get('/api/reconcile-sales', reconcileSales.reconcileSales);
-app.post('/api/reconcile-sales', reconcileSales.reconcileSales);
+app.get('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
+app.post('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
 app.get('/api/verify-sales', verifySales.verifySales);
 app.get('/api/pixel/ensure', pixelRouter.ensurePixel);
 app.post('/api/pixel/ensure', pixelRouter.ensurePixel);
@@ -159,6 +160,7 @@ app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.get
 app.use('/api/ads', adsRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
+app.use('/api/admin', requireMaster.middleware, adminControlsApi);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/me', me);
 app.get('/api/store-base-url', (req, res) => {
@@ -463,6 +465,7 @@ app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
+app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
 app.get('/admin', requireMaster.middleware, (req, res) => sendPage(res, 'admin.html'));
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to overview

@@ -50,6 +50,8 @@ const API = '';
           'shipping-cr': true,
           // Settings should behave like other pages (configurable via Admin → Controls).
           settings: true,
+          // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
+          upgrade: false,
           // Admin must never show the overlay loader.
           admin: false,
         },
@@ -13236,9 +13238,6 @@ const API = '';
     try { window.refreshConfigStatus = refreshConfigStatus; } catch (_) {}
     try { window.initTrafficSourceMapping = function(opts) { initTrafficSourceMappingPanel(opts || {}); }; } catch (_) {}
 
-    // Best-effort: prime Diagnostics data in the background for Settings.
-    try { refreshConfigStatus(); } catch (_) {}
-
     updateLastSaleAgo();
     _intervals.push(setInterval(updateLastSaleAgo, 10000));
 
@@ -15339,7 +15338,7 @@ const API = '';
             return;
           }
           if (tab === 'dashboard') {
-            try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
+            try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
             refreshKpis({ force: false }).then(function(data) {
               if (data) renderDashboardKpisFromApi(data);
             });
@@ -15611,15 +15610,28 @@ const API = '';
             }
             btn.classList.add('refresh-spinning');
             setTimeout(function() { btn.classList.remove('refresh-spinning'); }, 600);
-            try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
-            if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {} }
-            else if (activeMainTab === 'stats') refreshStats({ force: true });
-            else if (activeMainTab === 'products') refreshProducts({ force: true });
-            else if (activeMainTab === 'variants') { try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {} }
-            else if (activeMainTab === 'abandoned-carts') { try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); } }
-            else if (activeMainTab === 'channels' || activeMainTab === 'type') refreshTraffic({ force: true });
-            else if (activeMainTab === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {} }
-            else fetchSessions();
+            // Silent refresh: never cover the page with the overlay loader while refreshing.
+            // (Use the subtle date-range spinner + the refresh button spin only.)
+            kexoWithSilentOverlay(function() {
+              if (activeMainTab === 'dashboard') {
+                try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+              } else if (activeMainTab === 'stats') {
+                try { refreshStats({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'products') {
+                try { refreshProducts({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'variants') {
+                try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'abandoned-carts') {
+                try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
+              } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
+                try { refreshTraffic({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'ads') {
+                try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {}
+              } else {
+                try { fetchSessions(); } catch (_) {}
+              }
+              try { refreshKpis({ force: true }); } catch (_) {}
+            });
           });
         }
       })();
@@ -15855,10 +15867,12 @@ const API = '';
     // does not fire again, so data fetches never run. Refresh when page is shown from bfcache.
     window.addEventListener('pageshow', function(ev) {
       if (!ev.persisted) return;
-      if (PAGE === 'dashboard') {
-        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true }); } catch (_) {}
-      }
-      try { refreshKpis({ force: true }); } catch (_) {}
+      kexoWithSilentOverlay(function() {
+        if (PAGE === 'dashboard') {
+          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+        }
+        try { refreshKpis({ force: true }); } catch (_) {}
+      });
     });
 
     document.addEventListener('visibilitychange', function() {
@@ -15871,8 +15885,10 @@ const API = '';
       // After returning from OAuth (e.g. mobile: switch to Google app and back), dashboard may be
       // blank if fetches ran while hidden or failed. Refresh when visible again within ~2 min.
       if (idleMs < 2 * 60 * 1000 && PAGE === 'dashboard') {
-        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true }); } catch (_) {}
-        try { refreshKpis({ force: true }); } catch (_) {}
+        kexoWithSilentOverlay(function() {
+          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+          try { refreshKpis({ force: true }); } catch (_) {}
+        });
       }
       if (idleMs < RESUME_RELOAD_IDLE_MS) return onBecameVisible();
 
@@ -16865,6 +16881,22 @@ const API = '';
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
         fetchDashboardData(dashRangeKeyFromDateRange(), false);
       }
+
+      // Failsafe: on some post-login flows (mobile app switching, bfcache restores),
+      // the first dashboard fetch can be skipped or run while hidden. If we still have
+      // no cache shortly after load, trigger ONE silent refresh.
+      if (PAGE === 'dashboard') {
+        setTimeout(function() {
+          try {
+            if (dashCache) return;
+            if (dashLoading) return;
+            var p = document.getElementById('tab-panel-dashboard');
+            if (!p) return;
+            if (!(p.classList.contains('active') || PAGE === 'dashboard')) return;
+            if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+          } catch (_) {}
+        }, 1200);
+      }
     })();
 
     // ── User avatar: fetch /api/me and populate ────────────────────────
@@ -16887,12 +16919,21 @@ const API = '';
         fetch('/api/me', { credentials: 'same-origin' })
           .then(function(r) { return r.json(); })
           .then(function(d) {
-            toggleMasterUi(!!(d && d.isMaster));
+            var isMaster = !!(d && d.isMaster);
+            toggleMasterUi(isMaster);
+            try { window.__kexoMe = d || null; } catch (_) {}
+            try { window.__kexoIsMasterUser = isMaster; } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: isMaster, email: d && d.email ? String(d.email) : '' } })); } catch (_) {}
             if (!d || !d.email) return;
             if (avatarEl && d.initial) avatarEl.textContent = d.initial;
             if (emailEl) emailEl.textContent = d.email;
           })
-          .catch(function() { toggleMasterUi(false); });
+          .catch(function() {
+            toggleMasterUi(false);
+            try { window.__kexoMe = null; } catch (_) {}
+            try { window.__kexoIsMasterUser = false; } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: false, email: '' } })); } catch (_) {}
+          });
       } catch (_) {}
     })();
 
@@ -16950,39 +16991,62 @@ const API = '';
       var wrap = document.getElementById('kexo-footer-diagnostics');
       var tagsEl = document.getElementById('kexo-footer-diagnostics-tags');
       if (!wrap || !tagsEl) return;
-      var url = API + '/api/config-status';
+      var started = false;
+      function render() {
+        if (started) return;
+        started = true;
+        var url = API + '/api/config-status';
+        try {
+          var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
+          if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
+        } catch (_) {}
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(c) {
+            if (!c) return;
+            var items = [];
+            var px = c.pixel;
+            var ads = c.ads && c.ads.status ? c.ads.status : null;
+            var gaProvider = ads && Array.isArray(ads.providers) ? ads.providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) : null;
+            var gaConnected = !!(gaProvider && gaProvider.connected);
+            items.push({ key: 'pixel', label: 'Kexo Pixel', status: (px && px.installed === true) ? 'Online' : 'Offline', ok: !!(px && px.installed === true) });
+            items.push({ key: 'google_ads', label: 'Google Ads', status: gaConnected ? 'Connected' : 'Offline', ok: gaConnected });
+            var html = '';
+            items.forEach(function(it) {
+              var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
+              var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+              html += '<div class="kexo-footer-diagnostics-tag">';
+              html += '<a href="/admin?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
+              html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
+              html += '</a>';
+              html += '<span class="kexo-footer-diagnostics-status">';
+              html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>' + esc(it.status);
+              html += '</span>';
+              html += '</div>';
+            });
+            tagsEl.innerHTML = html;
+            wrap.style.display = 'block';
+          })
+          .catch(function() {});
+      }
+
+      function maybeStart(isMaster) {
+        if (!isMaster) return;
+        render();
+      }
+
+      // Footer diagnostics are master-only.
       try {
-        var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
-        if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
+        if (window.__kexoIsMasterUser === true) return maybeStart(true);
+        if (window.__kexoIsMasterUser === false) return;
       } catch (_) {}
-      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(c) {
-          if (!c) return;
-          var items = [];
-          var px = c.pixel;
-          var ads = c.ads && c.ads.status ? c.ads.status : null;
-          var gaProvider = ads && Array.isArray(ads.providers) ? ads.providers.find(function(p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) : null;
-          var gaConnected = !!(gaProvider && gaProvider.connected);
-          items.push({ key: 'pixel', label: 'Kexo Pixel', status: (px && px.installed === true) ? 'Online' : 'Offline', ok: !!(px && px.installed === true) });
-          items.push({ key: 'google_ads', label: 'Google Ads', status: gaConnected ? 'Connected' : 'Offline', ok: gaConnected });
-          var html = '';
-          items.forEach(function(it) {
-            var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
-            var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-            html += '<div class="kexo-footer-diagnostics-tag">';
-            html += '<a href="/settings?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
-            html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
-            html += '</a>';
-            html += '<span class="kexo-footer-diagnostics-status">';
-            html += '<span class="kexo-status-indicator ' + statusCls + '" aria-hidden="true"></span>' + esc(it.status);
-            html += '</span>';
-            html += '</div>';
-          });
-          tagsEl.innerHTML = html;
-          wrap.style.display = 'block';
-        })
-        .catch(function() {});
+
+      window.addEventListener('kexo:me-loaded', function(ev) {
+        try {
+          var isMaster = !!(ev && ev.detail && ev.detail.isMaster);
+          maybeStart(isMaster);
+        } catch (_) {}
+      }, { once: true });
     })();
 
     // ── Shared Product Insights modal ───────────────────────────────────

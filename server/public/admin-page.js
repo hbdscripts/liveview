@@ -1,4 +1,6 @@
 (function () {
+  'use strict';
+
   function escapeHtml(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -46,6 +48,73 @@
     var f = (typeof window.kexoFetch === 'function') ? window.kexoFetch : fetch;
     var o = Object.assign({ credentials: 'same-origin' }, opts || {});
     return f(url, o);
+  }
+
+  // ── Admin tabs ────────────────────────────────────────────────────────────
+
+  var activeTab = 'controls';
+  var usersLoadedOnce = false;
+  var controlsLoadedOnce = false;
+
+  function getTabFromQuery() {
+    try {
+      var m = /[?&]tab=([^&]+)/.exec(window.location.search || '');
+      var raw = m && m[1] ? String(m[1]) : '';
+      var t = raw.trim().toLowerCase();
+      if (t === 'users' || t === 'diagnostics' || t === 'controls') return t;
+    } catch (_) {}
+    return '';
+  }
+
+  function setActiveTab(next, opts) {
+    var t = (next || '').trim().toLowerCase();
+    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls') t = 'controls';
+    activeTab = t;
+
+    document.querySelectorAll('[data-admin-tab]').forEach(function (el) {
+      var isActive = String(el.getAttribute('data-admin-tab') || '').trim().toLowerCase() === t;
+      el.classList.toggle('active', isActive);
+      el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('.admin-panel').forEach(function (el) {
+      var key = el && el.id ? String(el.id).replace(/^admin-panel-/, '') : '';
+      el.classList.toggle('active', key === t);
+    });
+
+    if (!(opts && opts.skipUrl)) {
+      try { history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(t)); } catch (_) {}
+    }
+
+    // Lazy-load per panel
+    if (t === 'users') {
+      if (!usersLoadedOnce) {
+        usersLoadedOnce = true;
+        refreshAll();
+      }
+    } else if (t === 'controls') {
+      if (!controlsLoadedOnce) {
+        controlsLoadedOnce = true;
+        loadControlsPanel();
+      }
+    } else if (t === 'diagnostics') {
+      try {
+        var msg = document.getElementById('config-action-msg');
+        if (msg) { msg.textContent = 'Loading diagnostics…'; msg.className = 'form-hint text-secondary'; }
+      } catch (_) {}
+      try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
+    }
+  }
+
+  function bindTabClicks() {
+    document.addEventListener('click', function (e) {
+      var t = e && e.target ? e.target : null;
+      var link = t && t.closest ? t.closest('a[data-admin-tab]') : null;
+      if (!link) return;
+      var tab = String(link.getAttribute('data-admin-tab') || '').trim().toLowerCase();
+      if (!tab) return;
+      e.preventDefault();
+      setActiveTab(tab);
+    });
   }
 
   function renderActive(rows) {
@@ -181,6 +250,231 @@
     ]);
   }
 
+  // ── Controls panel wiring ────────────────────────────────────────────────
+
+  var _loaderSaveTimer = null;
+  var _loaderSaving = false;
+
+  function setHint(id, text, tone) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    if (!tone) el.className = 'form-hint';
+    else if (tone === 'ok') el.className = 'form-hint text-success';
+    else if (tone === 'bad') el.className = 'form-hint text-danger';
+    else el.className = 'form-hint text-secondary';
+  }
+
+  function defaultPageLoaderEnabled() {
+    return {
+      v: 1,
+      pages: {
+        dashboard: true,
+        live: true,
+        sales: true,
+        date: true,
+        countries: true,
+        products: true,
+        variants: true,
+        'abandoned-carts': true,
+        channels: true,
+        type: true,
+        ads: true,
+        'compare-conversion-rate': true,
+        'shipping-cr': true,
+        settings: true,
+        upgrade: false,
+        admin: false,
+      },
+    };
+  }
+
+  function normalizePageLoaderEnabled(cfg) {
+    var base = defaultPageLoaderEnabled();
+    var out = { v: 1, pages: Object.assign({}, base.pages) };
+    if (!cfg || typeof cfg !== 'object') return out;
+    var v = Number(cfg.v);
+    if (v !== 1) return out;
+    var pages = cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+    if (!pages) return out;
+    Object.keys(out.pages).forEach(function (k) {
+      if (!Object.prototype.hasOwnProperty.call(pages, k)) return;
+      out.pages[k] = pages[k] === false ? false : true;
+    });
+    out.pages.admin = false;
+    return out;
+  }
+
+  var pageLoaderEnabledDraft = null;
+
+  function getLoaderToggles() {
+    try {
+      return Array.prototype.slice.call(document.querySelectorAll('[data-admin-loader-page]')) || [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function readLoaderTogglesIntoDraft() {
+    var cfg = pageLoaderEnabledDraft || defaultPageLoaderEnabled();
+    cfg = normalizePageLoaderEnabled(cfg);
+    var toggles = getLoaderToggles();
+    toggles.forEach(function (el) {
+      var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
+      if (!key) return;
+      if (key === 'admin') return;
+      cfg.pages[key] = !!el.checked;
+    });
+    cfg.pages.admin = false;
+    pageLoaderEnabledDraft = cfg;
+    return cfg;
+  }
+
+  function applyLoaderDraftToUi(cfg) {
+    cfg = normalizePageLoaderEnabled(cfg);
+    pageLoaderEnabledDraft = cfg;
+    getLoaderToggles().forEach(function (el) {
+      var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
+      if (!key) return;
+      var val = cfg.pages && Object.prototype.hasOwnProperty.call(cfg.pages, key) ? cfg.pages[key] : true;
+      el.checked = val !== false;
+    });
+  }
+
+  function saveLoaderConfigDebounced() {
+    if (_loaderSaveTimer) { try { clearTimeout(_loaderSaveTimer); } catch (_) {} }
+    _loaderSaveTimer = setTimeout(function () {
+      _loaderSaveTimer = null;
+      saveLoaderConfigNow();
+    }, 350);
+  }
+
+  function saveLoaderConfigNow() {
+    if (_loaderSaving) return;
+    _loaderSaving = true;
+    var cfg = readLoaderTogglesIntoDraft();
+    setHint('admin-loader-msg', 'Saving…', 'muted');
+    kfetch('/api/admin/controls', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pageLoaderEnabled: cfg }),
+    })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
+      .then(function (d) {
+        if (!d || d.ok !== true) {
+          setHint('admin-loader-msg', (d && d.error) ? String(d.error) : 'Save failed', 'bad');
+          return;
+        }
+        // Also hydrate localStorage so prime loader can use it on next navigation.
+        try { localStorage.setItem('kexo:page-loader-enabled:v1', JSON.stringify(cfg)); } catch (_) {}
+        setHint('admin-loader-msg', 'Saved.', 'ok');
+      })
+      .catch(function (err) {
+        setHint('admin-loader-msg', err && err.message ? String(err.message).slice(0, 120) : 'Save failed', 'bad');
+      })
+      .finally(function () { _loaderSaving = false; });
+  }
+
+  function bindLoaderToggles() {
+    getLoaderToggles().forEach(function (el) {
+      el.addEventListener('change', function () {
+        saveLoaderConfigDebounced();
+      });
+    });
+  }
+
+  var _reportingSaving = false;
+
+  function saveReportingNow() {
+    if (_reportingSaving) return;
+    var ordSel = document.getElementById('admin-orders-source');
+    var sessSel = document.getElementById('admin-sessions-source');
+    var pxToggle = document.getElementById('admin-pixel-session-mode');
+    if (!ordSel || !sessSel) return;
+    _reportingSaving = true;
+    setHint('admin-reporting-msg', 'Saving…', 'muted');
+    var payload = {
+      reporting: {
+        ordersSource: ordSel.value || 'orders_shopify',
+        sessionsSource: sessSel.value || 'sessions',
+      },
+      pixelSessionMode: (pxToggle && pxToggle.checked) ? 'shared_ttl' : 'legacy',
+    };
+    kfetch('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
+      .then(function (d) {
+        if (!d || d.ok !== true) {
+          setHint('admin-reporting-msg', (d && d.error) ? String(d.error) : 'Save failed', 'bad');
+          return;
+        }
+        setHint('admin-reporting-msg', 'Saved.', 'ok');
+      })
+      .catch(function (err) {
+        setHint('admin-reporting-msg', err && err.message ? String(err.message).slice(0, 120) : 'Save failed', 'bad');
+      })
+      .finally(function () { _reportingSaving = false; });
+  }
+
+  function bindReportingControls() {
+    var ordSel = document.getElementById('admin-orders-source');
+    var sessSel = document.getElementById('admin-sessions-source');
+    var pxToggle = document.getElementById('admin-pixel-session-mode');
+    if (ordSel) ordSel.addEventListener('change', saveReportingNow);
+    if (sessSel) sessSel.addEventListener('change', saveReportingNow);
+    if (pxToggle) pxToggle.addEventListener('change', saveReportingNow);
+  }
+
+  function loadControlsPanel() {
+    // Loader config
+    setHint('admin-loader-msg', 'Loading…', 'muted');
+    kfetch('/api/admin/controls', { method: 'GET' })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return null; }) : null; })
+      .then(function (d) {
+        var cfg = d && d.pageLoaderEnabled ? d.pageLoaderEnabled : null;
+        cfg = normalizePageLoaderEnabled(cfg);
+        applyLoaderDraftToUi(cfg);
+        setHint('admin-loader-msg', 'Loaded.', 'muted');
+      })
+      .catch(function () {
+        // Fall back to localStorage/defaults
+        try {
+          var raw = localStorage.getItem('kexo:page-loader-enabled:v1');
+          var parsed = raw ? JSON.parse(raw) : null;
+          applyLoaderDraftToUi(normalizePageLoaderEnabled(parsed));
+          setHint('admin-loader-msg', 'Loaded (local).', 'muted');
+        } catch (_) {
+          applyLoaderDraftToUi(defaultPageLoaderEnabled());
+          setHint('admin-loader-msg', 'Loaded (default).', 'muted');
+        }
+      });
+
+    // Reporting + settings scope (read-only)
+    setHint('admin-reporting-msg', 'Loading…', 'muted');
+    kfetch('/api/settings', { method: 'GET', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return null; }) : null; })
+      .then(function (d) {
+        if (!d || d.ok !== true) { setHint('admin-reporting-msg', 'Failed to load settings.', 'bad'); return; }
+        var reporting = d.reporting || {};
+        var ordSel = document.getElementById('admin-orders-source');
+        var sessSel = document.getElementById('admin-sessions-source');
+        var pxToggle = document.getElementById('admin-pixel-session-mode');
+        if (ordSel) ordSel.value = reporting.ordersSource || 'orders_shopify';
+        if (sessSel) sessSel.value = reporting.sessionsSource || 'sessions';
+        if (pxToggle) pxToggle.checked = String(d.pixelSessionMode || 'legacy').toLowerCase() === 'shared_ttl';
+        setHint('admin-reporting-msg', '', '');
+      })
+      .catch(function () {
+        setHint('admin-reporting-msg', 'Failed to load settings.', 'bad');
+      });
+
+    bindLoaderToggles();
+    bindReportingControls();
+  }
+
   function init() {
     // This page is master-only (server-gated). Show master-only dropdown items without waiting.
     try {
@@ -189,8 +483,11 @@
         try { if (el && el.classList) el.classList.remove('d-none'); } catch (_) {}
       });
     } catch (_) {}
+    bindTabClicks();
     bindActions();
-    refreshAll();
+
+    var initial = getTabFromQuery() || 'controls';
+    setActiveTab(initial, { skipUrl: true });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

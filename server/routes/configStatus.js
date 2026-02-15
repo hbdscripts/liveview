@@ -17,6 +17,7 @@ const {
 const pkg = require('../../package.json');
 const shopifyQl = require('../shopifyQl');
 const adsService = require('../ads/adsService');
+const { isMasterRequest } = require('../authz');
 
 const PIXEL_API_VERSION = '2024-01';
 
@@ -109,6 +110,77 @@ async function configStatus(req, res, next) {
 
   const db = getDb();
   const dbEngine = isPostgres() ? 'postgres' : 'sqlite';
+
+  // Non-master users should not receive deep internal diagnostics. Return a restricted payload
+  // that still supports Settings (General/Integrations) and the footer status tags.
+  let isMaster = false;
+  try { isMaster = await isMasterRequest(req); } catch (_) { isMaster = false; }
+  if (!isMaster) {
+    const shop = salesTruth.resolveShopForSales(req && req.query ? (req.query.shop || '') : '');
+
+    // --- Ingest config (non-sensitive) ---
+    const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
+      ? config.ingestPublicUrl.replace(/\/$/, '')
+      : (config.shopify.appUrl || '').replace(/\/$/, '');
+    const effectiveIngestUrl = ingestBase ? `${ingestBase}/api/ingest` : '';
+
+    // --- Shopify token (best-effort; used for pixel status) ---
+    let token = '';
+    if (shop) {
+      try {
+        const row = await db.get('SELECT access_token FROM shop_sessions WHERE shop = ?', [shop]);
+        token = row?.access_token ? String(row.access_token) : '';
+      } catch (_) {}
+    }
+
+    // --- Pixel status (Shopify web pixel settings for this app) ---
+    let pixel = { ok: false, installed: null, ingestUrl: null, message: '' };
+    try {
+      if (shop && token) pixel = await fetchShopifyWebPixelIngestUrl(shop, token);
+      else if (shop && !token) pixel = { ok: false, installed: null, ingestUrl: null, message: 'No Shopify token stored for this shop yet' };
+      else pixel = { ok: false, installed: null, ingestUrl: null, message: 'No shop specified' };
+    } catch (err) {
+      pixel = { ok: false, installed: null, ingestUrl: null, message: err && err.message ? String(err.message).slice(0, 180) : 'pixel_status_failed' };
+    }
+
+    // --- Ads status (non-sensitive summary) ---
+    let adsStatus = null;
+    try {
+      adsStatus = await adsService.getStatus();
+    } catch (err) {
+      adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
+    }
+
+    const configDisplay = {
+      shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
+      adminTimezone: config.adminTimezone || 'Europe/London',
+      shopDomain: config.shopDomain || config.allowedShopDomain || '',
+      shopDisplayDomain: config.shopDisplayDomain || '',
+      storeMainDomain: config.storeMainDomain || '',
+      ingestUrl: effectiveIngestUrl,
+      assetsBaseUrl: config.assetsBaseUrl || '',
+      trafficMode: config.trafficMode || 'all',
+      dbEngine,
+    };
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Vary', 'Cookie');
+    return res.json({
+      diagnostics: {
+        schemaVersion: 2,
+        generatedAt: now,
+        restricted: true,
+      },
+      now,
+      timeZone,
+      configDisplay,
+      pixel,
+      ads: {
+        status: adsStatus,
+        googleAdsApiVersion: config.googleAdsApiVersion || '',
+      },
+    });
+  }
 
   async function tableExists(name) {
     try {

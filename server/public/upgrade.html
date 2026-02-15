@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <title>Kexo · Upgrade</title>
+</head>
+<body class="" data-page="upgrade">
+  <!--#include partials/header.html-->
+  <!--#include partials/page-body-start.html-->
+
+  <div class="container-xl">
+    <div class="page-header d-print-none">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Plans</div>
+          <h2 class="page-title">Upgrade your plan</h2>
+          <div class="text-secondary mt-2">
+            Some Settings are plan-gated (branding overrides). Choose a plan to unlock them.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row row-cards">
+      <div class="col-12 col-md-4">
+        <div class="card card-md">
+          <div class="card-body text-center">
+            <div class="text-uppercase text-secondary font-weight-medium">Starter</div>
+            <div class="display-5 fw-bold my-3">£0</div>
+            <div class="text-secondary mb-4">Core dashboards and insights</div>
+            <ul class="list-unstyled lh-lg">
+              <li>Dashboards &amp; insights</li>
+              <li>Theme &amp; layout settings</li>
+              <li class="text-secondary">No branding overrides</li>
+            </ul>
+          </div>
+          <div class="card-footer text-center">
+            <button class="btn btn-outline-secondary w-100" type="button" disabled>Current plan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="card card-md">
+          <div class="card-body text-center">
+            <div class="text-uppercase text-secondary font-weight-medium">Pro</div>
+            <div class="display-5 fw-bold my-3">£29</div>
+            <div class="text-secondary mb-4">Branding overrides + priority support</div>
+            <ul class="list-unstyled lh-lg">
+              <li>Everything in Starter</li>
+              <li><strong>Branding overrides</strong> (favicon + logos)</li>
+              <li>Priority support</li>
+            </ul>
+          </div>
+          <div class="card-footer text-center">
+            <button class="btn btn-primary w-100" type="button" data-upgrade-plan="pro">Choose Pro</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="card card-md border-primary">
+          <div class="card-body text-center">
+            <div class="text-uppercase text-secondary font-weight-medium">Business</div>
+            <div class="display-5 fw-bold my-3">£79</div>
+            <div class="text-secondary mb-4">Advanced controls + team features</div>
+            <ul class="list-unstyled lh-lg">
+              <li>Everything in Pro</li>
+              <li>Team roles &amp; approvals</li>
+              <li>Advanced reporting controls</li>
+            </ul>
+          </div>
+          <div class="card-footer text-center">
+            <button class="btn btn-outline-primary w-100" type="button" data-upgrade-plan="business">Choose Business</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-secondary small mt-4">
+      <!--
+        TODO(billing/plans):
+        - Replace these static cards with real plan pricing + feature matrix.
+        - Wire "Choose" buttons to Stripe Checkout (or Shopify Billing) and persist the selected tier
+          into the user record (e.g. users.tier = 'pro'|'business').
+        - Once tiers exist, replace the current "master vs normal" gating with true plan-based gating.
+      -->
+      Pricing is a placeholder for now. Selecting a plan does not yet start billing.
+    </div>
+  </div>
+
+  <!--#include partials/page-body-end.html-->
+  <!--#include partials/footer.html-->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    // TODO(billing/plans): replace this with real checkout routing.
+    document.addEventListener('click', function (e) {
+      var btn = e && e.target && e.target.closest ? e.target.closest('[data-upgrade-plan]') : null;
+      if (!btn) return;
+      e.preventDefault();
+      var plan = btn.getAttribute('data-upgrade-plan') || '';
+      try { console.log('[upgrade] plan selected (TODO):', plan); } catch (_) {}
+      alert('TODO: Billing is not implemented yet. Selected plan: ' + plan);
+    });
+  </script>
+</body>
+</html>
+

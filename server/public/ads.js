@@ -97,6 +97,18 @@
   }
 
   var _panelLoaderActive = false;
+  var _panelLoaderSilent = false;
+  function allowOverlayLoader() {
+    try {
+      if (typeof window.__kexoIsPageLoaderEnabled === 'function') {
+        if (!window.__kexoIsPageLoaderEnabled('ads')) return false;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.__kexoSilentOverlayActive === 'function' && window.__kexoSilentOverlayActive()) return false;
+    } catch (_) {}
+    return true;
+  }
   function getPanelLoaderState() {
     var panel = document.querySelector('.page-body');
     var overlay = document.getElementById('page-body-loader');
@@ -108,11 +120,18 @@
   function showPanelLoader(title, step) {
     var st = getPanelLoaderState();
     if (!st.panel || !st.overlay) return;
+    if (!allowOverlayLoader()) {
+      try { if (typeof window.__kexoBeginGlobalReportLoading === 'function') window.__kexoBeginGlobalReportLoading(); } catch (_) {}
+      _panelLoaderActive = true;
+      _panelLoaderSilent = true;
+      return;
+    }
     st.panel.classList.add('report-building');
     st.overlay.classList.remove('is-hidden');
     if (title != null) patchText(st.titleEl, String(title));
     if (step != null) patchText(st.stepEl, String(step));
     _panelLoaderActive = true;
+    _panelLoaderSilent = false;
   }
 
   function setPanelLoaderStep(step, title) {
@@ -125,9 +144,16 @@
   function hidePanelLoader() {
     var st = getPanelLoaderState();
     if (!st.panel || !st.overlay) return;
+    if (_panelLoaderSilent) {
+      try { if (typeof window.__kexoEndGlobalReportLoading === 'function') window.__kexoEndGlobalReportLoading(); } catch (_) {}
+      _panelLoaderActive = false;
+      _panelLoaderSilent = false;
+      return;
+    }
     st.overlay.classList.add('is-hidden');
     st.panel.classList.remove('report-building');
     _panelLoaderActive = false;
+    _panelLoaderSilent = false;
   }
 
   /* ── sort state ──────────────────────────────────────────── */
