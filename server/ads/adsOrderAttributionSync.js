@@ -283,6 +283,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       sessionId: null,
       visitorCountryCode: null,
       visitorDeviceType: null,
+      visitorNetwork: null,
       attributionMethod: attributionMethod || (campaignId ? 'landing_site' : null),
       landingSite: landingSite || null,
       checkoutToken: row && row.checkout_token ? String(row.checkout_token).trim() : null,
@@ -365,7 +366,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   for (const ids of chunk(uniqueSessionIds, 800)) {
     const placeholders = ids.map(() => '?').join(',');
     const rows = await db.all(
-      `SELECT session_id, visitor_id, started_at, country_code, cf_country, ua_device_type, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, utm_source, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
+      `SELECT session_id, visitor_id, started_at, country_code, cf_country, ua_device_type, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network, utm_source, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
       ids
     );
     for (const r of rows || []) {
@@ -381,6 +382,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         bsCampaignId: r && r.bs_campaign_id != null ? String(r.bs_campaign_id).trim() : null,
         bsAdgroupId: r && r.bs_adgroup_id != null ? String(r.bs_adgroup_id).trim() : null,
         bsAdId: r && r.bs_ad_id != null ? String(r.bs_ad_id).trim() : null,
+        bsNetwork: r && r.bs_network != null ? String(r.bs_network).trim().toLowerCase() : null,
         utmSource: r && r.utm_source != null ? String(r.utm_source).trim().toLowerCase() : null,
         entryUrl: r && r.entry_url != null ? String(r.entry_url).trim() : null,
       });
@@ -412,6 +414,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
             bs_campaign_id,
             bs_adgroup_id,
             bs_ad_id,
+            bs_network,
             entry_url
           FROM sessions
           WHERE visitor_id = ?
@@ -436,6 +439,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         normalizeCountryCode(row && row.cf_country != null ? row.cf_country : null) ||
         null;
       const visitorDeviceType = (row && row.ua_device_type != null) ? String(row.ua_device_type).trim().toLowerCase() : null;
+      const visitorNetwork = (row && row.bs_network != null) ? String(row.bs_network).trim().toLowerCase() : null;
       return {
         sessionId: row && row.session_id != null ? String(row.session_id).trim() : null,
         startedAt: row.started_at != null ? Number(row.started_at) : null,
@@ -444,6 +448,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         bsAdId: row.bs_ad_id != null ? String(row.bs_ad_id).trim() : null,
         visitorCountryCode,
         visitorDeviceType,
+        visitorNetwork,
       };
     } catch (_) {
       return null;
@@ -465,6 +470,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     if (sess && !o.visitorDeviceType) {
       const dt = sess.uaDeviceType ? String(sess.uaDeviceType).trim().toLowerCase() : '';
       if (dt) o.visitorDeviceType = dt;
+    }
+    if (sess && !o.visitorNetwork) {
+      const nn = sess.bsNetwork ? String(sess.bsNetwork).trim().toLowerCase() : '';
+      if (nn) o.visitorNetwork = nn;
     }
 
     // If we already have campaign + source, we only needed the session linkage above.
@@ -519,6 +528,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         if (last.sessionId && !o.sessionId) o.sessionId = last.sessionId;
         if (last.visitorCountryCode && !o.visitorCountryCode) o.visitorCountryCode = last.visitorCountryCode;
         if (last.visitorDeviceType && !o.visitorDeviceType) o.visitorDeviceType = last.visitorDeviceType;
+        if (last.visitorNetwork && !o.visitorNetwork) o.visitorNetwork = last.visitorNetwork;
         o.attributionMethod = 'visitor.last_ads_click';
         attributed++;
         continue;
@@ -563,9 +573,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
-          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, updated_at)
+          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,
@@ -580,6 +590,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           session_id = COALESCE(NULLIF(EXCLUDED.session_id, ''), ads_orders_attributed.session_id),
           visitor_country_code = COALESCE(NULLIF(EXCLUDED.visitor_country_code, ''), ads_orders_attributed.visitor_country_code),
           visitor_device_type = COALESCE(NULLIF(EXCLUDED.visitor_device_type, ''), ads_orders_attributed.visitor_device_type),
+          visitor_network = COALESCE(NULLIF(EXCLUDED.visitor_network, ''), ads_orders_attributed.visitor_network),
           attribution_method = COALESCE(NULLIF(EXCLUDED.attribution_method, ''), ads_orders_attributed.attribution_method),
           landing_site = COALESCE(NULLIF(EXCLUDED.landing_site, ''), ads_orders_attributed.landing_site),
           updated_at = EXCLUDED.updated_at
@@ -602,6 +613,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.sessionId || null,
         o.visitorCountryCode || null,
         o.visitorDeviceType || null,
+        o.visitorNetwork || null,
         now,
       ]
     );

@@ -206,6 +206,15 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_device_type ON ads_orders_attributed(campaign_id, visitor_device_type)');
       },
     },
+    {
+      id: '010_ads_orders_attributed_visitor_network',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS visitor_network TEXT`);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_visitor_network ON ads_orders_attributed(visitor_network)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_network ON ads_orders_attributed(campaign_id, visitor_network)');
+      },
+    },
   ];
 
   let applied = 0;

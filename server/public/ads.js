@@ -378,6 +378,8 @@
     if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
     var devicesEl = document.getElementById('ads-modal-devices');
     if (devicesEl) devicesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
+    var networksEl = document.getElementById('ads-modal-networks');
+    if (networksEl) networksEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
     var dayEl = document.getElementById('ads-modal-dayparting');
     if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
 
@@ -385,6 +387,8 @@
     if (countryNoteEl) countryNoteEl.textContent = '';
     var deviceNoteEl = document.getElementById('ads-modal-device-note');
     if (deviceNoteEl) deviceNoteEl.textContent = '';
+    var networkNoteEl = document.getElementById('ads-modal-network-note');
+    if (networkNoteEl) networkNoteEl.textContent = '';
     var dayNoteEl = document.getElementById('ads-modal-dayparting-note');
     if (dayNoteEl) dayNoteEl.textContent = '';
 
@@ -407,6 +411,7 @@
           if (salesEl) salesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           if (countriesEl) countriesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           if (devicesEl) devicesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          if (networksEl) networksEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           return;
         }
@@ -426,6 +431,7 @@
 
         renderModalCountries(data.countries || null, currency);
         renderModalDevices(data.devices || null, currency);
+        renderModalNetworks(data.networks || null, currency);
         renderModalDayParting(data.dayParting || null, currency);
         renderModalSales(data.recentSales || [], currency);
       });
@@ -863,6 +869,9 @@
           '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Device performance</h4>' +
           '<div class="text-muted small" id="ads-modal-device-note" style="margin:-4px 0 8px;"></div>' +
           '<div id="ads-modal-devices"></div>' +
+          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Network</h4>' +
+          '<div class="text-muted small" id="ads-modal-network-note" style="margin:-4px 0 8px;"></div>' +
+          '<div id="ads-modal-networks"></div>' +
           '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Day parting</h4>' +
           '<div class="text-muted small" id="ads-modal-dayparting-note" style="margin:-4px 0 8px;"></div>' +
           '<div id="ads-modal-dayparting"></div>' +
@@ -1391,6 +1400,93 @@
     el.innerHTML = tableHtml;
   }
 
+  function renderModalNetworks(payload, currency) {
+    var el = document.getElementById('ads-modal-networks');
+    if (!el) return;
+    var noteEl = document.getElementById('ads-modal-network-note');
+
+    var data = (payload && typeof payload === 'object') ? payload : null;
+    var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+    var meta = (data && data.meta) ? data.meta : null;
+
+    if (noteEl) {
+      var parts = [];
+      if (meta && meta.sessionNetworkCoverage != null && meta.sessionsTotal != null) {
+        var covS = fmtPct(meta.sessionNetworkCoverage, 0);
+        var knownS = meta.sessionsWithNetwork != null ? fmtNum(meta.sessionsWithNetwork) : '—';
+        var totalS = meta.sessionsTotal != null ? fmtNum(meta.sessionsTotal) : '—';
+        parts.push('Session network coverage: ' + covS + ' (' + knownS + '/' + totalS + ')');
+      }
+      if (meta && meta.visitorNetworkCoverage != null && meta.ordersTotal != null) {
+        var covO = fmtPct(meta.visitorNetworkCoverage, 0);
+        var knownO = meta.ordersWithVisitorNetwork != null ? fmtNum(meta.ordersWithVisitorNetwork) : '—';
+        var totalO = meta.ordersTotal != null ? fmtNum(meta.ordersTotal) : '—';
+        parts.push('Order network coverage: ' + covO + ' (' + knownO + '/' + totalO + ' orders)');
+      }
+      parts.push('Codes: g=search, s=partners, d=display, x=pmax, ytv=youtube');
+      noteEl.textContent = parts.join(' • ');
+    }
+
+    if (!data) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No network breakdown available.</div>';
+      return;
+    }
+    if (data.ok === false) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Network breakdown unavailable.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No network breakdown in this period.</div>';
+      return;
+    }
+
+    var def = (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['ads-modal-networks-table']) || {};
+    var tableHtml = typeof buildKexoSettingsTable === 'function'
+      ? buildKexoSettingsTable({
+          tableClass: (def.tableClass || 'ads-modal-networks-table'),
+          columns: (def.columns || []).length ? def.columns : [
+            { header: 'Network', headerClass: '' },
+            { header: 'Sessions', headerClass: 'text-end' },
+            { header: 'Orders', headerClass: 'text-end' },
+            { header: 'CR%', headerClass: 'text-end' },
+            { header: 'Revenue', headerClass: 'text-end' }
+          ],
+          rows: rows,
+          renderRow: function (r) {
+            var code = r && r.network ? String(r.network).trim().toLowerCase() : '';
+            var label = r && r.label ? String(r.label).trim() : '';
+            var name = label || (code ? code : '—');
+            var title = label && code ? (label + ' (' + code + ')') : name;
+            return (
+              '<tr>' +
+                '<td>' + esc(title || '—') + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.sessions != null ? r.sessions : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+              '</tr>'
+            );
+          }
+        })
+      : (function () {
+          var h = '<table class="ads-modal-networks-table"><thead><tr><th>Network</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th></tr></thead><tbody>';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i] || {};
+            var code = r.network ? String(r.network).trim().toLowerCase() : '';
+            var label = r.label ? String(r.label).trim() : '';
+            var title = label && code ? (label + ' (' + code + ')') : (label || code || '—');
+            h += '<tr><td>' + esc(title) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.sessions || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td></tr>';
+          }
+          return h + '</tbody></table>';
+        })();
+
+    el.innerHTML = tableHtml;
+  }
+
   function renderModalDayParting(payload, currency) {
     var el = document.getElementById('ads-modal-dayparting');
     if (!el) return;
@@ -1528,13 +1624,14 @@
       '.ads-modal-range-select{min-width:170px;max-width:240px;}' +
       '.ads-modal-range-custom{min-width:210px;max-width:260px;}' +
       '.ads-modal-chart-wrap{position:relative;height:220px;margin-bottom:8px;}' +
-      '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-dayparting-table{width:100%;border-collapse:collapse;font-size:12px;}' +
-      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-dayparting-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
-      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-dayparting-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
-      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td{border-bottom:none;}' +
+      '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-networks-table,.ads-modal-dayparting-table{width:100%;border-collapse:collapse;font-size:12px;}' +
+      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-networks-table thead th,.ads-modal-dayparting-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
+      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-networks-table tbody td,.ads-modal-dayparting-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
+      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-networks-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td{border-bottom:none;}' +
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
       '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:right;}' +
       '.ads-modal-devices-table th:not(:first-child),.ads-modal-devices-table td:not(:first-child){text-align:right;}' +
+      '.ads-modal-networks-table th:not(:first-child),.ads-modal-networks-table td:not(:first-child){text-align:right;}' +
       '.ads-modal-dayparting-table th:not(:first-child),.ads-modal-dayparting-table td:not(:first-child){text-align:right;}' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +

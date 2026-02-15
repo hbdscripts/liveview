@@ -447,6 +447,16 @@
         { header: 'ROAS', headerClass: 'text-end' }
       ]
     },
+    'ads-modal-networks-table': {
+      tableClass: 'ads-modal-networks-table',
+      columns: [
+        { header: 'Network', headerClass: '' },
+        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Orders', headerClass: 'text-end' },
+        { header: 'CR%', headerClass: 'text-end' },
+        { header: 'Revenue', headerClass: 'text-end' }
+      ]
+    },
     'ads-modal-dayparting-table': {
       tableClass: 'ads-modal-dayparting-table',
       columns: [

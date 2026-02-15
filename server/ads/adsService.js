@@ -799,6 +799,146 @@ async function getCampaignDetail(options = {}) {
     devices = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'devices_failed', rows: [], meta: { startYmd, endYmd } };
   }
 
+  // Network performance: ValueTrack `{network}` (captured into sessions.bs_network) + KEXO-attributed orders/revenue by visitor_network.
+  let networks = {
+    ok: true,
+    rows: [],
+    meta: {
+      startYmd,
+      endYmd,
+      sessionsTotal: 0,
+      sessionsWithNetwork: 0,
+      sessionNetworkCoverage: null,
+      ordersTotal: 0,
+      ordersWithVisitorNetwork: 0,
+      visitorNetworkCoverage: null,
+    }
+  };
+  try {
+    function normalizeNetworkKey(raw) {
+      const s = raw != null ? String(raw).trim().toLowerCase() : '';
+      if (!s) return '_unknown_';
+      // ValueTrack codes: g/s/d/x/ytv/vp/gtv/e...
+      return s.length > 16 ? s.slice(0, 16) : s;
+    }
+    function labelFor(code) {
+      const c = normalizeNetworkKey(code);
+      if (c === 'g') return 'Google search';
+      if (c === 's') return 'Search partners';
+      if (c === 'd') return 'Display';
+      if (c === 'x') return 'Performance Max';
+      if (c === 'ytv') return 'YouTube';
+      if (c === 'vp') return 'Video partners';
+      if (c === 'gtv') return 'Google TV';
+      if (c === 'e') return 'App (engagement)';
+      if (c === '_unknown_') return 'Unknown';
+      return 'Other';
+    }
+
+    const byNetwork = new Map();
+    function ensure(key) {
+      const k = normalizeNetworkKey(key);
+      if (!byNetwork.has(k)) {
+        byNetwork.set(k, { network: k, label: labelFor(k), sessions: 0, orders: 0, revenue: 0, cr: null });
+      }
+      return byNetwork.get(k);
+    }
+
+    // Sessions by network for this campaign (main DB).
+    let sessRows = [];
+    try {
+      const db = getDb();
+      sessRows = await db.all(
+        `
+          SELECT
+            COALESCE(NULLIF(TRIM(bs_network), ''), '_unknown_') AS network,
+            COUNT(*) AS sessions
+          FROM sessions
+          WHERE started_at >= ? AND started_at < ?
+            AND bs_campaign_id = ?
+            AND LOWER(TRIM(COALESCE(bs_source, ''))) = ?
+          GROUP BY COALESCE(NULLIF(TRIM(bs_network), ''), '_unknown_')
+        `,
+        [bounds.start, bounds.end, campaignId, 'googleads']
+      );
+    } catch (e) {
+      // Non-fatal: if sessions query fails, still render order-based network rows.
+      sessRows = [];
+    }
+
+    let sessionsTotal = 0;
+    let sessionsWithNetwork = 0;
+    for (const r of sessRows || []) {
+      const key = normalizeNetworkKey(r && r.network != null ? r.network : null);
+      const s = r && r.sessions != null ? Number(r.sessions) || 0 : 0;
+      const it = ensure(key);
+      it.sessions += s;
+      sessionsTotal += s;
+      if (key && key !== '_unknown_') sessionsWithNetwork += s;
+    }
+
+    // Revenue/orders by visitor network (Ads DB).
+    const ordRows = await adsDb.all(
+      `
+        SELECT
+          COALESCE(NULLIF(TRIM(visitor_network), ''), '_unknown_') AS network,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?
+          AND source = ?
+          AND campaign_id = ?
+        GROUP BY COALESCE(NULLIF(TRIM(visitor_network), ''), '_unknown_')
+      `,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+
+    let ordersTotal = 0;
+    let ordersWithVisitorNetwork = 0;
+    for (const r of ordRows || []) {
+      const key = normalizeNetworkKey(r && r.network != null ? r.network : null);
+      const ord = r && r.orders != null ? Number(r.orders) || 0 : 0;
+      const rev = r && r.revenue_gbp != null ? Number(r.revenue_gbp) || 0 : 0;
+      const it = ensure(key);
+      it.orders += ord;
+      it.revenue += rev;
+      ordersTotal += ord;
+      if (key && key !== '_unknown_') ordersWithVisitorNetwork += ord;
+    }
+
+    const rows = Array.from(byNetwork.values()).map((it) => {
+      const sessions = Number(it.sessions) || 0;
+      const orders = Number(it.orders) || 0;
+      const revenue = Number(it.revenue) || 0;
+      return {
+        network: it.network === '_unknown_' ? '' : it.network,
+        label: it.label || labelFor(it.network),
+        sessions: Math.floor(sessions),
+        orders: Math.floor(orders),
+        revenue: Math.round(revenue * 100) / 100,
+        cr: sessions > 0 ? (orders / sessions) : null,
+      };
+    });
+    rows.sort((a, b) => (b.revenue || 0) - (a.revenue || 0) || (b.sessions || 0) - (a.sessions || 0) || (b.orders || 0) - (a.orders || 0));
+
+    networks = {
+      ok: true,
+      rows,
+      meta: {
+        startYmd,
+        endYmd,
+        sessionsTotal: Math.floor(sessionsTotal || 0),
+        sessionsWithNetwork: Math.floor(sessionsWithNetwork || 0),
+        sessionNetworkCoverage: sessionsTotal > 0 ? (sessionsWithNetwork / sessionsTotal) : null,
+        ordersTotal: Math.floor(ordersTotal || 0),
+        ordersWithVisitorNetwork: Math.floor(ordersWithVisitorNetwork || 0),
+        visitorNetworkCoverage: ordersTotal > 0 ? (ordersWithVisitorNetwork / ordersTotal) : null,
+      }
+    };
+  } catch (e) {
+    networks = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'networks_failed', rows: [], meta: { startYmd, endYmd } };
+  }
+
   // Day parting: group by hour-of-day in admin/store timezone.
   let dayParting = { ok: true, rows: [], meta: { timeZone, bestHour: null, bestRoas: null } };
   try {
@@ -898,6 +1038,7 @@ async function getCampaignDetail(options = {}) {
     chart,
     countries,
     devices,
+    networks,
     dayParting,
     recentSales: recentSales.slice(0, 10),
   };
