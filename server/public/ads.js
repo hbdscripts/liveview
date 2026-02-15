@@ -36,6 +36,15 @@
     return x.toFixed(2) + 'x';
   }
 
+  function fmtPct(frac, digits) {
+    var x = frac == null ? null : Number(frac);
+    if (x == null || !Number.isFinite(x)) return '—';
+    var d = digits == null ? 1 : Number(digits);
+    if (!Number.isFinite(d)) d = 1;
+    d = Math.max(0, Math.min(3, Math.round(d)));
+    return (x * 100).toFixed(d) + '%';
+  }
+
   function fmtTime(tsMs) {
     if (!tsMs) return '—';
     try { return new Date(Number(tsMs)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
@@ -803,6 +812,159 @@
     document.body.classList.add('modal-open');
   }
 
+  var _auditInFlight = null;
+  function ensureAuditModalDom() {
+    if (document.getElementById('ads-audit-modal')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'modal modal-blur';
+    wrap.id = 'ads-audit-modal';
+    wrap.tabIndex = -1;
+    wrap.style.display = 'none';
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.innerHTML =
+      '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog">' +
+        '<div class="modal-content">' +
+          '<div class="modal-header">' +
+            '<h5 class="modal-title">Audit &amp; Coverage</h5>' +
+            '<div class="ms-auto d-flex align-items-center gap-2">' +
+              '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-audit-refresh" title="Refresh" aria-label="Refresh">' +
+                '<i class="fa-light fa-rotate-right" aria-hidden="true"></i>' +
+              '</button>' +
+              '<button type="button" class="btn-close" id="ads-audit-close" aria-label="Close"></button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="modal-body">' +
+            '<div id="ads-audit-body"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+
+    var closeBtn = document.getElementById('ads-audit-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeAuditModal);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) closeAuditModal(); });
+
+    var refreshBtn = document.getElementById('ads-audit-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        fetchAndRenderAudit({ force: true });
+      });
+    }
+
+    // One-time ESC handler.
+    try {
+      if (!window.__adsAuditEscBound) {
+        window.__adsAuditEscBound = true;
+        document.addEventListener('keydown', function (e) {
+          if (!e || e.key !== 'Escape') return;
+          closeAuditModal();
+        });
+      }
+    } catch (_) {}
+  }
+
+  function closeAuditModal() {
+    var el = document.getElementById('ads-audit-modal');
+    if (!el) return;
+    el.classList.remove('show');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  }
+
+  function renderAuditBody(data) {
+    var body = document.getElementById('ads-audit-body');
+    if (!body) return;
+    if (!data || !data.ok) {
+      body.innerHTML = '<div class="text-muted small" style="padding:10px;">No audit data available.</div>';
+      return;
+    }
+
+    var ads = data.googleAds || {};
+    var kexo = data.kexo || {};
+    var orders = data.orders || {};
+    var cov = data.coverage || {};
+
+    var h = '';
+    h += '<div class="text-muted small" style="margin-bottom:10px;">Range: <strong>' + esc(data.rangeKey || 'today') + '</strong></div>';
+
+    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">';
+    h += '<div><strong>Click → session coverage:</strong> ' + esc(fmtPct(cov.clickToSession, 1)) +
+      ' <span class="text-muted">(' + esc(fmtNum(kexo.sessionsWithClickId)) + ' sessions with click id / ' + esc(fmtNum(ads.clicks)) + ' Google clicks)</span></div>';
+    h += '<div><strong>Session mapping coverage:</strong> ' + esc(fmtPct(cov.sessionMapping, 1)) +
+      ' <span class="text-muted">(' + esc(fmtNum(kexo.sessionsWithCampaignAndClickId)) + ' sessions mapped to campaign / ' + esc(fmtNum(kexo.sessionsWithClickId)) + ' sessions with click id)</span></div>';
+    h += '<div><strong>Order attribution coverage:</strong> ' + esc(fmtPct(cov.orderAttribution, 1)) +
+      ' <span class="text-muted">(' + esc(fmtNum(orders.ordersWithCampaignId)) + ' orders with campaign id / ' + esc(fmtNum(orders.ordersTotal)) + ' attributed orders)</span></div>';
+    if (cov.droppedClicksEstimate != null) {
+      h += '<div class="text-muted small">Dropped clicks estimate: ' + esc(fmtNum(cov.droppedClicksEstimate)) + '</div>';
+    }
+    h += '</div>';
+
+    h += '<div class="text-muted small" style="margin:12px 0 6px;">Raw counts</div>';
+    h += '<table class="table table-sm table-vcenter"><tbody>';
+    h += '<tr><td class="text-muted">Google spend (GBP)</td><td class="text-end">' + esc(fmtMoney(ads.spendGbp, 'GBP')) + '</td></tr>';
+    h += '<tr><td class="text-muted">Google clicks</td><td class="text-end">' + esc(fmtNum(ads.clicks)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Google impressions</td><td class="text-end">' + esc(fmtNum(ads.impressions)) + '</td></tr>';
+    h += '<tr><td class="text-muted">KEXO human sessions</td><td class="text-end">' + esc(fmtNum(kexo.humanSessions)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Sessions with gclid</td><td class="text-end">' + esc(fmtNum(kexo.sessionsWithGclid)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Sessions with gbraid</td><td class="text-end">' + esc(fmtNum(kexo.sessionsWithGbraid)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Sessions with wbraid</td><td class="text-end">' + esc(fmtNum(kexo.sessionsWithWbraid)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Sessions with any click id</td><td class="text-end">' + esc(fmtNum(kexo.sessionsWithClickId)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Sessions with campaign id</td><td class="text-end">' + esc(fmtNum(kexo.sessionsWithCampaignId)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Attributed orders (Ads DB)</td><td class="text-end">' + esc(fmtNum(orders.ordersTotal)) + '</td></tr>';
+    h += '<tr><td class="text-muted">Attributed revenue (GBP)</td><td class="text-end">' + esc(fmtMoney(orders.revenueGbp, 'GBP')) + '</td></tr>';
+    h += '</tbody></table>';
+
+    if (Array.isArray(data.notes) && data.notes.length) {
+      h += '<div class="text-muted small" style="margin:12px 0 6px;">Notes</div>';
+      h += '<ul class="text-muted small" style="margin:0;padding-left:18px;">';
+      for (var i = 0; i < data.notes.length; i++) {
+        h += '<li>' + esc(String(data.notes[i] || '')) + '</li>';
+      }
+      h += '</ul>';
+    }
+
+    h += '<div class="text-muted small" style="margin:14px 0 6px;">Diagnostics</div>';
+    h += '<pre class="ads-errors-pre">' + esc(JSON.stringify(data, null, 2)) + '</pre>';
+
+    body.innerHTML = h;
+  }
+
+  function fetchAndRenderAudit(options) {
+    ensureAuditModalDom();
+    var force = !!(options && options.force);
+    var body = document.getElementById('ads-audit-body');
+    if (body) body.innerHTML = '<div class="text-muted small" style="padding:10px;">Loading…</div>';
+    if (_auditInFlight) return _auditInFlight;
+    var rangeKey = computeRangeKey();
+    var bust = force ? ('&_=' + Date.now()) : '';
+    _auditInFlight = fetchJson('/api/ads/audit?range=' + encodeURIComponent(rangeKey) + bust)
+      .then(function (data) {
+        renderAuditBody(data);
+        return data;
+      })
+      .catch(function () {
+        if (body) body.innerHTML = '<div class="text-danger small" style="padding:10px;">Could not load audit data.</div>';
+        return null;
+      })
+      .finally(function () {
+        _auditInFlight = null;
+      });
+    return _auditInFlight;
+  }
+
+  function openAuditModal() {
+    ensureAuditModalDom();
+    var modal = document.getElementById('ads-audit-modal');
+    if (!modal) return;
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    fetchAndRenderAudit({ force: true });
+  }
+
   function openCampaignModal(campaignId, campaignName) {
     ensureModalDom();
     var modal = document.getElementById('ads-campaign-modal');
@@ -1067,6 +1229,7 @@
     if (rr) {
       if (rr.ok === false) push('Refresh', rr.error || 'Refresh failed.');
       if (rr.spend && rr.spend.ok === false) push('Spend sync', rr.spend.error || 'Spend sync failed.');
+      if (rr.geo && rr.geo.ok === false) push('Geo sync', rr.geo.error || 'Geo sync failed.');
       if (rr.gclidBackfill && rr.gclidBackfill.ok === false) push('GCLID backfill', rr.gclidBackfill.error || 'GCLID backfill failed.');
       if (rr.orderAttribution && rr.orderAttribution.ok === false) push('Order attribution', rr.orderAttribution.error || 'Order attribution failed.');
     }
@@ -1190,6 +1353,9 @@
       '</span>' +
       '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-refresh-btn" title="Refresh metrics" aria-label="Refresh"' + (_isRefreshing ? ' disabled' : '') + '>' +
         refreshSvg(_isRefreshing ? 'ads-spin' : '', 'ads-refresh-icon') +
+      '</button>' +
+      '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-audit-btn" title="Audit coverage" aria-label="Audit coverage">' +
+        '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
       '</button>';
 
     var rbtn = document.getElementById('ads-refresh-btn');
@@ -1202,6 +1368,12 @@
     if (ebtn) {
       ebtn.addEventListener('click', function () {
         try { openErrorsModal(_lastErrors, _lastErrorsPayload); } catch (_) {}
+      });
+    }
+    var abtn = document.getElementById('ads-audit-btn');
+    if (abtn) {
+      abtn.addEventListener('click', function () {
+        try { openAuditModal(); } catch (_) {}
       });
     }
   }
@@ -1432,12 +1604,34 @@
     }
   }
 
+  function normalizeRangeKeyForApi(key) {
+    var k = (key == null ? '' : String(key)).trim().toLowerCase();
+    // UI uses friendly labels (7days/14days/30days) but APIs use 7d/14d/30d.
+    if (k === '7days') return '7d';
+    if (k === '14days') return '14d';
+    if (k === '30days') return '30d';
+    return k;
+  }
+
   function computeRangeKey() {
+    // Prefer the global date selector so Ads responds to range changes.
+    try {
+      var sel = document.getElementById('global-date-select');
+      if (sel && sel.value) {
+        var v = normalizeRangeKeyForApi(sel.value);
+        if (v === 'live' || v === 'sales' || v === '1h') return 'today';
+        if (!v || v === 'custom') return 'today';
+        return v;
+      }
+    } catch (_) {}
+
+    // Legacy fallbacks (older pages).
     try { if (typeof getStatsRange === 'function') return String(getStatsRange() || 'today'); } catch (_) {}
     try {
       if (typeof dateRange !== 'undefined') {
-        var r = String(dateRange || 'today');
-        if (r === 'live' || r === '1h') return 'today';
+        var r = normalizeRangeKeyForApi(dateRange);
+        if (r === 'live' || r === 'sales' || r === '1h') return 'today';
+        if (!r || r === 'custom') return 'today';
         return r;
       }
     } catch (_) {}

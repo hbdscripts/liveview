@@ -415,6 +415,214 @@ async function syncGoogleAdsSpendHourly(options = {}) {
   }
 }
 
+async function syncGoogleAdsGeoDaily(options = {}) {
+  try {
+    const rangeStartTs = options.rangeStartTs != null ? Number(options.rangeStartTs) : null;
+    const rangeEndTs = options.rangeEndTs != null ? Number(options.rangeEndTs) : null;
+
+    if (!rangeStartTs || !rangeEndTs || !Number.isFinite(rangeStartTs) || !Number.isFinite(rangeEndTs)) {
+      return { ok: false, error: 'Missing rangeStartTs/rangeEndTs' };
+    }
+
+    const adsDb = getAdsDb();
+    if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
+
+    const developerToken = (config.googleAdsDeveloperToken || '').trim();
+    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
+    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
+    if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
+
+    if (!config.googleClientId || !config.googleClientSecret) {
+      return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
+    }
+
+    const cfg = await getGoogleAdsConfig();
+    const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
+    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+
+    const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
+
+    const meta = await fetchCustomerMeta({ customerId, loginCustomerId, developerToken, accessToken });
+    if (!meta || !meta.ok) {
+      return {
+        ok: false,
+        stage: 'customer_meta',
+        error: meta && meta.error ? String(meta.error) : 'Google Ads customer meta query failed',
+        attempts: meta && meta.attempts ? meta.attempts : [],
+      };
+    }
+
+    const accountTz = meta.timeZone || 'UTC';
+    const accountCur = fx.normalizeCurrency(meta.currencyCode) || 'GBP';
+
+    const startYmd = fmtYmdInTz(rangeStartTs, accountTz);
+    const endYmd = fmtYmdInTz(rangeEndTs - 1, accountTz);
+    if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
+
+    const query =
+      "SELECT segments.date, campaign.id, campaign.name, geographic_view.country_criterion_id, geographic_view.location_type, " +
+      "metrics.cost_micros, metrics.clicks, metrics.impressions " +
+      "FROM geographic_view " +
+      `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}'`;
+
+    const out = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint: meta.apiVersion || '' });
+    if (!out || !out.ok) {
+      return {
+        ok: false,
+        stage: 'geo_query',
+        error: out && out.error ? String(out.error) : 'Google Ads geographic_view query failed',
+        attempts: out && out.attempts ? out.attempts : [],
+      };
+    }
+
+    const rows = out.results || [];
+    const ratesToGbp = await fx.getRatesToGbp();
+
+    const grouped = new Map();
+    const criterionIds = new Set();
+    for (const r of rows || []) {
+      const seg = r && r.segments ? r.segments : null;
+      const dayYmd = seg && seg.date ? String(seg.date) : '';
+      const camp = r && r.campaign ? r.campaign : null;
+      const gv = r && r.geographicView ? r.geographicView : null;
+      const metrics = r && r.metrics ? r.metrics : null;
+
+      const campaignId = camp && camp.id != null ? String(camp.id) : '';
+      const campaignName = camp && camp.name != null ? String(camp.name) : '';
+      const countryCriterionIdRaw = gv && gv.countryCriterionId != null ? String(gv.countryCriterionId) : '';
+      const countryCriterionId = countryCriterionIdRaw.replace(/[^0-9]/g, '');
+      const locationType = gv && gv.locationType ? String(gv.locationType) : '';
+      if (!dayYmd || !campaignId || !countryCriterionId || !locationType) continue;
+
+      const costMicros = metrics && metrics.costMicros != null ? Number(metrics.costMicros) : 0;
+      const clicks = metrics && metrics.clicks != null ? Number(metrics.clicks) : 0;
+      const impressions = metrics && metrics.impressions != null ? Number(metrics.impressions) : 0;
+
+      const cost = Number.isFinite(costMicros) ? costMicros : 0;
+      const cl = Number.isFinite(clicks) ? clicks : 0;
+      const im = Number.isFinite(impressions) ? impressions : 0;
+
+      const key = dayYmd + '\0' + campaignId + '\0' + countryCriterionId + '\0' + locationType;
+      const cur = grouped.get(key) || {
+        dayYmd,
+        campaignId,
+        campaignName: '',
+        countryCriterionId,
+        locationType,
+        costMicros: 0,
+        clicks: 0,
+        impressions: 0,
+      };
+      if (campaignName && !cur.campaignName) cur.campaignName = campaignName;
+      cur.costMicros += cost;
+      cur.clicks += cl;
+      cur.impressions += im;
+      grouped.set(key, cur);
+      criterionIds.add(countryCriterionId);
+    }
+
+    function chunkArray(list, size) {
+      const arr = Array.isArray(list) ? list : [];
+      const n = Math.max(1, Math.min(200, Math.floor(Number(size) || 0) || 0)) || 80;
+      const out = [];
+      for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+      return out;
+    }
+
+    // Fetch geo_target_constant mappings (criterion id -> ISO2 country code)
+    const idToCountryCode = new Map();
+    const idsList = Array.from(criterionIds).map((id) => String(id).replace(/[^0-9]/g, '')).filter(Boolean);
+    for (const chunk of chunkArray(idsList, 80)) {
+      if (!chunk.length) continue;
+      const query =
+        "SELECT geo_target_constant.id, geo_target_constant.country_code, geo_target_constant.name, geo_target_constant.target_type " +
+        "FROM geo_target_constant " +
+        `WHERE geo_target_constant.id IN (${chunk.join(', ')})`;
+      const out2 = await googleAdsSearch({ customerId, loginCustomerId, developerToken, accessToken, query, apiVersionHint: out.apiVersion || meta.apiVersion || '' });
+      if (!out2 || !out2.ok) {
+        return {
+          ok: false,
+          stage: 'geo_target_constant',
+          error: out2 && out2.error ? String(out2.error) : 'geo_target_constant query failed',
+          attempts: out2 && out2.attempts ? out2.attempts : [],
+        };
+      }
+      for (const r of out2.results || []) {
+        const gtc = r && r.geoTargetConstant ? r.geoTargetConstant : null;
+        const id = gtc && gtc.id != null ? String(gtc.id).replace(/[^0-9]/g, '') : '';
+        const cc = gtc && gtc.countryCode ? String(gtc.countryCode).trim().toUpperCase() : '';
+        if (!id) continue;
+        if (cc && cc.length === 2) idToCountryCode.set(id, cc);
+      }
+    }
+
+    const now = Date.now();
+    let upserts = 0;
+    for (const v of grouped.values()) {
+      const spend = (Number(v.costMicros) || 0) / 1_000_000;
+      const spendGbp = fx.convertToGbp(spend, accountCur, ratesToGbp);
+      const spendGbpRounded = (typeof spendGbp === 'number' && Number.isFinite(spendGbp)) ? Math.round(spendGbp * 100) / 100 : 0;
+      const clicks = Math.max(0, Math.floor(Number(v.clicks) || 0));
+      const impressions = Math.max(0, Math.floor(Number(v.impressions) || 0));
+      const costMicros = Math.max(0, Math.floor(Number(v.costMicros) || 0));
+      const countryCode = idToCountryCode.get(String(v.countryCriterionId)) || null;
+
+      await adsDb.run(
+        `
+          INSERT INTO google_ads_geo_daily
+            (provider, day_ymd, customer_id, campaign_id, campaign_name, country_criterion_id, country_code, location_type, cost_micros, spend_gbp, clicks, impressions, updated_at)
+          VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (provider, day_ymd, campaign_id, country_criterion_id, location_type) DO UPDATE SET
+            customer_id = EXCLUDED.customer_id,
+            campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_geo_daily.campaign_name),
+            country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), google_ads_geo_daily.country_code),
+            cost_micros = EXCLUDED.cost_micros,
+            spend_gbp = EXCLUDED.spend_gbp,
+            clicks = EXCLUDED.clicks,
+            impressions = EXCLUDED.impressions,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [
+          'google_ads',
+          v.dayYmd,
+          customerId,
+          v.campaignId,
+          v.campaignName || '',
+          v.countryCriterionId,
+          countryCode,
+          v.locationType,
+          costMicros,
+          spendGbpRounded,
+          clicks,
+          impressions,
+          now,
+        ]
+      );
+      upserts++;
+    }
+
+    return {
+      ok: true,
+      rangeStartTs,
+      rangeEndTs,
+      provider: 'google_ads',
+      apiVersion: out.apiVersion || meta.apiVersion || null,
+      customerId,
+      loginCustomerId: loginCustomerId || null,
+      accountTimeZone: accountTz,
+      accountCurrency: accountCur,
+      scannedRows: Array.isArray(rows) ? rows.length : 0,
+      scannedGroups: grouped.size,
+      mappedCountries: idToCountryCode.size,
+      upserts,
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 380) : 'geo_sync_failed' };
+  }
+}
+
 function extractGclid(url) {
   if (!url) return null;
   try {
@@ -724,5 +932,6 @@ async function backfillCampaignIdsFromGclid(options = {}) {
 
 module.exports = {
   syncGoogleAdsSpendHourly,
+  syncGoogleAdsGeoDaily,
   backfillCampaignIdsFromGclid,
 };

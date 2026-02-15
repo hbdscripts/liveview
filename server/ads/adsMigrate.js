@@ -132,6 +132,45 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_gclid ON ads_orders_attributed(gclid)');
       },
     },
+    {
+      id: '006_google_ads_geo_daily',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_geo_daily (
+            provider TEXT NOT NULL,
+            day_ymd TEXT NOT NULL,
+            customer_id TEXT,
+            campaign_id TEXT NOT NULL,
+            campaign_name TEXT,
+            country_criterion_id BIGINT NOT NULL,
+            country_code TEXT,
+            location_type TEXT NOT NULL,
+            cost_micros BIGINT NOT NULL DEFAULT 0,
+            spend_gbp DOUBLE PRECISION NOT NULL DEFAULT 0,
+            clicks INTEGER NOT NULL DEFAULT 0,
+            impressions INTEGER NOT NULL DEFAULT 0,
+            updated_at BIGINT,
+            PRIMARY KEY (provider, day_ymd, campaign_id, country_criterion_id, location_type)
+          )
+        `);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gagd_day ON google_ads_geo_daily(day_ymd)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gagd_campaign ON google_ads_geo_daily(campaign_id)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gagd_country ON google_ads_geo_daily(country_code)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gagd_campaign_day ON google_ads_geo_daily(campaign_id, day_ymd)');
+      },
+    },
+    {
+      id: '007_ads_orders_attributed_session_country',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS session_id TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS visitor_country_code TEXT`);
+
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_session_id ON ads_orders_attributed(session_id)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_visitor_country ON ads_orders_attributed(visitor_country_code)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_country ON ads_orders_attributed(campaign_id, visitor_country_code)');
+      },
+    },
   ];
 
   let applied = 0;

@@ -4,7 +4,7 @@ const adsService = require('../ads/adsService');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
-const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
+const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, backfillCampaignIdsFromGclid } = require('../ads/googleAdsSpendSync');
 const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
 
 const router = express.Router();
@@ -75,6 +75,20 @@ router.get('/summary', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.summary', rangeKey } });
     console.error('[ads.summary]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/audit', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=15');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const rangeKey = req && req.query ? req.query.range : '';
+    const out = await adsService.getAudit({ rangeKey });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.audit' } });
+    console.error('[ads.audit]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
@@ -190,6 +204,14 @@ router.post('/refresh', async (req, res) => {
       spend = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'spend_sync_failed' };
     }
 
+    // 1b. Sync geo (country) metrics from Google Ads API
+    let geo = null;
+    try {
+      geo = await syncGoogleAdsGeoDaily({ rangeStartTs: bounds.start, rangeEndTs: bounds.end });
+    } catch (e) {
+      geo = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'geo_sync_failed' };
+    }
+
     // 2. Backfill campaign IDs on sessions via gclid → click_view mapping
     let gclidBackfill = null;
     try {
@@ -215,7 +237,7 @@ router.post('/refresh', async (req, res) => {
       orderAttribution = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'order_attribution_failed' };
     }
 
-    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, gclidBackfill, orderAttribution });
+    res.json({ ok: true, rangeKey: rangeNorm, rangeStartTs: bounds.start, rangeEndTs: bounds.end, spend, geo, gclidBackfill, orderAttribution });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.refresh' } });
     console.error('[ads.refresh]', err);

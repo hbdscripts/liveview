@@ -1,9 +1,10 @@
 const store = require('../store');
 const config = require('../config');
+const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig } = require('./adsStore');
 
-const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', 'month']);
+const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 
 function normalizeRangeKey(raw) {
   const r = raw != null ? String(raw).trim().toLowerCase() : '';
@@ -12,6 +13,27 @@ function normalizeRangeKey(raw) {
   const isRangeKey = /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(r);
   if (ALLOWED_RANGE.has(r) || isDayKey || isRangeKey) return r;
   return 'today';
+}
+
+function fmtYmdInTz(tsMs, timeZone) {
+  try {
+    const d = new Date(Number(tsMs));
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const map = {};
+    for (const p of parts) map[p.type] = p.value;
+    const y = map.year;
+    const m = map.month;
+    const day = map.day;
+    if (!y || !m || !day) return null;
+    return `${y}-${m}-${day}`;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function getStatus() {
@@ -273,6 +295,168 @@ async function getSummary(options = {}) {
   };
 }
 
+async function getAudit(options = {}) {
+  const rangeKey = normalizeRangeKey(options.rangeKey);
+  const now = Date.now();
+  const timeZone = store.resolveAdminTimeZone();
+  const bounds = store.getRangeBounds(rangeKey, now, timeZone);
+
+  const source = options.source != null ? String(options.source).trim().toLowerCase() : 'googleads';
+  const provider = options.provider != null ? String(options.provider).trim().toLowerCase() : 'google_ads';
+
+  // 1) Google Ads totals (Ads DB)
+  const adsDb = getAdsDb();
+  let adsTotals = {
+    spendGbp: 0,
+    clicks: 0,
+    impressions: 0,
+    conversions: 0,
+    conversionsValueGbp: 0,
+    ok: !!adsDb,
+    note: adsDb ? null : 'ADS_DB_URL not set.',
+  };
+  if (adsDb) {
+    try {
+      const row = await adsDb.get(
+        `
+          SELECT
+            COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+            COALESCE(SUM(clicks), 0) AS clicks,
+            COALESCE(SUM(impressions), 0) AS impressions,
+            COALESCE(SUM(conversions), 0) AS conversions,
+            COALESCE(SUM(conversions_value_gbp), 0) AS conversions_value_gbp
+          FROM google_ads_spend_hourly
+          WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+            AND provider = ?
+        `,
+        [bounds.start, bounds.end, provider]
+      );
+      adsTotals = {
+        ...adsTotals,
+        spendGbp: row && row.spend_gbp != null ? Number(row.spend_gbp) || 0 : 0,
+        clicks: row && row.clicks != null ? Number(row.clicks) || 0 : 0,
+        impressions: row && row.impressions != null ? Number(row.impressions) || 0 : 0,
+        conversions: row && row.conversions != null ? Number(row.conversions) || 0 : 0,
+        conversionsValueGbp: row && row.conversions_value_gbp != null ? Number(row.conversions_value_gbp) || 0 : 0,
+      };
+    } catch (e) {
+      adsTotals = { ...adsTotals, ok: false, note: e && e.message ? String(e.message).slice(0, 220) : 'ads_totals_failed' };
+    }
+  }
+
+  // 2) KEXO sessions (main DB)
+  const db = getDb();
+  let kexo = {
+    ok: true,
+    humanSessions: 0,
+    sessionsWithGclid: 0,
+    sessionsWithGbraid: 0,
+    sessionsWithWbraid: 0,
+    sessionsWithClickId: 0,
+    sessionsWithCampaignId: 0,
+    sessionsWithCampaignAndClickId: 0,
+    sessionsWithGoogleCampaignId: 0,
+  };
+  try {
+    const row = await db.get(
+      `
+        SELECT
+          COUNT(*) AS human_sessions,
+          COALESCE(SUM(CASE WHEN entry_url LIKE '%gclid=%' THEN 1 ELSE 0 END), 0) AS sessions_with_gclid,
+          COALESCE(SUM(CASE WHEN entry_url LIKE '%gbraid=%' THEN 1 ELSE 0 END), 0) AS sessions_with_gbraid,
+          COALESCE(SUM(CASE WHEN entry_url LIKE '%wbraid=%' THEN 1 ELSE 0 END), 0) AS sessions_with_wbraid,
+          COALESCE(SUM(CASE WHEN (entry_url LIKE '%gclid=%' OR entry_url LIKE '%gbraid=%' OR entry_url LIKE '%wbraid=%') THEN 1 ELSE 0 END), 0) AS sessions_with_click_id,
+          COALESCE(SUM(CASE WHEN NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS sessions_with_campaign_id,
+          COALESCE(SUM(CASE WHEN NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL AND (entry_url LIKE '%gclid=%' OR entry_url LIKE '%gbraid=%' OR entry_url LIKE '%wbraid=%') THEN 1 ELSE 0 END), 0) AS sessions_with_campaign_and_click_id,
+          COALESCE(SUM(CASE WHEN NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL AND LOWER(TRIM(COALESCE(bs_source, ''))) LIKE '%google%' THEN 1 ELSE 0 END), 0) AS sessions_with_google_campaign_id
+        FROM sessions
+        WHERE started_at >= ? AND started_at < ?
+          AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+      `,
+      [bounds.start, bounds.end]
+    );
+    kexo = {
+      ...kexo,
+      humanSessions: row && row.human_sessions != null ? Number(row.human_sessions) || 0 : 0,
+      sessionsWithGclid: row && row.sessions_with_gclid != null ? Number(row.sessions_with_gclid) || 0 : 0,
+      sessionsWithGbraid: row && row.sessions_with_gbraid != null ? Number(row.sessions_with_gbraid) || 0 : 0,
+      sessionsWithWbraid: row && row.sessions_with_wbraid != null ? Number(row.sessions_with_wbraid) || 0 : 0,
+      sessionsWithClickId: row && row.sessions_with_click_id != null ? Number(row.sessions_with_click_id) || 0 : 0,
+      sessionsWithCampaignId: row && row.sessions_with_campaign_id != null ? Number(row.sessions_with_campaign_id) || 0 : 0,
+      sessionsWithCampaignAndClickId: row && row.sessions_with_campaign_and_click_id != null ? Number(row.sessions_with_campaign_and_click_id) || 0 : 0,
+      sessionsWithGoogleCampaignId: row && row.sessions_with_google_campaign_id != null ? Number(row.sessions_with_google_campaign_id) || 0 : 0,
+    };
+  } catch (e) {
+    kexo = { ...kexo, ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'sessions_audit_failed' };
+  }
+
+  // 3) Ads-attributed orders (Ads DB)
+  let orders = {
+    ok: !!adsDb,
+    ordersTotal: 0,
+    ordersWithCampaignId: 0,
+    revenueGbp: 0,
+    note: adsDb ? null : 'ADS_DB_URL not set.',
+  };
+  if (adsDb) {
+    try {
+      const row = await adsDb.get(
+        `
+          SELECT
+            COUNT(*) AS orders_total,
+            COALESCE(SUM(CASE WHEN campaign_id IS NOT NULL AND TRIM(campaign_id) != '' THEN 1 ELSE 0 END), 0) AS orders_with_campaign_id,
+            COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp
+          FROM ads_orders_attributed
+          WHERE created_at_ms >= ? AND created_at_ms < ?
+            AND source = ?
+        `,
+        [bounds.start, bounds.end, source]
+      );
+      orders = {
+        ...orders,
+        ordersTotal: row && row.orders_total != null ? Number(row.orders_total) || 0 : 0,
+        ordersWithCampaignId: row && row.orders_with_campaign_id != null ? Number(row.orders_with_campaign_id) || 0 : 0,
+        revenueGbp: row && row.revenue_gbp != null ? Number(row.revenue_gbp) || 0 : 0,
+      };
+    } catch (e) {
+      orders = { ...orders, ok: false, note: e && e.message ? String(e.message).slice(0, 220) : 'orders_audit_failed' };
+    }
+  }
+
+  function ratio(a, b) {
+    const x = Number(a);
+    const y = Number(b);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || y <= 0) return null;
+    return x / y;
+  }
+
+  const clickToSession = ratio(kexo.sessionsWithClickId, adsTotals.clicks);
+  const sessionMapping = ratio(kexo.sessionsWithCampaignAndClickId, kexo.sessionsWithClickId);
+  const orderAttribution = ratio(orders.ordersWithCampaignId, orders.ordersTotal);
+
+  return {
+    ok: true,
+    rangeKey,
+    rangeStartTs: bounds.start,
+    rangeEndTs: bounds.end,
+    googleAds: adsTotals,
+    kexo,
+    orders,
+    coverage: {
+      clickToSession,
+      sessionMapping,
+      orderAttribution,
+      droppedClicksEstimate: (Number.isFinite(adsTotals.clicks) && Number.isFinite(kexo.sessionsWithClickId))
+        ? Math.max(0, Math.floor(adsTotals.clicks) - Math.floor(kexo.sessionsWithClickId))
+        : null,
+    },
+    notes: [
+      'Click→session coverage compares Google Ads click totals vs KEXO sessions containing gclid/gbraid/wbraid in entry_url (human-only).',
+      'Clicks and sessions are not perfectly 1:1 (re-clicks, redirects, privacy constraints). Use as a coverage indicator, not an absolute truth table.',
+    ],
+  };
+}
+
 async function getCampaignDetail(options = {}) {
   const rangeKey = normalizeRangeKey(options.rangeKey);
   const campaignId = options.campaignId != null ? String(options.campaignId).trim() : '';
@@ -396,5 +580,6 @@ module.exports = {
   normalizeRangeKey,
   getStatus,
   getSummary,
+  getAudit,
   getCampaignDetail,
 };

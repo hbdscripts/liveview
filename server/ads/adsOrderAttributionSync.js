@@ -280,15 +280,17 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       adId: adId || null,
       gclid: gclid || null,
       countryCode: cc,
+      sessionId: null,
+      visitorCountryCode: null,
       attributionMethod: attributionMethod || (campaignId ? 'landing_site' : null),
       landingSite: landingSite || null,
       checkoutToken: row && row.checkout_token ? String(row.checkout_token).trim() : null,
     };
 
     parsed.push(out);
-    // If we don't yet have a campaign id (or even a source), evidence may be able to link the order to a session.
-    // Limit evidence lookups to checkout orders (best-effort proxy for online orders that have pixel evidence).
-    if ((!out.campaignId || !out.source) && out.checkoutToken) needEvidence.push(out);
+    // Evidence can link orders -> sessions for attribution + visitor-location geo.
+    // Limit lookups to checkout orders (best-effort proxy for online orders that have pixel evidence).
+    if (out.checkoutToken && (out.source === source || !out.campaignId || !out.source)) needEvidence.push(out);
   }
 
   // 2) Evidence fallback: purchase_events (linked_order_id) -> sessions (bs_campaign_id).
@@ -362,7 +364,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   for (const ids of chunk(uniqueSessionIds, 800)) {
     const placeholders = ids.map(() => '?').join(',');
     const rows = await db.all(
-      `SELECT session_id, visitor_id, started_at, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, utm_source, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
+      `SELECT session_id, visitor_id, started_at, country_code, cf_country, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, utm_source, entry_url FROM sessions WHERE session_id IN (${placeholders})`,
       ids
     );
     for (const r of rows || []) {
@@ -371,6 +373,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       sessionMap.set(sid, {
         visitorId: r && r.visitor_id != null ? String(r.visitor_id).trim() : null,
         startedAt: r && r.started_at != null ? Number(r.started_at) : null,
+        countryCode: r && r.country_code != null ? String(r.country_code).trim().toUpperCase() : null,
+        cfCountry: r && r.cf_country != null ? String(r.cf_country).trim().toUpperCase() : null,
         bsSource: r && r.bs_source != null ? String(r.bs_source).trim().toLowerCase() : null,
         bsCampaignId: r && r.bs_campaign_id != null ? String(r.bs_campaign_id).trim() : null,
         bsAdgroupId: r && r.bs_adgroup_id != null ? String(r.bs_adgroup_id).trim() : null,
@@ -396,7 +400,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       const row = await db.get(
         `
           SELECT
+            session_id,
             started_at,
+            country_code,
+            cf_country,
             bs_source,
             utm_source,
             bs_campaign_id,
@@ -421,11 +428,17 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       if (!looksLikeGoogleAds({ bsSource, utmSource, gclidLike: gl }) && !looksLikeGoogleAdsSource(bsSource) && !looksLikeGoogleAdsSource(utmSource)) {
         return null;
       }
+      const visitorCountryCode =
+        normalizeCountryCode(row && row.country_code != null ? row.country_code : null) ||
+        normalizeCountryCode(row && row.cf_country != null ? row.cf_country : null) ||
+        null;
       return {
+        sessionId: row && row.session_id != null ? String(row.session_id).trim() : null,
         startedAt: row.started_at != null ? Number(row.started_at) : null,
         bsCampaignId: row.bs_campaign_id != null ? String(row.bs_campaign_id).trim() : null,
         bsAdgroupId: row.bs_adgroup_id != null ? String(row.bs_adgroup_id).trim() : null,
         bsAdId: row.bs_ad_id != null ? String(row.bs_ad_id).trim() : null,
+        visitorCountryCode,
       };
     } catch (_) {
       return null;
@@ -435,9 +448,18 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   // Apply evidence attribution (and establish source when landing_site didn't include it).
   for (const o of parsed) {
     if (!o) continue;
-    if (o.campaignId && o.source) continue;
     const ev = orderIdToEvidence.get(o.orderId);
     const sess = ev && ev.sessionId ? sessionMap.get(ev.sessionId) : null;
+
+    // Persist visitor-location geo when we can link to a session.
+    if (ev && ev.sessionId && !o.sessionId) o.sessionId = ev.sessionId;
+    if (sess && !o.visitorCountryCode) {
+      const vcc = normalizeCountryCode(sess.countryCode) || normalizeCountryCode(sess.cfCountry) || null;
+      if (vcc) o.visitorCountryCode = vcc;
+    }
+
+    // If we already have campaign + source, we only needed the session linkage above.
+    if (o.campaignId && o.source) continue;
 
     if (!o.source) {
       const sessSource = sess && sess.bsSource ? String(sess.bsSource) : '';
@@ -485,6 +507,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.campaignId = last.bsCampaignId;
         o.adgroupId = last.bsAdgroupId || '_all_';
         o.adId = last.bsAdId || null;
+        if (last.sessionId && !o.sessionId) o.sessionId = last.sessionId;
+        if (last.visitorCountryCode && !o.visitorCountryCode) o.visitorCountryCode = last.visitorCountryCode;
         o.attributionMethod = 'visitor.last_ads_click';
         attributed++;
         continue;
@@ -529,9 +553,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
-          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, country_code, attribution_method, landing_site, updated_at)
+          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, country_code, attribution_method, landing_site, session_id, visitor_country_code, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,
@@ -543,6 +567,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           ad_id = COALESCE(NULLIF(EXCLUDED.ad_id, ''), ads_orders_attributed.ad_id),
           gclid = COALESCE(NULLIF(EXCLUDED.gclid, ''), ads_orders_attributed.gclid),
           country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), ads_orders_attributed.country_code),
+          session_id = COALESCE(NULLIF(EXCLUDED.session_id, ''), ads_orders_attributed.session_id),
+          visitor_country_code = COALESCE(NULLIF(EXCLUDED.visitor_country_code, ''), ads_orders_attributed.visitor_country_code),
           attribution_method = COALESCE(NULLIF(EXCLUDED.attribution_method, ''), ads_orders_attributed.attribution_method),
           landing_site = COALESCE(NULLIF(EXCLUDED.landing_site, ''), ads_orders_attributed.landing_site),
           updated_at = EXCLUDED.updated_at
@@ -562,6 +588,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.countryCode || null,
         o.attributionMethod || null,
         o.landingSite || null,
+        o.sessionId || null,
+        o.visitorCountryCode || null,
         now,
       ]
     );

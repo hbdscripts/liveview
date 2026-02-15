@@ -717,16 +717,18 @@ setInterval(() => {
   if (process.env.DISABLE_SCHEDULED_ADS_SYNC === '1' || process.env.DISABLE_SCHEDULED_ADS_SYNC === 'true') return;
 
   const store = require('./store');
-  const { syncGoogleAdsSpendHourly, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
+  const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
   const { syncAttributedOrdersToAdsDb } = require('./ads/adsOrderAttributionSync');
   const { getAdsDb } = require('./ads/adsDb');
 
   const SPEND_SYNC_MS = 5 * 60 * 1000;
+  const GEO_SYNC_MS = 60 * 60 * 1000;
   const GCLID_BACKFILL_MS = 30 * 60 * 1000;
   const ATTR_SYNC_MS = 5 * 60 * 1000;
   const ATTR_BACKFILL_MS = 30 * 60 * 1000;
 
   let spendInFlight = false;
+  let geoInFlight = false;
   let gclidInFlight = false;
   let attrInFlight = false;
 
@@ -751,6 +753,23 @@ setInterval(() => {
       console.error('[ads-sync] spend error:', err && err.message ? err.message : err);
     } finally {
       spendInFlight = false;
+    }
+  }
+
+  async function runGeoSync(rangeKey) {
+    if (geoInFlight) return;
+    geoInFlight = true;
+    try {
+      const adsDb = getAdsDb();
+      if (!adsDb) return; // ADS_DB_URL not set — skip silently
+      const { rangeStartTs, rangeEndTs } = resolveBounds(rangeKey);
+      const out = await syncGoogleAdsGeoDaily({ rangeStartTs, rangeEndTs });
+      if (out && out.ok) console.log('[ads-sync] geo:', out.upserts || 0, 'upserts', out.apiVersion ? '(' + out.apiVersion + ')' : '');
+      else console.warn('[ads-sync] geo failed:', out && out.error ? out.error : 'failed');
+    } catch (err) {
+      console.error('[ads-sync] geo error:', err && err.message ? err.message : err);
+    } finally {
+      geoInFlight = false;
     }
   }
 
@@ -803,6 +822,10 @@ setInterval(() => {
   // Bootstrap: backfill a wider window once, then keep recent spend fresh.
   setTimeout(() => { runSpendSync('7d').catch(() => {}); }, 30 * 1000);
   setInterval(() => { runSpendSync('3d').catch(() => {}); }, SPEND_SYNC_MS);
+
+  // Geo (country) metrics: less frequent; keep recent window fresh.
+  setTimeout(() => { runGeoSync('7d').catch(() => {}); }, 60 * 1000);
+  setInterval(() => { runGeoSync('7d').catch(() => {}); }, GEO_SYNC_MS);
 
   // GCLID → campaign cache: less frequent (used for attribution fallbacks).
   setTimeout(() => { runGclidBackfill('7d').catch(() => {}); }, 45 * 1000);
