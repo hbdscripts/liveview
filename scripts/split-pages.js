@@ -42,7 +42,7 @@ const nav = () => `
       <span class="navbar-toggler-icon"></span>
     </button>
     <a class="navbar-brand" href="/dashboard/overview">
-      <img src="/assets/kexo_logo_fullcolor.webp" alt="Kexo" />
+      <img src="/assets/logos/new/kexo.webp" alt="Kexo" />
     </a>
     <div class="collapse navbar-collapse" id="navbar-menu">
       <ul class="navbar-nav">
@@ -105,7 +105,7 @@ const pageTemplate = (page, title, content, extra = '') => `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="icon" type="image/webp" href="/assets/logos/new/kexo.webp" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Faster long-range reports + visible loading spinner)
+Last updated: 2026-02-15 (Logo consolidation: /assets/logos/new/)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -295,7 +295,7 @@ Ops/reliability:
 - Auth pages UI refresh (Tabler templates):
   - `/app/login` now matches Tabler’s Sign in layout; bottom “social” buttons are **Google** + **Shopify** (neutral Tabler button styling, icons via inline SVG; no custom green/blue button backgrounds).
   - Added dedicated `/app/register` page matching Tabler’s Sign up layout (local email/password registration); successful signup redirects back to `/app/login?registered=1`.
-  - Login/register pages use logo: `/assets/logos/kexo-color-dark.webp`.
+  - Login/register pages use logo: `/assets/logos/new/kexo-color-dark-text.webp`.
 
 2026-02-14 (latest)
 - Master accounts + approvals:
@@ -573,7 +573,7 @@ Ops/reliability:
   - Added Layout → Charts setting “Hide charts on mobile” (default ON) to hide all chart cards on small screens.
 - Footer redesign:
   - Layout: far left = eye + last sale; center = refresh | logo (40px) | sound; far right = back to top.
-  - Logo: new `/assets/logos/kexo_footer.webp` (40px width), centered in footer.
+  - Logo: `/assets/logos/new/kexo-color-dark-text.webp` in footer; header uses `kexo-color-light-text.webp`.
   - Removed settings and theme icons from footer.
   - All footer icons use fa-jelly-filled; no hover effects on footer icons.
   - New icon keys: footer-back-to-top, footer-sound-muted (mapped in Settings → Theme → Icons).

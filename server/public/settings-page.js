@@ -671,7 +671,7 @@
       try {
         var link = document.querySelector('link[rel="icon"]');
         if (link && safe) link.href = safe;
-        else if (link && !safe) link.href = '/assets/favicon.png';
+        else if (link && !safe) link.href = '/assets/logos/new/kexo.webp';
       } catch (_) {}
     }
 
@@ -713,7 +713,7 @@
     function applyKexoFullcolorLogoOverride(url) {
       var safe = normalizeAssetUrl(url);
       try {
-        var imgs = document.querySelectorAll('img[src*="/assets/kexo_logo_fullcolor.webp"]');
+        var imgs = document.querySelectorAll('img[src*="/assets/logos/new/kexo.webp"]');
         if (!imgs || !imgs.length) return;
         imgs.forEach(function (img) {
           if (!img) return;

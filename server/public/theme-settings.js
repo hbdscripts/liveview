@@ -1152,7 +1152,7 @@
       'theme-header-logo-url',
       'Logo URL override',
       'Use an absolute URL or /path to replace desktop and mobile logos.',
-      '/assets/logos/kexo-color-dark.webp'
+      '/assets/logos/new/kexo-color-dark-text.webp'
     );
     var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
       accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
@@ -1604,7 +1604,7 @@
         if (footerLogo) applyImgSrcOverride('img[data-kexo-asset="footer-logo"]', footerLogo);
 
         var kexoLogoFull = normalizeAssetOverrideUrl(overrides.kexoLogoFullcolor || overrides.kexo_logo_fullcolor);
-        if (kexoLogoFull) applyImgSrcOverride('img[src*="/assets/kexo_logo_fullcolor.webp"]', kexoLogoFull);
+        if (kexoLogoFull) applyImgSrcOverride('img[src*="/assets/logos/new/kexo.webp"]', kexoLogoFull);
 
         // Legacy: if Theme header logo isn't set, fall back to assetOverrides.logo.
         var legacyHeaderLogo = normalizeAssetOverrideUrl(overrides.logo);

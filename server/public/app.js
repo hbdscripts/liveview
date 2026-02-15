@@ -2059,7 +2059,7 @@ const API = '';
             if (sessions.length) renderTable();
             if (assetsBaseUrlFallback) {
               var link = document.querySelector('link[rel="icon"]');
-              if (link) link.href = '/assets/favicon.png';
+              if (link) link.href = '/assets/logos/new/kexo.webp';
               if (typeof saleAudio !== 'undefined' && saleAudio && typeof getCashRegisterMp3Url === 'function') {
                 setSaleAudioSrc(getCashRegisterMp3Url());
               }
@@ -11982,7 +11982,7 @@ const API = '';
           const staleSec = (health && typeof health.staleMs === 'number') ? Math.round(health.staleMs / 1000) : null;
 
           const SHOPIFY_LOGO_URL = 'https://cdn.shopify.com/s/files/1/0847/7261/8587/files/shopify.png?v=1770259752';
-          const KEXO_LOGO_URL = '/assets/kexo_logo_fullcolor.webp';
+          const KEXO_LOGO_URL = '/assets/logos/new/kexo.webp';
 
           const shopifySessionsToday = (traffic && typeof traffic.shopifySessionsToday === 'number') ? traffic.shopifySessionsToday : null;
           const shopifyConversionRateToday = (traffic && typeof traffic.shopifyConversionRateToday === 'number') ? traffic.shopifyConversionRateToday : null;

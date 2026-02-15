@@ -105,12 +105,12 @@ function renderRegisteredOk(registered) {
 
 function renderCommonHead({ title, faviconHref }) {
   const safeTitle = title ? String(title) : 'Kexo';
-  const fav = faviconHref ? String(faviconHref) : (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
+  const fav = faviconHref ? String(faviconHref) : (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
   return `
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" type="image/png" href="${escapeHtml(fav)}">
+  <link rel="icon" type="image/webp" href="${escapeHtml(fav)}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -138,7 +138,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo-color-dark-text.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -218,7 +218,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/kexo-color.webp';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo-color-dark-text.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -302,8 +302,8 @@ async function handleGetLogin(req, res) {
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
 
-  const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color.webp';
+  const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo-color-dark-text.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
@@ -322,8 +322,8 @@ async function handleGetRegister(req, res) {
   } catch (_) {}
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
-  const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/favicon.png?width=100' : '/assets/favicon.png');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/kexo-color.webp';
+  const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
+  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo-color-dark-text.webp';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));
