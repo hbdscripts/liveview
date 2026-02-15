@@ -1578,9 +1578,10 @@ const API = '';
             // the sticky landing width as if that icon column were a full normal column.
             try {
               var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
-              if (tid === 'sessions-table' && colCount > 2) {
-                var iconW = 35;
-                byRemainingCols = wrapW - iconW - (minOtherColWidth * (colCount - 2));
+              if (tid === 'sessions-table' && colCount > 3) {
+                // Sessions table has two narrow leading icon columns (~35px each).
+                var iconW = 70;
+                byRemainingCols = wrapW - iconW - (minOtherColWidth * (colCount - 3));
               }
             } catch (_) {}
             /* Only cap by remaining cols when table fits; when scrollable, skip so sticky can expand */
@@ -1605,7 +1606,7 @@ const API = '';
         try {
           var tid = String(getWrapTableId(wrap) || '').trim().toLowerCase();
           if (tid === 'sessions-table') {
-            return wrap.querySelector('.grid-row--header .grid-cell:nth-child(2), table thead th:nth-child(2)');
+            return wrap.querySelector('.grid-row--header .grid-cell:nth-child(3), table thead th:nth-child(3)');
           }
         } catch (_) {}
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
@@ -3567,6 +3568,7 @@ const API = '';
       }
       return `<div class="grid-row clickable ${s.is_returning ? 'returning' : ''} ${s.has_purchased ? 'converted' : ''}" role="row" data-session-id="${s.session_id}">
         <div class="grid-cell sale-icon-cell ${s.has_purchased ? 'converted-sale-cell' : ''}" role="cell">${convertedLeadIcon}</div>
+        <div class="grid-cell fraud-icon-cell" role="cell"></div>
         <div class="grid-cell landing-cell" role="cell">${landingPageCell(s)}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
@@ -3753,6 +3755,8 @@ const API = '';
             // Clicking interactive elements inside a row should not open the side panel.
             // Product links open the Product Insights modal only.
             if (target && target.closest && target.closest('a.js-product-modal-link')) return;
+            // Fraud alert icon opens its own modal only.
+            if (target && target.closest && target.closest('[data-fraud-open]')) return;
             const row = target && target.closest ? target.closest('.grid-row.clickable[data-session-id]') : null;
             if (!row || !tbody.contains(row)) return;
             selectedSessionId = row.getAttribute('data-session-id');
@@ -3785,6 +3789,7 @@ const API = '';
       updateSortHeaders();
       syncSessionsTableTightMode();
       tickTimeOnSite();
+      try { refreshFraudMarkersForSessionsTable(); } catch (_) {}
     }
 
     function syncSessionsTableTightMode() {
@@ -4201,6 +4206,7 @@ const API = '';
       const mainBase = getMainBaseUrl();
       const pageSize = getTableRowsPerPage('latest-sales-table', 'dashboard');
       tbody.innerHTML = list.slice(0, pageSize).map(function(s) {
+        const sid = (s && s.session_id != null) ? String(s.session_id) : '';
         const cc = (s && s.country_code ? String(s.country_code) : 'XX').toUpperCase().slice(0, 2) || 'XX';
         const productId = (s && s.product_id != null) ? String(s.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const pid = (productId && /^\d+$/.test(productId)) ? productId : '';
@@ -4225,14 +4231,15 @@ const API = '';
           ? (formatMoney(s.order_total_gbp, 'GBP') || '\u2014')
           : (s && s.order_total != null) ? (formatMoney(s.order_total, s.order_currency) || '\u2014') : '\u2014';
         return (
-          '<tr>' +
-            '<td class="w-1">' + flagImgSmall(cc) + '</td>' +
+          '<tr' + (sid ? (' data-session-id="' + escapeHtml(sid) + '"') : '') + '>' +
+            '<td class="w-1 latest-sales-flag-cell">' + flagImgSmall(cc) + '<span class="latest-sales-fraud-slot" aria-hidden="true"></span></td>' +
             '<td>' + titleHtml + '</td>' +
             '<td class="text-end text-muted">' + escapeHtml(ago) + '</td>' +
             '<td class="text-end fw-semibold">' + escapeHtml(money) + '</td>' +
           '</tr>'
         );
       }).join('');
+      try { refreshFraudMarkersForLatestSalesTable(); } catch (_) {}
     }
 
     function upsertLatestSaleRow(nextRaw) {
@@ -4486,9 +4493,14 @@ const API = '';
           triggerManualSaleToast(true);
         }
       }
+      function primeOnPointerDown() { try { primeSaleAudio(); } catch (_) {} }
       ['last-sale-toggle', 'footer-last-sale-toggle'].forEach(function(id) {
         var btn = document.getElementById(id);
-        if (btn) btn.addEventListener('click', handleToggle);
+        if (btn) {
+          btn.addEventListener('click', handleToggle);
+          btn.addEventListener('pointerdown', primeOnPointerDown, { capture: true });
+          btn.addEventListener('touchstart', primeOnPointerDown, { capture: true });
+        }
       });
       updateSaleToastToggle();
     })();
@@ -15274,6 +15286,7 @@ const API = '';
         (function primeOnFirstGesture() {
           function prime() { try { primeSaleAudio(); } catch (_) {} }
           document.addEventListener('pointerdown', prime, { once: true, capture: true });
+          document.addEventListener('touchstart', prime, { once: true, capture: true });
           document.addEventListener('keydown', prime, { once: true, capture: true });
           document.addEventListener('click', prime, { once: true, capture: true });
         })();
@@ -16322,8 +16335,15 @@ const API = '';
           const purchasedAt = session.purchased_at != null ? toMs(session.purchased_at) : null;
           if (purchasedAt == null) return;
           const cur = lastSaleAt == null ? null : toMs(lastSaleAt);
-          // If we don't have a baseline yet, prime it without firing a toast.
-          if (cur == null) { setLastSaleAt(purchasedAt); return; }
+          // If we don't have a baseline yet: only skip if the sale is old (likely stale catch-up).
+          // If the sale is recent (within 2 min), treat it as new and fire toast + sound.
+          if (cur == null) {
+            setLastSaleAt(purchasedAt);
+            const ageMs = Date.now() - purchasedAt;
+            if (ageMs > 2 * 60 * 1000) return; // older than 2 min: skip (stale)
+            triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+            return;
+          }
           if (purchasedAt <= cur) { setLastSaleAt(purchasedAt); return; }
           setLastSaleAt(purchasedAt);
           triggerSaleToast({ origin: 'sse', session: session, playSound: true });

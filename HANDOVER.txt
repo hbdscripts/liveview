@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dashboard KPI sparklines + compare date labels)
+Last updated: 2026-02-15 (Sale sound reliability fixes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -306,6 +306,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Sale sound reliability: (1) SSE first-sale no longer skipped when lastSaleAt is null — now fires toast+sound if sale is within 2 min (avoids race with hydrateLastSaleFooterFromApi). (2) Added touchstart to audio prime listeners and explicit prime on eye/footer last-sale toggle pointerdown/touchstart so sale sounds unlock on first footer interaction.
 
 2026-02-15 (latest)
 - Login page logo: swapped default from `kexo-color-dark-text.webp` to `login.webp` on `/app/login` and `/app/register`.
