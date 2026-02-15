@@ -156,17 +156,16 @@ function getSignInHtml(queryError, opts) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>${renderCommonHead({ title: 'Kexo · Sign in', faviconHref })}</head>
-<body class="d-flex flex-column" data-bs-theme="light">
+<body class="d-flex flex-column" data-bs-theme="light" style="padding: 20px;">
   <div class="page page-center">
     <div class="container container-tight py-4">
-      <div class="text-center mb-4">
-        <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
-          <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
-        </a>
-      </div>
-
       <form class="card card-md" method="post" action="/auth/local/login" autocomplete="on">
         <div class="card-body">
+          <div class="text-center mb-4">
+            <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
+              <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
+            </a>
+          </div>
           <h2 class="card-title text-center mb-4">Login to your account</h2>
           ${renderRegisteredOk(registered)}
           ${renderAlert(queryError)}
@@ -226,17 +225,16 @@ function getSignUpHtml(queryError, opts) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>${renderCommonHead({ title: 'Kexo · Sign up', faviconHref })}</head>
-<body class="d-flex flex-column" data-bs-theme="light">
+<body class="d-flex flex-column" data-bs-theme="light" style="padding: 20px;">
   <div class="page page-center">
     <div class="container container-tight py-4">
-      <div class="text-center mb-4">
-        <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
-          <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
-        </a>
-      </div>
-
       <form class="card card-md" method="post" action="/auth/local/register" autocomplete="on">
         <div class="card-body">
+          <div class="text-center mb-4">
+            <a href="/dashboard/overview" class="navbar-brand navbar-brand-autodark">
+              <img class="kexo-auth-logo" src="${escapeHtml(loginLogoSrc)}" alt="Kexo">
+            </a>
+          </div>
           <h2 class="card-title text-center mb-4">Create new account</h2>
           ${renderAlert(queryError)}
           <input type="hidden" name="redirect" value="${escapeHtml(redirectTarget)}">
