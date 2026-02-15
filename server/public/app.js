@@ -462,6 +462,11 @@ const API = '';
 
     (function primePageBodyLoader() {
       if (!isPageLoaderEnabled(PAGE)) return;
+      // Tool pages compare-conversion-rate, shipping-cr, click-order-lookup don't use the report
+      // build system and never call finish() — skip showing the loader so it doesn't cover content.
+      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup'];
+      var pageKey = String(PAGE || '').trim().toLowerCase();
+      if (toolPagesNoLoader.indexOf(pageKey) >= 0) return;
       var pageBody = document.querySelector('.page-body');
       var overlay = document.getElementById('page-body-loader');
       if (!pageBody || !overlay) return;

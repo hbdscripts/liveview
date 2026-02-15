@@ -375,6 +375,9 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-15 (latest)
+- Tool pages loader fix: compare-conversion-rate, shipping-cr, click-order-lookup no longer show the page-body loader on init (they don't use the report build system and never called finish(), so the loader covered content indefinitely).
+
+2026-02-15 (latest)
 - Dashboard extras KPIs performance:
   - `/api/kpis-expanded-extra` (COGS/Fulfilled/Returns/Items) is cached for 30 minutes (server + client) to reduce slow/empty KPI cards.
   - Shopify updated-orders scan no longer fetches `line_items` (items ordered is DB-derived), reducing payload and improving reliability.
