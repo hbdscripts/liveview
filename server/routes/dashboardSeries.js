@@ -93,6 +93,44 @@ function crPct(orders, sessions) {
   return percentOrNull(orders, sessions, { decimals: 1 });
 }
 
+function isReturningOrderRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  const coc = row.customer_orders_count != null ? Number(row.customer_orders_count) : NaN;
+  if (Number.isFinite(coc)) return coc > 1;
+  const createdAt = row.created_at != null ? Number(row.created_at) : NaN;
+  const firstPaidOrderAt = row.first_paid_order_at != null ? Number(row.first_paid_order_at) : NaN;
+  return Number.isFinite(createdAt) && Number.isFinite(firstPaidOrderAt) && firstPaidOrderAt < createdAt;
+}
+
+async function fetchPaidOrderRowsWithReturningFacts(db, shop, startMs, endMs) {
+  if (!shop) return [];
+  const withFactsSql = config.dbUrl
+    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
+       FROM orders_shopify o
+       LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+       WHERE o.shop = $1 AND o.created_at >= $2 AND o.created_at < $3
+         AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
+    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
+       FROM orders_shopify o
+       LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
+       WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+         AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
+  const fallbackSql = config.dbUrl
+    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
+       FROM orders_shopify o
+       WHERE o.shop = $1 AND o.created_at >= $2 AND o.created_at < $3
+         AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
+    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
+       FROM orders_shopify o
+       WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+         AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
+  try {
+    return await db.all(withFactsSql, [shop, startMs, endMs]);
+  } catch (_) {
+    return await db.all(fallbackSql, [shop, startMs, endMs]);
+  }
+}
+
 async function fetchSessionCountsByProductHandle(db, startMs, endMs, handles, filter) {
   const out = new Map();
   const keys = uniqueNonEmpty((handles || []).map(normalizeHandleKey)).filter(Boolean);
@@ -679,21 +717,11 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
-  // Returning customers per day (unique customer_id where customer_orders_count > 1)
+  // Returning customers per day (customer_orders_count>1, or facts-derived fallback when null).
   const returningCustomersSetByDay = {};
+  let newCustomerOrders = 0, returningCustomerOrders = 0;
   if (shop) {
-    const orderRows = await db.all(
-      config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
-           FROM orders_shopify
-           WHERE shop = $1 AND created_at >= $2 AND created_at < $3
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
-           FROM orders_shopify
-           WHERE shop = ? AND created_at >= ? AND created_at < ?
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
-      [shop, overallStart, overallEnd]
-    );
+    const orderRows = await fetchPaidOrderRowsWithReturningFacts(db, shop, overallStart, overallEnd);
     for (const row of orderRows) {
       const createdAt = Number(row.created_at);
       // Find which day this order belongs to
@@ -711,12 +739,14 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
       revenuePerDay[dayLabel] = (revenuePerDay[dayLabel] || 0) + gbp;
       ordersPerDay[dayLabel] = (ordersPerDay[dayLabel] || 0) + 1;
-      const coc = row && row.customer_orders_count != null ? Number(row.customer_orders_count) : 1;
+      const isReturning = isReturningOrderRow(row);
       const cid = row && row.customer_id != null ? String(row.customer_id).trim() : '';
-      if (Number.isFinite(coc) && coc > 1 && cid) {
+      if (isReturning && cid) {
         if (!returningCustomersSetByDay[dayLabel]) returningCustomersSetByDay[dayLabel] = new Set();
         returningCustomersSetByDay[dayLabel].add(cid);
       }
+      if (isReturning) returningCustomerOrders += 1;
+      else newCustomerOrders += 1;
     }
   }
 
@@ -956,31 +986,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     }
   } catch (_) {}
 
-  // Returning vs new customer orders
-  let newCustomerOrders = 0, returningCustomerOrders = 0;
-  if (shop) {
-    try {
-      const ph = config.dbUrl ? ['$1', '$2', '$3'] : ['?', '?', '?'];
-      const retRows = await db.all(
-        config.dbUrl
-          ? `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
-             FROM orders_shopify
-             WHERE shop = $1 AND created_at >= $2 AND created_at < $3
-               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-             GROUP BY ctype`
-          : `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
-             FROM orders_shopify
-             WHERE shop = ? AND created_at >= ? AND created_at < ?
-               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-             GROUP BY ctype`,
-        [shop, overallStart, overallEnd]
-      );
-      for (const r of retRows) {
-        if (r.ctype === 'returning') returningCustomerOrders = Number(r.n) || 0;
-        else newCustomerOrders = Number(r.n) || 0;
-      }
-    } catch (_) {}
-  }
+  // Returning/new order counts are accumulated from the same order rows used for series.
 
   // Summary totals
   let totalRevenue = 0, totalOrders = 0, totalSessions = 0, totalAdSpend = 0, totalBounced = 0;
@@ -1184,21 +1190,11 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
-  // Returning customers per day (unique customer_id where customer_orders_count > 1)
+  // Returning customers per bucket (customer_orders_count>1, or facts-derived fallback when null).
   const returningCustomersSetByDay = {};
+  let newCustomerOrders = 0, returningCustomerOrders = 0;
   if (shop) {
-    const orderRows = await db.all(
-      config.dbUrl
-        ? `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
-           FROM orders_shopify
-           WHERE shop = $1 AND created_at >= $2 AND created_at < $3
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`
-        : `SELECT order_id, total_price, currency, created_at, customer_orders_count, customer_id
-           FROM orders_shopify
-           WHERE shop = ? AND created_at >= ? AND created_at < ?
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'`,
-      [shop, overallStart, overallEnd]
-    );
+    const orderRows = await fetchPaidOrderRowsWithReturningFacts(db, shop, overallStart, overallEnd);
     for (const row of orderRows) {
       const createdAt = Number(row.created_at);
       let dayLabel = null;
@@ -1215,12 +1211,14 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
       revenuePerDay[dayLabel] = (revenuePerDay[dayLabel] || 0) + gbp;
       ordersPerDay[dayLabel] = (ordersPerDay[dayLabel] || 0) + 1;
-      const coc = row && row.customer_orders_count != null ? Number(row.customer_orders_count) : 1;
+      const isReturning = isReturningOrderRow(row);
       const cid = row && row.customer_id != null ? String(row.customer_id).trim() : '';
-      if (Number.isFinite(coc) && coc > 1 && cid) {
+      if (isReturning && cid) {
         if (!returningCustomersSetByDay[dayLabel]) returningCustomersSetByDay[dayLabel] = new Set();
         returningCustomersSetByDay[dayLabel].add(cid);
       }
+      if (isReturning) returningCustomerOrders += 1;
+      else newCustomerOrders += 1;
     }
   }
 
@@ -1476,30 +1474,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     }
   } catch (_) {}
 
-  // Returning vs new customer orders
-  let newCustomerOrders = 0, returningCustomerOrders = 0;
-  if (shop) {
-    try {
-      const retRows = await db.all(
-        config.dbUrl
-          ? `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
-             FROM orders_shopify
-             WHERE shop = $1 AND created_at >= $2 AND created_at < $3
-               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-             GROUP BY ctype`
-          : `SELECT CASE WHEN COALESCE(customer_orders_count, 1) > 1 THEN 'returning' ELSE 'new' END AS ctype, COUNT(*) AS n
-             FROM orders_shopify
-             WHERE shop = ? AND created_at >= ? AND created_at < ?
-               AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-             GROUP BY ctype`,
-        [shop, overallStart, overallEnd]
-      );
-      for (const r of retRows) {
-        if (r.ctype === 'returning') returningCustomerOrders = Number(r.n) || 0;
-        else newCustomerOrders = Number(r.n) || 0;
-      }
-    } catch (_) {}
-  }
+  // Returning/new order counts are accumulated from the same order rows used for series.
 
   // Summary totals
   let totalRevenue = 0, totalOrders = 0, totalSessions = 0, totalAdSpend = 0, totalBounced = 0;

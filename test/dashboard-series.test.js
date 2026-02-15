@@ -60,6 +60,7 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   const { up: up011 } = require('../server/migrations/011_entry_url');
   const { up: up017 } = require('../server/migrations/017_sales_truth_and_evidence');
   const { up: up018 } = require('../server/migrations/018_orders_shopify_returning_fields');
+  const { up: up019 } = require('../server/migrations/019_customer_order_facts');
   const { up: up025 } = require('../server/migrations/025_orders_shopify_line_items');
 
   await up001();
@@ -70,6 +71,7 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   await up011();
   await up017();
   await up018();
+  await up019();
   await up025();
 
   db = getDb();
@@ -159,6 +161,32 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   assert.ok(Array.isArray(r3.body.series));
   assert.equal(r3.body.series.length, 12);
   assert.ok(String(r3.body.series[1]?.date || '').includes(':15'));
+
+  // 4) Returning sparkline buckets should classify returning orders even when
+  // customer_orders_count is null (using customer_order_facts fallback).
+  const priorPaidAt = now - (24 * 60 * 60 * 1000);
+  const returningPaidAt = now - (30 * 60 * 1000);
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify
+     (shop, order_id, created_at, processed_at, financial_status, cancelled_at, test, currency, total_price, customer_id, customer_orders_count, synced_at, raw_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'o_ret_prior', priorPaidAt, null, 'paid', null, 0, 'GBP', 5, 'cust_ret_1', null, now, JSON.stringify({})]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify
+     (shop, order_id, created_at, processed_at, financial_status, cancelled_at, test, currency, total_price, customer_id, customer_orders_count, synced_at, raw_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'o_ret_now', returningPaidAt, null, 'paid', null, 0, 'GBP', 7, 'cust_ret_1', null, now, JSON.stringify({})]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO customer_order_facts (shop, customer_id, first_paid_order_at, checked_at)
+     VALUES (?, ?, ?, ?)`,
+    [shop, 'cust_ret_1', priorPaidAt, now]
+  );
+  const r4 = await callDashboardSeries({ range: 'today', force: '1' });
+  assert.equal(r4.status, 200);
+  assert.ok(Array.isArray(r4.body.series));
+  assert.ok(r4.body.series.some(function(pt) { return Number(pt && pt.returningCustomerOrders) > 0; }));
   } finally {
     try { db && db.close && db.close(); } catch (_) {}
     global.fetch = originalFetch;

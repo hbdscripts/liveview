@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (No-data block mode + footer last-sale hydration/fallback)
+Last updated: 2026-02-15 (Returning sparkline truth alignment)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,7 @@ Ops/reliability:
   - `/api/dashboard-series` supports `endMs` clipping; dashboard compare series passes compare-end (rounded to 1 min) so Today compare uses the same 15/30/60-min buckets as Today.
   - Dashboard auto-refreshes dashboard-series every 60s for Today/1h (silent).
   - Dashboard compare label for `today` is now explicit: **Yesterday (same time)** (avoids confusion with full-day Yesterday values).
+  - Returning sparkline buckets now classify returning orders using truth-aligned fallback when `customer_orders_count` is null (`customer_order_facts.first_paid_order_at < order.created_at`), preventing false-flat returning compare lines.
 
 2026-02-15 (earlier)
 - Sparkline data and compare-line alignment fixes:
