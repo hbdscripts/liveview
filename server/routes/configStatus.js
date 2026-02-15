@@ -6,6 +6,7 @@
 
 const config = require('../config');
 const store = require('../store');
+const { normalizeRangeKey } = require('../rangeKey');
 const { getDb, isPostgres } = require('../db');
 const salesTruth = require('../salesTruth');
 const {
@@ -97,6 +98,14 @@ async function configStatus(req, res, next) {
   const last24hStart = now - 24 * 60 * 60 * 1000;
   const timeZone = store.resolveAdminTimeZone();
   const todayBounds = store.getRangeBounds('today', now, timeZone);
+  const overviewAllowed = new Set(['today', 'yesterday', '7d', '14d', '30d']);
+  const overviewRangeKey = normalizeRangeKey(req && req.query ? req.query.range : '', { defaultKey: 'today', allowed: overviewAllowed });
+  const overviewBounds = store.getRangeBounds(overviewRangeKey, now, timeZone);
+  function ymdFromMs(ms) {
+    try { return new Date(ms).toLocaleDateString('en-CA', { timeZone }); } catch (_) { return ''; }
+  }
+  const overviewSinceYmd = ymdFromMs(overviewBounds.start);
+  const overviewUntilYmd = ymdFromMs(Math.max(overviewBounds.start, overviewBounds.end - 1));
 
   const db = getDb();
   const dbEngine = isPostgres() ? 'postgres' : 'sqlite';
@@ -375,6 +384,170 @@ async function configStatus(req, res, next) {
     } catch (_) {}
   }
 
+  // --- Overview (range-selectable): Shopify vs Kexo session denominators against truth orders ---
+  const overview = {
+    rangeKey: overviewRangeKey,
+    bounds: overviewBounds,
+    sinceYmd: overviewSinceYmd,
+    untilYmd: overviewUntilYmd,
+    truthScope: salesTruth.scopeForRangeKey(overviewRangeKey, 'range'),
+    truthHealth: null,
+    truthOrders: null,
+    truthRevenueGbp: null,
+    shopifySessions: null,
+    shopifySessionsNote: '',
+    shopifySessionsSource: '',
+    shopifyCr: null,
+    shopifyCrSource: 'computed: truth orders / ShopifyQL sessions',
+    kexoSessionsHuman: null,
+    botsBlockedAtEdge: null,
+    botsBlockedAtEdgeUpdatedAt: null,
+    kexoCr: null,
+  };
+
+  // Kexo sessions (human) in selected range.
+  if (tables.sessions) {
+    try {
+      const cf = await db.get(
+        `
+        SELECT
+          SUM(CASE WHEN cf_known_bot = 1 THEN 1 ELSE 0 END) AS known_bot,
+          SUM(CASE WHEN cf_known_bot = 0 OR cf_known_bot IS NULL THEN 1 ELSE 0 END) AS human
+        FROM sessions
+        WHERE started_at >= ? AND started_at < ?
+        `,
+        [overviewBounds.start, overviewBounds.end]
+      );
+      const human = num(cf?.human);
+      if (human != null) overview.kexoSessionsHuman = human;
+    } catch (_) {}
+  }
+
+  // Bots blocked at the edge (sum by day over selected range).
+  if (tables.bot_block_counts && overviewSinceYmd && overviewUntilYmd) {
+    try {
+      const row = await db.get(
+        'SELECT COALESCE(SUM("count"), 0) AS n, MAX(updated_at) AS updated_at FROM bot_block_counts WHERE date >= ? AND date <= ?',
+        [overviewSinceYmd, overviewUntilYmd]
+      );
+      if (row != null) {
+        const n = num(row.n);
+        overview.botsBlockedAtEdge = n != null ? n : 0;
+        overview.botsBlockedAtEdgeUpdatedAt = num(row.updated_at);
+      }
+    } catch (_) {
+      try {
+        const row = await db.get(
+          'SELECT COALESCE(SUM("count"), 0) AS n FROM bot_block_counts WHERE date >= ? AND date <= ?',
+          [overviewSinceYmd, overviewUntilYmd]
+        );
+        if (row != null) {
+          const n = num(row.n);
+          overview.botsBlockedAtEdge = n != null ? n : 0;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Truth orders/revenue for selected range (keep non-today reconcile non-blocking).
+  if (shop) {
+    try { overview.truthHealth = await salesTruth.getTruthHealth(shop || '', overview.truthScope); } catch (_) {}
+    if (overviewRangeKey === 'today') {
+      try { await salesTruth.ensureReconciled(shop, overviewBounds.start, overviewBounds.end, overview.truthScope); } catch (_) {}
+    } else {
+      salesTruth.ensureReconciled(shop, overviewBounds.start, overviewBounds.end, overview.truthScope).catch(() => {});
+    }
+  }
+  if (shop && tables.orders_shopify) {
+    if (overviewRangeKey === 'today') {
+      if (typeof truth.today.orderCount === 'number') overview.truthOrders = truth.today.orderCount;
+      if (typeof truth.today.revenueGbp === 'number') overview.truthRevenueGbp = truth.today.revenueGbp;
+    } else {
+      try { overview.truthOrders = await salesTruth.getTruthOrderCount(shop, overviewBounds.start, overviewBounds.end); } catch (_) {}
+      try { overview.truthRevenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, overviewBounds.start, overviewBounds.end); } catch (_) {}
+    }
+  }
+
+  // Shopify sessions for selected range (ShopifyQL) + snapshot into shopify_sessions_snapshots.
+  if (shop && token) {
+    if (overviewRangeKey === 'today') {
+      if (typeof traffic.shopifySessionsToday === 'number') {
+        overview.shopifySessions = traffic.shopifySessionsToday;
+        overview.shopifySessionsNote = '';
+        overview.shopifySessionsSource = 'traffic.shopifySessionsToday (ShopifyQL DURING today)';
+      } else {
+        overview.shopifySessions = null;
+        overview.shopifySessionsNote = traffic.shopifySessionsTodayNote || 'Shopify sessions unavailable';
+        overview.shopifySessionsSource = 'traffic.shopifySessionsToday (ShopifyQL DURING today)';
+      }
+    } else if (overviewRangeKey === 'yesterday') {
+      const result = await shopifyQl.fetchShopifySessionsMetrics(shop, token, { during: 'yesterday' });
+      if (typeof result.sessions === 'number') {
+        overview.shopifySessions = result.sessions;
+        overview.shopifySessionsNote = '';
+        overview.shopifySessionsSource = 'ShopifyQL DURING yesterday';
+        try {
+          await store.saveShopifySessionsSnapshot({
+            shop,
+            snapshotKey: 'yesterday',
+            dayYmd: overviewSinceYmd,
+            sessionsCount: result.sessions,
+            fetchedAt: now,
+          });
+        } catch (_) {}
+      } else {
+        overview.shopifySessions = null;
+        overview.shopifySessionsNote = result.error ? String(result.error) : 'Shopify sessions unavailable';
+        overview.shopifySessionsSource = 'ShopifyQL DURING yesterday';
+      }
+    } else if (overviewSinceYmd && overviewUntilYmd) {
+      const ts = await shopifyQl.fetchShopifySessionsTimeseriesRange(shop, token, { sinceYmd: overviewSinceYmd, untilYmd: overviewUntilYmd, timeZone });
+      if (!ts.error && Array.isArray(ts.labelsYmd) && Array.isArray(ts.sessions) && ts.labelsYmd.length) {
+        let total = 0;
+        for (let i = 0; i < ts.labelsYmd.length; i++) {
+          const ymd = ts.labelsYmd[i];
+          const s = ts.sessions[i];
+          const n = typeof s === 'number' && Number.isFinite(s) ? s : null;
+          if (n != null) total += n;
+          if (ymd && n != null) {
+            try {
+              await store.saveShopifySessionsSnapshot({
+                shop,
+                snapshotKey: 'range:' + overviewRangeKey,
+                dayYmd: ymd,
+                sessionsCount: n,
+                fetchedAt: now,
+              });
+            } catch (_) {}
+          }
+        }
+        overview.shopifySessions = total;
+        overview.shopifySessionsNote = '';
+        overview.shopifySessionsSource = 'ShopifyQL TIMESERIES day SINCE/UNTIL';
+      } else {
+        overview.shopifySessions = null;
+        overview.shopifySessionsNote = ts.error ? String(ts.error) : 'Shopify sessions unavailable';
+        overview.shopifySessionsSource = 'ShopifyQL TIMESERIES day SINCE/UNTIL';
+      }
+    } else {
+      overview.shopifySessionsNote = 'Invalid range bounds for Shopify sessions';
+    }
+  } else if (shop && !token) {
+    overview.shopifySessionsNote = 'No Shopify access token stored for this shop (install/reinstall from Shopify Admin).';
+  } else if (!shop) {
+    overview.shopifySessionsNote = 'Missing shop domain (open the dashboard with ?shop=store.myshopify.com or set ALLOWED_SHOP_DOMAIN).';
+  }
+
+  // Derived CR%: truth orders / sessions
+  if (typeof overview.truthOrders === 'number') {
+    if (typeof overview.shopifySessions === 'number' && overview.shopifySessions > 0) {
+      overview.shopifyCr = (overview.truthOrders / overview.shopifySessions) * 100;
+    }
+    if (typeof overview.kexoSessionsHuman === 'number' && overview.kexoSessionsHuman > 0) {
+      overview.kexoCr = (overview.truthOrders / overview.kexoSessionsHuman) * 100;
+    }
+  }
+
   if (shop && tables.purchase_events) {
     try {
       const row = await db.get(
@@ -607,6 +780,7 @@ async function configStatus(req, res, next) {
     },
     now,
     timeZone,
+    overview,
     configDisplay,
     app: {
       version: pkg.version || '0.0.0',
