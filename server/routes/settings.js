@@ -23,6 +23,13 @@ const {
   defaultProfitRulesConfigV1,
   normalizeProfitRulesConfigV1,
 } = require('../profitRulesConfig');
+const {
+  TRAFFIC_SOURCES_CONFIG_KEY,
+  defaultTrafficSourcesConfigV1,
+  normalizeTrafficSourcesConfigV1,
+  normalizeTrafficSourcesConfigForSave,
+  validateTrafficSourcesConfigStructure,
+} = require('../trafficSourcesConfig');
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
@@ -1153,6 +1160,7 @@ async function readSettingsPayload() {
   let tablesUiConfig = defaultTablesUiConfigV1();
   let profitRules = defaultProfitRulesConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
+  let trafficSourcesConfig = defaultTrafficSourcesConfigV1();
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
   let rawMap = {};
@@ -1167,6 +1175,7 @@ async function readSettingsPayload() {
       TABLES_UI_CONFIG_V1_KEY,
       PROFIT_RULES_V1_KEY,
       VARIANTS_CONFIG_KEY,
+      TRAFFIC_SOURCES_CONFIG_KEY,
     ]);
   } catch (_) {
     rawMap = {};
@@ -1210,6 +1219,10 @@ async function readSettingsPayload() {
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
   try {
+    const raw = rawMap[TRAFFIC_SOURCES_CONFIG_KEY];
+    trafficSourcesConfig = normalizeTrafficSourcesConfigV1(raw);
+  } catch (_) {}
+  try {
     const raw = rawMap[PAGE_LOADER_ENABLED_V1_KEY];
     pageLoaderEnabled = normalizePageLoaderEnabledV1(raw);
   } catch (_) { pageLoaderEnabled = defaultPageLoaderEnabledV1(); }
@@ -1226,6 +1239,7 @@ async function readSettingsPayload() {
     tablesUiConfig,
     profitRules,
     insightsVariantsConfig,
+    trafficSourcesConfig,
     pageLoaderEnabled,
   };
 }
@@ -1477,6 +1491,37 @@ async function postSettings(req, res) {
       return res.status(500).json({
         ok: false,
         error: err && err.message ? String(err.message) : 'Failed to save variants config',
+      });
+    }
+  }
+
+  // Traffic sources config (v1) — Sources v2 engine (Variants-style)
+  if (Object.prototype.hasOwnProperty.call(body, 'trafficSourcesConfig')) {
+    try {
+      const normalized = body.trafficSourcesConfig == null
+        ? defaultTrafficSourcesConfigV1()
+        : normalizeTrafficSourcesConfigForSave(body.trafficSourcesConfig);
+
+      const structureValidation = validateTrafficSourcesConfigStructure(normalized);
+      if (!structureValidation.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: 'traffic_sources_config_invalid',
+          message: 'Traffic Sources settings are invalid. Fix the listed issues and try again.',
+          details: {
+            stage: 'structure',
+            errors: structureValidation.errors || [],
+          },
+        });
+      }
+
+      const json = JSON.stringify(normalized);
+      if (json.length > 200000) throw new Error('Traffic sources config too large');
+      await store.setSetting(TRAFFIC_SOURCES_CONFIG_KEY, json);
+    } catch (err) {
+      return res.status(500).json({
+        ok: false,
+        error: err && err.message ? String(err.message) : 'Failed to save traffic sources config',
       });
     }
   }

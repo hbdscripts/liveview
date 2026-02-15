@@ -3490,6 +3490,29 @@ const API = '';
         return '<img src="' + escapeHtml(hotImg(src) || src || '') + '" alt="' + escapeHtml(alt || '') + '" class="' + cls + '" width="20" height="20"' + t + '>';
       }
 
+      function iconFromSpec(specRaw, label, extraClass) {
+        const spec = specRaw != null ? String(specRaw).trim() : '';
+        if (!spec) return '';
+        const t = label ? ' title="' + escapeHtml(String(label)) + '"' : '';
+        const extra = extraClass ? (' ' + String(extraClass)) : '';
+        if (/^<svg[\s>]/i.test(spec)) {
+          return '<span class="source-icon-svg' + escapeHtml(extra) + '"' + t + ' aria-hidden="true">' + spec + '</span>';
+        }
+        if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) {
+          return icon(spec, label, label, extraClass);
+        }
+        return '<i class="' + escapeHtml(spec) + ' source-icon-fa' + escapeHtml(extra) + '"' + t + ' aria-hidden="true"></i>';
+      }
+
+      // v2: single resolved source (label + iconSpec) from rules engine.
+      const v2Key = s && (s.traffic_source_v2_key ?? s.trafficSourceV2Key ?? s.traffic_source_v2 ?? s.trafficSourceV2);
+      if (v2Key) {
+        const label = s && (s.traffic_source_v2_label ?? s.trafficSourceV2Label) ? String(s.traffic_source_v2_label ?? s.trafficSourceV2Label) : String(v2Key);
+        const iconSpec = s && (s.traffic_source_v2_icon_spec ?? s.trafficSourceV2IconSpec) ? String(s.traffic_source_v2_icon_spec ?? s.trafficSourceV2IconSpec) : '';
+        const html = iconFromSpec(iconSpec || 'fa-light fa-link', label, '');
+        return html ? ('<span class="source-icons">' + html + '</span>') : '';
+      }
+
       // Show source icons driven by Traffic sources + mapping:
       // - If a session matches multiple mapping rules, show multiple icons side-by-side.
       // - Otherwise, show the derived `sessions.traffic_source_key` (includes Direct/no-referrer).
@@ -3547,6 +3570,112 @@ const API = '';
       return lines.join('\n');
     }
 
+    function deviceInfoForSession(s) {
+      const uaDeviceTypeRaw = s && (s.ua_device_type ?? s.uaDeviceType) != null ? String(s.ua_device_type ?? s.uaDeviceType) : '';
+      const uaPlatformRaw = s && (s.ua_platform ?? s.uaPlatform) != null ? String(s.ua_platform ?? s.uaPlatform) : '';
+      const uaModelRaw = s && (s.ua_model ?? s.uaModel) != null ? String(s.ua_model ?? s.uaModel) : '';
+      const legacyDeviceRaw = s && s.device != null ? String(s.device) : '';
+
+      function norm(v) { return (v || '').trim().toLowerCase(); }
+      function isOneOf(v, list) { return list.indexOf(v) >= 0; }
+      function derivePlatformFallback() {
+        const d = norm(legacyDeviceRaw);
+        if (!d) return '';
+        if (d === 'ios') return 'ios';
+        if (d === 'android') return 'android';
+        if (d === 'windows') return 'windows';
+        if (d === 'mac') return 'mac';
+        if (d === 'chrome os' || d === 'chromeos') return 'chromeos';
+        if (d === 'linux') return 'linux';
+        if (d === 'windows phone') return 'windows';
+        return '';
+      }
+
+      const deviceType = (() => {
+        const v = norm(uaDeviceTypeRaw);
+        if (isOneOf(v, ['desktop', 'mobile', 'tablet'])) return v;
+        return 'unknown';
+      })();
+
+      const platform = (() => {
+        const v = norm(uaPlatformRaw) || derivePlatformFallback();
+        if (isOneOf(v, ['ios', 'android', 'windows', 'mac', 'chromeos', 'linux'])) return v;
+        if (v === 'other') return 'other';
+        return 'unknown';
+      })();
+
+      const model = (() => {
+        const v = norm(uaModelRaw);
+        if (isOneOf(v, ['iphone', 'ipad'])) return v;
+        return '';
+      })();
+
+      return { deviceType, platform, model };
+    }
+
+    function deviceIconKeyForPlatform(platform) {
+      const p = (platform || '').trim().toLowerCase();
+      if (p === 'ios') return 'type-platform-ios';
+      if (p === 'mac') return 'type-platform-mac';
+      if (p === 'android') return 'type-platform-android';
+      if (p === 'windows') return 'type-platform-windows';
+      if (p === 'chromeos') return 'type-platform-chromeos';
+      if (p === 'linux') return 'type-platform-linux';
+      return 'type-platform-unknown';
+    }
+
+    function deviceIconKeyForDeviceType(deviceType) {
+      const d = (deviceType || '').trim().toLowerCase();
+      if (d === 'desktop') return 'type-device-desktop';
+      if (d === 'mobile') return 'type-device-mobile';
+      if (d === 'tablet') return 'type-device-tablet';
+      return 'type-device-unknown';
+    }
+
+    function deviceSortKey(s) {
+      const info = deviceInfoForSession(s);
+      return (info.platform + ' ' + (info.model || '') + ' ' + info.deviceType).trim().toLowerCase();
+    }
+
+    function deviceCell(s) {
+      const info = deviceInfoForSession(s);
+      const platformIconKey = deviceIconKeyForPlatform(info.platform);
+      const deviceIconKey = deviceIconKeyForDeviceType(info.deviceType);
+
+      function titleize(v) {
+        const s = (v || '').trim().toLowerCase();
+        if (!s) return '';
+        if (s === 'ios') return 'iOS';
+        if (s === 'mac') return 'Mac';
+        if (s === 'android') return 'Android';
+        if (s === 'windows') return 'Windows';
+        if (s === 'chromeos') return 'Chrome OS';
+        if (s === 'linux') return 'Linux';
+        if (s === 'desktop') return 'Desktop';
+        if (s === 'mobile') return 'Mobile';
+        if (s === 'tablet') return 'Tablet';
+        if (s === 'iphone') return 'iPhone';
+        if (s === 'ipad') return 'iPad';
+        if (s === 'other') return 'Other';
+        if (s === 'unknown') return 'Unknown';
+        return s;
+      }
+
+      const titleParts = [];
+      if (info.platform && info.platform !== 'unknown') titleParts.push(titleize(info.platform));
+      if (info.model) titleParts.push(titleize(info.model));
+      if (info.deviceType && info.deviceType !== 'unknown') titleParts.push(titleize(info.deviceType));
+      const title = titleParts.length ? titleParts.join(' · ') : (s && s.device != null ? String(s.device) : 'Unknown');
+      const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
+
+      return '' +
+        '<span class="kexo-device-icons"' + t + '>' +
+          '<i class="fa-light fa-circle-question" data-icon-key="' + escapeHtml(platformIconKey) + '" aria-hidden="true"></i>' +
+          '<i class="fa-light fa-globe" data-icon-key="' + escapeHtml(deviceIconKey) + '" aria-hidden="true"></i>' +
+          '<span class="visually-hidden">' + escapeHtml(String(title || '')) + '</span>' +
+        '</span>';
+    }
+
     function renderRow(s) {
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
@@ -3576,7 +3705,7 @@ const API = '';
         <div class="grid-cell landing-cell" role="cell">${landingPageCell(s)}</div>
         <div class="grid-cell flag-cell" role="cell">${fromCell}</div>
         <div class="grid-cell source-cell" role="cell">${sourceCell(s)}</div>
-        <div class="grid-cell" role="cell">${escapeHtml(s.device || '')}</div>
+        <div class="grid-cell device-cell" role="cell">${deviceCell(s)}</div>
         <div class="grid-cell cart-value-cell" role="cell">${cartOrSaleCell}</div>
         <div class="grid-cell arrived-cell" role="cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></div>
         <div class="grid-cell last-seen-cell" role="cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></div>
@@ -3625,8 +3754,8 @@ const API = '';
           return mult * (va < vb ? -1 : va > vb ? 1 : 0);
         }
         if (sortBy === 'device') {
-          va = (a && a.device != null ? String(a.device) : '').trim().toLowerCase();
-          vb = (b && b.device != null ? String(b.device) : '').trim().toLowerCase();
+          va = deviceSortKey(a);
+          vb = deviceSortKey(b);
           return mult * (va < vb ? -1 : va > vb ? 1 : 0);
         }
         if (sortBy === 'cart') {
@@ -10363,9 +10492,11 @@ const API = '';
 
       function trafficTypePlatformIcon(platform) {
         var p = (platform || '').trim().toLowerCase();
-        if (p === 'ios' || p === 'mac') return '<i class="fa-light fa-apple" data-icon-key="type-platform-ios"></i>';
+        if (p === 'ios') return '<i class="fa-light fa-apple" data-icon-key="type-platform-ios"></i>';
+        if (p === 'mac') return '<i class="fa-light fa-apple" data-icon-key="type-platform-mac"></i>';
         if (p === 'android') return '<i class="fa-light fa-android" data-icon-key="type-platform-android"></i>';
         if (p === 'windows') return '<i class="fa-light fa-windows" data-icon-key="type-platform-windows"></i>';
+        if (p === 'chromeos') return '<i class="fa-brands fa-chrome" data-icon-key="type-platform-chromeos"></i>';
         if (p === 'linux') return '<i class="fa-light fa-linux" data-icon-key="type-platform-linux"></i>';
         return '<i class="fa-light fa-circle-question" data-icon-key="type-platform-unknown"></i>';
       }

@@ -25,6 +25,7 @@ const kpisRouter = require('./routes/kpis');
 const kpisExpandedExtra = require('./routes/kpisExpandedExtra');
 const trafficRouter = require('./routes/traffic');
 const trafficSourceMaps = require('./routes/trafficSourceMaps');
+const trafficSourcesV2 = require('./routes/trafficSourcesV2');
 const pixelRouter = require('./routes/pixel');
 const shopifySales = require('./routes/shopifySales');
 const salesDiagnostics = require('./routes/salesDiagnostics');
@@ -43,6 +44,7 @@ const insightsVariantsSuggestions = require('./routes/insightsVariantsSuggestion
 const worstProducts = require('./routes/worstProducts');
 const productInsights = require('./routes/productInsights');
 const pageInsights = require('./routes/pageInsights');
+const devicesRouter = require('./routes/devices');
 const abandonedCarts = require('./routes/abandonedCarts');
 const adsRouter = require('./routes/ads');
 const toolsRouter = require('./routes/tools');
@@ -117,6 +119,7 @@ app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.get('/api/asset-overrides', assets.getAssetOverrides);
 app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
+app.get('/api/devices/observed', devicesRouter.getObservedDevices);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);
 app.get('/icon-registry.js', (req, res) => {
@@ -139,6 +142,9 @@ app.get('/api/traffic-source-maps', trafficSourceMaps.getTrafficSourceMaps);
 app.post('/api/traffic-source-maps/map', trafficSourceMaps.mapTokenToSource);
 app.post('/api/traffic-source-maps/meta', trafficSourceMaps.upsertSourceMeta);
 app.post('/api/traffic-source-maps/backfill', trafficSourceMaps.backfillTokens);
+app.get('/api/traffic-sources-v2/suggestions', trafficSourcesV2.getTrafficSourcesV2Suggestions);
+app.post('/api/traffic-sources-v2/suggestions/apply', trafficSourcesV2.postApplyTrafficSourcesV2Suggestions);
+app.get('/api/traffic-sources-v2/diagnostics', trafficSourcesV2.getTrafficSourcesV2Diagnostics);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
 app.get('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
 app.post('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);

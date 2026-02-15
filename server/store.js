@@ -12,6 +12,13 @@ const productMetaCache = require('./shopifyProductMetaCache');
 const shopifyLandingMeta = require('./shopifyLandingMeta');
 const shopifyQl = require('./shopifyQl');
 const reportCache = require('./reportCache');
+const {
+  TRAFFIC_SOURCES_CONFIG_KEY,
+  defaultTrafficSourcesConfigV1,
+  normalizeTrafficSourcesConfigV1,
+  buildTrafficSourceContext,
+  matchTrafficSource,
+} = require('./trafficSourcesConfig');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -318,6 +325,50 @@ function invalidateTrafficSourceMapCache() {
   _trafficSourceMapCache.metaByKey = new Map();
   _trafficSourceMapCache.rulesRows = [];
   _trafficSourceMapCache.metaRows = [];
+}
+
+let _trafficSourcesV2Cache = {
+  loadedAt: 0,
+  ttlMs: 30 * 1000,
+  config: null,
+};
+let _trafficSourcesV2InFlight = null;
+
+function invalidateTrafficSourcesV2Cache() {
+  _trafficSourcesV2Cache.loadedAt = 0;
+  _trafficSourcesV2Cache.config = null;
+}
+
+async function loadTrafficSourcesV2ConfigFromDb() {
+  let cfg = defaultTrafficSourcesConfigV1();
+  try {
+    const raw = await getSetting(TRAFFIC_SOURCES_CONFIG_KEY);
+    cfg = normalizeTrafficSourcesConfigV1(raw);
+  } catch (_) {
+    cfg = defaultTrafficSourcesConfigV1();
+  }
+  return cfg;
+}
+
+async function getTrafficSourcesV2ConfigCached(options = {}) {
+  const force = !!options.force;
+  const now = Date.now();
+  if (!force && _trafficSourcesV2Cache.loadedAt && _trafficSourcesV2Cache.config && (now - _trafficSourcesV2Cache.loadedAt) < _trafficSourcesV2Cache.ttlMs) {
+    return _trafficSourcesV2Cache.config;
+  }
+  if (_trafficSourcesV2InFlight) return _trafficSourcesV2InFlight;
+  _trafficSourcesV2InFlight = loadTrafficSourcesV2ConfigFromDb()
+    .then((cfg) => {
+      _trafficSourcesV2Cache.loadedAt = Date.now();
+      _trafficSourcesV2Cache.config = cfg;
+      _trafficSourcesV2InFlight = null;
+      return cfg;
+    })
+    .catch((err) => {
+      _trafficSourcesV2InFlight = null;
+      return defaultTrafficSourcesConfigV1();
+    });
+  return _trafficSourcesV2InFlight;
 }
 
 async function loadTrafficSourceMapFromDb() {
@@ -789,6 +840,10 @@ async function setSetting(key, value) {
   } else {
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
   }
+  try {
+    const k = key != null ? String(key).trim().toLowerCase() : '';
+    if (k === TRAFFIC_SOURCES_CONFIG_KEY) invalidateTrafficSourcesV2Cache();
+  } catch (_) {}
 }
 
 // Reporting sources (used to switch between Shopify truth vs pixel-derived reporting)
@@ -1267,6 +1322,73 @@ async function insertPurchase(payload, sessionId, countryCode) {
 const TODAY_WINDOW_MINUTES = 24 * 60;
 const ALL_SESSIONS_WINDOW_MINUTES = 60;
 
+async function enrichSessionsWithTrafficSourcesV2(sessions) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (!list.length) return;
+  let cfg = null;
+  try { cfg = await getTrafficSourcesV2ConfigCached(); } catch (_) { cfg = null; }
+  if (!cfg) cfg = defaultTrafficSourcesConfigV1();
+
+  const ids = [];
+  const seen = new Set();
+  for (const s of list) {
+    const sid = s && s.session_id != null ? String(s.session_id).trim() : '';
+    if (!sid) continue;
+    if (seen.has(sid)) continue;
+    seen.add(sid);
+    ids.push(sid);
+  }
+  if (!ids.length) return;
+
+  const db = getDb();
+  const evidenceBySessionId = new Map();
+  const maxIdsForEvidence = 5000;
+  if (ids.length <= maxIdsForEvidence) {
+    try {
+      const chunkSize = 400;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => '?').join(', ');
+        const rows = await db.all(
+          `
+            SELECT session_id, source_kind, affiliate_network_hint, affiliate_id_hint, paid_click_ids_json, affiliate_click_ids_json
+            FROM affiliate_attribution_sessions
+            WHERE session_id IN (${placeholders})
+          `,
+          chunk
+        );
+        for (const r of rows || []) {
+          const sid = r && r.session_id != null ? String(r.session_id).trim() : '';
+          if (!sid) continue;
+          evidenceBySessionId.set(sid, r);
+        }
+      }
+    } catch (_) {
+      // Fail-open when table does not exist yet.
+    }
+  }
+
+  for (const s of list) {
+    const sid = s && s.session_id != null ? String(s.session_id).trim() : '';
+    const evidence = sid ? (evidenceBySessionId.get(sid) || null) : null;
+    const ctx = buildTrafficSourceContext({ session: s, affiliate: evidence });
+    const m = matchTrafficSource(ctx, cfg);
+    if (m && m.kind === 'matched' && m.key) {
+      s.traffic_source_v2_key = m.key;
+      s.traffic_source_v2_label = m.label || m.key;
+      s.traffic_source_v2_icon_spec = m.iconSpec || null;
+      s.traffic_source_v2_kind = 'matched';
+      s.traffic_source_v2_resolved = m.resolved ? 1 : 0;
+    } else {
+      s.traffic_source_v2_key = null;
+      s.traffic_source_v2_label = null;
+      s.traffic_source_v2_icon_spec = null;
+      s.traffic_source_v2_kind = 'unmatched';
+      s.traffic_source_v2_resolved = 0;
+    }
+  }
+}
+
 async function listSessions(filter) {
   const db = getDb();
   const now = Date.now();
@@ -1333,6 +1455,7 @@ async function listSessions(filter) {
     return out;
   });
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
+  await enrichSessionsWithTrafficSourcesV2(sessions);
   return sessions;
 }
 
@@ -1823,6 +1946,7 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   });
 
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
+  await enrichSessionsWithTrafficSourcesV2(sessions);
   return { sessions, total };
 }
 

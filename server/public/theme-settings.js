@@ -687,6 +687,144 @@
     return html;
   }
 
+  function escapeHtml(value) {
+    if (value == null) return '';
+    var s = String(value);
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function fetchObservedDevices(opts) {
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    var minClicks = opts && typeof opts.minClicks === 'number' ? opts.minClicks : 2;
+    var url = base + '/api/devices/observed?minClicks=' + encodeURIComponent(String(minClicks));
+    return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  function ensureDetectedDevicesAccordionItem(accordionEl, { groupId, label, insertBeforeId } = {}) {
+    if (!accordionEl) return null;
+    var gid = String(groupId || '').trim().toLowerCase();
+    if (!gid) return null;
+    var existingCollapse = accordionEl.querySelector('#theme-icons-accordion-collapse-' + gid);
+    if (existingCollapse) {
+      return existingCollapse.closest('.accordion-item');
+    }
+
+    var accordionId = accordionEl.getAttribute('id') || 'theme-icons-accordion';
+    var headingId = 'theme-icons-accordion-heading-' + gid;
+    var collapseId = 'theme-icons-accordion-collapse-' + gid;
+    var title = label ? String(label) : 'Detected Devices';
+
+    var html = '' +
+      '<div class="accordion-item" data-theme-icon-group="' + gid + '">' +
+        '<h2 class="accordion-header" id="' + headingId + '">' +
+          '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '">' +
+            '<span class="d-flex align-items-center w-100 gap-2">' +
+              '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
+              '<span class="me-auto">' + escapeHtml(title) + '</span>' +
+              '<span class="text-muted small" data-theme-icon-group-count="' + gid + '">0 icons</span>' +
+            '</span>' +
+          '</button>' +
+        '</h2>' +
+        '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
+          '<div class="accordion-body"><div class="row g-3" data-theme-icon-group-body="' + gid + '"></div></div>' +
+        '</div>' +
+      '</div>';
+
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    var item = wrap.firstElementChild;
+    if (!item) return null;
+
+    var beforeNode = null;
+    if (insertBeforeId) {
+      var target = accordionEl.querySelector('#' + String(insertBeforeId));
+      beforeNode = target ? target.closest('.accordion-item') : null;
+    }
+    if (beforeNode) accordionEl.insertBefore(item, beforeNode);
+    else accordionEl.appendChild(item);
+    return item;
+  }
+
+  function updateThemeIconsAccordionCounts(accordionEl) {
+    if (!accordionEl) return;
+    accordionEl.querySelectorAll('.accordion-item').forEach(function (item) {
+      var body = item.querySelector('.accordion-body .row');
+      if (!body) return;
+      var n = body.querySelectorAll('.col-12').length;
+      var countEl = item.querySelector('[data-theme-icon-group-count]') || item.querySelector('.accordion-header .text-muted.small');
+      if (countEl) countEl.textContent = String(n) + ' icons';
+    });
+  }
+
+  function hydrateDetectedDevicesIconGroup(root) {
+    // Best-effort: dynamically move detected device/platform icon cards into a dedicated accordion group.
+    // This avoids re-rendering (so unsaved edits in textareas are preserved).
+    if (!root) return;
+    var accordion = root.querySelector ? root.querySelector('#theme-icons-accordion') : null;
+    if (!accordion) return;
+    if (accordion.getAttribute('data-detected-devices-hydrate') === '1') return;
+    accordion.setAttribute('data-detected-devices-hydrate', '1');
+
+    function platformIconKeyFor(p) {
+      var v = String(p || '').trim().toLowerCase();
+      if (v === 'ios') return 'type-platform-ios';
+      if (v === 'mac') return 'type-platform-mac';
+      if (v === 'android') return 'type-platform-android';
+      if (v === 'windows') return 'type-platform-windows';
+      if (v === 'chromeos') return 'type-platform-chromeos';
+      if (v === 'linux') return 'type-platform-linux';
+      return 'type-platform-unknown';
+    }
+    function deviceIconKeyFor(d) {
+      var v = String(d || '').trim().toLowerCase();
+      if (v === 'desktop' || v === 'mobile' || v === 'tablet') return 'type-device-' + v;
+      return 'type-device-unknown';
+    }
+
+    fetchObservedDevices({ minClicks: 2 }).then(function (data) {
+      if (!data || data.ok !== true) return;
+      var iconKeys = [];
+      var seen = {};
+      function add(k) {
+        var kk = String(k || '').trim().toLowerCase();
+        if (!kk || seen[kk]) return;
+        seen[kk] = true;
+        iconKeys.push(kk);
+      }
+      (Array.isArray(data.ua_device_type) ? data.ua_device_type : []).forEach(function (r) { add(deviceIconKeyFor(r && r.key)); });
+      (Array.isArray(data.ua_platform) ? data.ua_platform : []).forEach(function (r) { add(platformIconKeyFor(r && r.key)); });
+      if (!iconKeys.length) return;
+
+      var item = ensureDetectedDevicesAccordionItem(accordion, {
+        groupId: 'detected-devices',
+        label: 'Detected Devices',
+        insertBeforeId: 'theme-icons-accordion-collapse-runtime',
+      });
+      if (!item) return;
+      var body = item.querySelector('[data-theme-icon-group-body="detected-devices"]');
+      if (!body) return;
+
+      iconKeys.forEach(function (iconKey) {
+        var themeKey = 'theme-icon-glyph-' + iconKey;
+        var input = root.querySelector('[data-theme-icon-glyph-input="' + themeKey + '"]');
+        if (!input) return;
+        var col = input.closest('.col-12');
+        if (!col) return;
+        body.appendChild(col);
+      });
+
+      updateThemeIconsAccordionCounts(accordion);
+    });
+  }
+
   function buildIconEditModalHtml() {
     return '' +
       '<div class="modal fade" id="theme-icon-edit-modal" tabindex="-1" aria-hidden="true">' +
@@ -1688,6 +1826,7 @@
 
     wireThemeSubTabs(root);
     syncUI();
+    hydrateDetectedDevicesIconGroup(root);
   }
 
   // Build offcanvas and inject into page

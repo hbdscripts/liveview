@@ -310,10 +310,18 @@
             <h3 class="card-title"><i class="fa-thin fa-map-location-dot me-2" data-icon-key="settings-tab-sources" aria-hidden="true"></i>Traffic Sources</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Map UTM parameters and referrers to source labels and icons.</p>
+            <p class="text-secondary">Build rule-based Source mappings (UTMs, entry URL params, referrer host, affiliate attribution). Icons support Font Awesome classes, inline SVG, or uploaded images.</p>
             <div id="settings-traffic-source-mapping-root" class="dm-root">
               <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading sources</div></div></div>
             </div>
+            <hr class="my-4">
+            <details id="settings-sources-legacy-details">
+              <summary class="text-secondary">Legacy mapping (v1)</summary>
+              <div class="text-secondary small mt-2">Kept for backwards compatibility while Sources v2 rolls out.</div>
+              <div id="settings-traffic-source-mapping-legacy-root" class="dm-root mt-3">
+                <div class="dm-loading">Loading legacy mapping…</div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -689,6 +697,7 @@
   <script src="/kexo-chart-builder.js"></script>
   <script src="/app.js"></script>
   <script src="/theme-settings.js" defer></script>
+  <script src="/traffic-sources-v2-settings.js"></script>
   <script src="/settings-page.js"></script>
 </body>
 </html>

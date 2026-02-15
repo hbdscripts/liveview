@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Sticky resize handle → Theme Icons)
+Last updated: 2026-02-15 (Devices icons + Sources v2 rollout)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -101,7 +101,7 @@ Settings tabs:
 - Theme: theme editor (colors/fonts/icons/header)
 - Assets: upload/override favicon + logos (R2-backed) — plan-gated for normal accounts (Upgrade required)
 - Integrations: Pixel + Google Ads status/actions
-- Sources: UTM/source mapping
+- Sources: Sources v2 rule editor (UTMs + entry params + referrer + affiliate attribution) with FA/SVG/upload icons + legacy v1 mapping (collapsible)
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
   - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max) + shared converted-row colors modal for Live/Table/Sales sessions tables (sale icon + sticky). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
@@ -115,7 +115,7 @@ Admin-only (moved out of `/settings`):
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
-- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`
+- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`, `trafficSourcesConfig`
 - New: `pageLoaderEnabled` (per-page loader overlay toggles; stored under `page_loader_enabled_v1`)
 - Assets helpers:
   - `GET /api/asset-overrides` (read `asset_overrides`)
@@ -159,6 +159,7 @@ Icons:
   - Converts Tabler icon placeholders / inline nav SVGs to Font Awesome.
   - Icons are keyed via `data-icon-key="..."` across the app.
   - Settings-only icon keys (`settings-tab-*`, `settings-diagnostics-*`) are locked for stability.
+- Devices: Theme → Icons now includes a “Detected Devices” accordion group populated from all-time sessions counts via `GET /api/devices/observed?minClicks=2`. Sessions tables now render platform+device icons (from `sessions.ua_platform` + `sessions.ua_device_type`) instead of device words.
 
 ---
 
@@ -307,6 +308,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Devices icons + Sources v2 groundwork:
+  - Devices: `GET /api/devices/observed?minClicks=2` (sessions-based counts) + Theme → Icons “Detected Devices” accordion; sessions tables Device column now renders platform+device icons (new keys: `type-platform-mac`, `type-platform-chromeos`).
+  - Sources v2: new engine/config in `server/trafficSourcesConfig.js` persisted under Settings key `traffic_sources_config_v1` (exposed as `trafficSourcesConfig` on `/api/settings`).
+  - Sources v2 APIs: `GET /api/traffic-sources-v2/suggestions`, `POST /api/traffic-sources-v2/suggestions/apply`, `GET /api/traffic-sources-v2/diagnostics`.
+  - Settings → Sources rebuilt (new `server/public/traffic-sources-v2-settings.js`) and legacy v1 mapping kept under a collapsible panel.
+  - Runtime: sessions API enriches rows with `traffic_source_v2_*` fields; sessions Source column now prefers v2 iconSpec (FA/SVG/URL) when available.
 
 2026-02-15 (latest)
 - Sticky column resize handle: replaced broken inline SVG with Font Awesome icon (`fa-solid fa-left-right`). New icon key `table-sticky-resize-handle` in Settings → Theme → Icons (Tables group); configurable like other table icons.

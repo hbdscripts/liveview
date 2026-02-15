@@ -53,6 +53,7 @@
   var chartsUiConfigCache = null;
   var tablesUiConfigCache = null;
   var insightsVariantsConfigCache = null;
+  var trafficSourcesConfigCache = null;
   var insightsVariantsDraft = null;
   var chartsUiPanelRendered = false;
   var tablesUiPanelRendered = false;
@@ -152,7 +153,11 @@
     });
     updateUrl(key);
     if (key === 'sources') {
-      try { if (typeof window.initTrafficSourceMapping === 'function') window.initTrafficSourceMapping({ rootId: 'settings-traffic-source-mapping-root' }); } catch (_) {}
+      try {
+        if (typeof window.initTrafficSourcesV2Settings === 'function') {
+          window.initTrafficSourcesV2Settings({ rootId: 'settings-traffic-source-mapping-root', initialConfig: trafficSourcesConfigCache });
+        }
+      } catch (_) {}
     }
     if (key === 'layout') {
       var sub = getActiveLayoutSubTab();
@@ -566,6 +571,7 @@
         chartsUiConfigCache = data.chartsUiConfig || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
+        trafficSourcesConfigCache = data.trafficSourcesConfig || null;
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
         var scopeUser = document.getElementById('settings-scope-user');

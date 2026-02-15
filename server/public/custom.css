@@ -4234,3 +4234,53 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
   background: rgba(0, 0, 0, 0.46);
   border-color: rgba(255, 255, 255, 0.18);
 }
+
+/* Settings → Sources v2 */
+.tsv2-root .tsv2-icon-preview {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+}
+.tsv2-root .tsv2-icon-fa {
+  font-size: 18px;
+  line-height: 1;
+}
+.tsv2-root .tsv2-icon-img {
+  border-radius: 4px;
+  object-fit: cover;
+}
+.tsv2-root .tsv2-icon-svg svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.tsv2-root .tsv2-icon-empty {
+  border-radius: 4px;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+}
+.tsv2-root .tsv2-cond {
+  min-height: 34px;
+}
+
+/* Source icons: support v2 iconSpec (FA / SVG) in tables */
+.source-icons .source-icon-fa,
+.source-icons .source-icon-svg {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.source-icons .source-icon-fa {
+  font-size: 18px;
+  line-height: 1;
+}
+.source-icons .source-icon-svg svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
