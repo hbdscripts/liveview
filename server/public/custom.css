@@ -1519,12 +1519,13 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 
 .page-loader-progress .progress-bar.progress-bar-indeterminate {
   width: 30% !important;
-  animation: pageLoaderIndeterminate 1.4s ease-in-out infinite;
+  margin-left: 0 !important;
+  animation: pageLoaderIndeterminate 1.5s ease-in-out infinite;
 }
 
 @keyframes pageLoaderIndeterminate {
-  0% { margin-left: 0; }
-  100% { margin-left: 70%; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(433%); }
 }
 
 /* Unified report/page loaders (content-centered, not viewport-centered) */
