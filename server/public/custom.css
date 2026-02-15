@@ -2645,7 +2645,7 @@ body.kexo-report-loading #kexo-date-display::after {
 }
 .kexo-desktop-brand-link img {
   display: block;
-  height: 32px;
+  height: 22px;
 }
 .kexo-top-strip-settings-toggle {
   display: inline-flex;

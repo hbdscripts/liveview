@@ -17,3 +17,5 @@ build/
 live_visitors.sqlite
 
 .cursor/worktrees.json
+kexo-todos.txt
+*.psd
