@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dashboard KPI stability + exact compare + auto-refresh)
+Last updated: 2026-02-15 (Theme Icons visual editor live)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -305,6 +305,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Theme Icons visual editor shipped:
+  - Settings -> Theme -> Icons now renders grouped accordion sections and an audit panel (missing in settings + removed/legacy keys).
+  - Icon glyph inputs now support both Font Awesome classes and pasted SVG markup.
+  - Each icon card includes an Edit action with a modal for optional per-icon size/color overrides; overrides persist under `theme_icon_overrides_json`.
+  - Runtime icon renderer now applies overrides to both FA and SVG modes, and normalizes SVG sizing (ignores pasted intrinsic width/height unless override size is set).
+  - Theme defaults API now persists `theme_icon_overrides_json`.
 
 2026-02-15 (latest)
 - Icon registry guardrails + drift prevention:

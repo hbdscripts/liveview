@@ -1570,6 +1570,7 @@ const THEME_BASE_KEYS = [
   'theme_icon_table_heading',
   'theme_icon_size',
   'theme_icon_color',
+  'theme_icon_overrides_json',
 ];
 const THEME_KEYS = THEME_BASE_KEYS.concat(THEME_ICON_GLYPH_KEYS);
 

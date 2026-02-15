@@ -7,6 +7,7 @@
   var ICON_STYLE_CLASSES = ['fa-jelly', 'fa-jelly-filled', 'fa-light', 'fa-solid', 'fa-brands'];
   var ICON_STYLE_DEFAULTS = {};
   var ICON_STYLE_META = {};
+  var ICON_OVERRIDES_JSON_KEY = 'theme-icon-overrides-json';
   var ICON_REGISTRY = (window.KexoIconRegistry && window.KexoIconRegistry.registry) ? window.KexoIconRegistry.registry : null;
   function cloneRegistryMap(src) {
     var out = {};
@@ -17,6 +18,9 @@
   var LOCKED_SETTINGS_ICON_KEYS = cloneRegistryMap(ICON_REGISTRY && ICON_REGISTRY.lockedSettingsIconKeys);
   var ICON_GLYPH_DEFAULTS = cloneRegistryMap(ICON_REGISTRY && ICON_REGISTRY.iconGlyphDefaults);
   var LEGACY_THEME_ICON_KEYS = cloneRegistryMap(ICON_REGISTRY && ICON_REGISTRY.legacyThemeIconKeys);
+  var REQUIRED_ACTIVE_ICON_KEYS = Array.isArray(ICON_REGISTRY && ICON_REGISTRY.requiredActiveIconKeys)
+    ? ICON_REGISTRY.requiredActiveIconKeys.slice()
+    : [];
   if (!Object.keys(ICON_GLYPH_DEFAULTS).length) {
     try { console.error('[theme-settings] Missing icon registry payload from /icon-registry.js'); } catch (_) {}
   }
@@ -116,6 +120,7 @@
     'theme-preference-mode': 'global',
     'theme-icon-size': '1em',
     'theme-icon-color': 'currentColor',
+    'theme-icon-overrides-json': '{}',
     'theme-header-top-bg': '#ffffff',
     'theme-header-top-text-color': '#1f2937',
     'theme-header-main-bg': '#ffffff',
@@ -296,6 +301,24 @@
     return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
   }
 
+  function extractFirstSvgMarkup(value) {
+    var raw = String(value == null ? '' : value);
+    if (!raw) return '';
+    var m = raw.match(/<svg[\s\S]*?<\/svg>/i);
+    return m && m[0] ? String(m[0]) : '';
+  }
+
+  function sanitizeSvgMarkup(value) {
+    var svg = extractFirstSvgMarkup(value);
+    if (!svg) return '';
+    svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '');
+    svg = svg.replace(/<!--[\s\S]*?-->/g, '');
+    svg = svg.replace(/<script[\s\S]*?<\/script>/gi, '');
+    svg = svg.replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '');
+    svg = svg.replace(/\s(?:href|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, '');
+    return svg.trim();
+  }
+
   function isFontAwesomeSubsetToken(token) {
     return token === 'fa-sharp' || token === 'fa-sharp-light' || token === 'fa-sharp-regular' ||
       token === 'fa-sharp-solid' || token === 'fa-sharp-thin' || token === 'fa-sharp-duotone';
@@ -310,7 +333,8 @@
   }
 
   function parseIconGlyphInput(value, fallback) {
-    var raw = sanitizeIconClassString(value).toLowerCase();
+    var rawInput = String(value == null ? '' : value).trim();
+    var svgMarkup = sanitizeSvgMarkup(rawInput);
     var fallbackRaw = sanitizeIconClassString(fallback).toLowerCase();
     var fallbackStyle = 'fa-light';
     var fallbackGlyph = 'fa-circle';
@@ -335,7 +359,9 @@
       });
     }
     var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
-    if (!raw) return { mode: 'full', value: safeFallback, full: safeFallback };
+    if (!rawInput) return { mode: 'full', value: safeFallback, full: safeFallback };
+    if (svgMarkup) return { mode: 'svg', value: svgMarkup, full: safeFallback };
+    var raw = sanitizeIconClassString(rawInput).toLowerCase();
     var tokens = raw.split(/\s+/).filter(Boolean);
     var faTokens = tokens.filter(function (t) {
       return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
@@ -380,6 +406,58 @@
     if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
     if (/^[a-z-]+$/i.test(raw)) return raw;
     return fallback || 'currentColor';
+  }
+
+  function normalizeIconOverrideSize(value) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return '';
+    if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(raw)) return raw;
+    if (/^\d+(\.\d+)?$/.test(raw)) return raw + 'em';
+    return '';
+  }
+
+  function normalizeIconOverrideColor(value) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return '';
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return raw;
+    if (/^(rgb|hsl)a?\(/i.test(raw)) return raw;
+    if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
+    if (/^[a-z-]+$/i.test(raw)) return raw;
+    return '';
+  }
+
+  function readIconOverridesMap() {
+    var raw = getStored(ICON_OVERRIDES_JSON_KEY);
+    if (!raw) return {};
+    var parsed = null;
+    try { parsed = JSON.parse(raw); } catch (_) { parsed = null; }
+    if (!parsed || typeof parsed !== 'object') return {};
+    var out = {};
+    Object.keys(parsed).forEach(function (name) {
+      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, name)) return;
+      var row = parsed[name];
+      if (!row || typeof row !== 'object') return;
+      var size = normalizeIconOverrideSize(row.size);
+      var color = normalizeIconOverrideColor(row.color);
+      if (!size && !color) return;
+      out[name] = { size: size, color: color };
+    });
+    return out;
+  }
+
+  function writeIconOverridesMap(map) {
+    var src = map && typeof map === 'object' ? map : {};
+    var out = {};
+    Object.keys(src).forEach(function (name) {
+      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, name)) return;
+      var row = src[name];
+      if (!row || typeof row !== 'object') return;
+      var size = normalizeIconOverrideSize(row.size);
+      var color = normalizeIconOverrideColor(row.color);
+      if (!size && !color) return;
+      out[name] = { size: size, color: color };
+    });
+    setStored(ICON_OVERRIDES_JSON_KEY, JSON.stringify(out));
   }
 
   function normalizeHeaderColor(value, fallback) {
@@ -506,6 +584,139 @@
       window.dispatchEvent(new CustomEvent('kexo:icon-theme-changed'));
       if (window.KexoIconTheme && typeof window.KexoIconTheme.refresh === 'function') window.KexoIconTheme.refresh();
     } catch (_) {}
+  }
+
+  function iconGroupIdForName(name) {
+    var key = String(name || '').trim().toLowerCase();
+    if (!key) return 'misc';
+    if (LEGACY_THEME_ICON_KEYS[key]) return 'legacy';
+    if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'header-business-snapshot' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
+    if (key.indexOf('footer-') === 0) return 'footer';
+    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0 || key === 'table-builder-icon') return 'tables';
+    if (key.indexOf('card-title-') === 0 || key.indexOf('card-collapse-') === 0 || key.indexOf('dash-kpi-delta-') === 0 || key.indexOf('chart-type-') === 0 || key === 'chart-builder-icon') return 'cards';
+    if (key.indexOf('side-panel-') === 0 || key.indexOf('kpi-compare-') === 0 || key.indexOf('pagination-') === 0 || key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0 || key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('ads-') === 0 || key === 'diag-copy') return 'runtime';
+    return 'misc';
+  }
+
+  function iconGroupLabel(groupId) {
+    if (groupId === 'header-nav') return 'Header & Nav';
+    if (groupId === 'footer') return 'Footer';
+    if (groupId === 'tables') return 'Tables';
+    if (groupId === 'cards') return 'Cards & Charts';
+    if (groupId === 'runtime') return 'Panels, Modals & Runtime';
+    if (groupId === 'admin') return 'Admin';
+    if (groupId === 'legacy') return 'Legacy / Removed';
+    return 'Misc';
+  }
+
+  function getIconAuditData() {
+    var registryKeys = Object.keys(ICON_GLYPH_DEFAULTS).slice().sort();
+    var registrySet = {};
+    registryKeys.forEach(function (name) { registrySet[name] = true; });
+    var requiredKeys = REQUIRED_ACTIVE_ICON_KEYS.slice().sort();
+    var missingFromSettings = requiredKeys.filter(function (name) { return !registrySet[name]; });
+    var removedFromTheme = registryKeys.filter(function (name) { return !!LEGACY_THEME_ICON_KEYS[name]; });
+    return {
+      missingFromSettings: missingFromSettings,
+      removedFromTheme: removedFromTheme,
+    };
+  }
+
+  function renderIconAuditCodeList(keys) {
+    var list = Array.isArray(keys) ? keys : [];
+    if (!list.length) return '<span class="text-success">None</span>';
+    return list.map(function (name) { return '<code>' + String(name) + '</code>'; }).join(' ');
+  }
+
+  function buildIconAuditHtml() {
+    var audit = getIconAuditData();
+    return '' +
+      '<div class="alert alert-secondary mb-3" role="status">' +
+        '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
+          '<strong>Icon audit</strong>' +
+          '<span class="badge ' + (audit.missingFromSettings.length ? 'bg-danger-lt text-danger' : 'bg-success-lt text-success') + '">Missing in settings: ' + String(audit.missingFromSettings.length) + '</span>' +
+          '<span class="badge ' + (audit.removedFromTheme.length ? 'bg-warning-lt text-warning' : 'bg-success-lt text-success') + '">Removed from theme: ' + String(audit.removedFromTheme.length) + '</span>' +
+        '</div>' +
+        '<div class="small mb-2"><strong>Used in theme but missing from settings:</strong> ' + renderIconAuditCodeList(audit.missingFromSettings) + '</div>' +
+        '<div class="small"><strong>In settings but currently removed from theme:</strong> ' + renderIconAuditCodeList(audit.removedFromTheme) + '</div>' +
+      '</div>';
+  }
+
+  function buildGlyphAccordionHtml() {
+    var groups = {};
+    var keys = ICON_GLYPH_KEYS.slice();
+    keys.sort(function (a, b) {
+      var an = glyphNameFromThemeKey(a);
+      var bn = glyphNameFromThemeKey(b);
+      return an.localeCompare(bn);
+    });
+    keys.forEach(function (themeKey) {
+      var name = glyphNameFromThemeKey(themeKey);
+      var groupId = iconGroupIdForName(name);
+      if (!groups[groupId]) groups[groupId] = [];
+      groups[groupId].push(glyphInputCard(themeKey));
+    });
+
+    var order = ['header-nav', 'footer', 'tables', 'cards', 'runtime', 'admin', 'legacy', 'misc'];
+    var accordionId = 'theme-icons-accordion';
+    var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
+    var itemIdx = 0;
+    order.forEach(function (groupId) {
+      var rows = groups[groupId] || [];
+      if (!rows.length) return;
+      var headingId = 'theme-icons-accordion-heading-' + groupId;
+      var collapseId = 'theme-icons-accordion-collapse-' + groupId;
+      var isOpen = itemIdx === 0;
+      html += '' +
+        '<div class="accordion-item">' +
+          '<h2 class="accordion-header" id="' + headingId + '">' +
+            '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
+              '<span class="d-flex align-items-center w-100 gap-2">' +
+                '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
+                '<span class="me-auto">' + iconGroupLabel(groupId) + '</span>' +
+                '<span class="text-muted small">' + String(rows.length) + ' icons</span>' +
+              '</span>' +
+            '</button>' +
+          '</h2>' +
+          '<div id="' + collapseId + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
+            '<div class="accordion-body"><div class="row g-3">' + rows.join('') + '</div></div>' +
+          '</div>' +
+        '</div>';
+      itemIdx += 1;
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function buildIconEditModalHtml() {
+    return '' +
+      '<div class="modal fade" id="theme-icon-edit-modal" tabindex="-1" aria-hidden="true">' +
+        '<div class="modal-dialog">' +
+          '<div class="modal-content">' +
+            '<div class="modal-header">' +
+              '<h3 class="modal-title h5">Edit icon overrides</h3>' +
+              '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+              '<div class="text-secondary small mb-3" id="theme-icon-edit-target">Set optional size and color overrides for this icon. Leave blank to use global defaults.</div>' +
+              '<div class="mb-3">' +
+                '<label class="form-label" for="theme-icon-edit-size">Size override</label>' +
+                '<input type="text" class="form-control" id="theme-icon-edit-size" placeholder="e.g. 1em, 14px">' +
+              '</div>' +
+              '<div class="mb-0">' +
+                '<label class="form-label" for="theme-icon-edit-color">Color override</label>' +
+                '<input type="text" class="form-control" id="theme-icon-edit-color" placeholder="e.g. #ffffff, currentColor">' +
+              '</div>' +
+              '<input type="hidden" id="theme-icon-edit-key" value="">' +
+            '</div>' +
+            '<div class="modal-footer">' +
+              '<button type="button" class="btn btn-outline-secondary" id="theme-icon-edit-clear">Clear</button>' +
+              '<button type="button" class="btn btn-primary" id="theme-icon-edit-save">Save</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
   }
 
   function applyThemeCustomCss(rawCss) {
@@ -655,6 +866,8 @@
       applyHeaderLogoOverride(value);
     } else if (key === 'theme-custom-css') {
       applyThemeCustomCss(value);
+    } else if (key === ICON_OVERRIDES_JSON_KEY) {
+      triggerIconThemeRefresh();
     } else if (ICON_GLYPH_ALL_KEYS.indexOf(key) >= 0) {
       triggerIconThemeRefresh();
     }
@@ -845,15 +1058,20 @@
     var name = glyphNameFromThemeKey(key);
     var meta = glyphMetaFor(name);
     var inputId = 'theme-input-' + key;
+    var legacy = !!LEGACY_THEME_ICON_KEYS[name];
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
-            '<i class="' + ICON_GLYPH_DEFAULTS[name] + ' me-2" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></i>' +
-            '<strong>' + meta.title + '</strong>' +
+            '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
+            '<strong class="me-auto">' + meta.title + '</strong>' +
+            (legacy ? '<span class="badge bg-warning-lt text-warning">Legacy</span>' : '') +
           '</div>' +
           '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
-          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '" />' +
+          '<div class="d-flex align-items-start gap-2">' +
+            '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
+            '<button type="button" class="btn btn-link btn-sm px-0 text-nowrap" data-theme-icon-edit="' + key + '">Edit</button>' +
+          '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -978,7 +1196,8 @@
   }
 
   function getThemeFormHtml() {
-    var glyphGrid = ICON_GLYPH_KEYS.map(function (k) { return glyphInputCard(k); }).join('');
+    var glyphAccordion = buildGlyphAccordionHtml();
+    var iconAuditHtml = buildIconAuditHtml();
     var visualGrid = [
       iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
       iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
@@ -1036,12 +1255,13 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Set icon classes with full Font Awesome specs only (for example <code>fa-light fa-bars</code> or <code>fa-thin fa-circle-check</code>). Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-thin</code> classes and are intentionally excluded from this list.</div>' +
+        '<div class="text-secondary mb-3">Each icon field accepts Font Awesome classes (for example <code>fa-light fa-bars</code>) or a pasted <code>&lt;svg&gt;...&lt;/svg&gt;</code>. Use <strong>Edit</strong> on any icon to set optional per-icon size/color overrides. Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-thin</code> classes and are intentionally excluded from this list.</div>' +
+        iconAuditHtml +
         '<h4 class="mb-2">Global icon visuals</h4>' +
         '<div class="row g-3">' + visualGrid + '</div>' +
         '<hr class="my-3" />' +
-        '<h4 class="mb-2">Icon glyph overrides</h4>' +
-        '<div class="row g-3">' + glyphGrid + '</div>' +
+        '<h4 class="mb-2">Icon overrides</h4>' +
+        glyphAccordion +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh">Refresh previews</button>' +
           '<span class="text-secondary small">Debounced preview updates after typing stops.</span>' +
@@ -1116,6 +1336,7 @@
         '</div>' +
       '</div>' +
     '</form>' +
+    buildIconEditModalHtml() +
     '<div class="d-flex gap-2 mt-3">' +
       '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
       '<button type="button" class="btn btn-outline-secondary" id="theme-reset">Reset</button>' +
@@ -1148,7 +1369,29 @@
   function setPreviewIconClass(previewEl, glyphCls) {
     if (!previewEl) return;
     var parsed = parseIconGlyphInput(glyphCls, 'fa-light fa-circle');
-    previewEl.className = parsed.value;
+    previewEl.innerHTML = '';
+    if (parsed.mode === 'svg') {
+      previewEl.innerHTML = parsed.value;
+      var svg = previewEl.querySelector('svg');
+      if (svg) {
+        try {
+          svg.removeAttribute('width');
+          svg.removeAttribute('height');
+          svg.setAttribute('width', '1em');
+          svg.setAttribute('height', '1em');
+          svg.style.width = '1em';
+          svg.style.height = '1em';
+          svg.style.display = 'inline-block';
+          svg.style.verticalAlign = '-0.125em';
+          svg.style.fill = 'currentColor';
+        } catch (_) {}
+      }
+      return;
+    }
+    var icon = document.createElement('i');
+    icon.className = parsed.value;
+    icon.setAttribute('aria-hidden', 'true');
+    previewEl.appendChild(icon);
   }
 
   function refreshIconPreviews(formEl) {
@@ -1197,6 +1440,88 @@
       globalSaveAllTimer = setTimeout(function () {
         saveToServer().catch(function () {});
       }, 700);
+    }
+
+    function wireIconEditModal() {
+      var root = formEl.parentElement || document;
+      var modalEl = root.querySelector('#theme-icon-edit-modal');
+      if (!modalEl) return;
+      var targetEl = modalEl.querySelector('#theme-icon-edit-target');
+      var keyInput = modalEl.querySelector('#theme-icon-edit-key');
+      var sizeInput = modalEl.querySelector('#theme-icon-edit-size');
+      var colorInput = modalEl.querySelector('#theme-icon-edit-color');
+      var saveBtn = modalEl.querySelector('#theme-icon-edit-save');
+      var clearBtn = modalEl.querySelector('#theme-icon-edit-clear');
+      if (!keyInput || !sizeInput || !colorInput || !saveBtn || !clearBtn) return;
+
+      function getModal() {
+        try {
+          if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return null;
+          return bootstrap.Modal.getOrCreateInstance(modalEl);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function closeModal() {
+        var modal = getModal();
+        if (modal) {
+          modal.hide();
+          return;
+        }
+        modalEl.classList.remove('show');
+        modalEl.style.display = 'none';
+      }
+
+      function openModal(themeKey) {
+        var key = String(themeKey || '');
+        var iconName = glyphNameFromThemeKey(key);
+        var meta = glyphMetaFor(iconName);
+        var map = readIconOverridesMap();
+        var row = map[iconName] || {};
+        keyInput.value = key;
+        sizeInput.value = row.size || '';
+        colorInput.value = row.color || '';
+        if (targetEl) targetEl.textContent = 'Overrides for ' + String(meta.title || iconName) + ' (' + iconName + '). Leave blank to use global defaults.';
+        var modal = getModal();
+        if (modal) {
+          modal.show();
+          return;
+        }
+        modalEl.style.display = 'block';
+        modalEl.classList.add('show');
+      }
+
+      function persistIconEdit(clearValues) {
+        var themeKey = keyInput.value || '';
+        var iconName = glyphNameFromThemeKey(themeKey);
+        if (!iconName) return;
+        var map = readIconOverridesMap();
+        var size = clearValues ? '' : normalizeIconOverrideSize(sizeInput.value);
+        var color = clearValues ? '' : normalizeIconOverrideColor(colorInput.value);
+        if (size || color) map[iconName] = { size: size, color: color };
+        else delete map[iconName];
+        writeIconOverridesMap(map);
+        applyTheme(ICON_OVERRIDES_JSON_KEY, getStored(ICON_OVERRIDES_JSON_KEY) || DEFAULTS[ICON_OVERRIDES_JSON_KEY]);
+        queueGlobalSaveKey(ICON_OVERRIDES_JSON_KEY);
+        refreshIconPreviews(formEl);
+        triggerIconThemeRefresh();
+        closeModal();
+      }
+
+      root.addEventListener('click', function (e) {
+        var btn = e && e.target && e.target.closest ? e.target.closest('[data-theme-icon-edit]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        openModal(btn.getAttribute('data-theme-icon-edit') || '');
+      });
+
+      saveBtn.addEventListener('click', function () {
+        persistIconEdit(false);
+      });
+      clearBtn.addEventListener('click', function () {
+        persistIconEdit(true);
+      });
     }
 
     formEl.addEventListener('change', function (e) {
@@ -1280,6 +1605,7 @@
     });
 
     wireAccentHexInputs();
+    wireIconEditModal();
 
     var root = formEl.parentElement || document;
     var refreshBtn = root.querySelector('#theme-icons-refresh');

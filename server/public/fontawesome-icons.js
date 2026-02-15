@@ -13,6 +13,7 @@
   var ICON_THEME_DEFAULTS = {
     iconDefault: 'fa-light',
   };
+  var ICON_OVERRIDES_JSON_KEY = 'theme-icon-overrides-json';
   var ICON_REGISTRY = (window.KexoIconRegistry && window.KexoIconRegistry.registry) ? window.KexoIconRegistry.registry : null;
   function cloneRegistryMap(src) {
     var out = {};
@@ -278,6 +279,42 @@
     return String(value == null ? '' : value).trim().replace(/\s+/g, ' ');
   }
 
+  function extractFirstSvgMarkup(value) {
+    var raw = String(value == null ? '' : value);
+    if (!raw) return '';
+    var m = raw.match(/<svg[\s\S]*?<\/svg>/i);
+    return m && m[0] ? String(m[0]) : '';
+  }
+
+  function sanitizeSvgMarkup(value) {
+    var svg = extractFirstSvgMarkup(value);
+    if (!svg) return '';
+    svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '');
+    svg = svg.replace(/<!--[\s\S]*?-->/g, '');
+    svg = svg.replace(/<script[\s\S]*?<\/script>/gi, '');
+    svg = svg.replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '');
+    svg = svg.replace(/\s(?:href|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, '');
+    return svg.trim();
+  }
+
+  function normalizeIconOverrideSize(value) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return '';
+    if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(raw)) return raw;
+    if (/^\d+(\.\d+)?$/.test(raw)) return raw + 'em';
+    return '';
+  }
+
+  function normalizeIconOverrideColor(value) {
+    var raw = sanitizeIconClassString(value);
+    if (!raw) return '';
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return raw;
+    if (/^(rgb|hsl)a?\(/i.test(raw)) return raw;
+    if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
+    if (/^[a-z-]+$/i.test(raw)) return raw;
+    return '';
+  }
+
   function isFontAwesomeSubsetToken(token) {
     return token === 'fa-sharp' || token === 'fa-sharp-light' || token === 'fa-sharp-regular' ||
       token === 'fa-sharp-solid' || token === 'fa-sharp-thin' || token === 'fa-sharp-duotone';
@@ -292,7 +329,8 @@
   }
 
   function parseIconGlyphInput(value, fallback) {
-    var raw = sanitizeIconClassString(value).toLowerCase();
+    var rawInput = String(value == null ? '' : value).trim();
+    var svgMarkup = sanitizeSvgMarkup(rawInput);
     var fallbackRaw = sanitizeIconClassString(fallback).toLowerCase();
     var fallbackStyle = 'fa-light';
     var fallbackGlyph = 'fa-circle';
@@ -313,7 +351,9 @@
       });
     }
     var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
-    if (!raw) return { mode: 'full', value: safeFallback, full: safeFallback };
+    if (!rawInput) return { mode: 'full', value: safeFallback, full: safeFallback };
+    if (svgMarkup) return { mode: 'svg', value: svgMarkup, full: safeFallback };
+    var raw = sanitizeIconClassString(rawInput).toLowerCase();
     var tokens = raw.split(/\s+/).filter(Boolean);
     var faTokens = tokens.filter(function (t) {
       return t === 'fa' || t.indexOf('fa-') === 0 || t === 'fas' || t === 'far' ||
@@ -362,14 +402,24 @@
     return out;
   }
 
-  function iconHasFaGlyph(el) {
-    if (!el || !el.classList) return false;
-    var hasFa = false;
-    Array.prototype.forEach.call(el.classList, function (cls) {
-      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
-      if (cls.indexOf('fa-') === 0) hasFa = true;
+  function readIconOverridesTheme() {
+    var raw = null;
+    try { raw = localStorage.getItem('tabler-' + ICON_OVERRIDES_JSON_KEY); } catch (_) { raw = null; }
+    if (!raw) return {};
+    var parsed = null;
+    try { parsed = JSON.parse(raw); } catch (_) { parsed = null; }
+    if (!parsed || typeof parsed !== 'object') return {};
+    var out = {};
+    Object.keys(parsed).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, key)) return;
+      var row = parsed[key];
+      if (!row || typeof row !== 'object') return;
+      var size = normalizeIconOverrideSize(row.size);
+      var color = normalizeIconOverrideColor(row.color);
+      if (!size && !color) return;
+      out[key] = { size: size, color: color };
     });
-    return hasFa;
+    return out;
   }
 
   function currentIconSpec(el) {
@@ -435,15 +485,69 @@
     if (hadFaFw) el.classList.add('fa-fw');
   }
 
-  function applyIconStyle(el, glyphSettings) {
-    if (!el || !iconHasFaGlyph(el)) return;
+  function applyElementOverrideStyles(el, override) {
+    if (!el || !el.style) return;
+    var size = override && override.size ? normalizeIconOverrideSize(override.size) : '';
+    var color = override && override.color ? normalizeIconOverrideColor(override.color) : '';
+    if (size) el.style.fontSize = size;
+    else el.style.removeProperty('font-size');
+    if (color) el.style.color = color;
+    else el.style.removeProperty('color');
+  }
+
+  function applySvgOverrideMarkup(el, svgMarkup, override) {
+    if (!el || !el.classList) return;
+    var keep = [];
+    var hadFaFw = el.classList.contains('fa-fw');
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls.indexOf('fa-') === 0) return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
+      if (cls === 'kexo-svg-icon-host') return;
+      keep.push(cls);
+    });
+    el.className = keep.concat(['fa', 'kexo-svg-icon-host']).join(' ').trim();
+    if (hadFaFw) el.classList.add('fa-fw');
+    el.setAttribute('data-kexo-icon-mode', 'svg');
+    el.innerHTML = svgMarkup;
+    applyElementOverrideStyles(el, override);
+
+    var svgEl = el.querySelector('svg');
+    if (!svgEl) return;
+    var size = (override && override.size) ? normalizeIconOverrideSize(override.size) : '1em';
+    if (!size) size = '1em';
+    try {
+      svgEl.removeAttribute('width');
+      svgEl.removeAttribute('height');
+      svgEl.setAttribute('width', size);
+      svgEl.setAttribute('height', size);
+      svgEl.style.width = size;
+      svgEl.style.height = size;
+      svgEl.style.display = 'inline-block';
+      svgEl.style.verticalAlign = '-0.125em';
+      svgEl.style.fill = 'currentColor';
+    } catch (_) {}
+  }
+
+  function applyIconStyle(el, glyphSettings, overrideSettings) {
+    if (!el) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview')) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview-glyph')) return;
     var iconKey = el.getAttribute ? (el.getAttribute('data-icon-key') || '') : '';
     if (!iconKey) return;
     var fallbackSpec = ICON_GLYPH_DEFAULTS[iconKey] || currentIconSpec(el);
     var parsed = glyphSettings && glyphSettings[iconKey] ? glyphSettings[iconKey] : parseIconGlyphInput(null, fallbackSpec);
+    var override = overrideSettings && overrideSettings[iconKey] ? overrideSettings[iconKey] : null;
+    if (parsed && parsed.mode === 'svg') {
+      applySvgOverrideMarkup(el, parsed.value, override);
+      return;
+    }
+    if (el.getAttribute && el.getAttribute('data-kexo-icon-mode') === 'svg') {
+      el.removeAttribute('data-kexo-icon-mode');
+      try { el.innerHTML = ''; } catch (_) {}
+      try { el.classList.remove('kexo-svg-icon-host'); } catch (_) {}
+    }
     applyFullOverrideClasses(el, parsed && parsed.value ? parsed.value : fallbackSpec, fallbackSpec);
+    applyElementOverrideStyles(el, override);
   }
 
   function replaceTiIcons(root) {
@@ -519,14 +623,16 @@
 
   function applyIconTheme(root) {
     var glyphSettings = readIconGlyphTheme();
+    var overrideSettings = readIconOverridesTheme();
     var icons = (root || document).querySelectorAll('i');
-    icons.forEach(function (el) { applyIconStyle(el, glyphSettings); });
+    icons.forEach(function (el) { applyIconStyle(el, glyphSettings, overrideSettings); });
   }
 
   function applyIconToElement(el) {
     if (!el || !(el instanceof Element)) return;
     var glyphSettings = readIconGlyphTheme();
-    applyIconStyle(el, glyphSettings);
+    var overrideSettings = readIconOverridesTheme();
+    applyIconStyle(el, glyphSettings, overrideSettings);
   }
 
   function waitForIconAssetsReady() {
