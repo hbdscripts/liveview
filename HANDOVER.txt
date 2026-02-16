@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (session drawer Copy URL + icon labels)
+Last updated: 2026-02-16 (KPI compare baseline refresh for today)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Header KPI compare baseline refresh (Today):
+  - `server/store.js` (`getKpis`) now derives one canonical previous-period window and, when range is `today`, also refreshes Shopify truth for the compare window (`yesterday` same-time) before calculating compare deltas.
+  - This prevents stale yesterday-baseline values from making condensed/header KPI deltas (for orders/revenue/conversion and related compares) read incorrectly during Today views.
 
 2026-02-16 (latest)
 - Snapshot loader fix (stuck page-body overlay):

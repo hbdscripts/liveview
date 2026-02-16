@@ -3573,6 +3573,36 @@ async function getKpis(options = {}) {
     : 'today';
 
   const bounds = getRangeBounds(rangeKey, now, timeZone);
+  const compareBounds = (() => {
+    const periodLengthMs = bounds.end - bounds.start;
+    let compareStart;
+    let compareEnd;
+    if (rangeKey === 'today') {
+      // Today up to now -> yesterday up to same time-of-day.
+      const nowParts = getTimeZoneParts(new Date(now), timeZone);
+      const yesterdayParts = addDaysToParts(nowParts, -1);
+      compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
+      const sameTimeYesterday = zonedTimeToUtcMs(
+        yesterdayParts.year,
+        yesterdayParts.month,
+        yesterdayParts.day,
+        nowParts.hour,
+        nowParts.minute,
+        nowParts.second,
+        timeZone
+      );
+      const todayStart = startOfDayUtcMs(nowParts, timeZone);
+      compareEnd = Math.max(compareStart, Math.min(sameTimeYesterday, todayStart));
+    } else {
+      // All other ranges: shift back by the same duration.
+      compareStart = bounds.start - periodLengthMs;
+      compareEnd = bounds.start;
+    }
+    if (compareStart < PLATFORM_START_MS) compareStart = PLATFORM_START_MS;
+    if (compareEnd < PLATFORM_START_MS) compareEnd = PLATFORM_START_MS;
+    if (!(compareEnd > compareStart)) return null;
+    return { start: compareStart, end: compareEnd };
+  })();
 
   async function getAdSpendGbp(startMs, endMs) {
     try {
@@ -3625,6 +3655,11 @@ async function getKpis(options = {}) {
         salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
       } catch (_) {
         salesTruthSync = { ok: false, error: 'reconcile_failed' };
+      }
+      // Keep the baseline trustworthy too: for Today comparisons, refresh yesterday-same-time range.
+      if (compareBounds && compareBounds.end > compareBounds.start) {
+        const compareScopeKey = salesTruth.scopeForRangeKey('yesterday', 'range');
+        salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey).catch(() => {});
       }
     } else {
       salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(() => {});
@@ -3691,28 +3726,9 @@ async function getKpis(options = {}) {
   let compare = null;
   // Compute previous-period comparison for all date ranges
   {
-    const periodLengthMs = bounds.end - bounds.start;
-    let compareStart, compareEnd;
-    if (rangeKey === 'today') {
-      // Today up to now → yesterday up to same time-of-day
-      const nowParts = getTimeZoneParts(new Date(now), timeZone);
-      const yesterdayParts = addDaysToParts(nowParts, -1);
-      compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
-      const sameTimeYesterday = zonedTimeToUtcMs(
-        yesterdayParts.year, yesterdayParts.month, yesterdayParts.day,
-        nowParts.hour, nowParts.minute, nowParts.second, timeZone
-      );
-      const todayStart = startOfDayUtcMs(nowParts, timeZone);
-      compareEnd = Math.max(compareStart, Math.min(sameTimeYesterday, todayStart));
-    } else {
-      // All other ranges: shift back by the period length
-      compareStart = bounds.start - periodLengthMs;
-      compareEnd = bounds.start;
-    }
-    // Clamp to platform start
-    if (compareStart < PLATFORM_START_MS) compareStart = PLATFORM_START_MS;
-    if (compareEnd < PLATFORM_START_MS) compareEnd = PLATFORM_START_MS;
-    if (compareEnd > compareStart) {
+    const compareStart = compareBounds && Number.isFinite(compareBounds.start) ? Number(compareBounds.start) : NaN;
+    const compareEnd = compareBounds && Number.isFinite(compareBounds.end) ? Number(compareBounds.end) : NaN;
+    if (Number.isFinite(compareStart) && Number.isFinite(compareEnd) && compareEnd > compareStart) {
       const compareOpts = { ...opts, rangeKey: rangeKey === 'today' ? 'yesterday' : rangeKey };
       const [
         compareSales,
