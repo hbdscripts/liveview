@@ -610,6 +610,36 @@
     line.textContent = `${presetLabel(state.preset)} (${thisLabel}) compared with previous period (${previousLabel})`;
   }
 
+  function renderSourcesNote(data) {
+    const note = document.getElementById('snapshot-sources-note');
+    if (!note) return;
+    note.classList.add('is-hidden');
+    note.textContent = '';
+
+    const sources = data && data.sources ? data.sources : {};
+    const shopifyPaymentsDetail = sources && sources.shopifyPaymentsDetail ? sources.shopifyPaymentsDetail : {};
+    const current = shopifyPaymentsDetail && shopifyPaymentsDetail.current ? shopifyPaymentsDetail.current : null;
+    if (!current || current.available !== false) return;
+
+    const financial = data && data.financial ? data.financial : {};
+    const lines = Array.isArray(financial.costBreakdownNow) ? financial.costBreakdownNow : [];
+    const feeToggleInUse = lines.some((row) => {
+      const label = String(row && row.label || '').toLowerCase();
+      return label.includes('shopify app bills') || label.includes('transaction fees') || label.includes('klarna fees');
+    });
+    if (!feeToggleInUse) return;
+
+    const error = String(current.error || '').trim();
+    if (/access denied|forbidden|scope|permission/i.test(error)) {
+      note.textContent = 'Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations.';
+    } else if (error) {
+      note.textContent = `Shopify fee data unavailable: ${error}`;
+    } else {
+      note.textContent = 'Shopify fee data unavailable for this shop or date range.';
+    }
+    note.classList.remove('is-hidden');
+  }
+
   function renderAll(data) {
     if (!data || data.ok !== true) {
       setAllGroups('error');
@@ -617,6 +647,7 @@
     }
     state.data = data;
     renderCompareLine(data);
+    renderSourcesNote(data);
     renderRevenueCostTable(data);
     renderPerformanceTable(data);
     renderCustomersTable(data);

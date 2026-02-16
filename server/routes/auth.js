@@ -12,7 +12,7 @@ const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboard
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
-const scopes = config.shopify.scopes || 'read_products,read_orders';
+const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports,read_shopify_payments';
 
 function parseScopeSet(scopeStr) {
   return new Set(
