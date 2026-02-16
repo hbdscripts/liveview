@@ -3528,10 +3528,41 @@ const API = '';
       return out.length ? ('<span class="source-icons">' + out.join('') + '</span>') : '';
     }
 
+    function buildFullEntryUrlForCopy(s) {
+      var entry = s && s.entry_url != null ? String(s.entry_url).trim() : '';
+      if (!entry) return '';
+      try {
+        var u = new URL(entry);
+        var map = {
+          utm_source: s && s.utm_source != null ? String(s.utm_source).trim() : '',
+          utm_medium: s && s.utm_medium != null ? String(s.utm_medium).trim() : '',
+          utm_campaign: s && s.utm_campaign != null ? String(s.utm_campaign).trim() : '',
+          utm_content: s && s.utm_content != null ? String(s.utm_content).trim() : '',
+          utm_term: s && s.utm_term != null ? String(s.utm_term).trim() : '',
+        };
+        Object.keys(map).forEach(function (k) {
+          var v = map[k];
+          if (!v) return;
+          try { if (!u.searchParams.has(k)) u.searchParams.set(k, v); } catch (_) {}
+        });
+        return u.toString();
+      } catch (_) {
+        return entry;
+      }
+    }
+
     function sourceDetailForPanel(s) {
       const lines = [];
       const entry = s.entry_url && String(s.entry_url).trim();
-      if (entry) lines.push('Entry URL (CF referer): ' + entry);
+      if (entry) {
+        const full = buildFullEntryUrlForCopy(s);
+        if (full && full !== entry) {
+          lines.push('URL: ' + full);
+          lines.push('Entry URL (raw): ' + entry);
+        } else {
+          lines.push('URL: ' + entry);
+        }
+      }
       const ref = s.referrer && String(s.referrer).trim();
       if (ref) lines.push('Referrer: ' + ref);
       if (s.utm_source != null && String(s.utm_source).trim() !== '') lines.push('utm_source: ' + String(s.utm_source).trim());
@@ -13407,16 +13438,66 @@ const API = '';
 
             try {
               if (rowIconsEl) {
+                function iconItem(iconHtml, label, title) {
+                  var t = title ? String(title) : '';
+                  var lbl = label != null ? String(label).trim() : '';
+                  return '' +
+                    '<span class="side-panel-row-icon"' + (t ? (' title="' + escapeHtml(t) + '"') : '') + '>' +
+                      '<span class="side-panel-row-icon-glyph">' + (iconHtml || '') + '</span>' +
+                      (lbl ? ('<span class="side-panel-row-icon-label">' + escapeHtml(lbl) + '</span>') : '') +
+                    '</span>';
+                }
+
                 var cc = (session && (session.country_code || session.cf_country)) ? String(session.country_code || session.cf_country) : 'XX';
-                var flag = flagImg(cc, cc);
+                var ccUp = cc ? cc.trim().toUpperCase() : 'XX';
+                var flag = flagImg(ccUp, ccUp);
                 var src = '';
                 var dev = '';
                 try { src = sourceCell(session) || ''; } catch (_) { src = ''; }
                 try { dev = deviceCell(session) || ''; } catch (_) { dev = ''; }
+
+                var channelLabel = '';
+                try {
+                  var v2Label = session && (session.traffic_source_v2_label ?? session.trafficSourceV2Label);
+                  if (v2Label) channelLabel = String(v2Label);
+                  if (!channelLabel) {
+                    var k = session && (session.traffic_source_key ?? session.trafficSourceKey);
+                    if (k) channelLabel = trafficSourceLabelForKey(String(k).trim().toLowerCase(), String(k));
+                  }
+                } catch (_) { channelLabel = ''; }
+
+                var deviceLabel = '';
+                try {
+                  var info = deviceInfoForSession(session);
+                  function titleize(v) {
+                    var s = (v || '').trim().toLowerCase();
+                    if (!s) return '';
+                    if (s === 'ios') return 'iOS';
+                    if (s === 'mac') return 'Mac';
+                    if (s === 'android') return 'Android';
+                    if (s === 'windows') return 'Windows';
+                    if (s === 'chromeos') return 'Chrome OS';
+                    if (s === 'linux') return 'Linux';
+                    if (s === 'desktop') return 'Desktop';
+                    if (s === 'mobile') return 'Mobile';
+                    if (s === 'tablet') return 'Tablet';
+                    if (s === 'iphone') return 'iPhone';
+                    if (s === 'ipad') return 'iPad';
+                    if (s === 'other') return 'Other';
+                    if (s === 'unknown') return 'Unknown';
+                    return s;
+                  }
+                  var parts2 = [];
+                  if (info.platform && info.platform !== 'unknown') parts2.push(titleize(info.platform));
+                  if (info.model) parts2.push(titleize(info.model));
+                  if (info.deviceType && info.deviceType !== 'unknown') parts2.push(titleize(info.deviceType));
+                  deviceLabel = parts2.length ? parts2.join(' · ') : '';
+                } catch (_) { deviceLabel = ''; }
+
                 var parts = [];
-                parts.push('<span class="side-panel-row-icon" title="Country">' + flag + '</span>');
-                if (src) parts.push('<span class="side-panel-row-icon" title="Channel">' + src + '</span>');
-                if (dev) parts.push('<span class="side-panel-row-icon" title="Device">' + dev + '</span>');
+                parts.push(iconItem(flag, ccUp && ccUp !== 'XX' ? ccUp : '', 'Country'));
+                if (src) parts.push(iconItem(src, channelLabel || '', 'Channel'));
+                if (dev) parts.push(iconItem(dev, deviceLabel || '', 'Device'));
                 rowIconsEl.innerHTML = parts.join('');
               }
             } catch (_) {}
@@ -13454,9 +13535,12 @@ const API = '';
               if (sideSourceEl) {
                 var srcText = sourceDetailForPanel(session);
                 var entryUrl = session && session.entry_url != null ? String(session.entry_url).trim() : '';
+                var fullUrl = '';
+                try { fullUrl = buildFullEntryUrlForCopy(session) || ''; } catch (_) { fullUrl = ''; }
+                var copyUrl = fullUrl || entryUrl;
                 var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '—')).replace(/\n/g, '<br>') + '</div>';
-                if (entryUrl) {
-                  html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(entryUrl) + '">Copy Entry URL</a></div>';
+                if (copyUrl) {
+                  html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(copyUrl) + '">Copy URL</a></div>';
                 }
                 sideSourceEl.innerHTML = html;
               }
