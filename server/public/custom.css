@@ -3474,7 +3474,8 @@ body.kexo-report-loading #kexo-date-display::after {
   visibility: visible !important;
 }
 body[data-page="settings"] .kexo-nav-date-slot,
-body[data-page="settings"] .kexo-page-header-date-col {
+body[data-page="settings"] .kexo-page-header-date-col,
+body[data-page="admin"] .kexo-nav-date-slot {
   display: none !important;
 }
 body[data-page="snapshot"] #kexo-date-display {
