@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score header ring style + score text formatting)
+Last updated: 2026-02-16 (Kexo Score modal progress bar sizing + KPI tone classes)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score modal progress bars:
+  - Increased modal breakdown progress row height to `22px` and updated in-bar text to `12px` / `500` with `line-height: 22px`.
+  - Removed the old multi-color block gradient from modal component bars.
+  - Modal bars now use the same KPI progress color classes (`bg-danger`, `bg-warning`, `bg-success`) by percent thresholds, matching small KPI tone behavior.
 
 2026-02-16 (latest)
 - Kexo Score header visual refinement:

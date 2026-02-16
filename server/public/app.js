@@ -17710,6 +17710,15 @@ const API = '';
           return Math.round(n * 10) / 10;
         }
 
+        function kexoScoreBarClass(scorePct) {
+          var p = Number(scorePct);
+          if (!Number.isFinite(p)) return 'bg-secondary';
+          p = Math.max(0, Math.min(100, p));
+          if (p <= 49) return 'bg-danger';
+          if (p <= 75) return 'bg-warning';
+          return 'bg-success';
+        }
+
         var data = _kexoScoreCache;
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
           body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
@@ -17719,6 +17728,7 @@ const API = '';
             data.components.map(function(c) {
               var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
               var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
+              var barClass = kexoScoreBarClass(score);
               var valueStr = fmtComponentValue(c.key, c.value);
               var prevStr = fmtComponentValue(c.key, c.previous);
               var prev2Str = fmtComponentValue(c.key, c.previous2);
@@ -17728,7 +17738,7 @@ const API = '';
                   '<span class="kexo-score-breakdown-value small">Current: ' + escapeHtml(String(valueStr)) + ' \u00b7 Previous: ' + escapeHtml(String(prevStr)) + ' \u00b7 Day before: ' + escapeHtml(String(prev2Str)) + '</span>' +
                 '</div>' +
                 '<div class="progress">' +
-                  '<div class="progress-bar" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+                  '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
                 '</div>' +
               '</div>';
             }).join('');
