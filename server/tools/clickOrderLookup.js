@@ -87,6 +87,27 @@ async function getSessionById(sessionId) {
   );
 }
 
+async function getSessionEventsBySessionId(sessionId, limit = 20) {
+  const sid = safeStr(sessionId, 128);
+  if (!sid) return [];
+  const n = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(50, Math.trunc(Number(limit)))) : 20;
+  const db = getDb();
+  const rows = await db.all(
+    `
+    SELECT id, session_id, ts, type, path, product_handle, qty_delta, cart_qty, checkout_state_json, meta_json
+    FROM events
+    WHERE session_id = ?
+    ORDER BY ts DESC
+    LIMIT ?
+    `,
+    [sid, n]
+  );
+  return (Array.isArray(rows) ? rows : []).reverse().map((r) => ({
+    ...r,
+    ts: r && r.ts != null ? Number(r.ts) : null,
+  }));
+}
+
 async function getPurchasesBySession(sessionId, limit = 20) {
   const sid = safeStr(sessionId, 128);
   if (!sid) return [];
@@ -450,6 +471,7 @@ async function lookup({ q, shop } = {}) {
   let attribution = null;
   let truthOrder = null;
   let purchaseEvents = [];
+  let events = [];
 
   try {
     // 1) Direct session id lookup (fast, indexed).
@@ -538,6 +560,7 @@ async function lookup({ q, shop } = {}) {
       if (!resolved.order_id && purchase && purchase.order_id) resolved.order_id = String(purchase.order_id);
       if (!resolved.visitor_id && purchase && purchase.visitor_id) resolved.visitor_id = String(purchase.visitor_id);
       attribution = await getAttributionBySession(resolved.session_id).catch(() => null);
+      events = await getSessionEventsBySessionId(resolved.session_id, 20).catch(() => []);
     }
 
     // Truth order + purchase events (requires shop).
@@ -562,6 +585,7 @@ async function lookup({ q, shop } = {}) {
       q: rawQ,
       shop: safeShop || null,
       resolved,
+      events: Array.isArray(events) ? events : [],
       session: session || null,
       purchases: purchases || [],
       attribution: attribution || null,

@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Dashboard KPI visibility fix)
+Last updated: 2026-02-15 (Compliance drawer + lookup unification)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -65,10 +65,13 @@ Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to
   - Added a narrow **Compliance** column immediately after the sticky Landing column.
   - It always shows a check (passed) or warning (triggered) based on `/api/fraud/markers`.
   - If the row is a sale, it also shows the sale (£) icon alongside check/warn.
-  - These icons are links to **Tools → Click & Order Lookup** for the session.
+  - The icons are **non-links**; clicking anywhere on the row (including the Compliance icons) opens the right-hand drawer for deep inspection.
   - Icon keys: `table-icon-compliance-header`, `table-icon-compliance-check`, `table-icon-compliance-warning`, `table-icon-converted-sale`.
 - Right-hand session side panel:
-  - Now shows a top “Lookup” block with IDs (Click ID / Shopify order ID / checkout token / Kexo order key) + Copy buttons + “Open in Lookup”.
+  - The drawer’s **Compliance** section embeds the Click & Order Lookup view (single renderer + single payload source).
+  - Copy affordances are **links** and appear **only for IDs**: Click ID, Shopify order ID, checkout token, Kexo order key.
+  - Displays **Kexo Click Fraud Score** as an **animated half-donut gauge** (0–100) colored green/blue/red by risk.
+  - `/tools/click-order-lookup` also shows the same Activity feed (the lookup API returns recent session `events`).
 
 ### Optional AI narrative (feature-flagged)
 
@@ -372,6 +375,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Compliance drawer + Click & Order Lookup unification:
+  - Compliance icons are no longer links; clicking the row/icons opens the right-hand drawer.
+  - Drawer embeds the Click & Order Lookup view (single payload/renderer) and shows the Kexo Click Fraud Score half-donut gauge.
+  - `GET /api/tools/click-order-lookup` now returns `events` so the tools page can show the same Activity feed.
+  - Copy affordances are links and IDs-only (Click ID, Shopify order ID, checkout token, Kexo order key).
 
 2026-02-15 (latest)
 - iOS sale notification sound + settings preview hardening:

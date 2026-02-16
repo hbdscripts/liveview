@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 37;
+const DEFINITIONS_VERSION = 38;
 const LAST_UPDATED = '2026-02-15';
 
 /**
@@ -34,7 +34,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     columns: [
       { name: 'Landing Page', value: 'sessions.first_path / sessions.first_product_handle (set on first event)' },
-      { name: 'Compliance', value: 'Always shows check/warn (from /api/fraud/markers) + optional sale icon when sessions.has_purchased=1; links to /tools/click-order-lookup' },
+      { name: 'Compliance', value: 'Always shows check/warn (from /api/fraud/markers) + optional sale icon when sessions.has_purchased=1; icons are non-links and just open the right-hand drawer' },
       { name: 'GEO', value: 'sessions.country_code (or visitors.last_country fallback in API)' },
       { name: 'Source', value: 'sessions.traffic_source_key (mapped from UTMs/referrer rules)' },
       { name: 'Device', value: 'sessions.ua_device_type + ua_platform (derived from ingest User-Agent)' },
@@ -795,6 +795,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     },
     sources: [
       { kind: 'db', tables: ['sessions', 'visitors'], note: 'Session + visitor context for click ID' },
+      { kind: 'db', tables: ['events'], note: 'Activity feed (recent session events) returned in lookup payload' },
       { kind: 'db', tables: ['purchases', 'purchase_events'], note: 'Evidence keys and purchase linkage (order_id / checkout_token / purchase_key)' },
       { kind: 'db', tables: ['orders_shopify'], note: 'Shopify truth order lookup (when shop is known)' },
       { kind: 'db', tables: ['affiliate_attribution_sessions'], note: 'Captured attribution signals for the session (UTMs + click IDs)' },
@@ -803,6 +804,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     ],
     columns: [
       { name: 'Resolved IDs', value: 'Click ID (session_id), Visitor ID, Checkout token, Shopify order ID, Kexo order key' },
+      { name: 'Activity', value: 'Recent session events feed (events table) for the resolved session_id' },
       { name: 'Session', value: 'Geo/device/source/UTMs/entry/referrer + timestamps' },
       { name: 'Purchases', value: 'Purchases for the resolved session (most recent first)' },
       { name: 'Fraud', value: 'Fraud evaluations + deterministic/AI narrative + safe evidence snapshot' },

@@ -657,19 +657,28 @@ body.side-panel-open {
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell {
   position: relative;
 }
-#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-link {
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-icons {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
-  text-decoration: none;
+  cursor: pointer;
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon {
   font-size: .85rem;
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-warn {
   color: var(--tblr-danger, #d63939);
+}
+
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-sale-icon {
+  font-size: .85rem;
+  margin-right: .28rem;
+}
+
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-ok {
+  color: var(--tblr-success, #2fb344);
 }
 
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-header-btn {
@@ -703,6 +712,94 @@ body.side-panel-open {
 }
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-help-popover.is-open {
   display: block;
+}
+
+/* Lookup: copy links (IDs only) */
+.kexo-copy-link {
+  color: var(--kexo-accent-1, #4b94e4);
+  text-decoration: underline;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: .35rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kexo-copy-link:hover {
+  color: var(--kexo-accent-1, #4b94e4);
+  text-decoration: underline;
+  opacity: .9;
+}
+
+/* Lookup: drawer layout blocks */
+.kexo-lookup-drawer-root {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.kexo-lookup-drawer-block {
+  padding-bottom: .6rem;
+  border-bottom: 1px dashed rgba(99, 115, 129, .25);
+}
+.kexo-lookup-drawer-block:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.kexo-lookup-drawer-root details summary {
+  cursor: pointer;
+}
+
+/* Lookup: half-donut fraud score gauge */
+.kexo-fraud-gauge {
+  --kexo-gauge-color: var(--kexo-accent-1, #4b94e4);
+  margin: .25rem 0 .5rem 0;
+}
+.kexo-fraud-gauge.tone-low { --kexo-gauge-color: var(--kexo-accent-2, #3eb3ab); }
+.kexo-fraud-gauge.tone-medium { --kexo-gauge-color: var(--kexo-accent-1, #4b94e4); }
+.kexo-fraud-gauge.tone-high { --kexo-gauge-color: var(--kexo-accent-5, #ef4444); }
+.kexo-fraud-gauge-title {
+  font-size: 12px;
+  color: var(--tblr-secondary, #626976);
+  margin-bottom: .25rem;
+}
+.kexo-fraud-gauge-wrap {
+  position: relative;
+  width: 220px;
+  max-width: 100%;
+  height: 120px;
+}
+.kexo-fraud-gauge-svg {
+  width: 100%;
+  height: 100%;
+}
+.kexo-fraud-gauge-track,
+.kexo-fraud-gauge-progress {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+.kexo-fraud-gauge-track {
+  stroke: rgba(99, 115, 129, .20);
+}
+.kexo-fraud-gauge-progress {
+  stroke: var(--kexo-gauge-color);
+}
+.kexo-fraud-gauge-center {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.kexo-fraud-gauge-num {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--tblr-body-color, #182433);
+}
+.kexo-fraud-gauge-risk {
+  font-size: 12px;
+  color: var(--tblr-secondary, #626976);
+  margin-top: .15rem;
 }
 
 /* Sessions table: device cell now uses icons (platform + device type) */

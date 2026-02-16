@@ -3653,26 +3653,11 @@ const API = '';
       const saleIcon = s.has_purchased
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
-      const lookupHref = (function () {
-        const sid = s && s.session_id != null ? String(s.session_id) : '';
-        if (!sid) return '/tools/click-order-lookup';
-        try {
-          // Preserve shop when available so tools can resolve Shopify truth links reliably.
-          var shop = null;
-          try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
-          var qs = new URLSearchParams();
-          if (shop) qs.set('shop', shop);
-          qs.set('q', sid);
-          return '/tools/click-order-lookup?' + qs.toString();
-        } catch (_) {
-          return '/tools/click-order-lookup?q=' + encodeURIComponent(sid);
-        }
-      })();
       const complianceCellHtml =
-        '<a class="compliance-link" href="' + escapeHtml(lookupHref) + '" data-compliance-link="1" title="Click &amp; Order Lookup">' +
+        '<span class="compliance-icons" aria-label="Compliance" title="Compliance">' +
           saleIcon +
           '<i class="fa-light fa-circle-check compliance-status-icon" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>' +
-        '</a>';
+        '</span>';
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -3869,8 +3854,6 @@ const API = '';
             // Clicking interactive elements inside a row should not open the side panel.
             // Product links open the Product Insights modal only.
             if (target && target.closest && target.closest('a.js-product-modal-link')) return;
-            // Compliance icons are links to Click & Order Lookup.
-            if (target && target.closest && target.closest('[data-compliance-link="1"]')) return;
             const row = target && target.closest ? target.closest('.grid-row.clickable[data-session-id]') : null;
             if (!row || !tbody.contains(row)) return;
             selectedSessionId = row.getAttribute('data-session-id');
@@ -4004,19 +3987,6 @@ const API = '';
       var title = triggered
         ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
         : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : ''));
-      var href = opts.href ? String(opts.href) : '';
-      if (!href) {
-        try {
-          var shop = null;
-          try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
-          var qs = new URLSearchParams();
-          if (shop) qs.set('shop', shop);
-          qs.set('q', sid);
-          href = '/tools/click-order-lookup?' + qs.toString();
-        } catch (_) {
-          href = '/tools/click-order-lookup?q=' + encodeURIComponent(sid);
-        }
-      }
       var saleIcon = hasSale
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
@@ -4024,10 +3994,10 @@ const API = '';
         ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
         : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
       return '' +
-        '<a class="compliance-link" href="' + escapeHtml(href) + '" data-compliance-link="1" title="' + escapeHtml(title) + '">' +
+        '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' +
           saleIcon +
           statusIcon +
-        '</a>';
+        '</span>';
     }
 
     function refreshComplianceMarkersForSessionsTable() {
@@ -4053,17 +4023,12 @@ const API = '';
           var m = markers && markers[sid] ? markers[sid] : null;
           var triggered = !!(m && m.triggered === true);
           var score = m && m.score != null ? Number(m.score) : null;
-          var href = '';
-          try {
-            var a = cell.querySelector('a.compliance-link');
-            href = a && a.getAttribute ? (a.getAttribute('href') || '') : '';
-          } catch (_) { href = ''; }
           var hasSale = false;
           try { hasSale = row.classList && row.classList.contains('converted'); } catch (_) { hasSale = false; }
           var sig = (hasSale ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
           if (cell.getAttribute('data-compliance-sig') === sig) return;
           try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
-          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, triggered: triggered, score: score, href: href });
+          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, triggered: triggered, score: score });
         });
       }).catch(function() {});
     }
@@ -12889,6 +12854,343 @@ const API = '';
       }
     }
 
+    // Shared Click & Order Lookup renderer (Tools page + side drawer).
+    var clickOrderLookupUiReady = false;
+    function ensureClickOrderLookupUi() {
+      if (clickOrderLookupUiReady) return;
+      clickOrderLookupUiReady = true;
+
+      function esc(v) { return escapeHtml(v == null ? '' : String(v)); }
+      function safeJsonPre(obj) { try { return JSON.stringify(obj, null, 2); } catch (_) { return String(obj); } }
+
+      function copyLinkHtml(value) {
+        var v = value != null ? String(value).trim() : '';
+        if (!v) return '';
+        return ' <a href="#" class="kexo-copy-link" data-kexo-copy="' + esc(v) + '">Copy</a>';
+      }
+
+      function ensureCopyLinksBound() {
+        try {
+          var root = document && document.documentElement ? document.documentElement : null;
+          if (root && root.getAttribute('data-kexo-copy-links') === '1') return;
+          if (root) root.setAttribute('data-kexo-copy-links', '1');
+          document.addEventListener('click', function (e) {
+            var target = e && e.target ? e.target : null;
+            var a = target && target.closest ? target.closest('a.kexo-copy-link[data-kexo-copy]') : null;
+            if (!a) return;
+            try { e.preventDefault(); } catch (_) {}
+            var txt = a.getAttribute('data-kexo-copy') || '';
+            if (!txt) return;
+            copyTextToClipboard(txt).then(function (ok) {
+              var prev = a.getAttribute('data-kexo-copy-prev') || (a.textContent || 'Copy');
+              try { a.setAttribute('data-kexo-copy-prev', prev); } catch (_) {}
+              try { a.textContent = ok ? 'Copied' : 'Copy'; } catch (_) {}
+              setTimeout(function () {
+                try { a.textContent = prev; } catch (_) {}
+              }, 900);
+            });
+          }, true);
+        } catch (_) {}
+      }
+
+      function pickFraudEvalFromBundle(bundle) {
+        var b = bundle && typeof bundle === 'object' ? bundle : null;
+        if (!b || b.ok !== true || b.available !== true) return null;
+        var pref = (b.session && b.session.evaluation) ? b.session
+          : (b.purchase && b.purchase.evaluation) ? b.purchase
+          : (b.order && b.order.evaluation) ? b.order
+          : null;
+        if (!pref || !pref.evaluation) return null;
+        var ev = pref.evaluation || {};
+        var an = pref.analysis || {};
+        var score = ev.score != null ? Number(ev.score) : 0;
+        if (!Number.isFinite(score)) score = 0;
+        score = Math.max(0, Math.min(100, Math.trunc(score)));
+        var risk = an && an.risk_level ? String(an.risk_level).trim() : '';
+        if (!risk) risk = score >= (b.threshold != null ? Number(b.threshold) : 70) ? 'Medium' : 'Low';
+        return {
+          score: score,
+          risk_level: risk || 'Unknown',
+          triggered: !!ev.triggered,
+          threshold: (b.threshold != null && Number.isFinite(Number(b.threshold))) ? Number(b.threshold) : null,
+          summary: an && an.summary ? String(an.summary) : '',
+          key_reasons: an && Array.isArray(an.key_reasons) ? an.key_reasons : [],
+          flags: Array.isArray(ev.flags) ? ev.flags : [],
+          evidence: (ev.evidence && typeof ev.evidence === 'object') ? ev.evidence : {},
+        };
+      }
+
+      function gaugeToneFromRisk(riskLevel) {
+        var r = String(riskLevel || '').trim().toLowerCase();
+        if (r === 'high') return 'high';
+        if (r === 'medium') return 'medium';
+        if (r === 'low') return 'low';
+        return 'unknown';
+      }
+
+      function renderFraudGaugeHtml(info, options) {
+        var i = info && typeof info === 'object' ? info : null;
+        var score = i && i.score != null ? Math.max(0, Math.min(100, Math.trunc(Number(i.score) || 0))) : 0;
+        var risk = i && i.risk_level ? String(i.risk_level) : 'Unknown';
+        var tone = gaugeToneFromRisk(risk);
+        var label = (options && options.label) ? String(options.label) : 'Kexo Click Fraud Score';
+        return '' +
+          '<div class="kexo-fraud-gauge tone-' + esc(tone) + '" data-kexo-gauge="1" data-score="' + esc(String(score)) + '">' +
+            '<div class="kexo-fraud-gauge-title">' + esc(label) + '</div>' +
+            '<div class="kexo-fraud-gauge-wrap">' +
+              '<svg class="kexo-fraud-gauge-svg" viewBox="0 0 200 110" aria-hidden="true">' +
+                '<path class="kexo-fraud-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100" />' +
+                '<path class="kexo-fraud-gauge-progress" d="M 20 100 A 80 80 0 0 1 180 100" />' +
+              '</svg>' +
+              '<div class="kexo-fraud-gauge-center">' +
+                '<div class="kexo-fraud-gauge-num">' + esc(String(score)) + '</div>' +
+                '<div class="kexo-fraud-gauge-risk">' + esc(String(risk || '')) + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      }
+
+      function animateFraudGauges(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+        var nodes = Array.from(scope.querySelectorAll('[data-kexo-gauge="1"]'));
+        nodes.forEach(function (wrap) {
+          try {
+            if (!wrap || wrap.getAttribute('data-kexo-gauge-animated') === '1') return;
+            wrap.setAttribute('data-kexo-gauge-animated', '1');
+            var score = Number(wrap.getAttribute('data-score') || '0');
+            if (!Number.isFinite(score)) score = 0;
+            score = Math.max(0, Math.min(100, Math.trunc(score)));
+            var path = wrap.querySelector('.kexo-fraud-gauge-progress');
+            if (!path || !path.getTotalLength) return;
+            var len = path.getTotalLength();
+            path.style.strokeDasharray = String(len);
+            path.style.strokeDashoffset = String(len);
+            path.getBoundingClientRect(); // force layout
+            var target = len * (1 - (score / 100));
+            path.style.transition = 'stroke-dashoffset 900ms ease-out';
+            requestAnimationFrame(function () { path.style.strokeDashoffset = String(target); });
+          } catch (_) {}
+        });
+      }
+
+      function renderIdsHtml(resolved, mode) {
+        var r = resolved && typeof resolved === 'object' ? resolved : {};
+        var rows = [
+          { k: 'Kexo Click ID (session)', v: r.session_id, copy: true },
+          { k: 'Shopify order ID', v: r.order_id, copy: true },
+          { k: 'Checkout token', v: r.checkout_token, copy: true },
+          { k: 'Kexo order key', v: r.purchase_key, copy: true },
+          { k: 'Visitor ID', v: r.visitor_id, copy: false },
+        ].filter(function (x) { return x && x.v != null && String(x.v).trim() !== ''; });
+        if (!rows.length) return '<div class="text-muted">—</div>';
+
+        if (mode === 'drawer') {
+          return rows.map(function (row) {
+            var v = String(row.v);
+            return '' +
+              '<div class="side-panel-detail-row">' +
+                '<span class="side-panel-label">' + esc(row.k) + '</span>' +
+                '<span class="side-panel-value"><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</span>' +
+              '</div>';
+          }).join('');
+        }
+
+        var body = rows.map(function (row) {
+          var v = String(row.v);
+          return '<tr><th style="width:180px">' + esc(row.k) + '</th><td><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</td></tr>';
+        }).join('');
+        return '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>';
+      }
+
+      function renderActivityHtml(events, mode) {
+        var list = Array.isArray(events) ? events : [];
+        if (!list.length) return '<div class="text-muted">No activity.</div>';
+        var filtered = list.filter(function (e) { return e && e.type !== 'heartbeat'; }).slice().reverse(); // newest-first
+        var items = filtered.slice(0, 30).map(function (e) {
+          var path = (e.path || '').trim();
+          if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
+          if (path && !path.startsWith('/')) path = '/' + path;
+          var pathLabel = path || (e.product_handle || '');
+          var text = (formatTs(e.ts) || '—') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' Δ' + esc(e.qty_delta)) : '');
+          return '<li><span>' + text + '</span></li>';
+        }).join('');
+        return '<ul class="side-panel-events kexo-lookup-events">' + items + '</ul>';
+      }
+
+      function renderFraudHtml(fraudBundle, mode) {
+        var picked = pickFraudEvalFromBundle(fraudBundle);
+        if (!picked) return '<div class="text-muted">Fraud scoring unavailable.</div>';
+
+        var gauge = renderFraudGaugeHtml(picked, { label: 'Kexo Click Fraud Score' });
+        var reasons = Array.isArray(picked.key_reasons) ? picked.key_reasons : [];
+        var flags = Array.isArray(picked.flags) ? picked.flags : [];
+        var reasonsHtml = reasons.length
+          ? ('<ul class="kexo-fraud-reasons">' + reasons.slice(0, 6).map(function (r) { return '<li>' + esc(String(r)) + '</li>'; }).join('') + '</ul>')
+          : '';
+        var flagsHtml = flags.length
+          ? ('<div class="kexo-fraud-flags">' + flags.slice(0, 10).map(function (f) { return '<span class="badge bg-azure-lt me-1 mb-1">' + esc(String(f)) + '</span>'; }).join('') + '</div>')
+          : '<div class="text-muted">No flags recorded.</div>';
+        var evidenceJson = safeJsonPre(picked.evidence || {});
+        var evidenceDetails = '' +
+          '<details class="kexo-fraud-evidence-details">' +
+            '<summary class="text-muted">Show evidence snapshot</summary>' +
+            '<pre class="mt-2 mb-0 kexo-fraud-evidence-pre" style="white-space:pre-wrap">' + esc(evidenceJson || '{}') + '</pre>' +
+          '</details>';
+
+        if (mode === 'drawer') {
+          return '' +
+            gauge +
+            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '—') + '</span></div>' +
+            (reasonsHtml ? ('<div class="kexo-fraud-reasons-wrap">' + reasonsHtml + '</div>') : '') +
+            '<div class="mt-2">' + flagsHtml + '</div>' +
+            '<div class="mt-2">' + evidenceDetails + '</div>';
+        }
+
+        return '' +
+          gauge +
+          '<div class="mt-2">' +
+            '<div class="text-muted small">Summary</div>' +
+            '<div>' + esc(picked.summary || '—') + '</div>' +
+            (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
+            '<div class="mt-2">' + flagsHtml + '</div>' +
+            '<div class="mt-2">' + evidenceDetails + '</div>' +
+          '</div>';
+      }
+
+      function renderLookupHtml(payload, options) {
+        var mode = options && options.mode ? String(options.mode) : 'page';
+        var ok = !!(payload && payload.ok);
+        if (!ok) {
+          var err = payload && payload.error ? String(payload.error) : 'Lookup failed.';
+          return (mode === 'drawer')
+            ? ('<div class="side-panel-detail-row"><span class="side-panel-value muted">' + esc(err) + '</span></div>')
+            : ('<div class="alert alert-danger mb-0">' + esc(err) + '</div>');
+        }
+
+        var resolved = payload.resolved && typeof payload.resolved === 'object' ? payload.resolved : {};
+        var events = Array.isArray(payload.events) ? payload.events : [];
+        var session = payload.session && typeof payload.session === 'object' ? payload.session : null;
+        var purchases = Array.isArray(payload.purchases) ? payload.purchases : [];
+        var attribution = payload.attribution && typeof payload.attribution === 'object' ? payload.attribution : null;
+        var fraud = payload.fraud && typeof payload.fraud === 'object' ? payload.fraud : null;
+
+        function section(title, inner) {
+          return '' +
+            '<div class="card mt-3">' +
+              '<div class="card-header"><h3 class="card-title">' + esc(title) + '</h3></div>' +
+              '<div class="card-body">' + (inner || '') + '</div>' +
+            '</div>';
+        }
+
+        if (mode === 'drawer') {
+          // Provide a direct link to the full tool page.
+          var q = (resolved && resolved.session_id) ? String(resolved.session_id) : (payload && payload.q ? String(payload.q) : '');
+          var href = sideLookupHref(q);
+          var openLink = '' +
+            '<div class="side-panel-detail-row">' +
+              '<span class="side-panel-label">Lookup</span>' +
+              '<span class="side-panel-value"><a href="' + esc(href) + '" target="_blank" rel="noopener">Open in Lookup</a></span>' +
+            '</div>';
+
+          var idsHtml = renderIdsHtml(resolved, 'drawer');
+          var sessionMini = '';
+          try {
+            if (session && typeof session === 'object') {
+              var started = formatTs(session.started_at) || '—';
+              var seen = formatTs(session.last_seen) || '—';
+              var cartQty = (session.cart_qty != null) ? String(session.cart_qty) : '0';
+              sessionMini = '' +
+                '<div class="side-panel-detail-row"><span class="side-panel-label">Started</span><span class="side-panel-value">' + esc(started) + '</span></div>' +
+                '<div class="side-panel-detail-row"><span class="side-panel-label">Seen</span><span class="side-panel-value">' + esc(seen) + '</span></div>' +
+                '<div class="side-panel-detail-row"><span class="side-panel-label">Cart qty</span><span class="side-panel-value">' + esc(cartQty) + '</span></div>';
+              if (session.has_purchased) {
+                var sale = formatMoney(session.order_total, session.order_currency) || '—';
+                sessionMini += '<div class="side-panel-detail-row"><span class="side-panel-label">Sale</span><span class="side-panel-value">' + esc(sale) + (session.purchased_at ? (' <span class="text-muted">(' + esc(formatTs(session.purchased_at) || '') + ')</span>') : '') + '</span></div>';
+              }
+            }
+          } catch (_) { sessionMini = ''; }
+          var fraudHtml = renderFraudHtml(fraud, 'drawer');
+          var attribDetails = attribution
+            ? (
+                '<details class="kexo-lookup-attribution-details">' +
+                  '<summary class="text-muted">Show attribution</summary>' +
+                  '<pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre>' +
+                '</details>'
+              )
+            : '<div class="text-muted">No attribution row.</div>';
+
+          return '' +
+            '<div class="kexo-lookup-drawer-root">' +
+              '<div class="kexo-lookup-drawer-block">' + openLink + idsHtml + sessionMini + '</div>' +
+              '<div class="kexo-lookup-drawer-block">' + fraudHtml + '</div>' +
+              '<div class="kexo-lookup-drawer-block">' + attribDetails + '</div>' +
+            '</div>';
+        }
+
+        var html = '';
+        html += section('Resolved IDs', renderIdsHtml(resolved, 'page'));
+        html += section('Activity', renderActivityHtml(events, 'page'));
+        if (session) {
+          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' · ');
+          var sRows = [
+            { k: 'Started', v: formatTs(session.started_at) || '—' },
+            { k: 'Last seen', v: formatTs(session.last_seen) || '—' },
+            { k: 'Country', v: session.country_code || '—' },
+            { k: 'Device', v: session.device || '—' },
+            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '—' },
+            { k: 'Traffic source', v: session.traffic_source_key || '—' },
+            { k: 'Entry URL', v: session.entry_url || '—' },
+            { k: 'Referrer', v: session.referrer || '—' },
+            { k: 'UTM', v: utm || '—' },
+          ];
+          var body = sRows.map(function (r) {
+            return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+          }).join('');
+          html += section('Session', '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>');
+        }
+        if (purchases && purchases.length) {
+          var pHtml = purchases.slice(0, 5).map(function (p) {
+            if (!p || typeof p !== 'object') return '';
+            var rows = [
+              { k: 'Purchase key', v: p.purchase_key || '—' },
+              { k: 'Purchased at', v: formatTs(p.purchased_at) || '—' },
+              { k: 'Order ID', v: p.order_id || '—' },
+              { k: 'Checkout token', v: p.checkout_token || '—' },
+              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '—') + (p.order_currency ? (' ' + p.order_currency) : '') },
+            ];
+            var body = rows.map(function (r) {
+              return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+            }).join('');
+            return '<div class="mb-3"><div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div></div>';
+          }).join('');
+          html += section('Purchases', pHtml);
+        }
+        html += section('Fraud', renderFraudHtml(fraud, 'page'));
+        if (attribution) {
+          html += section('Attribution', '<details><summary class="text-muted">Show attribution payload</summary><pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre></details>');
+        }
+        return html;
+      }
+
+      function renderInto(el, payload, options) {
+        if (!el) return;
+        ensureCopyLinksBound();
+        el.innerHTML = renderLookupHtml(payload, options || {}) || '';
+        try { animateFraudGauges(el); } catch (_) {}
+      }
+
+      try {
+        window.KexoClickOrderLookupUI = {
+          renderInto: renderInto,
+          buildHtml: renderLookupHtml,
+          animateGauges: animateFraudGauges,
+        };
+      } catch (_) {}
+
+      ensureCopyLinksBound();
+    }
+    try { ensureClickOrderLookupUi(); } catch (_) {}
+
     function openSidePanel(sessionId) {
       const panel = document.getElementById('side-panel');
       if (!panel) return;
@@ -12902,84 +13204,62 @@ const API = '';
       const sideSourceEl = document.getElementById('side-source');
       if (sideSourceEl) sideSourceEl.textContent = '';
       document.getElementById('side-cf').innerHTML = '';
-      fetch(API + '/api/sessions/' + encodeURIComponent(sessionId) + '/events?limit=20')
-        .then(r => r.json())
-        .then(data => {
-          const session = sessions.find(s => s.session_id === sessionId) || {};
-          const saleBlock = session.has_purchased
-            ? '<div class="side-panel-sale"><strong>Sale</strong><br>Order: ' + escapeHtml(formatMoney(session.order_total, session.order_currency) || '\u2014') + (session.purchased_at ? '<br>Purchased: ' + formatTs(session.purchased_at) : '') + '</div>'
-            : '';
-          const mainBase = getMainBaseUrl();
-          const eventList = (data.events || []).filter(e => e.type !== 'heartbeat').reverse();
-          const eventsHtml = eventList.map(e => {
-            var path = (e.path || '').trim();
-            if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
-            if (path && !path.startsWith('/')) path = '/' + path;
-            var pathLabel = path || (e.product_handle || '');
-            var fullUrl = mainBase && path ? mainBase + path : '';
-            var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.classList.add(\'is-hidden\')">' : '';
-            var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(pathLabel) + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
-            return '<li>' + thumb + '<span>' + text + '</span></li>';
-          }).join('');
-          document.getElementById('side-events').innerHTML = eventsHtml || '<li class="muted">No events</li>';
-          var idsSlot = '<div id="side-lookup-ids">' + buildSideLookupIdsHtml({ session_id: sessionId, visitor_id: session.visitor_id || null }, sessionId, { loading: true }) + '</div>';
-          const metaRows = [
-            ['Started', formatTs(session.started_at)],
-            ['Seen', formatTs(session.last_seen)],
-            ['Cart qty', String(session.cart_qty ?? 0)]
-          ].map(function (r) { return '<div class="side-panel-detail-row"><span class="side-panel-label">' + escapeHtml(r[0]) + '</span><span class="side-panel-value">' + escapeHtml(String(r[1])) + '</span></div>'; }).join('');
-          var startedMs = session.started_at != null ? Number(session.started_at) : 0;
-          var seenMs = session.last_seen != null ? Number(session.last_seen) : 0;
-          var gapHours = (seenMs - startedMs) / (60 * 60 * 1000);
-          var openTabHint = (gapHours >= 1) ? '<div class="side-panel-detail-row muted side-panel-hint">If Started and Seen are many hours apart, the visitor likely left the tab open; we receive a heartbeat every 30s which updates Seen.</div>' : '';
-          const metaEl = document.getElementById('side-meta');
-          metaEl.innerHTML = idsSlot + metaRows + openTabHint + (saleBlock ? saleBlock : '');
+      (function fetchLookupBundle() {
+        var shop = '';
+        try { shop = getShopParam() || shopForSalesFallback || ''; } catch (_) { shop = ''; }
+        var url = API + '/api/tools/click-order-lookup?q=' + encodeURIComponent(String(sessionId || ''));
+        if (shop) url += '&shop=' + encodeURIComponent(shop);
+        url += '&_=' + Date.now();
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) { return r && r.ok ? r.json() : null; })
+          .then(function (payload) {
+            if (selectedSessionId !== sessionId) return;
+            if (!payload || payload.ok !== true) {
+              document.getElementById('side-events').innerHTML = '<li class="muted">Unavailable.</li>';
+              document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Unavailable.</span></div>';
+              return;
+            }
 
-          // Bind copy buttons once.
-          if (metaEl && metaEl.getAttribute('data-side-copy-bound') !== '1') {
+            var session = payload.session && typeof payload.session === 'object' ? payload.session : {};
+            var events = Array.isArray(payload.events) ? payload.events : [];
+
+            // Activity (newest-first), with og thumbs (same UX as legacy drawer).
             try {
-              metaEl.setAttribute('data-side-copy-bound', '1');
-              metaEl.addEventListener('click', function (e) {
-                var target = e && e.target ? e.target : null;
-                var btn = target && target.closest ? target.closest('[data-side-copy]') : null;
-                if (!btn) return;
-                e.preventDefault();
-                var txt = btn.getAttribute('data-side-copy') || '';
-                copyTextToClipboard(txt).then(function (ok) {
-                  try { btn.textContent = ok ? 'Copied' : 'Copy'; } catch (_) {}
-                  setTimeout(function () { try { btn.textContent = 'Copy'; } catch (_) {} }, 900);
-                });
-              });
+              var mainBase = getMainBaseUrl();
+              var eventList = events.filter(function (e) { return e && e.type !== 'heartbeat'; }).slice().reverse();
+              var eventsHtml = eventList.map(function (e) {
+                var path = (e.path || '').trim();
+                if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
+                if (path && !path.startsWith('/')) path = '/' + path;
+                var pathLabel = path || (e.product_handle || '');
+                var fullUrl = mainBase && path ? mainBase + path : '';
+                var thumb = fullUrl ? '<img class="landing-thumb" src="' + (API || '') + '/api/og-thumb?url=' + encodeURIComponent(fullUrl) + '&width=100' + '" alt="" onerror="this.classList.add(\'is-hidden\')">' : '';
+                var text = formatTs(e.ts) + ' ' + escapeHtml(e.type) + ' ' + escapeHtml(pathLabel) + (e.qty_delta != null ? ' \u0394' + e.qty_delta : '');
+                return '<li>' + thumb + '<span>' + text + '</span></li>';
+              }).join('');
+              document.getElementById('side-events').innerHTML = eventsHtml || '<li class="muted">No events</li>';
+            } catch (_) {
+              document.getElementById('side-events').innerHTML = '<li class="muted">No events</li>';
+            }
+
+            // Details (single source of truth): render lookup bundle in drawer mode.
+            try {
+              var metaEl = document.getElementById('side-meta');
+              if (metaEl && window.KexoClickOrderLookupUI && typeof window.KexoClickOrderLookupUI.renderInto === 'function') {
+                window.KexoClickOrderLookupUI.renderInto(metaEl, payload, { mode: 'drawer' });
+              } else if (metaEl) {
+                metaEl.innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Lookup UI unavailable.</span></div>';
+              }
             } catch (_) {}
-          }
 
-          if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session);
-          document.getElementById('side-cf').innerHTML = buildSidePanelCf(session);
-
-          // Fetch lookup IDs (fail-open) so users can copy order/token keys.
-          (function fetchLookupIds() {
-            var slot = document.getElementById('side-lookup-ids');
-            if (!slot) return;
-            var shop = '';
-            try { shop = getShopParam() || shopForSalesFallback || ''; } catch (_) { shop = ''; }
-            var url = API + '/api/tools/click-order-lookup?q=' + encodeURIComponent(String(sessionId || ''));
-            if (shop) url += '&shop=' + encodeURIComponent(shop);
-            url += '&_=' + Date.now();
-            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-              .then(function (r) { return r && r.ok ? r.json() : null; })
-              .then(function (payload) {
-                if (!payload || payload.ok !== true) return;
-                if (selectedSessionId !== sessionId) return;
-                var resolved = payload.resolved && typeof payload.resolved === 'object' ? payload.resolved : {};
-                slot.innerHTML = buildSideLookupIdsHtml(resolved, sessionId, { loading: false });
-              })
-              .catch(function () {});
-          })();
-        })
-        .catch(() => {
-          document.getElementById('side-events').innerHTML = '<li class="muted">Failed to load.</li>';
-          document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Failed to load.</span></div>';
-        });
+            try { if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session); } catch (_) {}
+            try { document.getElementById('side-cf').innerHTML = buildSidePanelCf(session); } catch (_) {}
+          })
+          .catch(function () {
+            document.getElementById('side-events').innerHTML = '<li class="muted">Failed to load.</li>';
+            document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Failed to load.</span></div>';
+          });
+      })();
     }
 
     const sideCloseBtn = document.getElementById('side-close');
@@ -16067,6 +16347,42 @@ const API = '';
             if (typeof setSaleAudioSrc === 'function') {
               setSaleAudioSrc(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3');
             }
+          };
+          window.__kexoPreviewSaleSound = function(url) {
+            if (!saleAudio) return Promise.reject(new Error('Sale audio unavailable'));
+            var nextUrl = url != null ? String(url).trim() : '';
+            if (!nextUrl) {
+              nextUrl = (typeof getCashRegisterMp3Url === 'function')
+                ? getCashRegisterMp3Url()
+                : ((API || '') + '/assets/cash-register.mp3');
+            }
+            var prevSrc = '';
+            try { prevSrc = String(saleAudio.currentSrc || saleAudio.src || '').trim(); } catch (_) { prevSrc = ''; }
+            if (nextUrl) {
+              try { setSaleAudioSrc(nextUrl); } catch (_) {}
+            }
+            try { primeSaleAudio(); } catch (_) {}
+            try { saleAudio.muted = false; } catch (_) {}
+            try { saleAudio.currentTime = 0; } catch (_) {}
+            var played = null;
+            try {
+              played = saleAudio.play();
+            } catch (err) {
+              if (prevSrc && nextUrl && prevSrc !== nextUrl) {
+                try { setSaleAudioSrc(prevSrc); } catch (_) {}
+              }
+              return Promise.reject(err);
+            }
+            function restoreSrc() {
+              if (prevSrc && nextUrl && prevSrc !== nextUrl) {
+                try { setSaleAudioSrc(prevSrc); } catch (_) {}
+              }
+            }
+            if (played && typeof played.finally === 'function') {
+              return played.finally(restoreSrc);
+            }
+            restoreSrc();
+            return Promise.resolve();
           };
         } catch (_) {}
         try { setSaleAudioSrc(typeof getCashRegisterMp3Url === 'function' ? getCashRegisterMp3Url() : (API || '') + '/assets/cash-register.mp3'); } catch (_) {}
