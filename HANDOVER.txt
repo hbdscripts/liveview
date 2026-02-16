@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot hides global header date picker)
+Last updated: 2026-02-16 (Header Online badge is a direct Live View link)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Header Online badge → direct link (no dropdown):
+  - Removed the Online dropdown/chevron in the top strip; Online is now a direct link to Live View (`/dashboard/live`) in `server/public/partials/header.html`.
 
 2026-02-16 (latest)
 - Snapshot page header date control removed:

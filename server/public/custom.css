@@ -2979,6 +2979,11 @@ body.kexo-report-loading #kexo-date-display::after {
   pointer-events: auto;
   user-select: none;
   white-space: nowrap;
+  text-decoration: none !important;
+}
+.kexo-top-strip-online:hover,
+.kexo-top-strip-online:focus {
+  text-decoration: none !important;
 }
 .kexo-top-strip-online:focus-visible {
   outline: 2px solid rgba(255,255,255,0.38);

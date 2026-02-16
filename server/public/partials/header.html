@@ -9,22 +9,14 @@
         <div class="container-xl kexo-desktop-top-strip-container">
           <div class="kexo-desktop-top-strip-row">
           <div class="kexo-desktop-top-strip-left">
-            <div class="dropdown">
-              <button type="button" class="kexo-top-strip-online kexo-top-strip-online-toggle" id="kexo-top-strip-online-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="kexo-top-strip-online-menu" aria-label="Online menu">
-                <span class="kexo-top-strip-online-status" aria-live="polite" role="status" aria-label="Users online">
-                  <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline kexo-top-strip-online-icon" data-icon-key="online-status-indicator" aria-hidden="true"></i>
-                  <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
-                  <span id="online-count" class="is-hidden">0</span>
-                  <span class="kexo-top-strip-online-label">online</span>
-                </span>
-                <i class="fa-jelly-filled fa-chevron-down kexo-top-strip-online-chevron" data-icon-key="topnav-date-chevron" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu kexo-top-strip-online-menu kexo-strip-dropdown-align" id="kexo-top-strip-online-menu">
-                <a href="/dashboard/live" class="dropdown-item kexo-top-strip-settings-item" aria-label="Live View">
-                  <i class="fa-jelly fa-satellite-dish kexo-top-strip-settings-item-icon" data-icon-key="nav-item-live" aria-hidden="true"></i>Live View
-                </a>
-              </div>
-            </div>
+            <a href="/dashboard/live" class="kexo-top-strip-online" id="kexo-top-strip-online-btn" aria-label="Live View">
+              <span class="kexo-top-strip-online-status" aria-live="polite" role="status" aria-label="Users online">
+                <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline kexo-top-strip-online-icon" data-icon-key="online-status-indicator" aria-hidden="true"></i>
+                <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
+                <span id="online-count" class="is-hidden">0</span>
+                <span class="kexo-top-strip-online-label">online</span>
+              </span>
+            </a>
           </div>
           <div class="kexo-desktop-top-strip-center">
             <a class="kexo-desktop-brand-link" href="/dashboard/overview" aria-label="Kexo dashboard">
