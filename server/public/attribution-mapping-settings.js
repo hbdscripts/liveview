@@ -150,10 +150,10 @@
   function renderSkeleton(root) {
     root.innerHTML = '' +
       '<div class="mb-3">' +
-        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens</h4>' +
+        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
         '<div class="row g-2 align-items-end">' +
           '<div class="col-12 col-md-3">' +
-            '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type</label>' +
+            '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
             '<select class="form-select" id="am-token-type">' +
               '<option value="">All</option>' +
               '<option value="utm_source">utm_source</option>' +
@@ -168,11 +168,11 @@
             '</select>' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-min-seen" title="Only show tokens seen at least this many times. Increase to focus on common traffic sources.">Min seen</label>' +
+            '<label class="form-label" for="am-min-seen" title="Only show tokens seen at least this many times. Increase to focus on common traffic sources.">Min seen <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
             '<input class="form-control" id="am-min-seen" type="number" min="1" max="1000000" value="2" />' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit</label>' +
+            '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
             '<input class="form-control" id="am-limit" type="number" min="10" max="5000" value="500" />' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
@@ -199,37 +199,37 @@
       '</div>' +
 
       '<div class="card card-sm mb-3">' +
-        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Source + Ownership).">Create mapping</h4></div>' +
+        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Source + Ownership).">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>' +
         '<div class="card-body">' +
           '<div class="row g-2">' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token</label>' +
+              '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-selected-token" type="text" value="Select a token above" readonly />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-key" title="Format: source:ownership (e.g. google_ads:house, my_affiliate:affiliate). Use built-ins like google_ads:house or create custom keys.">Variant key</label>' +
+              '<label class="form-label" for="am-variant-key" title="Format: source:ownership (e.g. google_ads:house, my_affiliate:affiliate). Use built-ins like google_ads:house or create custom keys.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-variant-key" list="am-variants-list" placeholder="e.g. google_ads:house" />' +
               '<datalist id="am-variants-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-priority" title="Rule priority (lower = higher). Rules are evaluated in priority order; first match wins.">Priority</label>' +
+              '<label class="form-label" for="am-priority" title="Rule priority (lower = higher). Rules are evaluated in priority order; first match wins.">Priority <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-priority" type="number" value="1000" min="-1000000" max="1000000" />' +
             '</div>' +
 
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional)</label>' +
+              '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-variant-label" type="text" placeholder="e.g. Google Ads" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel</label>' +
+              '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-channel-key" type="text" placeholder="paid_search" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source</label>' +
+              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-source-key" type="text" placeholder="google" />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-owner-kind" title="house (owned), partner (co-marketing), or affiliate (third-party). Affects reporting and fraud signals.">Ownership</label>' +
+              '<label class="form-label" for="am-owner-kind" title="house (owned), partner (co-marketing), or affiliate (third-party). Affects reporting and fraud signals.">Ownership <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<select class="form-select" id="am-owner-kind">' +
                 '<option value="house" selected>house</option>' +
                 '<option value="partner">partner</option>' +
@@ -249,7 +249,7 @@
       '</div>' +
 
       '<details class="mb-0">' +
-        '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON)</summary>' +
+        '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></summary>' +
         '<div class="mt-2">' +
           '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
@@ -373,6 +373,86 @@
     return { token_type: tokenType, token_value: tokenValue };
   }
 
+  var _amTooltipTimer = null;
+  var _amTooltipEl = null;
+  var _amTooltipCurrentEl = null;
+
+  function initAmTooltips(root) {
+    if (!root || !root.querySelector) return;
+    root.classList.add('am-has-tooltips');
+    if (!document.getElementById('am-tooltip-styles')) {
+      var s = document.createElement('style');
+      s.id = 'am-tooltip-styles';
+      s.textContent = '.am-has-tooltips [title], .am-has-tooltips [data-am-title] { cursor: help; }';
+      document.head.appendChild(s);
+    }
+    if (!_amTooltipEl) {
+      _amTooltipEl = document.createElement('div');
+      _amTooltipEl.id = 'am-tooltip-popup';
+      _amTooltipEl.setAttribute('role', 'tooltip');
+      _amTooltipEl.style.cssText = 'position:fixed;z-index:9999;max-width:320px;padding:8px 10px;background:#1e293b;color:#e2e8f0;font-size:13px;line-height:1.4;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.25);pointer-events:none;opacity:0;transition:opacity 0.15s ease;';
+      document.body.appendChild(_amTooltipEl);
+    }
+    function restoreCurrent() {
+      if (_amTooltipCurrentEl && _amTooltipCurrentEl.getAttribute('data-am-title')) {
+        _amTooltipCurrentEl.setAttribute('title', _amTooltipCurrentEl.getAttribute('data-am-title'));
+        _amTooltipCurrentEl.removeAttribute('data-am-title');
+      }
+      _amTooltipCurrentEl = null;
+    }
+    function show(el) {
+      var title = el && el.getAttribute ? el.getAttribute('title') : '';
+      if (!title) return;
+      restoreCurrent();
+      _amTooltipEl.textContent = title;
+      el.setAttribute('data-am-title', title);
+      el.removeAttribute('title');
+      _amTooltipCurrentEl = el;
+      _amTooltipEl.style.opacity = '1';
+      var rect = el.getBoundingClientRect();
+      var ttRect = _amTooltipEl.getBoundingClientRect();
+      var top = rect.top - ttRect.height - 6;
+      var left = rect.left + (rect.width / 2) - (ttRect.width / 2);
+      if (top < 8) top = rect.bottom + 6;
+      if (left < 8) left = 8;
+      if (left + ttRect.width > window.innerWidth - 8) left = window.innerWidth - ttRect.width - 8;
+      _amTooltipEl.style.top = top + 'px';
+      _amTooltipEl.style.left = left + 'px';
+    }
+    function hide() {
+      restoreCurrent();
+      _amTooltipEl.style.opacity = '0';
+    }
+    function findTitleTarget(el) {
+      for (var n = el; n && n !== root; n = n.parentNode) {
+        if (n.getAttribute && n.getAttribute('title')) return n;
+      }
+      return null;
+    }
+    root.addEventListener('mouseenter', function (e) {
+      var target = findTitleTarget(e.target);
+      if (!target) return;
+      clearTimeout(_amTooltipTimer);
+      _amTooltipTimer = setTimeout(function () { show(target); }, 200);
+    }, true);
+    root.addEventListener('mouseleave', function (e) {
+      clearTimeout(_amTooltipTimer);
+      _amTooltipTimer = null;
+      hide();
+    }, true);
+    root.addEventListener('focusin', function (e) {
+      var target = findTitleTarget(e.target);
+      if (!target) return;
+      clearTimeout(_amTooltipTimer);
+      _amTooltipTimer = setTimeout(function () { show(target); }, 150);
+    }, true);
+    root.addEventListener('focusout', function (e) {
+      clearTimeout(_amTooltipTimer);
+      _amTooltipTimer = null;
+      hide();
+    }, true);
+  }
+
   function initAttributionMappingSettings(opts) {
     var o = opts && typeof opts === 'object' ? opts : {};
     var rootId = o.rootId ? String(o.rootId) : 'settings-attribution-mapping-root';
@@ -388,6 +468,7 @@
     _state.observed = [];
 
     renderSkeleton(root);
+    initAmTooltips(root);
     renderSelected();
 
     root.addEventListener('click', function (e) {
