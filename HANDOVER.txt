@@ -409,7 +409,7 @@ Ops/reliability:
 
 2026-02-16 (latest)
 - Header KPI compare baseline refresh (Today):
-  - `server/store.js` (`getKpis`) now derives one canonical previous-period window and, when range is `today`, also refreshes Shopify truth for the compare window (`yesterday` same-time) before calculating compare deltas.
+  - `server/store.js` (`getKpis`) now derives one canonical previous-period window and, when range is `today`, also **blocks on** refreshing Shopify truth for the compare window (`yesterday` same-time) before calculating compare deltas.
   - This prevents stale yesterday-baseline values from making condensed/header KPI deltas (for orders/revenue/conversion and related compares) read incorrectly during Today views.
 
 2026-02-16 (latest)

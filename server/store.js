@@ -3679,6 +3679,7 @@ async function getKpis(options = {}) {
   // so the response returns quickly (avoids ~25s timeout when reconcile is slow).
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthSync = null;
+  let salesTruthCompareSync = null;
   if (salesShop) {
     const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
     if (rangeKey === 'today') {
@@ -3687,10 +3688,15 @@ async function getKpis(options = {}) {
       } catch (_) {
         salesTruthSync = { ok: false, error: 'reconcile_failed' };
       }
-      // Keep the baseline trustworthy too: for Today comparisons, refresh yesterday-same-time range.
+      // Keep the baseline trustworthy too: for Today comparisons, refresh yesterday-same-time range
+      // BEFORE we compute compare deltas (otherwise comparisons can read stale during active updates).
       if (compareBounds && compareBounds.end > compareBounds.start) {
         const compareScopeKey = salesTruth.scopeForRangeKey('yesterday', 'range');
-        salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey).catch(() => {});
+        try {
+          salesTruthCompareSync = await salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey);
+        } catch (_) {
+          salesTruthCompareSync = { ok: false, error: 'reconcile_failed' };
+        }
       }
     } else {
       salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(() => {});
@@ -3852,6 +3858,7 @@ async function getKpis(options = {}) {
     salesTruth: {
       shop: salesShop || '',
       todaySync: salesTruthSync,
+      compareSync: salesTruthCompareSync,
       health: salesTruthHealth,
     },
     rangeAvailable,
