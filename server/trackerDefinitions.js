@@ -151,7 +151,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { kind: 'db', tables: ['orders_shopify', 'customer_order_facts'], note: 'Revenue/orders/customer/LTV and country-scoped profit deductions from Shopify truth orders (checkout_token only for online store alignment)' },
       { kind: 'db', tables: ['orders_shopify_line_items'], note: 'COGS (Cost of Goods) computed from paid truth line-items + Shopify variant unitCost' },
       { kind: 'db', tables: ['google_ads_spend_hourly'], note: 'Optional: Google Ads spend included in Cost when enabled (ADS_DB_URL / Ads DB)' },
-      { kind: 'shopify', note: 'Optional: Shopify Payments balance transactions for app-bill and payment-fee cost groups (scope dependent; fails open)' },
+      { kind: 'shopify', note: 'Optional: Shopify Payments balance transactions for app-bill, Transaction Fees, and Shopify Fees cost groups (scope dependent; fails open, diagnostics included in response)' },
       { kind: 'shopifyql', note: 'Sessions + conversion_rate from ShopifyQL sessions dataset (SINCE/UNTIL range)' },
       { kind: 'shopify', note: 'Shop name (title) + variant unitCost (for COGS) via Admin API' },
       { kind: 'fx', note: 'Currency conversion to GBP for multi-currency order totals' },

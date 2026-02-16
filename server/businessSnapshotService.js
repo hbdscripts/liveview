@@ -412,6 +412,47 @@ function subtractAmountMapsNonNegative(primary, subtractor) {
   return out;
 }
 
+function addCountToMap(map, key, increment = 1) {
+  const m = map instanceof Map ? map : null;
+  if (!m) return;
+  const k = String(key == null ? '' : key).trim() || '(none)';
+  const inc = Number(increment) || 0;
+  if (!inc) return;
+  const prev = Number(m.get(k) || 0) || 0;
+  m.set(k, prev + inc);
+}
+
+function mapTopCounts(map, limit = 8) {
+  const m = map instanceof Map ? map : new Map();
+  const rows = [];
+  for (const [key, countRaw] of m.entries()) {
+    const count = Number(countRaw) || 0;
+    if (count <= 0) continue;
+    rows.push({ key: String(key), count: Math.round(count) });
+  }
+  rows.sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  return rows.slice(0, Math.max(1, Number(limit) || 8));
+}
+
+function mapTopAmounts(map, limit = 8) {
+  const m = map instanceof Map ? map : new Map();
+  const rows = [];
+  for (const [key, amountRaw] of m.entries()) {
+    const amount = round2(amountRaw) || 0;
+    if (amount <= 0) continue;
+    rows.push({ key: String(key), amountGbp: amount });
+  }
+  rows.sort((a, b) => b.amountGbp - a.amountGbp || a.key.localeCompare(b.key));
+  return rows.slice(0, Math.max(1, Number(limit) || 8));
+}
+
+function normalizeTxToken(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
 function moneyV2ToGbp(money, ratesToGbp) {
   if (!money || typeof money !== 'object') return 0;
   const amount = Number(money.amount);
@@ -429,16 +470,40 @@ function isoToYmdInTimeZone(iso, timeZone) {
   return ymdInTimeZone(ms, timeZone) || null;
 }
 
+function isChargeOrRefundType(typeToken) {
+  const t = normalizeTxToken(typeToken);
+  return t === 'charge' || t === 'refund' || t === 'charge_adjustment' || t === 'refund_adjustment';
+}
+
 function isPaymentFeeTransaction(tx) {
-  const t = String(tx && tx.type || '').trim().toLowerCase();
-  return t === 'charge' || t === 'refund';
+  return isChargeOrRefundType(tx && tx.type);
 }
 
 function isLikelyAppBillTransaction(tx) {
-  const sourceType = String(tx && tx.sourceType || '').trim().toLowerCase();
-  const reason = String(tx && tx.adjustmentReason || '').trim().toLowerCase();
+  const type = normalizeTxToken(tx && tx.type);
+  const sourceType = normalizeTxToken(tx && tx.sourceType);
+  const reason = normalizeTxToken(tx && tx.adjustmentReason);
+  if (type.includes('application_fee')) return true;
+  if (type.includes('billing_debit') || type.includes('billing_credit')) return true;
   if (sourceType.includes('app')) return true;
   if (reason.includes('app') || reason.includes('subscription') || reason.includes('billing')) return true;
+  return false;
+}
+
+function isLikelyShopifyFeeTransaction(tx) {
+  const type = normalizeTxToken(tx && tx.type);
+  const sourceType = normalizeTxToken(tx && tx.sourceType);
+  const reason = normalizeTxToken(tx && tx.adjustmentReason);
+  if (isChargeOrRefundType(type)) return false;
+  if (type.includes('fee')) return true;
+  if (type.includes('billing')) return true;
+  if (type.includes('tax_adjustment')) return true;
+  if (type.includes('shopify_source_debit')) return true;
+  if ((sourceType === 'adjustment' || sourceType === 'system_adjustment' || sourceType === 'adjustment_reversal')
+      && (reason.includes('fee') || reason.includes('billing') || reason.includes('subscription') || reason.includes('app') || reason.includes('tax'))) {
+    return true;
+  }
+  if (reason.includes('fee') || reason.includes('billing') || reason.includes('subscription') || reason.includes('app')) return true;
   return false;
 }
 
@@ -526,11 +591,14 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
       available: false,
       error: 'missing_shop_or_token_or_range',
       paymentFeesTotalGbp: 0,
+      shopifyFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
       paymentFeesByYmd: new Map(),
+      shopifyFeesByYmd: new Map(),
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
+      diagnostics: null,
     };
   }
   const tz = typeof timeZone === 'string' && timeZone ? timeZone : 'UTC';
@@ -539,15 +607,19 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   const cached = shopifyBalanceCostsCache.get(cacheKey);
   if (cached && cached.expiresAt > now && cached.value) {
     const value = cached.value;
+    const shopifyFeesByYmdObj = value.shopifyFeesByYmdObj || value.klarnaFeesByYmdObj || null;
     return {
       available: !!value.available,
       error: value.error || '',
       paymentFeesTotalGbp: Number(value.paymentFeesTotalGbp) || 0,
-      klarnaFeesTotalGbp: Number(value.klarnaFeesTotalGbp) || 0,
+      shopifyFeesTotalGbp: Number(value.shopifyFeesTotalGbp != null ? value.shopifyFeesTotalGbp : value.klarnaFeesTotalGbp) || 0,
+      klarnaFeesTotalGbp: Number(value.shopifyFeesTotalGbp != null ? value.shopifyFeesTotalGbp : value.klarnaFeesTotalGbp) || 0,
       appBillsTotalGbp: Number(value.appBillsTotalGbp) || 0,
       paymentFeesByYmd: roundedObjectToMap(value.paymentFeesByYmdObj),
-      klarnaFeesByYmd: roundedObjectToMap(value.klarnaFeesByYmdObj),
+      shopifyFeesByYmd: roundedObjectToMap(shopifyFeesByYmdObj),
+      klarnaFeesByYmd: roundedObjectToMap(shopifyFeesByYmdObj),
       appBillsByYmd: roundedObjectToMap(value.appBillsByYmdObj),
+      diagnostics: value.diagnostics && typeof value.diagnostics === 'object' ? value.diagnostics : null,
     };
   }
 
@@ -555,69 +627,88 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     available: false,
     error: '',
     paymentFeesTotalGbp: 0,
+    shopifyFeesTotalGbp: 0,
     klarnaFeesTotalGbp: 0,
     appBillsTotalGbp: 0,
     paymentFeesByYmd: new Map(),
+    shopifyFeesByYmd: new Map(),
     klarnaFeesByYmd: new Map(),
     appBillsByYmd: new Map(),
+    diagnostics: null,
   };
 
   const searchBase = `processed_at:>=${since} processed_at:<=${until}`;
-  const [allResp, klarnaResp, ratesToGbp] = await Promise.all([
+  const [allResp, ratesToGbp] = await Promise.all([
     fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, searchBase),
-    fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, `${searchBase} payment_method_name:klarna`),
     fx.getRatesToGbp().catch(() => ({})),
   ]);
-  const diagnostics = [];
+  const diagnosticsMessages = [];
 
   if (!allResp.ok) {
     empty.error = allResp.error || 'shopify_payments_lookup_failed';
     return empty;
   }
-  if (!klarnaResp.ok) {
-    diagnostics.push(`shopify_fees_lookup_warning: ${String(klarnaResp.error || 'query_failed')}`);
-  }
 
   const paymentAllByYmd = new Map();
+  const shopifyFeesAllByYmd = new Map();
   const appBillsByYmd = new Map();
+  const typeCounts = new Map();
+  const sourceTypeCounts = new Map();
+  const reasonCounts = new Map();
+  const feeByType = new Map();
+  const debitByType = new Map();
   for (const tx of allResp.rows) {
     if (!tx || typeof tx !== 'object') continue;
     const ymd = isoToYmdInTimeZone(tx.transactionDate, tz);
     if (!ymd || ymd < since || ymd > until) continue;
+    const typeKey = String(tx.type || '').trim() || '(none)';
+    const sourceTypeKey = String(tx.sourceType || '').trim() || '(none)';
+    const reasonKey = String(tx.adjustmentReason || '').trim() || '(none)';
+    addCountToMap(typeCounts, typeKey, 1);
+    addCountToMap(sourceTypeCounts, sourceTypeKey, 1);
+    addCountToMap(reasonCounts, reasonKey, 1);
+    const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
+    if (feeGbp > 0) addAmountToMap(feeByType, typeKey, feeGbp);
+    const netGbp = moneyV2ToGbp(tx.net, ratesToGbp);
+    if (netGbp < 0) addAmountToMap(debitByType, typeKey, Math.abs(netGbp));
     if (isPaymentFeeTransaction(tx)) {
-      const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
       if (feeGbp > 0) addAmountToMap(paymentAllByYmd, ymd, feeGbp);
     }
-    const netGbp = moneyV2ToGbp(tx.net, ratesToGbp);
     if (netGbp < 0 && isLikelyAppBillTransaction(tx)) {
       addAmountToMap(appBillsByYmd, ymd, Math.abs(netGbp));
     }
-  }
-
-  const klarnaByYmd = new Map();
-  if (klarnaResp.ok) {
-    for (const tx of klarnaResp.rows) {
-      if (!tx || typeof tx !== 'object' || !isPaymentFeeTransaction(tx)) continue;
-      const ymd = isoToYmdInTimeZone(tx.transactionDate, tz);
-      if (!ymd || ymd < since || ymd > until) continue;
-      const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
-      if (feeGbp > 0) addAmountToMap(klarnaByYmd, ymd, feeGbp);
+    if (netGbp < 0 && isLikelyShopifyFeeTransaction(tx)) {
+      addAmountToMap(shopifyFeesAllByYmd, ymd, Math.abs(netGbp));
     }
   }
 
-  const paymentFeesByYmd = subtractAmountMapsNonNegative(paymentAllByYmd, klarnaByYmd);
+  const shopifyFeesByYmd = subtractAmountMapsNonNegative(shopifyFeesAllByYmd, appBillsByYmd);
+  if (shopifyFeesByYmd.size === 0) diagnosticsMessages.push('no_shopify_fee_like_adjustments_in_range');
+  if (appBillsByYmd.size === 0) diagnosticsMessages.push('no_app_bill_like_adjustments_in_range');
+  const paymentFeesByYmd = paymentAllByYmd;
   const paymentFeesTotalGbp = round2(sumAmountMap(paymentFeesByYmd)) || 0;
-  const klarnaFeesTotalGbp = round2(sumAmountMap(klarnaByYmd)) || 0;
+  const shopifyFeesTotalGbp = round2(sumAmountMap(shopifyFeesByYmd)) || 0;
   const appBillsTotalGbp = round2(sumAmountMap(appBillsByYmd)) || 0;
+  const diagnostics = {
+    rows: Array.isArray(allResp.rows) ? allResp.rows.length : 0,
+    topTypes: mapTopCounts(typeCounts, 8),
+    topSourceTypes: mapTopCounts(sourceTypeCounts, 8),
+    topAdjustmentReasons: mapTopCounts(reasonCounts, 8).filter((row) => row.key !== '(none)'),
+    topFeeTypes: mapTopAmounts(feeByType, 8),
+    topDebitTypes: mapTopAmounts(debitByType, 8),
+  };
   const value = {
     available: true,
-    error: diagnostics.join(' | '),
+    error: diagnosticsMessages.join(' | '),
     paymentFeesTotalGbp,
-    klarnaFeesTotalGbp,
+    shopifyFeesTotalGbp,
+    klarnaFeesTotalGbp: shopifyFeesTotalGbp,
     appBillsTotalGbp,
     paymentFeesByYmdObj: mapToRoundedObject(paymentFeesByYmd),
-    klarnaFeesByYmdObj: mapToRoundedObject(klarnaByYmd),
+    shopifyFeesByYmdObj: mapToRoundedObject(shopifyFeesByYmd),
+    klarnaFeesByYmdObj: mapToRoundedObject(shopifyFeesByYmd),
     appBillsByYmdObj: mapToRoundedObject(appBillsByYmd),
+    diagnostics,
   };
   shopifyBalanceCostsCache.set(cacheKey, { value, expiresAt: now + SHOPIFY_BALANCE_COSTS_CACHE_TTL_MS });
   cleanupCache(shopifyBalanceCostsCache, 400);
@@ -625,11 +716,14 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     available: true,
     error: value.error,
     paymentFeesTotalGbp,
-    klarnaFeesTotalGbp,
+    shopifyFeesTotalGbp,
+    klarnaFeesTotalGbp: shopifyFeesTotalGbp,
     appBillsTotalGbp,
     paymentFeesByYmd,
-    klarnaFeesByYmd: klarnaByYmd,
+    shopifyFeesByYmd,
+    klarnaFeesByYmd: shopifyFeesByYmd,
     appBillsByYmd,
+    diagnostics,
   };
 }
 
@@ -1953,21 +2047,27 @@ async function getBusinessSnapshot(options = {}) {
       available: false,
       error: 'shopify_cost_lookup_failed',
       paymentFeesTotalGbp: 0,
+      shopifyFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
       paymentFeesByYmd: new Map(),
+      shopifyFeesByYmd: new Map(),
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
+      diagnostics: null,
     })),
     readShopifyBalanceCostsGbp(shop, token, compareStartYmd, compareEndYmd, timeZone).catch(() => ({
       available: false,
       error: 'shopify_cost_lookup_failed',
       paymentFeesTotalGbp: 0,
+      shopifyFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
       paymentFeesByYmd: new Map(),
+      shopifyFeesByYmd: new Map(),
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
+      diagnostics: null,
     })),
   ]);
 
@@ -2091,8 +2191,12 @@ async function getBusinessSnapshot(options = {}) {
   const appBillsPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.appBillsTotalGbp) || 0;
   const paymentFeesNowAll = Number(shopifyCostsNow && shopifyCostsNow.paymentFeesTotalGbp) || 0;
   const paymentFeesPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.paymentFeesTotalGbp) || 0;
-  const klarnaFeesNowAll = Number(shopifyCostsNow && shopifyCostsNow.klarnaFeesTotalGbp) || 0;
-  const klarnaFeesPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.klarnaFeesTotalGbp) || 0;
+  const shopifyFeesNowAll = Number(
+    shopifyCostsNow && (shopifyCostsNow.shopifyFeesTotalGbp != null ? shopifyCostsNow.shopifyFeesTotalGbp : shopifyCostsNow.klarnaFeesTotalGbp)
+  ) || 0;
+  const shopifyFeesPrevAll = Number(
+    shopifyCostsPrev && (shopifyCostsPrev.shopifyFeesTotalGbp != null ? shopifyCostsPrev.shopifyFeesTotalGbp : shopifyCostsPrev.klarnaFeesTotalGbp)
+  ) || 0;
   const appBillsNowByYmd = shopifyCostsNow && shopifyCostsNow.appBillsByYmd && shopifyCostsNow.appBillsByYmd.get
     ? shopifyCostsNow.appBillsByYmd
     : new Map();
@@ -2105,11 +2209,13 @@ async function getBusinessSnapshot(options = {}) {
   const paymentFeesPrevByYmd = shopifyCostsPrev && shopifyCostsPrev.paymentFeesByYmd && shopifyCostsPrev.paymentFeesByYmd.get
     ? shopifyCostsPrev.paymentFeesByYmd
     : new Map();
-  const klarnaFeesNowByYmd = shopifyCostsNow && shopifyCostsNow.klarnaFeesByYmd && shopifyCostsNow.klarnaFeesByYmd.get
-    ? shopifyCostsNow.klarnaFeesByYmd
+  const shopifyFeesNowByYmd = shopifyCostsNow
+    && ((shopifyCostsNow.shopifyFeesByYmd && shopifyCostsNow.shopifyFeesByYmd.get) || (shopifyCostsNow.klarnaFeesByYmd && shopifyCostsNow.klarnaFeesByYmd.get))
+    ? (shopifyCostsNow.shopifyFeesByYmd && shopifyCostsNow.shopifyFeesByYmd.get ? shopifyCostsNow.shopifyFeesByYmd : shopifyCostsNow.klarnaFeesByYmd)
     : new Map();
-  const klarnaFeesPrevByYmd = shopifyCostsPrev && shopifyCostsPrev.klarnaFeesByYmd && shopifyCostsPrev.klarnaFeesByYmd.get
-    ? shopifyCostsPrev.klarnaFeesByYmd
+  const shopifyFeesPrevByYmd = shopifyCostsPrev
+    && ((shopifyCostsPrev.shopifyFeesByYmd && shopifyCostsPrev.shopifyFeesByYmd.get) || (shopifyCostsPrev.klarnaFeesByYmd && shopifyCostsPrev.klarnaFeesByYmd.get))
+    ? (shopifyCostsPrev.shopifyFeesByYmd && shopifyCostsPrev.shopifyFeesByYmd.get ? shopifyCostsPrev.shopifyFeesByYmd : shopifyCostsPrev.klarnaFeesByYmd)
     : new Map();
   const adsClicksNow = Math.max(0, Math.round(Number(adsNow && adsNow.totalClicks) || 0));
   const adsClicksPrev = Math.max(0, Math.round(Number(adsPrev && adsPrev.totalClicks) || 0));
@@ -2121,13 +2227,13 @@ async function getBusinessSnapshot(options = {}) {
   const appBillsPrevCost = includeShopifyAppBills ? appBillsPrevAll : 0;
   const paymentFeesNowCost = includePaymentFees ? paymentFeesNowAll : 0;
   const paymentFeesPrevCost = includePaymentFees ? paymentFeesPrevAll : 0;
-  const klarnaFeesNowCost = includeKlarnaFees ? klarnaFeesNowAll : 0;
-  const klarnaFeesPrevCost = includeKlarnaFees ? klarnaFeesPrevAll : 0;
-  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || klarnaFeesNowCost > 0)
-    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + klarnaFeesNowCost)
+  const shopifyFeesNowCost = includeKlarnaFees ? shopifyFeesNowAll : 0;
+  const shopifyFeesPrevCost = includeKlarnaFees ? shopifyFeesPrevAll : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || shopifyFeesNowCost > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + shopifyFeesNowCost)
     : null;
-  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || klarnaFeesPrevCost > 0)
-    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + klarnaFeesPrevCost)
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || shopifyFeesPrevCost > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + shopifyFeesPrevCost)
     : null;
 
   const costBreakdownNow = [];
@@ -2143,7 +2249,7 @@ async function getBusinessSnapshot(options = {}) {
   if (includeGoogleAdsSpend || adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
   if (includeShopifyAppBills || appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
   if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesNowCost) || 0 });
-  if (includeKlarnaFees || klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
+  if (includeKlarnaFees || shopifyFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2158,7 +2264,7 @@ async function getBusinessSnapshot(options = {}) {
   if (includeGoogleAdsSpend || adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
   if (includeShopifyAppBills || appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
   if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesPrevCost) || 0 });
-  if (includeKlarnaFees || klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
+  if (includeKlarnaFees || shopifyFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -2169,7 +2275,7 @@ async function getBusinessSnapshot(options = {}) {
     adsByYmd: adsNowByYmd,
     appBillsByYmd: appBillsNowByYmd,
     paymentFeesByYmd: paymentFeesNowByYmd,
-    klarnaFeesByYmd: klarnaFeesNowByYmd,
+    klarnaFeesByYmd: shopifyFeesNowByYmd,
     includeAds: includeGoogleAdsSpend,
     includeAppBills: includeShopifyAppBills,
     includePaymentFees,
@@ -2184,7 +2290,7 @@ async function getBusinessSnapshot(options = {}) {
     adsByYmd: adsPrevByYmd,
     appBillsByYmd: appBillsPrevByYmd,
     paymentFeesByYmd: paymentFeesPrevByYmd,
-    klarnaFeesByYmd: klarnaFeesPrevByYmd,
+    klarnaFeesByYmd: shopifyFeesPrevByYmd,
     includeAds: includeGoogleAdsSpend,
     includeAppBills: includeShopifyAppBills,
     includePaymentFees,
@@ -2256,12 +2362,12 @@ async function getBusinessSnapshot(options = {}) {
         + (includeGoogleAdsSpend ? adsSpendNowAll : 0)
         + (includeShopifyAppBills ? appBillsNowAll : 0)
         + (includePaymentFees ? paymentFeesNowAll : 0)
-        + (includeKlarnaFees ? klarnaFeesNowAll : 0);
+        + (includeKlarnaFees ? shopifyFeesNowAll : 0);
       const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0)
         + (includeGoogleAdsSpend ? adsSpendPrevAll : 0)
         + (includeShopifyAppBills ? appBillsPrevAll : 0)
         + (includePaymentFees ? paymentFeesPrevAll : 0)
-        + (includeKlarnaFees ? klarnaFeesPrevAll : 0);
+        + (includeKlarnaFees ? shopifyFeesPrevAll : 0);
       const revNow = Number(revenue) || 0;
       const revPrev = Number(revenuePrev) || 0;
       const estNow = round2(revNow - deductionsNow);
@@ -2399,10 +2505,16 @@ async function getBusinessSnapshot(options = {}) {
         current: {
           available: !!(shopifyCostsNow && shopifyCostsNow.available),
           error: shopifyCostsNow && shopifyCostsNow.error ? String(shopifyCostsNow.error) : null,
+          diagnostics: shopifyCostsNow && shopifyCostsNow.diagnostics && typeof shopifyCostsNow.diagnostics === 'object'
+            ? shopifyCostsNow.diagnostics
+            : null,
         },
         previous: {
           available: !!(shopifyCostsPrev && shopifyCostsPrev.available),
           error: shopifyCostsPrev && shopifyCostsPrev.error ? String(shopifyCostsPrev.error) : null,
+          diagnostics: shopifyCostsPrev && shopifyCostsPrev.diagnostics && typeof shopifyCostsPrev.diagnostics === 'object'
+            ? shopifyCostsPrev.diagnostics
+            : null,
         },
       },
       timeZone,

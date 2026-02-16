@@ -627,16 +627,45 @@
       const label = String(row && row.label || '').toLowerCase();
       return label.includes('shopify app bills')
         || label.includes('transaction fees')
-        || label.includes('shopify fees')
-        || label.includes('klarna fees');
+        || label.includes('shopify fees');
     });
     if (!feeToggleInUse) return;
+
+    const lineAmount = (needle) => {
+      const row = lines.find((entry) => String(entry && entry.label || '').toLowerCase().includes(needle));
+      return row ? Number(row.amountGbp || 0) || 0 : 0;
+    };
+    const appBillsNow = lineAmount('shopify app bills');
+    const shopifyFeesNow = lineAmount('shopify fees');
+    const categoryZeroHint = appBillsNow <= 0 && shopifyFeesNow <= 0;
 
     const currentError = current && current.error ? String(current.error).trim() : '';
     const previousError = previous && previous.error ? String(previous.error).trim() : '';
     const anyUnavailable = !!((current && current.available === false) || (previous && previous.available === false));
     const anyError = !!(currentError || previousError);
-    if (!anyUnavailable && !anyError) return;
+
+    const summarizeDiagnostics = (diag, prefix) => {
+      if (!diag || typeof diag !== 'object') return '';
+      const topTypes = Array.isArray(diag.topTypes) ? diag.topTypes.slice(0, 4) : [];
+      if (!topTypes.length) return '';
+      const rowBits = topTypes
+        .map((row) => `${String(row && row.key || 'unknown')} (${fmtInt(Number(row && row.count) || 0)})`)
+        .join(', ');
+      return `${prefix}: ${rowBits}`;
+    };
+    const currentDiag = current && current.diagnostics ? current.diagnostics : null;
+    const previousDiag = previous && previous.diagnostics ? previous.diagnostics : null;
+    const diagnosticsSummary = [
+      summarizeDiagnostics(currentDiag, 'current types'),
+      summarizeDiagnostics(previousDiag, 'previous types'),
+    ].filter(Boolean).join(' | ');
+
+    if (!anyUnavailable && !anyError) {
+      if (!categoryZeroHint || !diagnosticsSummary) return;
+      note.textContent = `Shopify fee diagnostics: ${diagnosticsSummary}`;
+      note.classList.remove('is-hidden');
+      return;
+    }
 
     const details = [];
     if (currentError) details.push(`current: ${currentError}`);
@@ -648,7 +677,9 @@
         ? `Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations. (${detailText})`
         : 'Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations.';
     } else if (detailText) {
-      note.textContent = `Shopify fee diagnostics: ${detailText}`;
+      note.textContent = diagnosticsSummary
+        ? `Shopify fee diagnostics: ${detailText} | ${diagnosticsSummary}`
+        : `Shopify fee diagnostics: ${detailText}`;
     } else {
       note.textContent = 'Shopify fee data unavailable for this shop or date range.';
     }

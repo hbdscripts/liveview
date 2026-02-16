@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Compliance icons only when fraud score exists)
+Last updated: 2026-02-16 (Snapshot Shopify fee-type diagnostics + mapping)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot Shopify Payments mapping refinement:
+  - `Shopify Fees` now maps to Shopify fee-like adjustment debits from `shopifyPaymentsAccount.balanceTransactions` (instead of the old Klarna-only subset), while `Transaction Fees` remains charge/refund processing fees.
+  - Snapshot response now includes Shopify Payments diagnostics (`topTypes`, `topSourceTypes`, `topAdjustmentReasons`, top fee/debit types) under `sources.shopifyPaymentsDetail.current/previous.diagnostics` to show what transaction classes actually exist for the selected range.
+  - Snapshot note rendering now shows type summaries when app-bill/shopify-fee rows are zero so mapping can be tuned to real API data.
+  - Snapshot report cache param version bumped to `snapshot-page-v3`.
 
 2026-02-16 (latest)
 - Snapshot fee labels + diagnostics:
