@@ -14,15 +14,23 @@
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <style>
+    body[data-page="snapshot"] .kexo-page-header-date-col {
+      display: block !important;
+    }
+    body[data-page="snapshot"] #kexo-date-display {
+      display: none !important;
+    }
+  </style>
   <title>Kexo · Snapshot</title>
 </head>
 <body class="" data-page="snapshot">
   <!--#include partials/header.html-->
   <!--#include partials/page-body-start.html-->
   <div class="page-header mb-3">
-    <div class="row align-items-center">
+    <div class="row align-items-center" style="--kexo-page-header-accent: rgb(62, 179, 171);">
       <div class="col">
-        <div class="page-pretitle">Insights</div>
+        <div class="page-pretitle"><i class="kexo-nav-svg kexo-page-header-category-icon kexo-accent-2 fa-jelly-fill fa-regular fa-chart-pie" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Insights</div>
         <h2 class="page-title">Snapshot</h2>
       </div>
     </div>
@@ -219,10 +227,6 @@
             <div class="mb-3">
               <h6 class="mb-2">Additional cost groups</h6>
               <div class="d-flex flex-column gap-2">
-                <label class="form-check form-switch mb-0">
-                  <input class="form-check-input" type="checkbox" id="profit-rules-include-shopify-app-bills" />
-                  <span class="form-check-label">Include Shopify app bills in Cost</span>
-                </label>
                 <label class="form-check form-switch mb-0">
                   <input class="form-check-input" type="checkbox" id="profit-rules-include-payment-fees" />
                   <span class="form-check-label">Include Transaction Fees in Cost</span>

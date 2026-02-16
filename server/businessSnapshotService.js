@@ -1999,10 +1999,10 @@ async function getBusinessSnapshot(options = {}) {
   const profitRules = await readProfitRulesConfig();
   const rulesEnabled = hasEnabledProfitRules(profitRules);
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
-  const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
+  const includeShopifyAppBills = false;
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeKlarnaFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includeKlarnaFees === true);
-  const anyIntegrationEnabled = includeGoogleAdsSpend || includeShopifyAppBills || includePaymentFees || includeKlarnaFees;
+  const anyIntegrationEnabled = includeGoogleAdsSpend || includePaymentFees || includeKlarnaFees;
   const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyIntegrationEnabled));
 
   const [
@@ -2247,9 +2247,9 @@ async function getBusinessSnapshot(options = {}) {
     }
   }
   if (includeGoogleAdsSpend || adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
-  if (includeShopifyAppBills || appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
+  if (appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
   if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesNowCost) || 0 });
-  if (includeKlarnaFees || shopifyFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesNowCost) || 0 });
+  if (shopifyFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2262,9 +2262,9 @@ async function getBusinessSnapshot(options = {}) {
     }
   }
   if (includeGoogleAdsSpend || adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
-  if (includeShopifyAppBills || appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
+  if (appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
   if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesPrevCost) || 0 });
-  if (includeKlarnaFees || shopifyFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesPrevCost) || 0 });
+  if (shopifyFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -2497,7 +2497,7 @@ async function getBusinessSnapshot(options = {}) {
     sources: {
       sales: 'shopify_orders_api (orders_shopify, checkout_token only)',
       sessions: 'shopifyql (sessions)',
-      costs: 'COGS + enabled profit deductions + optional integrations (Google Ads, Shopify app bills, Transaction Fees, Shopify Fees)',
+      costs: 'COGS + enabled profit deductions + optional integrations (Google Ads, Transaction Fees, Shopify Fees)',
       shopifyPayments: (shopifyCostsNow && shopifyCostsNow.available) || (shopifyCostsPrev && shopifyCostsPrev.available)
         ? 'shopifyPaymentsAccount.balanceTransactions'
         : 'unavailable_or_scope_missing',

@@ -845,7 +845,7 @@
       currency: 'GBP',
       integrations: {
         includeGoogleAdsSpend: !!(src.integrations && src.integrations.includeGoogleAdsSpend === true),
-        includeShopifyAppBills: !!(src.integrations && src.integrations.includeShopifyAppBills === true),
+        includeShopifyAppBills: false,
         includePaymentFees: !!(src.integrations && src.integrations.includePaymentFees === true),
         includeKlarnaFees: !!(src.integrations && src.integrations.includeKlarnaFees === true),
       },
@@ -1063,12 +1063,10 @@
     state.rulesDraft = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : null);
     const enabledToggle = document.getElementById('profit-rules-enabled');
     const adsToggle = document.getElementById('profit-rules-include-google-ads');
-    const appBillsToggle = document.getElementById('profit-rules-include-shopify-app-bills');
     const paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
     const klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
     if (enabledToggle) enabledToggle.checked = !!(state.rulesDraft && state.rulesDraft.enabled);
     if (adsToggle) adsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeGoogleAdsSpend);
-    if (appBillsToggle) appBillsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeShopifyAppBills);
     if (paymentFeesToggle) paymentFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includePaymentFees);
     if (klarnaFeesToggle) klarnaFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeKlarnaFees);
     renderRulesList();
@@ -1079,7 +1077,6 @@
     if (!state.rulesDraft) state.rulesDraft = normalizeRulesPayload(null);
     const enabledToggle = document.getElementById('profit-rules-enabled');
     const adsToggle = document.getElementById('profit-rules-include-google-ads');
-    const appBillsToggle = document.getElementById('profit-rules-include-shopify-app-bills');
     const paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
     const klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
     state.rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!state.rulesDraft.enabled;
@@ -1092,7 +1089,7 @@
       };
     }
     state.rulesDraft.integrations.includeGoogleAdsSpend = adsToggle ? !!adsToggle.checked : !!state.rulesDraft.integrations.includeGoogleAdsSpend;
-    state.rulesDraft.integrations.includeShopifyAppBills = appBillsToggle ? !!appBillsToggle.checked : !!state.rulesDraft.integrations.includeShopifyAppBills;
+    state.rulesDraft.integrations.includeShopifyAppBills = false;
     state.rulesDraft.integrations.includePaymentFees = paymentFeesToggle ? !!paymentFeesToggle.checked : !!state.rulesDraft.integrations.includePaymentFees;
     state.rulesDraft.integrations.includeKlarnaFees = klarnaFeesToggle ? !!klarnaFeesToggle.checked : !!state.rulesDraft.integrations.includeKlarnaFees;
     reindexRulesDraft();
@@ -1239,7 +1236,32 @@
     bindProfitRulesUi();
   }
 
+  function restoreSnapshotHeaderDateLayout() {
+    try {
+      const body = document.body;
+      if (!body || String(body.getAttribute('data-page') || '') !== 'snapshot') return;
+      const dateBtn = document.getElementById('kexo-date-display');
+      const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
+      const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
+      const headerRow = document.querySelector('.page-header .row.align-items-center') || document.querySelector('.page-header .row');
+      if (!dateWrap || !headerRow) return;
+
+      let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
+      if (!dateCol) {
+        dateCol = document.createElement('div');
+        dateCol.className = 'col-auto kexo-page-header-date-col';
+        headerRow.appendChild(dateCol);
+      }
+      if (dateWrap.parentElement !== dateCol) dateCol.appendChild(dateWrap);
+      if (sourceLi) {
+        sourceLi.classList.add('is-date-relocated');
+        sourceLi.classList.remove('is-date-inline-fallback');
+      }
+    } catch (_) {}
+  }
+
   async function init() {
+    restoreSnapshotHeaderDateLayout();
     bindUi();
     const initial = parseQueryState();
     state.preset = initial.preset;
