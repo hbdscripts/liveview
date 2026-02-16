@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Google Ads paused campaign styling)
+Last updated: 2026-02-16 (Google Ads hide paused toggle)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -385,7 +385,7 @@ Ops/reliability:
 - Frontend app bundle: `server/public/app.js` is generated from `client/app/*.js`; run `npm run build:app`. Tests: `test/app-bundle.test.js` (checksum), `test/attribution-write-auth.test.js` (403 for non-admin on POST prefs/config/map), `test/salesTruth-transaction.test.js` (db.transaction rollback invariant).
 
 2026-02-16 (latest)
-- Google Ads: paused campaigns now render greyed out (50% opacity) in `/integrations/google-ads` (campaign status is persisted in Ads DB and returned in `/api/ads/summary`).
+- Google Ads: paused campaigns now render greyed out (50% opacity) with a **Hide paused** toggle under the totals row in `/integrations/google-ads` (campaign status is persisted in Ads DB and returned in `/api/ads/summary`).
 
 2026-02-16 (latest)
 - Reliability hardening pass:

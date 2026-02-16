@@ -189,6 +189,24 @@
     return 'kexo:table-rows:v1:ads-root';
   }
 
+  function getAdsHidePausedStorageKey() {
+    return 'kexo:ads:hide-paused:v1';
+  }
+
+  function getAdsHidePaused() {
+    var raw = null;
+    try { raw = localStorage.getItem(getAdsHidePausedStorageKey()); } catch (_) { raw = null; }
+    var s = raw != null ? String(raw).trim().toLowerCase() : '';
+    if (!s) return false;
+    return s === '1' || s === 'true' || s === 'yes' || s === 'on';
+  }
+
+  function setAdsHidePaused(next) {
+    var v = !!next;
+    try { localStorage.setItem(getAdsHidePausedStorageKey(), v ? '1' : '0'); } catch (_) {}
+    return v;
+  }
+
   function getAdsPageSize() {
     var raw = null;
     try { raw = localStorage.getItem(getAdsRowsStorageKey()); } catch (_) { raw = null; }
@@ -1858,6 +1876,8 @@
     var providers = status && status.providers ? status.providers : [];
     var isConnected = !!(providers.length && providers.some(function (p) { return !!(p && p.connected); }));
     var connLabel = isConnected ? 'Connected' : (providers.length ? 'Not connected' : 'No providers configured');
+    var hidePaused = false;
+    try { hidePaused = getAdsHidePaused(); } catch (_) { hidePaused = false; }
 
     _lastErrors = collectErrors(status, summary, _lastRefreshResult);
     _lastErrorsPayload = {
@@ -1871,6 +1891,10 @@
 
     actions.style.display = '';
     actions.innerHTML =
+      '<label class="form-check form-check-inline m-0 me-auto" style="user-select:none;white-space:nowrap;" aria-label="Hide paused campaigns">' +
+        '<input class="form-check-input" type="checkbox" id="ads-hide-paused"' + (hidePaused ? ' checked' : '') + '>' +
+        '<span class="form-check-label">Hide paused</span>' +
+      '</label>' +
       '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
         alertTriangleSvg() +
       '</button>' +
@@ -1900,6 +1924,18 @@
     if (abtn) {
       abtn.addEventListener('click', function () {
         try { openAuditModal(); } catch (_) {}
+      });
+    }
+
+    var hcb = document.getElementById('ads-hide-paused');
+    if (hcb) {
+      hcb.addEventListener('change', function () {
+        var next = false;
+        try { next = !!hcb.checked; } catch (_) { next = false; }
+        setAdsHidePaused(next);
+        adsPage = 1;
+        var root = document.getElementById('ads-root');
+        if (root && _lastSummary) render(root, _lastStatus, _lastSummary, _lastRefreshResult);
       });
     }
   }
@@ -1953,7 +1989,17 @@
 
     var providers = status && status.providers ? status.providers : [];
     var totals = summary && summary.totals ? summary.totals : {};
-    var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+    var allCampaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+    var campaigns = allCampaigns;
+    var hidePaused = false;
+    try { hidePaused = getAdsHidePaused(); } catch (_) { hidePaused = false; }
+    if (hidePaused && campaigns && campaigns.length) {
+      campaigns = campaigns.filter(function (c) {
+        if (!c) return false;
+        var st = c.campaignStatus != null ? String(c.campaignStatus) : '';
+        return (st || '').trim().toUpperCase() !== 'PAUSED';
+      });
+    }
     var currency = (summary && summary.currency) || 'GBP';
     var note = (summary && summary.note) ? String(summary.note) : '';
     if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
@@ -1992,8 +2038,8 @@
     (function auditTotals() {
       try {
         var sum = { spend: 0, impressions: 0, clicks: 0, revenue: 0, profit: 0 };
-        for (var i = 0; i < campaigns.length; i++) {
-          var c = campaigns[i] || {};
+        for (var i = 0; i < allCampaigns.length; i++) {
+          var c = allCampaigns[i] || {};
           sum.spend += Number(c.spend) || 0;
           sum.impressions += Number(c.impressions) || 0;
           sum.clicks += Number(c.clicks) || 0;
@@ -2053,8 +2099,16 @@
       ], false, rowClass, ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
     }
 
-    if (!campaigns.length && !note) {
-      bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="text-align:center;">No campaign data yet. Click ↻ to sync.</div></div>';
+    if (!campaigns.length) {
+      var emptyMsg = null;
+      if (hidePaused && allCampaigns && allCampaigns.length) {
+        emptyMsg = 'Paused campaigns hidden. Uncheck Hide paused to view.';
+      } else if (!note) {
+        emptyMsg = 'No campaign data yet. Click ↻ to sync.';
+      }
+      if (emptyMsg) {
+        bodyHtml += '<div class="grid-row" role="row"><div class="grid-cell muted" role="cell" style="text-align:center;">' + esc(emptyMsg) + '</div></div>';
+      }
     }
 
     var tableHtml;
