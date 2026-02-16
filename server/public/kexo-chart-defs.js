@@ -17,10 +17,10 @@
   };
 
   window.KEXO_CHART_DEFS = {
-    'dash-chart-overview-30d': { modes: ['bar', 'line', 'area', 'multi-line-labels'], series: ['Revenue', 'Cost'], defaultMode: 'bar', height: 300 },
-    'dash-chart-finishes-30d': { modes: ['pie'], series: ['Revenue by finish'], defaultMode: 'pie', height: 180 },
-    'dash-chart-countries-30d': { modes: ['pie'], series: ['Revenue by country'], defaultMode: 'pie', height: 180 },
-    'dash-chart-kexo-score-today': { modes: ['pie'], series: ['Score', 'Remaining'], defaultMode: 'pie', height: 180 },
+    'dash-chart-overview-30d': { modes: ['bar', 'line', 'area', 'multi-line-labels'], series: ['Revenue', 'Cost'], defaultMode: 'bar', height: 420 },
+    'dash-chart-finishes-30d': { modes: ['pie'], series: ['Revenue by finish'], defaultMode: 'pie', height: 240 },
+    'dash-chart-countries-30d': { modes: ['pie'], series: ['Revenue by country'], defaultMode: 'pie', height: 240 },
+    'dash-chart-kexo-score-today': { modes: ['pie'], series: ['Score', 'Remaining'], defaultMode: 'pie', height: 240 },
     'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'], defaultMode: 'map-flat', height: 220 },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'area', height: 220 },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'], defaultMode: 'area', height: 220 },

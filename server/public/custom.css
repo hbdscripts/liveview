@@ -764,12 +764,12 @@ body.side-panel-open {
   justify-content: center;
 }
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-header-icon {
-  width: 15px;
-  height: 15px;
+  font-size: 15px;
+  width: 1em;
+  height: 1em;
   vertical-align: middle;
   display: inline-block;
   margin: 0;
-  object-fit: contain;
 }
 
 /* Lookup: copy links (IDs only) */
@@ -1333,7 +1333,7 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(4) {
   user-select: none;
 }
 
-/* Table header labels: always text + CSS ellipsis (no mobile icon swap) */
+/* Table header labels: text by default; icon-only on mobile */
 .th-label-long {
   display: block;
   max-width: 100%;
@@ -1344,6 +1344,16 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(4) {
 
 .th-label-short {
   display: none !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  line-height: 1;
+}
+.th-label-short svg { width: 16px; height: 16px; display: block; }
+
+@media (max-width: 768px) {
+  .th-label-long { display: none !important; }
+  .th-label-short { display: inline-flex !important; }
 }
 
 /* Standard <table> headers: keep single-line with CSS ellipsis */
@@ -1517,10 +1527,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   border-radius: 6px;
 }
 
-/* (legacy) kept for safety: short header/icon labels are disabled globally */
-.th-label-short {
-  display: none !important;
-}
+/* Mobile icon-only headers: enabled in @media (max-width: 768px) above */
 
 /* Traffic type expandable rows */
 .traffic-type-toggle {
@@ -1829,6 +1836,24 @@ body[data-page="abandoned-carts"] .page-body-loader-overlay .page-loader-progres
   background-color: var(--kexo-accent-2, #3eb3ab) !important;
   background-image: none !important;
 }
+
+/* Variants 3-grid: prevent last row stuck/overflow; allow normal scroll */
+body[data-page="variants"] .stats-row-wrap {
+  overflow: visible;
+  min-height: 0;
+}
+body[data-page="variants"] #variants-tables-row {
+  align-content: flex-start;
+}
+body[data-page="variants"] #variants-tables-row .stats-card {
+  align-self: flex-start;
+  min-height: 0;
+}
+body[data-page="variants"] #variants-tables-row .country-table-wrap {
+  overflow: auto;
+  min-height: 0;
+}
+
 body[data-page="attribution"] .page-body-loader-overlay .page-loader-progress .progress-bar,
 body[data-page="devices"] .page-body-loader-overlay .page-loader-progress .progress-bar,
 /* Legacy aliases kept for older tabs/routes. */
@@ -2645,6 +2670,28 @@ html[data-bs-theme="dark"] .report-build-wrap {
   justify-content: center;
   color: var(--tblr-muted);
   font-size: .875rem;
+}
+.kexo-overview-mini-chart {
+  height: clamp(220px, 30vh, 320px);
+}
+.kexo-overview-main-chart {
+  height: clamp(360px, 48vh, 560px);
+}
+@media (max-width: 1199.98px) {
+  .kexo-overview-mini-chart {
+    height: clamp(210px, 28vh, 280px);
+  }
+  .kexo-overview-main-chart {
+    height: clamp(340px, 46vh, 480px);
+  }
+}
+@media (max-width: 767.98px) {
+  .kexo-overview-mini-chart {
+    height: 240px;
+  }
+  .kexo-overview-main-chart {
+    height: 360px;
+  }
 }
 
 .dash-trend-delta {
@@ -3794,9 +3841,14 @@ body.kexo-report-loading #kexo-date-display::after {
   visibility: visible !important;
 }
 body[data-page="settings"] .kexo-nav-date-slot,
-body[data-page="settings"] .kexo-page-header-date-col,
 body[data-page="admin"] .kexo-nav-date-slot {
   display: none !important;
+}
+/* Pages without date: keep triple-layout spacing/connector by ghost date col (visibility only) */
+body[data-page="settings"] .kexo-page-header-date-col,
+body[data-page="admin"] .kexo-page-header-date-col {
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 body[data-page="snapshot"] #kexo-date-display {
   display: none !important;

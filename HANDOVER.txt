@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (overview grid refresh + KPI position mapping)
+Last updated: 2026-02-16 (UX fixes: Kexo Score popover/summary, mobile table icons, admin notes, snapshot show-graph, tools nav, visits rename, etc.)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -192,6 +192,11 @@ Settings API:
 Admin Controls API (admin-only):
 - `GET/PUT /api/admin/controls` in `server/routes/adminControls.js` (persists `page_loader_enabled_v1`)
 
+Admin Notes (admin-only):
+- Table: `admin_notes` (migration `051_admin_notes`): `id`, `body` (text), `created_at`, `created_by`. Used as a read-todo list for admins.
+- API: `GET /api/admin/notes` (list recent notes), `POST /api/admin/notes` (create; body: `{ body: string, created_by?: string }`) in `server/routes/adminNotes.js`.
+- UI: footer pen icon (admin-gated via `/api/me` viewer; icon key `footer-notes`) opens a modal to submit and view recent notes.
+
 Diagnostics access:
 - `GET /api/config-status` is now **restricted for non-admins** (returns a minimal payload for Settings/Integrations/footer tags).
 - Full diagnostics payload is only returned to admin requests (OAuth cookie + users.role=admin; legacy: master).
@@ -381,6 +386,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Dashboard overview hotfix pass:
+  - Increased top KPI capacity from 4 to 6 in runtime routing (still position-based via `kpi_ui_config_v1`), and defaulted `sessions` + `bounce` to `position: top` for new/default KPI config.
+  - Fixed overview pie-chart render bug where stale "No data available" DOM could remain under newly rendered charts (now clears chart container before Apex render).
+  - Added overview mini chart sizing improvements: taller pie/main chart containers in CSS plus runtime height detection from container dimensions.
+  - Added resize-aware rerendering for overview mini charts via `ResizeObserver` + cached data signature checks.
+  - Overview mini-data cache now keys by resolved shop (`getShopForSales`) so finishes data refetches automatically once shop context becomes available.
 
 2026-02-16 (latest)
 - Dashboard overview layout refresh:
