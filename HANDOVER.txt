@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot fee lookup status + always-visible toggled rows)
+Last updated: 2026-02-16 (Snapshot zero-value cost rows fixed)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot breakdown zero-row rendering fix:
+  - `server/public/pages/insightsSnapshot.js` no longer filters out `amountGbp === 0` in cost breakdown maps, so enabled integration rows with `£0.00` now render under Cost as intended.
 
 2026-02-16 (latest)
 - Snapshot cost breakdown follow-up (fees/bills visibility):

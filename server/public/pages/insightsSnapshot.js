@@ -368,7 +368,7 @@
       const label = String(row.label || '').trim();
       if (!label) return;
       const amount = toNumber(row.amountGbp);
-      if (amount == null || amount <= 0) return;
+      if (amount == null) return;
       map.set(label, (Number(map.get(label) || 0) || 0) + amount);
     });
     return map;
