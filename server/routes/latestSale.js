@@ -154,14 +154,19 @@ async function getLatestSale(req, res) {
         // Enrich country from purchase_events + sessions when evidence exists (may lag for newest order).
         const linkRow = await db.get(
           `
-          SELECT COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(pe.cf_country), ''), 'XX') AS country_code
+          SELECT
+            pe.session_id AS session_id,
+            COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(pe.cf_country), ''), 'XX') AS country_code
           FROM purchase_events pe
           LEFT JOIN sessions s ON s.session_id = pe.session_id
           WHERE pe.shop = ? AND pe.linked_order_id = ? AND pe.event_type IN ('checkout_completed', 'checkout_started')
+          ORDER BY COALESCE(pe.occurred_at, pe.received_at, 0) DESC
           LIMIT 1
           `,
           [shop, row.order_id]
         );
+        const evidenceSessionId = safeStr(linkRow && linkRow.session_id ? linkRow.session_id : '', 128);
+        if (evidenceSessionId) row.session_id = evidenceSessionId;
         const evidenceCc = linkRow && linkRow.country_code ? linkRow.country_code : 'XX';
         const normalizedEvidence = normalizeCountry(evidenceCc);
         const rawJsonCc = normalizedEvidence === 'XX' ? parseCountryFromOrderRawJson(row.raw_json) : 'XX';
@@ -187,6 +192,7 @@ async function getLatestSale(req, res) {
       source: source || null,
       orderId: safeStr(row.order_id, 64) || null,
       orderName: safeStr(row.order_name, 64) || null,
+      sessionId: safeStr(row.session_id, 128) || null,
       createdAt: row.created_at != null ? Number(row.created_at) : null,
       countryCode,
       amountGbp: gbp != null && Number.isFinite(gbp) ? Math.round(gbp * 100) / 100 : null,
