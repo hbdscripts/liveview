@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo summary live + route status fix)
+Last updated: 2026-02-16 (sale sound save reliability + upload error handling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -381,6 +381,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Sale notification sound save/upload hardening:
+  - Settings page now strips oversized query payloads immediately on load (keeps only `tab`, `layoutTab`, `shop`) so subsequent API calls do not carry huge referers from theme-share URLs (`server/public/settings-page.js`).
+  - `/api/assets/upload` now returns structured JSON for Multer/upload middleware failures (including explicit file-size message) instead of generic server errors (`server/index.js`).
+  - Upload limits are now slot-aware: sale sound allows up to 10MB MP3; image slots remain capped at 2MB (`server/routes/assets.js`).
+  - Settings asset upload client now handles non-JSON error responses safely and surfaces clearer HTTP status errors.
+  - `kexo:sale-sound-updated` now emits only after `assetOverrides.saleSound` saves successfully, preventing local-only sound swaps when persistence fails.
 
 2026-02-16 (latest)
 - Perf/leak audit (lag, speed, leak fix plan):

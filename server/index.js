@@ -125,7 +125,23 @@ app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.get('/api/asset-overrides', assets.getAssetOverrides);
 app.get('/api/footer-logo', assets.getFooterLogo);
-app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
+app.post(
+  '/api/assets/upload',
+  (req, res, next) => {
+    assets.uploadSingle(req, res, (err) => {
+      if (!err) return next();
+      const code = err && err.code ? String(err.code) : '';
+      if (code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ ok: false, error: 'Upload file too large (max 10MB for sale sound, 2MB for images)' });
+      }
+      return res.status(400).json({
+        ok: false,
+        error: err && err.message ? String(err.message) : 'Upload failed',
+      });
+    });
+  },
+  assets.postUploadAsset
+);
 app.get('/api/devices/observed', devicesRouter.getObservedDevices);
 app.get('/api/devices/report', devicesRouter.getDevicesReport);
 app.get('/api/attribution/report', attributionRouter.getAttributionReport);

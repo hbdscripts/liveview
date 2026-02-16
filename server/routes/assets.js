@@ -81,10 +81,14 @@ function r2Client() {
   });
 }
 
+const MAX_IMAGE_UPLOAD_BYTES = 2 * 1024 * 1024; // 2MB
+const MAX_SALE_SOUND_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB
+    // Route-level max; slot-specific checks run after slot is known.
+    fileSize: MAX_SALE_SOUND_UPLOAD_BYTES,
   },
 });
 
@@ -143,6 +147,12 @@ async function postUploadAsset(req, res) {
   }
   if (slot === 'sale_sound' && !isAudio) {
     return res.status(400).json({ ok: false, error: 'Sale sound must be an MP3 file' });
+  }
+  if (slot === 'sale_sound' && file.buffer.length > MAX_SALE_SOUND_UPLOAD_BYTES) {
+    return res.status(400).json({ ok: false, error: 'Sale sound file too large (max 10MB)' });
+  }
+  if (slot !== 'sale_sound' && file.buffer.length > MAX_IMAGE_UPLOAD_BYTES) {
+    return res.status(400).json({ ok: false, error: 'Image file too large (max 2MB)' });
   }
 
   const ext = extFromMime(contentType) || 'bin';

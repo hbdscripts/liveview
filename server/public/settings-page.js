@@ -14,6 +14,35 @@
     if (typeof window !== 'undefined' && window.API) API = String(window.API || '');
   } catch (_) {}
 
+  function normalizeSettingsUrlQueryEarly() {
+    try {
+      if (!window.history || typeof window.history.replaceState !== 'function') return;
+      var rawSearch = String(window.location.search || '');
+      if (!rawSearch) return;
+      var params = new URLSearchParams(rawSearch);
+      var keep = new URLSearchParams();
+      var rawTab = String(params.get('tab') || '').trim().toLowerCase();
+      if (rawTab === 'sources') rawTab = 'attribution';
+      if (rawTab === 'charts' || rawTab === 'kpis') rawTab = 'layout';
+      var allowedTabs = {
+        general: true, theme: true, assets: true, integrations: true,
+        attribution: true, insights: true, layout: true,
+      };
+      if (allowedTabs[rawTab]) keep.set('tab', rawTab);
+      var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
+      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis') && keep.get('tab') === 'layout') {
+        keep.set('layoutTab', rawLayout);
+      }
+      var rawShop = String(params.get('shop') || '').trim();
+      if (rawShop) keep.set('shop', rawShop);
+      var nextSearch = keep.toString();
+      var nextUrl = window.location.pathname + (nextSearch ? ('?' + nextSearch) : '') + (window.location.hash || '');
+      var curUrl = window.location.pathname + rawSearch + (window.location.hash || '');
+      if (nextUrl !== curUrl) window.history.replaceState(null, '', nextUrl);
+    } catch (_) {}
+  }
+  normalizeSettingsUrlQueryEarly();
+
   function isSettingsPageLoaderEnabled() {
     // Settings should never show the page overlay loader.
     return false;
@@ -814,9 +843,9 @@
             } else {
               saleMsgEl.textContent = 'Uploaded & saved.';
               saleMsgEl.className = 'form-hint ms-2 text-success';
+              try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: safeUrl } })); } catch (_) {}
             }
           }
-          try { window.dispatchEvent(new CustomEvent('kexo:sale-sound-updated', { detail: { url: safeUrl } })); } catch (_) {}
         });
         return;
       }
@@ -878,7 +907,17 @@
           credentials: 'same-origin',
           body: fd,
         })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            return r.text().then(function (txt) {
+              var data = null;
+              try { data = txt ? JSON.parse(txt) : null; } catch (_) {}
+              if (!r.ok) {
+                var msg = (data && data.error) ? String(data.error) : ('Upload failed (' + String(r.status || 500) + ')');
+                throw new Error(msg);
+              }
+              return data || {};
+            });
+          })
           .then(function (data) {
             if (!data || !data.ok) {
               throw new Error((data && data.error) ? String(data.error) : 'Upload failed');
