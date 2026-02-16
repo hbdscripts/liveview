@@ -2370,8 +2370,8 @@ async function getBusinessSnapshot(options = {}) {
         + (includeKlarnaFees ? shopifyFeesPrevAll : 0);
       const cogsNowForProfit = cogsNow != null ? (Number(cogsNow) || 0) : 0;
       const cogsPrevForProfit = cogsPrev != null ? (Number(cogsPrev) || 0) : 0;
-      const totalCostNowForProfit = cogsNowForProfit + deductionsNow;
-      const totalCostPrevForProfit = cogsPrevForProfit + deductionsPrev;
+      const totalCostNowForProfit = toNumber(costNow) != null ? (Number(costNow) || 0) : (cogsNowForProfit + deductionsNow);
+      const totalCostPrevForProfit = toNumber(costPrev) != null ? (Number(costPrev) || 0) : (cogsPrevForProfit + deductionsPrev);
       const revNow = Number(revenue) || 0;
       const revPrev = Number(revenuePrev) || 0;
       const estNow = round2(revNow - totalCostNowForProfit);
@@ -2384,7 +2384,7 @@ async function getBusinessSnapshot(options = {}) {
       // Net rules are not separate yet, so net mirrors estimated gross for now.
       profitSection.netProfit = metric(estNow, estPrev);
       profitSection.marginPct = metric(marginNow, marginPrev);
-      profitSection.deductions = metric(deductionsNow, deductionsPrev);
+      profitSection.deductions = metric(totalCostNowForProfit, totalCostPrevForProfit);
     }
   } catch (_) {
     profitSection.unavailable = true;

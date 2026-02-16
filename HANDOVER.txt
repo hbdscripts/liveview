@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot header triple layout + profit math includes COGS)
+Last updated: 2026-02-16 (Snapshot deductions row now includes COGS in total deducted cost)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,16 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot profit/deductions alignment:
+  - Profit calculations now anchor to the full computed cost total when available (`COGS + all enabled/toggled costs`) to prevent drift between Cost and Estimated/Net Profit.
+  - Snapshot `Deductions` profit row now reflects the full deducted cost used in profit math (including COGS), matching the "everything that is a cost" expectation.
+
+2026-02-16 (latest)
+- Side panel readability cleanup:
+  - Side-panel Source now truncates displayed long URL lines with `.....` after a max length (copy action still uses the full URL).
+  - Cloudflare rows in the side panel no longer use `cf-row empty`; empty values still render as `—` but keep the standard `cf-row` class.
 
 2026-02-16 (latest)
 - Snapshot header/menu/profit follow-up:
