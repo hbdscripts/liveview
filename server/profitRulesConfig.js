@@ -14,6 +14,9 @@ function defaultProfitRulesConfigV1() {
     currency: 'GBP',
     integrations: {
       includeGoogleAdsSpend: false,
+      includeShopifyAppBills: false,
+      includePaymentFees: false,
+      includeKlarnaFees: false,
     },
     rules: [],
   };
@@ -132,9 +135,17 @@ function normalizeProfitRulesConfigV1(raw) {
     const integ = parsed.integrations && typeof parsed.integrations === 'object' ? parsed.integrations : {};
     out.integrations = {
       includeGoogleAdsSpend: integ && integ.includeGoogleAdsSpend === true,
+      includeShopifyAppBills: integ && integ.includeShopifyAppBills === true,
+      includePaymentFees: integ && integ.includePaymentFees === true,
+      includeKlarnaFees: integ && integ.includeKlarnaFees === true,
     };
   } catch (_) {
-    out.integrations = { includeGoogleAdsSpend: false };
+    out.integrations = {
+      includeGoogleAdsSpend: false,
+      includeShopifyAppBills: false,
+      includePaymentFees: false,
+      includeKlarnaFees: false,
+    };
   }
 
   const list = Array.isArray(parsed.rules) ? parsed.rules : [];

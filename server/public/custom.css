@@ -1983,6 +1983,25 @@ html[data-bs-theme="dark"] .report-build-wrap {
   max-width: 100%;
 }
 
+.snapshot-chart-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.snapshot-chart-picker .form-label {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.snapshot-chart-select {
+  min-width: 116px;
+  max-width: 116px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
 .snapshot-group-card .card-body {
   position: relative;
 }
@@ -2005,10 +2024,27 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .snapshot-kpi-table th,
 .snapshot-kpi-table td {
   white-space: nowrap;
+  padding-left: 0 !important;
+  border-bottom: none !important;
+}
+
+.snapshot-kpi-table thead th::before,
+.snapshot-kpi-table thead th::after {
+  display: none !important;
+  content: none !important;
 }
 
 .snapshot-kpi-table th[scope="row"] {
   font-weight: 500;
+}
+
+.snapshot-kpi-row--sub th[scope="row"] {
+  font-weight: 400;
+}
+
+.snapshot-kpi-sub-label {
+  display: inline-block;
+  padding-left: 0.85rem;
 }
 
 .snapshot-delta {
@@ -2034,6 +2070,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 
 @media (max-width: 767.98px) {
+  .snapshot-chart-select {
+    min-width: 96px;
+    max-width: 96px;
+    font-size: 11px;
+  }
+
   .snapshot-kpi-table th,
   .snapshot-kpi-table td {
     white-space: normal;

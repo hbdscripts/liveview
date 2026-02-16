@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (KPI compare baseline refresh for today)
+Last updated: 2026-02-16 (Snapshot cost breakdown + fee/app toggles)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,20 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot cost breakdown + Profit Rules integration toggles:
+  - Snapshot Revenue & Cost table now shows indented Cost breakdown lines (this/previous/delta) directly under the Cost KPI row.
+  - Profit Rules → Integrations now includes toggles for Shopify app bills, transaction fees, and Klarna fees (in addition to Google Ads spend).
+  - `GET /api/business-snapshot` now optionally includes Shopify Payments-derived app-bill + fee costs in Cost/Profit and in cost chart series for both current and compare windows; it fails open when Shopify Payments scope/data is unavailable.
+  - Snapshot table styling updated to remove left cell padding + bottom borders, and the performance chart picker is compact/right-aligned (`Chart`) for tighter resolutions.
+
+2026-02-16 (latest)
+- Admin → Users login visibility:
+  - Google OAuth logins now write user login metadata (`last_login_at` + geo/device fields) in `server/routes/oauthLogin.js` using the same metadata model as local auth.
+  - First Google login now creates a pending user row with metadata (when missing) before approval gates run, so Admin → Users has immediate context.
+  - `GET /api/admin/users?status=active` now appends Shopify auth rows sourced from `shop_sessions.updated_at` (store-level, provider `shopify`) so recent "Login with Shopify" activity appears in the Users table.
+  - `server/public/admin-page.js` treats provider `shopify` rows as read-only session rows (no promote button; badge shown).
 
 2026-02-16 (latest)
 - Header KPI compare baseline refresh (Today):

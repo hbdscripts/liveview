@@ -32,11 +32,13 @@ const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const SHOP_NAME_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const COGS_RANGE_CACHE_TTL_MS = 10 * 60 * 1000;
 const ADS_SPEND_CACHE_TTL_MS = 5 * 60 * 1000;
+const SHOPIFY_BALANCE_COSTS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const variantCostCache = new Map(); // key -> { amount, currency, expiresAt }
 const shopNameCache = new Map(); // shop -> { name, expiresAt }
 const cogsRangeCache = new Map(); // key -> { value, expiresAt }
 const adsSpendCache = new Map(); // key -> { totalGbp, byYmdObj, expiresAt }
+const shopifyBalanceCostsCache = new Map(); // key -> { value, expiresAt }
 
 function sleep(ms) {
   const n = Number(ms) || 0;
@@ -334,6 +336,286 @@ async function readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone) {
     byYmd,
     totalClicks: Math.max(0, Math.round(totalClicks)),
     clicksByYmd,
+  };
+}
+
+function firstGraphqlErrorMessage(json) {
+  if (!json || typeof json !== 'object') return '';
+  const errors = Array.isArray(json.errors) ? json.errors : [];
+  if (!errors.length) return '';
+  const first = errors[0];
+  if (first && typeof first.message === 'string' && first.message.trim()) {
+    return first.message.trim();
+  }
+  return 'GraphQL error';
+}
+
+function addAmountToMap(map, key, amount) {
+  if (!map || !map.set) return;
+  const k = String(key || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return;
+  map.set(k, (Number(map.get(k) || 0) || 0) + n);
+}
+
+function sumAmountMap(map) {
+  if (!map || !map.entries) return 0;
+  let total = 0;
+  for (const [, raw] of map.entries()) {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    total += n;
+  }
+  return total;
+}
+
+function mapToRoundedObject(map) {
+  const obj = {};
+  if (!map || !map.entries) return obj;
+  for (const [k, raw] of map.entries()) {
+    const key = String(k || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    obj[key] = round2(n) || 0;
+  }
+  return obj;
+}
+
+function roundedObjectToMap(obj) {
+  const out = new Map();
+  if (!obj || typeof obj !== 'object') return out;
+  for (const [k, raw] of Object.entries(obj)) {
+    const key = String(k || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    out.set(key, n);
+  }
+  return out;
+}
+
+function subtractAmountMapsNonNegative(primary, subtractor) {
+  const out = new Map();
+  const a = primary && primary.entries ? primary : new Map();
+  const b = subtractor && subtractor.entries ? subtractor : new Map();
+  const keys = new Set([...a.keys(), ...b.keys()]);
+  for (const key of keys) {
+    const base = Number(a.get(key) || 0) || 0;
+    const sub = Number(b.get(key) || 0) || 0;
+    const next = Math.max(0, base - sub);
+    if (next > 0) out.set(key, next);
+  }
+  return out;
+}
+
+function moneyV2ToGbp(money, ratesToGbp) {
+  if (!money || typeof money !== 'object') return 0;
+  const amount = Number(money.amount);
+  if (!Number.isFinite(amount)) return 0;
+  const currency = fx.normalizeCurrency(money.currencyCode) || 'GBP';
+  const gbp = fx.convertToGbp(amount, currency, ratesToGbp);
+  return Number.isFinite(Number(gbp)) ? Number(gbp) : 0;
+}
+
+function isoToYmdInTimeZone(iso, timeZone) {
+  const raw = typeof iso === 'string' ? iso.trim() : '';
+  if (!raw) return null;
+  const ms = Date.parse(raw);
+  if (!Number.isFinite(ms)) return null;
+  return ymdInTimeZone(ms, timeZone) || null;
+}
+
+function isPaymentFeeTransaction(tx) {
+  const t = String(tx && tx.type || '').trim().toLowerCase();
+  return t === 'charge' || t === 'refund';
+}
+
+function isLikelyAppBillTransaction(tx) {
+  const sourceType = String(tx && tx.sourceType || '').trim().toLowerCase();
+  const reason = String(tx && tx.adjustmentReason || '').trim().toLowerCase();
+  if (sourceType.includes('app')) return true;
+  if (reason.includes('app') || reason.includes('subscription') || reason.includes('billing')) return true;
+  return false;
+}
+
+async function runShopifyAdminGraphql(shop, accessToken, query, variables) {
+  try {
+    const res = await shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries: 6 });
+    const text = await res.text().catch(() => '');
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+    if (!res.ok) {
+      const msg = firstGraphqlErrorMessage(json) || `HTTP ${res.status}`;
+      return { ok: false, data: null, error: String(msg).slice(0, 240) };
+    }
+    const gqlErr = firstGraphqlErrorMessage(json);
+    if (gqlErr) return { ok: false, data: null, error: String(gqlErr).slice(0, 240) };
+    return { ok: true, data: json && json.data ? json.data : null, error: '' };
+  } catch (err) {
+    const msg = err && err.message ? String(err.message) : 'GraphQL request failed';
+    return { ok: false, data: null, error: msg.slice(0, 240) };
+  }
+}
+
+async function fetchShopifyPaymentsBalanceTransactions(shop, accessToken, searchQuery) {
+  if (!shop || !accessToken) return { ok: false, rows: [], error: 'Missing shop/token' };
+  const gql = `
+    query SnapshotBalanceTransactions($first: Int!, $after: String, $query: String) {
+      shopifyPaymentsAccount {
+        balanceTransactions(
+          first: $first
+          after: $after
+          query: $query
+          sortKey: PROCESSED_AT
+          hideTransfers: true
+        ) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            transactionDate
+            type
+            sourceType
+            adjustmentReason
+            amount { amount currencyCode }
+            fee { amount currencyCode }
+            net { amount currencyCode }
+          }
+        }
+      }
+    }
+  `;
+  const rows = [];
+  let after = null;
+  let pages = 0;
+  while (pages < 40) {
+    const rsp = await runShopifyAdminGraphql(shop, accessToken, gql, {
+      first: 250,
+      after,
+      query: searchQuery || null,
+    });
+    if (!rsp.ok) return { ok: false, rows: [], error: rsp.error || 'Shopify Payments query failed' };
+    const account = rsp.data && rsp.data.shopifyPaymentsAccount ? rsp.data.shopifyPaymentsAccount : null;
+    if (!account || !account.balanceTransactions) return { ok: false, rows: [], error: 'Shopify Payments account unavailable' };
+    const conn = account.balanceTransactions;
+    const nodes = Array.isArray(conn.nodes) ? conn.nodes : [];
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      rows.push(node);
+    }
+    const pageInfo = conn.pageInfo && typeof conn.pageInfo === 'object' ? conn.pageInfo : null;
+    const hasNext = !!(pageInfo && pageInfo.hasNextPage === true && pageInfo.endCursor);
+    if (!hasNext) break;
+    after = String(pageInfo.endCursor);
+    pages += 1;
+  }
+  return { ok: true, rows, error: '' };
+}
+
+async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd, timeZone) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const since = normalizeYmd(sinceYmd, '');
+  const until = normalizeYmd(untilYmd, '');
+  if (!safeShop || !accessToken || !since || !until || since > until) {
+    return {
+      available: false,
+      paymentFeesTotalGbp: 0,
+      klarnaFeesTotalGbp: 0,
+      appBillsTotalGbp: 0,
+      paymentFeesByYmd: new Map(),
+      klarnaFeesByYmd: new Map(),
+      appBillsByYmd: new Map(),
+    };
+  }
+  const tz = typeof timeZone === 'string' && timeZone ? timeZone : 'UTC';
+  const cacheKey = `${safeShop}:${since}:${until}:${tz}`;
+  const now = Date.now();
+  const cached = shopifyBalanceCostsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now && cached.value) {
+    const value = cached.value;
+    return {
+      available: !!value.available,
+      paymentFeesTotalGbp: Number(value.paymentFeesTotalGbp) || 0,
+      klarnaFeesTotalGbp: Number(value.klarnaFeesTotalGbp) || 0,
+      appBillsTotalGbp: Number(value.appBillsTotalGbp) || 0,
+      paymentFeesByYmd: roundedObjectToMap(value.paymentFeesByYmdObj),
+      klarnaFeesByYmd: roundedObjectToMap(value.klarnaFeesByYmdObj),
+      appBillsByYmd: roundedObjectToMap(value.appBillsByYmdObj),
+    };
+  }
+
+  const empty = {
+    available: false,
+    paymentFeesTotalGbp: 0,
+    klarnaFeesTotalGbp: 0,
+    appBillsTotalGbp: 0,
+    paymentFeesByYmd: new Map(),
+    klarnaFeesByYmd: new Map(),
+    appBillsByYmd: new Map(),
+  };
+
+  const searchBase = `processed_at:>=${since} processed_at:<=${until}`;
+  const [allResp, klarnaResp, ratesToGbp] = await Promise.all([
+    fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, searchBase),
+    fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, `${searchBase} payment_method_name:klarna`),
+    fx.getRatesToGbp().catch(() => ({})),
+  ]);
+
+  if (!allResp.ok) return empty;
+
+  const paymentAllByYmd = new Map();
+  const appBillsByYmd = new Map();
+  for (const tx of allResp.rows) {
+    if (!tx || typeof tx !== 'object') continue;
+    const ymd = isoToYmdInTimeZone(tx.transactionDate, tz);
+    if (!ymd || ymd < since || ymd > until) continue;
+    if (isPaymentFeeTransaction(tx)) {
+      const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
+      if (feeGbp > 0) addAmountToMap(paymentAllByYmd, ymd, feeGbp);
+    }
+    const netGbp = moneyV2ToGbp(tx.net, ratesToGbp);
+    if (netGbp < 0 && isLikelyAppBillTransaction(tx)) {
+      addAmountToMap(appBillsByYmd, ymd, Math.abs(netGbp));
+    }
+  }
+
+  const klarnaByYmd = new Map();
+  if (klarnaResp.ok) {
+    for (const tx of klarnaResp.rows) {
+      if (!tx || typeof tx !== 'object' || !isPaymentFeeTransaction(tx)) continue;
+      const ymd = isoToYmdInTimeZone(tx.transactionDate, tz);
+      if (!ymd || ymd < since || ymd > until) continue;
+      const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
+      if (feeGbp > 0) addAmountToMap(klarnaByYmd, ymd, feeGbp);
+    }
+  }
+
+  const paymentFeesByYmd = subtractAmountMapsNonNegative(paymentAllByYmd, klarnaByYmd);
+  const paymentFeesTotalGbp = round2(sumAmountMap(paymentFeesByYmd)) || 0;
+  const klarnaFeesTotalGbp = round2(sumAmountMap(klarnaByYmd)) || 0;
+  const appBillsTotalGbp = round2(sumAmountMap(appBillsByYmd)) || 0;
+  const value = {
+    available: true,
+    paymentFeesTotalGbp,
+    klarnaFeesTotalGbp,
+    appBillsTotalGbp,
+    paymentFeesByYmdObj: mapToRoundedObject(paymentFeesByYmd),
+    klarnaFeesByYmdObj: mapToRoundedObject(klarnaByYmd),
+    appBillsByYmdObj: mapToRoundedObject(appBillsByYmd),
+  };
+  shopifyBalanceCostsCache.set(cacheKey, { value, expiresAt: now + SHOPIFY_BALANCE_COSTS_CACHE_TTL_MS });
+  cleanupCache(shopifyBalanceCostsCache, 400);
+  return {
+    available: true,
+    paymentFeesTotalGbp,
+    klarnaFeesTotalGbp,
+    appBillsTotalGbp,
+    paymentFeesByYmd,
+    klarnaFeesByYmd: klarnaByYmd,
+    appBillsByYmd,
   };
 }
 
@@ -1512,7 +1794,21 @@ async function getBusinessSnapshot(options = {}) {
     return { sessionsByDay, convByDay };
   }
 
-  function buildCostDailySeries({ chartDays, revenueDaily, ordersDaily, cogsTotal, deductionsDetailed, adsByYmd, includeAds }) {
+  function buildCostDailySeries({
+    chartDays,
+    revenueDaily,
+    ordersDaily,
+    cogsTotal,
+    deductionsDetailed,
+    adsByYmd,
+    appBillsByYmd,
+    paymentFeesByYmd,
+    klarnaFeesByYmd,
+    includeAds,
+    includeAppBills,
+    includePaymentFees,
+    includeKlarnaFees,
+  }) {
     const days = Array.isArray(chartDays) ? chartDays : [];
     const rev = Array.isArray(revenueDaily) ? revenueDaily : [];
     const ord = Array.isArray(ordersDaily) ? ordersDaily : [];
@@ -1556,19 +1852,50 @@ async function getBusinessSnapshot(options = {}) {
         return round2(v) || 0;
       })
       : days.map(() => 0);
+    const appBillsDaily = includeAppBills
+      ? days.map((ymd) => {
+        const v = appBillsByYmd && appBillsByYmd.get ? Number(appBillsByYmd.get(ymd) || 0) : 0;
+        return round2(v) || 0;
+      })
+      : days.map(() => 0);
+    const paymentFeesDaily = includePaymentFees
+      ? days.map((ymd) => {
+        const v = paymentFeesByYmd && paymentFeesByYmd.get ? Number(paymentFeesByYmd.get(ymd) || 0) : 0;
+        return round2(v) || 0;
+      })
+      : days.map(() => 0);
+    const klarnaFeesDaily = includeKlarnaFees
+      ? days.map((ymd) => {
+        const v = klarnaFeesByYmd && klarnaFeesByYmd.get ? Number(klarnaFeesByYmd.get(ymd) || 0) : 0;
+        return round2(v) || 0;
+      })
+      : days.map(() => 0);
     const costDaily = days.map((_, i) => {
       const a = Number(cogsDaily[i]) || 0;
       const b = Number(expensesDaily[i]) || 0;
       const cVal = Number(adsDaily[i]) || 0;
-      return round2(a + b + cVal) || 0;
+      const dVal = Number(appBillsDaily[i]) || 0;
+      const eVal = Number(paymentFeesDaily[i]) || 0;
+      const fVal = Number(klarnaFeesDaily[i]) || 0;
+      return round2(a + b + cVal + dVal + eVal + fVal) || 0;
     });
-    return { costDaily, adsDaily };
+    return {
+      costDaily,
+      adsDaily,
+      appBillsDaily,
+      paymentFeesDaily,
+      klarnaFeesDaily,
+    };
   }
 
   const profitRules = await readProfitRulesConfig();
   const rulesEnabled = hasEnabledProfitRules(profitRules);
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
-  const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || includeGoogleAdsSpend));
+  const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
+  const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
+  const includeKlarnaFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includeKlarnaFees === true);
+  const anyIntegrationEnabled = includeGoogleAdsSpend || includeShopifyAppBills || includePaymentFees || includeKlarnaFees;
+  const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyIntegrationEnabled));
 
   const [
     sessionsNowTs,
@@ -1588,6 +1915,8 @@ async function getBusinessSnapshot(options = {}) {
     cogsPrevRaw,
     adsNow,
     adsPrev,
+    shopifyCostsNow,
+    shopifyCostsPrev,
   ] = await Promise.all([
     shopifySessionsTimeseriesForBounds(bounds),
     shopifySessionsTimeseriesForBounds(compareBounds),
@@ -1606,6 +1935,24 @@ async function getBusinessSnapshot(options = {}) {
     readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
     readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
     readGoogleAdsSpendDailyGbp(compareBounds.start, compareBounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
+    readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
+      available: false,
+      paymentFeesTotalGbp: 0,
+      klarnaFeesTotalGbp: 0,
+      appBillsTotalGbp: 0,
+      paymentFeesByYmd: new Map(),
+      klarnaFeesByYmd: new Map(),
+      appBillsByYmd: new Map(),
+    })),
+    readShopifyBalanceCostsGbp(shop, token, compareStartYmd, compareEndYmd, timeZone).catch(() => ({
+      available: false,
+      paymentFeesTotalGbp: 0,
+      klarnaFeesTotalGbp: 0,
+      appBillsTotalGbp: 0,
+      paymentFeesByYmd: new Map(),
+      klarnaFeesByYmd: new Map(),
+      appBillsByYmd: new Map(),
+    })),
   ]);
 
   let sessionsNowMetrics = summarizeSessionsTimeseries(sessionsNowTs);
@@ -1724,17 +2071,47 @@ async function getBusinessSnapshot(options = {}) {
   const cogsPrev = toNumber(cogsPrevRaw);
   const adsSpendNowAll = Number(adsNow && adsNow.totalGbp) || 0;
   const adsSpendPrevAll = Number(adsPrev && adsPrev.totalGbp) || 0;
+  const appBillsNowAll = Number(shopifyCostsNow && shopifyCostsNow.appBillsTotalGbp) || 0;
+  const appBillsPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.appBillsTotalGbp) || 0;
+  const paymentFeesNowAll = Number(shopifyCostsNow && shopifyCostsNow.paymentFeesTotalGbp) || 0;
+  const paymentFeesPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.paymentFeesTotalGbp) || 0;
+  const klarnaFeesNowAll = Number(shopifyCostsNow && shopifyCostsNow.klarnaFeesTotalGbp) || 0;
+  const klarnaFeesPrevAll = Number(shopifyCostsPrev && shopifyCostsPrev.klarnaFeesTotalGbp) || 0;
+  const appBillsNowByYmd = shopifyCostsNow && shopifyCostsNow.appBillsByYmd && shopifyCostsNow.appBillsByYmd.get
+    ? shopifyCostsNow.appBillsByYmd
+    : new Map();
+  const appBillsPrevByYmd = shopifyCostsPrev && shopifyCostsPrev.appBillsByYmd && shopifyCostsPrev.appBillsByYmd.get
+    ? shopifyCostsPrev.appBillsByYmd
+    : new Map();
+  const paymentFeesNowByYmd = shopifyCostsNow && shopifyCostsNow.paymentFeesByYmd && shopifyCostsNow.paymentFeesByYmd.get
+    ? shopifyCostsNow.paymentFeesByYmd
+    : new Map();
+  const paymentFeesPrevByYmd = shopifyCostsPrev && shopifyCostsPrev.paymentFeesByYmd && shopifyCostsPrev.paymentFeesByYmd.get
+    ? shopifyCostsPrev.paymentFeesByYmd
+    : new Map();
+  const klarnaFeesNowByYmd = shopifyCostsNow && shopifyCostsNow.klarnaFeesByYmd && shopifyCostsNow.klarnaFeesByYmd.get
+    ? shopifyCostsNow.klarnaFeesByYmd
+    : new Map();
+  const klarnaFeesPrevByYmd = shopifyCostsPrev && shopifyCostsPrev.klarnaFeesByYmd && shopifyCostsPrev.klarnaFeesByYmd.get
+    ? shopifyCostsPrev.klarnaFeesByYmd
+    : new Map();
   const adsClicksNow = Math.max(0, Math.round(Number(adsNow && adsNow.totalClicks) || 0));
   const adsClicksPrev = Math.max(0, Math.round(Number(adsPrev && adsPrev.totalClicks) || 0));
   const customExpensesNow = rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0;
   const customExpensesPrev = rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0;
   const adsSpendNowCost = includeGoogleAdsSpend ? adsSpendNowAll : 0;
   const adsSpendPrevCost = includeGoogleAdsSpend ? adsSpendPrevAll : 0;
-  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0)
-    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost)
+  const appBillsNowCost = includeShopifyAppBills ? appBillsNowAll : 0;
+  const appBillsPrevCost = includeShopifyAppBills ? appBillsPrevAll : 0;
+  const paymentFeesNowCost = includePaymentFees ? paymentFeesNowAll : 0;
+  const paymentFeesPrevCost = includePaymentFees ? paymentFeesPrevAll : 0;
+  const klarnaFeesNowCost = includeKlarnaFees ? klarnaFeesNowAll : 0;
+  const klarnaFeesPrevCost = includeKlarnaFees ? klarnaFeesPrevAll : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || klarnaFeesNowCost > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + klarnaFeesNowCost)
     : null;
-  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0)
-    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost)
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || klarnaFeesPrevCost > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + klarnaFeesPrevCost)
     : null;
 
   const costBreakdownNow = [];
@@ -1748,6 +2125,9 @@ async function getBusinessSnapshot(options = {}) {
     }
   }
   if (adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
+  if (appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
+  if (paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesNowCost) || 0 });
+  if (klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -1760,6 +2140,9 @@ async function getBusinessSnapshot(options = {}) {
     }
   }
   if (adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
+  if (appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
+  if (paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesPrevCost) || 0 });
+  if (klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -1768,7 +2151,13 @@ async function getBusinessSnapshot(options = {}) {
     cogsTotal: cogsNow,
     deductionsDetailed: rulesEnabled ? deductionsNowDetailed : { lines: [] },
     adsByYmd: adsNowByYmd,
+    appBillsByYmd: appBillsNowByYmd,
+    paymentFeesByYmd: paymentFeesNowByYmd,
+    klarnaFeesByYmd: klarnaFeesNowByYmd,
     includeAds: includeGoogleAdsSpend,
+    includeAppBills: includeShopifyAppBills,
+    includePaymentFees,
+    includeKlarnaFees,
   });
   const prevCostSeries = buildCostDailySeries({
     chartDays: chartDaysPrev,
@@ -1777,7 +2166,13 @@ async function getBusinessSnapshot(options = {}) {
     cogsTotal: cogsPrev,
     deductionsDetailed: rulesEnabled ? deductionsPrevDetailed : { lines: [] },
     adsByYmd: adsPrevByYmd,
+    appBillsByYmd: appBillsPrevByYmd,
+    paymentFeesByYmd: paymentFeesPrevByYmd,
+    klarnaFeesByYmd: klarnaFeesPrevByYmd,
     includeAds: includeGoogleAdsSpend,
+    includeAppBills: includeShopifyAppBills,
+    includePaymentFees,
+    includeKlarnaFees,
   });
   dailyNow.costGbp = nowCostSeries.costDaily;
   dailyPrev.costGbp = prevCostSeries.costDaily;
@@ -1839,10 +2234,18 @@ async function getBusinessSnapshot(options = {}) {
   try {
     profitSection.enabled = !!(profitRules && profitRules.enabled === true);
     profitSection.hasEnabledRules = rulesEnabled;
-    profitSection.hasEnabledIntegration = includeGoogleAdsSpend;
+    profitSection.hasEnabledIntegration = anyIntegrationEnabled;
     if (profitConfigured) {
-      const deductionsNow = (rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0) + (includeGoogleAdsSpend ? adsSpendNowAll : 0);
-      const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0) + (includeGoogleAdsSpend ? adsSpendPrevAll : 0);
+      const deductionsNow = (rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0)
+        + (includeGoogleAdsSpend ? adsSpendNowAll : 0)
+        + (includeShopifyAppBills ? appBillsNowAll : 0)
+        + (includePaymentFees ? paymentFeesNowAll : 0)
+        + (includeKlarnaFees ? klarnaFeesNowAll : 0);
+      const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0)
+        + (includeGoogleAdsSpend ? adsSpendPrevAll : 0)
+        + (includeShopifyAppBills ? appBillsPrevAll : 0)
+        + (includePaymentFees ? paymentFeesPrevAll : 0)
+        + (includeKlarnaFees ? klarnaFeesPrevAll : 0);
       const revNow = Number(revenue) || 0;
       const revPrev = Number(revenuePrev) || 0;
       const estNow = round2(revNow - deductionsNow);
@@ -1972,6 +2375,10 @@ async function getBusinessSnapshot(options = {}) {
     sources: {
       sales: 'shopify_orders_api (orders_shopify, checkout_token only)',
       sessions: 'shopifyql (sessions)',
+      costs: 'COGS + enabled profit deductions + optional integrations (Google Ads, Shopify app bills, transaction fees, Klarna fees)',
+      shopifyPayments: (shopifyCostsNow && shopifyCostsNow.available) || (shopifyCostsPrev && shopifyCostsPrev.available)
+        ? 'shopifyPaymentsAccount.balanceTransactions'
+        : 'unavailable_or_scope_missing',
       timeZone,
       rangeYmd: { since: startYmd || null, until: endYmd || null },
       compareRangeYmd: { since: compareStartYmd || null, until: compareEndYmd || null },

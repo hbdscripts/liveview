@@ -321,7 +321,8 @@
     return { delta, deltaPct, tone };
   }
 
-  function metricRow(label, metric, type) {
+  function metricRow(label, metric, type, options) {
+    const opts = options && typeof options === 'object' ? options : {};
     const value = metric && metric.value != null ? metric.value : null;
     const previous = metric && metric.previous != null ? metric.previous : null;
     const deltaInfo = getDeltaInfo(value, previous);
@@ -347,14 +348,60 @@
     }
     const badgeClass = `snapshot-delta snapshot-delta--${deltaInfo.tone}`;
     const deltaPctText = deltaInfo.deltaPct == null ? '-' : fmtDeltaPercent(deltaInfo.deltaPct);
+    const rowClass = opts.subRow ? 'snapshot-kpi-row snapshot-kpi-row--sub' : 'snapshot-kpi-row';
+    const labelClass = opts.subRow ? 'text-muted snapshot-kpi-sub-label' : 'text-muted';
     return '' +
-      '<tr>' +
-        `<th scope="row" class="text-muted">${esc(label)}</th>` +
+      `<tr class="${rowClass}">` +
+        `<th scope="row" class="${labelClass}">${esc(label)}</th>` +
         `<td class="text-end">${esc(thisText)}</td>` +
         `<td class="text-end">${esc(prevText)}</td>` +
         `<td class="text-end"><span class="${badgeClass}">${esc(deltaText)}</span></td>` +
         `<td class="text-end"><span class="${badgeClass}">${esc(deltaPctText)}</span></td>` +
       '</tr>';
+  }
+
+  function costBreakdownToMap(lines) {
+    const map = new Map();
+    const rows = Array.isArray(lines) ? lines : [];
+    rows.forEach((row) => {
+      if (!row || typeof row !== 'object') return;
+      const label = String(row.label || '').trim();
+      if (!label) return;
+      const amount = toNumber(row.amountGbp);
+      if (amount == null || amount <= 0) return;
+      map.set(label, (Number(map.get(label) || 0) || 0) + amount);
+    });
+    return map;
+  }
+
+  function renderCostBreakdownRows(financial) {
+    const nowMap = costBreakdownToMap(financial && financial.costBreakdownNow);
+    const prevMap = costBreakdownToMap(financial && financial.costBreakdownPrevious);
+    const labels = [];
+    const seen = new Set();
+    for (const label of nowMap.keys()) {
+      if (seen.has(label)) continue;
+      seen.add(label);
+      labels.push(label);
+    }
+    for (const label of prevMap.keys()) {
+      if (seen.has(label)) continue;
+      seen.add(label);
+      labels.push(label);
+    }
+    if (!labels.length) return '';
+    let html = '';
+    labels.forEach((label) => {
+      const now = toNumber(nowMap.get(label));
+      const prev = toNumber(prevMap.get(label));
+      html += metricRow(
+        label,
+        { value: now == null ? 0 : now, previous: prev == null ? 0 : prev },
+        'currency',
+        { subRow: true }
+      );
+    });
+    return html;
   }
 
   function shouldShowProfit(data) {
@@ -370,6 +417,7 @@
     let html = '';
     html += metricRow('Revenue', financial.revenue, 'currency');
     html += metricRow('Cost', financial.cost, 'currency');
+    html += renderCostBreakdownRows(financial);
     if (shouldShowProfit(data)) {
       const profit = financial.profit || {};
       html += metricRow('Estimated Profit', profit.estimatedProfit, 'currency');
@@ -720,6 +768,9 @@
       currency: 'GBP',
       integrations: {
         includeGoogleAdsSpend: !!(src.integrations && src.integrations.includeGoogleAdsSpend === true),
+        includeShopifyAppBills: !!(src.integrations && src.integrations.includeShopifyAppBills === true),
+        includePaymentFees: !!(src.integrations && src.integrations.includePaymentFees === true),
+        includeKlarnaFees: !!(src.integrations && src.integrations.includeKlarnaFees === true),
       },
       rules: [],
     };
@@ -935,8 +986,14 @@
     state.rulesDraft = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : null);
     const enabledToggle = document.getElementById('profit-rules-enabled');
     const adsToggle = document.getElementById('profit-rules-include-google-ads');
+    const appBillsToggle = document.getElementById('profit-rules-include-shopify-app-bills');
+    const paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
+    const klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
     if (enabledToggle) enabledToggle.checked = !!(state.rulesDraft && state.rulesDraft.enabled);
     if (adsToggle) adsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeGoogleAdsSpend);
+    if (appBillsToggle) appBillsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeShopifyAppBills);
+    if (paymentFeesToggle) paymentFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includePaymentFees);
+    if (klarnaFeesToggle) klarnaFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeKlarnaFees);
     renderRulesList();
     hideRulesForm();
   }
@@ -945,11 +1002,22 @@
     if (!state.rulesDraft) state.rulesDraft = normalizeRulesPayload(null);
     const enabledToggle = document.getElementById('profit-rules-enabled');
     const adsToggle = document.getElementById('profit-rules-include-google-ads');
+    const appBillsToggle = document.getElementById('profit-rules-include-shopify-app-bills');
+    const paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
+    const klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
     state.rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!state.rulesDraft.enabled;
     if (!state.rulesDraft.integrations || typeof state.rulesDraft.integrations !== 'object') {
-      state.rulesDraft.integrations = { includeGoogleAdsSpend: false };
+      state.rulesDraft.integrations = {
+        includeGoogleAdsSpend: false,
+        includeShopifyAppBills: false,
+        includePaymentFees: false,
+        includeKlarnaFees: false,
+      };
     }
     state.rulesDraft.integrations.includeGoogleAdsSpend = adsToggle ? !!adsToggle.checked : !!state.rulesDraft.integrations.includeGoogleAdsSpend;
+    state.rulesDraft.integrations.includeShopifyAppBills = appBillsToggle ? !!appBillsToggle.checked : !!state.rulesDraft.integrations.includeShopifyAppBills;
+    state.rulesDraft.integrations.includePaymentFees = paymentFeesToggle ? !!paymentFeesToggle.checked : !!state.rulesDraft.integrations.includePaymentFees;
+    state.rulesDraft.integrations.includeKlarnaFees = klarnaFeesToggle ? !!klarnaFeesToggle.checked : !!state.rulesDraft.integrations.includeKlarnaFees;
     reindexRulesDraft();
     setRulesMessage('Saving...', true);
     try {

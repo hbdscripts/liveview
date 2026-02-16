@@ -114,9 +114,9 @@
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="performance">
         <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h3 class="card-title mb-0">Performance</h3>
-          <div class="d-flex align-items-center gap-2">
-            <label class="form-label mb-0 small text-muted" for="snapshot-performance-metric-select">Chart metric</label>
-            <select id="snapshot-performance-metric-select" class="form-select form-select-sm" aria-label="Performance chart metric">
+          <div class="snapshot-chart-picker ms-auto">
+            <label class="form-label mb-0 small text-muted" for="snapshot-performance-metric-select">Chart</label>
+            <select id="snapshot-performance-metric-select" class="form-select form-select-sm snapshot-chart-select" aria-label="Performance chart metric">
               <option value="sessions">Sessions</option>
               <option value="orders">Orders</option>
               <option value="conversionRate">Conversion Rate</option>
@@ -281,11 +281,25 @@
           </div>
 
           <div class="mb-2 is-hidden" id="profit-rules-tab-integrations">
-            <label class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="profit-rules-include-google-ads" />
-              <span class="form-check-label">Include Google Ads spend in Cost</span>
-            </label>
-            <div class="text-muted small mt-2">When enabled, Snapshot Cost includes Google Ads spend for the selected period.</div>
+            <div class="d-flex flex-column gap-2">
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="profit-rules-include-google-ads" />
+                <span class="form-check-label">Include Google Ads spend in Cost</span>
+              </label>
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="profit-rules-include-shopify-app-bills" />
+                <span class="form-check-label">Include Shopify app bills in Cost</span>
+              </label>
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="profit-rules-include-payment-fees" />
+                <span class="form-check-label">Include transaction fees (excl. Klarna) in Cost</span>
+              </label>
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="profit-rules-include-klarna-fees" />
+                <span class="form-check-label">Include Klarna fees in Cost</span>
+              </label>
+            </div>
+            <div class="text-muted small mt-2">Enabled toggles are included in Snapshot Cost, cost chart, and estimated profit deductions.</div>
           </div>
         </div>
         <div class="modal-footer">
